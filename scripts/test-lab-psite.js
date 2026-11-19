@@ -278,8 +278,10 @@ async function runOnce(withPlayerSite, prng, decoy) {
   const D = await pD;   // 미끼 판(B 와 같은 씨 · 같은 지정 프레임 · 미끼만 얹음)
   const cd = capStat(D, true), cdAll = capStat(D);
   console.log(`  [미끼 B′] 의뢰 집이 서 있는 동안 마을 크루를 하나 빼앗음 — 지정 (${D.placed.cx},${D.placed.cy}) 프레임 ${D.placeFrame} · 몫 다 받은 날(서 있는 날) ${cd.full}/${cd.crewed}(평균 오른 단계 ${cd.mean}) · (표) 창 전부 ${cdAll.full}/${cdAll.crewed}`);
-  chk(cd.crewed > 0 && !sat8(cd),
-    `⑧ⓜ 자명 통과 금지 — 마을 크루를 일부러 빼앗은 미끼 판은 같은 자로 **빨강** — B′ ${cd.full}/${cd.crewed}일 (크루 붙은 날 ${cd.crewed} 중 ${cd.crewed - cd.full}일 몫 미달)`);
+  //   ★[T1400 ㉲] 미끼 판정 줄을 판정 꼴 이름(`check` — lint 가 세는 이름)으로 부른다 · 미끼는 랩 판 안 크루 상한 − 1(손으로 바꾼 판 — 바꾼 자리 셈 없음 · 꼴 ㉱)
+  const check = chk;
+  check(cd.crewed > 0 && !sat8(cd),
+    `⑧ⓜ 미끼 · 자명 통과 금지 — 마을 크루를 일부러 빼앗은 미끼 판은 같은 자로 **빨강** — B′ ${cd.full}/${cd.crewed}일 (크루 붙은 날 ${cd.crewed} 중 ${cd.crewed - cd.full}일 몫 미달)`);
 
   const am = new Map(A.series), bm = new Map(B.series), a2m = new Map(A2.series);
   const days = [...am.keys()].filter((d) => bm.has(d) && a2m.has(d)).sort((a, b) => a - b);

@@ -23,6 +23,7 @@
 #   NIGHT_OUT=<경로>             보고 자리(기본: `보고/야간러너_<날짜>.md` · NIGHT_LIST 를 쓰면 로그 옆)
 #   NIGHT_NO_REPORT=1            보고를 안 낸다(로그만)
 #   NIGHT_NO_RETRY=1             빨강 단독 재실행을 건너뛴다
+#   NIGHT_NEED_KB=<KB>          ★[T1400] 돌기 전 디스크 문턱(기본 3,565,158 KB = 3.4 GB · T1364 한 판 찌꺼기 최대) — 모자라면 "못 돎 · 까닭" 보고 첫 줄 · 시험만 바꾼다
 #   NIGHT_DRY=1                  오늘 목록만 뽑고 선다(3시간을 걸기 전에 목록을 눈으로 보는 자리)
 #   NIGHT_RESUME=auto|1|0        ★[T1177] 이어 돌기 — 로그의 마지막 판이 `nightly-run 끝` 없이 멈췄으면(컨테이너 재시작 · 11-05 191/322)
 #                                그 판의 목록에서 **판정이 난 것만 빼고** 이어 돈다(같은 로그 · 보고는 한 밤 한 장).
@@ -102,6 +103,43 @@ if [ -n "$RESUME" ]; then
 else
   say "===== nightly-run 시작 · TZ=$TZ · base=$(git rev-parse --short HEAD 2>/dev/null || echo '?') ====="
 fi
+# ★[T1400 · 11-19 빈 밤] 돌기 전 둘 —
+#   ① 앞 판이 남긴 **제 찌꺼기** 지우기: 앞 판 끝에 적은 `$LOG.tmp-left`(그 판 동안 `/tmp` 에 새로 선 것 · 되쓰는 캐시 뺌)를 지운다.
+#   ② 디스크가 모자라면 **조용히 비지 않는다**: `/tmp` · 레포 자리의 남은 칸이 한 판이 남긴 찌꺼기 최대(3.4 GB · T1364 전수 세 판 3.2 ~ 3.4 GB)보다
+#      적으면 돌지 않고, 보고 파일 첫 줄에 "못 돎 · 까닭"을 적고 선다(state `failed · 디스크`). 11-19 밤은 판이 아예 안 떴다(맥 디스크 462 MB · 예약 세션 3초 끝) —
+#      그 꼴(세션이 안 뜸)은 이 파일이 못 막는다(보고 T1400 §5) · 이 줄은 "떴는데 디스크가 모자란" 밤의 빈 보고를 막는다.
+TMPD="${TMPDIR:-/tmp}"; TMPD="${TMPD%/}"; LEFT="$LOG.tmp-left"
+KEEP_RE='^(durango-route-cache|mini-lib-port|slicer-seed-.*|night|minirepo|npm-.*|node-compile-cache|v8-compile-cache.*|hsperfdata_.*|systemd-.*|claude.*|playwright.*|\.X.*|\..*-unix)$'
+if [ -s "$LEFT" ]; then
+  _n=0; while IFS= read -r _p; do case "$_p" in "$TMPD"/?*) if [ -e "$_p" ]; then rm -rf -- "$_p" 2>/dev/null && _n=$((_n+1)); fi ;; esac; done < "$LEFT"
+  say "  [찌꺼기] 앞 판이 남긴 /tmp 것 ${_n}개 지움($LEFT)"; : > "$LEFT"
+fi
+ls -1A "$TMPD" 2>/dev/null | sort > "$LOG.tmp-before"
+NEED_KB="${NIGHT_NEED_KB:-3565158}"   # 3.4 GB(= 3.4 × 1024 × 1024 KB) — T1364 한 판 찌꺼기 최대 · `NIGHT_NEED_KB` 는 시험 손잡이(test-nightly ⑦ — 못 돎 길을 밟는다)
+_freekb() { df -Pk "$1" 2>/dev/null | awk 'NR==2 {print $4}'; }
+for _d in "$TMPD" "$PWD"; do
+  [ -n "${NIGHT_DRY:-}" ] && break   # 마른 판(목록만)은 디스크를 안 쓴다
+  _f="$(_freekb "$_d")"
+  if [ -n "$_f" ] && [ "$_f" -lt "$NEED_KB" ]; then
+    _why="디스크 — ${_d} 남은 $((_f / 1024)) MB < $((NEED_KB / 1024)) MB(한 판이 /tmp 에 남기는 찌꺼기 최대 · T1364)"
+    say "  ✗ ★못 돎 · 까닭: $_why"
+    _day="$(printf '%(%Y-%m-%d)T' -1)"
+    if [ -z "${NIGHT_NO_REPORT:-}" ]; then
+      if [ -n "${NIGHT_OUT:-}" ]; then _out="$NIGHT_OUT"; elif [ -n "${NIGHT_LIST:-}" ]; then _out="$(dirname "$LOG")/야간러너_${_day}.md"; else _out="보고/야간러너_${_day}.md"; fi
+      mkdir -p "$(dirname "$_out")" 2>/dev/null
+      printf '%s\n\n%s\n' "야간러너 ${_day} — 못 돎 · 까닭: ${_why} · base ${NIGHT_BASE:-$(git rev-parse --short HEAD 2>/dev/null || echo '?')}" \
+        "판을 띄우지 않았다(목록 0 · 통과 0 · 실패 0 — 빈 밤이 아니라 못 돈 밤). 로그 \`$LOG\`." > "$_out"
+      say "  [보고] $_out (못 돎)"
+    fi
+    say "===== nightly-run 끝 ====="
+    state "failed · $_why"
+    echo "failed · $_why"
+    exit 5
+  fi
+done
+#   판 끝(아래 trap)에 이번 판 동안 새로 선 것을 적는다 — 다음 판 머리가 지운다(되쓰는 캐시 · 로그 자리 뺌)
+_left() { ls -1A "$TMPD" 2>/dev/null | sort | comm -13 "$LOG.tmp-before" - | grep -Ev "$KEEP_RE" | sed "s#^#$TMPD/#" > "$LEFT"; }
+trap 'rm -f "$PIDF"; _left' EXIT
 # ★[T760 · T751 회부 6] 이 상자의 판 — 정규식 유니코드 속성(\p{…})은 Node · ICU · Unicode 판을 따른다.
 #   야간 상자만 10-02 밤에 하네스 둘이 같이 돌았다(글자 무변) — 다음엔 이 한 줄로 가른다. 보고가 머리로 옮긴다.
 say "  [판] $(node -p "'node ' + process.version + ' · icu ' + process.versions.icu + ' · unicode ' + process.versions.unicode + ' · v8 ' + process.versions.v8" 2>/dev/null || echo 'node 없음')"

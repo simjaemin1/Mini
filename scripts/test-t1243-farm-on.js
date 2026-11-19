@@ -220,7 +220,7 @@ ok(/김세빈 · 김민구 2024 「한반도 선·역사시대 박의 재배와 
 // 판 시계 서버 판 — 몸이 밭에 닿아 거두고 · 일괄 밭 일 0(캐논 797) · 미끼(일괄 걷음을 끈 사본 = 몸 없이 밭 일) → 빨강
 if (process.env.T1295_SKIP_RUN === '1') console.log('  · ⑩ T1295 서버 판 건너뜀(T1295_SKIP_RUN=1) — 통과로 세지 않는다');
 else {
-  const os = require('os'), D = fs.mkdtempSync(path.join(os.tmpdir(), 't1295h-'));
+  const os = require('os'), D = fs.mkdtempSync(path.join(os.tmpdir(), 't1295h-')); require('./lib-tmp').own(D);   // [T1400] lib-tmp — 판 끝(빨강 · 상한 포함)에 지운다
   const run = (days, out, extra) => { const e = Object.assign({}, process.env); for (const k of KNOBS) delete e[k]; delete e.NODE_OPTIONS;
     Object.assign(e, { T1243_FARM_ON: '1', VILLAGE_NPC_CAP: 'Infinity', VILLAGE_CARAVAN_MAX: '0', T400_BUILD_ACT: '0', T745_VCLOCK: '1', T577_PAR: '1', T577_DIR: path.join(D, out), T577_TAG: out, T1295_PROBE_OUT: path.join(D, out + '.json'),
       NODE_OPTIONS: `-r ${path.join(ROOT, 'scripts', 't745-vclock.js')} -r ${path.join(ROOT, 'scripts', 't1295-probe.js')}` }, extra || {});
@@ -257,7 +257,7 @@ ok(u1.fast.K === Math.ceil((u1.fast.m / 30) / u1.minTask) && u1.fast.K === 3 && 
     '⑪ T1316 ③ 결정 문 = 토막마다 결정 · 걸음(합 = dt — 이동 문은 마지막 토막만)'); }
 if (process.env.T1295_SKIP_RUN === '1') console.log('  · ⑪ T1316 서버 판 건너뜀(T1295_SKIP_RUN=1) — 통과로 세지 않는다');
 else {
-  const os = require('os'), D = fs.mkdtempSync(path.join(os.tmpdir(), 't1316h-'));
+  const os = require('os'), D = fs.mkdtempSync(path.join(os.tmpdir(), 't1316h-')); require('./lib-tmp').own(D);   // [T1400] lib-tmp — 판 끝(빨강 · 상한 포함)에 지운다
   const run = (days, out, extra) => { const e = Object.assign({}, process.env); for (const k of KNOBS) delete e[k]; delete e.NODE_OPTIONS;
     Object.assign(e, { T1243_FARM_ON: '1', T1316_BODY_CLOCK: '1', T1316_SUBSTEP: '1', VILLAGE_NPC_CAP: 'Infinity', VILLAGE_CARAVAN_MAX: '0', T400_BUILD_ACT: '0', T745_VCLOCK: '1', T577_PAR: '1', T577_DIR: path.join(D, out), T577_TAG: out, T1295_PROBE_OUT: path.join(D, out + '.json'),
       NODE_OPTIONS: `-r ${path.join(ROOT, 'scripts', 't745-vclock.js')} -r ${path.join(ROOT, 'scripts', 't1295-probe.js')}` }, extra || {});
@@ -292,7 +292,7 @@ ok(w1.fast.cs0 === true && w1.fast.csL === false && wF.fast.csL === true && w1.l
     '⑫ T1326 — 걸음은 사냥꾼 뜀 배수를 그대로 곱한다 · 문은 사냥꾼을 켬일 때만 · 명부는 직업 인자로 문턱을 본다'); }
 if (process.env.T1295_SKIP_RUN === '1') console.log('  · ⑫ T1326 서버 판 건너뜀(T1295_SKIP_RUN=1) — 통과로 세지 않는다');
 else {
-  const os = require('os'), D = fs.mkdtempSync(path.join(os.tmpdir(), 't1326h-'));
+  const os = require('os'), D = fs.mkdtempSync(path.join(os.tmpdir(), 't1326h-')); require('./lib-tmp').own(D);   // [T1400] lib-tmp — 판 끝(빨강 · 상한 포함)에 지운다
   const run = (days, out, extra) => { const e = Object.assign({}, process.env); for (const k of KNOBS) delete e[k]; delete e.NODE_OPTIONS;
     Object.assign(e, { T1243_FARM_ON: '1', T325_WOOD_ACT: '1', T1195_HUNT_REAL: '1', T1316_BODY_CLOCK: '1', T1316_SUBSTEP: '1', T1326_HUNT_CLOCK: '1', VILLAGE_NPC_CAP: 'Infinity', VILLAGE_CARAVAN_MAX: '0', T745_VCLOCK: '1', T577_PAR: '1', T577_DIR: path.join(D, out), T577_TAG: out, T1295_PROBE_OUT: path.join(D, out + '.json'),
       NODE_OPTIONS: `-r ${path.join(ROOT, 'scripts', 't745-vclock.js')} -r ${path.join(ROOT, 'scripts', 't1295-probe.js')}` }, extra || {});

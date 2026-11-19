@@ -188,13 +188,13 @@ withEnv({ T574_REGION: '500' }, () => {
   let same = 0, n = 0;
   for (let h = 0; h < 4000; h++) { n++; if (FF.pick('lower', day, h).id === FF.pick('lower', day, h, ch).id) same++; }
   ok(same === n, '민물 — 식료 빈칸이라 켬에서도 옛 종 그대로', `${same}/${n}`);
-  RP.TABLE.fishFresh.push({ id: 'eel', ko: '뱀장어', hb: '보통', np: '많음', st: '—', ev: '하네스 미끼' });
+  const L0 = RP.TABLE.fishFresh.length; RP.TABLE.fishFresh.push({ id: 'eel', ko: '뱀장어', hb: '보통', np: '많음', st: '—', ev: '하네스 미끼' }); const nE = RP.TABLE.fishFresh.length - L0;   // [T1400 ㉲] 바꾼 자리 = 더한 칸 수
   let eel0 = 0, eel1 = 0;
   for (let h = 0; h < 4000; h++) { if (FF.pick('lower', day, h).id === 'eel') eel0++; if (FF.pick('lower', day, h, ch).id === 'eel') eel1++; }
   const ids = FF.poolOf('lower', day).map((s2) => s2.id), wE = RP.weightsOf('fishFresh', 'nippon', ids).eel;
   RP.TABLE.fishFresh.pop();
-  ok(eel1 > eel0 && near(eel1 / n, wE, 0.03), '자명 통과 금지 — 칸을 채우면 뱀장어 몫이 그 가중만큼 오른다(섞은 u 가 고르다)',
-    `${(eel0 / n * 100).toFixed(1)}% → ${(eel1 / n * 100).toFixed(1)}% (기대 ${(wE * 100).toFixed(1)}%)`);
+  ok(nE === 1 && eel1 > eel0 && near(eel1 / n, wE, 0.03), '미끼 · 자명 통과 금지 — 칸을 채우면 뱀장어 몫이 그 가중만큼 오른다(섞은 u 가 고르다)',
+    `바꾼 자리 ${nE} · ${(eel0 / n * 100).toFixed(1)}% → ${(eel1 / n * 100).toFixed(1)}% (기대 ${(wE * 100).toFixed(1)}%)`);
   // 낚시 — 닛폰 경계 물에 한반도 목록에만 있는 종(잉어·명태)이 꼬리로 든다
   const lf = (z) => Fishing.speciesFor(RP.biomeOf(z));
   const npList = Fishing.speciesFor('mountain'), hbList = Fishing.speciesFor('forest');
@@ -205,10 +205,10 @@ withEnv({ T574_REGION: '500' }, () => {
   ok(RP.chooseSpecies('fishRod', 'hanbando', HW - 32, 60000, 0.5, lf, hbList) === null, '낚시 — 한반도는 꼬리로 들 닛폰 고유 종이 없다 → null(옛 줄)');
   // 군락 — 식료 빈칸 ⇒ 켬에서도 null · 자명 통과 금지: 표 한 칸을 채우면 고른다
   ok(RP.chooseSpecies('forage', 'nippon', 30000, 60000, 0.5, null, ['mushroom_patch', 'beehive']) === null, '군락 — 식료 빈칸이라 켬에서도 옛 줄');
-  RP.TABLE.forage.push({ id: 'beehive', ko: '벌집', hb: '보통', np: '많음', st: '—', ev: '하네스 미끼' });
+  const L1 = RP.TABLE.forage.length; RP.TABLE.forage.push({ id: 'beehive', ko: '벌집', hb: '보통', np: '많음', st: '—', ev: '하네스 미끼' }); const nB = RP.TABLE.forage.length - L1;   // [T1400 ㉲]
   const got = RP.chooseSpecies('forage', 'nippon', 30000, 60000, 0.9, null, ['mushroom_patch', 'beehive']);
   RP.TABLE.forage.pop();
-  ok(got === 'beehive', '자명 통과 금지 — 표 한 칸(닛폰 벌집 많음)을 채우면 군락이 가중으로 고른다', got);
+  ok(nB === 1 && got === 'beehive', '미끼 · 자명 통과 금지 — 표 한 칸(닛폰 벌집 많음)을 채우면 군락이 가중으로 고른다', `바꾼 자리 ${nB} · ${got}`);
 });
 
 // ── ⓗ 굽기 — 재민 08-01 규칙 셋(주요 철 없음 · 은 단독 없음 · 다광종) ─────────────────────────────

@@ -435,5 +435,31 @@ console.log('\n=== ⑬ [T1350] 아이 nightly-run 은 얕은 클론을 안 늘�
   ok(okB, '⑬ [미끼] `NIGHT_UNSHALLOW` 한 칸만 지운 env — unshallow 줄이 첫 줄에 서고 레포가 전체 이력이 된다(CI 11-11 ~ 11-17 빨강 꼴 · 위 ⑤ 가 문다)', dB);
 }
 
+console.log('\n=== ⑭ [T1400] 디스크가 모자라면 조용히 비지 않는다 · 앞 판 찌꺼기를 머리에서 지운다 ===');
+{
+  //   11-19 밤 — 맥 디스크 462 MB · 보고 0. 판이 떴는데 디스크가 모자라면 보고 파일 **첫 줄**이 "못 돎 · 까닭"이어야 한다(빈 밤과 못 돈 밤을 가른다).
+  //   정본 `nightly-run.sh` 그대로(사본 0)를 임시 자리(로그 · TMPDIR)에서 돈다 — 문턱만 시험 손잡이 `NIGHT_NEED_KB` 로 크게.
+  //   미끼: 디스크 검사 줄(`if [ -n "$_f" ] && [ "$_f" -lt "$NEED_KB" ]`)만 `if false` 로 바꾼 사본 — 판이 그냥 돌아(목록 · 하네스 없음) "못 돎" 첫 줄이 안 선다.
+  const LB = require('./lib-bait');
+  const T = require('./lib-tmp').dir('t1400night');
+  const SRC = fs.readFileSync(path.join(ROOT, 'scripts', 'nightly-run.sh'), 'utf8');
+  const runIt = (script, tag, extra) => {
+    const D = path.join(T, tag); fs.mkdirSync(path.join(D, 'tmp'), { recursive: true });
+    fs.writeFileSync(path.join(D, 'r.log.tmp-left'), path.join(D, 'tmp', 'old-left') + '\n'); fs.writeFileSync(path.join(D, 'tmp', 'old-left'), 'x');
+    const env = Object.assign({}, ENV0, { LOG: path.join(D, 'r.log'), TMPDIR: path.join(D, 'tmp'), NIGHT_LIST: 'test-nope.js', NIGHT_NO_FONT: '1', NIGHT_NO_RETRY: '1' }, extra || {});
+    const r = require('child_process').spawnSync('bash', [script], { cwd: ROOT, env, encoding: 'utf8', timeout: 120000 });
+    const md = fs.readdirSync(D).find((f) => /^야간러너_.*\.md$/.test(f));
+    return { rc: r.status, first: md ? fs.readFileSync(path.join(D, md), 'utf8').split('\n')[0] : '', state: (() => { try { return fs.readFileSync(path.join(D, 'r.log.state'), 'utf8').trim(); } catch (e) { return ''; } })(),
+      swept: !fs.existsSync(path.join(D, 'tmp', 'old-left')), log: (() => { try { return fs.readFileSync(path.join(D, 'r.log'), 'utf8'); } catch (e) { return ''; } })() };
+  };
+  const A = runIt(path.join(ROOT, 'scripts', 'nightly-run.sh'), 'real', { NIGHT_NEED_KB: '999999999999' });
+  ok(A.rc === 5 && /^야간러너 \S+ — 못 돎 · 까닭: 디스크 — /.test(A.first) && /^failed · 디스크/.test(A.state), '★⑭ 디스크가 문턱 밑이면 보고 첫 줄이 "못 돎 · 까닭: 디스크 …" · state failed · 나감 5(조용히 비지 않는다)', `rc ${A.rc} · ${A.first.slice(0, 90)} · state ${A.state.slice(0, 40)}`);
+  ok(A.swept && /\[찌꺼기\] 앞 판이 남긴 \/tmp 것 1개 지움/.test(A.log), '★⑭ 앞 판이 적은 찌꺼기 목록(`$LOG.tmp-left`)을 머리에서 지운다', `지움 ${A.swept}`);
+  const B = LB.swap(SRC, 'if [ -n "$_f" ] && [ "$_f" -lt "$NEED_KB" ]; then', 'if false; then');
+  const bf = path.join(T, 'bait-nightly-run.sh'); fs.writeFileSync(bf, B.src);
+  const Bt = runIt(bf, 'bait', { NIGHT_NEED_KB: '999999999999' });
+  ok(B.n === 1 && !/못 돎/.test(Bt.first) && Bt.rc !== 5, '⑭ 미끼 — 디스크 검사 줄만 끈 사본은 "못 돎" 첫 줄이 안 선다(위 ★ 가 문다)', `바꾼 자리 ${B.n} · rc ${Bt.rc} · 첫 줄 ${Bt.first.slice(0, 40) || '(보고 없음)'}`);
+}
+
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`);
 process.exit(fail === 0 ? 0 : 1);

@@ -25,7 +25,7 @@ const ok = (c, m, d) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  �
 
 console.log('\n① 배선 — 인라인 블록 = 정본');
 {
-  const tmp = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 't1100-')), '전투실험실.html');
+  const tmp = path.join(require('./lib-tmp').dir('t1100'), '전투실험실.html');   // [T1400] lib-tmp — 빨강 · 던짐에도 판 끝에 지운다
   fs.copyFileSync(LAB, tmp);
   execFileSync(process.execPath, [path.join(ROOT, 'sim', 'inline-battle.js'), tmp], { stdio: 'ignore' });
   ok(fs.readFileSync(tmp).equals(fs.readFileSync(LAB)), '전투실험실 BATTLE-CORE · ARMY-MORALE 블록 — 다시 구워도 차 0');

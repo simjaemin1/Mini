@@ -51,7 +51,7 @@ function boot(name, file, env) {
 }
 const kill = (p) => new Promise((res) => { if (!p || p.exitCode !== null) return res(); p.once('exit', () => res()); try { p.kill('SIGKILL'); } catch (e) { res(); } });
 let dbN = 0;
-const cdb = () => { const f = `/tmp/t1130-c${dbN++}-${process.pid}.db`; DBS.push(f); return f; };
+const cdb = () => { const f = `/tmp/t1130-c${dbN++}-${process.pid}.db`; DBS.push(f); require('./lib-tmp').own(f); return f; };   // [T1400] lib-tmp — 빨강 · 던짐 · 상한에도 판 끝에 지운다 · 죽은 앞 판 몫은 머리에서
 const getZones = async () => (await fetch(`http://localhost:${CPORT}/zones`, { signal: AbortSignal.timeout(5000) })).json();
 
 (async () => {
@@ -108,7 +108,7 @@ const getZones = async () => (await fetch(`http://localhost:${CPORT}/zones`, { s
   // ── Ⓒ 실클라 ────────────────────────────────────────────────────────────
   console.log('\nⒸ 실클라 — central 26존(서버 없는 존 = `hostless.invalid`) + 한반도 존 · 들어가 개울을 받고 큰 지도를 온 세계로 연다');
   const cp = boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: cdb(), PUBLIC_HOST: NOHOST, ZONE_HOST_HANBANDO: 'localhost' });
-  const zdb = `/tmp/t1130-z-${process.pid}.db`; DBS.push(zdb);
+  const zdb = `/tmp/t1130-z-${process.pid}.db`; DBS.push(zdb); require('./lib-tmp').own(zdb);
   const zp = boot('hanbando', 'zone.js', { PORT: String(HPORT), ZONE_ID: 'hanbando', DB_PATH: zdb, CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(CPORT), CENTRAL_URL: `http://localhost:${CPORT}`,
     ENABLE_VILLAGES: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0' });
   const [cu, zu] = await Promise.all([FB.waitUp(cp, /central server up on/, { name: 'central' }), FB.waitUp(zp, /zone server up on/, { name: 'hanbando', capMs: 300000 })]);

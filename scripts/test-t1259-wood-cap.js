@@ -4,12 +4,13 @@
 const assert = require('assert'), fs = require('fs'), path = require('path');
 const { spawnSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');
+const BAIT_BEFORE = "const standing = T1259_WOOD_CAP && _t1259WoodReader ? _t1259WoodReader(v) : null;";   // [T1400 ㉲] 미끼 바늘 — 아이 · 부모 한 글자
 if (process.env.T1259_TEST_CHILD === '1') {
   let E;
   if (process.env.T1259_TEST_BAIT === '1') {
     const Module = require('module'), file = path.join(ROOT, 'sim/economy-sim.js');
     const text = fs.readFileSync(file, 'utf8');
-    const before = "const standing = T1259_WOOD_CAP && _t1259WoodReader ? _t1259WoodReader(v) : null;";
+    const before = BAIT_BEFORE;
     assert(text.includes(before));
     const m = new Module(file, module); m.filename = file; m.paths = Module._nodeModulePaths(path.dirname(file));
     m._compile(text.replace(before, 'const standing = null;'), file); E = m.exports;
@@ -56,6 +57,8 @@ for (const mode of [undefined, '0', '1']) {
 const bait = spawnSync(process.execPath, [__filename], { env: { ...process.env, T1259_TEST_CHILD: '1', T1259_WOOD_CAP: '1', T1259_TEST_BAIT: '1' }, encoding: 'utf8' });
 A.notEqual(bait.status, 0, 'bait ignoring canonical trees must fail'); passed++;
 A.match(bait.stderr, /tree0 must produce zero lumberjack slots/, 'bait must fail the intended tree0 assertion');
-console.log('  ✓ 미끼(정본 나무를 안 읽는 사본)는 tree0 단언에서 빨갛다');
+const nBait = require('./lib-bait').count(fs.readFileSync(path.join(ROOT, 'sim/economy-sim.js'), 'utf8'), BAIT_BEFORE);
+assert(nBait === 1 && bait.status !== 0 && /tree0 must produce zero lumberjack slots/.test(bait.stderr), `미끼 — 정본 나무를 안 읽는 사본(바꾼 자리 ${nBait})이 tree0 단언에서 빨갛다`); passed++;   // [T1400 ㉲]
+console.log(`  ✓ 미끼(정본 나무를 안 읽는 사본 · 바꾼 자리 ${nBait})는 tree0 단언에서 빨갛다`);
 console.log('T1259 child configurations ' + passed + '/0; real tree0 assertion rejects the deliberately broken copy.');
 V.end();

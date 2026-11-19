@@ -40,7 +40,7 @@ const unitOk = ok(u0 && u0.has && u0.k === false && u0.fast === false && u1.k ==
   '① T1351 — 끔 기본 · 켬 = 판 시계 몸 축 광부 마을만(운영 시계 · 몸 축 끔 = 안 선다)', JSON.stringify({ u0, u1, uN }).slice(0, 200));
 if (!unitOk) { console.log(`\n${pass} 통과 · ${fail} 실패`); process.exit(1); }
 // ── ② · ③ 서버 판 ──
-const D = fs.mkdtempSync(path.join(os.tmpdir(), 't1351h-'));
+const D = fs.mkdtempSync(path.join(os.tmpdir(), 't1351h-')); require('./lib-tmp').own(D);   // [T1400] lib-tmp — 판 끝(빨강 · 상한 포함)에 지운다
 //   미끼 사본 = 메모리에서만(파일 무접촉) — 바늘 하나를 `if (false)` 로. 바늘 수를 세어 0 · 2 이상이면 빨강(아래 `bait.needle`).
 const NEEDLE = 'if (!T66 && left !== Infinity && _t1351MineOn(vil)) {';
 const BAIT_JS = path.join(D, 'bait.js');

@@ -197,9 +197,12 @@ const st = (E, k) => (E && E.stages && E.stages[k]) ? E.stages[k] : { p50: 0, p9
   //   집터를 **성사시키는** 세계로 바꿨고, 같은 단계가 지금 **55ms** 다(21배 싸졌다).
   //   ⇒ 일이 늘어난 게 아니라 **줄었다**. 그런데 문턱만 옛 세계에 묶여 있어 빨강이 됐다.
   //   이 절이 정말 물어야 하는 것은 "아낄 것이 있나" 다 ⇒ **대조군이 채택본보다 무거운가**로 묻는다(수 0).
-  ok(st(A, 'life:site').p50 > st(B, 'life:site').p50,
-    '① [상황] 그 헛수고가 **잴 만큼 있다** — 대조군 집터 단계가 채택본보다 무겁다(T342: 절대 문턱 폐지)',
-    `종전 ${st(A, 'life:site').p50}ms > 채택 ${st(B, 'life:site').p50}ms`);
+  //   ★[T1400] ms 견줌 → **셈**(훑은 셀 수). 부하 판(-j4)에서 종전 47ms > 채택 52ms 가 뒤집혀 빨강(T1364 판 C · 혼자 0/5) — 같은 뜻을 셀 수로 묻는다
+  //     (훑은 셀 = 일의 양 그 자체 · 벽시계를 안 탄다). ms 는 관측 줄로 남긴다(판정 0).
+  ok(pa.siteScan > pb.siteScan,
+    '① [상황] 그 헛수고가 **잴 만큼 있다** — 대조군이 훑은 셀이 채택본보다 많다(셈 · T342: 절대 문턱 폐지 · T1400: ms → 셈)',
+    `종전 ${pa.siteScan}셀 > 채택 ${pb.siteScan}셀`);
+  console.log(`    (관측 · 판정 0) 집터 단계 중앙값 종전 ${st(A, 'life:site').p50}ms · 채택 ${st(B, 'life:site').p50}ms`);
 
   // ② ★★같은 답인가 — 단조성 감사(이 하네스의 심장)
   ok(pd.auditN >= 1000, '② [전제] 감사가 실제로 돌았다 — 건너뛴 셀을 다시 판정한 횟수', `${pd.auditN}회`);
@@ -229,10 +232,8 @@ const st = (E, k) => (E && E.stages && E.stages[k]) ? E.stages[k] : { p50: 0, p9
   ok(pb.siteCall > 0 && pa.siteCall > 0 && (pb.siteScan / pb.siteCall) <= (pa.siteScan / pa.siteCall),
     '③ ★★그리고 **훑기 한 번당 셀 수는 안 늘었다** — 아낀 것은 건너뛴 호출이다(같은 답을 더 싸게)',
     `채택 ${Math.round(pb.siteScan / pb.siteCall)}셀/회 ≤ 종전 ${Math.round(pa.siteScan / pa.siteCall)}셀/회`);
-  ok(st(B, 'life:site').p50 < st(A, 'life:site').p50, '③ 집터 단계 중앙값도 종전보다 낮다',
-    `${st(B, 'life:site').p50}ms < ${st(A, 'life:site').p50}ms`);
-  ok(st(B, '1마을:site').p50 <= Math.max(20, st(A, '1마을:site').p50 / 5), '③ 마을 한 곳의 집터 조각 중앙값도 1/5 이하',
-    `${st(B, '1마을:site').p50}ms ≤ ${Math.max(20, Math.round(st(A, '1마을:site').p50 / 5))}ms`);
+  //   ★[T1400] 아래 둘은 ms 판정이었다(중앙값 · 1/5) — 위 ③ 두 줄(훑은 셀 총량 · 한 번당 셀)이 같은 뜻을 셈으로 묻는다 ⇒ 관측 줄(판정 0).
+  console.log(`    (관측 · 판정 0) 집터 단계 중앙값 채택 ${st(B, 'life:site').p50}ms · 종전 ${st(A, 'life:site').p50}ms · 마을 한 곳 조각 중앙값 채택 ${st(B, '1마을:site').p50}ms · 종전 ${st(A, '1마을:site').p50}ms`);
 
   // ⑤ ★★[T342] **영토가 자라면 거부 캐시를 버린다** — 이 계약이 이 하네스의 전제다(세계를 안 돌리고 건다).
   //   이게 깨지면 ②의 감사가 다시 위반을 내기 시작한다(T335 실측: 캐시된 거부의 10%가 거짓).

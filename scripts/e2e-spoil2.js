@@ -29,6 +29,7 @@ fs.mkdirSync(SHOTS, { recursive: true });
 const HEADED = process.argv.includes('--headed');
 const CPORT = 3010, ZPORT = 3020;
 const CDB = `/tmp/e2e-s2-c-${process.pid}.db`, ZDB = `/tmp/e2e-s2-z-${process.pid}.db`;
+{ const LT = require('./lib-tmp'); LT.own(CDB); LT.own(ZDB); }   // [T1400] 판 끝(빨강 · 상한 SIGTERM 포함)에 지운다 · 죽은 앞 판 몫은 머리에서
 // ★게임일을 6초로. **1.5초는 너무 빨랐다** — 상자에 넣고 꺼내는 사이(왕복 몇 초)에 생선
 //   보관일 2.5일이 통째로 지나가 **두 쪽 다 상함**이 됐다. 창이 열려 있으려면 하루가 길어야 한다.
 const DAY_MS = 6000;

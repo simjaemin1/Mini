@@ -12,7 +12,7 @@ const crypto = require('crypto');
 const Database = require(path.join(__dirname, '..', 'node_modules', 'better-sqlite3'));
 let pass = 0, fail = 0;
 const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (x !== undefined ? `  ${x}` : '')); };
-const T = fs.mkdtempSync(path.join(os.tmpdir(), 't721-'));
+const T = fs.mkdtempSync(path.join(os.tmpdir(), 't721-')); require('./lib-tmp').own(T);   // [T1400] 종전은 안 지웠다 — 판 끝에 지운다
 const W = 128, H = 128, SZ = 32;
 // 막힘 = x 70..79 · y 70..79 (100칸 · 청크(32칸) (2,2)) · 광맥 빠짐 = (5,5) 청크 (0,0) · 숲 빠짐 = (100,100) 청크 (3,3)
 const block = []; for (let y = 70; y < 80; y++) for (let x = 70; x < 80; x++) block.push(y * W + x);

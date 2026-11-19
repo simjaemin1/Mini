@@ -195,7 +195,7 @@ function econArm() {
 
 // ── 미끼 나무 — villages.js 한 줄만 바꾼 사본(나머지는 정본에 걸어 둔다 · realpath 로 정본 모듈을 읽는다) ─────
 function decoyTree(name, edits) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), `tsm-${name}-`));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), `tsm-${name}-`)); require('./lib-tmp').own(dir);   // [T1400] lib-tmp — 빨강 · 던짐 · 상한에도 판 끝에 지운다
   fs.mkdirSync(path.join(dir, 'server'));
   for (const f of fs.readdirSync(path.join(ROOT, 'server'))) {
     if (f === 'villages.js') continue;

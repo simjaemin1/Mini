@@ -36,7 +36,7 @@ const ai = process.argv.indexOf('--against');
 const AGAINST = ai > 0 ? process.argv[ai + 1] : null;
 let pass = 0, fail = 0;
 const ok = (c, m, d) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (d !== undefined && d !== '' ? `  ${d}` : '')); };
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'xhtest-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'xhtest-')); require('./lib-tmp').own(TMP);   // [T1400] lib-tmp — 빨강 · 던짐 · 상한에도 판 끝에 지운다(안의 live- · fix- 도)
 const BIN = path.join(TMP, 'bin'); fs.mkdirSync(BIN);
 const SHA = 'c'.repeat(40);
 const OPEN = '127.0.0.2', SHUT = '127.0.0.3', SEOUL = '127.0.0.4', SECRET = 'zz-xhost-secret-' + Date.now();

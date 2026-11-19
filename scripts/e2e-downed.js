@@ -111,6 +111,7 @@ async function waitHttp(url, tries = 600) {
     //     어긋남 판(+5분)에서 화살 절이 빨강이어야 한다 — 시계 보정이 실제로 일한다는 반례.
     if (process.env.T1310_BAIT === 'off0') await ctx.route('**/client/20-r2-visibility.js*', async (route) => {
       const r = await route.fetch(); let t = await r.text(); const n = t.split('function srvNow() {').length - 1;
+      if (!newClient._baitSeen) { newClient._baitSeen = 1; ok(n === 1, '미끼(T1310_BAIT=off0) — srvNow 바늘 한 곳만 바꾼 클라 사본을 싣는다(이 판은 화살 절이 빨강이어야 한다 · [T1400 ㉲])', `바꾼 자리 ${n}`); }
       if (n !== 1) throw new Error('[T1310 미끼] srvNow 자리 ' + n + '곳');
       t = t.replace('function srvNow() {', 'function srvNow() { return Date.now();');
       await route.fulfill({ response: r, body: t, headers: Object.assign({}, r.headers(), { 'content-length': String(Buffer.byteLength(t)) }) });

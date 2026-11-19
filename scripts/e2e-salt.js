@@ -33,6 +33,7 @@ fs.mkdirSync(SHOTS, { recursive: true });
 const HEADED = process.argv.includes('--headed');
 const CPORT = 3010, ZPORT = 3020;
 const CDB = `/tmp/e2e-sl-c-${process.pid}.db`, ZDB = `/tmp/e2e-sl-z-${process.pid}.db`;
+{ const LT = require('./lib-tmp'); LT.own(CDB); LT.own(ZDB); }   // [T1400] 판 끝(빨강 · 상한 SIGTERM 포함)에 지운다 · 죽은 앞 판 몫은 머리에서
 const DAY_MS = 24 * 60 * 1000;          // 게임일 기본값(안 건드린다)
 const BOIL_DAYS = 0.004;                // ≈ 5.8초 — **시간 손잡이만** 줄인다
 const BOIL_MS = Math.round(BOIL_DAYS * DAY_MS);

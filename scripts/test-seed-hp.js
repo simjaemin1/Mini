@@ -100,9 +100,10 @@ ok(/_t978Apply\(r\);/.test(SRC) && /e\[0\] === r\.type && e\[1\] > 0 && e\[1\] <
 ok(/CREATE TABLE IF NOT EXISTS seed_hp/.test(DBSRC) && /function _seedHp\(\)/.test(DBSRC), '표는 처음 부를 때 짓는다(끔 = 표 없음)');
 
 const TMP = `/tmp/test-seed-hp-${process.pid}`;
+const LT = require('./lib-tmp'); LT.own(TMP);   // [T1400] 아래 판마다 `LT.own(DBP)` — 빨강 · 상한에도 판 끝에 지운다(종전은 끝까지 간 판만 134줄에서 지웠다)
 const res = {};
 for (const arm of ['on', 'off']) for (const kill of ['SIGTERM', 'SIGKILL']) {
-  const DBP = `${TMP}-${arm}-${kill}.db`;
+  const DBP = `${TMP}-${arm}-${kill}.db`; LT.own(DBP);
   for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(DBP + s); } catch (e) {} }
   const env = { T978_DBP: DBP, T978_KILL: kill, T978_SEED_HP: arm === 'on' ? '' : '0' };
   const a = sub({ ...env, T978_SUB: 'hit' });

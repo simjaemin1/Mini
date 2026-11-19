@@ -422,7 +422,7 @@ const imgDim = (p) => {   // PNG IHDR · JPEG SOF — 무늬 크기(1024² 이�
   { const walkOff = Math.max(...geo.feet.filter((r) => r.clip === 'walk').map((r) => Math.abs(r.dx)));
     const smallOff = geo.bait.small.map((y) => y - want);
     REC.b.bait = { walkFeetMaxPx: +walkOff.toFixed(2), smallTopRows: geo.bait.small };
-    ok(walkOff > 1 && smallOff.every((dy) => Math.abs(dy) > 1), 'ⓑ 자명 통과 금지 — 걷기(엉덩이 원점 · 발이 번갈아 나간다)는 발 가운데 자가 물고 · 0.9배 몸은 키 자가 문다',
+    ok(walkOff > 1 && smallOff.every((dy) => Math.abs(dy) > 1), 'ⓑ 미끼 · 자명 통과 금지 — 걷기(엉덩이 원점 · 발이 번갈아 나간다)는 발 가운데 자가 물고 · 0.9배 몸(배율 한 칸만 바꾼 몸 — [T1400 ㉲])은 키 자가 문다',
        `걷기 발 가운데 최대 ${walkOff.toFixed(2)}px · 0.9배 정수리 줄 Δ ${smallOff.map((v) => v.toFixed(1)).join('/')}px`); }
 
   // ── ③ 클립 표 — char_render.py 열둘: 3D 냐 시트냐 ──

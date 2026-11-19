@@ -28,14 +28,17 @@ const MOD = path.join(ROOT, 'server', 'xzone-beast.js');
 let pass = 0, fail = 0;
 const ok = (c, m, extra) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (extra !== undefined && extra !== '' ? `  ${extra}` : '')); };
 
+const BAIT_N = {};   // ★[T1400 ㉲] 미끼 사본마다 바늘이 정본에 있던 수(바꾼 자리) — 판정 줄이 1 인지 본다
 function loadDoor(variant) {
   let src = fs.readFileSync(MOD, 'utf8');
   if (variant === 'delEarly') {
     const a = "    H.pendPut(key, { mob: m.dbId, to: go.to, data: payload });\n";
+    BAIT_N.delEarly = require('./lib-bait').count(src, a);
     if (!src.includes(a)) throw new Error('미끼 자리 없음(delEarly)');
     src = src.replace(a, a + '    H.delRow(m);   // 미끼 — 답 전에 지운다\n');
   } else if (variant === 'takeDup') {
     const a = "    if (H.seenHas(d.key)) { st.dupIn++; tr('dupIn', { key: d.key, from: peer }); return { ok: true, dup: true }; }\n";
+    BAIT_N.takeDup = require('./lib-bait').count(src, a);
     if (!src.includes(a)) throw new Error('미끼 자리 없음(takeDup)');
     src = src.replace(a, '');
   }
@@ -393,23 +396,23 @@ function mkWorld(seed, variant) {
   console.log('\n[미끼 — 문이 바뀌면 위 자가 빨강이어야 한다]');
   {
     const r = await soak(1321, 'delEarly');
-    ok(r.worstGone > 0 || !r.s.ok, '㉠ ACK 전에 지우는 사본 — 사라짐이 잡힌다(빨강)', `걸음 최악 사라짐 ${r.worstGone} · 끝 ${JSON.stringify(r.s)}`);
+    ok(BAIT_N.delEarly === 1 && (r.worstGone > 0 || !r.s.ok), '㉠ 미끼 — ACK 전에 지우는 사본 — 사라짐이 잡힌다(빨강)', `바꾼 자리 ${BAIT_N.delEarly} · 걸음 최악 사라짐 ${r.worstGone} · 끝 ${JSON.stringify(r.s)}`);
     const w = mkWorld(12, 'delEarly');
     w.net.mode.push('refused');
     const m = w.put('A', { x: W + COMMIT, y: 50000 });
     w.step('A', m, W + COMMIT + 2, 50000);
     await w.clock.run(10);
-    ok(!w.settled().ok, '㉠2 ACK 전에 지우는 사본 — 연결 안 섬 한 번에 행이 사라진다(빨강)', JSON.stringify(w.settled()));
+    ok(BAIT_N.delEarly === 1 && !w.settled().ok, '㉠2 미끼 — ACK 전에 지우는 사본 — 연결 안 섬 한 번에 행이 사라진다(빨강)', `바꾼 자리 ${BAIT_N.delEarly} · ${JSON.stringify(w.settled())}`);
   }
   {
     const r = await soak(1321, 'takeDup');
-    ok(r.worstDup > 0 || !r.s.ok, '㉡ dup 을 받는 사본 — 둘이 잡힌다(빨강)', `걸음 최악 행 둘 ${r.worstDup} · 끝 ${JSON.stringify(r.s)}`);
+    ok(BAIT_N.takeDup === 1 && (r.worstDup > 0 || !r.s.ok), '㉡ 미끼 — dup 을 받는 사본 — 둘이 잡힌다(빨강)', `바꾼 자리 ${BAIT_N.takeDup} · 걸음 최악 행 둘 ${r.worstDup} · 끝 ${JSON.stringify(r.s)}`);
     const w = mkWorld(13, 'takeDup');
     w.net.mode.push('lost');
     const m = w.put('A', { x: W + COMMIT, y: 51000 });
     w.step('A', m, W + COMMIT + 2, 51000);
     await w.clock.run(2200);
-    ok(w.Z('B').world.size === 2 && !w.settled().ok, '㉡2 dup 을 받는 사본 — 답 한 번 잃으면 받는 존에 둘(빨강)', `B 몸 ${w.Z('B').world.size}`);
+    ok(BAIT_N.takeDup === 1 && w.Z('B').world.size === 2 && !w.settled().ok, '㉡2 미끼 — dup 을 받는 사본 — 답 한 번 잃으면 받는 존에 둘(빨강)', `바꾼 자리 ${BAIT_N.takeDup} · B 몸 ${w.Z('B').world.size}`);
   }
 
   console.log(`\n=== ${pass}/${pass + fail} 통과 ===`);

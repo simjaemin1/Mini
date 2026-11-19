@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @regress-alone   ← [T1400] 러너 -j 판에서 맨 먼저 혼자 돈다 · 대조군 두 장을 **같은 애니 판**(숨쉬기 0.9fps = 판 1.1초)에서 찍어야 한다 — -j4 판에서 스크린샷 한 장이 판 길이를 넘어 120번 다 어긋남(`undefined` · T1364 판 2) · 혼자 0/5
 // @nightly B   ← 야간 **세 밤** 분할(T238 · 소요로 균등) · `run-regress.sh --list "nightly B"`
 // @pixel    ← ★[T104] **프레임을 화소로 잰다**(`page.screenshot` → `PNG.sync.read`).
 //              렌더 층(`3x-r*`·`34-m-renderloop`·`37-r1-*`)을 만지는 카드는 이 표를 전수로 돌려라 —

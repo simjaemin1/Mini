@@ -46,7 +46,7 @@ const _seen = {};
 (async () => {
   const { chromium } = require('playwright');
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || require('playwright').chromium.executablePath() });
-  const tmp = fs.mkdtempSync('/tmp/t553-');
+  const tmp = require('./lib-tmp').dir('t553');   // [T1400] 종전 `mkdtempSync('/tmp/t553-')` 는 안 지웠다 — 판 끝에 지운다
   const inline = path.join(tmp, 'map-editor.html');
   execFileSync(process.execPath, [path.join(__dirname, 'build-map-editor.js'), inline], { stdio: 'ignore' });
   // 레포 판을 fetch 로 여는 작은 서버(lab/ 만)

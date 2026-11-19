@@ -4358,7 +4358,8 @@
    "child": [
     "spawnSync node",
     "execFileSync git"
-   ]
+   ],
+   "long": true
   },
   "test-headless-parity.js": {
    "cls0": "가",
@@ -6186,7 +6187,8 @@
     "spawn node"
    ],
    "inproc": true,
-   "left": true
+   "left": true,
+   "long": true
   },
   "test-no-shield.js": {
    "cls0": "나",
@@ -8054,7 +8056,8 @@
    "dyn": "다",
    "child": [
     "spawnSync node"
-   ]
+   ],
+   "long": true
   },
   "test-seed-reserve.js": {
    "cls0": "나",
@@ -14391,7 +14394,8 @@
    "child": [
     "execFileSync node",
     "spawnSync node"
-   ]
+   ],
+   "long": true
   },
   "test-t1344-bronze-mix.js": {
    "cls0": "나",
@@ -14458,7 +14462,8 @@
    "dyn": "나",
    "child": [
     "spawnSync node"
-   ]
+   ],
+   "long": true
   },
   "test-t1346-birth-flow.js": {
    "cls0": "나",
@@ -14524,7 +14529,8 @@
    "dyn": "나",
    "child": [
     "spawnSync node"
-   ]
+   ],
+   "long": true
   },
   "test-t1348-loop.js": {
    "cls0": "가",
@@ -14564,7 +14570,8 @@
    "dyn": "나",
    "child": [
     "execFileSync node"
-   ]
+   ],
+   "long": true
   },
   "test-t1352-xz-hold.js": {
    "cls0": "나",
@@ -14745,6 +14752,15 @@
    "child": [
     "execFileSync node"
    ]
+  },
+  "test-t1374-farm-winter.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "다",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "서버(글자) — CI 밖(야간 · 전수)"
   },
   "test-t721-apply.js": {
    "cls0": "나",

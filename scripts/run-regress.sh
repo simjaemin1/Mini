@@ -53,7 +53,9 @@ TIMEOUT_SEC="${TIMEOUT_SEC:-2400}"
 #   ★[T1121 2026-11-03] 지금 판(2코어 · 혼자): mining 1,601 → 1,018초(표시만 하는 토글 둘 끔 · `leanDraw`) · psite 1,105 → 664초(판 넷 둘씩 나란히). 이 표(3,600초)는 그대로.
 # T1170: 기본 세계 채광 창 90날 — 종전 끔 세계 60날의 상한을 늘린다.
 # ★[T1356 2026-11-18] `test-t1322-verify-night` — 30날 판(홀로 1,827초 · +30일 판 -j4 2,373초)에 미끼 짧은 판(2날)이 붙어 기본 2,400초를 넘었다(touched 판 RC=124). 3,600초.
-declare -A TIMEOUT_OF=( [test-lab-mining.js]=7200 [test-lab-psite.js]=3600 [test-t1322-verify-night.js]=3600 )
+# ★[T1400] `test-t1243-farm-on` — 홀로 1,270초 · -j4 2,124 · 2,371 · 2,400초(상한 닿음 RC=124 · T1364) · 두 판 나란히 2,302초(T1383). 3,600초(옆 둘과 같은 칸).
+RUN_T0_MS="${RUN_T0_MS:-$(( $(date +%s) * 1000 ))}"; export RUN_T0_MS   # ★[T1400] 이 러너 판이 뜬 때 — 판 끝 `/tmp` 지우기가 이 뒤에 선 것만 본다
+declare -A TIMEOUT_OF=( [test-lab-mining.js]=7200 [test-lab-psite.js]=3600 [test-t1322-verify-night.js]=3600 [test-t1243-farm-on.js]=3600 )
 FAILED=()
 PASSED=()
 # ★[T1339] 유보 — 하네스가 RC 75(`lib-wait-day.YUBO_RC`)로 끝나면 "느린 판 · 기계 의존"(게임일 상한 · 같은 조건 잡음 안의 판정)이다(빨강 0 · 유보만). 실패 목록 밖 · 통과 목록 밖에 따로 센다.
@@ -109,6 +111,8 @@ run_one() {
   # ★[T1161 · K14] 내리기 **전에** 묻는다 — 내 무리에 산 것이 남았나(신호 0 = 묻기만). 남았으면 다음 판 앞에서 쉰다(위 `drain` 머리).
   if kill -0 -- "-$tp" 2>/dev/null; then NEED_DRAIN=1; echo "  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 ${DRAIN_SEC}초 쉰다"; fi
   kill -KILL -- "-$tp" 2>/dev/null || true   # ★[T773] 내가 띄운 무리만 — 남은 아이(존 · central)까지 · 남의 판은 무접촉
+  # ★[T1400 · T1364] 이 판이 남긴 `/tmp` DB 지우기 — 이름의 숫자 토막이 다 죽은 pid 인 `.db*`(러너 판이 뜬 뒤 선 것만 · 산 판의 것 무접촉 · `lib-tmp.sweepDead`)
+  node scripts/lib-tmp.js --sweep-dead "$RUN_T0_MS" 2>/dev/null || true
   [ -n "${RUN_REGRESS_KEEP:-}" ] && { mkdir -p "$RUN_REGRESS_KEEP"; cp "$tmp" "$RUN_REGRESS_KEEP/$f.out" 2>/dev/null || true; }   # ★[T1288] 하네스 전체 출력 남기기(켬만 · 판정 0)
   out="$(cat "$tmp")"; rm -f "$tmp"
   # ★실패한 줄이 **자기 이름을 말하게** 한다 [2026-08-26] —
@@ -279,7 +283,13 @@ if [ "${1:-}" = "--list" ]; then
 fi
 
 if [ "$#" -gt 0 ]; then
-  LIST=("$@")
+  LIST=()
+  # ★[T1400 · T1376] 이름으로 받은 목록에서 **보조 모듈**(머리 `// @helper` — `e2e-browser.js` 처럼 하네스 이름 꼴이지만 하네스가 아닌 자)을 건넌다 —
+  #   종전엔 `touched-harness --run` 이 바뀐 `e2e-browser.js` 를 넘겨 러너가 하네스로 돌렸다(결과 줄 0 → 실패로 셈).
+  for _a in "$@"; do
+    if head -40 "scripts/$_a" 2>/dev/null | grep -q '^// @helper\([[:space:]]\|$\)'; then echo "  [건넘] $_a — // @helper(하네스 아님 · 보조 모듈)"; else LIST+=("$_a"); fi
+  done
+  if [ "${#LIST[@]}" -eq 0 ]; then echo "  ✗ 받은 이름이 다 보조 모듈이다 — 돌 하네스 0"; exit 1; fi
 else
   # ═══ ★★[0번 분할 배치 2026-09-01 재민 확정] 명시 목록 → **표 기반 자동 발견** ═══
   #

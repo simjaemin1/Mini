@@ -552,6 +552,38 @@ jobs:
           echo "옛 판 = $BASE"
           bash scripts/pm-old-code-red.sh "$BASE"
 
+  long:
+    # ★[T1400 · T1383 회부 6] 긴 판(만진 것만) — 분류표의 `long`(잰 판 다 초록 · 가장 긴 판 60초 넘음 — `t1345-body-day` 449초 · `t1351-mine-clock` 652초 …)
+    #   가운데 이 가지가 만진 것(`touched-harness <갈림점> --list` 와 겹침)만 차례로 돈다. 안 만졌으면 0종으로 바로 초록(수 초).
+    #   core · 서버 잡의 60초 문턱은 그대로 — 긴 판은 늘 돌지 않고 만졌을 때만 문다(종전엔 야간 · 손으로만).
+    name: 긴 판 (만진 것만 · 차례로)
+    needs: changes
+    if: needs.changes.outputs.code == 'true' && (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref != 'refs/heads/main'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      TIDE_FREEZE_MS: '372603'
+      TIMEOUT_SEC: '1500'
+      DRAIN_SEC: '2'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci --no-audit --no-fund
+      - name: 만진 긴 판 고르기 · 차례로 돌기
+        run: |
+          BASE="${{ github.event.pull_request.base.sha }}"
+          [ -n "$BASE" ] || BASE="$(git merge-base HEAD origin/main)"
+          LONG="$(node scripts/ci-class.js --long | grep -vxF test-harness-lint.js || true)"
+          PICK="$(node scripts/touched-harness.js "$BASE" --list | grep -xF -f <(printf '%s\n' $LONG) || true)"
+          echo "갈림점 $BASE · 긴 판 $(printf '%s\n' $LONG | grep -c .)종 · 만진 것 $(printf '%s\n' $PICK | grep -c .)종: $(echo $PICK)"
+          [ -n "$PICK" ] || { echo "만진 긴 판 0 — 초록"; exit 0; }
+          bash scripts/run-regress.sh $PICK
+
   gate:
     name: CI 문 (필수 체크 하나)
     # ★[T1367] main 보호 규칙의 **필수 체크는 이 이름 하나**(문서/CI_main보호_안.md). 잡 이름이 바뀌어도(core 잡 수 `--shards` · 서버 잡 더함)
@@ -559,7 +591,7 @@ jobs:
     #   watch 는 안 본다(배지 안 깸 그대로).
     #   ★[T1375] 문서만 판(`changes` 가 code=false)이면 무거운 잡은 다 skipped 여야 초록 — `changes` 잡이 빨강이면 늘 빨강.
     if: always()
-    needs: [changes, gates, core, server, old-code-red]
+    needs: [changes, gates, core, server, old-code-red, long]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -569,17 +601,19 @@ jobs:
           R_CORE: ${{ needs.core.result }}
           R_SERVER: ${{ needs.server.result }}
           R_OLD: ${{ needs['old-code-red'].result }}
+          R_LONG: ${{ needs.long.result }}
           R_CH: ${{ needs.changes.result }}
           CODE: ${{ needs.changes.outputs.code }}
         run: |
-          echo "changes=$R_CH code=$CODE gates=$R_GATES core=$R_CORE server=$R_SERVER old-code-red=$R_OLD"
+          echo "changes=$R_CH code=$CODE gates=$R_GATES core=$R_CORE server=$R_SERVER old-code-red=$R_OLD long=$R_LONG"
           [ "$R_CH" = success ] || { echo "빨강 — 바뀐 자리 잡 = $R_CH"; exit 1; }
           if [ "$CODE" = false ]; then
-            [ "$R_GATES" = skipped ] && [ "$R_CORE" = skipped ] && [ "$R_SERVER" = skipped ] && [ "$R_OLD" = skipped ] || { echo "빨강 — 문서만 판인데 무거운 잡이 돌았다(조건 어긋남)"; exit 1; }
+            [ "$R_GATES" = skipped ] && [ "$R_CORE" = skipped ] && [ "$R_SERVER" = skipped ] && [ "$R_OLD" = skipped ] && [ "$R_LONG" = skipped ] || { echo "빨강 — 문서만 판인데 무거운 잡이 돌았다(조건 어긋남)"; exit 1; }
             echo "초록 — CI 문(문서만 · 하네스 잡 건너뜀)"; exit 0
           fi
           [ "$R_GATES" = success ] && [ "$R_CORE" = success ] && [ "$R_SERVER" = success ] || { echo "빨강 — 반드시 초록인 잡이 초록이 아니다"; exit 1; }
           case "$R_OLD" in success|skipped) ;; *) echo "빨강 — 옛 코드 빨강 잡 = $R_OLD"; exit 1 ;; esac
+          case "$R_LONG" in success|skipped) ;; *) echo "빨강 — 긴 판 잡 = $R_LONG"; exit 1 ;; esac   # ★[T1400] main push 면 skipped
           echo "초록 — CI 문"
 
   watch:

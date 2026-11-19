@@ -75,6 +75,7 @@ const GAPM = path.join(__dirname, 't1299-gap-meter.js');
 if (!(DAYS > 0) || !/^\d+(,\d+)*$/.test(SEEDS)) { console.error('쓰는 법: [--days 400] [--seeds 1020,7,42] [--load N] [--keep <out.json>] [--slow [--slow-loops N] [--gap off|--gap-only] [--gap-days N]] [--phase real]'); process.exit(2); }
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'gate-house-'));
+if (process.env.SBC_TMP_OWN === '1') require('./lib-tmp').own(TMP);   // ★[T1400] 하네스가 부른 판은 끝에 지운다(사람이 돌린 판은 남긴다)
 const BAKE = KEEP ? path.resolve(KEEP) : path.join(TMP, 'house.json');
 const loops = [];
 let cur = null;   // 지금 도는 기준선 자(제 프로세스 묶음 — 아이 판까지 한 번에 멈춘다)

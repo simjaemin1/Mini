@@ -39,7 +39,7 @@ const procs = [];
 FB.reapOnExit(procs);
 const dbs = [];
 function bootCentral(port, env) {
-  const db = path.join(os.tmpdir(), `t1123-sc-${process.pid}-${port}.db`); dbs.push(db);
+  const db = path.join(os.tmpdir(), `t1123-sc-${process.pid}-${port}.db`); dbs.push(db); require('./lib-tmp').own(db);   // [T1400] lib-tmp — 판 끝(빨강 · 상한 포함)에 지운다
   const p = spawn(process.execPath, [path.join(ROOT, 'server', 'central.js')], {
     cwd: ROOT, env: Object.assign({}, process.env, { PORT: String(port), DB_PATH: db, PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' }, env),
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -116,7 +116,7 @@ function rawGet(port, u, h) {
   console.log('\nⓓ 내용이 바뀌면 ?v= 가 바뀐다(임시 폴더)');
   {
     const SS = require(path.join(ROOT, 'server', 'static-serve.js'));
-    const d = fs.mkdtempSync(path.join(os.tmpdir(), 't1123-'));
+    const d = fs.mkdtempSync(path.join(os.tmpdir(), 't1123-')); require('./lib-tmp').own(d);   // [T1400] lib-tmp — 빨강 · 던짐 · 상한에도 판 끝에 지운다
     fs.writeFileSync(path.join(d, 'a.js'), 'var a=1;');
     fs.writeFileSync(path.join(d, 'index.html'), '<script src="a.js?v=5h0"></script><script src="https://x.y/b.js?v=1"></script><script src="none.js?v=2"></script>');
     const h1 = SS.entry(path.join(d, 'index.html')).body.toString();

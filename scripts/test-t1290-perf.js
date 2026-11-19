@@ -74,7 +74,8 @@ console.log('\n③ 미끼 — 끊음을 빠뜨린 배열 없는 판');
     const vil = { npcPids: ids, _site: r() < 0.5 ? {} : null, _granPend: r() < 0.5 ? {} : null };
     for (let k = 0; k < 40; k++) { q++; if (bad(vil, 'n' + k) !== P.crew435(vil).some((p) => p.pid === 'n' + k)) diff++; }
   }
-  ok(diff > 0, '건너뜀 · 끊음을 빠뜨리면 ① 의 견줌이 문다(자명 통과 아님)', `견줌 ${q} · 어긋남 ${diff}`);
+  //   ★[T1400 ㉲] 손으로 쓴 틀린 판(`bad` — 건너뜀 · 끊음 없는 훑기)이라 정본 사본이 아니다 — 바꾼 자리 셈은 없다(꼴 ㉱ · 판정 줄에 미끼라고만 적는다)
+  ok(diff > 0, '미끼 — 건너뜀 · 끊음을 빠뜨리면 ① 의 견줌이 문다(자명 통과 아님 · 손으로 쓴 틀린 판)', `견줌 ${q} · 어긋남 ${diff}`);
 }
 console.log(`\n=== T1290 성능 자리 ${pass} 통과 · ${fail} 실패 ===`);
 process.exit(fail ? 1 : 0);

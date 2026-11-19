@@ -152,7 +152,12 @@ const metaOf = (db) => { try { const d = new DatabaseSync(db, { readOnly: true }
     ok(!!(k && a) && a.st === 'inbound' && a.ret === k.ret && a.arr === k.arr && a.amt === k.amt && a.done === k.done, `★${R.tag} — 두 번 도착 0 · 짐 두 번 0(상태 inbound 그대로 · 귀환 날 · 짐 같음)`, k && a ? `${k.st}/${k.ret}/${k.amt} → ${a.st}/${a.ret}/${a.amt}` : '—');
   }
   const ka = on.K && on.A && on.A.c ? { k: on.K.c, a: on.A.c } : null;
-  ok(!!ka && ka.a.body && ka.a.body.phase === 'linger', '★켬 — 다시 뜬 몸이 머묾이다', ka && ka.a.body ? ka.a.body.phase : '—');
+  //   ★[T1400 · T1364 · 족보 881] 다시 뜬 판이 몸을 처음 보인 때(`A.C.at`)가 이미 머묾 끝을 지났으면 그 몸은 **머묾을 마치고 귀환에 든** 것이 맞다 —
+  //     죽인 때 머묾 끝까지 17초 · 다시 뜨기(교역로 파기 — `T1327_ROUTE_FIX` 켬 기본 뒤 길어짐 · -j4 부하)가 그보다 길면 종전 줄이 `inbound` 로 빨강(main 26/1).
+  //     자의 기다림이지 복원 흠이 아니다: 머묾 끝 시각은 아래 줄이 바이트로 본다(복원이 틀리면 그 줄이 문다). 머묾 끝 전에 보였으면 종전 그대로 머묾이어야 한다.
+  const seenAt = on.A && on.A.C ? on.A.C.at : null, past = !!ka && seenAt != null && ka.k.body && seenAt >= ka.k.body.linger;
+  ok(!!ka && ka.a.body && (past ? ka.a.body.phase === 'inbound' : ka.a.body.phase === 'linger'), '★켬 — 다시 뜬 몸이 머묾이다(다시 보인 때가 머묾 끝 뒤면 귀환)',
+    ka && ka.a.body ? `${ka.a.body.phase} · 다시 보인 때 ${past ? '머묾 끝 뒤' : '머묾 끝 앞'}(${seenAt != null && ka.k.body ? Math.round((seenAt - ka.k.body.linger) / 1000) + '초' : '?'})` : '—');
   ok(!!ka && ka.a.body && ka.a.body.linger === ka.k.body.linger, '★켬 — 머묾 끝 시각이 같다(벽시계 · 같은 순간에 귀환을 연다)', ka && ka.a.body ? `${ka.k.body.linger} → ${ka.a.body.linger}` : '—');
   ok(!!(on.M && on.M.t1034 && on.M.t1034.b && on.M.t1034.b[String(pick.id)]), '★켬 — 죽은 순간 메타 행에 그 몸 칸이 있다(마감 끝 저장 · 같은 날)', on.M && on.M.t1034 ? `몸 ${Object.keys(on.M.t1034.b).length}` : '칸 없음');
   ok(!!off.M && !off.M.t1034, '★끔 — 메타 행에 몸 칸이 없다(종전 줄)', off.M ? Object.keys(off.M).join(',') : '메타 없음');
