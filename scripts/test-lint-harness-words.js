@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @old-red-also scripts/lint-harness-words.js   (재는 것이 이 하네스 자(자 고침) — 옛 코드 빨강 판에서 자도 옛 판으로 · 제품은 안 부른다(가짜 레포) · T1375)
 // === scripts/test-lint-harness-words.js — 하네스 판정 글자 자(`scripts/lint-harness-words.js` · T1097 · 2026-11-03) 미끼 ===============================
 //
 // 판정 사본 0: 임시 폴더에 작은 가짜 레포(git)를 세우고 자를 `--root` 로 그대로 부른다. 말투 카드 꼴을 커밋으로 재연한다:

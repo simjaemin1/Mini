@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @old-red-also scripts/live-lag.sh   (재는 고침이 이 운영 스크립트 안 — 옛 코드 빨강 판에서 이것도 옛 판으로 · T1375)
 // === scripts/test-live-lag-net.js — `live-lag.sh` 망 줄이 존을 **브라우저 길**로 재는가(T1292 · 2026-11-13) ===================
 //
 // ★왜(T1292 곁): `update-live` ⑦ live-lag 가 "망 — 맥→도쿄:3021 닿지 않음" 을 경보로 쳤다. 오라클 도쿄 방화벽은 3021 을 서울 /32 만 연다(존끼리 넘기기 · 의도).

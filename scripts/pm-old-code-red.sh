@@ -12,6 +12,9 @@
 # ★한계: 하네스 **고침**(새 파일이 아닌 것)은 기본 목록에 안 든다 — 이름을 주면 돈다. e2e(브라우저)는 이름을 줄 때만.
 #   하네스 도구만 재는 하네스(`lib-*` 검사 · 러너 검사 — 제품을 안 부른다)는 옛 제품 위에서도 초록이 맞다 — 머리에 `// @harness-only` 를 달면
 #   건너뛴다("제품 무관" 줄 · `test-harness-lint` ⑲ 가 표지를 단 하네스는 제품 자리를 안 가리킴을 본다 · T1350).
+#   ★[T1375] 하네스가 재는 고침이 `scripts/` 안 운영 스크립트(예: `live-lag.sh` · 배포 셸)면 그 파일은 기본으로 지금 것 그대로라 옛 판에서도 초록이 난다.
+#   머리에 `// @old-red-also <경로> [경로…]`(레포 뿌리 기준 · `scripts/test-*` 는 안 됨)를 달면 그 파일도 옛 ref 것으로 되돌려 돈다(옛 ref 에 없던 파일이면 지운다 —
+#   크래시 △ 로 선다). `test-harness-bite` 가 표지 경로가 실제로 있고 하네스 자신이 아님을 본다.
 #   손잡이 끔 기본 고침은 하네스가 손잡이를 켜고 돈다 — 옛 제품엔 그 손잡이가 없으니 빨강이어야 한다(초록이면 손잡이를 안 잰다).
 #
 # 쓰는 법:
@@ -41,6 +44,12 @@ red=0; weak=0; green=0; unk=0; skip=0
     # ★[PM land1083] PM 예외 목록(`scripts/old-green-ok.txt` — 하네스 도구를 재지만 제품 글자를 쥐는 하네스 · PM 만 편집) = 건너뛴다(줄은 남긴다)
     if [ -f scripts/old-green-ok.txt ] && grep -qE "^$(basename "$t" | sed 's/[.]/[.]/g')[[:space:]]*[|]" scripts/old-green-ok.txt; then echo "예외(PM 목록) | $t | $(grep -E "^$(basename "$t" | sed 's/[.]/[.]/g')[[:space:]]*[|]" scripts/old-green-ok.txt | cut -d'|' -f2- | cut -c1-120)"; skip=$((skip+1)); continue; fi
     log="$TMP/$(basename "$t").log"
+    # ★[T1375] `// @old-red-also <경로…>` — 그 운영 스크립트도 옛 ref 것으로(판이 끝나면 지금 것으로 되돌린다 — 다음 하네스는 종전 그대로)
+    also="$(grep -m1 -E '^// @old-red-also[[:space:]]' "scripts/$t" 2>/dev/null | sed -E 's#^// @old-red-also[[:space:]]+##; s#[[:space:]]+\(.*$##')"
+    for a in $also; do
+      case "$a" in scripts/test-*|*..*|/*) echo "  (표지 경로 거절: $a)"; continue ;; esac
+      if git cat-file -e "$OLD:$a" 2>/dev/null; then git -C "$TMP/w" checkout -q "$OLD" -- "$a"; else rm -f "$TMP/w/$a"; fi
+    done
     ( cd "$TMP/w" && timeout "$TIMEOUT_SEC" node "scripts/$t" >"$log" 2>&1 ); rc=$?
     nf=$(grep -cE '^\s*(✗|❌|FAIL)' "$log"); np=$(grep -cE '^\s*(✓|✅|PASS)' "$log")
     why="$(grep -m1 -E '^\s*(✗|❌|FAIL)' "$log" | cut -c1-160)"
@@ -49,6 +58,8 @@ red=0; weak=0; green=0; unk=0; skip=0
     elif [ "$rc" = 0 ]; then v="초록 ✗"; green=$((green+1))
     elif [ "$nf" -gt 0 ]; then v="빨강 ○"; red=$((red+1))
     else v="빨강(크래시) △"; weak=$((weak+1)); fi
+    for a in $also; do case "$a" in scripts/test-*|*..*|/*) continue ;; esac; git -C "$TMP/w" checkout -q HEAD -- "$a" 2>/dev/null; done
+    [ -n "$also" ] && why="(옛 판으로 되돌린 운영 파일: $also) $why"
     echo "$v | $t | RC=$rc · ✓ $np · ✗ $nf | $why"
   done
   echo "# 합: 빨강 $red · 크래시 $weak · 초록 $green · 모름 $unk · 제품 무관 $skip"

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @bait 1   ← [T1375] 미끼 판정 줄에 바꾼 자리 수(이미 있던 자리 셈을 그 줄로 옮김 · lint ⑲b)
 // === scripts/test-t1292-xz-esc.js — 넘긴 호위 몸 수 = 보내는 순간 산 호위 수 (T1292 · 2026-11-13) =====================================
 //
 // ★왜(캐논 797 — 모든 NPC 는 언제나 몸이 있다 · 경계에서 사라지거나 둘이 되면 안 된다):
@@ -170,8 +171,8 @@ for (const [k, chk, msg] of [
   ['nocut', (o) => o.cases.A.received === 2 && o.cases.B.received === 1, '받는 존 줄임을 뺀 사본 → ① A · B 가 셋'],
   ['nosend', (o) => o.cases.A.received === 2, '보내는 존 싣기를 뺀 사본 → ① A 가 셋'],
 ]) {
-  const o = child({}, k);
-  ok(!o.err && !chk(o), `③ 미끼 ${k} → 빨강 — ${msg}`, o.err ? o.err.slice(0, 160) : `A: ${txt(o.cases.A)} · B: ${txt(o.cases.B)}`);
+  const o = child({}, k), nk = VSRC.split(BAITS[k][0]).length - 1;   // [T1375] 바꾼 자리 — ⓪ 이 세던 그 셈
+  ok(nk === 1 && !o.err && !chk(o), `③ 미끼 ${k} → 빨강 — ${msg} · 바꾼 자리 ${nk}`, o.err ? o.err.slice(0, 160) : `A: ${txt(o.cases.A)} · B: ${txt(o.cases.B)}`);
 }
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
 process.exit(fail ? 1 : 0);

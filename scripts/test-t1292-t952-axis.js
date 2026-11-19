@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @bait 1   ← [T1375] 미끼 판정 줄에 바꾼 자리 수(이미 있던 자리 셈을 그 줄로 옮김 · lint ⑲b)
 // === scripts/test-t1292-t952-axis.js — T952 교차 존 상인 머묾 끝의 시계 축 (T1292 · 2026-11-13) ==========================
 //
 // ★왜 [T1292 두 존 판 — 시드 1020 · 120날]: 세 손잡이를 켜면 이웃 존에 닿은 상인 몸이 **끝없이 머물렀다** — 판 끝에 닛폰 251 · 한반도 133 이
@@ -141,7 +142,8 @@ console.log('\n② 미끼 = T1289 앞 글자(축 옮김 줄을 뺀 사본 — �
 if (old.err) ok(false, '② 판이 돌았다', old.err);
 else {
   const { E, L, J } = old.cases;
-  ok(!E.left && !L.left && E.endPhase === 'linger' && L.endPhase === 'linger' && E.lu > 1e11, '★② 미끼 → 빨강 — E · L 은 이틀을 돌려도 안 떠난다(머묾 끝이 벽시계 축 · 10¹² 대 ↔ econ 날 시계 10⁷ 대)', `E ${fmt(E)} · L ${fmt(L)}`);
+  const nPre = VSRC.split(BAITS.pre[0]).length - 1;   // [T1375] 바꾼 자리 — ⓪ 이 세던 그 셈(아이도 한 번이 아니면 판을 안 돈다)
+  ok(nPre === 1 && !E.left && !L.left && E.endPhase === 'linger' && L.endPhase === 'linger' && E.lu > 1e11, '★② 미끼 → 빨강 — E · L 은 이틀을 돌려도 안 떠난다(머묾 끝이 벽시계 축 · 10¹² 대 ↔ econ 날 시계 10⁷ 대)', `바꾼 자리 ${nPre} · E ${fmt(E)} · L ${fmt(L)}`);
   ok(!!J.left, '② 대조 — J(장 기록 갈래)는 그 글자에서도 떠난다(장 끝은 이미 econ 축)', fmt(J));
 }
 console.log('\n③ `T1253_CLOCK_FIX=0`(몸 시계 = 벽시계)');
