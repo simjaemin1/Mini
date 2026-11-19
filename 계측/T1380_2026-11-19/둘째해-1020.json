@@ -1,0 +1,100 @@
+[
+ {
+  "k": "(라)+(나)",
+  "dir": "/tmp/claude-0/-home-claude/a4d76bf5-a61f-5918-b7a1-202d531aae76/scratchpad/t1380/runs/x/fn-1020",
+  "seed": 1020,
+  "off": false,
+  "ok": true,
+  "last": 500,
+  "fd": 113,
+  "dead": 185,
+  "lateBorn": 246,
+  "gated": 4407,
+  "gatedNo": 3611,
+  "gateWorst": {
+   "v": "어촌6",
+   "n": 299,
+   "max": 190
+  },
+  "empty": 1,
+  "yearRows": {
+   "365": {
+    "pop": 3766,
+    "fd": 40,
+    "dead": 77
+   }
+  },
+  "terrSum": 386563,
+  "vils": 50,
+  "woodEnd": 239.82890000000003,
+  "calls": 4534,
+  "hits": 873,
+  "calls90": 195,
+  "hits90": 169,
+  "stakeReason": 105023,
+  "rsn": {
+   "house": 3197708,
+   "field": 29045,
+   "other": 53629,
+   "terr": 109503,
+   "stake": 105023,
+   "shelter": 70672
+  },
+  "shelterCalls": 4483,
+  "zeroSite": [],
+  "ratioYear": {
+   "365": {
+    "mean": 0.8283405117613618,
+    "min": 0.48467532467532465
+   }
+  },
+  "stakeW": 97344.81799999994,
+  "fuel": 0.5626586666666671,
+  "why": {
+   "target": 10388,
+   "grow": 6510,
+   "wood": 8458
+  },
+  "knob": {
+   "lfDays": 0,
+   "lfCells": 0,
+   "claims": 316,
+   "claimCells": 7334,
+   "claimWood": 23485.62699999999,
+   "claimLabor": 100401.43100000001,
+   "stake": 105023
+  },
+  "ratioEnd": 0.5796995989165334,
+  "labEnd": 0.540894517875666,
+  "worst": {
+   "v": "임업5",
+   "N": 253,
+   "terr": 9722,
+   "r": 0.35611721611721614,
+   "lab": 0.34659536541889485
+  },
+  "below": 8191,
+  "vdays": 25407,
+  "ratioBy": {
+   "30": 1.0673145024909736,
+   "90": 1.0013205995014771,
+   "150": 0.9576389100459606,
+   "240": 0.910476274042201,
+   "365": 0.8283405117613618
+  },
+  "use": {
+   "day": 365,
+   "grown": 177676,
+   "house": 48545,
+   "field": 2458,
+   "pot": 0,
+   "work": 0,
+   "other": 126673,
+   "gone": 0
+  },
+  "goals": null,
+  "pass": null,
+  "popEnd": 5999,
+  "pop150": 1781
+ }
+]
