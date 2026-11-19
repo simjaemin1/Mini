@@ -1808,12 +1808,12 @@ function _t747Pack(vil) {
     if (_G) { const bg = _G.bagDump(b); if (bg) { o._bag = bg; if (b._warPackOf != null) o._packOf = b._warPackOf; _t1133Stat.saved++; for (const res in bg) _t1133Stat.savedRecs += bg[res].length; } }   // ★[T1133] 몸 짐 줄(있을 때만 — 없으면 칸 0 · 종전 바이트)
     if (T1166_LOT) { const _L = _t732Lots(); const lt = _L ? _L.npcDump(b) : null; if (lt) { o._lots = lt; _t1166Stat.saved++; for (const k in lt) _t1166Stat.savedRecs += lt[k].length; } }   // ★[T1166] 몸 손 로트 줄(있을 때만 — 없으면 칸 0 · 종전 바이트)
     if (o._lifeTask && o._lifeTask.k === 'greet') delete o._lifeTask;   // 인사(T529)는 그 사람 · 그 순간의 일 — 싣지 않는다
-    if (T1340_EXACT && state._t1340Shut) { const C = state._t1340C || (state._t1340C = _t1340Ctx(Date.now())); o.$all = _t1340PackObj(b, Object.keys(b).filter((k) => !_T1340_BODY_DENY.has(k)), C, _t1340Stat.bodySkip); _t1340Stat.bodies++; o.$at = C.at; if (b._lifeTask === null) o.$ltn = 1; }   // ★[T1340 ②] 종료 저장만
+    if (T1340_EXACT && state._t1340Shut) { const C = state._t1340C || (state._t1340C = _t1340Ctx(Date.now())); o.$all = _t1340PackObj(b, Object.keys(b).filter((k) => !_T1340_BODY_DENY.has(k)), C, _t1340Stat.bodySkip); _t1340Stat.bodies++; o.$at = C.at; if (b._lifeTask === null) o.$ltn = 1; o.$p = b.pid; }   // ★[T1340 ②] 종료 저장만
     rows.push(o);
   }
   //   마을 클레임 그림자 — 저장 순간 그대로(하루 마감 리셋 뒤 걸어가던 몸의 클레임까지 다시 세면 저장 순간과 달라진다 — 첫 켬 판이 보였다)
   const sh = { claim: vil._claim ? [...vil._claim] : null, clearCrew: vil._clearCrew, buildCrew: vil._buildCrew, psiteCrew: vil._psiteCrew, cropClaim: vil._cropClaim ? [...vil._cropClaim] : null };
-  return { rows, sh };
+  return (T1340_EXACT && state._t1340Shut && state.deps.t1372Pid) ? { rows, sh, np: state.deps.t1372Pid.get() } : { rows, sh };   // ★[T1382 ㉠] 종료 저장만 — 몸 번호 계수기(끔 = 종전 꼴)
 }
 const _t747Stat = { restored: null };
 function _t747Restore() {
@@ -2082,6 +2082,40 @@ function _t822S0() {   // 판 씨(econ 세계 씨 · 없으면 마을 씨) — �
 //     도적 몸(`bandits.js syncBodies` — 존 `spawnNpc` · AI 켬 · 관측자 곁이면 `decideNpcBehavior` 가 `_shOf` 로 굴린다)이 여기를 부른다:
 //     열쇠 = `bandit_<단 번호>_<몸 번호>`(단 번호 `g.id` = 도적 층 결정론 연번 · 몸 번호 = `pid`). 끔이면 이 문이 null 이라 도적 쪽 줄이 안 돈다.
 function _t841Sh(key) { return _pidHash(`${_t822S0()}_${key}`); }
+// ★★[T1382 ㉠ 2026-11-19 · T1372 회부 1] **다시 뜬 판의 마을 몸 = 저장 pid · pid 차례** — 손잡이 `T1340_RESUME_EXACT` 안(새 손잡이 0 · 끔 = 종전 글자).
+//   종전: 부팅(Stage 2)이 마을마다 차례로 몸을 낳아 pid 가 p1 부터 새로 났다 — 태어남 · 죽음이 있던 판(몸 세계)은 저장 순간 pid 와 다르다(20날 판 10날: 620 중 8 만 같음).
+//     pid 로 열쇠를 쥔 칸(마을 `_otIdx` · 존 결정 차례 `npcs` · 첫 거름 표 · 미리 넓히기 주민 훑기 자리 · 전쟁 명부 …)이 다른 몸을 가리키거나 차례가 달랐다.
+//   켜면 종료 저장의 몸 줄(T747 `_t747Body`)에 몸마다 pid(`$p`)와 몸 번호 계수기(`np`)를 싣고, 부팅이 Stage 2 머리에서
+//     ① 계수기를 저장 값으로(뒤에 새로 나는 몸이 저장 pid 와 안 겹치게 · 한 번에 돈 판과 같은 번호) ② 모든 마을의 저장 몸을 **pid 차례로**(마을을 가로질러) 그 pid 로 낳는다
+//     (마을 안 자리 차례 = 저장 자리 차례 — 마을 명부는 늘 pid 오름차순이다). 그 뒤 종전 줄(`syncVillagePop`)이 짝(`_econId`)을 짓고 모자란 몸을 채운다 —
+//     짝은 T747 이 저장 값(`$all._econId`)으로 다시 덮는다. 저장 pid 가 없는 행(옛 저장 · 끔으로 쓴 저장)은 종전 길(표지 없는 옛 저장 = 종전).
+let _t1382Want = null;
+const _t1382Stat = { vils: 0, bodies: 0, pidSame: 0, skip: 0, np: null, err: null };
+function _t1382PreSpawn() {
+  const L = [];
+  let np = null;
+  for (const vil of state.villages) {
+    const e = vil.econ; if (!e || !_t862Has(e, '_t747Body')) continue;
+    const B = e._t747Body; if (!B || !Array.isArray(B.rows)) continue;
+    if (Number.isFinite(B.np)) np = Math.max(np || 0, B.np);
+    if (vil.npcPids && vil.npcPids.length) continue;   // 이미 몸이 있다(부팅 차례가 다르다) — 종전 길
+    let ok = true; const mine = [];
+    for (let i = 0; i < B.rows.length; i++) { const r = B.rows[i]; if (!r || typeof r.$p !== 'string') { ok = false; break; } mine.push({ vil, i, pid: r.$p }); }
+    if (!ok || !mine.length) continue;
+    _t1382Stat.vils++; for (const x of mine) L.push(x);
+  }
+  if (!L.length) return;
+  if (np != null && state.deps.t1372Pid) { state.deps.t1372Pid.set(np); _t1382Stat.np = np; }
+  const num = (s) => +String(s).replace(/^p/, '');
+  L.sort((a, b) => num(a.pid) - num(b.pid));
+  const cap = (vil) => Math.min(vil.econ.npcs.length, NPC_CAP_PER_VILLAGE);
+  for (const x of L) {
+    if (x.vil.npcPids.length !== x.i || x.vil.npcPids.length >= cap(x.vil)) { _t1382Stat.skip++; continue; }   // 자리 차례가 어긋났거나 목표를 넘는다 — 그 몸은 종전 줄이 낳는다
+    _t1382Want = x.pid;
+    try { const p = spawnOneNpc(x.vil); _t1382Stat.bodies++; if (p && p.pid === x.pid) _t1382Stat.pidSame++; } finally { _t1382Want = null; }
+  }
+  console.log(`[${state.zoneId}] 🏘️ [T1382] 마을 몸 저장 pid 로 — 마을 ${_t1382Stat.vils} · 몸 ${_t1382Stat.bodies}(pid 같음 ${_t1382Stat.pidSame}) · 건넘 ${_t1382Stat.skip} · 몸 번호 ${_t1382Stat.np}`);
+}
 function spawnOneNpc(vil) {
   const houses = vil.housesPx.length ? vil.housesPx : [{ x: vil.ccx * SZ + SZ / 2, y: (vil.ccy + 6) * SZ + SZ / 2 }];   // ★폴백도 큰집 벽 안(중심 셀) 금지 — 남문 앞 마당
   const home = houses[vil.npcPids.length % houses.length];
@@ -2110,6 +2144,7 @@ function spawnOneNpc(vil) {
     //   legacy 마을 생산(60s 틱 → central 길드 금고)에 합산한다. econ 마을의 생산은
     //   economy-sim(storage)이 진실이므로 이중 계상 + 기존 50마을 금고 교란을 피한다
     //   (가드레일 #1: 기존 NPC 경제 불변). econ 직업의 시각화 연결은 Stage 4에서.
+    ...(_t1382Want != null ? { pid: _t1382Want } : {}),   // ★[T1382 ㉠] 다시 뜬 판 부팅 — 저장 pid(그 밖 = 종전 글자 · 키 없음)
     skipHouse: true, // 집은 village_buildings(레이아웃)가 진실 — NPC별 5×5 자동집 금지
   });
   p.simVillageId = vil.dbId; // NPC↔마을 연결(메모리 — players 컬럼 추가보다 저침습)
@@ -8822,6 +8857,7 @@ function init(deps) {
     }
 
     // --- Stage 2: NPC 스폰 (부팅은 목표치까지 한 번에 — 클라 접속 전) ---
+    if (T1340_EXACT) { try { _t1382PreSpawn(); } catch (e) { _t1382Stat.err = e.message; console.error(`[${ZONE_ID}] 🏘️ [T1382] 마을 몸 저장 pid 로 낳기 실패(종전 길로 계속):`, e.message); } }   // ★[T1382 ㉠]
     let npcTotal = 0;
     for (const vil of state.villages) {
       syncVillagePop(vil, Infinity);
