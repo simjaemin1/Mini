@@ -1,0 +1,142 @@
+{
+  "completedCases": 14,
+  "maxConcurrentSimulations": 2,
+  "sourceBlobOrder": [
+    "sim/economy-sim.js",
+    "sim/economy-sim-v2.js",
+    "scripts/t1398-observe.js"
+  ],
+  "sourceBlobs": [
+    "5f53cd1a9858e3fe9cfe1829cdb0a82d5e500e46",
+    "8dda0452ef3b8f647aa992533ea46c03c63a1d9f",
+    "e13963b4c46fb0f4cf276ac259d4f5bcc7e95472"
+  ],
+  "cases": [
+    {
+      "case": "body-off-1020",
+      "days": 20,
+      "sourceBlobsMatch": true,
+      "knobsMatch": true,
+      "casts": 106,
+      "weaponLegs": 3,
+      "independentWeaponLegs": null
+    },
+    {
+      "case": "body-on-1020",
+      "days": 20,
+      "sourceBlobsMatch": true,
+      "knobsMatch": true,
+      "casts": 106,
+      "weaponLegs": 4,
+      "independentWeaponLegs": null
+    },
+    {
+      "case": "lab-off-1020",
+      "days": 800,
+      "sourceBlobsMatch": true,
+      "knobsMatch": true,
+      "casts": 6165,
+      "weaponLegs": 534,
+      "independentWeaponLegs": 534
+    },
+    {
+      "case": "lab-off-42",
+      "days": 800,
+      "sourceBlobsMatch": true,
+      "knobsMatch": true,
+      "casts": 10085,
+      "weaponLegs": 630,
+      "independentWeaponLegs": 630
+    },
+    {
+      "case": "lab-off-7",
+      "days": 800,
+      "sourceBlobsMatch": true,
+      "knobsMatch": true,
+      "casts": 8955,
+      "weaponLegs": 704,
+      "independentWeaponLegs": 704
+    },
+    {
+      "case": "lab-on-1020",
+      "days": 800,
+      "sourceBlobsMatch": true,
+      "knobsMatch": true,
+      "casts": 6884,
+      "weaponLegs": 768,
+      "independentWeaponLegs": 768
+    },
+    {
+      "case": "lab-on-42",
+      "days": 800,
+      "sourceBlobsMatch": true,
+      "knobsMatch": true,
+      "casts": 11494,
+      "weaponLegs": 879,
+      "independentWeaponLegs": 879
+    },
+    {
+      "case": "lab-on-7",
+      "days": 800,
+      "sourceBlobsMatch": true,
+      "knobsMatch": true,
+      "casts": 11018,
+      "weaponLegs": 1006,
+      "independentWeaponLegs": 1006
+    },
+    {
+      "case": "server-off-1020",
+      "days": 400,
+      "sourceBlobsMatch": true,
+      "knobsMatch": true,
+      "casts": 161,
+      "weaponLegs": 207,
+      "independentWeaponLegs": null
+    },
+    {
+      "case": "server-off-42",
+      "days": 400,
+      "sourceBlobsMatch": true,
+      "knobsMatch": true,
+      "casts": 173,
+      "weaponLegs": 154,
+      "independentWeaponLegs": null
+    },
+    {
+      "case": "server-off-7",
+      "days": 400,
+      "sourceBlobsMatch": true,
+      "knobsMatch": true,
+      "casts": 173,
+      "weaponLegs": 138,
+      "independentWeaponLegs": null
+    },
+    {
+      "case": "server-on-1020",
+      "days": 400,
+      "sourceBlobsMatch": true,
+      "knobsMatch": true,
+      "casts": 175,
+      "weaponLegs": 152,
+      "independentWeaponLegs": null
+    },
+    {
+      "case": "server-on-42",
+      "days": 400,
+      "sourceBlobsMatch": true,
+      "knobsMatch": true,
+      "casts": 175,
+      "weaponLegs": 240,
+      "independentWeaponLegs": null
+    },
+    {
+      "case": "server-on-7",
+      "days": 400,
+      "sourceBlobsMatch": true,
+      "knobsMatch": true,
+      "casts": 175,
+      "weaponLegs": 202,
+      "independentWeaponLegs": null
+    }
+  ]
+}

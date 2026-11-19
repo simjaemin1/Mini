@@ -1,0 +1,48 @@
+{
+  "pop": {
+    "T1385": 6344,
+    "T1398off": 6344,
+    "same": true
+  },
+  "dead": {
+    "T1385": 0,
+    "T1398off": 0,
+    "same": true
+  },
+  "live": {
+    "T1385": 51,
+    "T1398off": 51,
+    "same": true
+  },
+  "weapQ": {
+    "T1385": 1014.7,
+    "T1398off": 1014.7,
+    "same": true
+  },
+  "expand": {
+    "T1385": 4430,
+    "T1398off": 4430,
+    "same": true
+  },
+  "trades": {
+    "T1385": 5000,
+    "T1398off": 5000,
+    "same": true
+  },
+  "toolQ": {
+    "T1385": 8666.9,
+    "T1398off": 8666.9,
+    "same": true
+  },
+  "preserved": {
+    "T1385": 183.6,
+    "T1398off": 183.6,
+    "same": true
+  },
+  "rawGrain": {
+    "T1385": 40175.2,
+    "T1398off": 40175.2,
+    "same": true
+  }
+}
+기타 차이: covLtDaysTot / per coverage count, 나머지 누적 실수 약 1e-10. 같은 상자 원본 비교와 별개인 과거 기록 비교.

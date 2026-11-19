@@ -1,0 +1,39 @@
+{
+ "v": 1,
+ "tag": "on",
+ "seed": 1020,
+ "days": 20,
+ "every": 20,
+ "dir": "/workspace/Mini/계측/T1398_2026-11-20/runs/body-on-1020",
+ "ck": 20,
+ "segs": [
+  {
+   "from": 0,
+   "to": 20,
+   "sec": 668,
+   "code": 0,
+   "at": "2026-11-19T18:23:38.598Z"
+  }
+ ],
+ "done": true,
+ "env": {
+  "VILLAGE_NPC_CAP": "Infinity",
+  "T745_VCLOCK": "1",
+  "NODE_OPTIONS": "-r /workspace/Mini/scripts/t745-vclock.js -r /workspace/Mini/scripts/t1398-observe.js -r /workspace/Mini/scripts/t1385-observe.js",
+  "T577_DIR": "/workspace/Mini/계측/T1398_2026-11-20/runs/body-on-1020",
+  "T1398_BRONZE_BAND": "1",
+  "T1244_BODY_MS": "10000",
+  "T699_ROUTE_CACHE": "/tmp/durango-route-cache",
+  "VILLAGE_CARAVAN_MAX": "0",
+  "T1333_EXPORT_CAST": "1",
+  "T400_BUILD_ACT": "1",
+  "T577_TAG": "on",
+  "T1385_BRONZE_NOCAP": "1",
+  "T1221_EVERY": "10",
+  "T1256_BODY_MS": "10000",
+  "VILLAGE_DAY_MS": "1440000"
+ },
+ "started": "2026-11-19T18:12:30.587Z",
+ "tries": 0,
+ "ended": "2026-11-19T18:23:38.617Z"
+}
