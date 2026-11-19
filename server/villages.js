@@ -492,7 +492,7 @@ function _t1324Depart(vil, npc, dest, day) {
   if (T1302_TERR_BODY) pid = vil.npcPids.find((q) => { const b = players.get(q); return b && b._econId === npc.id && !b._muster && !b._bxExit; }) || null;
   if (pid == null) for (let j = vil.npcPids.length - 1; j >= 0; j--) { const b = players.get(vil.npcPids[j]); if (b && !b._muster && !b._bxExit) { pid = vil.npcPids[j]; break; } }
   if (pid != null) {
-    const j = vil.npcPids.indexOf(pid); if (j >= 0) { vil.npcPids.splice(j, 1); if (T822_BODY_SEED) _t822Rekey(vil, j); }
+    const j = vil.npcPids.indexOf(pid); if (j >= 0) { vil.npcPids.splice(j, 1); t1399Bump(vil); if (T822_BODY_SEED) _t822Rekey(vil, j); }
     _bxWalk(vil, players.get(pid), { k: 'move', to: dest.sp.ptLocal }); _t765Mark(pid); _t1324Stat.bodied++;
   }
   const PK = _t1080Pack(vil, 1);
@@ -1870,10 +1870,10 @@ function _t747Restore() {
     if (SH) {
       if (SH.claim) vil._claim = new Set(SH.claim);
       if (SH.cropClaim) vil._cropClaim = new Set(SH.cropClaim);
-      if (SH.clearCrew != null) vil._clearCrew = SH.clearCrew; if (SH.buildCrew != null) vil._buildCrew = SH.buildCrew; if (SH.psiteCrew != null) vil._psiteCrew = SH.psiteCrew;
+      if (SH.clearCrew != null) vil._clearCrew = SH.clearCrew; if (SH.buildCrew != null) vil._buildCrew = SH.buildCrew; if (SH.psiteCrew != null) vil._psiteCrew = SH.psiteCrew; t1399Bump(vil);
       for (const t of dropped) {
-        if (t.k === 'clear') { if (vil._claim) vil._claim.delete(t.cx + ',' + t.cy); vil._clearCrew = Math.max(0, (vil._clearCrew | 0) - 1); }
-        else if (t.k === 'build') { if (t.ps) vil._psiteCrew = Math.max(0, (vil._psiteCrew | 0) - 1); else vil._buildCrew = Math.max(0, (vil._buildCrew | 0) - 1); }
+        if (t.k === 'clear') { if (vil._claim) vil._claim.delete(t.cx + ',' + t.cy); vil._clearCrew = Math.max(0, (vil._clearCrew | 0) - 1); t1399Bump(vil); }
+        else if (t.k === 'build') { if (t.ps) vil._psiteCrew = Math.max(0, (vil._psiteCrew | 0) - 1); else vil._buildCrew = Math.max(0, (vil._buildCrew | 0) - 1); t1399Bump(vil); }
       }
     }
     let held = 0;
@@ -1904,7 +1904,7 @@ function _t740Restore() {
     //   공사 중이던 마을 집터 — 저장된 단계로 지금 선다(종전: 다음 하루 마감에 단계 1로). 행(`housesite`)이 없으면(그새 완공) 세우지 않는다.
     if (S.site && !vil._site && vil._pendSite && vil._pendSite.cx === S.site.cx && vil._pendSite.cy === S.site.cy) { vil._pendSite = null; _siteRise(vil, S.site, Math.max(1, S.site.stage | 0)); if (vil._site && S.site.mat) vil._site.mat = _t740Dec(S.site.mat); R.site++; }
     if (S.psite && vil._psite && vil._psite.stage === S.psite.stage) R.psite++;
-    if (T1329_TERR_CREW && Array.isArray(S.t1329Pend)) { vil._t1207Pend = S.t1329Pend.filter((j) => j && j.key && !(vil._terrSet && vil._terrSet.has(j.key))); R.t1329 = (R.t1329 || 0) + vil._t1207Pend.length; }   // ★[T1329 ③] 일감 줄을 잇는다(그새 영토가 된 칸은 뺀다)
+    if (T1329_TERR_CREW && Array.isArray(S.t1329Pend)) { vil._t1207Pend = S.t1329Pend.filter((j) => j && j.key && !(vil._terrSet && vil._terrSet.has(j.key))); R.t1329 = (R.t1329 || 0) + vil._t1207Pend.length; t1399Bump(vil); }   // ★[T1329 ③] 일감 줄을 잇는다(그새 영토가 된 칸은 뺀다)
   }
   //   클라 영토 페이로드의 반경도 같은 값으로(페이로드는 이 줄 앞에서 행으로 다시 잰 반경을 실었다)
   for (const e of (state.clientPayload || [])) { const v = state.byDbId && state.byDbId.get(e.id); if (v && v._maxRPx != null) e.r = v._maxRPx; }
@@ -2115,7 +2115,7 @@ function spawnOneNpc(vil) {
   p.simVillageId = vil.dbId; // NPC↔마을 연결(메모리 — players 컬럼 추가보다 저침습)
   p.simLonOff = vil._lonOff || 0; // §19 경도: 이 마을 로컬 태양시(zone.js npcStep 야간 귀가 게이트가 소비)
   p.npcBedX = home.x + bed[0] * SZ; p.npcBedY = home.y + bed[1] * SZ;   // ★침대(실내) — 취침·요양 목표(_lifeGoHome·§19 게이트 소비)
-  vil.npcPids.push(p.pid);
+  vil.npcPids.push(p.pid); t1399Bump(vil);
   if (T822_BODY_SEED) _t822Rekey(vil, vil.npcPids.length - 1);   // ★[T822 · T833] 몸 주사위 신원 = 판 씨 + (마을 · 명부 자리) — 끔 = 이 줄 0
   return p;
 }
@@ -2293,7 +2293,7 @@ function _t1197DieBody(vil, id, k) {   // ★[T1198] `k` = 까닭(없으면 굶�
   for (let i = 0; i < vil.npcPids.length; i++) {
     const p = players.get(vil.npcPids[i]);
     if (!p || p._econId !== id || p._muster || p._bxExit) continue;
-    vil.npcPids.splice(i, 1);
+    vil.npcPids.splice(i, 1); t1399Bump(vil);
     if (T822_BODY_SEED) _t822Rekey(vil, i);
     _bxDie(vil, p, { k: why });
     if (why === 'starve') _t1197Stat.bodyDied++; else _t1198Stat.oldDied++;
@@ -2320,7 +2320,7 @@ function _t1198Sync(vil, cap) {
     if (!p || p._muster || p._bxExit) continue;
     const q = p._econId != null ? m.get(p._econId) : _t1197Person(vil, p);   // 짝 잃은 몸은 다시 짝짓지 않는다 · 짝 없던 몸(재기동 · 첫 동기)은 짝을 짓는다
     if (q && vil.npcPids.length <= cap) continue;
-    vil.npcPids.splice(i, 1);
+    vil.npcPids.splice(i, 1); t1399Bump(vil);
     if (T822_BODY_SEED) _t822Rekey(vil, i);
     const w = _bxTake(vil);
     _t1198Stat.orphan++;
@@ -2502,7 +2502,7 @@ function _t765Depart(vil, best, n, people) {
   }
   for (const pid of pick) {
     if (pid == null) continue;
-    const i = vil.npcPids.indexOf(pid); if (i >= 0) { vil.npcPids.splice(i, 1); if (T822_BODY_SEED) _t822Rekey(vil, i); }   // ★[T833] 명부가 줄면 그 자리부터 다시 굽는다
+    const i = vil.npcPids.indexOf(pid); if (i >= 0) { vil.npcPids.splice(i, 1); t1399Bump(vil); if (T822_BODY_SEED) _t822Rekey(vil, i); }   // ★[T833] 명부가 줄면 그 자리부터 다시 굽는다
     _bxWalk(vil, players.get(pid), { k: 'move', vil: best });
     _t765Mark(pid);
   }
@@ -2550,7 +2550,7 @@ function _t1039Take(vil, n) {   // 단이 된 사람 몫으로 명부를 떠날 
   const take = Math.max(0, Math.min(n | 0, free - queued - keep));
   const pick = [];
   for (let j = vil.npcPids.length - 1; j >= 0 && pick.length < take; j--) { const p = players.get(vil.npcPids[j]); if (p && !p._muster && !p._bxExit) pick.push(vil.npcPids[j]); }
-  for (const pid of pick) { const i = vil.npcPids.indexOf(pid); if (i >= 0) { vil.npcPids.splice(i, 1); if (T822_BODY_SEED) _t822Rekey(vil, i); } }   // ★[T833] 명부가 줄면 그 자리부터
+  for (const pid of pick) { const i = vil.npcPids.indexOf(pid); if (i >= 0) { vil.npcPids.splice(i, 1); t1399Bump(vil); if (T822_BODY_SEED) _t822Rekey(vil, i); } }   // ★[T833] 명부가 줄면 그 자리부터
   return { pick, queued, free, keep };
 }
 function _t1039Depart(vil, camp, n) {
@@ -2733,7 +2733,7 @@ function _t1104Draft(vil, n) {
 }
 function _t1104Fall(vil, p) {
   if (!p) return false;
-  if (vil) { const i = vil.npcPids.indexOf(p.pid); if (i >= 0) { vil.npcPids.splice(i, 1); if (T822_BODY_SEED) _t822Rekey(vil, i); } }
+  if (vil) { const i = vil.npcPids.indexOf(p.pid); if (i >= 0) { vil.npcPids.splice(i, 1); t1399Bump(vil); if (T822_BODY_SEED) _t822Rekey(vil, i); } }
   if (state.bodyExits) state.bodyExits.delete(p.pid);
   p._t1104W = undefined;
   _bxDie(vil, p, { k: 'expedition' });
@@ -3086,9 +3086,9 @@ function removeOneNpc(vil, why) {
     if (!p || p._muster || p._bxExit) continue;
     idx = i; break;
   }
-  if (idx < 0) { vil.npcPids = vil.npcPids.filter((pid) => players.has(pid)); if (T822_BODY_SEED) _t822Rekey(vil, 0); return false; }   // 남은 게 전부 출정 — 종전처럼 멈춘다(stale 청소 포함)
+  if (idx < 0) { vil.npcPids = vil.npcPids.filter((pid) => players.has(pid)); t1399Bump(vil); if (T822_BODY_SEED) _t822Rekey(vil, 0); return false; }   // 남은 게 전부 출정 — 종전처럼 멈춘다(stale 청소 포함)
   const pid = vil.npcPids[idx];
-  vil.npcPids.splice(idx, 1);
+  vil.npcPids.splice(idx, 1); t1399Bump(vil);
   if (T822_BODY_SEED) _t822Rekey(vil, idx);   // ★[T833] 명부가 줄면 그 자리부터 다시 굽는다
   const p = players.get(pid);
   if (BX_CAT[w.k] === 'died') _bxDie(vil, p, w); else _bxWalk(vil, p, w);
@@ -3098,7 +3098,7 @@ function syncVillagePop(vil, maxDelta) {
   if (T1302_TERR_BODY) delete vil.econ._t1197Ix;   // birth and death may replace a person without changing N inside this day
   // stale 청소 — ★_muster(출정 중) pid는 players 에 남아 있어 필터 통과(제외 안 됨). 감소(removeOneNpc)도 _muster 스킵.
   //   목표 인구는 econ.npcs.length(진실) 추종: 출정 병사도 npcPids 에 남아 카운트되므로 전쟁 중 스폰 폭주 없음.
-  vil.npcPids = vil.npcPids.filter(pid => state.deps.players.has(pid));
+  vil.npcPids = vil.npcPids.filter(pid => state.deps.players.has(pid)); t1399Bump(vil);
   if (T822_BODY_SEED) _t822Rekey(vil, 0);   // ★[T833] 정리 뒤 명부 자리 열쇠(빠진 자리가 없으면 같은 값)
   _bxObserve(vil);   // ★[T590] econ 이 줄인 까닭(읽기만)
   const _t1041W = T1041_WAR_BODY && _t1041InWar(vil);   // ★[T1041 ⓑ] 끔이면 거짓(종전 두 줄 그대로)
@@ -7472,7 +7472,7 @@ function _t569Resolve(owners) {
   let n = 0;
   for (const o of owners) {
     const k = o.cx + ',' + o.cy;
-    for (const v of state.villages) if (v.dbId !== o.village_id && v._terrSet && v._terrSet.delete(k)) { n++; v._t569RN = -1; }
+    for (const v of state.villages) if (v.dbId !== o.village_id && v._terrSet && v._terrSet.delete(k)) { n++; v._t569RN = -1; t1399Bump(v); }
   }
   return n;
 }
@@ -7548,9 +7548,9 @@ function _t1207Pay(vil, picked) {
 function _t1207Flush(vil) {
   const E = _lifeEcon();
   for (const j of vil._t1207Pend) if (j._t1283Pile > 1e-9) { _t1207LogIn(vil, j._t1283Pile); j._t1283Pile = 0; }   // ★[T1283 (나)] 켬에서만 서는 칸 — 벤 채 아직 안 진 더미는 곳간으로(그루는 이미 베였다 · 끔 = 더미 0 · 무동작)
-  if (T1238_TERR_V2) { for (const j of vil._t1207Pend) _t1238JobToLand(j, vil.dbId); vil._t1207Pend = []; return; }
+  if (T1238_TERR_V2) { for (const j of vil._t1207Pend) _t1238JobToLand(j, vil.dbId); vil._t1207Pend = []; t1399Bump(vil); return; }
   for (const j of vil._t1207Pend) { const w = (j.mat && j.mat.wood) || 0; if (w > 0 && vil.econ) E.returnActMaterials(vil.econ, 'wood', w); }
-  vil._t1207Pend = [];
+  vil._t1207Pend = []; t1399Bump(vil);
 }
 //   ★헤드리스 — 몸 하나의 낮(게임 분)에서 셀마다 개간 분 + 말뚝 짐 왕복을 뺀다. 고른 차례대로 치르고,
 //     낮이 모자라면 그 셀에서 멈추고 · 곳간 잉여가 모자라면 그날은 그 셀부터 안 넓힌다(주사위 0).
@@ -7604,7 +7604,7 @@ function _t1207Batch(vil, picked) {
 //   ★관측 마을 — 오늘 고른 셀을 일감 줄에 싣는다(이미 줄이 있으면 그 줄부터). 몸이 셀마다 말뚝을 나르고 개간해 끝낸 순간 영토가 된다(`_t1207BodyDone`).
 function _t1207Queue(vil, picked) {
   const T = _t1207Stat(vil);
-  if (!vil._t1207Pend) vil._t1207Pend = [];
+  if (!vil._t1207Pend) { vil._t1207Pend = []; t1399Bump(vil); }
   if (!vil._t1207Pend.length) {
     const plus = new Set();
     for (const k of picked) {
@@ -7612,7 +7612,7 @@ function _t1207Queue(vil, picked) {
       const c = _t1207CellCost(vil, x, y, plus);
       const job = { key: k, cx: x, cy: y, wood: +c.wood.toFixed(6), laborMin: c.laborMin, m: c.m, mat: {}, workMs: 0 };
       if (T1238_TERR_V2) _t1238JobFromLand(job);   // ★[T1238 ②] 켬 = 땅에 남은 개간 몫 · 박힌 말뚝에서 시작한다
-      vil._t1207Pend.push(job);
+      vil._t1207Pend.push(job); t1399Bump(vil);
       plus.add(k);
     }
     T.queued += picked.length;
@@ -7717,7 +7717,7 @@ function _t1283BodyHaul(vil, npc, t) {
 }
 function _t1207BodyDone(vil, job) {
   const i = vil._t1207Pend ? vil._t1207Pend.indexOf(job) : -1;
-  if (i >= 0) vil._t1207Pend.splice(i, 1);
+  if (i >= 0) { vil._t1207Pend.splice(i, 1); t1399Bump(vil); }
   if (!_t1207CanTake(vil, job.cx, job.cy)) { if (T1238_TERR_V2) _t1238JobToLand(job, vil.dbId); return 0; }   // 그 사이 남의 땅이 됐거나 막혔다(놓은 말뚝은 소비 장부에 이미 찍혔다 · ★[T1238] 켬 = 한 일은 땅에)
   const T = _t1207Stat(vil); T.cells++; T.body++; T.wood += (job.mat.wood || 0); T.laborMin += job.laborMin;
   return _terrAdd(vil, [job.key], null, !T1302_TERR_BODY);
@@ -8763,8 +8763,8 @@ function init(deps) {
         if (T1023_PSITE_KEEP && !(old && old.type === 'hut_site') && deps.adoptBuildRow) old = deps.adoptBuildRow('hut_site', (r.cx - 2.5) * SZ, (r.cy - 3.5) * SZ, (d) => !!(d && d.psite === 1));   // ★[T1023 ⓐ] 그 자리의 옛 행을 잇는다(위 손잡이 주석)
         const bo = (old && old.type === 'hut_site') ? old : deps.liveBuildRow ? deps.liveBuildRow('hut_site', (r.cx - 2.5) * SZ, (r.cy - 3.5) * SZ,
           { stage: st0, x0: r.cx - 5, y0: r.cy - 5, x1: r.cx + 0, y1: r.cy - 2, owner: ow, psite: 1 }, ow || `npc_simvil_${vil.dbId}`, '의뢰 움집터', null) : null;
-        vil._psite = { cx: r.cx, cy: r.cy, stage: st0, bo, player: 1, owner: ow, ownerName: '의뢰 움집' };
-        vil._psiteCrew = 0; n++;
+        vil._psite = { cx: r.cx, cy: r.cy, stage: st0, bo, player: 1, owner: ow, ownerName: '의뢰 움집' }; t1399Bump(vil);
+        vil._psiteCrew = 0; n++; t1399Bump(vil);
       }
       if (n) console.log(`[${ZONE_ID}] 🏠 플레이어 의뢰 집터 복원 ${n}건(단계는 1로 재시작 — 진행도 비영속 관용)`);
     } catch (e) { console.error(`[${ZONE_ID}] 🏠 의뢰 집터 복원 실패:`, e.message); }
@@ -8980,7 +8980,7 @@ function _warWriteThreats(now) {
       const e = vil && vil.econ; if (!e) continue;
       if (Math.hypot(body.cmd.cx - vil.ccx, body.cmd.cy - vil.ccy) >= R) continue;   // 경보 거리 술어 — 대개 여기서 끝난다
       const t = _threatOfArmy(w, vil, now, vel);
-      if (t > 0 && t > (e._warThreat || 0)) { e._warThreat = t; if (on.indexOf(e) < 0) on.push(e); n++; }
+      if (t > 0 && t > (e._warThreat || 0)) { e._warThreat = t; t1399Bump(vil); if (on.indexOf(e) < 0) on.push(e); n++; }
     }
   }
   state._warThreatOn = on.length ? on : null;
@@ -9987,8 +9987,8 @@ function _warEndFight(body, why, winner) {
       if (_t811) _t811.field += _t811Fall(w, p);   // ★[T857] 끌려가는 병사의 무기는 결판 자리에 떨어진다(장부 −같은 몫 · 이긴 쪽이 줍는다)
       p.simCaptive = 1; p._brout = false; _setHp(p, Math.max(1, Math.round((p.maxHp || 100) * 0.4)), 'captive');   // ★[T942] 문으로
       const oldVil = (p.simVillageId != null) ? state.byDbId.get(p.simVillageId) : null;
-      if (oldVil) { const kk = oldVil.npcPids.indexOf(pid); if (kk >= 0) { oldVil.npcPids.splice(kk, 1); if (T822_BODY_SEED) _t822Rekey(oldVil, kk); _bxCapField.set(oldVil, (_bxCapField.get(oldVil) || 0) + 1); } }   // ★[T1315] 끌려간 몸 수(꼬리표는 `_bxObserve` 가 econ 포로 누계와 함께)
-      _t1323Touch(p); p.simVillageId = winnerVil.dbId; winnerVil.npcPids.push(pid);
+      if (oldVil) { const kk = oldVil.npcPids.indexOf(pid); if (kk >= 0) { oldVil.npcPids.splice(kk, 1); t1399Bump(oldVil); if (T822_BODY_SEED) _t822Rekey(oldVil, kk); _bxCapField.set(oldVil, (_bxCapField.get(oldVil) || 0) + 1); } }   // ★[T1315] 끌려간 몸 수(꼬리표는 `_bxObserve` 가 econ 포로 누계와 함께)
+      _t1323Touch(p); p.simVillageId = winnerVil.dbId; winnerVil.npcPids.push(pid); t1399Bump(winnerVil);
       if (T822_BODY_SEED) _t822Rekey(winnerVil, winnerVil.npcPids.length - 1);   // ★[T833] 포로 — 옛 마을은 빠진 자리부터 · 새 마을은 든 자리
       escort.push(pid);
     }
@@ -10092,7 +10092,7 @@ function _warDespawnPid(pid) {
   // ★[T295 ①] 전사 표본 — 결속만 푼다. econ 사망은 `war-core.warKill`(정산) 하나가 정본이다(사본 0 · 이중 사망 금지).
   try { const vil = (p && p.simVillageId != null) ? state.byDbId.get(p.simVillageId) : null; if (vil && state.war && state.war.warDraftReleasePid) state.war.warDraftReleasePid(vil, pid); } catch (_) { }
   players.delete(pid); npcs.delete(pid);
-  if (p && p.simVillageId != null) { const vil = state.byDbId.get(p.simVillageId); if (vil) { const k = vil.npcPids.indexOf(pid); if (k >= 0) { vil.npcPids.splice(k, 1); if (T822_BODY_SEED) _t822Rekey(vil, k); _bxWarField.set(vil, (_bxWarField.get(vil) || 0) + 1); } } }   // ★[T833] 전사 — 빠진 자리부터 · ★[T1307] 전장에서 거둔 몸 수(꼬리표는 `_bxObserve` 한 자리가 econ 전사 누계와 함께 단다)
+  if (p && p.simVillageId != null) { const vil = state.byDbId.get(p.simVillageId); if (vil) { const k = vil.npcPids.indexOf(pid); if (k >= 0) { vil.npcPids.splice(k, 1); t1399Bump(vil); if (T822_BODY_SEED) _t822Rekey(vil, k); _bxWarField.set(vil, (_bxWarField.get(vil) || 0) + 1); } } }   // ★[T833] 전사 — 빠진 자리부터 · ★[T1307] 전장에서 거둔 몸 수(꼬리표는 `_bxObserve` 한 자리가 econ 전사 누계와 함께 단다)
   broadcast({ type: 'player_left', pid });
 }
 // ★★[T1315 2026-11-14 · T1307 회부 3 · PM 판단] **전장 몸은 그 자리에 눕는다** — 손잡이 `T1315_WAR_CORPSE`(끔 기본 · `=1` 켬 · 끔 = 위 `_warDespawnPid` 그대로 = 종전 바이트).
@@ -10113,7 +10113,7 @@ function _warCorpsePid(pid) {
   const vil = (p.simVillageId != null) ? state.byDbId.get(p.simVillageId) : null;
   try { if (vil && state.war && state.war.warDraftReleasePid) state.war.warDraftReleasePid(vil, pid); } catch (_) { }   // `_warDespawnPid` 그 줄 — 결속만 푼다(econ 사망은 war-core 정산 하나)
   try { require('./home-population').bindWarBody(p, null); } catch (_) { }
-  if (vil) { const k = vil.npcPids.indexOf(pid); if (k >= 0) { vil.npcPids.splice(k, 1); if (T822_BODY_SEED) _t822Rekey(vil, k); _bxWarField.set(vil, (_bxWarField.get(vil) || 0) + 1); } }
+  if (vil) { const k = vil.npcPids.indexOf(pid); if (k >= 0) { vil.npcPids.splice(k, 1); t1399Bump(vil); if (T822_BODY_SEED) _t822Rekey(vil, k); _bxWarField.set(vil, (_bxWarField.get(vil) || 0) + 1); } }
   npcs.delete(pid);
   _bxQuiet(p);
   p._muster = false; p._muType = null; p.simWar = false; p._brout = false; p._bcmd = false; p._bt = undefined; p._bside = undefined;
@@ -13126,7 +13126,7 @@ function _terrBackfillOne(vil, VL) {
   const pop = (vil.econ && vil.econ.npcs) ? vil.econ.npcs.length : (vil.npcPids ? vil.npcPids.length : 0);
   const layout = VL.generate(state.ta, vil.ccx, vil.ccy, Math.max(4, pop), T1238_TERR_V2 ? { maxCells: VL.TERR_CORE } : {});   // 시딩과 동일 호출(정본 재사용 · ★[T1238] 켬 = 처음 땅 1,500 상한도 같게)
   const own = vil._terrSet || (vil._terrSet = new Set());
-  for (const c of (layout.territory || [])) own.add(c[0] + ',' + c[1]);
+  for (const c of (layout.territory || [])) own.add(c[0] + ',' + c[1]); t1399Bump(vil);
   const gen = own.size;
   // ★영토가 새로 잡히면(백필·확장) 그 셀도 개간한다 — "영토가 확장되면 바로 벤다"
   //   ★[T1238 ①] 켬 = 숲은 숲 그대로 — 쓰는 칸 · 논밭만 벤다
@@ -13391,8 +13391,8 @@ function lifeDebug() {   // ★[직접 서버 디버깅 — 사용자 요청] zo
 }
 function _lifeDropTask(vil, npc) {   // 진행 중 작업 즉시 반납(요양 진입·반일 퇴근·야간 — 크루 카운터·클레임 정리. 일일 자가치유의 즉시판)
   const t = npc._lifeTask; if (!t) return null;
-  if (t.k === 'clear') { vil._claim.delete(t.cx + ',' + t.cy); vil._clearCrew = Math.max(0, vil._clearCrew - 1); }
-  else if (t.k === 'build') vil._buildCrew = Math.max(0, vil._buildCrew - 1);
+  if (t.k === 'clear') { vil._claim.delete(t.cx + ',' + t.cy); vil._clearCrew = Math.max(0, vil._clearCrew - 1); t1399Bump(vil); }
+  else if (t.k === 'build') { vil._buildCrew = Math.max(0, vil._buildCrew - 1); t1399Bump(vil); }
   npc._lifeTask = null; return null;
 }
 // ── 작물 상태머신(랩 cellTask/doTask 동형 — 단 식량 산출은 econ 소유: 여기는 상태·연출만, 이중 계상 금지) ──
@@ -13948,17 +13948,20 @@ function t1337Sleep(npc, now) {
   if (E.productionActsBound(vil.econ)) {   // `_t1181Step` 이 거짓을 돌려주는 갈래(돌아갈 짐 · 짐 · 영토 짐 없음 · 일감 없음)
     if ((npc._t1181Returns && npc._t1181Returns.length) || npc._t1181Haul || npc._t1302Terr) return null;
     if (_t1181Task(vil, npc, true)) return null;
+    if (_hzOn) _hz1181(vil);   // ★[T1399] 기록기(판정 값 무변)
   }
   if (T720_LON_DAY) {   // `_t720Step` 이 거짓을 돌려주는 갈래(정산 길 밖 · 낮 아님 · 오늘 했다 / 든 짐 없음 · 짐 가득 아님)
     if (npc._t720 && npc._t720.k) return null;
     const _fishCap = E.T312_FISH_ACT && (npc._t312Kg || 0) > 0 ? _carryCfg()?.CFG?.CAP_KG : 0;
     if (_fishCap > 0 && (npc._t312Kg >= _fishCap || npc._t1180FullFish)) return null;
     if (_stoneHandInOn(vil) && _stoneHeld(npc) > 0) return null;
+    if (_hzOn && _stoneHeld(npc) > 0) _hzX('stone');
     if (fv >= dayR) { const S = npc._t720; if (!(S && S.dd === bday) && _t720Held(vil, npc) > 0) return null; }
   }
   if (npc._dOff === undefined) return null;
   if (!(fv >= dayR || fv < npc._dOff)) return null;
   if (fv >= dayR && npc._t1197M1 !== bday && _t1197On()) return null;
+  if (_hzOn && fv >= dayR && npc._t1197M1 !== bday && _lifeEcon().T1197_MEAL_BODY) _hzX('meal');
   if (npc._workT !== null) return null;
   if (npc.behavior !== 'wander' || npc.gatherTarget !== null || npc._huntOn !== 0 || npc._huntSpd !== 0) return null;
   const bed = npc.npcBedX != null, tx = bed ? npc.npcBedX : npc.npcHomeX, ty = bed ? npc.npcBedY : npc.npcHomeY;
@@ -13967,6 +13970,7 @@ function t1337Sleep(npc, now) {
   if (_handOf(npc) > 0 && d <= 44) return null;
   if (!Object.is(npc.targetX, tx) || !Object.is(npc.targetY, ty)) return null;
   if (npc._lifeAct !== (d > 44 ? '귀가' : '취침')) return null;
+  if (_hzOn) _hzP(tx, ty, 44, d > 44);
   return { seg: fv >= dayR ? 1 : 2, dOff: npc._dOff, bday, day, vid: npc.simVillageId };
 }
 // 그 판정이 아직 사는가(결정 때마다 · 몸 안 짚기) — 창 쪽 그대로 · 몸 날 · 장부 날 · 마을 그대로 · 마감 얼림 아님
@@ -13981,6 +13985,78 @@ function t1337Still(vid, lon, w95, seg, dOff, bday, day, now) {
   const b2 = T720_LON_DAY ? (state.dayMs ? Math.floor((now - state.epoch) / state.dayMs + (lon || 0)) : 0) : d2;
   return d2 === day && b2 === bday;
 }
+// ★★[T1399 ⓐ 2026-11-19 · µs 아홉째] **마을 바뀜 도장 · 일터 깨움 표 한 번 판정** — T1365 회부 1.
+//   일터 깨움(T1348 ⓒ 농부 · T1365 그 밖)은 결정 시각마다 판정(`t1348Farm` · `t1365Work`)을 다시 해서 결정 문과 셈이 같았다(T1365 §5).
+//   ⓐ 마을 바뀜 도장 — 판정이 읽는 마을 문(크루 수 · 집터 · 의뢰 집터 · 장 · 촌장 줄 · 밭 · 영토 · 곳간 터 · 곳간 줄 · 몸 명부)을 **쓰는 자리마다** 한 줄
+//     `t1399Bump(vil)`(값 무변 — 마을 칸이 아니라 곁 `Map` · 마을 모양 · 직렬화 무접촉).
+//   ⓑ 판정이 참이면 그 판정이 산 조건을 적는다(`t1399Take` — 기록기 `_hz*`): 시각 문턱(머묾 끝 · 한 타 · 시간 칸) · 해 몫 쪽(문턱 넷의 어느 쪽) ·
+//     장부 날 · 몸 날 · 세계 날 · 판 시계 배율 · 마을 도장 · 자리 문턱 하나(가는 중 · 귀가 라벨 · 현장 44px) · 뷰(사냥꾼).
+//     곳간 재고 · 수요처럼 결정 사이에 다른 몸이 바꾸는 값을 읽은 판정(개간 수요 문이 열림 · 퇴근 곳간 · 채광 수요 · 장인 일감 줄 …)은 표를 안 적는다(`_hzNo` — 다음 결정은 다시 판정).
+//   ⓒ 다음 결정은 그 조건이 아직 사는가만 본다(`t1399Still` — 몸 칸 · 마을 칸을 안 훑는다). 산다 = 판정을 다시 해도 같은 답.
+//   ⚠전제(T1322 · T1337 과 같은 꼴): 표가 산 동안 그 몸 칸은 걸음 문 밖에서 안 바뀐다(첫 거름 표가 지킨다). `T1399_TOK=verify` 가 결정마다 판정을 실제로 다시 해 견준다.
+const _t1399G = new Map();   // 마을 dbId → 바뀜 도장(관측 · 판정 전용 — 세계 값 0)
+// ★★[T1399 ⓒ · 손잡이 `T1399_FISH`(끔 기본 · `=1` 켬 · 일터 깨움 나머지 `T1365_WORK` 안)] **던짐 대본 어부의 기다림 = 머묾 + 라벨 시각 도장** — T1365 회부 4.
+//   던짐 대본(`fishActOn`) 어부의 기다림 결정(찌를 본다 — `now < biteAt` · 자리 머묾 `_fishT` 앞 · 같은 시간 칸)은 라벨을 '드리움' → '낚시' 로 두 번 쓴다 —
+//   값은 그대로 '낚시'이고 바뀌는 것은 관측 칸 `_lifeActAt`(= 그 결정의 `Date.now()`) 하나다. 켬 = 판정 3(머묾 + 라벨 시각) — 존이 결정을 건너고 그 시각을 열에 두었다가 몸을 열 때 쓴다(미룬 도장).
+//   `_lifeActAt` 을 읽는 자리는 존 `makeEntry` 하나(바뀐 뒤 1.2초 창 안이면 라벨을 싣는다)고, 클라는 안 온 라벨을 앞 값 그대로 둔다(`30-n-net` `prev?.act`) · 소리는 값이 바뀐 모서리에서만(`48-a-audio`) — 보고 §ⓒ 표.
+const T1399_FISH = process.env.T1399_FISH === '1';
+function t1399Bump(vil) { if (vil && vil.dbId != null) _t1399G.set(vil.dbId, (_t1399G.get(vil.dbId) || 0) + 1); }
+let _hzOn = false, _hzWalk = false, _hzT = Infinity, _hzNo = 0, _hzPN = 0, _hzPX = 0, _hzPY = 0, _hzPR = 0, _hzPO = 0, _hzVw = 0, _hzQ = 0, _hzQX = 0, _hzQY = 0, _hzWhy = '';
+function _hzD(t) { if (_hzOn && t < _hzT) _hzT = t; }   // 시각 문턱(그 시각 앞까지 산다)
+function _hzP(x, y, r, out) { if (!_hzOn || !_hzWalk) return; if (_hzPN++ && !(_hzPX === x && _hzPY === y && _hzPR === r && _hzPO === out)) _hzX('p2'); _hzPX = x; _hzPY = y; _hzPR = r; _hzPO = out ? 1 : 0; }   // 자리 문턱 하나(`Math.hypot(몸 − 점) > r` 이 그 쪽) — 걷는 몸 표(첫 거름 3)만 적는다(서 있는 몸 표 1 · 2 는 자리가 안 바뀐다 — 움직이면 표를 내린다)
+function _hzX(w) { if (_hzOn && !_hzNo) { _hzNo = 1; _hzWhy = w; } }   // 표 없음(결정 사이에 다른 몸이 바꾸는 값을 읽었다)
+const _t1399Tk = { T: Infinity, px: 0, py: 0, pr: 0, po: 0, pn: 0, vw: 0, q: 0, qx: 0, qy: 0, pat: 0, day: 0, bday: 0, wday: 0, gen: 0, sc: 1, why: '' };
+function t1399Rec(walk) { _hzOn = true; _hzWalk = !!walk; _hzT = Infinity; _hzNo = 0; _hzPN = 0; _hzVw = 0; _hzQ = 0; _hzWhy = ''; }
+// 해 몫 쪽 — 판정이 해 몫을 견주는 문턱 넷(잠 창 끝 `dayR` · 깸 `_dOff` · 반일 `SCH_HALF_R` · 농부 출근 창 `SCH_FARMW_R`)의 어느 쪽인가(판정 글자 그대로의 식)
+function _t1399Fv(npc, now) {
+  const wpF = state.deps.worldPhase, dayR = state.deps.dayPhaseRatio || 0.7;
+  const _w95 = t1295Wp(npc, now);
+  const fv = _w95 != null ? _t720Fv(_w95, npc.simLonOff || 0) : wpF ? _t720Fv(wpF(now), npc.simLonOff || 0) : 0.35;
+  const df = fv / dayR;
+  return (fv >= dayR ? 1 : 0) | (npc._dOff !== undefined && fv < npc._dOff ? 2 : 0) | (df >= SCH_HALF_R ? 4 : 0) | (df > SCH_FARMW_R ? 8 : 0);
+}
+// 판정이 참(k)을 낸 바로 뒤 — 표를 적는다(거짓이면 null) · 기록기를 닫는다
+function t1399Take(npc, now, k) {
+  _hzOn = false;
+  if (!k || _hzNo) { _t1399Tk.why = k ? _hzWhy : ''; return null; }
+  const vil = state.byDbId && state.byDbId.get(npc.simVillageId); if (!vil) return null;
+  const T = _t1399Tk;
+  T.T = _hzT; T.pn = _hzPN; T.px = _hzPX; T.py = _hzPY; T.pr = _hzPR; T.po = _hzPO; T.vw = _hzVw; T.q = _hzQ; T.qx = _hzQX; T.qy = _hzQY;
+  T.pat = _t1399Fv(npc, now);
+  T.day = state.dayMs ? (T731_ON ? _ledgerDay(vil, now) : gameDayOf(now)) : 0;
+  T.bday = T720_LON_DAY ? (state.dayMs ? _bodyDay(npc, now) : 0) : T.day;
+  T.wday = state.world ? state.world.day : 0;
+  T.gen = _t1399G.get(vil.dbId) || 0; T.sc = t1295S(npc);
+  return T;
+}
+// 표가 아직 사는가(결정 때마다 — 판정 대신) · 인자 = 표에 적은 값
+function t1399Still(npc, now, T, pat, day, bday, wday, gen, sc, pn, px, py, pr, po, vw, q, qx, qy) {
+  if (!(now < T)) return false;
+  if (T698_BOUNDARY_SLICE && state.tickJobs) return false;
+  const vil = state.byDbId && state.byDbId.get(npc.simVillageId);
+  if (!vil || (_t1399G.get(vil.dbId) || 0) !== gen) return false;
+  if ((state.world ? state.world.day : 0) !== wday) return false;
+  const d2 = state.dayMs ? (T731_ON ? _ledgerDay(vil, now) : gameDayOf(now)) : 0;
+  if (d2 !== day) return false;
+  if ((T720_LON_DAY ? (state.dayMs ? _bodyDay(npc, now) : 0) : d2) !== bday) return false;
+  if (t1295S(npc) !== sc) return false;
+  if (_t1399Fv(npc, now) !== pat) return false;
+  if (pn && (Math.hypot(npc.x - px, npc.y - py) > pr ? 1 : 0) !== po) return false;
+  if (vw && state.deps.isPositionActive && state.deps.isPositionActive(npc.x, npc.y)) return false;
+  if (q && state.deps.isWaterTileLocal && !state.deps.isWaterTileLocal(qx, qy)) return false;   // ⓒ 드리운 칸이 아직 물인가(밀물 · 썰물)
+  return true;
+}
+function t1399Why() { return _t1399Tk.why; }
+// 짐 일감 술어(`_t1181Task` 가 null)가 결정 사이에 바뀔 수 있는 판 — 영토 일감 줄(T1207 · T1329 — 잉여 · 크루 몫을 읽는다)이 서 있으면 표 없음(곳간 터 · 다리 터 · 크루는 도장)
+// `_lifeNeedClear` 의 밭 문(곳간 식량 문을 뺀 몫 · 그 글자 그대로) — 거짓 = 곳간 식량과 무관하게 개간 수요 없음 · null = 모름(다른 문)
+function _t1399NeedFarm(vil) {
+  const e = vil.econ; if (!e || !vil._potSet) return false;
+  if (T1229_FIELD_GROW) return null;
+  if (_t1284On()) return vil._farmSet.size < e.npcs.length * _landNeed();
+  const fert = (e.land && e.land.fertility != null) ? e.land.fertility : 0.55;
+  return vil._farmSet.size < Math.ceil(e.npcs.length * _lifeVL().landNeedPer(fert, _landNeed()));
+}
+function _hz1181(vil) { if (_hzOn && (T1329_TERR_CREW || T1207_TERR_REAL) && vil._t1207Pend && vil._t1207Pend.length) _hzX('haul'); }
 let _t1365R = '';   // ★[T1365] 일터 깨움 판정이 마지막으로 거짓을 낸 자리(셈 전용 — `verify` 가 놓친 무동작의 까닭으로 읽는다)
 function _z(r) { _t1365R = r; return 0; }
 function t1365Why() { return _t1365R; }
@@ -14009,17 +14085,20 @@ function t1348Farm(npc, now) {
   if (E.productionActsBound(vil.econ)) {   // `_t1181Step` 이 거짓을 돌려주는 갈래(`t1337Sleep` 그 줄)
     if ((npc._t1181Returns && npc._t1181Returns.length) || npc._t1181Haul || npc._t1302Terr) return _z('F8');
     if (_t1181Task(vil, npc, true)) return _z('F9');
+    if (_hzOn) _hz1181(vil);
   }
   if (T720_LON_DAY) {   // `_t720Step` 이 거짓을 돌려주는 갈래(`t1337Sleep` 그 줄 · 낮이면 저녁 갈래는 안 탄다)
     if (npc._t720 && npc._t720.k) return _z('F10');
     const _fishCap = E.T312_FISH_ACT && (npc._t312Kg || 0) > 0 ? _carryCfg()?.CFG?.CAP_KG : 0;
     if (_fishCap > 0 && (npc._t312Kg >= _fishCap || npc._t1180FullFish)) return _z('F11');
     if (_stoneHandInOn(vil) && _stoneHeld(npc) > 0) return _z('F12');
+    if (_hzOn && _stoneHeld(npc) > 0) _hzX('stone');
     if (fv >= dayR) return _z('F13');
   }
   if (npc._dOff === undefined) return _z('F14');
   if (fv >= dayR || fv < npc._dOff) return _z('F15');   // 취침 창
   if (npc._t1197M0 !== bday && _t1197On()) return _z('F16');   // 아침 끼니
+  if (_hzOn && npc._t1197M0 !== bday && _lifeEcon().T1197_MEAL_BODY) _hzX('meal');   // 끼니 손잡이가 꺼진 판은 늘 거짓(표 그대로)
   if ((vil._t529Q && vil._t529Q.length) || (npc._lifeTask && npc._lifeTask.k === 'greet')) return _z('F17');   // 촌장
   if (npc._hd !== bday) return _z('F18');   // 반일 굴림(쓰기)
   if (T707_ON && vil._mkt && now < vil._mkt.end && !npc._lifeTask) { const k = vil._mkt.at.get(npc.pid); if (k !== undefined && !(vil._t400Crew && vil._t400Crew.indexOf(npc.pid) >= 0)) return _z('F19'); }   // 장마당
@@ -14027,16 +14106,18 @@ function t1348Farm(npc, now) {
   if (npc._half && dayFrac >= SCH_HALF_R) return _t1365Half(vil, npc, bday, E);   // 반일 오후(★[T1365] 집에서 쉬는 몸이 그대로면 무동작)
   if (npc._lifeTask) return _z('F20');   // 진행 작업
   if (npc._fOutD !== bday) return (dayFrac > SCH_FARMW_R && _t1365Home(npc, '휴식')) ? 1 : _z('F29');   // 농부 출근 도장(창 안이면 쓰기 · ★[T1365] 창 밖 = 오늘 휴무 — 집에서 쉬는 몸이 그대로면 무동작)
-  if (vil._clearCrew < LIFE_CREW && (T1294_LIFE_MEMO ? _t1294NeedClear(vil, now) : _lifeNeedClear(vil))) return _z('F21');   // 개간 크루 문 · ★[T1365 ⓑ] 메모 켬 = 결정 문과 같은 자리에서 같은 메모를 읽고 쓴다(그 틱 마을 답 — 결정 문이 여기서 쓸 그 칸)
+  if (vil._clearCrew < LIFE_CREW && (T1294_LIFE_MEMO ? _t1294NeedClear(vil, now) : _lifeNeedClear(vil))) return _z('F21');
+  if (_hzOn && vil._clearCrew < LIFE_CREW && _t1399NeedFarm(vil) !== false) _hzX('clear');   // ★[T1399] 개간 수요 문이 열린 마을 — 밭이 모자란데 곳간 식량 문이 닫아 둔 것이면(식량이 줄면 열린다) 표 없음 · 밭이 넉넉하면 식량과 무관하게 닫힘(밭 · 명부는 도장)   // 개간 크루 문 · ★[T1365 ⓑ] 메모 켬 = 결정 문과 같은 자리에서 같은 메모를 읽고 쓴다(그 틱 마을 답 — 결정 문이 여기서 쓸 그 칸)
   if (E.T400_BUILD_ACT) { if (vil._site && vil._t400Crew && vil._t400Crew.indexOf(npc.pid) >= 0) return _t1365T400(vil, npc, now); }   // `_t400BodyStep` 이 참인 몸(★[T1365] 집 크루의 기다림 · 가는 중)
   else if (vil._site && vil._buildCrew < LIFE_CREW) return _z('F23');
   if (vil._psite && (vil._psiteCrew || 0) < LIFE_CREW) return _z('F24');
   if (!vil._farmSet.size) return _z('F25');
-  if (npc._jobT && now < npc._jobT) return 1;   // ⓐ 체류 중(목표 그대로)
+  if (npc._jobT && now < npc._jobT) { if (_hzOn) _hzD(npc._jobT); return 1; }   // ⓐ 체류 중(목표 그대로)
   const k = npc._farmK; if (!k) return _z('F26');
   const ci = k.indexOf(','), px2 = +k.slice(0, ci) * SZ + SZ / 2, py2 = +k.slice(ci + 1) * SZ + SZ / 2;
   if (npc.behavior !== 'wander' || !Object.is(npc.targetX, px2) || !Object.is(npc.targetY, py2) || npc.gatherTarget !== null || npc._lifeAct !== '경작') return _z('F27');
   if (Math.hypot(npc.x - px2, npc.y - py2) <= 44) return _z('F28');   // 도착 — 셀 처리
+  if (_hzOn) _hzP(px2, py2, 44, true);
   return 2;   // ⓑ 배정 칸으로 가는 중
 }
 // ★★[T1365 ⓐ 2026-11-18 · µs 여덟째] **일터 깨움 나머지** — `t1348Farm` 의 꼴을 농부 밖 일터로(벌목 · 채광 · 채집 · 낚시 · 수색 · 회관 일 · 제작). 읽기만(몸 칸 쓰기 0).
@@ -14052,6 +14133,7 @@ function _t1365Home(npc, act) {
   if (tx == null) return npc._lifeAct === act;
   const d = Math.hypot(npc.x - tx, npc.y - ty);
   if (_handOf(npc) > 0 && d <= 44) return false;
+  if (_hzOn) _hzP(tx, ty, 44, d > 44);
   return Object.is(npc.targetX, tx) && Object.is(npc.targetY, ty) && npc._lifeAct === (d > 44 ? '귀가' : act);
 }
 // 집 크루 몸(`_t400BodyStep` 이 참인 몸) — 1 = 곳간 · 집터에 선 기다림(그 칸들이 이미 그 값 · 한 바퀴 전) · 2 = 가는 중 · 0 = 쓰기
@@ -14061,8 +14143,10 @@ function _t1365T400(vil, npc, now) {
   if (!_t1365Same(npc, tx, ty, null)) return _z('T2');
   if (Math.hypot(npc.x - tx, npc.y - ty) <= 44) {
     if (!leg.at || npc._lifeAct !== (leg.to === 'g' ? '인출' : '건축')) return _z('T3');
+    if (_hzOn) { _hzP(tx, ty, 44, false); _hzD(leg.at + G_DRAWW / t1295S(npc) - 1); }
     return now - leg.at >= G_DRAWW / t1295S(npc) ? _z('T4') : 1;
   }
+  if (_hzOn) _hzP(tx, ty, 44, true);
   return npc._lifeAct === (leg.to === 'g' ? '출근' : '운반') ? 2 : _z('T5');
 }
 // 반일 오후 갈래(`npcLifeTick` 그 줄) — 1 = 집에서 쉬는 몸이 그대로(퇴근 곳간 용무는 그날 마쳤다) · 0 = 쓰기(작업 반납 · 집터 징발 · 곳간 걸음 · 귀가)
@@ -14070,7 +14154,8 @@ function _t1365Half(vil, npc, bday, E) {
   if (npc._lifeTask) return _z('H1');
   if (vil._site && !E.T400_BUILD_ACT) return _z('H2');
   if (vil._psite) return _z('H3');
-  if (npc._granD !== bday && _granPick(vil, npc, !(_handOf(npc) > 0))) return _z('H4');   // 퇴근 곳간 용무 — 갈 곳간이 있으면 나선다(쓰기) · 없으면 귀가
+  if (npc._granD !== bday && _granPick(vil, npc, !(_handOf(npc) > 0))) return _z('H4');
+  if (_hzOn && npc._granD !== bday) _hzX('gran');   // 퇴근 곳간 용무 — 갈 곳간이 있으면 나선다(쓰기) · 없으면 귀가
   return _t1365Home(npc, '휴식') ? 1 : _z('H5');
 }
 function _t1365Same(npc, x, y, lab) { return npc.behavior === 'wander' && Object.is(npc.targetX, x) && Object.is(npc.targetY, y) && npc.gatherTarget === null && (lab === null || npc._lifeAct === lab); }
@@ -14093,17 +14178,20 @@ function t1365Work(npc, now) {
   if (E.productionActsBound(vil.econ)) {   // `_t1181Step` 이 거짓을 돌려주는 갈래(`t1337Sleep` 그 줄)
     if ((npc._t1181Returns && npc._t1181Returns.length) || npc._t1181Haul || npc._t1302Terr) return _z('W8');
     if (_t1181Task(vil, npc, true)) return _z('W9');
+    if (_hzOn) _hz1181(vil);
   }
   if (T720_LON_DAY) {   // `_t720Step` 이 거짓을 돌려주는 갈래(낮)
     if (npc._t720 && npc._t720.k) return _z('W10');
     const _fishCap = E.T312_FISH_ACT && (npc._t312Kg || 0) > 0 ? _carryCfg()?.CFG?.CAP_KG : 0;
     if (_fishCap > 0 && (npc._t312Kg >= _fishCap || npc._t1180FullFish)) return _z('W11');
     if (_stoneHandInOn(vil) && _stoneHeld(npc) > 0) return _z('W12');
+    if (_hzOn && _stoneHeld(npc) > 0) _hzX('stone');
     if (fv >= dayR) return _z('W13');
   }
   if (npc._dOff === undefined) return _z('W14');
   if (fv >= dayR || fv < npc._dOff) return _z('W15');   // 취침 창
   if (npc._t1197M0 !== bday && _t1197On()) return _z('W16');   // 아침 끼니
+  if (_hzOn && npc._t1197M0 !== bday && _lifeEcon().T1197_MEAL_BODY) _hzX('meal');   // 끼니 손잡이가 꺼진 판은 늘 거짓(표 그대로)
   if ((vil._t529Q && vil._t529Q.length) || (npc._lifeTask && npc._lifeTask.k === 'greet')) return _z('W17');   // 촌장
   if (npc._hd !== bday) return _z('W18');   // 반일 굴림(쓰기)
   if (T707_ON && vil._mkt && now < vil._mkt.end && !npc._lifeTask) { const k = vil._mkt.at.get(npc.pid); if (k !== undefined && !(vil._t400Crew && vil._t400Crew.indexOf(npc.pid) >= 0)) return _z('W19'); }   // 장마당
@@ -14114,6 +14202,7 @@ function t1365Work(npc, now) {
   else if (vil._site && vil._buildCrew < LIFE_CREW) return _z('W22');
   if (vil._psite && (vil._psiteCrew || 0) < LIFE_CREW) return _z('W23');
   const job = npc.simJob;
+  if (_hzOn && (job === 'forager' || job === 'lumberjack')) _hzX('t374');   // ★[T1399] 채집 · 벌목은 표를 안 받는다(`t1365Want`) — 수요 · 돌 문은 다른 몸이 바꾼다
   if (job === 'forager' && E.productionFormulaOff(vil.econ, 'forager')) {   // `_physicalStoneWork` — 돌이 모자라면 채석 갈래(쓰기) · 넉넉하면 거짓(아래로)
     const N = vil.econ.npcs.length, target = Math.max((E.RESERVE_PC.stone || 0) * N, E.derivedInputTarget(vil.econ, 'stone'));
     let held = 0; for (const pid of vil.npcPids || []) held += state.deps.players?.get(pid)?.inventory?.stone || 0;
@@ -14137,65 +14226,95 @@ function t1365Work(npc, now) {
       const T66 = !!E.T1266_ORE_BODY;
       if (T66 && npc._t1266Stop && npc._t1266Stop.day === day) return (npc._t724T === 0 && _t1365Home(npc, '휴식')) ? 1 : _z('W29');   // 그날 멈췄다(쉰다 · 셈 칸은 관측 전용)
       const left = T66 ? Infinity : E.mineDemandLeft(vil.econ, (vil._t724HeldKg || 0) / kgU);
+      if (_hzOn && !T66) _hzX('mine');   // ★[T1399] 채광 수요 = 마을 몫(다른 몸이 캔다)
       if (!(left > 0)) return (npc._t724T === 0 && _t1365Home(npc, '휴식')) ? 1 : _z('W30');   // 그날 캘 만큼 캤다(퇴근 · 셈 칸 `P.done` 은 관측 전용)
       const _cc = _carryCfg(), cap = (_cc && _cc.CFG && _cc.CFG.CAP_KG) || 0;
       if (cap > 0 && (npc.inventory.ore_chunk || 0) >= cap) return _z('W31');
       const st = npc._t724Site;
       if (!st || st.day !== day || st.wait) return _z('W32');
       if (st.none) return _t1365Home(npc, '휴식') ? 1 : _z('W32b');   // 그날 조의 셀이 다 비었다(퇴근)
-      if (Math.hypot(npc.x - st.x, npc.y - st.y) > 44) return (npc._t724T === 0 && _t1365Same(npc, st.x, st.y, '출근')) ? 2 : _z('W33');   // 가는 중(셈 칸 `P.walk` · `P.vs` 는 관측 전용)
+      if (Math.hypot(npc.x - st.x, npc.y - st.y) > 44) { if (_hzOn) _hzP(st.x, st.y, 44, true); return (npc._t724T === 0 && _t1365Same(npc, st.x, st.y, '출근')) ? 2 : _z('W33'); }   // 가는 중(셈 칸 `P.walk` · `P.vs` 는 관측 전용)
+      if (_hzOn) _hzP(st.x, st.y, 44, false);
       if (T66 && state.dayMs && npc._t1266H !== Math.floor((now - state.epoch) * 24 / state.dayMs)) return _z('W34');
+      if (_hzOn && T66 && state.dayMs) _hzD(state.epoch + (npc._t1266H + 1) * state.dayMs / 24 - 1);
       if (!_t1365Same(npc, st.x, st.y, '채광') || !npc._t724T) return _z('W35');
+      if (_hzOn) _hzD(npc._t724T + S.MINE_SWING_MS / t1295S(npc) - 1);
       return Math.floor((now - npc._t724T) / (S.MINE_SWING_MS / t1295S(npc))) < 1 ? 1 : _z('W56');   // 한 타 전
     }
   }
   if (job === 'lumberjack' || job === 'miner' || job === 'forager') {   // 현장 출근 + 실물 채집(종전 갈래)
     const sites = _lifeJobSites(vil, day)[job];
     if (!sites || !sites.length) return _z('W36');
+    if (_hzOn && _warOutMul(vil) !== 1) _hzX('war');   // ★[T1399] 전쟁 위협 마을은 현장 목록을 그날 다시 고른다
     const ws = npc._workSite;
     if (!ws || ws.day !== day) return _z('W37');
-    if (Math.hypot(npc.x - ws.x, npc.y - ws.y) > 240) return _t1365Same(npc, ws.x, ws.y, '출근') ? 2 : _z('W57');
+    if (Math.hypot(npc.x - ws.x, npc.y - ws.y) > 240) { if (_hzOn) _hzP(ws.x, ws.y, 240, true); return _t1365Same(npc, ws.x, ws.y, '출근') ? 2 : _z('W57'); }
+    if (_hzOn) { _hzP(ws.x, ws.y, 240, false); if (npc._jobT) _hzD(npc._jobT); }
     return (npc._jobT && now < npc._jobT) ? 1 : _z('W58');   // 작업 스윙 페이싱
   }
   if (job === 'fisher') {
     const sites = _lifeJobSites(vil, day).fisher;
     if (!sites || !sites.length) return _z('W38');
+    if (_hzOn && _warOutMul(vil) !== 1) _hzX('war');
     if (_t1217On() && npc._t1217Stop && npc._t1217Stop.day === day) return _t1365Home(npc, '휴식') ? 1 : _z('W59');   // 그날 멈췄다(쉰다)
     const ws = npc._workSite;
     if (!ws || ws.day !== day) return _z('W39');
-    if (Math.hypot(npc.x - ws.x, npc.y - ws.y) > 130) return _t1365Same(npc, ws.x, ws.y, '출근') ? 2 : _z('W60');
-    if (E.fishActOn(vil.econ)) return _z('W40');   // 던짐 대본(라벨이 '드리움' ↔ '낚시' 로 오가며 시각을 쓴다) — 머묾이 아니다
+    if (Math.hypot(npc.x - ws.x, npc.y - ws.y) > 130) { if (_hzOn) _hzP(ws.x, ws.y, 130, true); return _t1365Same(npc, ws.x, ws.y, '출근') ? 2 : _z('W60'); }
+    if (_hzOn) _hzP(ws.x, ws.y, 130, false);
+    if (E.fishActOn(vil.econ)) return T1399_FISH ? _t1399Fish(vil, npc, now, day) : _z('W40');   // 던짐 대본(라벨이 '드리움' ↔ '낚시' 로 오가며 시각을 쓴다) — ★[T1399 ⓒ] 켬 = 기다림이면 3(머묾 + 라벨 시각)
     if (!E.T312_FISH_ACT && (!npc._lastFishAt || now - npc._lastFishAt > 8000)) return _z('W41');
     if (npc._fishSpotX == null || !npc._fishT || now >= npc._fishT) return _z('W42');
+    if (_hzOn) { _hzD(npc._fishT); if (!E.T312_FISH_ACT) _hzD(npc._lastFishAt + 8000); }
     return _t1365Same(npc, npc._fishSpotX, npc._fishSpotY, '낚시') ? 1 : _z('W61');   // 자리 머묾
   }
   if (job === 'hunter') {   // 뷰 밖 사냥터 수색(뷰 안은 짐승 두뇌가 쥔다 — 안 건넌다)
     const sites = _lifeJobSites(vil, day).hunter;
     if ((!npc._workSite || npc._workSite.day !== day) && sites && sites.length) return _z('W43');
+    if (_hzOn && _warOutMul(vil) !== 1) _hzX('war');
     const ws = npc._workSite; if (!ws) return _z('W44');
     if (state.deps.isPositionActive && state.deps.isPositionActive(npc.x, npc.y)) return _z('W45');
+    if (_hzOn) _hzVw = 1;   // ★[T1399] 뷰 — 결정 때마다 다시 본다(플레이어가 다가온다)
     if (npc._huntOn !== 0) return _z('W46');
-    if (Math.hypot(npc.x - ws.x, npc.y - ws.y) > 300) return _t1365Same(npc, ws.x, ws.y, null) ? 2 : _z('W62');
+    if (Math.hypot(npc.x - ws.x, npc.y - ws.y) > 300) { if (_hzOn) _hzP(ws.x, ws.y, 300, true); return _t1365Same(npc, ws.x, ws.y, null) ? 2 : _z('W62'); }
     if (E.T1195_HUNT_REAL && !npc._t1195At) return _z('W47');
+    if (_hzOn) { _hzP(ws.x, ws.y, 300, false); if (npc._jobT) _hzD(npc._jobT); }
     return (npc._jobT && now < npc._jobT) ? 1 : _z('W63');   // 수색 머묾
   }
   if (!LIFE_FIELD_JOBS.has(job)) {   // 회관 일(주민 · 장인)
-    if (T1196_KIND[job]) { const r = _t1365Art(vil, npc, now, job); if (r !== null) return r; }
+    if (T1196_KIND[job]) { if (_hzOn && _t1196On(vil)) _hzX('art'); const r = _t1365Art(vil, npc, now, job); if (r !== null) return r; }   // ★[T1399] 장인 일감 줄은 다른 몸이 쥔다(표 없음)
     const idx = _lifeOtherIndex(vil, npc);
     const wx = (vil.ccx + ((idx % 6) - 3)) * SZ + SZ / 2, wy = (vil.ccy + ((((idx / 6) | 0) % 6) - 3)) * SZ + SZ / 2;
     if (Math.hypot(npc.x - wx, npc.y - wy) > 44) return _z('W48');   // 출근(정체 가드 칸을 쓴다)
     if (npc._vgSince !== 0 || npc._vgGiveUp !== -1) return _z('W49');
     if (!npc._jobT || now >= npc._jobT) return _z('W50');
+    if (_hzOn) { _hzP(wx, wy, 44, false); _hzD(npc._jobT); }
     return npc._lifeAct === _otRole(vil.econ, idx) ? 1 : _z('W64');   // 회관 안 제자리
   }
   return _z('W51');
+}
+// ★[T1399 ⓒ] 던짐 대본 어부 결정(`npcLifeTick` 어부 갈래 그 차례) — 3 = 기다림(T1217 시간 칸 그대로 · 드리운 자리 그대로 · 입질 앞 · 자리 머묾 앞 · 목표 · 라벨 그 값) · 0 = 쓰기
+function _t1399Fish(vil, npc, now, day) {
+  if (_t1217On() && state.dayMs) {   // 판 시계 한 시간 칸 — 바뀌면 그 결정이 남은 값을 다시 잰다(쓰기)
+    const hk = Math.floor((now - state.epoch) * 24 / state.dayMs);
+    if (npc._t1217H !== hk) return _z('W65');
+    if (_hzOn) _hzD(state.epoch + (hk + 1) * state.dayMs / 24 - 1);
+  }
+  const F = _fishingMod(), c = npc._t340;
+  if (!F || !c) return _z('W66');   // 던짐(쓰기)
+  if (c.day !== day || Math.hypot(npc.x - c.x, npc.y - c.y) > F.CFG.REACH_PX || (state.deps.isWaterTileLocal && !state.deps.isWaterTileLocal(c.x, c.y))) return _z('W67');   // 자리를 옮겼다(쓰기)
+  if (!(now < c.biteAt)) return _z('W68');   // 입질 · 놓침(쓰기)
+  if (!T720_LON_DAY) { const _cc = _carryCfg(), _cap = (_cc && _cc.CFG && _cc.CFG.CAP_KG) || 0; if (_cap > 0 && (npc._t312Kg || 0) >= _cap) return _z('W69'); }   // 짐이 찼다(종전 시계 · 쓰기)
+  if (npc._fishSpotX == null || !npc._fishT || now >= npc._fishT) return _z('W70');   // 자리 머묾이 끝났다(쓰기)
+  if (!_t1365Same(npc, npc._fishSpotX, npc._fishSpotY, '낚시')) return _z('W71');
+  if (_hzOn) { _hzD(c.biteAt); _hzD(npc._fishT); _hzP(c.x, c.y, F.CFG.REACH_PX, false); _hzQ = 1; _hzQX = c.x; _hzQY = c.y; }
+  return 3;
 }
 // ★[T1365] 일터 깨움 표를 줄 만한 몸인가(존 표 줄) — 결정 대부분이 몸을 바꾸는 일터(채집 · 벌목 — 따기 · 베기 · 던짐 대본을 켠 마을의 어부)는
 //   판정을 불러도 거의 다 거짓이라 셈만 는다(틀 세계 `verify` 판: 채집 28.0 만 결정 중 무동작 0.9 만 · 어부 14.4 만 중 0.8 만 · 벌목 4.4 만 중 0.2 만). 거짓 = 표를 안 준다(종전 결정 문).
 function t1365Want(npc) {
   const j = npc.simJob;
   if (j === 'forager' || j === 'lumberjack') return false;
-  if (j === 'fisher') { const vil = state.byDbId && state.byDbId.get(npc.simVillageId); if (vil && vil.econ && _lifeEcon().fishActOn(vil.econ)) return false; }
+  if (j === 'fisher' && !T1399_FISH) { const vil = state.byDbId && state.byDbId.get(npc.simVillageId); if (vil && vil.econ && _lifeEcon().fishActOn(vil.econ)) return false; }   // ★[T1399 ⓒ] 켬 = 던짐 대본 어부도 표를 받는다
   return true;
 }
 // 장인(`_t1196Step`) — null = 그 갈래가 null 을 돌려줄 몸(회관 일로 흐른다) · 0 = 쓰기 · 1 = 기다림(제작 · 인출 · 저장 머묾)
@@ -15649,7 +15768,7 @@ function _lifeNeedClear(vil) {   // 랩 needLand 동형: 보즈럽 수요 게이
 function _lifeLiveFarmTile(vil, cx, cy, type) {   // 개간 완료 실체화: 영속 행 + 라이브 시각 타일(farmTilesInRect 규약 동형)
   vil._mCl = (vil._mCl || 0) + 1;   // ★[LIFE_* 튜닝 계측] 오늘 개간된 셀 수(실걸음·LOD 배치 공통 싱크)
   const rowid = state.db.insertVillageBuilding({ village_id: vil.dbId, type, cx, cy, floors: 0, data: null });
-  vil._farmSet.add(cx + ',' + cy); vil._potSet.delete(cx + ',' + cy); vil._frontier = null; vil._farmArr = null;
+  vil._farmSet.add(cx + ',' + cy); t1399Bump(vil); vil._potSet.delete(cx + ',' + cy); vil._frontier = null; vil._farmArr = null;
   if (T1238_TERR_V2) { _t1238FellCells(vil, new Set([cx + ',' + cy])); _t1238Use(vil, cx, cy); }   // ★[T1238 ①] 켬 = 밭을 낼 때 그 칸만 벤다(숲은 숲 그대로) · 새 밭 = 오늘 쓴 칸
   _t1053Deforest(vil, cx, cy, 0);   // ★[T1053] 랩 `clearCell` → `deforestCell`(개간 끝 = 그 셀의 서식지 파괴 · 끔 = 무동작)
   if (type === 'dryfield' && vil._drySet) vil._drySet.add(cx + ',' + cy);   // ★[생활 층 100% ③] 밭 구분 유지(작물 상태머신 field 판정)
@@ -15835,10 +15954,10 @@ function lifeRequestPlayerSite(vil, x, y, ownerId, ownerName) {
     { stage: 1, x0: x - 5, y0: y - 5, x1: x + 0, y1: y - 2, owner: ownerId, psite: 1 }, ownerId, ownerName || '의뢰 움집터', null) : null;
   if (bo) state.deps.broadcast({ type: 'building_added', building: bo });
   state.db.insertVillageBuilding({ village_id: vil.dbId, type: 'psitework', cx: x, cy: y, floors: 0, data: JSON.stringify({ owner: ownerId }) });
-  vil._psite = { cx: x, cy: y, stage: 1, bo, player: 1, owner: ownerId, ownerName: ownerName || null };
+  vil._psite = { cx: x, cy: y, stage: 1, bo, player: 1, owner: ownerId, ownerName: ownerName || null }; t1399Bump(vil);
   if (T1238_TERR_V2) _t1238StructAdd(vil, _t1238Lot(x, y), true);   // ★[T1238 ①] 의뢰 집 부지도 그 칸만 벤다
   _t1053Deforest(vil, x, y, L_DEFOREST_H);   // ★[T1053] 의뢰 집터도 집터 — 랩 집터 고름 그 식(같은 규칙 · 끔 = 무동작)
-  vil._psiteCrew = 0;
+  vil._psiteCrew = 0; t1399Bump(vil);
   console.log(`[${state.zoneId}] 🏠 [${vil.name}] 플레이어 의뢰 집터 @(${x},${y}) owner=${ownerId} — 여유 크루가 짓는다`);
   return { ok: true, site: vil._psite };
 }
@@ -16523,7 +16642,7 @@ function _lifeAddHouseSiteInner(vil) {
         { stage: 1, x0: x - 5, y0: y - 5, x1: x + 0, y1: y - 2, owner: 'npc', floor: 0 }, `npc_simvil_${vil.dbId}`, `${vil.name} 새 움집터`, null) : null;   // ★NPC 정본 렉트를 hut_site 규약에 실음(완공 기하 동일)
       if (bo) state.deps.broadcast({ type: 'building_added', building: bo });
       state.db.insertVillageBuilding({ village_id: vil.dbId, type: 'housesite', cx: x, cy: y, floors: 0, data: null });
-      vil._site = { cx: x, cy: y, stage: 1, bo };
+      vil._site = { cx: x, cy: y, stage: 1, bo }; t1399Bump(vil);
       _t1053Deforest(vil, x, y, L_DEFOREST_H);   // ★[T1053] 랩 집터 고름 → `deforestArea(±L_DEFOREST_H)`(끔 = 무동작)
       if (T1238_TERR_V2) _t1238StructAdd(vil, _t1238Lot(x, y), true);   // ★[T1238 ①] 켬 = 숲은 숲 그대로 — 집을 낼 때 그 부지만 벤다(정본 벌목 문 · 통나무는 곳간) · 사냥 장부 줄(T1053 — 나무 0) 뒤라 차례는 결과와 무관(test-deforest-game ⑤ 글자: 두 줄이 붙어 있다)
       _probe.siteLog.push(`${(state.world && state.world.day) | 0}:${vil.dbId}:${x},${y}:${strict ? 's' : 'l'}`);   // ★[T41] 비트 동일 대조용(선택된 자리만)
@@ -16537,7 +16656,7 @@ function _siteRise(vil, ps, stage) {
   if (!state.deps.liveBuildRow) return;
   const bo = state.deps.liveBuildRow('hut_site', (ps.cx - 2.5) * SZ, (ps.cy - 3.5) * SZ, { stage, x0: ps.cx - 5, y0: ps.cy - 5, x1: ps.cx + 0, y1: ps.cy - 2, owner: 'npc', floor: 0 }, `npc_simvil_${vil.dbId}`, `${vil.name} 새 움집터`, null);
   state.deps.broadcast({ type: 'building_added', building: bo });
-  vil._site = { cx: ps.cx, cy: ps.cy, stage, bo };
+  vil._site = { cx: ps.cx, cy: ps.cy, stage, bo }; t1399Bump(vil);
 }
 function _lifeAdvanceSite(vil, which) {   // 크루 1단계 완수 → 단계 전진(클라 hut_site 렌더가 1~3단계 표시) / 4→완공
   const s2 = (which === 'p') ? vil._psite : vil._site; if (!s2) return;
@@ -16583,9 +16702,9 @@ function _t400BuildDay(vil) {
   vil.econ._t400Live = true;   // econ 이 이 마을의 집 자재를 **추상 차감하지 않게**(차감은 아래 행위가 진다 · `buildActOn`)
   const day = state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0;
   const dbg = vil._t400Dbg = { day, crew: 0, trips: 0, perTrip: 0, took: 0, placed: 0, adv: 0, stall: 0, walkS: 0, dayS: 0, jobs: {} };
-  const s2 = vil._site; if (!s2) { vil._t400Crew = null; return dbg; }
+  const s2 = vil._site; if (!s2) { if (vil._t400Crew) t1399Bump(vil); vil._t400Crew = null; return dbg; }
   const crew = _t400Crew(vil); if (!crew.length) return dbg;
-  vil._t400Crew = crew.map((p) => p.pid);
+  vil._t400Crew = crew.map((p) => p.pid); t1399Bump(vil);
   dbg.crew = crew.length;
   for (const p of crew) { const j = p.simJob || '-'; dbg.jobs[j] = (dbg.jobs[j] || 0) + 1; }   // ③ 표 — 오늘 집을 지은 사람의 직업(그 사람은 제 일을 못 했다)
   const F = _t400From(vil, s2);
@@ -16673,12 +16792,12 @@ function _lifeCompleteHouse(vil, which) {   // 완공: 터 제거 + NPC 정본 6
   if (tiles.length) dp.broadcast({ type: 'buildings_spawn', buildings: tiles });
   if (isP) {
     (vil._pHouses = vil._pHouses || []).push({ cx, cy, data: JSON.stringify({ owner: ownerId }) });   // 관측용 명부(마을 침대 명부와 별개 — /lifedbg pHouses)
-    vil._psite = null; vil._psiteCrew = 0;
+    vil._psite = null; vil._psiteCrew = 0; t1399Bump(vil);
     lifeSiteReset(vil);   // ★[T41 ①] 의뢰 집터가 사라지면 그 반경 18 이 **다시 열린다** — 옛 거부가 뒤집히므로 캐시도 판다
     try { state.db.db.prepare("DELETE FROM village_buildings WHERE village_id=? AND type='psitework' AND cx=? AND cy=?").run(vil.dbId, cx, cy); } catch (e) {}
     console.log(`[${state.zoneId}] 🏠 [${vil.name}] 플레이어 의뢰 움집 완공 @(${cx},${cy}) owner=${ownerId}`);
   } else {
-    vil._site = null; vil._buildCrew = 0;
+    vil._site = null; vil._buildCrew = 0; t1399Bump(vil);
     noteVillageBuilt(vil, 'house');   // ★[T50] 사건 장부 접점 1줄 — 완공은 마을의 "일"이다
     console.log(`[${state.zoneId}] 🏘️ [${vil.name}] 생활층 신축 움집 완공 @(${cx},${cy})`);
   }
@@ -16943,7 +17062,7 @@ function _t707Roster(vil, rec) {
     if (rec.at.has(pid) || skip.has(pid)) continue;
     const p = pl && pl.get(pid);
     if (!p || _t707ActJob(vil, p.simJob)) continue;
-    rec.at.set(pid, rec.at.size); n--; got++;
+    rec.at.set(pid, rec.at.size); t1399Bump(vil); n--; got++;
   }
   return got;
 }
@@ -16952,7 +17071,7 @@ function _t707Open(c) {
   if (!vil || !state.dayMs || !state.world) return null;
   const D = state.world.day | 0;
   let rec = vil._mkt;
-  if (!rec || rec.d !== D) { rec = vil._mkt = { d: D, end: (T762_CARAVAN_BODY ? (T1253_CLOCK_FIX ? _t1253Now() : Date.now()) : econDayToMs(D)) + state.dayMs * _lifeVL().MKT_LINGER_DAY_FRAC, at: new Map(), cars: new Set(), body: -1 }; _t707Stat.markets++; }   // ★[T1253] 켬 = 몸 정본 장 끝은 econ 날 시계
+  if (!rec || rec.d !== D) { rec = vil._mkt = { d: D, end: (T762_CARAVAN_BODY ? (T1253_CLOCK_FIX ? _t1253Now() : Date.now()) : econDayToMs(D)) + state.dayMs * _lifeVL().MKT_LINGER_DAY_FRAC, at: new Map(), cars: new Set(), body: -1 }; _t707Stat.markets++; t1399Bump(vil); }   // ★[T1253] 켬 = 몸 정본 장 끝은 econ 날 시계
   if (rec.cars.has(c.id)) return rec;
   rec.cars.add(c.id); _t707Stat.joins++;
   _t707Stat.roster += _t707Roster(vil, rec);
@@ -17329,7 +17448,7 @@ function _lifeGranAdd(vil) {
     //   ★[T435] 켬이면 크루가 오늘 재료를 나르고, **재료가 다 놓였을 때만** 선다(끔 = 종전 그대로 날짜만).
     if (_t435On()) _t435GranaryDay(vil);
     if (day >= vil._granPend.day && (!_t435On() || _t435Ready(vil))) {
-      const p = vil._granPend; vil._granPend = null; _lifeCompleteGranary(vil, p.cx, p.cy);
+      const p = vil._granPend; vil._granPend = null; t1399Bump(vil); _lifeCompleteGranary(vil, p.cx, p.cy);
       if (vil._t435Sum) vil._t435Sum.built++;
     }
     return;
@@ -17346,7 +17465,7 @@ function _lifeGranAdd(vil) {
     ownSet: vil._terrSet, farmSet, houses: vil._houseCells, gran: vil._granList,
   });
   if (!g) return;   // 링 여력 없음 — 관용(시딩 '자리 없음 스킵'과 동일)
-  vil._granPend = { cx: g.cx, cy: g.cy, day: day + G_BUILDD };
+  vil._granPend = { cx: g.cx, cy: g.cy, day: day + G_BUILDD }; t1399Bump(vil);
   if (T1238_TERR_V2) _t1238StructAdd(vil, _t1238GranCells(g.cx, g.cy), true);   // ★[T1238 ①] 곳간 터(5×3)만 벤다
   _t1053Deforest(vil, g.cx, g.cy, L_DEFOREST_GRAN);   // ★[T1053] 랩 곳간 자리 → `deforestArea(±3)`(끔 = 무동작)
   console.log(`[${state.zoneId}] 🏘️ [${vil.name}] 곳간 증설 착공 @(${g.cx},${g.cy}) — 식량 ${Math.round(food)} → 목표 ${_gn}동(현재 ${vil._granList.length}), ${G_BUILDD}일 후 완공`);
@@ -17371,7 +17490,7 @@ function _lifeCompleteGranary(vil, cx, cy) {
     if (made.length) dp.broadcast({ type: 'buildings_spawn', buildings: made });
   }
   state.db.insertVillageBuilding({ village_id: vil.dbId, type: 'granary', cx, cy, floors: 1, data: null });
-  vil._granList.push({ cx, cy });
+  vil._granList.push({ cx, cy }); t1399Bump(vil);
   if (T1238_TERR_V2) _t1238StructAdd(vil, _t1238GranCells(cx, cy), true);   // ★[T1238] 쓰는 칸(이미 벤 칸이면 표만)
   noteVillageBuilt(vil, 'granary');   // ★[T50] 사건 장부 접점 1줄
   console.log(`[${state.zoneId}] 🏘️ [${vil.name}] 곳간 증설 완공 @(${cx},${cy}) — 총 ${vil._granList.length}동`);
@@ -18525,7 +18644,7 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
   // ★[LIFE_* 튜닝 계측] 하루 누계를 '어제치'로 확정하고 리셋 — /lifedbg가 dCl/dSt/dTk로 노출한다.
   vil._dCl = vil._mCl || 0; vil._dSt = vil._mSt || 0; vil._dTk = vil._mTk || 0;
   vil._mCl = 0; vil._mSt = 0; vil._mTk = 0;
-  vil._clearCrew = 0; vil._buildCrew = 0; vil._claim = new Set(); vil._frontDay = -1;
+  vil._clearCrew = 0; vil._buildCrew = 0; t1399Bump(vil); vil._claim = new Set(); vil._frontDay = -1;
   // ★★[T312] **낮이 끝나면 들고 있던 것을 곳간에 넣는다**(캐논 ⓐ — 귀환 시 입고).
   //   ⚠여기가 하루의 경계다. 짐이 차서 이미 돌아간 사람은 손이 비어 있어 이 줄이 무해하다.
   //   ⚠그리고 **관측자 없는 마을**(몸이 안 걷는 마을)의 어부도 여기서 **같은 함수**로 하루를 푼다 —
@@ -18842,8 +18961,8 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
   // ★[T146] 사냥 하루 정산 — 개체군 회복·차감·부존 갱신(랩 `lifeDayAll` 동형 · 값 그대로)
   try { const _pz0 = _t523Pause; yield* _lifeGameDaySteps(vil, state.world.day | 0); const _pz = _t523Pause - _pz0; _lt += _pz; _lt0 += _pz; } catch (e) { console.error(`[${state.zoneId}] 사냥 하루 틱 실패(${vil.name}):`, e.message); }
   _sub('gran');
-  vil._psiteCrew = 0;
-  for (const pid of vil.npcPids) { const p = state.deps.players.get(pid); if (p && p._lifeTask) { if (p._lifeTask.k === 'clear') { vil._claim.add(p._lifeTask.cx + ',' + p._lifeTask.cy); vil._clearCrew++; } else if (p._lifeTask.k === 'build') { if (p._lifeTask.ps) vil._psiteCrew++; else vil._buildCrew++; } } }
+  vil._psiteCrew = 0; t1399Bump(vil);
+  for (const pid of vil.npcPids) { const p = state.deps.players.get(pid); if (p && p._lifeTask) { if (p._lifeTask.k === 'clear') { vil._claim.add(p._lifeTask.cx + ',' + p._lifeTask.cy); vil._clearCrew++; } else if (p._lifeTask.k === 'build') { if (p._lifeTask.ps) vil._psiteCrew++; else vil._buildCrew++; } } }   t1399Bump(vil);   // ★[T1399] 크루 다시 셈
   _sub('pids');
   if (T687_ON) { const _pz0 = _t523Pause; yield; const _pz = _t523Pause - _pz0; _lt += _pz; _lt0 += _pz; }   // ★[T687] 쉼표(차례 그대로 · 쉰 시간은 스톱워치에서 뺀다)
   if (vil._pendSite && !vil._site) {   // 재부팅 복원: 진행 중이던 터 재실체화(단계 1부터 — 관용)
@@ -18987,8 +19106,8 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   if (npc._half && dayFrac >= SCH_HALF_R) {
     if (!(npc._lifeTask && npc._lifeTask.k === 'build')) {
       _lifeDropTask(vil, npc);
-      if (vil._site && !_lifeEcon().T400_BUILD_ACT) { vil._buildCrew++; npc._lifeTask = { k: 'build', px: (vil._site.cx - 2.5) * SZ, py: (vil._site.cy - 0.5) * SZ, prog: 0 }; npc._workT = now; }   // ★[T400] 켬이면 징발 0 — 집은 크루 둘이 나르고 짓는다
-      else if (vil._psite) { vil._psiteCrew = (vil._psiteCrew || 0) + 1; npc._lifeTask = { k: 'build', ps: 1, px: (vil._psite.cx - 2.5) * SZ, py: (vil._psite.cy - 0.5) * SZ, prog: 0 }; npc._workT = now; }   // ★[11차 T4] 마을 일감이 없을 때만 의뢰 집터로(마을 우선 — 랩 ④ 규약)
+      if (vil._site && !_lifeEcon().T400_BUILD_ACT) { vil._buildCrew++; t1399Bump(vil); npc._lifeTask = { k: 'build', px: (vil._site.cx - 2.5) * SZ, py: (vil._site.cy - 0.5) * SZ, prog: 0 }; npc._workT = now; }   // ★[T400] 켬이면 징발 0 — 집은 크루 둘이 나르고 짓는다
+      else if (vil._psite) { vil._psiteCrew = (vil._psiteCrew || 0) + 1; t1399Bump(vil); npc._lifeTask = { k: 'build', ps: 1, px: (vil._psite.cx - 2.5) * SZ, py: (vil._psite.cy - 0.5) * SZ, prog: 0 }; npc._workT = now; }   // ★[11차 T4] 마을 일감이 없을 때만 의뢰 집터로(마을 우선 — 랩 ④ 규약)
       else {
         // ★[곳간②] 퇴근길: 든 짐은 곳간에 넣고, 빈손이면 재고에서 하루치를 꺼내 집으로 나른다
         if (npc._granD !== bday) {   // ★오늘 인출을 마쳤으면 곳간 용무 종료 — 저장↔인출 왕복 금지(랩 toHome 이탈 대응)
@@ -19015,7 +19134,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
       _lifeLiveFarmTile(vil, t.cx, t.cy, t.f === '밭' ? 'dryfield' : 'farmland');
       if (_t1243On()) { const _m = _t1221ClearS(vil, t.cx + ',' + t.cy); _t1243CStat.bodyCells++; _t1243CStat.bodyMin += _m; if (_t1243ClearedM2(vil, t.cx + ',' + t.cy) > 0) _t1243CStat.deducted++; }   // ★[T1243 추신 5] 계측
       if (npc.simJob === 'farmer') _t1212Note(npc, _t1221On() ? _t1221ClearS(vil, t.cx + ',' + t.cy) : 1);   // ★[T1212 ②] 몸이 한 개간 칸(그날 몫 · ★T1221 켬 = 초)
-      vil._claim.delete(t.cx + ',' + t.cy); vil._clearCrew = Math.max(0, vil._clearCrew - 1); npc._lifeTask = null;
+      vil._claim.delete(t.cx + ',' + t.cy); vil._clearCrew = Math.max(0, vil._clearCrew - 1); t1399Bump(vil); npc._lifeTask = null;
     } else if (t.k === 'build' && t.prog >= dayMs / LIFE_STAGE_PDAY) {
       t.prog = 0; _lifeAdvanceSite(vil, t.ps ? 'p' : null);
       if (!(t.ps ? vil._psite : vil._site)) npc._lifeTask = null;   // 완공 시 해산(카운터는 complete가 리셋)
@@ -19032,19 +19151,19 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   if (isFarmer && vil._clearCrew < LIFE_CREW && (T1294_LIFE_MEMO ? _t1294NeedClear(vil, now) : _lifeNeedClear(vil))) {   // ★[T1294 ⓑ 켬] 같은 틱(같은 `now`)의 마을 답 하나
     const fr = _lifeFrontier(vil); let best = null, bd = 1e9;
     for (const c2 of fr) { const k = c2.cx + ',' + c2.cy; if (vil._claim.has(k) || vil._farmSet.has(k)) continue; const dx = c2.cx * SZ + 16 - npc.x, dy = c2.cy * SZ + 16 - npc.y, d2 = dx * dx + dy * dy; if (d2 < bd) { bd = d2; best = c2; } }
-    if (best) { vil._claim.add(best.cx + ',' + best.cy); vil._clearCrew++; npc._lifeTask = { k: 'clear', cx: best.cx, cy: best.cy, f: best.f, px: best.cx * SZ + SZ / 2, py: best.cy * SZ + SZ / 2, prog: 0 }; npc._workT = now;
+    if (best) { vil._claim.add(best.cx + ',' + best.cy); vil._clearCrew++; t1399Bump(vil); npc._lifeTask = { k: 'clear', cx: best.cx, cy: best.cy, f: best.f, px: best.cx * SZ + SZ / 2, py: best.cy * SZ + SZ / 2, prog: 0 }; npc._workT = now;
       npc.behavior = 'wander'; npc.targetX = npc._lifeTask.px; npc.targetY = npc._lifeTask.py; npc.gatherTarget = null; _lifeAct(npc, '출근'); return true; }   // ★배정 틱에도 즉시 이동 목표(미세팅 시 신선 NPC target NaN)
   }
   if (_lifeEcon().T400_BUILD_ACT) { if (_t400BodyStep(vil, npc, now)) return true; }   // ★[T400] 오늘의 크루는 곳간 ↔ 집터를 오간다(보여 주기만)
   else if (vil._site && vil._buildCrew < LIFE_CREW) {
-    vil._buildCrew++; npc._lifeTask = { k: 'build', px: (vil._site.cx - 2.5) * SZ, py: (vil._site.cy - 0.5) * SZ, prog: 0 }; npc._workT = now;   // 남측 마당에서 시공
+    vil._buildCrew++; t1399Bump(vil); npc._lifeTask = { k: 'build', px: (vil._site.cx - 2.5) * SZ, py: (vil._site.cy - 0.5) * SZ, prog: 0 }; npc._workT = now;   // 남측 마당에서 시공
     npc.behavior = 'wander'; npc.targetX = npc._lifeTask.px; npc.targetY = npc._lifeTask.py; npc.gatherTarget = null; _lifeAct(npc, '출근'); return true;   // ★배정 틱 즉시 이동 목표
   }
   // ★★[11차 T4] 여유 크루만 플레이어 의뢰 집터로 — 마을 집터가 **포화(LIFE_CREW)된 뒤**에야 여기 닿는다.
   //   서버의 하루 진척은 min(LIFE_CREW,pop)×LIFE_STAGE_PDAY로 상한이라, 그 위의 크루는 마을에 붙어도 진척이 0이다.
   //   즉 여기로 돌리는 노동은 마을에서 뺏는 게 아니라 **어차피 버려질 잉여**다(랩 10차 실측으로 확립된 규칙).
   if (vil._psite && (vil._psiteCrew || 0) < LIFE_CREW) {
-    vil._psiteCrew = (vil._psiteCrew || 0) + 1;
+    vil._psiteCrew = (vil._psiteCrew || 0) + 1; t1399Bump(vil);
     npc._lifeTask = { k: 'build', ps: 1, px: (vil._psite.cx - 2.5) * SZ, py: (vil._psite.cy - 0.5) * SZ, prog: 0 }; npc._workT = now;
     npc.behavior = 'wander'; npc.targetX = npc._lifeTask.px; npc.targetY = npc._lifeTask.py; npc.gatherTarget = null; _lifeAct(npc, '출근'); return true;
   }
@@ -19573,7 +19692,7 @@ function chiefGreetAsk(vid, pid) {
   const p = state.deps.players.get(pid);
   const e = { pid, t0: Date.now(), wAt: 0, gAt: 0, bAt: 0, end: '', chief: ch.pid,
     d0: p ? Math.round(Math.hypot(ch.x - p.x, ch.y - p.y)) : null };
-  (vil._t529Q || (vil._t529Q = [])).push(e);
+  (vil._t529Q || (vil._t529Q = [])).push(e); t1399Bump(vil);
   const L = vil._t529Log || (vil._t529Log = []);
   L.push(e); if (L.length > 64) L.shift();
   return true;
@@ -19599,7 +19718,7 @@ function _t529Step(vil, npc, now) {
   while ((e = vil._t529Q[0])) {   // 떠난 사람은 줄에서 치운다
     const q = pl.get(e.pid);
     if (q && !q.isNpc && !q.handingOff) break;
-    e.end = 'gone'; vil._t529Q.shift();
+    e.end = 'gone'; vil._t529Q.shift(); t1399Bump(vil);
   }
   if (!e) { if (mine) npc._lifeTask = null; return false; }
   const p = pl.get(e.pid);
@@ -19643,7 +19762,7 @@ function _t529Step(vil, npc, now) {
         dBed: npc.npcBedX != null ? Math.round(Math.hypot(npc.x - npc.npcBedX, npc.y - npc.npcBedY)) : null,
         dHome: npc.npcHomeX != null ? Math.round(Math.hypot(npc.x - npc.npcHomeX, npc.y - npc.npcHomeY)) : null, reach };
     }
-    vil._t529Q.shift(); npc._lifeTask = null;
+    vil._t529Q.shift(); t1399Bump(vil); npc._lifeTask = null;
     if (!e.gAt && e.asked) { try { if (state.deps.chiefGreet) state.deps.chiefGreet(p, vil.dbId, null); } catch (err) {} e.late = 1; }   // 미뤄 둔 거리 문 인사(종전 한 통 · `by` 없음)
     return false;   // 할 일 끝 — 이 틱부터 일과
   }
@@ -20855,7 +20974,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   t1372PidAt: (v, i) => { const vil = state.byDbId && state.byDbId.get(v); return vil && vil.npcPids ? (vil.npcPids[i] ?? null) : null; },   // ★[T1372 ⓒ] 존이 벽 세대를 저장 값으로 되돌렸다 — 닿음 기억 도장은 저장 그대로(T1340 ③′ 다시 찍기 안 함)
   t742Bind, t742On: () => T742_ZONE, t742Stat: () => _t742Stat,   // ★[T742] 존 · 모듈 메모리 영속(손잡이 · 거는 문 · 계측)   // ★[T740] 메모리 전용 마을 칸 영속(손잡이 · 계측)
   T1241_SCH: { SCH_HALF_R, SCH_FARMW_R },   // ★[T1241] 사건 시뮬이 걸음 토막 끝을 일과 문턱에 맞춘다(읽기만 · 사본 0)
-  init, onGameTick, deferLate, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT, T871_ONE_CLOCK, t1295S, t1295Wp, t1295Ph, t1337Sleep, t1337Still, t1348Farm, t1365Work, t1365Why, t1365Want, SCH_REST_IN, _t1295Stat, T1295_FARM_CLOCK, T1295_GOURD, T1316_BODY_CLOCK, T1316_SUBSTEP, t1316K, T1326_HUNT_CLOCK, T1351_MINE_CLOCK, t1351MineOn: (vil) => _t1351MineOn(vil),   // ★[T871] 시계 하나 손잡이(하네스 `test-one-clock` 이 읽는다)
+  init, onGameTick, deferLate, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT, T871_ONE_CLOCK, t1295S, t1295Wp, t1295Ph, t1337Sleep, t1337Still, t1348Farm, t1365Work, t1365Why, t1365Want, t1399Bump, t1399Rec, t1399Take, t1399Still, t1399Why, SCH_REST_IN, _t1295Stat, T1295_FARM_CLOCK, T1295_GOURD, T1316_BODY_CLOCK, T1316_SUBSTEP, t1316K, T1326_HUNT_CLOCK, T1351_MINE_CLOCK, t1351MineOn: (vil) => _t1351MineOn(vil),   // ★[T871] 시계 하나 손잡이(하네스 `test-one-clock` 이 읽는다)
  
   chiefOf, chiefGreetAsk, chiefGreetHas, chiefWalking, kinWrite,   // ★[T785] 마을 칸 쓰기(회관 행)
   bedSlotOf,   // ★[T540] 관측 — 침대 슬롯·집(`/walkdbg`)   // ★[T529] 촌장이 온다(손잡이 `T529_CHIEF_WALKS` · 읽는 곳 하나)
