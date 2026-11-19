@@ -17232,12 +17232,17 @@ function* _lifeGameDaySteps(vil, day) {
 //   저장 = 존 DB 몸 표(`zone-local-db t1331Save` — 날마다 그날 첫 마을이 어제 몫을 · 종료 때 한 번) · 되읽기 = 부팅(`_t1331Boot` — T728 복원 뒤).
 //   ⚠끔 = 이 절의 함수가 한 번도 안 불린다(부르는 자리 넷 — `_lifeGameDaySteps` 첫 줄 · `_t1053Deforest` 첫 줄 · 부팅 · 종료 — 다 `if (T1331_BEAST_BODY)` 안).
 const T1331_BEAST_BODY = process.env.T1331_BEAST_BODY === '1';
+// ★★[T1359 2026-11-19 · 지시 T1359 할 일 3 · T1331 회부 2] **사냥 빠르기 — 몸 하나 = 한 마리 읽기** — 손잡이 `T1359_HUNT_BODY`(끔 기본 · `'1'` 만 켬 · 몸 판 `T1331_BEAST_BODY` 켬 안에서만 읽힌다).
+//   몸 판 사냥꾼 하루 몫은 랩 `huntTake(밀도)`(가득 찬 숲 4 마리/사람/날 · 장부 개체) ÷ 환율이다 — 환율 5,000 이면 0.0008 몸/날(한 마리 1,250날 · T1331 400날 사냥 죽음 0).
+//   지금 코드의 다른 읽기(T158 · T1195 `_huntBud` = 랩 `huntTake` 를 **온전한 마리**로 · 고기 = 마리 × kg)를 몸에 그대로 쓰면 몫 = `huntTake(밀도)` 몸/날(÷ 환율 없음).
+//   켬 = 그 읽기 · 끔 = ÷ 환율(종전 바이트). 새 수 0 — 두 읽기 다 있는 식이다(어느 쪽이 사냥 빠르기인가는 판정 · 고증 사냥 성공률은 회부).
+const T1359_HUNT_BODY = process.env.T1359_HUNT_BODY === '1';
 let _t1331W = null;
 const _t1331Stat = { days: 0, mig: 0, migBodies: 0, cpuUs: 0, cpuMax: 0, saves: 0, saveUs: 0, loads: 0, deforest: 0, huntKill: 0, resettle: 0, breed: 0, starve: 0, bootWhy: '' };
 function _t1331() {
   if (_t1331W) return _t1331W;
   const sc = parseFloat(process.env.T1331_BEAST_SCALE);
-  _t1331W = require('./beast-body').create({ L_GAMEMAX, L_GAMER, huntTake, species: _t1195Prey(), scale: sc > 0 ? sc : 0,
+  _t1331W = require('./beast-body').create({ L_GAMEMAX, L_GAMER, huntTake, species: _t1195Prey(), scale: sc > 0 ? sc : 0, huntBody: T1359_HUNT_BODY,
     blocked: (cx, cy) => { const ta = state.ta; return !ta || !!(ta.isRock && ta.isRock(cx, cy)) || !!(ta.isBlocked && ta.isBlocked(cx, cy)); } });
   return _t1331W;
 }
@@ -20353,7 +20358,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   // Stage 4A — zone.js 소비: 농지 lazy 실물화 / welcome 영토 페이로드 / 레거시 디듀프 판정
   farmTilesInRect, clientVillages, isLegacyVillageClaimed,
   // ★[T146] 사냥 개체군 — 정본을 그대로 내준다(하네스·wildlife·zone 이 이것을 부른다 · 사본 0)
-  T1331_BEAST_BODY, t1331Stat, _t1331Probe: { w: () => _t1331W, day: (vil, day) => _t1331DaySteps(vil, day), save: () => _t1331Save(), boot: () => _t1331Boot(), reset: () => { _t1331W = null; for (const k of Object.keys(_t1331Stat)) _t1331Stat[k] = typeof _t1331Stat[k] === 'number' ? 0 : ''; } },   // ★[T1331] 짐승 몸(하네스 `test-t1331-beast-body` · 탐침 · 내보내기만)
+  T1331_BEAST_BODY, T1359_HUNT_BODY, t1331Stat, _t1331Probe: { w: () => _t1331W, day: (vil, day) => _t1331DaySteps(vil, day), save: () => _t1331Save(), boot: () => _t1331Boot(), reset: () => { _t1331W = null; for (const k of Object.keys(_t1331Stat)) _t1331Stat[k] = typeof _t1331Stat[k] === 'number' ? 0 : ''; } },   // ★[T1331] 짐승 몸(하네스 `test-t1331-beast-body` · 탐침 · 내보내기만)
   gameRichAt, gameRichSize, huntKillAt, huntTake, huntTakeAt, huntHunters, huntVisLeft, _t158, huntDeforest, _t1195HuntIn, t1195Stat: () => JSON.parse(JSON.stringify(_t1195Stat)), t1225Stat, t1225Keep, t1225SiteTable, _t1225Probe: { shared: _t1217Shared, rho: (vil, day) => _t1225Rho(vil, day), share: (F, cx, cy, vil) => _t1225Share(F, cx, cy, vil), get mode() { return T1225_MODE; } },   // ★[T1225] 물속 자본(계측 · 하네스)
   t1202Stat: () => JSON.parse(JSON.stringify(_t1202Stat)), _t1202Roster, _t1202ClockShort, _t1202FishBatch, t1217Stat: () => JSON.parse(JSON.stringify(Object.assign({}, _t1217Stat, { samples: _t1217Samp }))), _t1217FishDay, _t1217Day, _t1217HourFish, _t1217BodyKeep, _t1217Clock, _t1217BucketK, _t1217On, t1217SharedTable, t1266Stat, _t1266Keep, _t1271Day, _t1271OreCells, _t1277OreSlots, MINE_TEAM, t1271Stat, _t1217Choose, _t1218Kps, _t1218HourExpect, _t1218BodyWait, _t1053Deforest, _t1053Developed, t1053Stat: () => Object.assign({}, _t1053Stat), get T1053_DEFOREST_GAME() { return T1053_DEFOREST_GAME; }, L_DEFOREST_H, L_DEFOREST_GRAN, _gameKey, _cellOfPx, _bandMinCells, _bandFloorFill, _t146Band, _t146BandAll, _t146BuildMs, _huntBandBuild, _lifeGameDay,
   L_GAMEMAX, L_GAMER, L_HUNT, L_GAMEHALF, _t146,

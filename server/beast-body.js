@@ -263,7 +263,7 @@ function create(opt) {
   function hunt(v, p, wx, wy) {
     const K = Kof(v), n = nOf(v);
     const g = K > 0 ? L_GAMEMAX * Math.min(1, n / K) : 0;
-    const take = opt.huntTake(g) / SCALE;
+    const take = opt.huntTake(g) / (opt.huntBody ? 1 : SCALE);   // ★[T1359] `huntBody` = 몸 하나 = 한 마리 읽기(랩 `huntTake` 를 몸 수로 · T158 · T1195 `_huntBud` 의 온전한 마리) · 끔 = ÷ 환율(장부 개체 읽기 · 종전)
     p._t1331Acc = (p._t1331Acc || 0) + take; W.st.huntAcc += take;
     if (p._t1331Acc < 1) return null;
     const b = n ? _nearestOf(v, wx, wy, (x) => !x.mat && !x.tr) : null;
