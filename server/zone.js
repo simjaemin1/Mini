@@ -5481,6 +5481,12 @@ const T1365_WORK = T1322_PF && SS.WORK2_ON, T1365_VERIFY = T1365_WORK && SS.WORK
 //   켬 = 한 번 읽어 두 판정이 같이 쓴다(`TB.outAt`). 몸마다 멈출 수 있음은 그대로다. 가상 시계 판에서는 틱 안 시각이 한 값이라 같은 답이고,
 //   실시간에서는 두 읽기 사이(수십 ns)에 ms 가 넘어가는 경우만 공용 몫 판정이 그 ms 앞 시각으로 난다(실시간 멈춤 자리는 본디 판마다 다르다).
 const T1365_CLOCK = process.env.T1365_CLOCK !== '0';
+// ★[T1399 진단 · 손잡이 `T1399_DIAG=1`(끔 기본 · 관측 전용 — 켬 판은 바이트 견줌 대상이 아니다)] 결정 순회 몸 하나의 시간을 직업 · 갈래로 가른다(`process.hrtime` · 끝날 때 `T1399_DIAG_OUT`(%p) 에 JSON)
+//   갈래: 'stand'(표 1 · 2 서 있는 몸 · 결정 없음) · 'walk'(표 3 걷는 몸 커널) · 'sleepD'(잠 깨움 결정 건넘) · 'workD'(일터 깨움 결정 건넘) · 'woke'(표를 내리고 종전 몸통) · 'dec'(종전 몸통 · 결정 함) · 'step'(종전 몸통 · 결정 없음) · 'idle'(뷰 밖 멈춤 등)
+const T1399_DIAG = process.env.T1399_DIAG === '1';
+const _t1399D = { ns: {}, n: {} }; let _t1399Rt = ''; const _t1399Clk = (T1399_DIAG && global.__t1399Clk) || process.hrtime.bigint;   // 진짜 시계(프리로드가 가상 시계 앞에서 붙잡는다)
+if (T1399_DIAG && process.env.T1399_DIAG_OUT) { const _f = process.env.T1399_DIAG_OUT.replace('%p', String(process.pid)); const put = () => { try { require('fs').writeFileSync(_f, JSON.stringify(_t1399D)); } catch (e) {} }; setInterval(put, 30000).unref(); process.on('exit', put); }
+function _t1399Add(job, rt, ns) { const k = (job || '-') + '|' + rt; _t1399D.ns[k] = (_t1399D.ns[k] || 0) + ns; _t1399D.n[k] = (_t1399D.n[k] || 0) + 1; }
 function _t1348FGrant(npc, s) {
   if (!npc.simVillageId || !npc.simJob) return;
   if (npc.simJob === 'farmer' ? !(T1348_WORK && SimVillages.t1348Farm) : !(T1365_WORK && SimVillages.t1365Work)) return;   // ★[T1365] 농부 밖 일터도
@@ -5506,7 +5512,7 @@ function _t1348Dec(s, now) {
     else { const nz = _t1365Noop(p, snap); J[nz ? 0 : 1]++; SS.stat.fstill++; if (nz) { const M = SS.stat.fmiss, kk = p.simJob + ':' + (p._lifeAct || '-') + ':' + (SimVillages.t1365Why ? SimVillages.t1365Why() : ''); M[kk] = (M[kk] || 0) + 1; } }   // 놓친 무동작(직업 : 라벨 — 다음 판정 감 · 셈 전용)
     return false;
   }
-  A.NDA[s] = nda; A.DK[s] = now;
+  A.NDA[s] = nda; A.DK[s] = now; if (T1399_DIAG) _t1399Rt = 'workD';
   if (farm) { SS.stat.fskip++; if (k === 1) SS.stat.fk1++; else SS.stat.fk2++; } else { SS.stat.xskip++; if (k === 1) SS.stat.xk1++; else SS.stat.xk2++; }
   return true;
 }
@@ -5611,7 +5617,7 @@ function _t1337Dec(s, now) {
   let nda = now + 500 + _t1337Dice.next() * 1000;
   const sc = A.T95[s]; if (sc > 1) nda = now + (nda - now) / sc;
   if (T1337_VERIFY) { const p = SS.own[s]; _t1337Pend = { p, nda, t: _tick.n, snap: _t1337Snap(p) }; SS.stat.dvq++; return false; }   // 견줌 = 실제로 돌린다(아래 `_t1337Cmp`)
-  A.NDA[s] = nda; A.DK[s] = now; SS.stat.dskip++;
+  A.NDA[s] = nda; A.DK[s] = now; SS.stat.dskip++; if (T1399_DIAG) _t1399Rt = 'sleepD';
   return true;
 }
 const _T1337_ST = new Set(['_t540StepAt', '_pathAt', '_stuckPos', 'nextDecisionAt', '_t540DecAt', '_sh']);
@@ -17413,9 +17419,11 @@ setInterval(() => {
   TB.lateBegin();   // ★[T695] 결정 문 머리 — 여기부터는 결정 몫을 남기지 않는다(끔이면 무동작)
   // ★[T689] 몸통 하나(`_decOne` — 종전 몸통 글자 그대로를 `do … while (false)` 로 감쌌다 · `continue` = 이 사람 끝 · `break` = 멈춤(`_stopAt` 이 선다)) ·
   //   끔 = 같은 `for…of` + 멈추면 `break` · 켬 = `Set.forEach`(살아 있는 순회 — 같은 차례) + 멈춤 깃발(멈춘 뒤 사람은 아무것도 안 묻는다 — 시계도 안 읽는다) · 반복 결과 객체 0
-  const _decOne = (pid, _sL) => { do {   // ★[T1348 ⓐ] `_sL` = 거울 고리가 넘긴 칸(없으면 종전처럼 묻는다)
+  const _decOneD = (pid, _sL) => { const t0 = _t1399Clk(); _t1399Rt = ''; const r = _decOne0(pid, _sL); if (_t1399Rt) { const s = _sL !== undefined ? _sL : SS.slot(pid), p = s >= 0 ? SS.own[s] : null; _t1399Add((worldPhase(now) < WORLD.dayPhaseRatio ? 'D' : 'N') + ':' + (p && p.simJob), _t1399Rt, Number(_t1399Clk() - t0)); } return r; };   // ★[T1399 진단] 몸 하나 시간(갈래 · 직업)
+  const _decOne0 = (pid, _sL) => { do {   // ★[T1348 ⓐ] `_sL` = 거울 고리가 넘긴 칸(없으면 종전처럼 묻는다)
     if (!_curHit) { if (pid !== _npcCursor) continue; _curHit = true; }   // 지난 틱에 **못 한** 그 사람부터 한다
-    if (T1322_PF) { const _s22 = _sL !== undefined ? _sL : SS.slot(pid); if (_s22 >= 0 && _t1322Skip(_s22, pid, now)) { if (T1241_PROBE && _desClk) { _desStat.steps++; _desStat.nStep++; } else if (_T1241) _desStat.steps++; continue; } }   // ★[T1322] 서 있는 몸 — 몸을 안 열고 건넌다(걸음 셈은 종전대로 · 위 `_t1322Skip`)
+    if (T1322_PF) { const _s22 = _sL !== undefined ? _sL : SS.slot(pid); if (T1399_DIAG && _s22 >= 0 && SS.A.TK[_s22]) _t1399Rt = SS.A.TK[_s22] === 3 ? 'walk' : 'stand'; if (_s22 >= 0 && _t1322Skip(_s22, pid, now)) { if (T1241_PROBE && _desClk) { _desStat.steps++; _desStat.nStep++; } else if (_T1241) _desStat.steps++; continue; } }   // ★[T1322] 서 있는 몸 — 몸을 안 열고 건넌다(걸음 셈은 종전대로 · 위 `_t1322Skip`)
+    if (T1399_DIAG && _t1399Rt) _t1399Rt = 'woke';
     const npc = players.get(pid);
     if (!npc || npc.hp <= 0) continue;
     // Phase 4d-9 fix: canadia NPC는 active chunk 체크 우회 (모든 마을 동시 시뮬)
@@ -17429,6 +17437,7 @@ setInterval(() => {
     //     예산을 늘리지도, 새로 걸지도 않는다: 놓는 수가 곧 설계 판정이라 PM 몫이다(T316 §3 회부).
     if (!npc.canadiaVillage && !_t316WalkAlways(npc) && !isPositionActive(npc.x, npc.y)) { npc.vx = 0; npc.vy = 0; continue; }
     if (T1365_CLOCK ? ((_tn = Date.now()) - _decT0 > 15 || TB.outAt(15, 'decide', _tn)) : ((Date.now() - _decT0) > 15 || TB.out(15, 'decide'))) { _stopAt = pid; break; }   // ★[T1365 ⓒ] 켬 = 시계를 한 번 읽어 두 판정이 같이 쓴다(가상 시계 판은 같은 값 · 실시간은 같은 ms 안)   // ★[T687] 켬 = 이 틱 공용 몫이 바닥나도 여기서 멈춘다(커서 그대로)   // ★[T324 ⓒ] 이 사람은 **아직 안 했다** — 다음 틱이 여기서 시작한다 · ★[T562 ④] 머리 = 루프 머리
+    if (T1399_DIAG) _t1399Rt = (_t1399Rt === 'woke' ? 'woke' : '') + (T670_SKIP_IDLE && !npc.canadiaVillage && now < npc.nextDecisionAt ? 'step' : 'dec');
     if (T1241_PROBE && _desClk) { _desTimed(npc, dt, now); if (_t1337Pend && _t1337Pend.p === npc) _t1337Cmp(npc); if (_t1348Pend && _t1348Pend.p === npc) _t1348Cmp(npc); if (T1322_PF) _t1322Grant(npc, now, _sL); continue; }   // ★[T1241 계측] 같은 몸통을 진짜 시계로 잰다(아래 세 줄 그대로)
     if (T1241_DES && npc._des && _desHold(npc, now)) continue;   // ★[T1241] 사건 갈래가 쥔 몸(끔 = 이 줄 무동작)
     if (_T1241) _desStat.steps++;
@@ -17440,6 +17449,7 @@ setInterval(() => {
     if (T1322_PF) _t1322Grant(npc, now, _sL);   // ★[T1322] 서 있는 몸이면 표(다음 틱 첫 거름)
     if (T1241_DES) _desTry(npc, now);   // ★[T1241] 사건 토막을 열 수 있나
   } while (false); return _stopAt !== null; };
+  const _decOne = T1399_DIAG ? _decOneD : _decOne0;   // ★[T1399 진단] 끔 = 종전 몸통 그대로
   if (T1348_LOOP) {   // ★[T1348 ⓐ] 거울 배열 고리(같은 차례 · 길이를 매번 읽는다 = 고리 안에서 넣은 pid 도 이 바퀴 · 구멍 = 지운 pid)
     npcs.compact(); const _P = npcs.P, _S = npcs.S, _own = SS.own;
     for (let i = 0; i < _P.length; i++) { const pid = _P[i]; if (pid === undefined) continue; let s = _S[i]; if (s < 0 || _own[s] === null) { s = SS.slot(pid); _S[i] = s; } if (_decOne(pid, s)) break; }
