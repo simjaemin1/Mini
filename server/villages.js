@@ -3617,7 +3617,8 @@ function seedVillages(db, terrain, ta, ZONE) {
         if (ta.prepareFert) ta.prepareFert(c.ccx, c.ccy, 62);
         //   ★[T1238 ①] 켬 = 처음 땅 `TERR_CORE`(1,500)칸 — 같은 생성기 · 같은 점수(3.5 · 비옥 − 0.1 · 거리 — `_terrGrow` 와 같은 저울) · 상한만 ·
         //     앞서 심은 마을의 영토 칸은 안 든다(`avoid` — 남과 안 겹침). 끔 = `{}` 그대로(바이트 동일).
-        layout = VillageLayout.generate(ta, c.ccx, c.ccy, INITIAL_POP, T1238_TERR_V2 ? { maxCells: VillageLayout.TERR_CORE, avoid: _t1238SeedTaken } : {});
+        //   ★[T1380 (라)] `T1380_START_FULL` 켬 = 상한을 안 건다 — 생성기가 주는 그대로(끈 세계의 출발 · 인구 8 → 3,450칸) · `avoid` 는 그대로(끔 = 위 줄 그대로).
+        layout = VillageLayout.generate(ta, c.ccx, c.ccy, INITIAL_POP, T1238_TERR_V2 ? (T1380_START_FULL ? { avoid: _t1238SeedTaken } : { maxCells: VillageLayout.TERR_CORE, avoid: _t1238SeedTaken }) : {});
         if (T1238_TERR_V2) for (const c2 of layout.territory) _t1238SeedTaken.add(c2[0] + ',' + c2[1]);
       } catch (e) {
         console.warn(`[${state.zoneId}] 🏘️ [${hv.name}] generate 실패 — 스킵:`, e.message);
@@ -8332,6 +8333,108 @@ function t1238Stat() {
   for (const v of (state.villages || [])) { out.vils++; out.terr += v._terrSet ? v._terrSet.size : 0; out.gone += (v._t1238Stat && v._t1238Stat.gone) || 0; out.pend += (v._t1238Pend && v._t1238Pend.length) || 0; out.picks += (v._t1238Pick && v._t1238Pick.size) || 0; }
   return out;
 }
+// ══ ★★[T1380 2026-11-19 · T1345 회부 2 · 3 · ★재민 11-19 "이것과 동일한 세팅이 필요한 거 아냐? 내가 밸런스를 랩을 보고 결정했는데"] 영토 v2 를 랩 넓이에 맞추기 ══════════
+//   T1345: 집 켬 판에서 묶음 마을의 집터 찾기가 10 ~ 25 % 만 찾는다(끔 100 %) — 영토 v2(처음 땅 1,500 · 말뚝을 치르고 한 칸씩 · 비옥한 칸부터)가
+//     집 부지(부지 원판 124칸 전부가 영토 안 · 집 사이 15칸)를 담을 자리를 안 남겨, 곳간 넉넉한 마을이 주거 문에 막힌다.
+//   손잡이 셋 — 다 끔 기본 · `'1'` 만 켬 · 영토 v2(`T1238_TERR_V2` — 묶음 `T1334_BUNDLE` 이 켜는 갈래) 켬 안에서만 뜻 · 묶음 끔 세계 = 종전 바이트 · 새 수 0:
+//   (라) `T1380_START_FULL` — 처음 땅에 1,500 상한(`maxCells: TERR_CORE`)을 걸지 않는다: 시딩 생성기가 주는 그대로(= 끈 세계의 출발 · 인구 8 → 3,450칸 ·
+//        앞서 심은 마을 칸은 그대로 비킨다 `avoid`). 말뚝 값의 시작 영토 S₀(`_t1207S0` = 1,500)는 그대로 — 처음 땅이 크면 넓히는 칸값도 그만큼 크다(종전 식 그대로 · 값 0).
+//   (가) `T1380_TERR_LOT_FIRST` — 주거 문이 닫혀 있고(econ `_dpDebug.gated`) 집터 찾기가 빈손이면(`_siteMissDay` · 집터 없음) 영토 넓히기가 고르는 칸을
+//        "가장 가까운 집 부지 후보"(집터 찾기와 같은 차례 — 엄격 패스 먼저 · 점수 = 중심 거리 + 물가 벌점)의 영토 밖 칸부터(영토에서 이어지는 차례 · 어제 남긴 일괄 줄도 그 칸부터) —
+//        하루 칸 수(`want`) · 말뚝 값 · 몸의 낮은 종전 그대로.
+//   (나) `T1380_LOT_CLAIM` — 집 부지 후보가 영토 가장자리를 넘으면(그 후보의 까닭이 '마을 영토 밖' 하나이고 넘는 칸이 다 넣을 수 있는 칸이면) 넘는 칸을
+//        같은 말뚝 값(`_t1207CellCost` — 영토에서 이어지는 차례 · 그 칸에 이미 박힌 말뚝은 뺀다)으로 그 자리에서 영토에 넣고(`_terrAdd` — 넓히기와 같은 몸통) 집터를 잡는다.
+//        곳간 잉여 통나무(`woodSpare` — 일괄과 같은 문)가 모자라면 못 잡는다 — 까닭 `stake`(거부 기억에 안 넣는다 · 다음 날 다시 본다).
+//   넣을 수 있는 칸 = 영토 넓히기의 그 술어(물 · 바위 아님 · 누구의 영토도 아님 · 바둑식 `_t1238GoOk`) — 부지 원판 · 집 사이 15칸 · 그 밖 거부는 그대로(`_lifeSiteFilters` 의 같은 판정 ·
+//     영토 밖 칸만 "넣을 칸"으로 센다 · 사본 0).
+//   ⚠영토 상한(`_terrCap` · `_terrCapBound`)은 안 건드린다 — (가)는 넓히기 안(목표 · 상한 그대로) · (나)는 그 집 부지 칸만(부지 하나 124칸 < 집 한 채 몫 600칸).
+//   ⚠(나)는 개간 분을 안 치른다 — 그 칸 그루는 영토가 될 때(`_terrAdd` 벌목 문) · 집터가 설 때(`_t1238StructAdd`) 정본 벌목 문이 벤다 · 일괄이 치렀을 개간 분은 셈 `claimLabor`(회부).
+const T1380_START_FULL = T1238_TERR_V2 && process.env.T1380_START_FULL === '1';
+const T1380_TERR_LOT_FIRST = T1238_TERR_V2 && process.env.T1380_TERR_LOT_FIRST === '1';
+const T1380_LOT_CLAIM = T1238_TERR_V2 && process.env.T1380_LOT_CLAIM === '1';
+const _t1380St = { plans: 0, lfDays: 0, lfCells: 0, claims: 0, claimCells: 0, claimWood: 0, claimLabor: 0, stake: 0 };
+function _t1380Stat(vil) { return vil._t1380 || (vil._t1380 = { lfDays: 0, lfCells: 0, claims: 0, claimCells: 0, claimWood: 0, claimLabor: 0, stake: 0 }); }
+function t1380Stat() { return Object.assign({ full: T1380_START_FULL, lotFirst: T1380_TERR_LOT_FIRST, claim: T1380_LOT_CLAIM }, _t1380St); }
+//   그 칸을 영토에 넣을 수 있나(넓히기 술어 — 맞닿음은 부지 원판이 잇는다) · 참이면 `extra`(같이 넣는 칸)에 든다
+function _t1380CanTake(vil, x, y, extra, near) {
+  if (!state.ta || state.ta.isBlocked(x, y) || villageOfCell(x, y)) return false;
+  return _t1238GoOk(vil, x, y, extra, near);
+}
+//   집 부지 후보 (x, y) 의 영토 밖 칸 — 다 넣을 수 있고 그 밖 판정을 다 넘으면 { x, y, strict, cells(영토에서 이어지는 차례) } · 아니면 null
+function _t1380Claim(vil, F, x, y, strict, near) {
+  const extra = new Set();
+  const r = F.reject(x, y, strict, (xx, yy) => { if (!_t1380CanTake(vil, xx, yy, extra, near)) return false; extra.add(xx + ',' + yy); return true; });
+  if (r || !extra.size) return null;
+  const own = vil._terrSet, out = [], seen = new Set();
+  for (const k of extra) { const ci = k.indexOf(','), cx = +k.slice(0, ci), cy = +k.slice(ci + 1); for (const [dx, dy] of _T1207_N4) if (own.has((cx + dx) + ',' + (cy + dy))) { seen.add(k); out.push(k); break; } }
+  for (let h = 0; h < out.length; h++) {
+    const ci = out[h].indexOf(','), cx = +out[h].slice(0, ci), cy = +out[h].slice(ci + 1);
+    for (const [dx, dy] of _T1207_N4) { const nk = (cx + dx) + ',' + (cy + dy); if (extra.has(nk) && !seen.has(nk)) { seen.add(nk); out.push(nk); } }
+  }
+  for (const k of extra) if (!seen.has(k)) out.push(k);   // (부지 원판은 이어져 있어 오지 않는다)
+  return { x, y, strict, cells: out };
+}
+//   몸이 지금 그 칸 일을 쥐고 있나(관측 마을 · T1302 — 몸 칸 `_t1302Terr` · 운반 `_t1181Haul` 의 열쇠 't/<칸>')
+function _t1380Held(vil, k) {
+  const pl = state.deps && state.deps.players, t = 't/' + k;
+  for (const pid of (vil.npcPids || [])) { const p = pl && pl.get(pid); if (p && ((p._t1302Terr && p._t1302Terr.key === t) || (p._t1181Haul && p._t1181Haul.key === t))) return true; }
+  return false;
+}
+//   (나) 넘는 칸의 말뚝을 치르고 영토에 넣는다 — 참 = 넣었다 · 거짓 = 곳간 잉여 통나무가 모자란다(아무것도 안 바뀐다)
+function _t1380Pay(vil, cl) {
+  const E = _lifeEcon(), e = vil.econ;
+  if (!e || !e.storage) return false;
+  const jobs = new Map(); for (const j of (vil._t1207Pend || [])) jobs.set(j.key, j);
+  const plus = new Set(); let owe = 0, labor = 0;
+  for (const k of cl.cells) {
+    const ci = k.indexOf(','), cx = +k.slice(0, ci), cy = +k.slice(ci + 1);
+    const c = _t1207CellCost(vil, cx, cy, plus), L = _t1238LandGet(k, true), j = jobs.get(k);
+    owe += Math.max(0, c.wood - Math.max(L.w, (j && j.mat && j.mat.wood) || 0)); labor += Math.max(0, 1 - L.c) * c.laborMin; plus.add(k);
+  }
+  if (owe > 1e-9) {
+    if (Math.max(0, E.woodSpare(e)) + 1e-9 < owe) return false;
+    const took = E.actFromGranary(e, 'wood', owe, true);                 // 곳간 → 손(일괄과 같은 문)
+    if (took + 1e-9 < owe) { if (took > 0) E.returnActMaterials(e, 'wood', took); return false; }
+    E.actMaterialsPlaced(e, 'wood', took);                               // 말뚝을 박았다 — 소비 장부
+  }
+  if (vil._t1207Pend && vil._t1207Pend.length) { const cs = new Set(cl.cells); vil._t1207Pend = vil._t1207Pend.filter((j) => !(cs.has(j.key) && j._t1329By == null && !_t1380Held(vil, j.key))); }   // 몸 일감 줄 — 맡은 몸이 없는 그 칸 일감은 뺀다(그 칸 일 · 말뚝은 위 값에 셌다)
+  const n = _terrAdd(vil, cl.cells, null, true);
+  const S = _t1380Stat(vil);
+  S.claims++; S.claimCells += n; S.claimWood = +(S.claimWood + owe).toFixed(6); S.claimLabor = +(S.claimLabor + labor).toFixed(3);
+  _t1380St.claims++; _t1380St.claimCells += n; _t1380St.claimWood = +(_t1380St.claimWood + owe).toFixed(6); _t1380St.claimLabor = +(_t1380St.claimLabor + labor).toFixed(3);
+  return true;
+}
+//   집터 찾기의 '마을 영토 밖' 후보 하나 — (가) 첫 후보를 부지 후보로 적고 · (나) 켬이면 치르고 넣는다 → true(넣었다 · 집터로) | 'stake' | false(종전 거부)
+function _t1380Lot(vil, F, x, y, strict, ctx) {
+  if (!T1380_LOT_CLAIM && ctx.plan) return false;                        // (가)만 — 첫 후보는 이미 적었다
+  if (!ctx.near) ctx.near = T569_OVERLAP ? _t569Near(vil) : null;
+  const cl = _t1380Claim(vil, F, x, y, strict, ctx.near);
+  if (!cl) return false;
+  if (!ctx.plan) { ctx.plan = cl; _t1380St.plans++; }
+  if (!T1380_LOT_CLAIM) return false;
+  if (_t1380Pay(vil, cl)) return true;
+  ctx.stake = true; _t1380Stat(vil).stake++; _t1380St.stake++;
+  return 'stake';
+}
+//   (가) 오늘 고른 칸 — 부지 후보의 영토 밖 칸(아직 넣을 수 있는 칸)을 앞에(하루 칸 수 `want` 그대로) · 어제 남긴 일괄 줄 · 몸 일감 줄도 그 칸부터
+function _t1380LotFront(vil, picked, want) {
+  const e = vil.econ, P = vil._t1380Plan;
+  if (!P || vil._site || vil._siteMissDay == null || !(e && e._dpDebug && e._dpDebug.gated) || !(want > 0)) return picked;
+  const own = vil._terrSet, near = T569_OVERLAP ? _t569Near(vil) : null, front = [];
+  for (const k of P.cells) {
+    if (own.has(k)) continue;
+    const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1);
+    if (!_t1380CanTake(vil, x, y, null, near)) { vil._t1380Plan = null; return picked; }   // 그 사이 막혔다 — 다음 찾기가 다시 고른다
+  }
+  for (const k of P.cells) if (!own.has(k)) front.push(k);
+  if (!front.length) { vil._t1380Plan = null; return picked; }
+  const fs = new Set(front), out = front.slice(0, want);
+  for (const k of picked) { if (out.length >= want) break; if (!fs.has(k)) out.push(k); }
+  if (vil._t1238Pend && vil._t1238Pend.length) vil._t1238Pend = front.concat(vil._t1238Pend.filter((k) => !fs.has(k))).slice(0, TERR_GROW_MAX_PER_DAY);   // 빠진 칸의 일은 땅에 남는다
+  if (vil._t1207Pend && vil._t1207Pend.length) { const head = [], rest = []; for (const j of vil._t1207Pend) (fs.has(j.key) ? head : rest).push(j); vil._t1207Pend = head.concat(rest); }
+  const S = _t1380Stat(vil); S.lfDays++; S.lfCells += Math.min(front.length, want); _t1380St.lfDays++; _t1380St.lfCells += Math.min(front.length, want);
+  return out;
+}
 function _terrGrow(vil) {
   if (!T1207_TERR_REAL) return _terrGrowCore(vil);   // 끔(기본) = 종전 그대로(재는 칸도 없다)
   const t0 = process.cpuUsage();                      // ★[T1238 µs] T1207 켬이면 마을 하루의 영토 일을 잰다(T1207 단독 ↔ T1238 켬 같은 자 · 세계 0 · CPU 시계 — 가상 시계 판에서도 흐른다)
@@ -8378,7 +8481,8 @@ function _terrGrowCore(vil) {
   }
   if (!cand.size) return 0;
   const want = Math.min(target - own.size, TERR_GROW_MAX_PER_DAY);
-  const picked = [...cand.entries()].sort((a, b) => b[1] - a[1]).slice(0, want).map((e) => e[0]);
+  let picked = [...cand.entries()].sort((a, b) => b[1] - a[1]).slice(0, want).map((e) => e[0]);
+  if (T1380_TERR_LOT_FIRST) picked = _t1380LotFront(vil, picked, want);   // ★[T1380 (가)] 켬 = 주거 문 닫힘 · 집터 빈손이면 집 부지 후보의 영토 밖 칸부터(칸 수 · 값 그대로 · 끔 = 종전 줄)
   if (!picked.length) { if (T1207_TERR_REAL && vil.econ) vil.econ._t1207Need = 0; return 0; }
   //   ★[T1207 ④] 켬 = 고른 셀(고르는 법 · 목표 · 상한은 위 그대로)을 **값을 치른 만큼만** 더한다 — 곳간의 통나무(말뚝) · 몸 하나의 하루(개간).
   //     관측 마을은 몸이 가서 하고(`_t1181Task` 'terr') · 헤드리스는 명부 일괄(`_t1207Batch` — T449 · T491 꼴). 끔 = 고른 셀 전부(종전 그대로).
@@ -13062,7 +13166,7 @@ function _lifeGoHome(npc, act) {   // 자택 대기(취침·요양·휴식·대�
 function _terrBackfillOne(vil, VL) {
   if (!state.ta || !vil || (vil._terrSet && vil._terrSet.size)) return null;
   const pop = (vil.econ && vil.econ.npcs) ? vil.econ.npcs.length : (vil.npcPids ? vil.npcPids.length : 0);
-  const layout = VL.generate(state.ta, vil.ccx, vil.ccy, Math.max(4, pop), T1238_TERR_V2 ? { maxCells: VL.TERR_CORE } : {});   // 시딩과 동일 호출(정본 재사용 · ★[T1238] 켬 = 처음 땅 1,500 상한도 같게)
+  const layout = VL.generate(state.ta, vil.ccx, vil.ccy, Math.max(4, pop), (T1238_TERR_V2 && !T1380_START_FULL) ? { maxCells: VL.TERR_CORE } : {});   // 시딩과 동일 호출(정본 재사용 · ★[T1238] 켬 = 처음 땅 1,500 상한도 같게 · ★[T1380 (라)] 켬 = 시딩처럼 상한 없음)
   const own = vil._terrSet || (vil._terrSet = new Set());
   for (const c of (layout.territory || [])) own.add(c[0] + ',' + c[1]);
   const gen = own.size;
@@ -15434,7 +15538,8 @@ function _lifeSiteFilters(vil, M) {   // ★[T620 ①] `M` = 한 번의 집터 �
   const taS = M ? M.taS : state.ta;   // 개울 원판 술어에 넘기는 지형(메모면 `isStream` 하나만 메모로)
   const farmAt = (x, y, strict) => (strict && pot(x, y)) || farm(x, y);
   // reject(x,y,strict) → 사유 문자열(불가) 또는 null(가능). 자동 배치는 사유를 버리고 continue만 한다.
-  const reject = (x, y, strict) => {
+  //   ★[T1380] `claim(xx, yy)` = 영토 밖 부지 칸을 "넣을 칸"으로 셀 술어(켬 판 생활층 집터 찾기만 넘긴다 — 참이면 그 칸은 영토 안처럼 다음 판정으로 · 끔 = 안 준다 = 종전 판정 그대로)
+  const reject = (x, y, strict, claim) => {
     for (const h of vil._houseCells) if (Math.hypot(h.cx - x, h.cy - y) < HG) return `기존 집과 너무 가까움(<${HG})`;
     // ★[T62] 공용 쉼터도 6×4 집채다 — 그 위에 집을 올리면 두 채가 같은 셀을 밟는다.
     //   ⚠`_houseCells` 에는 **안 넣는다**: 그건 NPC 침대 명부라 넣으면 econ 이 움직인다(기준선).
@@ -15449,7 +15554,7 @@ function _lifeSiteFilters(vil, M) {   // ★[T620 ①] `M` = 한 번의 집터 �
     for (const [dx, dy] of _lifeVL().LOT_CELLS) {
       const xx = x + dx, yy = y + dy;
       if (near && near.length && owned(xx, yy)) return '남의 마을';   // ★[T569 ②] 남의 영토 셀
-      if (!inTerr(xx, yy)) return '마을 영토 밖';
+      if (!inTerr(xx, yy) && !(claim && claim(xx, yy))) return '마을 영토 밖';
       if (blocked(xx, yy)) return '부지 불가(물·바위)';
       if (farmAt(xx, yy, strict)) return '개간 농지 위';
     }
@@ -16204,7 +16309,7 @@ function _lifeAddHouseSite(vil) {   // 랩 addHouseSite 동형(서버판): 2패�
   // ★빈손 기억 — 위 주석의 단조성 논증. 표지가 안 섰고 안전망 주기도 안 됐으면 답이 같다.
   const _day = (state.world && state.world.day) | 0;
   const _due = ((_day + (vil.dbId | 0)) % LIFE_SITE_RESCAN_DAYS) === 0;   // 안전망 — 마을마다 다른 날
-  if (LIFE_SITE_MEMO && !vil._siteDirty && !_due && vil._siteMissDay != null) { _probe.siteSkip++; return; }
+  if (LIFE_SITE_MEMO && !vil._siteDirty && !_due && vil._siteMissDay != null && !(T1380_LOT_CLAIM && vil._t1380StakeWait)) { _probe.siteSkip++; return; }   // ★[T1380 (나)] 켬 = 통나무가 모자라 못 잡은(stake) 빈손은 다음 날 다시 본다(통나무는 날마다 든다 · 끔 = 종전 줄)
   const _pt0 = Date.now(); _probe.siteCall++; _probe.siteVils.add(vil.dbId);
   try { return _lifeAddHouseSiteInner(vil); }
   finally {
@@ -16217,6 +16322,7 @@ function _lifeAddHouseSiteInner(vil) {
   if (!vil._wf) _t620Wf(vil);   // 물거리 EDT 캐시(마을당 1회 — 영토 bbox±32, 랩 s._wf 동형 · ★[T620] 몸통은 `_t620Wf` 한 곳)
   const F = _lifeSiteFilters(vil, _t620SiteMemo());   // ★[T620 ①] 이 찾기 동안만 사는 셀 술어 메모(값 같음 · 위 주석)
   const W_PEN_K = F.W_PEN_K, wnd = F.wnd, farmAt = F.farmAt;
+  const _t1380c = (T1380_LOT_CLAIM || T1380_TERR_LOT_FIRST) ? { near: null, plan: null, stake: false } : null;   // ★[T1380 (가)(나)] 켬만 — 이 찾기의 집 부지 후보(영토 밖 칸을 넣으면 서는 첫 후보) · 끔 = null(종전 줄)
   for (const strict of [true, false]) {
     // ★★[T41 ①] **거부 캐시** — 한 번 거부된 셀은 위 단조성 논증에 따라 계속 거부된다.
     //   그래서 다시 `reject` 를 부르지 않는다(그게 이 함수의 비용 대부분이다 — 후보마다 집 전수 hypot).
@@ -16247,7 +16353,9 @@ function _lifeAddHouseSiteInner(vil) {
     cand.sort((a2, b2) => a2[2] - b2[2]);
     for (const c2 of cand) {
       const x = c2[0], y = c2[1];
-      { const _r = F.reject(x, y, strict); if (_r) { _probe.siteReason[_r] = (_probe.siteReason[_r] || 0) + 1; rej.add(x + ',' + y); continue; } }   // ★[11차 T4] 하드 필터는 _lifeSiteFilters 소유 — 플레이어 의뢰 터와 **같은 코드**(랩 siteFilters 규약 이식)
+      { const _r = F.reject(x, y, strict);
+        const _g = (_t1380c && _r === '마을 영토 밖') ? _t1380Lot(vil, F, x, y, strict, _t1380c) : false;   // ★[T1380 (가)(나)] 켬만 — true = 넘는 칸을 말뚝 값으로 넣었다(아래 집터) · 'stake' = 통나무 모자람(기억 안 함) · false = 종전 거부
+        if (_r && _g !== true) { if (_g === 'stake') { _probe.siteReason.stake = (_probe.siteReason.stake || 0) + 1; continue; } _probe.siteReason[_r] = (_probe.siteReason[_r] || 0) + 1; rej.add(x + ',' + y); continue; } }   // ★[11차 T4] 하드 필터는 _lifeSiteFilters 소유 — 플레이어 의뢰 터와 **같은 코드**(랩 siteFilters 규약 이식)
       if (!strict) { for (const [dx, dy] of _lifeVL().LOT_CELLS) vil._potSet.delete((x + dx) + ',' + (y + dy)); lifeSiteReset(vil); }   // 선점 부지는 잠재농지 제거(★[T41] 캐시도 판다 — 위와 같은 이유)
       const bo = state.deps.liveBuildRow ? state.deps.liveBuildRow('hut_site', (x - 2.5) * SZ, (y - 3.5) * SZ,
         { stage: 1, x0: x - 5, y0: y - 5, x1: x + 0, y1: y - 2, owner: 'npc', floor: 0 }, `npc_simvil_${vil.dbId}`, `${vil.name} 새 움집터`, null) : null;   // ★NPC 정본 렉트를 hut_site 규약에 실음(완공 기하 동일)
@@ -16258,9 +16366,11 @@ function _lifeAddHouseSiteInner(vil) {
       if (T1238_TERR_V2) _t1238StructAdd(vil, _t1238Lot(x, y), true);   // ★[T1238 ①] 켬 = 숲은 숲 그대로 — 집을 낼 때 그 부지만 벤다(정본 벌목 문 · 통나무는 곳간) · 사냥 장부 줄(T1053 — 나무 0) 뒤라 차례는 결과와 무관(test-deforest-game ⑤ 글자: 두 줄이 붙어 있다)
       _probe.siteLog.push(`${(state.world && state.world.day) | 0}:${vil.dbId}:${x},${y}:${strict ? 's' : 'l'}`);   // ★[T41] 비트 동일 대조용(선택된 자리만)
       console.log(`[${state.zoneId}] 🏘️ [${vil.name}] 생활층 신축 터 @(${x},${y}) — 크루 시공 시작`);
+      if (_t1380c) { vil._t1380Plan = null; vil._t1380StakeWait = false; }   // ★[T1380] 찾았다 — 부지 후보 · 기다림을 비운다
       return;
     }
   }
+  if (_t1380c) { vil._t1380Plan = _t1380c.plan; vil._t1380StakeWait = _t1380c.stake; }   // ★[T1380 (가)] 빈손 — 영토 넓히기가 이 후보 쪽부터 · (나) stake 면 다음 날 다시
 }
 // 집터 하나를 그 단계로 세운다(건물 행 · 방송 · 마을 칸) — 하루 마감의 재부팅 복원(단계 1 · 종전 그 글자)과 ★[T740] 부팅 복원(저장된 단계)이 같이 부른다.
 function _siteRise(vil, ps, stage) {
@@ -20555,6 +20665,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   __t740: () => state,   // ★[T1287 · T1280 회부 1] 생활층 지문 훅(`scripts/t740-side-hook.js`)의 공식 자리 — 읽기만 · 세계 0. 종전엔 훅이 컴파일 때 이 한 줄을 덧붙여서, 관찰기가 villages 를 먼저 실으면 훅이 못 붙었다(생활층 0일)
   _t1259WoodRadius, _t1259WoodCells,
   t1243FieldClearMinAt, T1207_TERR_REAL, terrQuote, terrPlayerAdd, t1207Stat, villageById, _t1207CellCost, _t1207Batch, _t1207Queue, _t1207BodyDone, _t1283BodyHaul, _t1207LogIn, _t1207Flush, _t1207CanTake, _terrAdd, _terrGrow,   // ★[T1207] 영토 확장 실물화 — 존(우클릭)과 하네스가 같은 함수를 부른다(사본 0)
+  T1380_START_FULL, T1380_TERR_LOT_FIRST, T1380_LOT_CLAIM, t1380Stat, _t1380Claim, _t1380Pay, _t1380LotFront,   // ★[T1380] 영토 v2 를 랩 넓이에 — 손잡이 셋 · 셈 · 하네스가 같은 함수를 부른다
   T1238_TERR_V2, T1302_TERR_BODY, T1329_TERR_CREW, t1238Pick, t1238Go, t1238CellNeed, t1238Drop, t1238Clear, t1238Place, t1238Cancel, t1238PullNeed, t1238Pull, t1238Info, t1238Stat, t1238StructAt, t1238LandAt, t1238MarkUse,   // ★[T1238] 영토 v2 — 존 · 클라 · 하네스가 같은 함수를 부른다
   t1238TakeVillageCrop, t1238PeekVillageCrop, t1238RegrowBlocked, t1238VilRadius,
   _t1238Batch, _t1238DayPre, _t1238DayPost, _t1238GoOk, _t1238Use, _t1238Remove, _t1238Boot, _t1238JobToLand, _t1238JobFromLand, _t1238JobsOf, landSizeOfCells, _t1238Struct, _t1238Land, _t1238St,
@@ -20771,6 +20882,9 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
       boot: () => _t1238Boot(), pre: (vil) => _t1238DayPre(vil), post: (vil) => _t1238DayPost(vil), batch: (vil, picked, cap) => _t1238Batch(vil, picked, cap), pay: _t1207Pay,
       struct: () => _t1238Struct, land: () => _t1238Land, st: () => _t1238St, use: (vil, x, y) => _t1238Use(vil, x, y), goOk: (vil, x, y, extra) => _t1238GoOk(vil, x, y, extra),
       structOf: (vil) => _t1238StructOf(vil), clearLand: () => { _t1238Land.clear(); _t1238Struct.clear(); }, get on() { return T1238_TERR_V2; } },
+    // ★[T1380] 영토 v2 를 랩 넓이에 — 하네스가 마을을 꽂고(위 `_t569Probe` · `_t400Probe` · `_t1238Probe`) 정본 집터 찾기 · 영토 넓히기를 그대로 부른다(사본 0)
+    _t1380Probe: { site: (vil) => _lifeAddHouseSite(vil), grow: (vil) => _terrGrow(vil), reason: () => _probe.siteReason, st: () => _t1380St,
+      claim: (vil, x, y, strict) => _t1380Claim(vil, _lifeSiteFilters(vil), x, y, !!strict, T569_OVERLAP ? _t569Near(vil) : null) },
     _t569Probe: { setup: (o) => { const k = { ta: state.ta, villages: state.villages, db: state.db };
         if (o) { if ('ta' in o) state.ta = o.ta; if ('villages' in o) state.villages = o.villages; if ('db' in o) state.db = o.db; } return k; },
       grow: (vil) => _terrGrow(vil), reject: (vil, x, y, strict) => _lifeSiteFilters(vil).reject(x, y, !!strict), resolve: (owners) => _t569Resolve(owners),
