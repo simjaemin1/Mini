@@ -6171,6 +6171,12 @@ function toolDepCount(v) {
 //   무기 수요: 청동/철 없는 마을(금속 미보유)에서 전사·사냥꾼용 마제석검·활을 석공이 공급(저티어 자급 무기).
 //   석공 있으면 도구·무기 대량 공급 → 농부가 자급에 시간 안 써 농사 전념(분업).
 function toolDesiredStock(v) { return toolDepCount(v) * 1.15; }
+// ★[T1394 ㉢] 석공 1인 하루 석기 — 생산 단계(`produceSpecial 'mason'`)의 `amt = jdef.base × skillMul`(skillMul = 1 + 숙련 × 0.05) 그 식 · 숙련은 그 마을 석공 가장 높은 값(없으면 0 — 새로 들 석공)
+function t1394MasonOut(v) {
+  let sk = 0;
+  for (const n of (v && v.npcs) || []) if (n.currentJob === 'mason') sk = Math.max(sk, (n.skills && n.skills.masonry) || 0);
+  return JOBS.mason.base * (1 + sk * 0.05);
+}
 function masonTarget(v) {
   const N = v.npcs.length || 1;
   const toolStock = (v.storage.tool || 0) + (v.storage.bronze_tool || 0) + (v.storage.iron_tool || 0);
@@ -6179,7 +6185,9 @@ function masonTarget(v) {
   const otherTD = Math.max(0, td - farmerTD);
   const wearPerDay = farmerTD * DAILY_TOOL_WEAR_PER_FARMER + otherTD * DAILY_TOOL_WEAR_PER_OTHER
     + (v.npcs.length || 0) * 0.005 + toolStock * 0.0006;   // 사용마모 + subsistence(0.005/인, v2) + 재고감가
-  const perMasonOut = 0.5;   // 석공 1인 일일 석기 산출(≈base 0.4×숙련) 근사
+  //   ★[T1394 ㉢] `T1394_MASON_FLOW` 켬 = 석공 1인 산출을 생산 단계 식 그대로(`JOBS.mason.base × (1 + 숙련 × 0.05)` — 그 마을 석공 가장 높은 숙련 · `stoneWorkStock` 과 같은 숙련 읽기)로 센다.
+  //     종전 0.5 는 "≈base 0.4×숙련 근사"라 숙련 0 석공(판의 거의 다)의 0.4 를 25% 넘겨 잡아, 목표가 마모 흐름의 0.8 배 석공만 불렀다(보고 T1394 §1 ⓒ). 새 수 0 · 끔 = 0.5 그대로.
+  const perMasonOut = t1394MasonFlowOn() ? t1394MasonOut(v) : 0.5;   // 석공 1인 일일 석기 산출(≈base 0.4×숙련) 근사
   const desired = toolDesiredStock(v);   // 목표 도구재고(커버리지 1 + 버퍼)
   const deficit = Math.max(0, desired - toolStock);
   let need = wearPerDay / perMasonOut + deficit / (perMasonOut * 50);   // 도구: 마모 보충 + 결손 catchup(50일)
@@ -6851,6 +6859,22 @@ function t1363StoneReady(v) {   // 쪼을 돌 — 곳간 돌 ≥ 석공 하루 �
 function t1363StoneShort(v) {   // 돌 모자람 — STONE_NET 켬 ∧ 땅 돌 ≥ 0.25 ∧ 곳간 돌 < 석공 하루 재료 × 석공 목표(피커 기근 블록 뒤 재료 줄 그 식)
   return STONE_NET_ON && (v.land.stone || 0) >= 0.25 && (v.storage.stone || 0) < stoneWorkStock(v) * Math.max(1, masonTarget(v));
 }
+// ★★★[T1394 2026-11-20 · T1363 회부 1 · 2 · 5 · 지시 T1394] 굶주림 ↔ 도구 나선 둘째 — 손잡이 셋(다 끔 기본 · `'1'` 만 켬 · 끔 = 종전 바이트 · 하나씩 · 같이).
+//   ★랩 손잡이 자리(T1363 회부 5): 브라우저 랩은 env 가 없다 — `window.<이름> = '1'`(또는 1 · true)을 판 앞에 두면 같은 줄이 켜진다(부를 때 읽는다 · node 는 env 그대로).
+//     `T1363_FAMINE_TOOLS` 도 같은 자리를 탄다(`t1363FtOn` — env 상수 그대로 ∨ 랩 `window.T1363_FAMINE_TOOLS`).
+//   ㉠ `T1394_NARROW` — T1363 전환 문의 좁은 꼴: 기근 블록 · 치명 도구에서 **쪼을 돌이 있는 석공만** 남긴다("돌 모자람" 갈래 — 돌 없는 석공 · 채집꾼 남김 — 를 뺀다).
+//      `T1363_FAMINE_TOOLS` 와 같이 켜면 좁은 꼴이 앞선다(넓은 꼴의 갈래 둘을 끈다).
+//   ㉡ `T1394_STONE_PICK` · ㉢ `T1394_MASON_FLOW` — 아래 피커 · 석공 목표 줄(머리말은 그 자리에).
+function _t1394Win(name) {   // 랩 손잡이 자리 — `window[name]` 이 '1' · 1 · true 면 켬(없으면 끔 · node 는 늘 끔)
+  if (typeof window === 'undefined' || !window) return false;
+  const x = window[name]; return x === true || x === 1 || x === '1';
+}
+const _T1394_ENV = (k) => (typeof process !== 'undefined' && process.env && process.env[k] === '1');
+const T1394_NARROW = _T1394_ENV('T1394_NARROW'), T1394_STONE_PICK = _T1394_ENV('T1394_STONE_PICK'), T1394_MASON_FLOW = _T1394_ENV('T1394_MASON_FLOW');
+function t1363FtOn() { return T1363_FAMINE_TOOLS || _t1394Win('T1363_FAMINE_TOOLS'); }
+function t1394NarrowOn() { return T1394_NARROW || _t1394Win('T1394_NARROW'); }
+function t1394StonePickOn() { return T1394_STONE_PICK || _t1394Win('T1394_STONE_PICK'); }
+function t1394MasonFlowOn() { return T1394_MASON_FLOW || _t1394Win('T1394_MASON_FLOW'); }
 function pickDeficitJob_rational(v, world) {
   const N = v.npcs.length || 1;
   const cap = jobCapacity(v);
@@ -6933,6 +6957,22 @@ function pickDeficitJob_rational(v, world) {
     //   ⚠새 수 0 — 1(한 명) · 6(이 블록의 하드 플로어) · 1(충당률 만점)만 쓴다. 끔 = 옛 줄 그대로(비트 동일).
     if (fuelGateOn() && v._fuelCov !== undefined && v._fuelCov < 1 && (counts.lumberjack || 0) < 1 && foodEquiv > N * 6
         && hasSlot(v, 'lumberjack', cap, counts)) return 'lumberjack';
+    // ★★[T1394 ㉡ 2026-11-20 · T1363 회부 2 ㉠] 손잡이 `T1394_STONE_PICK`(끔 기본 · 끔 = 이 줄 무동작) — **기근 블록 안에서도 돌 줍는 몫이 석기 수요만큼 선다.**
+    //   종전: 돌 줍는 채집꾼은 기근 블록 앞(STONE_NET — 치명 도구일 때만) · 뒤(돌 모자람 줄 — 기근이 아닐 때만)에서만 선다 ⇒ 도구가 목표 밑으로 닳아 가는데
+    //     아직 치명(0.7) 이 아닌 기근 마을은 돌 줄에 못 닿고, 곳간 돌이 0 인 채로 치명까지 간다(보고 T1394 §1 ⓑ).
+    //   켬: 기근 블록 안 · 식량 일 앞에서 — 석기 수요가 있고(곳간 도구 < 목표 재고 `toolDesiredStock` — 석공 목표가 결손을 읽는 그 식) ·
+    //     돌밭이 있고(철 · 날씨 배수 앞 땅 돌 ≥ 0.25 — STONE_NET 땅 문턱 · 겨울 0.95 가 바닥 마을을 문 밖으로 밀지 않게 원래 땅을 본다) · 곳간 돌이 모자라고(`t1363StoneShort` 의 재료 줄) ·
+    //     지금 채집꾼이 하루 줍는 돌(채집꾼 × 땅 돌 × 0.9 — 생산 단계 `stoneYield` 식의 숙련 · 지속 몫 뺀 꼴)이 석공 목표의 하루 재료(석공 목표 × `stoneWorkStock`) 밑이면 채집꾼 한 명.
+    //     수요가 채워지면 줄이 꺼지고 그 채집꾼은 다음 전환에서 다른 일로 갈 수 있다(사람을 박아 두지 않는다 — 전환 문 그대로).
+    //   새 수 0 — 0.25 · 0.9 · 목표 재고 · 하루 재료 · 석공 목표는 다 있는 식이다.
+    if (t1394StonePickOn() && STONE_NET_ON && hasSlot(v, 'forager', cap, counts)) {
+      const _ls = ((v._origLand || v.land).stone || 0);
+      const _tS = (v.storage.tool || 0) + (v.storage.bronze_tool || 0) + (v.storage.iron_tool || 0);
+      if (_ls >= 0.25 && _tS < toolDesiredStock(v) && (v.storage.stone || 0) < stoneWorkStock(v) * Math.max(1, masonTarget(v))) {
+        const _need = masonTarget(v) * stoneWorkStock(v);
+        if ((counts.forager || 0) * _ls * 0.9 < _need) return 'forager';
+      }
+    }
     const foodOpts = [
       ['farmer',  v.land.fertility * 1.5],
       ['fisher',  v.land.water     * 1.2],
@@ -7247,9 +7287,11 @@ function autoSwitchJob(v, day, world) {
   const w = oreWeights(v,priceTbl ? (r => Math.max(0.05, Math.min(200, (T1188_ORE_SPLIT&&OreGoods.isOre(r)?(priceTbl[r]??1):(priceTbl[r]||1)) / 1.0))) : (_ => 1.0));
   let bestIdx = -1, bestCost = Infinity;
   //   ★[T1363] 기근 블록 · 도구 바닥이면 석공 · (돌 모자랄 때) 채집꾼은 식량 일로 안 옮긴다(위 `T1363_FAMINE_TOOLS` 머리말 · 끔 = 두 칸 거짓 · 아래 한 줄 무동작)
-  const _t63 = T1363_FAMINE_TOOLS && !!_T1085_FOOD[need] && totalFoodEquivalent(v) < N * 30 && t1363ToolCrit(v);
+  //   ★[T1394 ㉠] 좁은 꼴(`T1394_NARROW`) — 쪼을 돌이 있는 석공만 남긴다(돌 모자람 갈래 0 · 넓은 꼴과 같이 켜면 좁은 꼴이 앞선다) · 끔 = `_t94n` 거짓(아래 두 줄 종전 식)
+  const _t94n = !!_T1085_FOOD[need] && t1394NarrowOn() && totalFoodEquivalent(v) < N * 30 && t1363ToolCrit(v);
+  const _t63 = !_t94n && !!_T1085_FOOD[need] && t1363FtOn() && totalFoodEquivalent(v) < N * 30 && t1363ToolCrit(v);
   const _t63Stone = _t63 && t1363StoneShort(v);
-  const _t63Mason = _t63 && (_t63Stone || t1363StoneReady(v));   // 석공은 쪼을 돌이 있거나 돌을 주워 오는 중일 때만 남긴다
+  const _t63Mason = _t94n ? t1363StoneReady(v) : (_t63 && (_t63Stone || t1363StoneReady(v)));   // 석공은 쪼을 돌이 있거나 돌을 주워 오는 중일 때만 남긴다 · ★[T1394 ㉠] 좁은 꼴 = 쪼을 돌이 있을 때만
   //   ★[T1085 ②] 굶는 날의 식량직 전환은 촌장 지정 쿨다운을 넘는다(지정 표지가 마지막 전환일 때만 — 표지 없는 세계 = 종전 비트).
   let _t1085Hunger = null;
   for (let i = 0; i < v.npcs.length; i++) {
@@ -7978,7 +8020,8 @@ module.exports = {
   T1259_WOOD_CAP, setT1259WoodReader, T1271_ORE_CAP, setT1271OreReader, jobCapacity,
   T1192_FISH_SPECIES,FishGoods,preservedFactor,fishPreserveReserve,_t1192Preserve,
   T1188_ORE_SPLIT, OreGoods, oreTotal, oreReserveTotal, oreValue, oreSourceMix, migrateOre, takeOre,
-  T1149, t1149LeanDays, t1149WinterDays, t1149WinterNeed, T1297_BIRTH_FOOD, T1297_FAMINE_DAYS, t1297WinterLeft, t1297NeedDays, T1306_BIRTH_GRADE, t1306Ratio, t1306GradeDP, T1319_AUTUMN_LOOK, T1319_AUTUMN_MIG, t1319AutumnLeft, t1319MigNeedDays, T1346_BIRTH_FLOW, t1346FlowShort, T1373_HOME_CAP, t1373HomeCap, t1373Hcap, T1363_FAMINE_TOOLS, t1363ToolCrit, t1363StoneReady, t1363StoneShort,   // ★[T1373] 땅 상한 = 집터 수 — 하네스가 정본 함수를 그대로 부른다 · ★[T1363] 기근 블록 · 도구 바닥 — 하네스가 정본 함수를 그대로 부른다 · ★[T1346] 흐름 문(하네스가 정본 함수를 그대로 부른다) · ★[T1149] 겨울 골짜기 — 손잡이 갈래 · 달력 셈 · 다가오는 겨울에 모자랄 식량(v2 가을 사 모으기가 읽는다)
+  T1149, t1149LeanDays, t1149WinterDays, t1149WinterNeed, T1297_BIRTH_FOOD, T1297_FAMINE_DAYS, t1297WinterLeft, t1297NeedDays, T1306_BIRTH_GRADE, t1306Ratio, t1306GradeDP, T1319_AUTUMN_LOOK, T1319_AUTUMN_MIG, t1319AutumnLeft, t1319MigNeedDays, T1346_BIRTH_FLOW, t1346FlowShort, T1373_HOME_CAP, t1373HomeCap, t1373Hcap, T1363_FAMINE_TOOLS, t1363ToolCrit, t1363StoneReady, t1363StoneShort, T1394_NARROW, T1394_STONE_PICK, T1394_MASON_FLOW, t1363FtOn, t1394NarrowOn, t1394StonePickOn, t1394MasonFlowOn, t1394MasonOut,   // ★[T1394] 손잡이 셋 · 랩 자리 — 하네스가 정본 함수를 그대로 부른다
+    // ★[T1373] 땅 상한 = 집터 수 — 하네스가 정본 함수를 그대로 부른다 · ★[T1363] 기근 블록 · 도구 바닥 — 하네스가 정본 함수를 그대로 부른다 · ★[T1346] 흐름 문(하네스가 정본 함수를 그대로 부른다) · ★[T1149] 겨울 골짜기 — 손잡이 갈래 · 달력 셈 · 다가오는 겨울에 모자랄 식량(v2 가을 사 모으기가 읽는다)
   T1179_CROP_SEASON, t1179FieldDay, t1179Standing,   // ★[T1179] 작물 철 — 손잡이 · 밭 하루 · 밭에 선 먹을 것(계측)
   assignNPCJob, assignableJobs, JOB_SWITCH_COOLDOWN,
   t1113On, t1113Unhappy, t1113Happy, t1113LowMul, t1113IsFood, T1113_HAPPY_MID,   // ★[T1113] 행복 낮을 때 효과 셋 — war-core · 서버 · 하네스가 같은 술어를 읽는다(사본 0)   // ★[T1085] 촌장 지정 — 서버 동사 `assign_job` 이 부른다(규칙 사본 0)
