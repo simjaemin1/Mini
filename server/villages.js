@@ -7991,7 +7991,7 @@ function _t1238Batch(vil, picked, cap) {
   const pl = state.deps && state.deps.players;
   let body = null;
   for (const pid of (vil.npcPids || [])) { const p = pl && pl.get(pid); if (p && _t561Fit(p)) { body = p; break; } }
-  let budget = body ? _t1207DayMin() : 0;
+  let budget = body ? (T1380_HAPPY_EXPAND === 'rate' ? _t1207DayMin() * _t1380H(vil) : _t1207DayMin()) : 0;   // ★[T1380 덧붙임 둘 'rate'] 켬 = 나서는 몸의 낮 × 행복(끔 = 종전 값)
   if (!(budget > 0)) { T.stallBody++; vil._t1207Wait = { day: _t1238Today(), why: 'body' }; e._t1207Need = 0; return out; }
   const sp = (state.deps && state.deps.moveSpeed) || 0, from = _t1207From(vil), perLoad = _t400PerLoad('wood');
   const lim = cap > 0 ? cap : TERR_GROW_MAX_PER_DAY;
@@ -8356,9 +8356,26 @@ function t1238Stat() {
 const T1380_START_FULL = T1238_TERR_V2 && process.env.T1380_START_FULL === '1';
 const T1380_TERR_LOT_FIRST = T1238_TERR_V2 && process.env.T1380_TERR_LOT_FIRST === '1';
 const T1380_LOT_CLAIM = T1238_TERR_V2 && process.env.T1380_LOT_CLAIM === '1';
-const _t1380St = { plans: 0, lfDays: 0, lfCells: 0, claims: 0, claimCells: 0, claimWood: 0, claimLabor: 0, stake: 0 };
-function _t1380Stat(vil) { return vil._t1380 || (vil._t1380 = { lfDays: 0, lfCells: 0, claims: 0, claimCells: 0, claimWood: 0, claimLabor: 0, stake: 0 }); }
-function t1380Stat() { return Object.assign({ full: T1380_START_FULL, lotFirst: T1380_TERR_LOT_FIRST, claim: T1380_LOT_CLAIM }, _t1380St); }
+// ★★[T1380 덧붙임 둘 · ★재민 11-19 "주민들이 불행하면 땅을 잘 확장하지 않는 거야.. 그러면 자연스럽게 집터가 안 생기니까 집을 못 짓고 인구가 막히겠지"]
+//   손잡이 `T1380_HAPPY_EXPAND`(끔 기본 · 값 'rate' | 'lot' · 영토 v2 켬 안에서만 · 카드는 (라) 위에서 잰다 · 판정 재료 — 켬 후보 아님)
+//   영토 넓히기에 나서는 정도 = 그 마을 행복 h(econ `lastStats.happiness` · 0 ~ 1 · 연속 · 문턱 0 · 새 수 0) — 인구의 땅 상한을 식이 아니라 고리로:
+//   사람 ↑ → 인구 부담 B(T1205) ↑ → h ↓ → 덜 넓힌다 → 집 자리가 안 선다 → 주거 문이 인구를 세운다(사람을 지우는 길 0).
+//   'rate' — 그날 넓히는 칸(`_terrGrowCore` 의 `want`)과 나서는 몸의 낮(일괄 `_t1238Batch` 의 `_t1207DayMin`)에 h 를 곱한다
+//            (칸 수의 끝수는 마을 칸 `_t1380Rf` 에 이월 — 날마다 want × h 칸씩 · 몸 일감 줄(T1302)은 그대로).
+//   'lot'  — 집 부지를 영토에 넣는 일((나) `T1380_LOT_CLAIM`)만 h 를 탄다: 마을 칸 `_t1380Ha` 에 날마다 h 를 쌓고(한 번 넣을 몫 1 까지 — 미룬 몫을 쌓아 두지 않는다)
+//            넣을 때 1 을 쓴다 · 모자라면 까닭 `happy`(거부 기억 안 함 · 다음 날 다시) · 밭 · 일터 넓히기(`_terrGrowCore`)는 그대로(굶음 → 불행 → 못 넓힘의 덫을 피하는 꼴).
+const T1380_HAPPY_EXPAND = (T1238_TERR_V2 && ['rate', 'lot'].includes(process.env.T1380_HAPPY_EXPAND)) ? process.env.T1380_HAPPY_EXPAND : '';
+const _t1380St = { plans: 0, lfDays: 0, lfCells: 0, claims: 0, claimCells: 0, claimWood: 0, claimLabor: 0, stake: 0, happy: 0, rateCut: 0 };
+function _t1380Stat(vil) { return vil._t1380 || (vil._t1380 = { lfDays: 0, lfCells: 0, claims: 0, claimCells: 0, claimWood: 0, claimLabor: 0, stake: 0, happy: 0, rateCut: 0 }); }
+function t1380Stat() { return Object.assign({ full: T1380_START_FULL, lotFirst: T1380_TERR_LOT_FIRST, claim: T1380_LOT_CLAIM, happyExpand: T1380_HAPPY_EXPAND }, _t1380St); }
+function _t1380H(vil) { const s = vil && vil.econ && vil.econ.lastStats; return (s && typeof s.happiness === 'number') ? Math.max(0, Math.min(1, s.happiness)) : 1; }
+//   'rate' — 오늘 넓힐 칸 = want × h(끝수 이월)
+function _t1380Rate(vil, want) {
+  const w = Math.max(0, want), x = w * _t1380H(vil) + (vil._t1380Rf || 0), n = Math.min(w, Math.floor(x + 1e-9));
+  vil._t1380Rf = Math.max(0, x - n);
+  const S = _t1380Stat(vil); S.rateCut += w - n; _t1380St.rateCut += w - n;
+  return n;
+}
 //   그 칸을 영토에 넣을 수 있나(넓히기 술어 — 맞닿음은 부지 원판이 잇는다) · 참이면 `extra`(같이 넣는 칸)에 든다
 function _t1380CanTake(vil, x, y, extra, near) {
   if (!state.ta || state.ta.isBlocked(x, y) || villageOfCell(x, y)) return false;
@@ -8416,7 +8433,8 @@ function _t1380Lot(vil, F, x, y, strict, ctx) {
   if (!cl) return false;
   if (!ctx.plan) { ctx.plan = cl; _t1380St.plans++; }
   if (!T1380_LOT_CLAIM) return false;
-  if (_t1380Pay(vil, cl)) return true;
+  if (T1380_HAPPY_EXPAND === 'lot' && !((vil._t1380Ha || 0) >= 1 - 1e-9)) { ctx.stake = true; _t1380Stat(vil).happy++; _t1380St.happy++; return 'happy'; }   // ★[T1380 덧붙임 둘 'lot'] 오늘 넣을 몫이 안 찼다(다음 날 다시)
+  if (_t1380Pay(vil, cl)) { if (T1380_HAPPY_EXPAND === 'lot') vil._t1380Ha -= 1; return true; }
   ctx.stake = true; _t1380Stat(vil).stake++; _t1380St.stake++;
   return 'stake';
 }
@@ -8449,6 +8467,7 @@ function _terrGrow(vil) {
   let r;
   if (!T1238_TERR_V2) r = _terrGrowCore(vil);
   else {
+    if (T1380_HAPPY_EXPAND === 'lot') vil._t1380Ha = Math.min(1, (vil._t1380Ha || 0) + _t1380H(vil));   // ★[T1380 덧붙임 둘 'lot'] 날마다 h 를 쌓는다(한 번 넣을 몫까지 · 끔 = 이 줄 없음)
     try { _t1238DayPre(vil); } catch (e) { console.error(`[${state.zoneId}] 🏘️ [T1238] 묵힘 실패(${vil && vil.name}):`, e.message); }
     r = _terrGrowCore(vil);
     try { _t1238DayPost(vil); } catch (e) { console.error(`[${state.zoneId}] 🏘️ [T1238] econ 땅 크기 실패(${vil && vil.name}):`, e.message); }
@@ -8488,7 +8507,8 @@ function _terrGrowCore(vil) {
     }
   }
   if (!cand.size) return 0;
-  const want = Math.min(target - own.size, TERR_GROW_MAX_PER_DAY);
+  let want = Math.min(target - own.size, TERR_GROW_MAX_PER_DAY);
+  if (T1380_HAPPY_EXPAND === 'rate') want = _t1380Rate(vil, want);   // ★[T1380 덧붙임 둘 'rate'] 켬 = 그날 넓히는 칸 × 행복(끝수 이월 · 끔 = 종전 줄)
   let picked = [...cand.entries()].sort((a, b) => b[1] - a[1]).slice(0, want).map((e) => e[0]);
   if (T1380_TERR_LOT_FIRST) picked = _t1380LotFront(vil, picked, want);   // ★[T1380 (가)] 켬 = 주거 문 닫힘 · 집터 빈손이면 집 부지 후보의 영토 밖 칸부터(칸 수 · 값 그대로 · 끔 = 종전 줄)
   if (!picked.length) { if (T1207_TERR_REAL && vil.econ) vil.econ._t1207Need = 0; return 0; }
@@ -16363,7 +16383,7 @@ function _lifeAddHouseSiteInner(vil) {
       const x = c2[0], y = c2[1];
       { const _r = F.reject(x, y, strict);
         const _g = (_t1380c && _r === '마을 영토 밖') ? _t1380Lot(vil, F, x, y, strict, _t1380c) : false;   // ★[T1380 (가)(나)] 켬만 — true = 넘는 칸을 말뚝 값으로 넣었다(아래 집터) · 'stake' = 통나무 모자람(기억 안 함) · false = 종전 거부
-        if (_r && _g !== true) { if (_g === 'stake') { _probe.siteReason.stake = (_probe.siteReason.stake || 0) + 1; continue; } _probe.siteReason[_r] = (_probe.siteReason[_r] || 0) + 1; rej.add(x + ',' + y); continue; } }   // ★[11차 T4] 하드 필터는 _lifeSiteFilters 소유 — 플레이어 의뢰 터와 **같은 코드**(랩 siteFilters 규약 이식)
+        if (_r && _g !== true) { if (_g === 'stake' || _g === 'happy') { _probe.siteReason[_g] = (_probe.siteReason[_g] || 0) + 1; continue; } _probe.siteReason[_r] = (_probe.siteReason[_r] || 0) + 1; rej.add(x + ',' + y); continue; } }   // ★[11차 T4] 하드 필터는 _lifeSiteFilters 소유 — 플레이어 의뢰 터와 **같은 코드**(랩 siteFilters 규약 이식)
       if (!strict) { for (const [dx, dy] of _lifeVL().LOT_CELLS) vil._potSet.delete((x + dx) + ',' + (y + dy)); lifeSiteReset(vil); }   // 선점 부지는 잠재농지 제거(★[T41] 캐시도 판다 — 위와 같은 이유)
       const bo = state.deps.liveBuildRow ? state.deps.liveBuildRow('hut_site', (x - 2.5) * SZ, (y - 3.5) * SZ,
         { stage: 1, x0: x - 5, y0: y - 5, x1: x + 0, y1: y - 2, owner: 'npc', floor: 0 }, `npc_simvil_${vil.dbId}`, `${vil.name} 새 움집터`, null) : null;   // ★NPC 정본 렉트를 hut_site 규약에 실음(완공 기하 동일)
@@ -20673,7 +20693,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   __t740: () => state,   // ★[T1287 · T1280 회부 1] 생활층 지문 훅(`scripts/t740-side-hook.js`)의 공식 자리 — 읽기만 · 세계 0. 종전엔 훅이 컴파일 때 이 한 줄을 덧붙여서, 관찰기가 villages 를 먼저 실으면 훅이 못 붙었다(생활층 0일)
   _t1259WoodRadius, _t1259WoodCells,
   t1243FieldClearMinAt, T1207_TERR_REAL, terrQuote, terrPlayerAdd, t1207Stat, villageById, _t1207CellCost, _t1207Batch, _t1207Queue, _t1207BodyDone, _t1283BodyHaul, _t1207LogIn, _t1207Flush, _t1207CanTake, _terrAdd, _terrGrow,   // ★[T1207] 영토 확장 실물화 — 존(우클릭)과 하네스가 같은 함수를 부른다(사본 0)
-  T1380_START_FULL, T1380_TERR_LOT_FIRST, T1380_LOT_CLAIM, t1380Stat, _t1380Claim, _t1380Pay, _t1380LotFront,   // ★[T1380] 영토 v2 를 랩 넓이에 — 손잡이 셋 · 셈 · 하네스가 같은 함수를 부른다
+  T1380_START_FULL, T1380_TERR_LOT_FIRST, T1380_LOT_CLAIM, T1380_HAPPY_EXPAND, t1380Stat, _t1380Claim, _t1380Pay, _t1380LotFront,   // ★[T1380] 영토 v2 를 랩 넓이에 — 손잡이 셋 · 셈 · 하네스가 같은 함수를 부른다
   T1238_TERR_V2, T1302_TERR_BODY, T1329_TERR_CREW, t1238Pick, t1238Go, t1238CellNeed, t1238Drop, t1238Clear, t1238Place, t1238Cancel, t1238PullNeed, t1238Pull, t1238Info, t1238Stat, t1238StructAt, t1238LandAt, t1238MarkUse,   // ★[T1238] 영토 v2 — 존 · 클라 · 하네스가 같은 함수를 부른다
   t1238TakeVillageCrop, t1238PeekVillageCrop, t1238RegrowBlocked, t1238VilRadius,
   _t1238Batch, _t1238DayPre, _t1238DayPost, _t1238GoOk, _t1238Use, _t1238Remove, _t1238Boot, _t1238JobToLand, _t1238JobFromLand, _t1238JobsOf, landSizeOfCells, _t1238Struct, _t1238Land, _t1238St,

@@ -13,7 +13,8 @@
 //      목표 식(⌈사람 ÷ 6⌉ × 600 + 1,500 = `_terrCap`) · 랩 식(⌈(1,500 + ⌈사람 ÷ 6⌉ × 400) × 1.5⌉ — `village-layout.generate`) · 오늘 늘어난 칸 ·
 //      넓히기 까닭(`grow` 늘었다 · `target` 목표 닿음 · `wood` 통나무 없음(`_t1207Wait`) · `body` 몸 없음 · `labor` 개간 중(몸의 낮을 다 씀 — 줄은 있다) · `none` 그 밖) ·
 //      말뚝 통나무 · 개간 분 · 넓힌 칸(T1207 `_t1207` 날 차) · 일괄 줄 길이(`_t1238Pend`) · 땔감 충당률(`_fuelCov`) · 곳간 통나무 · 말뚝 모자람(`_t1207Need`) ·
-//      주거 문 · 집터 단계 · 그날 부름 · 찾음 · T1380 손잡이 셈(`vil._t1380` 날 차 — 켬 판만: 앞세운 날 · 앞세운 칸 · 그 자리 잡은 집 부지 · 그 칸 · 통나무 · 안 치른 개간 분 · 거절 stake)
+//      주거 문 · 집터 단계 · 그날 부름 · 찾음 · T1380 손잡이 셈(`vil._t1380` 날 차 — 켬 판만: 앞세운 날 · 앞세운 칸 · 그 자리 잡은 집 부지 · 그 칸 · 통나무 · 안 치른 개간 분 · 거절 stake) ·
+//      (덧붙임 둘) 밭 칸(`_farmSet`) · 행복 h(`lastStats.happiness`) · 'lot' 기다림(happy) · 'rate' 가 덜 넓힌 칸
 //   ③ 넓힌 칸의 쓰임(`use` · `ucols`) — 날 30 · 90 · 150 · 365 · 730 · 끝: 첫 줄(날 1) 뒤 영토에 든 칸을 지금 쓰임으로 —
 //      집 부지(집 · 집터 · 쉼터 · 의뢰 집 원판) > 밭(`_farmSet`) > 논 존닝(`_potSet`) > 일터(곳간 5×3 · 환호 · 넣은 날 뒤에 쓴 날 표 `_t1238Use` — 나무 · 채집 · 채굴) > 그 밖 · 영토에서 빠진 칸
 //   쓰는 곳: `T577_OUT` 곁 `<판>.t1380.json`(10날마다 · 끝에 한 번 더). 값 함수 · 캐시를 세우는 함수는 안 부른다(다시 훑기의 판정 함수 하나 — 위 ⚠).
@@ -103,10 +104,10 @@ if (process.env.T577_OUT) {
   VL.territoryTarget = function () { detect(); return W0.tt.apply(this, arguments); };
   //   ── ② 마을-날 ──
   const VCOLS = ['day', 'v', 'N', 'terrN', 'tgt', 'capF', 'lab', 'grown', 'why', 'stakeW', 'laborMin', 'cellsT', 'pend', 'fuelCov', 'wood', 'need', 'gated', 'site', 'call', 'hit',
-    'lfDays', 'lfCells', 'claims', 'claimCells', 'claimWood', 'claimLabor', 'stake', 'body'];
+    'lfDays', 'lfCells', 'claims', 'claimCells', 'claimWood', 'claimLabor', 'stake', 'body', 'farmN', 'h', 'happy', 'rateCut'];
   const vrows = [];
   const prevV = new Map();
-  const T1380K = ['lfDays', 'lfCells', 'claims', 'claimCells', 'claimWood', 'claimLabor', 'stake'];
+  const T1380K = ['lfDays', 'lfCells', 'claims', 'claimCells', 'claimWood', 'claimLabor', 'stake'], T1380K2 = ['happy', 'rateCut'];
   const terrHousing = (e) => (E.T958_HOUSE_REAL && e._t958Plan !== undefined) ? e._t958Plan : (e.housing || 0);
   //   ── ③ 넓힌 칸 ──
   const seen = new Map(), grownAt = new Map();   // 마을 이름 → Set · Map(칸 → 날)
@@ -163,8 +164,8 @@ if (process.env.T577_OUT) {
       const dd = e._dpDebug || null;
       vrows.push([day, vi(vil.name), N, terrN, tgt, capF, lab, grown, why, r3(d(T7, 'wood')), r3(d(T7, 'laborMin')), d(T7, 'cells'), vil._t1238Pend ? vil._t1238Pend.length : (vil._t1207Pend ? vil._t1207Pend.length : 0),
         r3(e._fuelCov), r3((e.storage && e.storage.wood) || 0), r3(e._t1207Need || 0), dd ? (dd.gated ? 1 : 0) : null, vil._site ? (vil._site.stage | 0) : -1, t.call, t.hit,
-        ...T1380K.map((k) => r3(d(K, k))), d(T7, 'body')]);
-      const q = { terrN }; for (const k of ['wood', 'laborMin', 'cells', 'body']) q[k] = +(T7[k] || 0); for (const k of T1380K) q[k] = +(K[k] || 0);
+        ...T1380K.map((k) => r3(d(K, k))), d(T7, 'body'), vil._farmSet ? vil._farmSet.size : null, r3(e.lastStats && e.lastStats.happiness), ...T1380K2.map((k) => r3(d(K, k)))]);
+      const q = { terrN }; for (const k of ['wood', 'laborMin', 'cells', 'body']) q[k] = +(T7[k] || 0); for (const k of T1380K.concat(T1380K2)) q[k] = +(K[k] || 0);
       prevV.set(vil.name, q);
     }
     today.clear();
@@ -178,7 +179,7 @@ if (process.env.T577_OUT) {
       let probe = null; try { const pp = V && typeof V.tickPerf === 'function' ? V.tickPerf().probe : null; probe = pp ? { siteCall: pp.siteCall, siteHit: pp.siteHit, siteSkip: pp.siteSkip } : null; } catch (e) {}
       const u = use.slice(); if (lastDay > 0 && !use.some((r) => r[0] === lastDay)) { const n0 = use.length; useRows(lastDay); for (let i = n0; i < use.length; i++) u.push(use[i]); use.length = n0; }
       fs.writeFileSync(OUT + '.t1380.json', JSON.stringify({ env: { BUNDLE: process.env.T1334_BUNDLE || null, DAY_MS: process.env.VILLAGE_DAY_MS || null, BUILD: process.env.T400_BUILD_ACT || null,
-        LOTF: process.env.T1380_TERR_LOT_FIRST || null, CLAIM: process.env.T1380_LOT_CLAIM || null, FULL: process.env.T1380_START_FULL || null, TB: process.env.T1302_TERR_BODY || null, TC: process.env.T1329_TERR_CREW || null,
+        LOTF: process.env.T1380_TERR_LOT_FIRST || null, CLAIM: process.env.T1380_LOT_CLAIM || null, FULL: process.env.T1380_START_FULL || null, HAPPY: process.env.T1380_HAPPY_EXPAND || null, HC: process.env.T1373_HOME_CAP || null, TB: process.env.T1302_TERR_BODY || null, TC: process.env.T1329_TERR_CREW || null,
         SHADOW: SHADOW ? 1 : 0 }, lastDay, probe, stat, ccols: CCOLS, vcols: VCOLS, ucols: UCOLS, names, calls, vrows, use: u }));
     } catch (e) {}
   };
