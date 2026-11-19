@@ -35,7 +35,7 @@ for (const dir of fs.readdirSync(root).sort()) {
   for (const [name, quantity] of Object.entries(made).sort((a,b) => b[1]-a[1])) if (quantity > 0) { const f=farmPer.get(name); producers.push([dir,name,quantity,f?.fuelCovMean ?? null,f ? f.jobDays.miner || 0 : null,f ? f.jobDays.smith || 0 : null]); }
   const aggregate = new Map();
   function add(t, item, from, to) {
-    if (item?.res !== 'weapon') return;
+    if (item?.res !== 'weapon' || !(item.amt > 0)) return;
     const key = from + '→' + to, a = aggregate.get(key) || { from, to, amount:0, n:0, distances:[], prices:[], days:[] };
     a.n++; a.amount += item.amt || 0; a.days.push(t.day); if (t.distance != null) a.distances.push(t.distance);
     if (item.pAtTo != null) a.prices.push(item.pAtTo); aggregate.set(key, a);
