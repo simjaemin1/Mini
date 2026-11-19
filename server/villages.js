@@ -9109,6 +9109,18 @@ function _warStandNear(cx, cy) {
 //     끝점 하나가 아는 닫힌 덩이 안이고 다른 하나가 그 덩이 밖이면 4방 연결이 없다 ⇒ `localPath` 는 어떤 탐색 차례로도 null(끝점 막힘 · 꺼냄 상한 · 다 뒤짐 셋 다 null) —
 //     그래서 탐색 없이 null 이 같은 답이다. 두 끝점이 같은 덩이 안이면 종전처럼 묻는다. 칠한 판이 상한에 닿으면(열린 땅) 그 칸만 "열림"으로 적고 다시 칠하지 않는다.
 const _t1330Stat = { ask: 0, hit: 0, fail: 0, gen: 0, apart: 0, comp: 0, open: 0 };
+// ★★[T1338 ② · T1330 회부 1] 틱당 처음 묻는 길 물음 상한 — 손잡이 `T1338_PATH_BUDGET`(★끔 기본 · '1' 켬 · 전투 결과가 바뀐다 → 재민 판정).
+//   대형이 풀리는 틱에 처음 묻는 물음 25 ~ 27개가 한 틱에 몰려 틱 246 ~ 459ms(예산 33ms 의 7 ~ 14배)였다(보고 T1330 §3).
+//   켬: 교전 하나의 한 틱에 **기억에 없는 물음(실제 탐색)은 하나만** — 상한 = 1(유도: 꺼냄 상한 `LOCAL_MAX_NODES` 탐색 한 번 ≈ 38ms 가 이미 틱 예산 33ms 를 넘는다).
+//   넘친 병사는 이번 틱 길 점으로 곧장(걸음 경로 없음 · 기억 안 함) · 다음 틱에 다시 묻는다. 순서 = 전투 스텝 차례(battle-core 몸 차례 · 결정적).
+const T1338_PATH_BUDGET = process.env.T1338_PATH_BUDGET === '1';
+const _t1338Stat = { ask: 0, defer: 0, walkLive: 0, walkSkip: 0 };
+// ★★[T1338 ③ · 행군 걸음 먼 탐색] 손잡이 `T1338_WALK_BUDGET`(★끔 기본 · '1' 켬 · 걸음이 바뀐다 → 재민 판정).
+//   까닭(보고 T1338 §2): T821 재개형 걸음 탐색(꺼냄 상한 `ROUTE_MAX_POPS` 250,000)은 몸마다 하나씩 산다 — 닿을 수 없는 먼 진(2,000칸 밖)을 여러 몸이 함께 물으면
+//     탐색 상태(Map 두 개 · 문자열 열쇠)가 동시에 수십 개 살아 힙이 1~2 GB 로 부풀고 큰 GC 한 번이 0.2~2초 · 끝내 힙이 넘친다(시드 42 날 638 · 시드 1020 날 617).
+//   켬: 첫 몫(종전 T804 동기 물음 — `LOCAL_MAX_NODES`)은 그대로 · 그 안에 못 찾아 **이어 밀 탐색은 존에 하나만**. 이미 하나가 살아 있으면 그 물음은 T821 이전(T804)처럼
+//     "길 없음"(그 목표 칸 기억 · 행군로 `_t804Road`). 상한 1 = path-core 재개형 문 계약 "한 저장을 쓰는 탐색은 한 번에 하나"(새 수 0).
+const T1338_WALK_BUDGET = process.env.T1338_WALK_BUDGET === '1';
 function _t1330Memo() {
   if (state._warNoCollide || !state._warRectCells) return null;
   const C = state._t1330Path;
@@ -9133,7 +9145,7 @@ function _t1330Learn(x0, y0) {
   }
   const id = ++C.n; for (const k of seen) C.cell.set(k, id); _t1330Stat.comp++;
 }
-function _warPathNext(u, tx, ty) {
+function _warPathNext(u, tx, ty, fight) {
   const MPC = state.warLive.M_PER_CELL;
   const sx = Math.floor(u.x / MPC), sy = Math.floor(u.y / MPC);
   let P = u._wpth;
@@ -9156,6 +9168,11 @@ function _warPathNext(u, tx, ty) {
     if (M && M.has(mk)) { pts = M.get(mk); _t1330Stat.hit++; }
     else if (M && _t1330Apart(sx, sy, gx, gy)) { pts = null; M.set(mk, null); _t1330Stat.apart++; }   // 끝점 하나가 이미 아는 닫힌 덩이 안 · 다른 하나는 밖 — 길이 없다(탐색 없이 같은 답)
     else {
+      if (T1338_PATH_BUDGET && fight) {   // ★[T1338 ②] 켬 — 이 교전 이 틱의 처음 묻는 물음은 하나만(넘친 몸은 다음 틱)
+        if (fight._t1338T !== fight.t) { fight._t1338T = fight.t; fight._t1338N = 0; }
+        if (fight._t1338N >= 1) { _t1338Stat.defer++; return null; }
+        fight._t1338N++; _t1338Stat.ask++;
+      }
       pts = null; try { pts = PathCore.localPath(sx, sy, gx, gy, { blocked: blk, blockedStep: (fx, fy, x2, y2) => blk(x2, y2) }); } catch (_) { pts = null; }
       if (M) { M.set(mk, pts); _t1330Stat.ask++; if (!pts) { _t1330Stat.fail++; _t1330Learn(gx, gy); _t1330Learn(sx, sy); } }
     }
@@ -9220,6 +9237,13 @@ function _t804Local(mem, x, y, tx, ty, st) {   // 걸음 프리셋 길 — 반�
     if (!S) { _t804Stat.fail++; mem._t804f = key; return false; }   // 끝점이 막혔다(동기 문과 같은 첫 줄)
     mem._t821s = { S, key, n: 0 };
     let r; try { do { r = PathCore.pathStep(S, 1); } while (!r.done && S.pops <= PathCore.LOCAL_MAX_NODES); } catch (_) { r = { done: true, path: null }; }
+    if (!r.done && T1338_WALK_BUDGET) {   // ★[T1338 ③] 켬 — 이어 미는 먼 탐색은 존에 하나만(다른 기억이 쥐고 있으면 이 물음은 종전 T804 처럼 "길 없음" → 행군로)
+      const L = state._t1338WalkLive;
+      //   쥔 기억이 버려졌으면(대형이 사라졌다 — 이틀째 안 밀렸다) 자리를 넘긴다(그 탐색은 아무도 안 민다 · 쓰레기)
+      const day = state.world ? state.world.day | 0 : 0;
+      if (L && L !== mem && L._t821s && !(L._t821s.d < day - 1)) { mem._t821s = null; _t804Stat.fail++; mem._t804f = key; _t1338Stat.walkSkip++; return false; }
+      state._t1338WalkLive = mem; mem._t821s.d = day; _t1338Stat.walkLive++;
+    }
     if (!r.done) { _t821Stat.far++; return { x, y }; }   // 종전이면 여기서 "길 없음" — 버리지 않고 다음 걸음부터 이어 민다 · 그동안 선다
     _t821Done(mem, r.path, false);
     P = mem._t804p; if (!P) return false;
@@ -9264,7 +9288,7 @@ const _t821Stat = { far: 0, found: 0, fail: 0, steps: 0, maxSteps: 0 };
 function _t821Push(mem, budget) {   // 찾는 중인 탐색을 budget(꺼냄 수)만큼 민다 — 끝났으면 true(길 → `mem._t804p` · 못 찾음 → `mem._t804f`) · 아직이면 false
   const J = mem._t821s;
   let r; try { r = PathCore.pathStep(J.S, budget); } catch (_) { r = { done: true, path: null }; }
-  J.n++; _t821Stat.steps++;
+  J.n++; _t821Stat.steps++; if (J.d !== undefined && state.world) J.d = state.world.day | 0;   // ★[T1338 ③] 켬 — 마지막으로 민 날
   if (!r.done) return false;
   if (J.n > _t821Stat.maxSteps) _t821Stat.maxSteps = J.n;
   _t821Done(mem, r.path, true);
@@ -9493,7 +9517,7 @@ function _warWorld(fight) {
       if (!wp) return r;
       // ★[T541 ⓐ] 길 점까지의 곧은 줄도 막혔으면(길에서 벗어나 산·물 모서리에 걸림) 걸어서 돌아간다 — 판정은 같은 0.5초 메모
       if (memo) u._wpBlk = !_warClearLine(u.x, u.y, wp.x, wp.y);
-      if (u._wpBlk) { const n = _warPathNext(u, wp.x, wp.y); if (n) return dirTo(u.x, u.y, n.x, n.y) || r; }
+      if (u._wpBlk) { const n = _warPathNext(u, wp.x, wp.y, fight); if (n) return dirTo(u.x, u.y, n.x, n.y) || r; }
       return dirTo(u.x, u.y, wp.x, wp.y) || r;
     },
     hold(ctx, u, e) { return fight.holder === u.side && !!e.ctl && !(T790_NO_SNAP && u._t1183Shooter === e); },   // 추격 없음 — 물러나는(대형으로 돌아간) 적은 지키는 쪽이 쫓지 않는다
@@ -11992,7 +12016,7 @@ function __p3Bind(mock) {
     _t619Region, _t619RedigKeep,   // ★[T619] 쌍 둘레 · 다시 파기 거르개 — 자(`t619-h-audit`)가 **이 함수**로 센다(사본 0)
     _econSameOf, _warEatBySpoil,   // ★[T458] 같은 물건 한 줄 · 상하는 것부터 — 하네스가 **이 함수**로 등가 표를 센다(사본 0)
     _warLootAccept, _warLootPickup,   // ★[T466] 약탈 = 행위 — 하네스가 운영과 같은 훅을 war-core 에 건다
-    _warSnapToSlots, _warStandNear, _warPathNext, _warReleaseAdv, _warDetourFor, _t1330Stat, _t1330Memo,   // ★[T541] 막힌 슬롯 → 설 수 있는 가장 가까운 칸 · 막힌 곧은 걸음 → 걸음 경로 — 하네스가 **이 함수들**을 부른다
+    _warSnapToSlots, _warStandNear, _warPathNext, _warReleaseAdv, _warDetourFor, _t1330Stat, _t1330Memo, _t1338Stat,   // ★[T541] 막힌 슬롯 → 설 수 있는 가장 가까운 칸 · 막힌 곧은 걸음 → 걸음 경로 — 하네스가 **이 함수들**을 부른다
     _t476Decide, _t476DenVil,   // ★[T476] 토벌 결단 · 소굴 어댑터 — 하네스가 운영과 같은 결단을 부른다
     _warRationLayDownBody, _warBagDrop, _t476DenRefresh, _t476DenSync,   // ★[T748] 켬 전용 일곱 길 — 하네스(`test-moment-lot` ⑨~)가 **이 함수들**을 그대로 부른다(사본 0)
     _t312Deliver, _t347Deliver, _t544PackPut, _t544PackIn, _t368Hold, _t368Deliver,
