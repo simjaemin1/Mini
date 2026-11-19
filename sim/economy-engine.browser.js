@@ -13617,7 +13617,7 @@ const BOW_Q_STONE = WEAP_Q_STONE;      // 활 무기품질 기여 등급(석재�
 const TIN_DEPOSIT_ORE_SCORE = 1.28;    // 산지 문턱(score=ore×(0.8+0.4×hash)) — ore~1.5 광산촌(1.2~1.5) 대부분 산지, ore≤1.0은 대체로 미달. 광산촌 위주 소수만 산지 ⇒ ~10-20%(청동 편중). 청동/명 주 레버(랩 마을3=ore1.5 산지 보장 하한).
 // ★주석 산출 = 마을 규모·광부 수 무관 *정량*(광량=land.tin이 결정). 광부 1명만 있으면 정량 채굴 → 대형/소형 산지 간 편차 제거(청동/명 시드 변동의 근본 차단).
 //   종전 per-miner×YIELD는 대형 산지(광부 24명)가 소형(3명)의 8배 tin을 캐 청동/명이 0.03~0.45로 요동쳤음. 정량화로 수렴.
-const TIN_DEPOSIT_YIELD_FLAT = 0.46;   // 산지 일일 tin 산출(× land.tin). 부존 ~1.0 마을이 ~0.46/일 → 자체 청동 병기고 + 소량 수출. 청동 총량의 주 레버.
+const TIN_DEPOSIT_YIELD_FLAT = 0.46;   // T1398: 레거시 정량 생산 분기는 삭제. 광부 기회비용·한계가치 두 곳이 아직 쓰므로 상수는 유지·회부(보고 T1398).
 const TIN_DEPOSIT_STRENGTH_LO = 0.6;   // 산지 부존 하한(land.tin ∈ [LO, LO+SPAN]) — 광부 매력 스케일(obsidian/jade 부존과 동형)
 const TIN_DEPOSIT_STRENGTH_SPAN = 0.8; // 산지 부존 폭
 // ★청동 경제 자격(_bronzeCapable) — 청동검을 *지속* 생산할 수 있는 마을만 청동 무장. 그 외(트레이스 주석뿐)는 석기 무장(마제석검).
@@ -13664,6 +13664,8 @@ const _t1385On = (k) => !!(typeof process !== 'undefined' && process.env && (pro
 const T1385_ARMORY = _t1385On('ARMORY'), T1385_TINGATE = _t1385On('TINGATE'), T1385_WS = _t1385On('WS'), T1385_POOR = _t1385On('POOR');
 const T1385_FRAC = T1385_ARMORY ? 1 : BRONZE_ARMORY_FRAC;   // 병기고 중 청동 몫(㉮ 켬 = 병기고 전체 · 끔 = 0.45 그대로)
 const T1385 = { armory: T1385_ARMORY, tingate: T1385_TINGATE, ws: T1385_WS, poor: T1385_POOR };   // (읽기 — 관찰기 · 하네스)
+// T1398: 수출 재고 띠와 희소성 상한을 걷는다. 상위 손잡이 전체 켬 안에서만 작동(기본 끔).
+const T1398_BRONZE_BAND = !!(typeof process !== 'undefined' && process.env && process.env.T1385_BRONZE_NOCAP === '1' && process.env.T1398_BRONZE_BAND === '1');
 // ★★[T1344 2026-11-16 · T1333 회부 3] 손잡이 `T1344_BRONZE_STOCK`('1' 만 켬 · 끔 기본 = 아래 갈래가 한 줄도 안 선다 = 종전 글자) — **청동 몫(위 45 %)의 곳간은 청동 근접검이다.**
 //   위 정본 글: "병기고 중 청동 최대 비중(나머지 ≥55%는 석기)" · `_smithBeatsMason` 머리 "BRONZE_ARMORY_FRAC 이 청동을 병기고의 일부까지만 허용하므로, 청동이 싸도 나머지는
 //   석공의 마제석검이 채운다" · 석공 갈래 "청동 우선권 + 비중 상한". 셋 다 **청동의 몫**을 말한다. 그런데 세 문(대장장이 주조 `_smSwordStock` · 석공 `_bronzeNow` ·
@@ -17125,7 +17127,6 @@ function tickVillage(v, day) {
   const dailyProduction = v.dailyProductionBuf;
   for (const r in dailyProduction) dailyProduction[r] = 0;   // ★NaN 가드: specialty 부산물 키(동적 추가분)까지 전부 리셋 — 어제 값 잔존·NaN 오염 방지
   for (const r of RESOURCES) dailyProduction[r] = 0;
-  v._tinToday = 0;   // ★청동 희소성: 마을 일일 주석 채굴 누적(마을 규모 무관 절대 상한용 — 대형 산지 마을의 tin 홍수 방지)
   // ★도구 등급제: 맨손 0.25×(엄청 느림) / 돌도구 1.0×(보통) / 철도구 1.8×(상당히 빠름). 일꾼은 가진 최선의 도구 사용.
   //   → 도구가 생산을 좌우 → 대장간·돌·철 수요. 도구 없어도 농어업 가능하나 극도로 느림(사용자 설계).
   let toolDeps = 0;
@@ -17171,9 +17172,6 @@ function tickVillage(v, day) {
   const _cuPC = (v.storage.copper || 0) / (v.npcs.length || 1);
   const _metalGlut = Math.max(0, Math.min(0.9, (_cuPC - 4) / 4));
   v._metalGlut = _metalGlut;   // ★저장: 광부 한계가치(픽커·기회비용)가 금속 글럿을 보게 → 글럿이면 광부 차출(무의미 채굴 방지)
-  // ★청동 희소성: 주석 글럿 — 산지 마을이 tin을 과축적하지 않게(청동검·수출로 소진). 버퍼 낮게(tin=귀재): tin_pc~1.0서 채굴 감산 → 한 산지가 전 마을을 청동화하는 과잉 방지.
-  const _tinPC = (v.storage.tin || 0) / (v.npcs.length || 1);
-  const _tinGlut = Math.max(0, Math.min(0.9, (_tinPC - 1.0) / 1.5));
   // ★S5 흑요석/옥 글럿 감산 — 특수 산지 마을이 채굴재를 무한 축적하지 않게(수출 교역재라 국내 수요는 소량). 재고 초과분 선형 감산.
   const _obPC = (v.storage.obsidian || 0) / (v.npcs.length || 1);
   const _obsGlut = Math.max(0, Math.min(0.9, (_obPC - 3) / 4));
@@ -17644,15 +17642,6 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
           for (const r in bp) addProduce(r, oAmt * bp[r]);
         }
         if(!T1188_ORE_SPLIT){addProduce('salt', oAmt * 0.05); addProduce('clay', oAmt * 0.08);}   // ★소금=완충 교역재(광범위 수요 utility 0.8). 제거 시 교역균형 흔들려 취약 시드 boom-bust. 고증(소금길). 이제 광맥 채굴 부산물로 산출(돌 채석과 분리).
-      }
-      // ★청동 희소성: 주석 채굴 — *산지 마을(land.tin>0)만*. 대부분 마을은 land.tin=0 → tin 산출 0 → 청동 불가(석기 무장).
-      //   주석(cassiterite)은 자체 광상 → land.ore와 독립(obsidian/jade 동형: 부존만으로 채굴). 산지 마을이 청동검을 만들고 수출(교역 특산).
-      // ★산출을 *마을 규모·광부 수 무관* 정량(광량 = land.tin이 결정)으로 — 대형/소형 산지 마을 간 tin 산출 편차(→청동/명 시드 변동)를 차단.
-      //   첫 광부가 마을 일일 정량(TIN_DEPOSIT_YIELD_FLAT × land.tin)을 1회 산출(이후 광부는 tin 안 캠 — 광석·구리는 계속). _tinGlut로 과축적 시 감산.
-      //   ※oreMix 가 있는 마을(본 게임)은 주석도 **제련에서** 나온다 — 여기서 또 내면 이중 산출이다.
-      if (!T1188_ORE_SPLIT && !(v.land && v.land.oreMix) && (v.land.tin || 0) > 0 && (v._tinToday || 0) === 0) {
-        const tinAmt = TIN_DEPOSIT_YIELD_FLAT * (v.land.tin || 0) * (1 - _tinGlut);
-        if (tinAmt > 0) { addProduce('tin', tinAmt); v._tinMined = (v._tinMined || 0) + tinAmt; v._tinToday = (v._tinToday || 0) + tinAmt; }
       }
       // ★S5 특수 산지 채굴 — 흑요석(화산지대)·옥(옥 산지). 광부가 광석과 별개로 채굴(비교우위 교역재).
       //   흑요석=예리(화살촉·소형칼날 → 사냥·방어 보조), 옥=위세품. 채굴량 ∝ land 부존. 부존 0이면 산출 0(대부분 마을).
@@ -18834,18 +18823,35 @@ const COPPER_DERIV_DAYS = (typeof process !== 'undefined' && process.env && proc
 //     상한은 "없어도 죽지 않는 것들(위신재 · 잡화 롱테일)"을 인구 비례로 묶으려던 줄인데, 녹이는 원석 · 붓는 금속의 수요는 사람 수가 아니라
 //     노 · 주조 한 곳에 몰린다 — 주석은 녹이는 마을-날 96 · 78 % 가 바닥이었고(T1313 §1), 합금 발주(ⓐ)의 구리도 3.42 → 0.2 ~ 0.6 으로 깎였다(T1333 서버 자 판).
 const T1333_ALLOY_ORDER = (typeof process !== 'undefined' && process.env && process.env.T1333_ALLOY_ORDER === '1');
-const T1333_EXPORT_CAST = (typeof process !== 'undefined' && process.env && process.env.T1333_EXPORT_CAST === '1');
+const T1333_EXPORT_CAST = (typeof process !== 'undefined' && process.env && process.env.T1333_EXPORT_CAST === '1') || T1398_BRONZE_BAND;   // T1398 켬은 수출 주조를 포함한다.
 const T1333_WS_INPUT = (typeof process !== 'undefined' && process.env && process.env.T1333_WS_INPUT === '1') || T1385_WS;   // ★[T1385 ㉰] 켬이 같이 켠다(모듈 머리 `T1385`)
 function t1333WsFree(r) { return !!(T1333_WS_INPUT && (r === 'ore' || OreGoods.isOre(r) || _MELT_METALS.includes(r))); }   // v2 상한 줄이 부른다(판정은 여기 하나)
 function _t1333ExportCast(v) {
   const nef = (v && v._world && typeof v._world.netExportFn === 'function') ? v._world.netExportFn : null;
   if (!nef) return false;
+  if (!T1398_BRONZE_BAND) {
   if (!_weaponThin(v)) return false;   // 곳간에 무기가 쌓였으면(인구 × 0.8 위) 수출로 빠져나가야 다시 붓는다 — 종전 수출 대장장이 문의 과잉 방지 그대로(같은 함수)
+  }
   const pw = nef(v, 'weapon') || 0;
   if (!(pw > 0)) return false;
   const p = _oppPrice(v);
   const best = _meltSearch(v.storage || {}, (k) => (k === 'weapon' ? pw : p(k)));
+  if (T1398_BRONZE_BAND) {
+    // 손 값도 같은 기회비용 자로 잰다. 다른 일에서 옮겨 올 가장 싼 손의 하루 값.
+    const costs = (v.npcs || []).filter(n => n.currentJob !== 'smith' && !(n._tradingUntil > (v._world.day || 0)))
+      .map(n => opportunityCost(n, v, p)).filter(Number.isFinite);
+    const labor = costs.length ? Math.min(...costs) : 0;
+    return !!(best && best.score > labor);
+  }
   return !!(best && best.score > 0);
+}
+function _t1398ExportSmiths(v) {
+  if (!_t1333ExportCast(v)) return 0;
+  const p = _oppPrice(v), pw = v._world.netExportFn(v, 'weapon') || 0;
+  const melt = _meltSearch(v.storage || {}, k => k === 'weapon' ? pw : p(k));
+  if (!melt) return 0;
+  const casts = Math.min(...Object.entries(melt.take).map(([k, q]) => (v.storage[k] || 0) / q));
+  return Math.max(1, Math.ceil(casts / COPPER_DERIV_DAYS));
 }
 function derivedInputTarget(v, r) {
   // 재료가 없어 작업을 못 해도 도구 결손의 실제 레시피 투입은 수요다(숯 파생수요와 같은 문).
@@ -18972,7 +18978,7 @@ function smithTarget(v) {
   const hasBronze = _smithBeatsMason(v) && (v.storage.copper || 0) >= 0.3;
   const hasIron = _ironWeaponCapable(v);   // ★철검=최희소: 철 풍부 마을만(트레이스 축적 미달 → 석공 마제석검)
   const _smelt = smeltTarget(v);
-  if (!hasBronze && !hasIron) return _smelt;   // 무기는 석공 담당이어도, 제련할 원석이 있으면 필요하다
+  if (!hasBronze && !hasIron && !(T1398_BRONZE_BAND && T1333_EXPORT_CAST && _t1333ExportCast(v))) return _smelt;   // 무기는 석공 담당이어도, 제련할 원석이 있으면 필요하다
   // ★청동 희소성: 청동 자격 마을은 대장장이가 청동검 *병기고*를 채움(무산지 석기 병기고의 청동판). 재고=근접검(_swordFrac) → 활이 채운 pool에 가려 청동검 노동목표가 죽지 않음.
   //   병기고 목표(N×MELEE_ARMORY_PC) — 전사 실수요를 넘어 마을 청동검 재고(청동 무기 0.2/명 목표의 공급원). 청동 자격 아니면(철만) 전사 커버리지만.
   const N0 = v.npcs.length || 1;
@@ -18987,7 +18993,11 @@ function smithTarget(v) {
   // ★[T1333 ⓑ] 수출 주조 켬이면 무기장 자리가 서는 조건에 "이웃이 사 줄 값으로 한 번 주조가 남는다"(`_t1333ExportCast` — 주조 문과 같은 함수)를 더한다
   //   (구리 > 3N 문은 T1313 몸 세계 판 열(10판 · 100날 · 51 마을)에서 한 번도 안 섰다 — 구리 ÷ 3N 가장 큰 날 0.453 · 어촌1 날 83 구리 39.4 · 사람 29).
   //   자리 수(3 % · 최소 1)는 종전 그대로 · 끔 = 종전 글자.
-  const exportSmiths = (hasBronze && ((cuRich && weapThin) || (T1333_EXPORT_CAST && _t1333ExportCast(v)))) ? Math.max(1, Math.floor(N * 0.03)) : 0;
+  // T1398: 재고로 가능한 주조 횟수를 기존 한 달 조업 재고 기간에 나눈다.
+  // 인구 3% / 구리 3N / 무기 0.8N을 목표로 쓰지 않는다. 재료가 없거나 순수출 이윤이 없으면 0.
+  const exportSmiths = T1398_BRONZE_BAND
+    ? (T1333_EXPORT_CAST ? _t1398ExportSmiths(v) : 0)
+    : (hasBronze && ((cuRich && weapThin) || (T1333_EXPORT_CAST && _t1333ExportCast(v)))) ? Math.max(1, Math.floor(N * 0.03)) : 0;
   // ★★제련과 주조는 **다른 일**이다 — max 가 아니라 **합**이다.
   //   max 로 두면 제련하는 날 무기를 못 만든다(실측: 무기 551 → 255, 그러자 전사·호위가 무너지고
   //   교역이 줄어 인구가 1,804 → 1,045 로 급감했다). 정원을 합으로 두면 대장장이가 늘고,
@@ -19461,7 +19471,7 @@ function pickDeficitJob_rational(v, world) {
   //   ★제련도 대장장이 일이다 — 금속이 아직 없어도 **원석이 있으면** 뽑아야 한다.
   //     (금속이 없으면 _smithBeatsMason 이 false 라, 이 조건만 두면 "금속이 없어서 대장장이를 안 뽑고
   //      대장장이가 없어서 금속이 안 생기는" 순환에 갇힌다. 실제로 v2 랩에서 그렇게 갇혀 있었다.)
-  if ((counts.smith || 0) < smithTarget(v) && (_smithBeatsMason(v) || smeltTarget(v) > 0)) return 'smith';
+  if ((counts.smith || 0) < smithTarget(v) && (_smithBeatsMason(v) || smeltTarget(v) > 0 || (T1398_BRONZE_BAND && T1333_EXPORT_CAST && _t1333ExportCast(v)))) return 'smith';
   if ((counts.armorsmith || 0) < armorsmithTarget(v) && (v.storage.hide || 0) > N * 0.3) return 'armorsmith';
   if ((counts.cook || 0) < cookTarget(v)) return 'cook';   // ★유령 박멸 #4: 요리사 — 스톡-플로우 노동목표(장인 패턴). 잉여 마을만(cookTarget 내 게이트)
   // ★★[끊김③ 해소 2026-08-01 — 재민 "계속해 끊지 말고 쭉"] rational 이 warriorTarget 을 안 봤다.
@@ -20542,6 +20552,7 @@ module.exports = {
   T1333_ALLOY_ORDER, T1333_EXPORT_CAST, COPPER_DERIV_ON, _t1333ExportCast,   // ★[T1333] 합금 발주 · 수출 주조 손잡이(끔 기본) · 구리 파생 손잡이(읽기) · 수출 주조 판정(하네스가 정본을 직접 부른다)
   T1333_WS_INPUT, t1333WsFree,   // ★[T1333 ④] 생산 투입재 인구 몫 상한 밖(실험 · 끔 기본) — v2 상한 줄이 부른다
   T1344_BRONZE_STOCK, _t1344BronzeStock, _t1344Mix, _foodSecF, _meltSearch, _oppPrice,   // ★[T1344] 청동 몫 곳간(끔 기본) · 하네스 · 관찰기가 정본 함수를 직접 부른다(읽기 · ⑥ 은 뺀 배합)
+  T1398_BRONZE_BAND, _t1398ExportSmiths,
   T1385, T1385_BZ, T1385_FRAC, _weaponThin,   // ★[T1385] 청동 사슬 상한 걷기 팔(끔 기본 — 읽기 · 관찰기 · 하네스)
   // ★[2026-08-03a ⑰] 국고 현금 배선 — 하네스가 **산술을 직접 재게** 노출한다(상수 복제 금지).
   //   `_treasuryTopUp` 은 실제 함수 그대로여야 검사가 그 코드를 밟는다(모형을 검사하면 의미가 없다).
@@ -21918,7 +21929,7 @@ function _exportCandidatesV2(a, N) {   // a = 마을 칸({ v }) — 몸통 줄�
         else if (r === 'weapon') { keep = Math.max(2, (warN + huntN3) * 1.3); thresh = keep + N * 0.1; }   // ★무기: 전사+사냥꾼(활 — §9 3차) ×1.3 보유 후 잉여만
         else if (WEAPONR[r]) { keep = Math.max(2, warN * 1.3); thresh = keep + N * 0.1; }   // 갑옷: 전사 수×1.3 보유 후 잉여만
         else if (r === 'tigerhide') { keep = Math.max(1, N * TIGERHIDE_KEEP_PC); thresh = Math.max(2, N * TIGERHIDE_KEEP_PC * 1.6); }   // ★호피(§9 3차): 한계 위신 포화점(CAP/W≈0.025/인)×1.2만 쥐고 잉여=순수출재 — 일반칙(0.4N)이면 희소 위신재는 영영 수출 불가. 금·은·보석은 위신 포화(2/인)가 일반칙 위라 기존 규칙 유지
-        else if (r === 'tin') { keep = Math.max(3, N * TIN_EXPORT_KEEP_PC); thresh = keep + N * TIN_EXPORT_SURPLUS_PC; }   // ★청동 희소성: 주석=전략재. 산지 마을이 대량 비축(자체 청동 독점 + 위세) 후 얇은 잉여만 수출 → 무산지 마을은 만성 주석 기근(청동 편중 유지, 무산지는 석기)
+        else if (r === 'tin' && !v1.T1398_BRONZE_BAND) { keep = Math.max(3, N * TIN_EXPORT_KEEP_PC); thresh = keep + N * TIN_EXPORT_SURPLUS_PC; }   // ★청동 희소성: 주석=전략재. 산지 마을이 대량 비축(자체 청동 독점 + 위세) 후 얇은 잉여만 수출 → 무산지 마을은 만성 주석 기근(청동 편중 유지, 무산지는 석기)
         else { keep = target * 0.5; thresh = target * 0.8; }                // 그 외: 15일치
         if (a.t1157Release && !(FOODR[r] && _t1149Wd(a.v) > 0)) { keep = 0; thresh = 0; } // T1157 c: preserve active winter rule, seed reserve, and food/debt guards
         if (FOODR[r] && _t1149Wd(a.v) > 0) {   // ★[T1149 ⓒ] (위 if/else 사슬 뒤 — 사슬에 끼우면 식량이 `else` 갈래로 떨어져 끔에도 keep · thresh 가 바뀐다) 가을 · 겨울 — 제 겨울 몫(하루 생존량 × 겨울에 남은 날 · 곳간 식량 환산)을 넘는 몫만 판다
@@ -22788,7 +22799,7 @@ function* tickTradeV2Steps(world, day) {
         // ★무기·갑옷 자본재 목표=사용자(전사+사냥꾼)×1.3 — 일반칙(N×0.5)은 전사 적은 마을서 과대 → 청동검 과잉 귀환 허용하던 원인.
         if (r === 'weapon') aTarget = Math.max(2, (((a.v.counts && a.v.counts.warrior) || 0) + ((a.v.counts && a.v.counts.hunter) || 0)) * 1.3);
         else if (r === 'armor') aTarget = Math.max(1, ((a.v.counts && a.v.counts.warrior) || 0) * 1.3);
-        if ((a.v.storage[r] || 0) >= aTarget * WEAPON_RETURN_GLUT_MULT) continue;   // ★return-glut-cap: 무기는 사용자×1.3×배수 넘으면 안 실어옴(청동검 소량 수입). 그 외 극단 글럿 차단
+        if (!(v1.T1398_BRONZE_BAND && r === 'weapon') && (a.v.storage[r] || 0) >= aTarget * WEAPON_RETURN_GLUT_MULT) continue;   // ★return-glut-cap: 무기는 사용자×1.3×배수 넘으면 안 실어옴(청동검 소량 수입). 그 외 극단 글럿 차단
         const bStock = v1.seedReserveAvail(b.v, r);   // ★[T692] 되사 갈 수 있는 곳간 = 곳간 − 시딩 비축(끔 = 종전)
         const bSubs = (SUBSISTENCE_PER_NPC[r] || 0) * b.v.npcs.length;
         const bTarget = Math.max(bSubs * 30, b.v.npcs.length * 0.3 * _orePart(r));
@@ -23162,7 +23173,7 @@ function _returnGluttedV2(from, r) {
   // ★무기·갑옷은 자본재 — 목표=사용자(전사+사냥꾼)×1.3(활 포함). 일반칙(N×0.5)은 전사 적은 마을서 과대 → 무기 과잉비축 허용하던 원인.
   if (r === 'weapon') target = Math.max(2, ((from.counts && from.counts.warrior || 0) + (from.counts && from.counts.hunter || 0)) * 1.3);
   else if (r === 'armor') target = Math.max(1, (from.counts && from.counts.warrior || 0) * 1.3);
-  return (from.storage[r] || 0) >= target * WEAPON_RETURN_GLUT_MULT;
+  return !(v1.T1398_BRONZE_BAND && r === 'weapon') && (from.storage[r] || 0) >= target * WEAPON_RETURN_GLUT_MULT;
 }
 // ★★[T707] 매도·매수·복귀 — 종전 `_caravanArrive` 의 "평소" 몸통을 **글자 그대로** 이름만 올렸다.
 //   끔 = 도착 자리에서 부른다(종전 바이트) · 켬 = 떠날 때 `settleMarketsV2` 가 찍어 둔 값(도착 때 그림자가격)으로 부른다.
