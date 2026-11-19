@@ -9,11 +9,15 @@ const rows = [], diag = [], routes = [], producers = [], worst = [], snapshots =
 for (const dir of fs.readdirSync(root).sort()) {
   const base = path.join(root, dir); if (!fs.statSync(base).isDirectory()) continue;
   if (!fs.existsSync(path.join(base,'done.txt'))) { console.log(`<!-- 진행 중 ${dir} -->`); continue; }
-  const probeFile = fs.readdirSync(base).find(p => p.replace(/\.gz$/, '') === 'probe.json' || /\.t1385\.json(?:\.gz)?$/.test(p));
-  const bandFile = fs.readdirSync(base).find(p => p.replace(/\.gz$/, '') === 'band.json' || /\.t1398\.json(?:\.gz)?$/.test(p));
+  // 이번 몸 판은 0→20 한 마디. 배열 days를 지원하지 않는 일반 묶음 대신 원시 마디를 우선 읽는다.
+  const files = fs.readdirSync(base).sort((a,b) => Number(b.startsWith('seg-')) - Number(a.startsWith('seg-')));
+  const probeFile = files.find(p => p.replace(/\.gz$/, '') === 'probe.json' || /\.t1385\.json(?:\.gz)?$/.test(p));
+  const bandFile = files.find(p => p.replace(/\.gz$/, '') === 'band.json' || /\.t1398\.json(?:\.gz)?$/.test(p));
   if (!probeFile || !bandFile) { console.log(`<!-- 미완료 ${dir} -->`); continue; }
   const p = read(path.join(base, probeFile)), b = read(path.join(base, bandFile));
   if (p.err) throw Error(dir + ': ' + p.err);
+  const expectedDays = Number(fs.readFileSync(path.join(base,'done.txt'),'utf8').trim().split(/\s+/).at(-1));
+  if (p.days.length !== expectedDays || b.days.length !== expectedDays) throw Error(dir + ': 관찰 날 수가 완료 표지와 다름');
   const castCount = Array.isArray(p.casts) ? p.casts.length : p.casts.n;
   if (b.casts.length !== castCount) throw Error(dir + ': 주조 훅 수 어긋남 ' + b.casts.length + '/' + castCount);
   const col = Object.fromEntries(p.dcols.map((k,i) => [k,i]));
