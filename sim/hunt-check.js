@@ -3,7 +3,7 @@
 const fs=require('fs'),path=require('path');
 // ★결정론: 하네스 한정 시드 RNG(mulberry32) — H14/H15 문턱 플레이크·시드런 인구 분산(±150)의 원천이던 Math.random 비시드 제거. 브라우저 랩은 비시드 유지.
 {let _s0=(typeof CHILD_SEED!=='undefined'&&CHILD_SEED!=null?CHILD_SEED:7)*2654435761>>>0;Math.random=function(){_s0=_s0+0x6D2B79F5|0;let t=Math.imul(_s0^_s0>>>15,1|_s0);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
-const SRC=fs.readFileSync(path.join(__dirname,'..','..','사냥실험실.html'),'utf8');
+const SRC=fs.readFileSync(process.env.HUNTLAB_HTML||path.join(__dirname,'..','lab','사냥실험실.html'),'utf8')/*★T1396: 레포 자리(07-07 판은 레포 밖 ../../) · HUNTLAB_HTML 로 다른 판*/;
 let js=/<script>([\s\S]*?)<\/script>/.exec(SRC)[1].replace("'use strict';","");
 const els={};
 global.document={getElementById:id=>els[id]||(els[id]={value:{nh:'3',cap:'24',spd:'36',terr:(global.__TERR||'초원')}[id]||'0',textContent:'',innerHTML:''}),querySelectorAll:()=>[]};
