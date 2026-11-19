@@ -34,6 +34,7 @@ const HEADED = process.argv.includes('--headed');
 // ★★[T1353 · T1341 회부 7] 손잡이 따라 두 대본 — `T1341_OWN_HOUSE=1`(또는 `--own`)이면 켬 대본(제 집 줄기 · 의뢰 갚음 0), 아니면 종전 대본 그대로(끔 판 판정 무변).
 //   켬 대본에서 갈리는 자리만 갈래를 둔다: ④ 첫 의뢰 말(갚음 0) · ⑤ 납품(짐 = 낸 것만 · 받아들임 · 촌장 "고맙네") · ⑥ 집터(빈터 선물 0 · 영토 안 거절 · 영토 밖 빈 들 선포) · ⑦ HUD("받아들임").
 const OWN = process.env.T1341_OWN_HOUSE === '1' || process.argv.includes('--own');
+const DEEDS_ON = !!require(path.join(__dirname, '..', 'server', 'deeds.js')).ON;   // ★[T1389] 사유지 돌봄 켬 여부(정본 손잡이 한 자리 · -on 가지는 켬 기본)
 const CPORT = 3010, ZPORT = 3020;
 const CDB = `/tmp/e2e-onb-central-${process.pid}.db`, ZDB = `/tmp/e2e-onb-zone-${process.pid}.db`;
 for (const f of [CDB, ZDB, CDB + '-wal', ZDB + '-wal', CDB + '-shm', ZDB + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
@@ -567,7 +568,9 @@ async function waitHttp(url, tries = 900) {
       } else {
       // 구역 **밖**에서는 여전히 거절돼야 한다(게이트가 진짜 게이트인지)
       const r1 = await claimTry(stL.lot.x + stL.lot.r * 3, stL.lot.y);
-      ok(r1.after === r1.before, `[${label}] 구역 밖은 종전 규칙 그대로 거절된다`, `claims ${r1.before}→${r1.after} · ${JSON.stringify(r1.notes.slice(0, 90))}`);
+      //   ★[T1389] 사유지 돌봄 켬(`T1305_DEEDS` — -on 가지 기본)이면 구역 밖 문은 사유지 캐논(영토 밖 빈 들 = 누구나 · 영토 안 = 인정 구성원 · `_t1305Gate`) — 걸리거나 영토 까닭으로만 거절
+      if (DEEDS_ON) ok(r1.after === r1.before + 1 || (r1.after === r1.before && /영토 안 집터는/.test(r1.notes)), `[${label}] ★[돌봄 켬] 구역 밖은 사유지 캐논 — 빈 들이면 걸리고 영토 안이면 영토 까닭으로 거절`, `claims ${r1.before}→${r1.after} · ${JSON.stringify(r1.notes.slice(0, 90))}`);
+      else ok(r1.after === r1.before, `[${label}] 구역 밖은 종전 규칙 그대로 거절된다`, `claims ${r1.before}→${r1.after} · ${JSON.stringify(r1.notes.slice(0, 90))}`);
       // 구역 **안**에서는 통과
       const r2 = await claimTry(stL.lot.x, stL.lot.y);
       ok(r2.after === r2.before + 1, `[${label}] ★마을 어귀 빈터에 내 땅을 걸었다(목표 ③ 도달)`, `claims ${r2.before}→${r2.after} · ${JSON.stringify(r2.notes.slice(0, 90))}`);

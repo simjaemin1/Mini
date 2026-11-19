@@ -10,10 +10,11 @@
 //   ⓓ 복도 막힘 — ㉠(끔 기본) 복도 청크만 바닥나면 기다린다(목 칸뿐 · 풀린 칸 0) · ㉡(`T1389_NECK_GIVE=1`) 가장 먼 목 + 집이 안 든 조각 통째로 · 집 덩이는 그대로
 //   ⓔ 부재 훑기(T45) — 하루 전에 나간 주인의 칸은 그대로(`active`) · 50일 전이면 `free` (종전 `last_seen | 0` 은 ms 시각을 32비트로 잘라 둘 다 `free`)
 //   ⓕ 계량기 — 1초 안 두 번째 보냄은 버리지 않고 1초 끝에 보낸다(둘째 칸을 잡은 직후 패널이 새 N)
+//   ⓖ 숫자 상한(S0 = 9) — 켬은 개인 사유지 숫자 상한 문구가 안 뜬다(12칸 다 선다) · 끔은 9칸에서 "한도 9"(종전 그대로)
 //   ★미끼 셋(이 파일 안 · 사본은 `server/_t1389bait-*` · 판 끝에 지움): ① 정수 이웃 하나를 빼먹은 claims 사본 → ⓐ 빨강 · ② 부재 시각을 `| 0` 으로 되돌린 claims 사본 → ⓔ 빨강 ·
 //     ③ 예산에서 멈출 때 셈 시각을 '지금'으로 건너뛰는 deeds 사본 → ⓒ 빨강
 // ★박힌 날짜 0 — 시각은 주입(존 `_t1332SetClock`) · 판의 0 = 지금에서 1,000일 뒤(부팅 벽시계 셈이 판을 안 건드린다).
-//   node scripts/test-t1389-deeds-on.js   (아이 판 일곱 · 약 40초)
+//   node scripts/test-t1389-deeds-on.js   (아이 판 아홉 · 약 50초)
 'use strict';
 if (require.main === module) require('./lib-port').noCentral();
 const path = require('path');
@@ -80,6 +81,27 @@ if (MODE === 'pure') {
     put(R, 'd_give', B.far === 0 && B.blobLeft === 16 && B.home && B.hits.length >= 17 && new Set(B.hits.map((h) => h[1].toFixed(6))).size <= B.hits.length - 16, `㉡ 풀린 칸 ${B.hits.length}(먼 덩이 남음 ${B.far} · 집 덩이 ${B.blobLeft}/16) · 한 순간에 ${B.hits.length - new Set(B.hits.map((h) => h[1].toFixed(6))).size + 1}칸`);
   } catch (e) { R.err = String((e && e.stack) || e).slice(0, 400); }
   console.log('@@T1389 ' + JSON.stringify(R));
+  process.exit(0);
+}
+
+// ── 아이 ③ 숫자 상한(S0 = 9) 문구 — 켬 · 끔 둘 다(부모가 `T1305_DEEDS` 를 준다) ──
+if (MODE === 'cap') {
+  Object.assign(process.env, { ZONE_ID: 'hanbando', ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', CLAIM_ABSENCE: '0' });
+  const _l = console.log, _w = console.warn, _e = console.error; console.log = () => {}; console.warn = () => {}; console.error = () => {};
+  const Zone = require(path.join(ROOT, 'server', 'zone.js'));
+  console.log = _l; console.warn = _w; console.error = _e;
+  const H = Zone.__testBind(), SZ = H.BUILDING_SIZE, R = {};
+  try {
+    const msgs = [], ws = { readyState: 1, send: (s) => { try { msgs.push(JSON.parse(s)); } catch (e) {} } };
+    const p = { pid: 'p_cap', playerId: 't1389_cap', name: 'cap', persistent: false, ws, x: 0, y: 0, vx: 0, vy: 0, floor: 0, hp: 100, maxHp: 100, hunger: 100, thirst: 100, inventory: { wood: 9999, stone: 9999 }, equipment: [], equipSlots: {}, craftSkill: {} };
+    H.players.set(p.pid, p);
+    for (let i = 0; i < 12; i++) { p.x = (54000 + i) * SZ + SZ / 2; p.y = 54000 * SZ + SZ / 2; H.tryClaim(p, 'personal'); }
+    const live = [...H.claims.values()].filter((c) => c.ownerPid === p.playerId && c.kind === 'personal').length;
+    const cap = msgs.filter((m) => m.type === 'notice' && /한도/.test(m.text || '')).map((m) => m.text);
+    R.cap = { on: H.Deeds.ON, live, cap: cap.length, text: cap[0] || '' };
+  } catch (e) { R.err = String((e && e.stack) || e).slice(0, 400); }
+  console.log('@@T1389 ' + JSON.stringify(R));
+  for (const f of [process.env.DB_PATH, process.env.DB_PATH + '-wal', process.env.DB_PATH + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
   process.exit(0);
 }
 
@@ -151,6 +173,11 @@ if (MODE === 'zone') {
   show(RZ, 'c_slice', 'ⓒ 존 셈을 틱 예산으로 잘라 이어도(400칸 · 30일) 한 번에 셈한 것과 같다 — 남은 칸 · 빚 · 청크 저축');
   show(RZ, 'e_absence', 'ⓔ 부재 훑기 — 하루 전 나간 주인 칸은 그대로 · 50일 전이면 free(ms 시각을 그대로 뺀다)');
   show(RZ, 'f_trail', 'ⓕ 계량기 — 1초 안 두 번째 보냄은 1초 끝에 보낸다(둘째 칸 직후 N = 2)');
+  {
+    const on = run('cap', { T1305_DEEDS: '1' }), off = run('cap', { T1305_DEEDS: '0' }), a = on && on.cap, b = off && off.cap;
+    ok(!!a && !!b && a.on === true && a.live === 12 && a.cap === 0 && b.on === false && b.live === 9 && b.cap === 3 && /한도 9/.test(b.text), 'ⓖ 숫자 상한(S0 = 9) — 켬: 12칸 다 서고 "한도" 문구 0 · 끔: 9칸에서 멈추고 "한도 9" 그대로',
+      a && b ? `켬 ${a.live}칸 · 한도 문구 ${a.cap} / 끔 ${b.live}칸 · 한도 문구 ${b.cap}(${b.text})` : String((on && on.err) || (off && off.err) || '아이 판 없음'));
+  }
   // ★미끼 셋 — 사본은 server/ 에(상대 require 그대로) · 판 끝에 지운다
   const rd = (f) => fs.readFileSync(path.join(ROOT, 'server', f), 'utf8');
   const CS = rd('claims.js'), DS = rd('deeds.js'), ZS = rd('zone.js');

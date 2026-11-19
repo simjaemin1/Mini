@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @nightly B   ← 실서버 판 하나 · 실클라 하나(약 3분)
 // @bait 1
 // === scripts/e2e-t1389-deeds-on.js — 사유지 돌봄 켬 판 실클라 한 바퀴(★T1389 켬 기본 점검표): 선포 · 돌봄 · 빚 · 먼 칸 풀림 · 돌아온 알림 · 다시 선포 ==========
 //
@@ -40,7 +41,7 @@ async function round(zoneFile, full) {
     T1305_DEEDS: '1', T1305_DAY_MS: '4000', T1305_TICK_MS: '10000', T1305_CARE_S: '2', T1343_D0: '0.02', T1343_Q_IDLE: '20' });
   const zUp = FB.waitUp(z0, /zone server up on/, { name: 'zone', capMs: 300000 });
   R.up = (await cUp).ok && (await zUp).ok;
-  for (let i = 0; i < 120; i++) { try { const z = await (await fetch(`http://localhost:${CPORT}/zones`)).json(); const h = (z.zones || {}).hanbando || {}; if (h.population != null && h.cap) break; } catch (e) {} await sleep(1000); }
+  for (let i = 0; i < 120; i++) { try { const z = await (await fetch(`http://localhost:${CPORT}/zones`, { signal: AbortSignal.timeout(3000) })).json(); const h = (z.zones || {}).hanbando || {}; if (h.population != null && h.cap) break; } catch (e) {} await sleep(1000); }
   const browser = await require('./e2e-browser').launch({ headless: true });
   const perrs = [];
   const name = 'debt' + Date.now().toString(36).slice(-5);

@@ -12432,6 +12432,9 @@ function _t1305Gate(player, px, py) {
   const vil = VillageKin.ON ? _kinLandOf(px, py) : null;
   if (vil) {
     if (Membership.isRecognized(player, vil.dbId | 0)) return { ok: true, why: 'member' };
+    //   ★[T1389] 제 마을 영토인데 아직 인정 전이면 끔 판(T1137) 문구 그대로 — 남은 부탁 수를 알려 준다(켬에서 이 안내가 사라졌었다 · test-member-open)
+    const _mv = Membership.T1137 ? _kinVilOf(player) : null;
+    if (_mv && (_mv.dbId | 0) === (vil.dbId | 0)) return { ok: false, why: `🏠 영토 안 집터는 구성원으로 인정된 사람만 잡을 수 있습니다. 마을 부탁을 ${Math.max(0, Membership.CFG.N_MEMBER - Membership.contribOf(player.playerId))}건 더 채우십시오.` };
     return { ok: false, why: `🏠 ${vil.name || '이 마을'} 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다.` };
   }
   if (VillageKin.ON) return { ok: true, why: 'open' };   // 마을로 접힌 판 — 영토 = 마을 영토 칸(`villageOfCell`) 하나
