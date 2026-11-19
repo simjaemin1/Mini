@@ -3,14 +3,14 @@
 // @bait 2   ← [T1382] 미끼 판정 줄 수(파일 안 · `test-harness-lint` ⑲b 가 센다)
 // === scripts/test-t1382-resume-body.js — 몸 세계를 껐다 켜도 같은 세계: 마을 몸 pid · 길 닳음 · 몹 집(T1382 · T1372 회부) ==========================
 //
-// ★무엇을 보나(몸 세계 `T577_BODY=1` · 가상 시계 · 시드 1020 · 8날 · 4날에 끊고 잇는다 — 판 넷 · 동시 둘)
+// ★무엇을 보나(몸 세계 `T577_BODY=1` · 가상 시계 · 시드 1020 · 8날 · 4날에 끊고 잇는다 — 판 넷 · 끊은 판 셋 함께 + 한 번에 돈 판은 B 가 다시 뜨는 대로)
 //   끊고 이은 판(B · 마디 4 + 4)이 다시 뜬 **첫 틱**과, 그 V 에서 한 번에 돈 판(A · 마디 하나)의 같은 틱을 견준다
 //   (`t1340-moment-hook` 의 마을 몸 pid 줄 · `t1372-moment-hook` 의 몹 칸 · 길 닳음 칸).
 //   ⓐ 마을 몸 pid — 마을마다 몸 줄(`npcPids`)의 pid 가 한 번에 돈 판과 100% 같다 · 8날 판 끝 econ 날 지문 8/8(몸 자리 지문은 기록)
 //   ⓑ 길 닳음 · 몹 집 — 길 칸(등급 · 닳은 날) 갈림 0 · 한쪽에만 0 · 몹(DB 행 몹) 집(homeX · homeY) · 무리(packId) · 배회(wanderUntil) 갈림 0
 //   ⓒ 미끼 둘(이 파일이 프리로드로 실린다 · `T1382_BAIT`): 종료 저장 줄에서 **한 자리**만 뺀 사본 — 뺀 수를 세고 그 물음만 빨강:
 //      `pid` = 마을 몸 행의 저장 pid(`_t747Body.rows[].$p` · 몸 번호 `np`) → ⓐ 빨강 · ⓑ 초록 / `road` = 길 닳음 줄(T742 `zone.t1382Roads`) → ⓑ 빨강 · ⓐ 의 pid 초록
-// 실행: node scripts/test-t1382-resume-body.js   (판 넷 · 동시 둘 · 약 20 ~ 25분)
+// 실행: node scripts/test-t1382-resume-body.js   (판 넷 · 약 15분 — 몸 세계라 CI 옛 코드 빨강 시한 600초 안에 못 든다: 거기선 '모름(시한)')
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -90,10 +90,15 @@ const mobS = (Xa, M) => `몹 ${Xa && Xa.mods ? Xa.mods.mobN : '?'} · 집 · 무
 (async () => {
   console.log(`\n=== T1382 몸 세계를 껐다 켜도 같은 세계 — 마을 몸 pid · 길 닳음 · 몹 집 (${BASE}) ===`);
   const pre = HOOKS + ` -r ${__filename}`;
-  const [B, Bp] = await Promise.all([run('B', CUT), run('Bp', CUT, { T1382_BAIT: 'pid', NODE_OPTIONS: pre })]);
-  const RB = rd(path.join(D('B'), `seg-${CUT}.json.t1340-ready.json`));
+  //   끊은 판 셋을 함께 띄우고 · B 가 다시 뜬 첫 틱을 뜨는 대로(그 V) 한 번에 돈 판 A 를 띄운다(B 끝을 안 기다린다)
+  const RBF = path.join(D('B'), `seg-${CUT}.json.t1340-ready.json`);
+  const pB = run('B', CUT), pBp = run('Bp', CUT, { T1382_BAIT: 'pid', NODE_OPTIONS: pre }), pBr = run('Br', CUT, { T1382_BAIT: 'road', NODE_OPTIONS: pre });
+  let bDone = false; pB.then(() => { bDone = true; });
+  let RB = null; while (!(RB = rd(RBF)) && !bDone) await new Promise((r) => setTimeout(r, 2000));
+  if (!RB) RB = rd(RBF);
   const V = RB ? RB.V : null;
-  const [A, Br] = await Promise.all([V ? run('A', DAYS, { T1340_AT_V: String(V) }) : Promise.resolve({ code: -1 }), run('Br', CUT, { T1382_BAIT: 'road', NODE_OPTIONS: pre })]);
+  const pA = V ? run('A', DAYS, { T1340_AT_V: String(V) }) : Promise.resolve({ code: -1 });
+  const [B, Bp, Br, A] = await Promise.all([pB, pBp, pBr, pA]);
   const AT = rd(path.join(D('A'), 'seg-0.json.t1340-at.json'));
   const AT2 = rd(path.join(D('A'), 'seg-0.json.t1372-at.json'));
   ok(B.code === 0 && A.code === 0 && RB && AT && AT2 && AT.V === RB.V, '판 둘이 끝까지 돌았고 같은 순간(다시 뜬 첫 틱 V)을 떴다', `B ${B.code} · A ${A.code} · V ${V}`);
