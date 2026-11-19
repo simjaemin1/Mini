@@ -3,7 +3,7 @@
 // @bait 3
 // === scripts/test-t1394-famine-tools2.js — T1394 굶주림 ↔ 도구 나선 둘째: 손잡이 셋(다 끔 기본 · 끔 = 종전) + 랩 손잡이 자리 ===
 //   ㉠ `T1394_NARROW` — T1363 전환 문의 좁은 꼴: 기근 블록 · 치명 도구에서 쪼을 돌이 있는 석공만 남긴다("돌 모자람" 갈래 — 돌 없는 석공 · 채집꾼 남김 — 0)
-//   ㉡ `T1394_STONE_PICK` — 기근 블록 안에서도 돌 줍는 몫이 석기 수요만큼 선다(피커 차례 · 아래 ④)
+//   ㉡ `T1394_STONE_PICK` — 기근 블록 안에서도 석기 결손 ∧ 돌밭 ∧ 곳간 돌이 재료 줄 밑인 동안 채집꾼(피커 차례 · 수요 신호 · 아래 ④)
 //   ㉢ `T1394_MASON_FLOW` — 석공 목표의 석공 1인 산출 = 생산 단계 식(`JOBS.mason.base × (1 + 숙련 × 0.05)`) · 종전 0.5 근사
 //   ① 손잡이 — 빈 값 = 끔 · env `'1'` = 켬 · 랩 자리 `window.<이름> = '1'`(부를 때 읽는다 — env 없이 켜진다 · T1363 손잡이도 같은 자리)
 //   ② ㉠ 전환 문(정본 `autoSwitchJob` · 합리 피커 · 식량 값 200 · 사람 30 · 곳간 5일치 · 그날 게임 달력 2년 4월 10일) —
@@ -11,11 +11,12 @@
 //      B 도구 0 · 곳간 돌 1(쪼을 돌 있음) · 땅 돌 0.2 · 석공 셋 + 농부: 끔 = 석공이 농부로 · ㉠ = 그날 전환 0(석공 남음)
 //      C 넓은 꼴 + 좁은 꼴 같이 = 좁은 꼴(A 에서 석공이 옮긴다)
 //   ③ ㉢ 석공 목표 — 석공 1인 산출(숙련 0 → 0.4 · 숙련 10 → 0.6) · 큰 마을(도구 0)의 목표 켬/끔 ≈ 0.5/0.4 = 1.25(반올림 안)
-//   ④ ㉡ 피커(정본 `pickDeficitJob_rational` 을 전환 문으로 — 그날 낸 일) — (아래 머리말 그대로)
+//   ④ ㉡ 피커(정본 `pickDeficitJob_rational` 을 전환 문으로 — 그날 낸 일) — F 도구 25(치명 아님 · 목표 밑) · 돌 0 · 땅 돌 0.3 · 곳간 5일치: 끔 = 농부 · 켬 = 채집꾼 /
+//      G 곳간 돌 5(재료 줄 위) · H 도구 60 · I 땅 돌 0.2 — 켬 = 끔
 //   ★미끼 셋(이 파일 안 · 바꾼 자리 정확히 1곳 · 빨강이 될 줄을 단언):
 //     ⓐ ㉠ 남김 식을 `t1363StoneReady(v)` → `true` 로 바꾼 econ 사본 → ② "㉠ A — 석공이 옮긴다" 가 빨강
 //     ⓑ ㉢ 석공 1인 산출을 `JOBS.mason.base` → `0.5` 로 바꾼 econ 사본 → ③ "숙련 0 = 0.4" 가 빨강
-//     ⓒ ㉡ 피커 줄의 석기 수요 몫을 0 으로 바꾼 econ 사본 → ④ "켬 F — 채집꾼" 이 빨강
+//     ⓒ ㉡ 피커 줄의 석기 결손 조건을 거짓으로 바꾼 econ 사본 → ④ "켬 F — 채집꾼" 이 빨강
 //   날짜 · 벽시계 0 — 날은 게임 달력(`dayOf`)으로만 고른다.
 'use strict';
 const path = require('path');
@@ -27,7 +28,7 @@ const F_E = path.join(ROOT, 'sim', 'economy-sim.js');
 const BAITS = {
   narrow: ['const _t63Mason = _t94n ? t1363StoneReady(v) :', 'const _t63Mason = _t94n ? true :'],
   flow: ['return JOBS.mason.base * (1 + sk * 0.05);', 'return 0.5 * (1 + sk * 0.05);'],
-  pick: ['const _need = masonTarget(v) * stoneWorkStock(v);', 'const _need = 0;'],
+  pick: ['if (_ls >= 0.25 && _tS < toolDesiredStock(v) &&', 'if (_ls >= 0.25 && false &&'],
 };
 const KNOBS = ['T1363_FAMINE_TOOLS', 'T1394_NARROW', 'T1394_STONE_PICK', 'T1394_MASON_FLOW', 'T1394_TEST_BAIT', 'T1394_TEST_WIN', 'T1334_BUNDLE'];
 
@@ -78,7 +79,7 @@ if (process.argv[2] === '--child') {
   out.mt = E.masonTarget(vm);
   // ④ ㉡ — 피커(전환 문이 그날 낸 일) — F 도구 반(치명 아님 · 목표 밑) · 곳간 돌 0 · 땅 돌 0.3 · 채집꾼 0 · 곳간 5일치 / G 같은데 채집꾼이 석기 수요만큼(넉넉) / H 도구 넉넉 / I 땅 돌 0.2
   out.F = run({ landStone: 0.3, forager: 0, tool: 25, mason: 1 });
-  out.G = run({ landStone: 0.3, forager: 6, tool: 25, mason: 1 });
+  out.G = run({ landStone: 0.3, forager: 0, tool: 25, mason: 1, stone: 5 });
   out.H = run({ landStone: 0.3, forager: 0, tool: 60, mason: 1 });
   out.I = run({ landStone: 0.2, forager: 0, tool: 25, mason: 1 });
   process.stdout.write(JSON.stringify(out));
@@ -131,8 +132,8 @@ ok(OFF.mt > 0 && FLOW.mt > OFF.mt && Math.abs(FLOW.mt / OFF.mt - 1.25) < 0.08, '
 console.log('④ ㉡ 기근 블록 안 돌 줍는 몫(정본 피커 · 전환 문이 그날 낸 일)');
 const PICK_F = 'pick-F';
 ok(!!(OFF.F && OFF.F.need === 'farmer'), '끔 F — 도구 반(치명 아님) · 돌 0 · 채집꾼 0 · 기근 블록 = 농부(돌 줄 앞에서 식량 일 · 전제)', OFF.F);
-ok(!!(PICK.F && PICK.F.need === 'forager'), '켬 F — 석기 수요(석공 목표 × 하루 재료)를 주울 채집꾼이 모자라면 기근 블록 안에서도 채집꾼', { id: PICK_F, got: PICK.F });
-ok(!!(PICK.G && OFF.G && PICK.G.need === OFF.G.need), '켬 G — 채집꾼이 석기 수요만큼 있으면 끔과 같다(사람을 박아 두지 않는다)', { on: PICK.G, off: OFF.G });
+ok(!!(PICK.F && PICK.F.need === 'forager'), '켬 F — 석기 결손 ∧ 돌밭 ∧ 곳간 돌이 재료 줄 밑이면 기근 블록 안에서도 채집꾼', { id: PICK_F, got: PICK.F });
+ok(!!(PICK.G && OFF.G && PICK.G.need === OFF.G.need), '켬 G — 곳간 돌이 재료 줄(석공 목표 × 하루 재료)만큼 있으면 끔과 같다(신호가 꺼진다 · 사람을 박아 두지 않는다)', { on: PICK.G, off: OFF.G });
 ok(!!(PICK.H && OFF.H && PICK.H.need === OFF.H.need), '켬 H — 도구가 목표만큼 있으면(60) 끔과 같다(수요 0)', { on: PICK.H, off: OFF.H });
 ok(!!(PICK.I && OFF.I && PICK.I.need === OFF.I.need), '켬 I — 돌밭 없는 마을(땅 돌 0.2)은 끔과 같다', { on: PICK.I, off: OFF.I });
 
@@ -140,8 +141,8 @@ console.log('★미끼 ⓐ — ㉠ 남김 식을 늘 참으로 바꾼 econ 사�
 ok(BN.bait === 1 && !!BN.A && ms(BN.A) !== 2, "★미끼 ⓐ — 바꾼 자리 1곳(㉠ 남김 식) · 사본에선 ② '㉠ A — 석공을 안 남긴다' 가 빨강", { n: BN.bait, A: BN.A });
 console.log('★미끼 ⓑ — ㉢ 석공 1인 산출을 0.5 로 바꾼 econ 사본');
 ok(BF.bait === 1 && BF.out0 !== 0.4, "★미끼 ⓑ — 바꾼 자리 1곳(`t1394MasonOut`) · 사본에선 ③ '숙련 0 = 0.4' 가 빨강", { n: BF.bait, got: BF.out0 });
-console.log('★미끼 ⓒ — ㉡ 석기 수요 몫을 0 으로 바꾼 econ 사본');
-ok(BP.bait === 1 && !!BP.F && BP.F.need !== 'forager', "★미끼 ⓒ — 바꾼 자리 1곳(㉡ 수요 몫) · 사본에선 ④ '켬 F — 채집꾼' 이 빨강", { n: BP.bait, F: BP.F });
+console.log('★미끼 ⓒ — ㉡ 석기 결손 조건을 거짓으로 바꾼 econ 사본');
+ok(BP.bait === 1 && !!BP.F && BP.F.need !== 'forager', "★미끼 ⓒ — 바꾼 자리 1곳(㉡ 석기 결손 조건) · 사본에선 ④ '켬 F — 채집꾼' 이 빨강", { n: BP.bait, F: BP.F });
 
 console.log(`\n${fail ? '✗' : '✓'} test-t1394-famine-tools2 ${pass}/${pass + fail}`);
 process.exit(fail ? 1 : 0);

@@ -6962,16 +6962,15 @@ function pickDeficitJob_rational(v, world) {
     //     아직 치명(0.7) 이 아닌 기근 마을은 돌 줄에 못 닿고, 곳간 돌이 0 인 채로 치명까지 간다(보고 T1394 §1 ⓑ).
     //   켬: 기근 블록 안 · 식량 일 앞에서 — 석기 수요가 있고(곳간 도구 < 목표 재고 `toolDesiredStock` — 석공 목표가 결손을 읽는 그 식) ·
     //     돌밭이 있고(철 · 날씨 배수 앞 땅 돌 ≥ 0.25 — STONE_NET 땅 문턱 · 겨울 0.95 가 바닥 마을을 문 밖으로 밀지 않게 원래 땅을 본다) · 곳간 돌이 모자라고(`t1363StoneShort` 의 재료 줄) ·
-    //     지금 채집꾼이 하루 줍는 돌(채집꾼 × 땅 돌 × 0.9 — 생산 단계 `stoneYield` 식의 숙련 · 지속 몫 뺀 꼴)이 석공 목표의 하루 재료(석공 목표 × `stoneWorkStock`) 밑이면 채집꾼 한 명.
-    //     수요가 채워지면 줄이 꺼지고 그 채집꾼은 다음 전환에서 다른 일로 갈 수 있다(사람을 박아 두지 않는다 — 전환 문 그대로).
-    //   새 수 0 — 0.25 · 0.9 · 목표 재고 · 하루 재료 · 석공 목표는 다 있는 식이다.
+    //     그 셋이 서는 동안 채집꾼 한 명(전환마다 한 명 — 수요 신호가 꺼질 때까지).
+    //     몇 명인지를 박지 않는다: 곳간 돌은 사람마다 하루 0.06(v1 부대 시설 0.02 + v2 주거 본체 0.04)의 유지가 먼저 먹고, 석공은 남은 돌을 쫀다(보고 T1394 §1 ⓑ —
+    //     돌밭 마을 주운 돌이 유지 몫의 83% · 돌 0 날의 48% 는 STONE_NET 채집꾼이 이미 선 날). 그래서 "석기 재료 = 석공 목표 × 하루 재료"만큼의 채집꾼 수로는 곳간 돌이 안 선다 —
+    //     곳간 돌이 재료 줄에 닿으면 줄이 꺼지고 그 채집꾼은 다음 전환에서 다른 일로 갈 수 있다(사람을 박아 두지 않는다 — 전환 문 그대로).
+    //   새 수 0 — 0.25 · 목표 재고 · 하루 재료 · 석공 목표는 다 있는 식이다.
     if (t1394StonePickOn() && STONE_NET_ON && hasSlot(v, 'forager', cap, counts)) {
       const _ls = ((v._origLand || v.land).stone || 0);
       const _tS = (v.storage.tool || 0) + (v.storage.bronze_tool || 0) + (v.storage.iron_tool || 0);
-      if (_ls >= 0.25 && _tS < toolDesiredStock(v) && (v.storage.stone || 0) < stoneWorkStock(v) * Math.max(1, masonTarget(v))) {
-        const _need = masonTarget(v) * stoneWorkStock(v);
-        if ((counts.forager || 0) * _ls * 0.9 < _need) return 'forager';
-      }
+      if (_ls >= 0.25 && _tS < toolDesiredStock(v) && (v.storage.stone || 0) < stoneWorkStock(v) * Math.max(1, masonTarget(v))) return 'forager';
     }
     const foodOpts = [
       ['farmer',  v.land.fertility * 1.5],
