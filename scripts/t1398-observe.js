@@ -32,20 +32,24 @@ function snapshot(w, d) {
     if ((v.counts.smith || 0) >= Math.max(1, Math.floor(n * 0.03))) gate('smith3pct', v, d, buyer);
     if ((v.storage.copper || 0) <= n * 3) gate('copper3N', v, d, buyer);
   }
+  collectTrades(w);
+  days.push({ day: d, pop, empty, bronzeCum: production });
+  if (d % 10 === 0) write();
+}
+function collectTrades(w) {
   for (const t of w.tradeLog || []) {
     if (!t || seenTrades.has(t)) continue; seenTrades.add(t);
     if (t.sent?.res === 'weapon' || t.bought?.res === 'weapon' || [...(t.basket || []), ...(t.retBasket || [])].some(x => x.res === 'weapon')) trades.push(JSON.parse(JSON.stringify(t)));
   }
-  days.push({ day: d, pop, empty, bronzeCum: production });
-  if (d % 10 === 0) write();
 }
 function hook(w) {
   if (!w || hooked === w.onCast) return;
   const prev = w.onCast;
   const fn = function(v, m, amt) { if (prev) prev.apply(this, arguments); casts.push({ day: w.day, village: v.name, amount: amt, bronze: amt * m.bronzeness, mix: m.mix, grade: m.grade, score: m.score }); };
+  if (prev?._t1385) fn._t1385 = true; // 이미 감싼 T1385 훅을 다음 날 다시 감싸지 않는다.
   w.onCast = fn; hooked = fn;
 }
 const tick = E.tickVillage;
 E.tickVillage = function(v, d) { const w = v?._world; snapshot(w, d); hook(w); return tick.apply(this, arguments); };
 function write() { fs.writeFileSync(out, JSON.stringify({ knob: !!E.T1398_BRONZE_BAND, deposits, gates, days, casts, trades, buyerMeaning: '기존 순수출가 캐시만 읽음. unknown은 미관측이며 0이 아님' })); }
-process.on('exit', () => { if (world) { lastDay = null; snapshot(world, (days.at(-1)?.day || 0) + 1); } write(); });
+process.on('exit', () => { if (world) collectTrades(world); write(); });
