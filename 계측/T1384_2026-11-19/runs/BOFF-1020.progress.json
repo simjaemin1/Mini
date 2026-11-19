@@ -1,0 +1,63 @@
+{
+ "v": 1,
+ "tag": "BOFF",
+ "seed": 1020,
+ "days": 100,
+ "every": 20,
+ "dir": "/root/t1384runs/BOFF-1020",
+ "ck": 100,
+ "segs": [
+  {
+   "from": 0,
+   "to": 20,
+   "sec": 1391.2,
+   "code": 0,
+   "at": "2026-11-19T17:25:15.950Z"
+  },
+  {
+   "from": 20,
+   "to": 40,
+   "sec": 2432.6,
+   "code": 0,
+   "at": "2026-11-19T18:05:50.658Z"
+  },
+  {
+   "from": 40,
+   "to": 60,
+   "sec": 1633.9,
+   "code": 0,
+   "at": "2026-11-19T18:33:05.310Z"
+  },
+  {
+   "from": 60,
+   "to": 80,
+   "sec": 1917.7,
+   "code": 0,
+   "at": "2026-11-19T19:05:04.211Z"
+  },
+  {
+   "from": 80,
+   "to": 100,
+   "sec": 2178.6,
+   "code": 0,
+   "at": "2026-11-19T19:41:23.257Z"
+  }
+ ],
+ "done": true,
+ "env": {
+  "VILLAGE_NPC_CAP": "Infinity",
+  "NODE_OPTIONS": "-r /root/wt84/scripts/t745-vclock.js -r /root/wt84/scripts/t1243-observe.js -r /root/wt84/scripts/t1313-observe.js -r /root/wt84/scripts/t1333-observe.js -r /root/wt84/scripts/t1344-observe.js -r /root/wt84/scripts/t1347-observe.js -r /root/wt84/scripts/t1384-observe.js",
+  "T745_VCLOCK": "1",
+  "T577_DIR": "/root/t1384runs/BOFF-1020",
+  "T1244_BODY_MS": "10000",
+  "VILLAGE_CARAVAN_MAX": "0",
+  "T400_BUILD_ACT": "0",
+  "T577_TAG": "BOFF",
+  "T1221_EVERY": "10",
+  "T1256_BODY_MS": "10000",
+  "VILLAGE_DAY_MS": "1440000"
+ },
+ "started": "2026-11-19T17:02:03.195Z",
+ "tries": 0,
+ "ended": "2026-11-19T19:41:23.433Z"
+}

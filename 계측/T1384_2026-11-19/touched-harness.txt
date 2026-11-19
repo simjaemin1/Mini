@@ -1,0 +1,10 @@
+# 만진 함수 → 하네스 (touched-harness · base origin/main · 갈림점 d7335524c)
+· 바뀐 코드 파일 5 · 이름 11(물린 것 8 · 흔한 이름 뺌 0) · 바뀐 하네스 1 · 규약 다섯 · **돌릴 하네스 10**
+  scripts/t1384-observe.js: t1384-observe
+  scripts/t1384-segmerge.js: t1384-segmerge
+  sim/economy-engine.browser.js: T1384_FOOD_KEEP T1384_FOOD_ROUTE T1384_MINE_FOOD _exportCandidatesV2 _t1384Disc _t1384Resv tickTradeV2 tickTradeV2Steps
+  sim/economy-sim-v2.js: T1384_FOOD_KEEP T1384_FOOD_ROUTE T1384_MINE_FOOD _exportCandidatesV2 _t1384Disc _t1384Resv tickTradeV2 tickTradeV2Steps
+  scripts/t1384-table.js: t1384-table
+· 이름 → 하네스 수: T1384_FOOD_KEEP 1 · T1384_FOOD_ROUTE 1 · T1384_MINE_FOOD 1 · _exportCandidatesV2 1 · _t1384Disc 1 · _t1384Resv 1 · tickTradeV2 2 · tickTradeV2Steps 2
+· 바뀐 하네스: test-t1384-mine-food.js
+· 돌릴 하네스: test-body-fields.js test-coll-grid.js test-events.js test-floor-stone.js test-harness-lint.js test-hp-src.js test-lon-day.js test-one-target.js test-t1384-mine-food.js test-valuechain.js
