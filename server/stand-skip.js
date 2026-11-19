@@ -29,13 +29,23 @@ const WORK_ON = ON && FMODE !== '0', WORK_VERIFY = FMODE === 'verify';
 // ★[T1365 ⓐ] 일터 깨움 나머지 손잡이 `T1365_WORK` — **끔 기본**(같은 자에서 이득이 안 섰다 — 판정 셈이 결정 문 셈과 거의 같다 · 보고 T1365 §5) · `'1'` 켬 · `'verify'` 켬 + 건너려는 결정을 실제로 돌려 견줌 + 직업마다 덮음 셈(무동작 결정 중 판정이 잡은 몫)
 const XMODE = (typeof process !== 'undefined' && process.env && process.env.T1365_WORK || '').trim();
 const WORK2_ON = ON && (XMODE === '1' || XMODE === 'verify'), WORK2_VERIFY = XMODE === 'verify';
+// ★[T1399 ⓐ] 일터 깨움 표 한 번 판정 손잡이 `T1399_TOK` — **끔 기본** · `'1'` 켬 · `'verify'` 켬 판의 표를 적되 결정마다 판정을 실제로 다시 해 견줌(행동은 판정 답 = 종전)
+//   켬 = 일터 깨움 판정(`t1348Farm` · `t1365Work`)이 참이면 그 판정이 산 조건을 열에 적고(생활층 `t1399Take`), 다음 결정은 그 조건이 아직 사는가(`t1399Still`)만 본다 — 판정을 다시 안 한다.
+const TMODE = (typeof process !== 'undefined' && process.env && process.env.T1399_TOK || '').trim();
+const TOK_ON = ON && (TMODE === '1' || TMODE === 'verify'), TOK_VERIFY = TMODE === 'verify';
 const A = { TK: new Uint8Array(0), W95: new Uint8Array(0), VT: new Int32Array(0), NDA: new Float64Array(0), LON: new Float64Array(0), SK: new Float64Array(0), SX: new Float64Array(0), SY: new Float64Array(0),
   // ★[T1337] 잠 깨움 표(결정 문까지 건넌다) — DS 표 · SH 신원 해시 · CX/CY 셀 · T95 판 시계 배율 · VID 마을 · SEG 창 쪽(1 저녁 · 2 새벽) · DOF `_dOff` · BDY 몸 날 · DAY 장부 날 · DK 미룬 결정 도장(`_t540DecAt`)
   // ★[T1348 ⓑ] 걷는 몸 표(표 종류 3) — PI 길 번호 · PN 길 길이(거울) · PX0/PY0 첫 점(거울) · PAT `_pathAt` · ST 길 만료 · SPX/SPY/SPA 막힘 자리(`_stuckPos`) · SPD 걸음 빠르기 · WD 해 질 녘에 깨움
   PI: new Int32Array(0), PN: new Int32Array(0), PX0: new Float64Array(0), PY0: new Float64Array(0), PAT: new Float64Array(0), ST: new Float64Array(0),
   SPX: new Float64Array(0), SPY: new Float64Array(0), SPA: new Float64Array(0), SPD: new Float64Array(0), WD: new Uint8Array(0),
   GN: new Uint8Array(0),   // ★[T1348 ⓐ] 1 = players 의 그 pid 몸이 이 칸 몸이 아니다(지웠다 · 다른 몸) — 종전 `players.get(pid) !== own[s]` 의 표
-  DS: new Uint8Array(0), SH: new Float64Array(0), CX: new Float64Array(0), CY: new Float64Array(0), T95: new Float64Array(0), VID: new Float64Array(0), SEG: new Uint8Array(0), DOF: new Float64Array(0), BDY: new Float64Array(0), DAY: new Float64Array(0), GD: new Float64Array(0), DK: new Float64Array(0) };
+  DS: new Uint8Array(0), SH: new Float64Array(0), CX: new Float64Array(0), CY: new Float64Array(0), T95: new Float64Array(0), VID: new Float64Array(0), SEG: new Uint8Array(0), DOF: new Float64Array(0), BDY: new Float64Array(0), DAY: new Float64Array(0), GD: new Float64Array(0), DK: new Float64Array(0),
+  // ★[T1399 ⓐ] 일터 깨움 표(판정 한 번) — WK 판정 답(0 = 표 없음) · WT 시각 문턱 · WFP 해 몫 쪽 · WDY 장부 날 · WBD 몸 날 · WWD 세계 날 · WGD 존 게임일 · WG 마을 도장 · WSC 판 시계 배율 ·
+  //   WPN 자리 문턱 수 · WPX/WPY/WPR 자리 문턱 · WPO 그 쪽(1 = 밖) · WVW 뷰 다시 봄
+  WK: new Uint8Array(0), WT: new Float64Array(0), WFP: new Uint8Array(0), WDY: new Float64Array(0), WBD: new Float64Array(0), WWD: new Float64Array(0), WGD: new Float64Array(0), WG: new Float64Array(0), WSC: new Float64Array(0),
+  WPN: new Uint8Array(0), WPX: new Float64Array(0), WPY: new Float64Array(0), WPR: new Float64Array(0), WPO: new Uint8Array(0), WVW: new Uint8Array(0),
+  // ★[T1399 ⓒ] WQ/WQX/WQY 드리운 칸(물인가 다시 봄) · LAT 미룬 라벨 시각 도장(`_lifeActAt` — 던짐 대본 기다림 결정이 썼을 그 결정의 `Date.now()` · 없으면 NaN)
+  WQ: new Uint8Array(0), WQX: new Float64Array(0), WQY: new Float64Array(0), LAT: new Float64Array(0) };
 const own = [];          // 칸 → 몸(빈 칸 = null)
 const WPA = [];          // ★[T1348 ⓑ] 칸 → 걷는 몸의 길 배열(표 종류 3 · 짓고 나면 안 바뀌는 배열)
 const slotOf = new Map();   // pid → 칸
@@ -45,7 +55,8 @@ const stat = { installed: 0, grant: 0, skip: 0, wake: 0, stamp: 0, touch: 0, flu
   wgrant: 0, wstep: 0, wvi: 0, wvq: 0, wcmp: 0, wbad: 0, wwhy: {}, wex: [], clock: 0, stuck: 0, stale: 0, arrive: 0, verify: 0,   // ★[T1348 ⓑ] 걷는 몸 표 셈
   fgrant: 0, fskip: 0, fwolf: 0, fstill: 0, fvq: 0, fcmp: 0, fbad: 0, fwhy: {}, fex: [], fk1: 0, fk2: 0,   // ★[T1348 ⓒ] 일터 깨움 셈
   xskip: 0, xk1: 0, xk2: 0, xvq: 0, xcmp: 0, xbad: 0, xwhy: {}, xex: [], fjob: {}, fmiss: {},   // ★[T1365 ⓐ] 일터 깨움 나머지 셈 · 직업마다 [판정 0 무동작 · 판정 0 바뀜 · 판정 참 무동작 · 판정 참 바뀜(어긋남)] (verify)
-  dgrant: 0, dskip: 0, dstamp: 0, dwolf: 0, dstill: 0, dvq: 0, dcmp: 0, dbad: 0, dwhy: {}, dex: [] };   // ★[T1337] 잠 깨움 표 셈
+  dgrant: 0, dskip: 0, dstamp: 0, dwolf: 0, dstill: 0, dvq: 0, dcmp: 0, dbad: 0, dwhy: {}, dex: [],   // ★[T1337] 잠 깨움 표 셈
+  ttake: 0, thit: 0, tdead: 0, tnone: {}, tvq: 0, tbad: 0, twhy: {}, tex: [], tjob: {} };   // ★[T1399 ⓐ] 표 적음 · 표로 건넘 · 표가 죽음(다시 판정) · 표 없는 까닭 · 견줌 · 어긋남 · 직업마다 [적음 · 건넘 · 죽음]
 function _grow(need) {
   let c = cap || 1024; while (c < need) c *= 2;
   for (const k of Object.keys(A)) { const B = new A[k].constructor(c); B.set(A[k]); A[k] = B; }
@@ -55,7 +66,7 @@ function _grow(need) {
 function install(p) {
   const old = slotOf.get(p.pid); if (old !== undefined) { own[old] = null; A.TK[old] = 0; A.DS[old] = 0; WPA[old] = null; }
   const s = n++; if (s >= cap) _grow(s + 1);
-  own[s] = p; WPA[s] = null; slotOf.set(p.pid, s); A.TK[s] = 0; A.SK[s] = NaN; A.VT[s] = -1; A.DS[s] = 0; A.DK[s] = NaN;
+  own[s] = p; WPA[s] = null; slotOf.set(p.pid, s); A.TK[s] = 0; A.SK[s] = NaN; A.VT[s] = -1; A.DS[s] = 0; A.DK[s] = NaN; A.WK[s] = 0; A.LAT[s] = NaN;
   A.GN[s] = _players && _players.get(p.pid) === p ? 0 : 1;   // ★[T1348 ⓐ] 낳는 몸은 보통 아직 players 밖(곧 `set` 이 0 으로)
   stat.installed++;
   return s;
@@ -88,7 +99,7 @@ function slot(pid) { const s = slotOf.get(pid); return s === undefined ? -1 : s;
 function count() { return n; }
 // 판 셈 — `T1322_STAT=<파일>`(`%p` = 프로세스 번호 — 판 여럿이 같이 돌 때) 이면 끝날 때(와 30초마다) 표 셈을 적는다(켬일 때만)
 if (ON && process.env.T1322_STAT) {
-  const fs = require('fs'), _f = process.env.T1322_STAT.replace('%p', String(process.pid)), put = () => { try { fs.writeFileSync(_f, JSON.stringify(Object.assign({ mode: MODE, wmode: WMODE, lmode: LMODE, kmode: KMODE, fmode: FMODE, xmode: XMODE, slots: n }, stat))); } catch (e) {} };
+  const fs = require('fs'), _f = process.env.T1322_STAT.replace('%p', String(process.pid)), put = () => { try { fs.writeFileSync(_f, JSON.stringify(Object.assign({ mode: MODE, wmode: WMODE, lmode: LMODE, kmode: KMODE, fmode: FMODE, xmode: XMODE, tmode: TMODE, slots: n }, stat))); } catch (e) {} };
   setInterval(put, 30000).unref(); process.on('exit', put);
 }
-module.exports = { ON, VERIFY, MODE, WAKE_ON, WAKE_VERIFY, WMODE, LOOP, LMODE, WALK_ON, WALK_VERIFY, KMODE, WORK_ON, WORK_VERIFY, FMODE, WORK2_ON, WORK2_VERIFY, XMODE, A, own, WPA, install, slot, count, stat, OrdSet, PMap, newPlayers, newNpcs };
+module.exports = { ON, VERIFY, MODE, WAKE_ON, WAKE_VERIFY, WMODE, LOOP, LMODE, WALK_ON, WALK_VERIFY, KMODE, WORK_ON, WORK_VERIFY, FMODE, WORK2_ON, WORK2_VERIFY, XMODE, TOK_ON, TOK_VERIFY, TMODE, A, own, WPA, install, slot, count, stat, OrdSet, PMap, newPlayers, newNpcs };
