@@ -1,0 +1,475 @@
+[
+ {
+  "k": "③ 묶음",
+  "dir": "/tmp/claude-0/-home-claude/a4d76bf5-a61f-5918-b7a1-202d531aae76/scratchpad/t1380/runs/d/r3bunS",
+  "seed": 1020,
+  "off": false,
+  "ok": true,
+  "last": 10,
+  "fd": 0,
+  "dead": 0,
+  "lateBorn": 0,
+  "gated": 182,
+  "gatedNo": 173,
+  "terrSum": 105029,
+  "vils": 51,
+  "woodEnd": 61.746588235294126,
+  "calls": 487,
+  "hits": 28,
+  "calls90": 487,
+  "hits90": 28,
+  "stakeReason": 0,
+  "rsn": {
+   "house": 117117,
+   "field": 20631,
+   "other": 2397,
+   "terr": 62554,
+   "shelter": 9025
+  },
+  "shadow": {
+   "n": 459,
+   "pass": [
+    {
+     "cand": 216.99782135076254,
+     "rsn": {
+      "house": 121.96296296296296,
+      "other": 1.973856209150327,
+      "field": 23.44226579520697,
+      "terr": 61.02614379084967,
+      "shelter": 8.592592592592593
+     },
+     "outOk": 55.812636165577345,
+     "missMed": 17,
+     "missQ": [
+      5,
+      43
+     ]
+    },
+    {
+     "cand": 234.77342047930284,
+     "rsn": {
+      "house": 127.11546840958606,
+      "other": 3.233115468409586,
+      "field": 20.854030501089326,
+      "terr": 74.01742919389979,
+      "shelter": 9.553376906318082
+     },
+     "outOk": 59.13725490196079,
+     "missMed": 17,
+     "missQ": [
+      5,
+      43
+     ]
+    }
+   ]
+  },
+  "shelterCalls": 94,
+  "stakeW": 3938.0359999999987,
+  "fuel": 1,
+  "why": {
+   "grow": 459
+  },
+  "knob": {
+   "lfDays": 0,
+   "lfCells": 0,
+   "claims": 0,
+   "claimCells": 0,
+   "claimWood": 0,
+   "claimLabor": 0,
+   "stake": 0
+  },
+  "ratioEnd": 0.7600508351488742,
+  "labEnd": 0.5952118131203099,
+  "worst": {
+   "v": "어촌11",
+   "N": 13,
+   "terr": 2035,
+   "r": 0.6166666666666667,
+   "lab": 0.5024691358024691
+  },
+  "below": 510,
+  "vdays": 510,
+  "ratioBy": {},
+  "goals": {
+   "day": 10,
+   "ratio": 0.8539325842696629,
+   "g1": false,
+   "g2": false,
+   "peak": 532,
+   "peakDay": 10,
+   "drop": 0,
+   "g3": true,
+   "fd": 0,
+   "fdO": 0,
+   "g4": true,
+   "n": 2,
+   "of": 4
+  },
+  "pass": null,
+  "popEnd": 532
+ },
+ {
+  "k": "③ 묶음 · 쉼터 끔",
+  "dir": "/tmp/claude-0/-home-claude/a4d76bf5-a61f-5918-b7a1-202d531aae76/scratchpad/t1380/runs/d/r3bunNoSh",
+  "seed": 1020,
+  "off": false,
+  "ok": true,
+  "last": 10,
+  "fd": 0,
+  "dead": 0,
+  "lateBorn": 0,
+  "gated": 166,
+  "gatedNo": 153,
+  "terrSum": 105010,
+  "vils": 51,
+  "woodEnd": 66.21662745098038,
+  "calls": 461,
+  "hits": 47,
+  "calls90": 461,
+  "hits90": 47,
+  "stakeReason": 0,
+  "rsn": {
+   "house": 109454,
+   "field": 19817,
+   "other": 2302,
+   "terr": 59145
+  },
+  "shadow": {
+   "n": 414,
+   "pass": [
+    {
+     "cand": 215.3502415458937,
+     "rsn": {
+      "house": 124.3671497584541,
+      "other": 2.077294685990338,
+      "field": 24.72222222222222,
+      "terr": 64.18357487922705
+     },
+     "outOk": 59.22463768115942,
+     "missMed": 17,
+     "missQ": [
+      5,
+      41
+     ]
+    },
+    {
+     "cand": 231.35265700483092,
+     "rsn": {
+      "house": 129.21497584541063,
+      "other": 3.391304347826087,
+      "field": 22.11111111111111,
+      "terr": 76.63526570048309
+     },
+     "outOk": 62.52657004830918,
+     "missMed": 17,
+     "missQ": [
+      5,
+      41
+     ]
+    }
+   ]
+  },
+  "shelterCalls": 0,
+  "stakeW": 3905.6789999999987,
+  "fuel": 1,
+  "why": {
+   "grow": 459
+  },
+  "knob": {
+   "lfDays": 0,
+   "lfCells": 0,
+   "claims": 0,
+   "claimCells": 0,
+   "claimWood": 0,
+   "claimLabor": 0,
+   "stake": 0
+  },
+  "ratioEnd": 0.7517897933584207,
+  "labEnd": 0.5899239051498217,
+  "worst": {
+   "v": "어촌3",
+   "N": 13,
+   "terr": 2013,
+   "r": 0.61,
+   "lab": 0.49703703703703705
+  },
+  "below": 510,
+  "vdays": 510,
+  "ratioBy": {},
+  "goals": {
+   "day": 10,
+   "ratio": 0.8651685393258427,
+   "g1": false,
+   "g2": false,
+   "peak": 539,
+   "peakDay": 10,
+   "drop": 0,
+   "g3": true,
+   "fd": 0,
+   "fdO": 0,
+   "g4": true,
+   "n": 2,
+   "of": 4
+  },
+  "pass": null,
+  "popEnd": 539
+ },
+ {
+  "k": "①h 묶음",
+  "dir": "/tmp/claude-0/-home-claude/a4d76bf5-a61f-5918-b7a1-202d531aae76/scratchpad/t1380/runs/d/r1hbunS",
+  "seed": 1020,
+  "off": false,
+  "ok": true,
+  "last": 10,
+  "fd": 0,
+  "dead": 0,
+  "lateBorn": 0,
+  "gated": 166,
+  "gatedNo": 153,
+  "terrSum": 105010,
+  "vils": 51,
+  "woodEnd": 66.21662745098038,
+  "calls": 461,
+  "hits": 47,
+  "calls90": 461,
+  "hits90": 47,
+  "stakeReason": 0,
+  "rsn": {
+   "house": 109456,
+   "field": 19817,
+   "other": 2302,
+   "terr": 59145
+  },
+  "shadow": {
+   "n": 414,
+   "pass": [
+    {
+     "cand": 215.35265700483092,
+     "rsn": {
+      "house": 124.3695652173913,
+      "other": 2.077294685990338,
+      "field": 24.72222222222222,
+      "terr": 64.18357487922705
+     },
+     "outOk": 59.22463768115942,
+     "missMed": 17,
+     "missQ": [
+      5,
+      41
+     ]
+    },
+    {
+     "cand": 231.35507246376812,
+     "rsn": {
+      "house": 129.2173913043478,
+      "other": 3.391304347826087,
+      "field": 22.11111111111111,
+      "terr": 76.63526570048309
+     },
+     "outOk": 62.52657004830918,
+     "missMed": 17,
+     "missQ": [
+      5,
+      41
+     ]
+    }
+   ]
+  },
+  "shelterCalls": 0,
+  "stakeW": 3905.6789999999987,
+  "fuel": 1,
+  "why": {
+   "grow": 459
+  },
+  "knob": {
+   "lfDays": 0,
+   "lfCells": 0,
+   "claims": 0,
+   "claimCells": 0,
+   "claimWood": 0,
+   "claimLabor": 0,
+   "stake": 0
+  },
+  "ratioEnd": 0.7517897933584207,
+  "labEnd": 0.5899239051498217,
+  "worst": {
+   "v": "어촌3",
+   "N": 13,
+   "terr": 2013,
+   "r": 0.61,
+   "lab": 0.49703703703703705
+  },
+  "below": 510,
+  "vdays": 510,
+  "ratioBy": {},
+  "goals": {
+   "day": 10,
+   "ratio": 0.8651685393258427,
+   "g1": false,
+   "g2": false,
+   "peak": 539,
+   "peakDay": 10,
+   "drop": 0,
+   "g3": true,
+   "fd": 0,
+   "fdO": 0,
+   "g4": true,
+   "n": 2,
+   "of": 4
+  },
+  "pass": null,
+  "popEnd": 539
+ },
+ {
+  "k": "끔 ③",
+  "dir": "/tmp/claude-0/-home-claude/a4d76bf5-a61f-5918-b7a1-202d531aae76/scratchpad/t1380/runs/d/r3offS",
+  "seed": 1020,
+  "off": true,
+  "ok": true,
+  "last": 10,
+  "fd": 0,
+  "dead": 0,
+  "lateBorn": 0,
+  "gated": 0,
+  "gatedNo": 0,
+  "terrSum": 175950,
+  "vils": 51,
+  "woodEnd": 50.308392156862745,
+  "calls": 105,
+  "hits": 99,
+  "calls90": 105,
+  "hits90": 99,
+  "stakeReason": 0,
+  "rsn": {
+   "house": 14024,
+   "field": 1699,
+   "other": 1866,
+   "terr": 2195,
+   "shelter": 1098
+  },
+  "shadow": {
+   "n": 6,
+   "pass": [
+    {
+     "cand": 599.3333333333334,
+     "rsn": {
+      "terr": 103,
+      "shelter": 86,
+      "field": 40.333333333333336,
+      "house": 292,
+      "other": 78
+     },
+     "outOk": 97,
+     "missMed": 3,
+     "missQ": [
+      1,
+      28
+     ]
+    },
+    {
+     "cand": 637.3333333333334,
+     "rsn": {
+      "terr": 131,
+      "shelter": 98.33333333333333,
+      "field": 29,
+      "house": 292,
+      "other": 87
+     },
+     "outOk": 103,
+     "missMed": 3,
+     "missQ": [
+      1,
+      28
+     ]
+    }
+   ]
+  },
+  "shelterCalls": 54,
+  "stakeW": 0,
+  "fuel": 0.9905450980392156,
+  "why": {
+   "target": 459
+  },
+  "knob": {
+   "lfDays": 0,
+   "lfCells": 0,
+   "claims": 0,
+   "claimCells": 0,
+   "claimWood": 0,
+   "claimLabor": 0,
+   "stake": 0
+  },
+  "ratioEnd": 1.2003367003367007,
+  "labEnd": 0.9506172839506173,
+  "worst": {
+   "v": "광산2",
+   "N": 13,
+   "terr": 3450,
+   "r": 1.0454545454545454,
+   "lab": 0.8518518518518519
+  },
+  "below": 0,
+  "vdays": 510,
+  "ratioBy": {},
+  "goals": null,
+  "pass": null,
+  "popEnd": 623
+ },
+ {
+  "k": "끔 ①h",
+  "dir": "/tmp/claude-0/-home-claude/a4d76bf5-a61f-5918-b7a1-202d531aae76/scratchpad/t1380/runs/d/r1hoffS",
+  "seed": 1020,
+  "off": true,
+  "ok": true,
+  "last": 10,
+  "fd": 0,
+  "dead": 0,
+  "lateBorn": 0,
+  "gated": 0,
+  "gatedNo": 0,
+  "terrSum": 175950,
+  "vils": 51,
+  "woodEnd": 50.4701568627451,
+  "calls": 102,
+  "hits": 102,
+  "calls90": 102,
+  "hits90": 102,
+  "stakeReason": 0,
+  "rsn": {
+   "house": 7432,
+   "field": 937,
+   "other": 1186,
+   "terr": 1106
+  },
+  "shelterCalls": 0,
+  "stakeW": 0,
+  "fuel": 0.9905450980392156,
+  "why": {
+   "target": 459
+  },
+  "knob": {
+   "lfDays": 0,
+   "lfCells": 0,
+   "claims": 0,
+   "claimCells": 0,
+   "claimWood": 0,
+   "claimLabor": 0,
+   "stake": 0
+  },
+  "ratioEnd": 1.2003367003367007,
+  "labEnd": 0.9506172839506173,
+  "worst": {
+   "v": "광산2",
+   "N": 13,
+   "terr": 3450,
+   "r": 1.0454545454545454,
+   "lab": 0.8518518518518519
+  },
+  "below": 0,
+  "vdays": 510,
+  "ratioBy": {},
+  "goals": null,
+  "pass": null,
+  "popEnd": 623
+ }
+]

@@ -47,6 +47,14 @@ function digest(R) {
   }
   o.pop = pop; o.fd = fd; o.dead = dead; o.lateBorn = lateBorn; o.gated = gated; o.gatedNo = gatedNo;
   const lastRows = H.rows.filter((r) => r[0] === o.last);
+  //   마을별 — 주거 문 닫힌 날(합 · 가장 긴 줄) · 끝 날 사람(이름 → 사람)
+  const gv = new Map();
+  for (const r of H.rows) { if (r[0] > o.last) continue; const nm = H.names[r[hx.v]]; let g = gv.get(nm); if (!g) { g = { n: 0, run: 0, max: 0 }; gv.set(nm, g); } if (r[hx.gated]) { g.n++; g.run++; if (g.run > g.max) g.max = g.run; } else g.run = 0; }
+  let gw = null; for (const [nm, g] of gv) if (!gw || g.n > gw.n || (g.n === gw.n && g.max > gw.max)) gw = { v: nm, n: g.n, max: g.max };
+  o.gateWorst = gw;
+  o.popV = new Map(lastRows.map((r) => [H.names[r[hx.v]], r[hx.N] || 0]));
+  o.empty = lastRows.filter((r) => !(r[hx.N] > 0)).length;
+  o.yearRows = {}; for (const yd of [365, 730]) { if (yd > o.last) continue; o.yearRows[yd] = { pop: pop.get(yd), fd: H.rows.reduce((x, r) => x + (r[0] <= yd ? (r[hx.fd] || 0) : 0), 0), dead: H.rows.reduce((x, r) => x + (r[0] <= yd ? (r[hx.dead] || 0) : 0), 0) }; }
   o.terrSum = hx.terrN != null ? lastRows.reduce((x, r) => x + (r[hx.terrN] || 0), 0) : null;
   o.vils = lastRows.filter((r) => (r[hx.N] || 0) > 0).length;
   o.woodEnd = hx.wood != null ? mean(lastRows.filter((r) => (r[hx.N] || 0) > 0).map((r) => r[hx.wood] || 0)) : null;
@@ -56,7 +64,20 @@ function digest(R) {
   o.calls = cs.length; o.hits = cs.filter((c) => c[cx.hit]).length; o.calls90 = c90.length; o.hits90 = c90.filter((c) => c[cx.hit]).length;
   const stake = {}; for (const c of cs) for (const k in (c[cx.reasons] || {})) if (k === 'stake') stake.n = (stake.n || 0) + c[cx.reasons][k];
   o.stakeReason = stake.n || 0;
+  //   부름 까닭 묶음(그 부름이 새로 판정한 후보) · 다시 훑기(T1380_SHADOW 판 — 빈손 부름의 전수 그림)
+  const grp = (r) => /기존 집|집터와|의뢰/.test(r) ? 'house' : /영토 밖/.test(r) ? 'terr' : /농지/.test(r) ? 'field' : /쉼터/.test(r) ? 'shelter' : r === 'stake' ? 'stake' : r === 'ok' ? 'ok' : 'other';
+  o.rsn = {}; for (const c of cs) for (const k in (c[cx.reasons] || {})) if (k[0] !== '_') { const g = grp(k); o.rsn[g] = (o.rsn[g] || 0) + c[cx.reasons][k]; }
+  const sh = cs.filter((c) => c[cx.shadow]);
+  if (sh.length) {
+    o.shadow = { n: sh.length, pass: [0, 1].map((i) => { const P2 = sh.map((c) => c[cx.shadow][i]).filter(Boolean), R2 = {}; let cand = 0, outOk = 0; const miss = [];
+      for (const p of P2) { cand += p.cand; outOk += p.outOk; for (const k in p.n) { const g = grp(k); R2[g] = (R2[g] || 0) + p.n[k]; } if (p.bestMiss != null) miss.push(p.bestMiss); }
+      miss.sort((x, y) => x - y);
+      return { cand: cand / P2.length, rsn: Object.fromEntries(Object.entries(R2).map(([k, v]) => [k, v / P2.length])), outOk: outOk / P2.length, missMed: miss.length ? miss[miss.length >> 1] : null, missQ: miss.length ? [miss[miss.length >> 2], miss[(3 * miss.length) >> 2]] : null }; }) };
+  }
+  o.shelterCalls = cs.filter((c) => c[cx.shelter]).length;
+  { const per = new Map(); for (const c of cs) { const nm = T.names[c[cx.v]]; let q = per.get(nm); if (!q) { q = [0, 0]; per.set(nm, q); } q[0]++; if (c[cx.hit]) q[1]++; } o.zeroSite = [...per].filter(([, q]) => q[1] === 0).map(([nm, q]) => `${nm}(${q[0]})`); }
   const V = T.vrows.filter((r) => r[0] <= o.last);
+  o.ratioYear = {}; for (const yd of [365, 730]) { if (yd > o.last) continue; const e = V.filter((r) => r[0] === yd && r[vx.N] > 0).map((r) => r[vx.terrN] / capF(r[vx.N])); o.ratioYear[yd] = { mean: mean(e), min: e.length ? Math.min(...e) : null }; }
   o.stakeW = V.reduce((x, r) => x + (r[vx.stakeW] || 0), 0) + V.reduce((x, r) => x + (r[vx.claimWood] || 0), 0);
   o.fuel = mean(V.filter((r) => r[0] > o.last - 30 && r[vx.N] > 0 && r[vx.fuelCov] != null).map((r) => r[vx.fuelCov]));
   const why = {}; for (const r of V) if (r[vx.N] > 0 && r[vx.why]) { const w = String(r[vx.why]).replace(/^grow\+.*/, 'grow'); why[w] = (why[w] || 0) + 1; }
@@ -132,6 +153,33 @@ P('\n## ⑤ T1380 손잡이 셈(마을-날 합)\n');
 P('| 판 | 시드 | (가) 앞세운 날 | 앞세운 칸 | (나) 그 자리 넣기 | 넣은 칸 | 통나무 | 안 치른 개간 분 | 거절 stake(부름 까닭 · 마을 셈) |');
 P('|---|---|---|---|---|---|---|---|---|');
 for (const o of D) if (o.ok && o.knob && !o.off) { const K = o.knob; P(`| ${o.k} | ${o.seed} | ${n0(K.lfDays)} | ${n0(K.lfCells)} | ${n0(K.claims)} | ${n0(K.claimCells)} | ${n0(K.claimWood)} | ${n0(K.claimLabor)} | ${n0(o.stakeReason)} · ${n0(K.stake)} |`); }
+P('\n## ⑦ 마을별 최악(켬 기본 점검표 — 평균 아님)\n');
+P('| 판 | 시드 | 집터 0 인 마을(부름 수) | 가장 오래 주거 문에 막힌 마을(날 · 가장 긴 줄) | 같은 시드 끔 대비 사람 비가 가장 낮은 마을(끔 사람 ≥ 10) | 빈 마을(끝 날) |');
+P('|---|---|---|---|---|---|');
+for (const o of D) {
+  if (!o.ok) continue;
+  const f = offOf(o); let wv = null;
+  if (f && !o.off && f.popV) for (const [nm, n0f] of f.popV) { if (!(n0f >= 10)) continue; const r = (o.popV.get(nm) || 0) / n0f; if (!wv || r < wv.r) wv = { v: nm, r, n: o.popV.get(nm) || 0, nf: n0f }; }
+  const g = o.gateWorst;
+  P(`| ${o.k} | ${o.seed} | ${o.zeroSite ? (o.zeroSite.length ? `${o.zeroSite.length} — ${o.zeroSite.slice(0, 6).join(' · ')}${o.zeroSite.length > 6 ? ' …' : ''}` : '0') : '—'} | ${g ? `${g.v} ${g.n}날 · ${g.max}날` : '—'} | ${wv ? `${wv.v} ${f3(wv.r)}(${wv.n} : ${wv.nf})` : '—'} | ${n0(o.empty)} |`);
+}
+if (D.some((o) => o.ok && o.last >= 730)) {
+  P('\n## ⑧ 해마다(두 해 판) — 날 365 · 730\n');
+  P('| 판 | 시드 | 날 | 사람 | 끔비 | 합격선 비(마을 평균 · 가장 낮은 마을) | 굶어 죽음(누계) | 죽음(누계) |');
+  P('|---|---|---|---|---|---|---|---|');
+  for (const o of D) { if (!o.ok || !o.yearRows) continue; const f = offOf(o); for (const yd of [365, 730]) { const y = o.yearRows[yd]; if (!y) continue; const fy = f && f.yearRows ? f.yearRows[yd] : null, ry = o.ratioYear ? o.ratioYear[yd] : null;
+    P(`| ${o.k} | ${o.seed} | ${yd} | ${n0(y.pop)} | ${o.off || !fy ? '—' : f3(y.pop / fy.pop)} | ${ry ? `${f3(ry.mean)} · ${f3(ry.min)}` : '—'} | ${n0(y.fd)}${fy && !o.off ? ` : ${n0(fy.fd)}` : ''} | ${n0(y.dead)}${fy && !o.off ? ` : ${n0(fy.dead)}` : ''} |`); } }
+}
+P('\n## ⑥ 집터 찾기 부름 — 그 부름이 새로 판정한 후보의 거부 까닭(부름 합 · 끝 날까지) · 다시 훑기(빈손 부름 전수 · 부름당)\n');
+const RG = [['house', '집과 너무 가까움'], ['terr', '영토 밖'], ['field', '개간 밭 위'], ['shelter', '쉼터'], ['stake', 'stake'], ['other', '그 밖']];
+P('| 판 | 시드 | 부름 | 찾음 | 쉼터 선 마을의 부름 | ' + RG.map((g) => g[1]).join(' | ') + ' |');
+P('|---|---|---|---|---|' + RG.map(() => '---').join('|') + '|');
+for (const o of D) if (o.ok && o.rsn) P(`| ${o.k} | ${o.seed} | ${n0(o.calls)} | ${n0(o.hits)}(${o.calls ? (100 * o.hits / o.calls).toFixed(1) : '—'}%) | ${n0(o.shelterCalls)} | ` + RG.map((g) => n0(o.rsn[g[0]] || 0)).join(' | ') + ' |');
+if (D.some((o) => o.shadow)) {
+  P('\n| 판 | 패스 | 빈손 부름 | 후보/부름 | ' + RG.filter((g) => g[0] !== 'stake').map((g) => g[1]).join(' | ') + ' | 넣을 수 있는 영토 밖 후보/부름 | 가장 가까운 그 후보의 모자란 칸(가운데 · 사분) |');
+  P('|---|---|---|---|' + RG.filter((g) => g[0] !== 'stake').map(() => '---').join('|') + '|---|---|');
+  for (const o of D) if (o.shadow) for (const i of [0, 1]) { const p = o.shadow.pass[i]; P(`| ${o.k} | ${i ? '느슨' : '엄격'} | ${n0(o.shadow.n)} | ${p.cand.toFixed(1)} | ` + RG.filter((g) => g[0] !== 'stake').map((g) => (p.rsn[g[0]] || 0).toFixed(1)).join(' | ') + ` | ${p.outOk.toFixed(1)} | ${p.missMed == null ? '—' : `${p.missMed} · ${p.missQ[0]} ~ ${p.missQ[1]}`} |`); }
+}
 const txt = L.join('\n') + '\n';
 if (MD) fs.writeFileSync(MD, txt); else process.stdout.write(txt);
-if (JS) fs.writeFileSync(JS, JSON.stringify(D.map((o) => { const c = Object.assign({}, o); delete c.pop; delete c.fdAt; delete c.deadAt; c.popEnd = o.pop ? o.pop.get(o.last) : null; c.pop150 = o.pop ? o.pop.get(150) : null; return c; }), null, 1));
+if (JS) fs.writeFileSync(JS, JSON.stringify(D.map((o) => { const c = Object.assign({}, o); delete c.pop; delete c.fdAt; delete c.deadAt; delete c.popV; c.popEnd = o.pop ? o.pop.get(o.last) : null; c.pop150 = o.pop ? o.pop.get(150) : null; return c; }), null, 1));
