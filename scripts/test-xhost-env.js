@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @old-red-also scripts/redeploy-light.sh scripts/update-live.sh   (재는 고침이 이 운영 스크립트 — 옛 코드 빨강 판에서 이것도 옛 판으로 · T1383)
 // === scripts/test-xhost-env.js — 서울 한반도 env 의 `ZONE_HOST_NIPPON` 이 재배포에 안 빠진다 · 빠지면 갱신 끝 줄이 ✗ 다 (T1048) ===========
 //
 // ★왜: 재민 11-01 "닛폰(으)로 못 넘어간다 — 저쪽 서버가 연결을 받지 않는다" = `_t564HandoffWhy` 거절(ECONNREFUSED) 갈래.

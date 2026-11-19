@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(표 없으면 안 돈다)
+// @bait 6   ← [T1383] 옛 미끼 표지 — 미끼 판정 줄에 바꾼 자리 수(뜻 그대로)
 // === scripts/test-t1243-farm-on.js — 밭 세계 한 손잡이 · 한 번 거둔 식량 = 작물 낱개 값 · NPC 마을 첫 곳간 · 밭 일괄 걷음(T1243 · ★재민 11-09 족보 796 · 797) ==========
 //
 // 지키는 것:
@@ -13,6 +14,7 @@
 //
 // 실행: node scripts/test-t1243-farm-on.js   (존 안 띄움 · 몇 초)
 'use strict';
+const LB = require('./lib-bait');   // [T1383] 미끼 사본을 지으며 바꾼 자리를 센다
 if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
@@ -67,8 +69,9 @@ ok(/const _cut = _t1243On\(\) && _t1243Live\(\);/.test(VS) && /if \(T1224_ECON_F
 //     미끼: 그 갈래에 일괄 한 줄을 넣은 사본은 빨강이어야 한다(글자만 맞추는 자명 통과 금지).
 const CUT_EMPTY = /if \(_cut\) \{\s*(?:\/\*[^*]*(?:\*(?!\/)[^*]*)*\*\/\s*)?\}\s*else if \(!_body\) \{? ?lifeFarmDay\(/;   // ★[T1284] 일괄 갈래가 `{ lifeFarmDay(…); if (_t84) _lifeClearDay(…); }` 로 감싸였다(같은 갈래)
 ok(/if \(!_body && !_cut && !_t84\) _lifeClearDay\(vil, farmerN\);/.test(VS) && CUT_EMPTY.test(VS), '④ 켬 + 라이브 = 존이 잔 날의 개간 · 작물 일괄도 안 돈다(몸이 못 한 일은 0 · `_cut` 갈래 코드 0)');
-{ const bait = VS.replace(/if \(_cut\) \{\s*(\/\*[^*]*(?:\*(?!\/)[^*]*)*\*\/)?\s*\}/, (m, c) => `if (_cut) { ${c || ''} lifeFarmDay(vil, _farmDay(vil, day), farmerN); }`);
-  ok(bait !== VS && !CUT_EMPTY.test(bait), '④ 미끼 — `_cut` 갈래에 일괄(`lifeFarmDay`)을 넣은 사본은 잡힌다(빈 갈래만 지나간다)'); }
+{ const A = /if \(_cut\) \{\s*(\/\*[^*]*(?:\*(?!\/)[^*]*)*\*\/)?\s*\}/, n = LB.count(VS, A);
+  const bait = VS.replace(A, (m, c) => `if (_cut) { ${c || ''} lifeFarmDay(vil, _farmDay(vil, day), farmerN); }`);
+  ok(n === 1 && bait !== VS && !CUT_EMPTY.test(bait), '④ 미끼 — `_cut` 갈래에 일괄(`lifeFarmDay`)을 넣은 사본은 잡힌다(빈 갈래만 지나간다)', `바꾼 자리 ${n}`); }
 // ── ⑤ 추신 ──
 const Q5 = `const E=require('./sim/economy-sim');const C=require('./server/crops');const V=require('./server/villages');const K=require('./server/kcal');
 const o={g:['rice','wheat','barley'].map(r=>[E.rawGrainF(r),K.econUnitsOf(r,1),E.RAW_GRAIN_FOOD_FACTOR]),st:E.T1243_GRAIN_STATE,
@@ -136,8 +139,8 @@ const ES = fs.readFileSync(path.join(ROOT, 'sim', 'economy-sim.js'), 'utf8');
 const capRe = /const _capFlow = \(T1276_FARM_K \? t1276FieldFlow\(v\) : farmFlowPerDay\(v, _cf\.farmer \|\| 0\) \* _paddyMul \* \(v\._clearedFrac != null \? v\._clearedFrac : 1\)\)/;
 const strawRe = /\+ \(T1276_FARM_K \? t1276FieldFlow\(v\) : \(dailyProductionPotential\.food \|\| 0\)\) \* STRAW_FUEL_PER_FOOD/;
 ok(capRe.test(ES) && strawRe.test(ES), '⑧ T1276 — K 의 식량 흐름(prodK 농사 몫) · 땔감 볏짚 몫이 밭 흐름 하나를 읽는다(사본 0)');
-{ const bait = ES.replace('(T1276_FARM_K ? t1276FieldFlow(v) : farmFlowPerDay(v, _cf.farmer || 0) * _paddyMul * (v._clearedFrac != null ? v._clearedFrac : 1))', 'farmFlowPerDay(v, _cf.farmer || 0) * _paddyMul * (v._clearedFrac != null ? v._clearedFrac : 1)');
-  ok(bait !== ES && !capRe.test(bait), '⑧ T1276 미끼 — 켬 세계에서 K 가 econ 농사 셈(농부 × 1.33)만 읽는 사본이면 빨강'); }
+{ const B = LB.swap(ES, '(T1276_FARM_K ? t1276FieldFlow(v) : farmFlowPerDay(v, _cf.farmer || 0) * _paddyMul * (v._clearedFrac != null ? v._clearedFrac : 1))', 'farmFlowPerDay(v, _cf.farmer || 0) * _paddyMul * (v._clearedFrac != null ? v._clearedFrac : 1)'), bait = B.src;
+  ok(B.n === 1 && bait !== ES && !capRe.test(bait), '⑧ T1276 미끼 — 켬 세계에서 K 가 econ 농사 셈(농부 × 1.33)만 읽는 사본이면 빨강', `바꾼 자리 ${B.n}`); }
 ok(/function _lifeHeadlessDay\(vil\) \{\n  _t1276Stand\(vil\);/.test(VS) && /_t1276Stand\(vil\);   \/\/ ★\[T1276\] 랩 하루도 같은 함수/.test(VS), '⑧ T1276 — 선 작물 셈은 라이브(헤드리스 하루) · 랩(작물 탐침 하루) 같은 함수');
 // ── ⑨ T1284 — 밭이 한 해에 먹이는 사람(고증과 맞대 고친 칸) ──
 const Q9 = `const E=require('./sim/economy-sim');const C=require(process.env.T1284_CROPS||'./server/crops');const V=require('./server/villages');const B=V.__p3Bind({villages:[]});const TC=require('./server/terr-cost');
@@ -173,9 +176,9 @@ ok(/  if \(_t1284On\(\)\) return vil\._farmSet\.size < e\.npcs\.length \* _landN
 const yOk = (o) => o.y.length >= 15 && o.y.every(([, , kg, lo, hi, per]) => kg <= hi + 1e-9 && kg > lo - per - 1e-9);
 ok(yOk(y1) && yOk(y0), '⑨ T1284 — 몸이 거둔 칸의 소출 = 고증 kg/ha 범위(T1221 · 비옥 자리 0 · ½ · 1 · 물 넉넉 · 발아 1) — 칸 넓이 250 m² 를 넘어 늘리는 배수 0', y1.y.filter((x) => x[1] === 0.5).map((x) => `${x[0]} ${x[2].toFixed(1)}kg`).join(' · '));
 { const bp = path.join(ROOT, 'server', '.t1284-bait-crops.js');
-  const bait = CS.replace('return per > 0 ? Math.max(0, Math.floor(kg / per * w * germ + 1e-9)) : 0;', 'return per > 0 ? Math.max(0, Math.floor(kg / per * w * germ * 1.5 + 1e-9)) : 0;');
+  const B9 = LB.swap(CS, 'return per > 0 ? Math.max(0, Math.floor(kg / per * w * germ + 1e-9)) : 0;', 'return per > 0 ? Math.max(0, Math.floor(kg / per * w * germ * 1.5 + 1e-9)) : 0;'), bait = B9.src;
   let yb = null; try { fs.writeFileSync(bp, bait); yb = sub({ T1243_FARM_ON: '1', T1284_FARM_YIELD: '1', T1284_CROPS: bp }, Q9); } finally { try { fs.unlinkSync(bp); } catch (e) { /* 없음 */ } }
-  ok(bait !== CS && yb && !yOk(yb), '⑨ T1284 미끼 — 수확에 배수(× 1.5)를 건 작물 정본 사본은 빨강'); }
+  ok(B9.n === 1 && bait !== CS && yb && !yOk(yb), '⑨ T1284 미끼 — 수확에 배수(× 1.5)를 건 작물 정본 사본은 빨강', `바꾼 자리 ${B9.n}`); }
 ok(!/harvestToGranary|_t368FoodTot/.test(VS.slice(VS.indexOf('function _lifeClearDay('), VS.indexOf('const _t1284Stat'))), '⑨ T1284 — 개간은 칸만 낸다(곳간에 식량을 넣지 않는다 · 식량은 몸이 거둔 칸에서만 — 캐논 797)');
 // ── ⑩ T1295 — 판 시계(250 ms/날)에서 밭 세계 농부 몸의 시계 축 하나 · 박 칸 ──
 const Q10 = `const V=require('./server/villages');const B=V.__p3Bind({});const W=require('./server/zone-config').WORLD;
@@ -228,7 +231,7 @@ else {
   ok(bodyOnly(R) && R.walks > 0 && R.reaped > 0 && R.harvN > 0 && R.pick > 0,
     '⑩ T1295 — 판 시계 112날(밭 켬 · 몸 전부): 몸이 밭 칸에 닿아 심고 거둔다 · 곳간에 든 수확 > 0 · 일괄 밭 일 0', R.err || `심은 ${R.pick} · 거둔 ${R.reaped} · 곳간 수확 ${R.harvN} · 몸 개간 ${R.bodyCells} · 걸음 ${R.walks}`);
   const Bt = run(45, 'bait', { T1295_PROBE_BAIT: 'batch' });
-  ok(Bt && !Bt.err && !bodyOnly(Bt) && Bt.batchTasks > 0, '⑩ T1295 미끼 — 밭 길 일괄 걷음을 끈 사본(몸 없이 밭 일을 세는 판)은 빨강', Bt.err || `일괄 일감 ${Bt.batchTasks}`);
+  ok(Bt && !Bt.err && Bt.baitN === 1 && !bodyOnly(Bt) && Bt.batchTasks > 0, '⑩ T1295 미끼 — 밭 길 일괄 걷음을 끈 사본(몸 없이 밭 일을 세는 판)은 빨강', Bt.err || `바꾼 자리 ${Bt.baitN} · 일괄 일감 ${Bt.batchTasks}`);
 }
 // ── ⑪ T1316 — 판 시계 몸 축을 농부 밖 마을 몸(나무꾼 · 어부 · 광부 · 곳간 인출)으로 · 틱 토막 ──
 const Q11 = `const V=require('./server/villages');const B=V.__p3Bind({});
@@ -267,7 +270,7 @@ else {
     '⑪ T1316 — 판 시계 60날(밭 켬 · 몸 전부 · 켬): 어부 · 광부 · 농부 몸이 일터에서 일하고(라벨 몸-틱) · 곳간 인출 > 0 · 광부 몸이 캔 kg > 0 · 일괄 밭 일 0', R.err || `낚시 ${n.fish} · 채광 ${n.mine} · 인출 ${n.draw} · 밭 ${n.farm} · 광부 ${R.mineKg} kg`);
   console.log('  · ⑪ [상황] 나무꾼 · 채집꾼은 이 세계(`T325_WOOD_ACT` · `T347_FORAGE_ACT` 끔 기본)에서 econ 식이 낸다 — 몸 일 라벨 없음(벌목 ' + L(R, 'lumberjack', ['벌목']) + ')');
   const Bm = run(60, 'bait', { T1295_PROBE_BAIT: 'mine' });
-  ok(Bm && !Bm.err && R.mineKg > 0 && !(Bm.mineKg > R.mineKg * 0.1), '⑪ T1316 미끼 — 광부 한 타만 실 ms 축으로 되돌린 사본은 빨강(광부 몸 kg 이 켬 판의 10분의 1 아래)', Bm.err || `${Bm.mineKg} : ${R.mineKg} kg`);
+  ok(Bm && !Bm.err && Bm.baitN === 1 && R.mineKg > 0 && !(Bm.mineKg > R.mineKg * 0.1), '⑪ T1316 미끼 — 광부 한 타만 실 ms 축으로 되돌린 사본은 빨강(광부 몸 kg 이 켬 판의 10분의 1 아래)', Bm.err || `바꾼 자리 ${Bm.baitN} · ${Bm.mineKg} : ${R.mineKg} kg`);
 }
 // ── ⑫ T1326 — 다섯 직업 축(농부 · 나무꾼 · 어부 · 광부 · 사냥꾼)이 판 시계 몸 축 하나 · 몸 축 직업은 일괄 명부가 몸을 안 든다 ──
 const Q12 = `const V=require('./server/villages');const B=V.__p3Bind({});const J=(j)=>({simJob:j,simVillageId:1});
@@ -302,7 +305,7 @@ else {
     '⑫ T1326 — 판 시계 40날(밭 · 나무꾼 몸 · 사냥 몸 켬 · 몸 전부): 사냥꾼이 짐승에 닿고 · 나무꾼 몸이 베어 곳간에 든 통나무 = 몸이 든 몫(일괄 명부 0) · 어부 · 광부 몸 일',
     R.err || `닿음 ${h(R)} · 벌목 ${wd.cut} · 통나무 ${wd.got.toFixed(1)}(몸 ${wd.body.toFixed(1)}) · 명부 ${wd.ros}`);
   const Bh = run(40, 'bait', { T1295_PROBE_BAIT: 'hunt' });
-  ok(Bh && !Bh.err && h(R) > 0 && !(h(Bh) > h(R) * 0.1), '⑫ T1326 미끼 — 사냥꾼만 실 초 축으로 되돌린 사본은 빨강(닿음이 켬 판의 10분의 1 아래)', Bh.err || `${h(Bh)} : ${h(R)}`);
+  ok(Bh && !Bh.err && Bh.baitN === 1 && h(R) > 0 && !(h(Bh) > h(R) * 0.1), '⑫ T1326 미끼 — 사냥꾼만 실 초 축으로 되돌린 사본은 빨강(닿음이 켬 판의 10분의 1 아래)', Bh.err || `바꾼 자리 ${Bh.baitN} · ${h(Bh)} : ${h(R)}`);
 }
 console.log(`\n${pass} 통과 · ${fail} 실패`);
 process.exit(fail ? 1 : 0);

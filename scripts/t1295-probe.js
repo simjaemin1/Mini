@@ -12,12 +12,15 @@ const ROOT = path.join(__dirname, '..');
 {
   const Module = require('module'), _comp = Module.prototype._compile, VS = path.join(ROOT, 'server', 'villages.js'), ZS = path.join(ROOT, 'server', 'zone.js');
   const BAIT = process.env.T1295_PROBE_BAIT;
+  var BAIT_N = null;
   Module.prototype._compile = function (c, f) {
     if (f === VS) {
-      if (BAIT === 'batch') c = c.replace('const _cut = _t1243On() && _t1243Live();', 'const _cut = false;');
-      if (BAIT === 'mine') c = c.replace('const _SW = S.MINE_SWING_MS / t1295S(npc);   // ★[T1316] 한 타', 'const _SW = S.MINE_SWING_MS;   // 미끼 한 타');
+      //   ★[T1383] 미끼마다 바꾼 자리 수를 판 JSON(`baitN`)에 싣는다 — 하네스가 "정확히 한 곳"을 미끼 판정 줄에서 본다
+      const swap = (a, b) => { BAIT_N = (c.length - c.replaceAll(a, '').length) / a.length; c = c.replace(a, b); };   // (셈은 `replaceAll` 차 — 린트 ⑯ 의 띄우개 글자를 피함)
+      if (BAIT === 'batch') swap('const _cut = _t1243On() && _t1243Live();', 'const _cut = false;');
+      if (BAIT === 'mine') swap('const _SW = S.MINE_SWING_MS / t1295S(npc);   // ★[T1316] 한 타', 'const _SW = S.MINE_SWING_MS;   // 미끼 한 타');
       //   ★[T1326] `T1295_PROBE_BAIT=hunt` = 미끼 — 사냥꾼만 실 초 축으로 되돌린 사본(문에서 사냥꾼을 다시 뺀다 · 걸음 · 두뇌 둘 다 배율 1)
-      if (BAIT === 'hunt') c = c.replace("(npc.simJob !== 'hunter' || T1326_HUNT_CLOCK)", "(npc.simJob !== 'hunter')");
+      if (BAIT === 'hunt') swap("(npc.simJob !== 'hunter' || T1326_HUNT_CLOCK)", "(npc.simJob !== 'hunter')");
       c += '\nmodule.exports.__t1295ProbeT724 = () => (typeof _probe !== "undefined" && _probe.t724) || null;\n';
     }
     if (f === ZS) { const H = 'function npcStep(npc, dt, now) {'; const i = c.indexOf(H);
@@ -46,7 +49,7 @@ function dump() {
       hunt: (() => { try { return V.t1195Stat ? V.t1195Stat() : null; } catch (e) { return null; } })(),
       got: GOT, woodBody: (() => { let w = 0; for (const v of (B.state.villages || [])) w += v._t325Deliv || 0; return +w.toFixed(3); })(),
       t1202: (() => { const S = V.t1202Stat ? V.t1202Stat() : null; return S ? { roster: S.roster, bodies: S.bodies, wood: S.wood, fish: S.fish, forage: S.forage } : null; })(),
-      lab: LAB, mineKg: (() => { const P = V.__t1295ProbeT724 && V.__t1295ProbeT724(); return P ? +P.kg.toFixed(3) : null; })() };
+      lab: LAB, baitN: typeof BAIT_N === 'undefined' ? null : BAIT_N, mineKg: (() => { const P = V.__t1295ProbeT724 && V.__t1295ProbeT724(); return P ? +P.kg.toFixed(3) : null; })() };
     fs.writeFileSync(OUT, JSON.stringify(o));
   } catch (e) { try { fs.writeFileSync(OUT, JSON.stringify({ err: String(e && e.stack || e).slice(0, 400) })); } catch (_) {} }
 }

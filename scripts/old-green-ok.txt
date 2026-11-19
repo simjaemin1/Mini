@@ -6,4 +6,3 @@
 #   (세션이 스스로 넣을 수 있으면 "세션 글자를 안 믿는다"는 이 단계의 뜻이 없어진다). 목록은 짧아야 한다 — 늘면 lint ⑳ 을 고칠 차례다.
 test-clock-shift.js | 하네스 시계 밀기 도구(`lib-phase`)를 잰다 — 제품은 `server/zone-config.js`(존 경도 표)를 읽기만 한다 · T1356
 test-touched-harness.js | 도구 `touched-harness.js` 를 임시 레포 픽스처로 잰다 — `server/a.js` 는 픽스처 글자(진짜 제품 아님) · T1356
-test-t1345-body-day.js | 고침이 판 자(`scripts/server-baseline-check.js --body-day`)에 있다 — 제품만 옛 것이면 초록이 맞다 · 옛 판 자를 PROD 에 더한 판은 빨강 ○(✓ 3 · ✗ 9) · T1345 §6

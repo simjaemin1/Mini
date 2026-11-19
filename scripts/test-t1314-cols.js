@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
+const LB = require('./lib-bait');   // [T1383] 미끼 사본을 지으며 바꾼 자리를 센다
 // @regress
+// @bait 1   ← [T1383] 옛 미끼 표지 — 미끼 판정 줄에 바꾼 자리 수(뜻 그대로)
 // === scripts/test-t1314-cols.js — 몸 칸 열(SoA) 첫 걸음 = 몸 칸과 같음 (T1314 · `server/hot-cols.js`) ===
 //   ① 무작위 몸 1,000(쌍 — 맨 객체 ↔ 칸 받은 몸) × 걸음 1,000 — 다섯 칸에 수(−0 · NaN · ∞) · undefined · null · 글자 · 객체를 쓰기 길(`w`)로 섞어 쓰고
 //      몸 칸 = 맨 객체(Object.is) · 열 = 몸 칸(`check` 어긋남 0) · 머리 읽기(`nda` · `pi` · `pn` · `px` · `py`) = 몸 칸 · 키 차례 · `JSON.stringify` 바이트 같음.
@@ -61,10 +63,10 @@ console.log('\n③ 왜 거울 꼴인가');
 }
 console.log('\n④ 미끼 — 몸 칸만 고치고 열을 안 고친 쓰기 길');
 {
-  const bait = SRC.replace('function w(p, f, v) { p[f] = v; const s = p._hcS; if (s >= 0) { _put(K[IX[f]], s, v); stat.writes++; } return v; }', 'function w(p, f, v) { p[f] = v; stat.writes++; return v; }');
+  const B4 = LB.swap(SRC, 'function w(p, f, v) { p[f] = v; const s = p._hcS; if (s >= 0) { _put(K[IX[f]], s, v); stat.writes++; } return v; }', 'function w(p, f, v) { p[f] = v; stat.writes++; return v; }'), bait = B4.src;
   ok(bait !== SRC, '미끼 사본을 지었다');
   const R4 = sim(load(bait, {}), 300, 1000);
-  ok(R4.colBad > 0, '① 의 열 견줌(`check`)이 문다(자명 통과 아님)', `어긋남 ${R4.colBad}`);
+  ok(B4.n === 1 && R4.colBad > 0, '[미끼] ① 의 열 견줌(`check`)이 문다(자명 통과 아님)', `바꾼 자리 ${B4.n} · 어긋남 ${R4.colBad}`);
 }
 console.log('\n⑤ 손잡이');
 ok(load(SRC, {}).ON === false && load(SRC, { T1314_HOT_COLS: '1' }).ON === true && load(SRC, { T1314_HOT_COLS: 'verify' }).VERIFY === true && load(SRC, { T1314_HOT_COLS: 'yes' }).ON === false, "`T1314_HOT_COLS` 는 `'1'` · `'verify'` 만 켬");

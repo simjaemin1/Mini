@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @bait 2   ← [T1383] 옛 미끼 표지 — 미끼 판정 줄에 바꾼 자리 수(뜻 그대로)
 // === scripts/test-server-market.js — 서버 장마당(T707): 장부가 열고 · 명부가 모으고 · 떠날 때 정산 ====================
 //
 // ★왜 [재민 10-12 · T693 판정 → T707] "랩에서 만든 것이 목표" — 서버 장마당은 캐러밴 머묾 플래그 하나였다(주민이 안 모인다 · 1시간).
@@ -19,6 +20,7 @@
 //
 // 실행: node scripts/test-server-market.js
 'use strict';
+const LB = require('./lib-bait');   // [T1383] 미끼 사본을 지으며 바꾼 자리를 센다
 // 기존 날 머리 장 일정 대조. 실제 몸 도착 시점의 개장은 T1182 자가 잰다.
 process.env.T762_CARAVAN_BODY='0';
 process.env.T1136_ESCORT_CARRY='0';
@@ -204,7 +206,7 @@ function decoyTree(name, edits) {
   let src = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
   for (const [a, b] of edits) { if (src.split(a).length !== 2) throw new Error(`미끼 ${name}: 앵커가 한 번이 아니다 — ${a.slice(0, 60)}`); src = src.replace(a, b); }
   fs.writeFileSync(path.join(dir, 'server', 'villages.js'), src);
-  return { dir, file: path.join(dir, 'server', 'villages.js') };
+  return { dir, file: path.join(dir, 'server', 'villages.js'), spots: LB.spots(fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8'), src) };   // [T1383] 바꾼 자리(줄 덩이)
 }
 
 if (process.argv[2] === '--child') {
@@ -265,12 +267,12 @@ ok(E0.ok && E0.on === false && !E0.offMarked && E0.tradesOff > 0, `⑦ 끔 — e
 // 미끼 ⓐ — T684 뺄셈을 뺀 사본: 같은 날 둘째 캐러밴이 또 모은다
 const dA = decoyTree('t684', [['  let n = Math.max(1, Math.round(P * VL.MKT_FRAC)) - rec.at.size;', '  let n = Math.max(1, Math.round(P * VL.MKT_FRAC));']]);
 const SA = child('server', ON, dA.file);
-ok(SA.ok && SA.n2 > SA.n1, `미끼 ⓐ(T684 뺄셈 뺌) — ④ 가 문다: 둘째 캐러밴이 ${SA.n1} → ${SA.n2}`, SA.err || '');
+ok(dA.spots === 1 && (SA.ok && SA.n2 > SA.n1), `미끼 ⓐ(T684 뺄셈 뺌) — ④ 가 문다: 둘째 캐러밴이 ${SA.n1} → ${SA.n2} · 미끼 바꾼 자리 ${dA.spots}`, SA.err || '');
 // 미끼 ⓑ — 명부 거름을 뺀 사본: 크루·행위 팔 어부가 명부에 든다
 const dB = decoyTree('skip', [['    if (rec.at.has(pid) || skip.has(pid)) continue;', '    if (rec.at.has(pid)) continue;'],
   ['    if (!p || _t707ActJob(vil, p.simJob)) continue;', '    if (!p) continue;']]);
 const SB = child('server', ON, dB.file), AB = child('act', Object.assign({ T312_FISH_ACT: '1' }, ON), dB.file);
-ok(SB.ok && !SB.crewOut && AB.ok && AB.fishersIn > 0, `미끼 ⓑ(거름 뺌) — ⑤ 가 문다: 크루 명부 밖 ${SB.crewOut} · 어부 ${AB.fishersIn}`, (SB.err || '') + (AB.err || ''));
+ok(dB.spots === 2 && SB.ok && !SB.crewOut && AB.ok && AB.fishersIn > 0, `미끼 ⓑ(거름 뺌 — 거름 두 줄) — ⑤ 가 문다: 크루 명부 밖 ${SB.crewOut} · 어부 ${AB.fishersIn} · 바꾼 자리 ${dB.spots}/2`, (SB.err || '') + (AB.err || ''));
 for (const d of [dA, dB]) { try { fs.rmSync(d.dir, { recursive: true, force: true }); } catch (e) {} }
 
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`);

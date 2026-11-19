@@ -1,4 +1,5 @@
 // @regress
+// @bait 3   ← [T1383] 옛 미끼 표지 — 미끼 판정 줄에 바꾼 자리 수(뜻 그대로)
 // === scripts/test-t1342-gate-home.js — T1342 문 앞에서 집으로(`T1342_GATE_HOME` · T1319 K 문 켬 안 · 끔 기본) ===
 //   T1334 두 해 판의 둘째 해 K 위 죽음은 무리가 든 마을에서 났다 — 하루 이틀 사이 열둘 ~ 스물넷 마을에서 떠난 사람이 한 마을 문 앞에 닿아 K 의 두세 배가 됐다(T1342 §1).
 //   켬 — 불행 이탈로 걸어온 사람이 받는 마을 문 앞에 닿은 날, 그 마을이 오늘 제 인구 식 K 를 넘으면(지금 사람 + 1 > K) 들지 않고 떠난 마을로 걸어 돌아간다(한 길에 한 번).
@@ -12,6 +13,7 @@
 //   ★미끼 셋 — 닿기 문을 뺀 도적 사본(ⓐ 찬 마을에 든다 · 빨강) · 문 앞 K 를 침상으로 읽는 villages 사본(② K 가 차도 침상이 넉넉하면 든다 · 빨강) ·
 //     소식을 얹는 줄을 뗀 들은 줄 사본 + 그 사본을 읽는 받는 곳 문(`_t1312Pass` 글 그대로 · ⑤ 찼다는 소식을 듣고도 간다 · 빨강)
 'use strict';
+const LB = require('./lib-bait');   // [T1383] 미끼 사본을 지으며 바꾼 자리를 센다
 if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다(PM land1082)
 if (process.env.T1334_BUNDLE === undefined) process.env.T1334_BUNDLE = '0';   // 묶음은 글자로 끔 — 이 하네스는 낱 글자를 제 env 로 가른다(켬 기본 가지에서도 빈 값 = 안 준 것)
 const path = require('path');
@@ -49,8 +51,8 @@ if (process.argv[2] === '--child') {
     // ★미끼 ② — `_t1342Full` 글을 떼어 K 대신 침상(min(집 · 지도 침상))을 읽는 사본
     const VS = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
     const i0 = VS.indexOf('function _t1342Full('), i1 = VS.indexOf('\n}\n', i0) + 2, body = VS.slice(i0, i1);
-    const bait = body.replace("e && e._dpDebug && typeof e._dpDebug.K === 'number' && isFinite(e._dpDebug.K) ? e._dpDebug.K : null", 'e ? Math.min(e.housing !== undefined ? e.housing : Infinity, e._mapBeds !== undefined ? e._mapBeds : Infinity) : null');
-    R.baitLine = bait !== body;
+    const BB = LB.swap(body, "e && e._dpDebug && typeof e._dpDebug.K === 'number' && isFinite(e._dpDebug.K) ? e._dpDebug.K : null", 'e ? Math.min(e.housing !== undefined ? e.housing : Infinity, e._mapBeds !== undefined ? e._mapBeds : Infinity) : null'); const bait = BB.src;
+    R.baitLine = bait !== body; R.baitN = BB.n;
     const mkB = new Function('_t1342On', '_t1342Stat', bait + '\nreturn _t1342Full;')(SV._t1342On, { gate: 0, full: 0, back: 0, noHome: 0 });
     setK(N + 0.5); b.econ.housing = N + 20; b.econ._mapBeds = N + 20;
     R.realFullBeds = SV._t1342Full(b); R.baitFullBeds = mkB(b);
@@ -82,8 +84,8 @@ if (process.argv[2] === '--child') {
     R.knownNew = { n: kn.n, K: kn.K, nTold: kn.n === N, KTold: kn.K === N + 0.5, fe: kn.fe === (N + 50) * per * 2, h: kn.h === 0.9, beds: kn.beds === N + 100, d: kn.d === day - lag };
     // ★미끼 ⑤ — 들은 줄 글에서 소식을 얹는 줄을 뗀 사본 + 그 사본을 읽는 받는 곳 문(`_t1312Pass` 글 그대로)
     const sl = (name) => { const a = VS.indexOf('function ' + name + '('), z = VS.indexOf('\n}\n', a) + 2; return VS.slice(a, z); };
-    const kb = sl('_t1306Known'), kbB = kb.replace('return _t1342On() ? _t1342Merge(fromVil, toVil, row) : row;', 'return row;');
-    R.baitPassLine = kbB !== kb;
+    const kb = sl('_t1306Known'), KBB = LB.swap(kb, 'return _t1342On() ? _t1342Merge(fromVil, toVil, row) : row;', 'return row;'), kbB = KBB.src;
+    R.baitPassLine = kbB !== kb; R.baitPassN = KBB.n;
     const knB = new Function('state', '_t1342On', '_t1342Merge', kbB + '\nreturn _t1306Known;')({ ledger: { delayTo: () => lag } }, SV._t1342On, SV._t1342Merge);
     const mkP = new Function('state', '_t1312Stat', '_t1306Known', '_t1312PickedOf', '_t1319KOn', '_t1319Stat', sl('_t1312Pass') + '\nreturn _t1312Pass;')(
       { econ: E1 }, { seen: 0, ok: 0, unknown: 0, unhappy: 0, beds: 0, thin: 0, herdCut: 0, picks: 0, herdPicks: 0, lagSum: 0 }, knB, SV._t1312PickedOf, SV._t1319KOn, { overK: 0 });
@@ -108,14 +110,14 @@ if (process.argv[2] === '--child') {
     ok(ON.on === true, '① 손잡이 — T1319 K 문 켬 안에서 `\'1\'` 만 켬');
     ok(ON.full05 === true && ON.full1 === false && ON.full5 === false && ON.fullNoK === false, '② 문 앞 K — 지금 사람 + 1 > K 면 찼다(K = 사람 + 0.5) · 같으면(K = 사람 + 1) · 넉넉하면 든다 · K 없는 마을은 든다',
       { k05: ON.full05, k1: ON.full1, k5: ON.full5, none: ON.fullNoK });
-    ok(ON.baitLine && ON.realFullBeds === true && ON.baitFullBeds === false, '★미끼 ② — 문 앞 K 를 침상으로 읽는 사본은 K 가 찬 마을을 침상이 넉넉하다고 들인다(빨강 · 진짜는 돌려보냄)', { real: ON.realFullBeds, bait: ON.baitFullBeds });
+    ok(ON.baitN === 1 && ON.baitLine && ON.realFullBeds === true && ON.baitFullBeds === false, '★미끼 ② — 문 앞 K 를 침상으로 읽는 사본은 K 가 찬 마을을 침상이 넉넉하다고 들인다(빨강 · 진짜는 돌려보냄)', { '바꾼 자리': ON.baitN, real: ON.realFullBeds, bait: ON.baitFullBeds });
     ok(ON.home && ON.home.to && ON.home.len && ON.home.ppd && ON.homeEmpty === null, '③ 집 길 — 떠난 마을까지(길이 > 0 · 하루 걸음 그대로) · 집이 비었으면 없다(종전대로 든다)', { home: ON.home, empty: ON.homeEmpty });
     ok(ON.seen && ON.seen.v && ON.seen.d && ON.seen.n && ON.seen.K && ON.told && ON.told.d && ON.told.n && ON.toldNew && ON.toldOld,
       '⑤ 돌아온 사람 소식 — 집 길에 문 앞에서 본 것(그 마을 · 그날 · 사람 수 · K)을 싣고 집에 닿으면 집 마을이 안다 · 들은 줄보다 새 것만 쓴다', { seen: ON.seen, told: ON.told, newer: ON.toldNew, older: ON.toldOld });
     ok(ON.passOld === true && ON.passNew === false && ON.knownNew && ON.knownNew.nTold && ON.knownNew.KTold && ON.knownNew.fe && ON.knownNew.h && ON.knownNew.beds && ON.knownNew.d,
       '⑤ 받는 곳 문 — 들은 줄은 넉넉해도 그보다 새 "찼다" 소식이 있으면 안 간다(옛 소식이면 들은 줄대로 간다) · 들은 줄은 사람 수 · K 만 소식으로(곳간 · 행복 · 침상 · 날은 그대로)', { old: ON.passOld, newer: ON.passNew, known: ON.knownNew });
     ok(OFF && OFF.passNew === true && OFF.knownNew && OFF.knownNew.n === 5, '⑤ 끔 — 돌아온 사람 소식이 있어도 들은 줄 그대로(사람 5 · 종전 문대로 간다)', OFF ? { newer: OFF.passNew, n: OFF.knownNew && OFF.knownNew.n } : null);
-    ok(ON.baitPassLine && ON.baitPassNew === true, '★미끼 ⑤ — 소식을 얹는 줄을 뗀 들은 줄 사본을 읽는 받는 곳 문은 찼다는 소식을 듣고도 간다(빨강 · 진짜는 안 감)', { bait: ON.baitPassNew });
+    ok(ON.baitPassN === 1 && ON.baitPassLine && ON.baitPassNew === true, '★미끼 ⑤ — 소식을 얹는 줄을 뗀 들은 줄 사본을 읽는 받는 곳 문은 찼다는 소식을 듣고도 간다(빨강 · 진짜는 안 감)', { '바꾼 자리': ON.baitPassN, bait: ON.baitPassNew });
   }
   // ④ 닿기 — 운영 `_t765Arrive` 를 호스트 꾸밈으로 부른다(부팅 없음)
   const arrive = (srcText, full) => {
@@ -156,7 +158,7 @@ if (process.argv[2] === '--child') {
   };
   const BS = fs.readFileSync(path.join(ROOT, 'server', 'bandits.js'), 'utf8');
   const G0 = BS.indexOf('    if (w.t1075 && !w.t1342Home && S.host.t1342Full'), G1 = BS.indexOf('    }\n', G0) + 6;
-  const BAIT = G0 > 0 ? BS.slice(0, G0) + BS.slice(G1) : null;
+  const BAIT = G0 > 0 ? BS.slice(0, G0) + BS.slice(G1) : null, nBait = LB.count(BS, '    if (w.t1075 && !w.t1342Home && S.host.t1342Full');   // [T1383] 바꾼 자리 = 걷어 낸 문 머리 줄
   let A = null, AB = null;
   { const _l = console.log; console.log = () => {};   // 도적 걷기 줄 글(로그)은 안 보인다
     try { A = arrive(BS, new Set([2])); } catch (e) { A = { err: String(e && e.stack).slice(0, 400) }; }
@@ -169,7 +171,7 @@ if (process.argv[2] === '--child') {
     ok(A.c === true && A.d === true, '④ⓒ 안 찬 마을엔 든다 · ⓓ 해체 남은 사람은 찬 마을에도 든다(문 밖)', { c: A.c, d: A.d });
     ok(Array.isArray(A.e) && A.e.length === 1 && A.e[0] === 11 && A.e2.length === 1 && A.e2[0] === 11, '④ⓔ 저장 줄 · 복원이 집 길 표지 · 문 앞에서 본 것을 잇는다', { saved: A.e, restored: A.e2 });
   }
-  ok(BAIT && AB && !AB.err && AB.a.joined === true, '★미끼 ④ — 닿기 문을 뺀 도적 사본은 찬 마을에 든다(빨강 · 진짜는 집으로)', AB && AB.a);
+  ok(nBait === 1 && BAIT && AB && !AB.err && AB.a.joined === true, '★미끼 ④ — 닿기 문을 뺀 도적 사본은 찬 마을에 든다(빨강 · 진짜는 집으로)', `바꾼 자리 ${nBait} · ${JSON.stringify(AB && AB.a)}`);
   console.log(`\n=== T1342 문 앞에서 집으로: 통과 ${pass} · 실패 ${fail} ===`);
   process.exit(fail ? 1 : 0);
 }

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(표 없으면 안 돈다)
+// @bait 1   ← [T1383] 옛 미끼 표지 — 미끼 판정 줄에 바꾼 자리 수(뜻 그대로)
 // === scripts/test-t877-dry-fix.js — 요리사 갈무리 열량 보존 · 건굴 · 마른 미역 econ 칸 [T877] ==========================
 //
 // ★왜 [T860 회부 4 · 1] ① 요리사 갈무리는 과일 · 남새(식량 환산 0.4)를 수율 0.4 로 말려 보존식 환산 2.5 로 먹였다 — 열량 2.5 배(생성).
@@ -16,6 +17,7 @@
 //
 // 실행: node scripts/test-t877-dry-fix.js   (존 안 띄움 · 약 1분)
 'use strict';
+const LB = require('./lib-bait');   // [T1383] 미끼 사본을 지으며 바꾼 자리를 센다
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');
@@ -67,7 +69,7 @@ console.log('\n② 한 걸음 — 가짜 마을(과일 · 생선)');
   const FF = E.FORAGE_FOOD_FACTOR, PF = E.PRESERVE_FOOD_FACTOR, Y = E.PRESERVE_YIELD;
   let v = mk(), s = sink(v); E._preserveSurplus(v, { fruit: 'dried_fruit' }, 1, s.f, null, null);
   const offOut = s.got[0] && s.got[0][1];
-  ok(near(offOut, 1 * Y) && offOut * PF > 1 * FF.fruit + 1e-9, '② 미끼(끔) — 과일 1(식량 0.4) → 말린 과실 0.4(× 2.5 = 1.0) · 열량이 2.5 배로 생긴다', `${offOut} × ${PF} vs ${FF.fruit}`);
+  ok(LB.knob('T877_DRY_FIX') === 1 && (near(offOut, 1 * Y) && offOut * PF > 1 * FF.fruit + 1e-9), `② 미끼(끔) — 과일 1(식량 0.4) → 말린 과실 0.4(× 2.5 = 1.0) · 열량이 2.5 배로 생긴다 · 미끼 바꾼 자리 ${LB.knob('T877_DRY_FIX')}`, `${offOut} × ${PF} vs ${FF.fruit}`);
   v = mk(); s = sink(v); E._preserveSurplus(v, { fruit: 'dried_fruit' }, 1, s.f, null, E._t860Unit);
   const onOut = s.got[0] && s.got[0][1];
   ok(near(onOut, 1 * Y * FF.fruit) && near(onOut * PF, 1 * FF.fruit), '② ★켬 — 과일 1 → 말린 과실 0.16(× 2.5 = 0.4 = 원물 그대로 · 생성 0)', `${onOut}`);

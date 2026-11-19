@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @bait 1   ← [T1383] land1084 옛 목록(규칙 앞 가지)에서 뺌 — 미끼 뜻 그대로 · 판정 줄에 바꾼 자리 수
+// @old-red-also scripts/server-baseline-check.js   (재는 고침이 판 자 `--body-day` — 옛 코드 빨강 판에서 판 자도 옛 판으로 · T1383)
 // === scripts/test-t1345-body-day.js — 서버 판 자 `--body-day`(운영 하루 24분 + 집 켬 · T1345 사다리 ③ 계단) ==================
 //
 // ★왜 [T1345] 조건 사다리(시드 1020 · 365날 · 한 번에 돈 판) — 묶음 해 끝 끔비: ① 서버 자(빠른 시계 · 집 끔) 1.099 · ①h 집 켬만(빠른 시계) 1.055 ·
@@ -114,8 +116,9 @@ ok(bunBody.env && bunBody.env.T1334_BUNDLE === '1' && bunBody.env.VILLAGE_DAY_MS
   const bait = path.join(path.dirname(SBC), `._t1345-bait-${process.pid}.js`);
   fs.writeFileSync(bait, src.replace(a, 'BODY_DAY ? {} : {}'));
   let b = null; try { b = capture(['--body-day'], {}, bait); } finally { fs.rmSync(bait, { force: true }); }
-  ok(b && b.env && b.env.VILLAGE_DAY_MS !== '1440000' && b.env.T400_BUILD_ACT === '1',
-    '⑤ 미끼 — 하루 길이 자리를 뺀 사본은 집만 켜고 하루는 250 — ① 의 "VILLAGE_DAY_MS=1440000" 단언이 빨강', JSON.stringify(b && b.env));
+  const na = src.split(a).length - 1;
+  ok(na === 1 && b && b.env && b.env.VILLAGE_DAY_MS !== '1440000' && b.env.T400_BUILD_ACT === '1',
+    '⑤ 미끼 — 하루 길이 자리를 뺀 사본은 집만 켜고 하루는 250 — ① 의 "VILLAGE_DAY_MS=1440000" 단언이 빨강', `바꾼 자리 ${na} · ${JSON.stringify(b && b.env)}`);
 }
 // ④ 짧은 판 — 묶음 · `--body-day` · 진짜 존
 {

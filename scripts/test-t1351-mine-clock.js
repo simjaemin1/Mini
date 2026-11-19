@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(표 없으면 안 돈다)
+// @bait 1   ← [T1383] land1084 옛 목록(규칙 앞 가지)에서 뺌 — 미끼 뜻 그대로 · 판정 줄에 바꾼 자리 수
 // === scripts/test-t1351-mine-clock.js — 판 시계 광부의 수요 문 = 몸의 하루(T1351 · T1326 회부 3) =====================================
 //
 // 지키는 것:
@@ -66,6 +67,6 @@ const nPath = path.join(D, 'bait.n');
 const Bt = run('bait', { T1351_BAIT_N: nPath }), fB = frac(Bt);
 let needleN = -1; try { needleN = +fs.readFileSync(nPath, 'utf8'); } catch (e) {}
 ok(needleN === 1, '③ 미끼 바늘 = villages.js 에 정확히 한 곳', `${needleN}`);
-ok(needleN === 1 && fB != null && !pred(fB) && fB < 0.6, '③ 미끼 — 수요 문 켬 갈래만 끈 사본은 ② 의 줄이 빨강(몫 < 0.6)', Bt.err || `${fB == null ? '—' : fB.toFixed(3)}`);
+ok(needleN === 1 && fB != null && !pred(fB) && fB < 0.6, '③ 미끼 — 수요 문 켬 갈래만 끈 사본은 ② 의 줄이 빨강(몫 < 0.6)', `바꾼 자리 ${needleN} · ${Bt.err || (fB == null ? '—' : fB.toFixed(3))}`);
 console.log(`\n${pass} 통과 · ${fail} 실패`);
 process.exit(fail ? 1 : 0);

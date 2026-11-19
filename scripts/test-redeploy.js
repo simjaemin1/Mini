@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @old-red-also scripts/redeploy-hanbando.sh scripts/update-live.sh   (재는 고침이 이 운영 스크립트 — 옛 코드 빨강 판에서 이것도 옛 판으로 · T1383)
 // === scripts/test-redeploy.js — 재배포 판정 하네스 [2026-09-01] ================
 //
 // 대상: `scripts/redeploy-hanbando.sh` 의 **무엇을 다시 할지 정하는 부분**.

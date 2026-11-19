@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
+const LB = require('./lib-bait');   // [T1383] 미끼 사본을 지으며 바꾼 자리를 센다
 // @regress
+// @bait 2   ← [T1383] 옛 미끼 표지 — 미끼 판정 줄에 바꾼 자리 수(뜻 그대로)
 // === scripts/test-t1294-perf.js — µs 둘째(T1294) 자리: 바이트 같은 몫 = 종전 길 · 손잡이 몫 = 열쇠(지형 세대) ===
 //   ① 도착 몸 길(ⓐ 바이트 같은 몫) — zone.js 의 `npcStep` 길 토막(needPath → 묻기 → 따라가기) 글자를 떠서 샌드박스에서
 //      종전 글자(`_t1294Arrived` 뺌)와 나란히 몸 300 × 틱 600(도착 · 밀림 · 목표 바뀜 · 세대 바뀜 · −0 속도) — 몸 칸 전부 같음(`_pathAt` 만 다를 수 있다).
@@ -86,10 +88,10 @@ const gate = (arrSrc) => {
 }
 console.log('\n③ 미끼 — 기억 열쇠에서 지형 세대를 뺀 사본');
 {
-  const bait = fArr.replace('npc._t1294G === _t1294Gen() && ', '');
+  const B3 = LB.swap(fArr, 'npc._t1294G === _t1294Gen() && ', ''), bait = B3.src;
   ok(bait !== fArr, '미끼 사본을 지었다(열쇠의 세대 항 하나 뺌)');
   const G = gate(bait);
-  ok(!G.asked, '미끼는 세대가 바뀐 뒤에도 안 묻는다 → ② 의 단언이 문다(자명 통과 아님)', JSON.stringify(G));
+  ok(B3.n === 1 && !G.asked, '미끼는 세대가 바뀐 뒤에도 안 묻는다 → ② 의 단언이 문다(자명 통과 아님)', `바꾼 자리 ${B3.n} · ${JSON.stringify(G)}`);
 }
 console.log('\n④ 어부 던질 자리 기억');
 {
@@ -119,9 +121,9 @@ console.log('\n④ 어부 던질 자리 기억');
   ok(E1.diff === 0 && E1.hit > 50000, `끔(정확한 x · y 열쇠) — 기억 길 = 새로 셈`, `견줌 ${E1.q} · 어긋남 ${E1.diff} · 기억 ${E1.hit} · 부름 ${E1.callsC} ← ${E1.callsD}`);
   const E2 = go(true);
   ok(E2.diff > 0, '켬(칸 열쇠)은 답이 갈린다(셈이 바뀐다 — 끔 기본 손잡이)', `어긋남 ${E2.diff}`);
-  const bait = fCast.replace(' && m.g === g', '');
+  const BC = LB.swap(fCast, ' && m.g === g', ''), bait = BC.src;
   const E3 = go(false, bait);
-  ok(bait !== fCast && E3.diff > 0, '미끼 — 세대 빠진 기억은 세대가 바뀐 뒤 옛 답(① 의 견줌이 문다)', `어긋남 ${E3.diff}`);
+  ok(BC.n === 1 && bait !== fCast && E3.diff > 0, '미끼 — 세대 빠진 기억은 세대가 바뀐 뒤 옛 답(① 의 견줌이 문다)', `바꾼 자리 ${BC.n} · 어긋남 ${E3.diff}`);
 }
 console.log('\n⑤ productionActsBound 기억 = 종전 식');
 {

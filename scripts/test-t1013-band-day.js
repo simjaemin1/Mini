@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @bait 1   ← [T1383] 옛 미끼 표지 — 미끼 판정 줄에 바꾼 자리 수(뜻 그대로)
 // @nightly C   ← 야간 분할(T238) — 실서버 판 둘(판당 1분 안팎)
 // === scripts/test-t1013-band-day.js — 사냥터 짓기를 그날 안에(`T1013_BAND_DAY`) · 판 자 기본 켬(T1013 · 2026-10-31) ==========================
 //
@@ -11,6 +12,7 @@
 //     ① 켬(판 자 기본 · env 미설정) — 몫이 바닥난 날이 있는데(자명 통과 금지) **내일로 넘긴 마을-날 0** · 같은 날 이어 지은 번 > 0
 //     ② ★미끼 — 끔(`T1013_BAND_DAY=0`)이면 같은 판에서 내일로 넘긴 마을-날 > 0 (= 다 짓는 날이 몫 · CPU 에 달린다 · 보고/T1013 §2)
 'use strict';
+const LB = require('./lib-bait');   // [T1383] 미끼 사본을 지으며 바꾼 자리를 센다
 if (require.main !== module && !process.env.T577_SEED) return;   // ★프리로드로 실렸는데 아이 존이 아니면(판 자 부모 · 러너) 아무것도 안 한다 — 본문이 돌면 판이 판을 낳는다
 // ── 프리로드 갈래(아이 존 — 읽기만) ──
 if (process.env.T1013_STAT_OUT && process.env.T577_SEED && require.main !== module) {
@@ -49,8 +51,8 @@ function run(tag, env) {
   const [on, off] = await Promise.all([run('on', {}), run('off', { T1013_BAND_DAY: '0' })]);
   ok(!!(on && on.on === true && on.short > 0 && on.carry === 0 && on.resume > 0),
     '★① 켬(판 자 기본) — 몫이 바닥난 마을-날이 있는데 내일로 넘긴 마을-날 0 · 같은 날 이어 지었다', JSON.stringify(on));
-  ok(!!(off && off.on === false && off.carry > 0 && off.resume === 0),
-    '[미끼 · ②] 끔(`=0`) — 같은 판에서 내일로 넘긴 마을-날이 있다(다 짓는 날이 몫에 달린다)', JSON.stringify(off));
+  ok(LB.knob('T1013_BAND_DAY') === 1 && (!!(off && off.on === false && off.carry > 0 && off.resume === 0)),
+    `[미끼 · ②] 끔(\`=0\`) — 같은 판에서 내일로 넘긴 마을-날이 있다(다 짓는 날이 몫에 달린다) · 미끼 바꾼 자리 ${LB.knob('T1013_BAND_DAY')}`, JSON.stringify(off));
   fs.rmSync(TMP, { recursive: true, force: true });
   console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
   process.exit(fail ? 1 : 0);
