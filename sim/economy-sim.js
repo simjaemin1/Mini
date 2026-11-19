@@ -1060,7 +1060,7 @@ const BOW_Q_STONE = WEAP_Q_STONE;      // 활 무기품질 기여 등급(석재�
 const TIN_DEPOSIT_ORE_SCORE = 1.28;    // 산지 문턱(score=ore×(0.8+0.4×hash)) — ore~1.5 광산촌(1.2~1.5) 대부분 산지, ore≤1.0은 대체로 미달. 광산촌 위주 소수만 산지 ⇒ ~10-20%(청동 편중). 청동/명 주 레버(랩 마을3=ore1.5 산지 보장 하한).
 // ★주석 산출 = 마을 규모·광부 수 무관 *정량*(광량=land.tin이 결정). 광부 1명만 있으면 정량 채굴 → 대형/소형 산지 간 편차 제거(청동/명 시드 변동의 근본 차단).
 //   종전 per-miner×YIELD는 대형 산지(광부 24명)가 소형(3명)의 8배 tin을 캐 청동/명이 0.03~0.45로 요동쳤음. 정량화로 수렴.
-const TIN_DEPOSIT_YIELD_FLAT = 0.46;   // 산지 일일 tin 산출(× land.tin). 부존 ~1.0 마을이 ~0.46/일 → 자체 청동 병기고 + 소량 수출. 청동 총량의 주 레버.
+const TIN_DEPOSIT_YIELD_FLAT = 0.46;   // T1398: 레거시 정량 생산 분기는 삭제. 광부 기회비용·한계가치 두 곳이 아직 쓰므로 상수는 유지·회부(보고 T1398).
 const TIN_DEPOSIT_STRENGTH_LO = 0.6;   // 산지 부존 하한(land.tin ∈ [LO, LO+SPAN]) — 광부 매력 스케일(obsidian/jade 부존과 동형)
 const TIN_DEPOSIT_STRENGTH_SPAN = 0.8; // 산지 부존 폭
 // ★청동 경제 자격(_bronzeCapable) — 청동검을 *지속* 생산할 수 있는 마을만 청동 무장. 그 외(트레이스 주석뿐)는 석기 무장(마제석검).

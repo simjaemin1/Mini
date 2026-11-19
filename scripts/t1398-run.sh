@@ -5,6 +5,7 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 KIND=$1 ARM=$2 SEED=$3 DAYS=$4
 DEST=${T1398_RUNS:-$ROOT/계측/T1398_2026-11-20/runs}/$KIND-$ARM-$SEED
 mkdir -p "$DEST/tmp"
+rm -f "$DEST/done.txt"
 cd "$ROOT"
 git hash-object sim/economy-sim.js sim/economy-sim-v2.js scripts/t1398-observe.js > "$DEST/source-blobs.txt"
 unset NODE_OPTIONS T1385_BRONZE_NOCAP T1385_BRONZE_NOCAP_ARMORY T1385_BRONZE_NOCAP_TINGATE T1385_BRONZE_NOCAP_WS T1385_BRONZE_NOCAP_POOR T1398_BRONZE_BAND T1333_EXPORT_CAST

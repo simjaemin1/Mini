@@ -8,6 +8,7 @@ const fmt = x => x == null || !Number.isFinite(x) ? '—' : (+x.toFixed(3)).toSt
 const rows = [], diag = [], routes = [];
 for (const dir of fs.readdirSync(root).sort()) {
   const base = path.join(root, dir); if (!fs.statSync(base).isDirectory()) continue;
+  if (!fs.existsSync(path.join(base,'done.txt'))) { console.log(`<!-- 진행 중 ${dir} -->`); continue; }
   const probeFile = fs.readdirSync(base).find(p => p === 'probe.json' || p.endsWith('.t1385.json'));
   const bandFile = fs.readdirSync(base).find(p => p === 'band.json' || p.endsWith('.t1398.json'));
   if (!probeFile || !bandFile) { console.log(`<!-- 미완료 ${dir} -->`); continue; }
