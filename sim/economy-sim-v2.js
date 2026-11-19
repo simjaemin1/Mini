@@ -1953,17 +1953,16 @@ function _destBlockedV2(a, b, day) {
 //   `tickTradeV2` 는 종전 그대로 끝까지 돈다(헤드리스 자 · 랩 · `tickWorldV2` 무변). 서버 하루 마감만 `tickWorldV2Parts().tradeSteps()` 로 조각을 민다.
 //   ⚠쉬는 사이 곳간·시세가 바뀌면 값이 갈린다 — 그 짝(마감 중 몸 결정 얼림 · 대기 큐)은 부르는 쪽(villages.js `T698_BOUNDARY_SLICE`) 몫이다.
 function tickTradeV2(world, day) { const g = tickTradeV2Steps(world, day); while (!g.next().done); }
-// ★[T1384 ②] 길 위의 먹을 것 — 받는 마을 → [품목, 양, 닿는 날] 열(가는 길 첫째 · 둘째 화물 · 먹을 것만). 마을 차례마다 `world.caravans` 에서 다시 세고 그 차례에 떠나는 짐은 떠날 때 더한다(저장 칸 0).
+// ★[T1384 ②] 길 위의 먹을 것 — 바구니 예약 ①의 열(`_t1136RvAdd` · `_t1136Rv` — 받는 마을 → [품목, 양, 닿는 날])에 첫째 화물 캐러밴의 가는 길 먹을 것(첫째 · 둘째 화물)을 담는다.
+//   마을 차례마다 `world.caravans` 에서 다시 센다(저장 칸 0 · 같은 마을 차례 안의 둘째 캐러밴은 같은 (품목, 목적지)를 못 가므로(`alreadySent`) 차례마다 세면 넉넉하다).
 function _t1384Resv(world) {
   const R = new Map();
-  for (const c of world.caravans || []) if (c.state === 'outbound' && !c._done) { _t1384RvAdd(R, c.to, c.giveRes, c.giveAmt, c.arriveDay); _t1384RvAdd(R, c.to, c.giveRes2, c.giveAmt2, c.arriveDay); }
+  for (const c of world.caravans || []) if (c.state === 'outbound' && !c._done && c.to) _t1136RvAdd(R, c.to, [{ res: c.giveRes, amt: c.giveAmt }, { res: c.giveRes2, amt: c.giveAmt2 }].filter((x) => x.res && _t825FoodPer(c.to, x.res) > 0), c.arriveDay);
   return R;
 }
-function _t1384RvAdd(R, v, r, q, t) { if (!v || !r || !(q > 0) || !(_t825FoodPer(v, r) > 0)) return; let a = R.get(v); if (!a) { a = []; R.set(v, a); } a.push(r, q, t); }
-function _t1384Rv(R, v, r, tBy) { const a = R && R.get(v); if (!a) return 0; let s = 0; for (let i = 0; i < a.length; i += 3) if (a[i] === r && a[i + 2] <= tBy) s += a[i + 1]; return s; }
 // 받는 값 비 — 그 다리보다 먼저 닿을 같은 품목을 더한 곳간의 값 ÷ 지금 곳간의 값(결정층 한 줄 · 곳간 칸만 바꾼 겉 · 길 위 0 이면 1)
 function _t1384Disc(R, v, r, tBy) {
-  const q = _t1384Rv(R, v, r, tBy);
+  const q = _t1136Rv(R, v, r, tBy);
   if (!(q > 0)) return 1;
   const p0 = _priceFromV2(_targetV2(v, r, _targetCtxV2(v)));
   const view = Object.assign({}, v, { storage: Object.assign({}, v.storage, { [r]: (v.storage[r] || 0) + q }) });
@@ -1992,7 +1991,7 @@ function* tickTradeV2Steps(world, day) {
   let _t698n = 0;
   for (const a of data) {
     if (_t698n++) yield 'a';   // ★[T698] 쉼표 — 마을 하나 사이(첫 마을 앞은 안 쉰다 · `continue` 와 무관하게 사이마다 한 번)
-    const _r84 = T1384_FOOD_ROUTE ? _t1384Resv(world) : null;   // ★[T1384 ②] 길 위의 먹을 것(끔 = null · 아래 두 줄 무동작)
+    const _r84 = T1384_FOOD_ROUTE ? _t1384Resv(world) : null;   // ★[T1384 ②] 길 위의 먹을 것(끔 = null · 아래 받는 값 곱 무동작)
     // ★3일 게이트·동시8%·가치상한 전부 폐지 — 매일 검사, 조건 되면 연속 교역.
     //   실질 제한은 아래 spareCap(여유노동)뿐 — 마을 글럿도에서 창발(하드 %캡 아님).
     if (a.v.isolated && day < a.v.isolatedUntilDay) continue;
@@ -2278,7 +2277,6 @@ function* tickTradeV2Steps(world, day) {
         ...(T1152_MARKET ? { _t1152Mv: lp.mv } : {}),   // ★[T1152 ②] 재routing 운반비의 상인 하루 몫(끔 = 칸 없음 = 종전 레코드)
       });
       if (_LOTH) { const _c = world.caravans[world.caravans.length - 1]; if (_lotG) _LOTH.cargo(_c, 'give', _lotG); if (_lotG2) _LOTH.cargo(_c, 'give2', _lotG2); }   // ★[T732] 짐에 로트가 실려 간다(주입 없으면 이 줄 안 탐)
-      if (_r84) { _t1384RvAdd(_r84, b.v, cand.res, N_units, day + travelDays); _t1384RvAdd(_r84, b.v, _res2, _n2, day + travelDays); }   // ★[T1384 ②] 이 차례에 떠난 짐도 센다(끔 = 무동작)
       // ★★[T533] 목적지가 이웃 존 스텁 — **경계 칸에 서는 날**을 적는다(몸이 넘는 날 = 기록이 넘는 날). 호스트가 `split` 을 안 주면 적지 않는다(T525 뼈대 = 도착일).
       if (_XZ && b.v._xz && typeof _XZ.split === 'function') {
         const _sp = _XZ.split(a.v, b.v);
