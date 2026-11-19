@@ -11983,8 +11983,8 @@ function __p3Bind(mock) {
     T790_NO_SNAP, _t790Stat, _t790Mark, _t790Place, _t790Lag, _warSetupReturn, _warPaceReturn,   // ★[T790] 하네스(`test-war-nosnap`)가 운영과 같은 문을 부른다(내보내기만)
     _t804Way, _t804WalkOut, _t804Stat, _warWalkGroupTo,   // ★[T804] 걷는 몸의 길 · 전진 풀기 걸음 — 하네스가 운영과 같은 문을 부른다(내보내기만)
     _t821Stat,   // ★[T821] 재개형 걸음 탐색 셈(내보내기만 — 관찰자 · 하네스)
-    _t1349Stat, _t1349Stand, _t804Nearest, T1349_WAR_PATH_SHARE: () => T1349_WAR_PATH_SHARE,
-    _t1381Stat, T1381_WALK_HEAP: () => T1381_WALK_HEAP,   // ★[T1381] 유령 물음 셈(내보내기만 — 관찰자 · 하네스)   // ★[T1349] 물음 나눠 쓰기 셈 · 나선 답 기억(내보내기만 — 관찰자 · 하네스)
+    _t1349Stat, _t1349Stand, _t804Nearest, T1349_WAR_PATH_SHARE: () => T1349_WAR_PATH_SHARE,   // ★[T1349] 물음 나눠 쓰기 셈 · 나선 답 기억(내보내기만 — 관찰자 · 하네스)
+    _t1381Stat, T1381_WALK_HEAP: () => T1381_WALK_HEAP,   // ★[T1381] 유령 물음 셈 · 손잡이(내보내기만 — 관찰자 · 하네스)
     T822_BODY_SEED, _t822Rekey, _t833Boot, _t747Pack, _t747Restore, t1133Stat: () => Object.assign({ on: T1133_BAG }, _t1133Stat), t1166Stat: () => Object.assign({ on: T1166_LOT, pend: _t1166Pend.length }, _t1166Stat), _t1166Flush, t1167Stat, _t1167Pack, _t1167Early, _t1167Bind, _t1167Pref, _warDespawnPid, serializeEcon, restoreEcon, _t728Meta,   // ★[T833] 몸 주사위 신원 · 다시 뜬 판 — 하네스(`test-body-seed-restart`)가 운영과 같은 문을 부른다(내보내기만)
     _warDraftPids, _warReleasePid, _t1183SurrenderDeaths, econDayToMs, _warEnsureBody, _warSampleComp, _vbFootprint,
     threatOf, _warWriteThreats, _warOutMul, _lifeJobSites, _lifeJobSiteOK, _warRoutePts, _warTreeCell, computeRoutePts,
