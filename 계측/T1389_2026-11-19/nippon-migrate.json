@@ -1,0 +1,103 @@
+{
+ "src": "/mnt/user-data/uploads/Mini/_db/20261112-175756-nippon/world-nippon.db",
+ "zone": "nippon",
+ "arms": {
+  "a": {
+   "before": {
+    "claims": 0,
+    "deed": [],
+    "quick": "ok"
+   },
+   "on1": {
+    "ok": true,
+    "on": true,
+    "personal": 0,
+    "free": 0,
+    "chunks": 0,
+    "allFull": true,
+    "debt": [],
+    "tables": [
+     "deed_chunks",
+     "deed_owners"
+    ],
+    "ownersCols": [
+     "owner_id",
+     "others",
+     "debt",
+     "dt",
+     "lost"
+    ],
+    "claimsSame": true,
+    "err": null
+   },
+   "on2": {
+    "ok": true,
+    "personal": 0,
+    "free": 0,
+    "mDrop": [],
+    "err": null
+   },
+   "off": {
+    "ok": true,
+    "on": false,
+    "personal": 0,
+    "claimsSame": true,
+    "quick": "ok",
+    "err": null
+   }
+  },
+  "b": {
+   "before": {
+    "claims": 15,
+    "deed": [],
+    "quick": "ok"
+   },
+   "on1": {
+    "ok": true,
+    "on": true,
+    "personal": 15,
+    "free": 0,
+    "chunks": 4,
+    "allFull": true,
+    "debt": [
+     0,
+     0
+    ],
+    "tables": [
+     "deed_chunks",
+     "deed_owners"
+    ],
+    "ownersCols": [
+     "owner_id",
+     "others",
+     "debt",
+     "dt",
+     "lost"
+    ],
+    "claimsSame": true,
+    "err": null
+   },
+   "on2": {
+    "ok": true,
+    "personal": 15,
+    "free": 0,
+    "mDrop": [
+     0.000172,
+     0.000001,
+     0.000001,
+     0.000001
+    ],
+    "err": null
+   },
+   "off": {
+    "ok": true,
+    "on": false,
+    "personal": 15,
+    "claimsSame": true,
+    "quick": "ok",
+    "err": null
+   }
+  }
+ },
+ "pass": true
+}
