@@ -5,6 +5,17 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 KIND=$1 ARM=$2 SEED=$3 DAYS=$4
 DEST=${T1398_RUNS:-$ROOT/계측/T1398_2026-11-20/runs}/$KIND-$ARM-$SEED
 mkdir -p "$DEST/tmp"
+# 재연결/두 실행 큐가 같은 판을 만날 때 한 번만 돈다.
+exec 9>"$DEST/.t1398-run.lock"
+flock 9
+if [ -f "$DEST/done.txt" ]; then
+  if grep -Fqx "complete $KIND $ARM $SEED $DAYS" "$DEST/done.txt"; then
+    printf 'already complete %s %s %s %s\n' "$KIND" "$ARM" "$SEED" "$DAYS"
+    exit 0
+  fi
+  printf 'completed run has different arguments: %s\n' "$DEST" >&2
+  exit 2
+fi
 rm -f "$DEST/done.txt"
 cd "$ROOT"
 git hash-object sim/economy-sim.js sim/economy-sim-v2.js scripts/t1398-observe.js > "$DEST/source-blobs.txt"
