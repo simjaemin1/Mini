@@ -9173,13 +9173,13 @@ function _t804Local(mem, x, y, tx, ty, st) {   // 걸음 프리셋 길 — 반�
     }
     //   ★[T821] 재개형 문(같은 걸음 프리셋 · 상한 = 재개형 문 정본 `ROUTE_MAX_POPS`). 첫 몫은 종전 동기 물음 그대로 — 한 꺼냄씩 밀어
     //     걸음 프리셋 정본 상한(`LOCAL_MAX_NODES`)을 넘는 꺼냄에서 멈춘다(그 안이면 종전과 같은 차례 · 같은 답 · 같은 걸음에 닿는다).
-    let S = null; try { S = PathCore.localPathBegin(sx, sy, gx, gy, { blocked: blk, blockedStep: (fx, fy, x2, y2) => blk(x2, y2), maxNodes: PathCore.ROUTE_MAX_POPS, tile: T1381_WALK_HEAP }); } catch (_) { S = null; }   // ★[T1381 ㉠] 켬 = 칸 조각 저장(같은 답)
+    let S = null; try { S = PathCore.localPathBegin(sx, sy, gx, gy, { blocked: blk, blockedStep: (fx, fy, x2, y2) => blk(x2, y2), tile: T1381_WALK_HEAP, maxNodes: PathCore.ROUTE_MAX_POPS }); } catch (_) { S = null; }   // ★[T1381 ㉠] 켬 = 칸 조각 저장(같은 답)
     _t804Stat.ask++;
     if (!S) { _t804Stat.fail++; mem._t804f = key; return false; }   // 끝점이 막혔다(동기 문과 같은 첫 줄)
     mem._t821s = { S, key, n: 0 };
     if (_sk) { mem._t821s.sk = _sk; mem._t821s.mem = mem; _t1349T().live.set(_sk, mem._t821s); }   // ★[T1349]
-    let r, _c1 = 0; try { do { r = PathCore.pathStep(S, 1); _c1++; } while (!r.done && S.pops <= PathCore.LOCAL_MAX_NODES); } catch (_) { r = { done: true, path: null }; }
-    if (_G && !r.done) { mem._t821s.gen = _G.gen; mem._t821s.c1 = _c1; mem._t821s.gk = _gk; }   // ★[T1381 ㉡] 먼 탐색 — 이 세대 안에서 끝나면 기억한다
+    let r; try { do { r = PathCore.pathStep(S, 1); } while (!r.done && S.pops <= PathCore.LOCAL_MAX_NODES); } catch (_) { r = { done: true, path: null }; }
+    if (_G && !r.done && S.it >= 0) { mem._t821s.gen = _G.gen; mem._t821s.c1 = S.it; mem._t821s.gk = _gk; }   // ★[T1381 ㉡] 먼 탐색 — 이 세대 안에서 끝나면 기억한다(c1 = 첫 몫 꺼냄 수 · path-core 알뜰 고리가 센다)
     if (!r.done && T1338_WALK_BUDGET) {   // ★[T1338 ③] 켬 — 이어 미는 먼 탐색은 존에 하나만(다른 기억이 쥐고 있으면 이 물음은 종전 T804 처럼 "길 없음" → 행군로)
       const L = state._t1338WalkLive;
       //   쥔 기억이 버려졌으면(대형이 사라졌다 — 이틀째 안 밀렸다) 자리를 넘긴다(그 탐색은 아무도 안 민다 · 쓰레기)

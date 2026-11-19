@@ -152,13 +152,13 @@ const bait = (file, from, to, tag) => {
   const b = bait(VF, FROM, 'const _T1381_GHOST = false;', 'v');
   let r = null; try { if (b.file) r = sub(`scene|${b.file}|${STEPS}`, { T1381_WALK_HEAP: '1' }); } finally { try { fs.unlinkSync(b.file); } catch (e) {} }
   const red = !!r && !(r.ghost && r.ghost.ghost > 0 && r.searches < (off ? off.searches : 0));
-  ok(b.n === 1 && red, `ⓓ ★미끼 — 유령 물음 기억 줄 한 곳(${b.n}곳)을 끈 사본은 같은 물음을 다시 판다 → ⓐ "두 번째 물음 꺼냄 0" 빨강`, r ? `사본 유령 ${r.ghost && r.ghost.ghost} · 세운 탐색 ${r.searches} · 꺼냄 ${r.pops}` : '사본 판 없음');
+  ok(b.n === 1 && red, `ⓓ ★미끼 — 유령 물음 기억 줄 한 곳을 끈 사본은 같은 물음을 다시 판다 → ⓐ "두 번째 물음 꺼냄 0" 빨강`, r ? `바꾼 자리 ${b.n} · 사본 유령 ${r.ghost && r.ghost.ghost} · 세운 탐색 ${r.searches} · 꺼냄 ${r.pops}` : '사본 판 없음');
 }
 { // ㉠ 조각 열쇠가 겹치는 사본(조각 y 번호를 버린다) → ⓑ 빨강
   const FROM = 'function _tlKey(tx, ty) { return (tx + 1048576) * 2097152 + (ty + 1048576); }';
   const b = bait(PCF, FROM, 'function _tlKey(tx, ty) { return (tx + 1048576) * 2097152; }', 'pc');
   let r = null; try { if (b.file) r = sub(`eq|${b.file}|${EQN}`); } finally { try { fs.unlinkSync(b.file); } catch (e) {} }
-  ok(b.n === 1 && !!r && r.diff > 0, `ⓓ ★미끼 — 조각 열쇠 줄 한 곳(${b.n}곳)이 겹치는 사본 → ⓑ 빨강(다른 답)`, r ? `사본 같음 ${r.same} · 다름 ${r.diff}` : '사본 판 없음');
+  ok(b.n === 1 && !!r && r.diff > 0, `ⓓ ★미끼 — 조각 열쇠 줄 한 곳이 겹치는 사본 → ⓑ 빨강(다른 답)`, r ? `바꾼 자리 ${b.n} · 사본 같음 ${r.same} · 다름 ${r.diff}` : '사본 판 없음');
 }
 console.log(`\n=== T1381 걸음 탐색 힙: ${pass} 통과 / ${fail} 실패 ===`);
 process.exit(fail ? 1 : 0);

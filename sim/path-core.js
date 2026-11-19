@@ -238,6 +238,7 @@ function _searchBeginL(sx, sy, gx, gy, o, rev, minX, maxX, minY, maxY, invLen, h
     maxPops: o.maxPops, dirs: o.dirs, nodeBlocked: o.nodeBlocked,
     costMul: o.costMul, prefer: o.prefer, stepBlocked: o.stepBlocked,
     pops: 0, found: false, done: false, path: null,
+    it: 0,   // ★[T1381 ㉡] 꺼낸 수(묵은 것 포함 · 고리를 돈 횟수) — 셈만(값 무관 · villages 유령 물음이 읽는다)
   };
   if (sc) { const i = sy * W2 + sx; sc.stamp[i] = sc.gen; sc.g[i] = 0; sc.came[i] = -1; }   // = gSet(sx,sy,0) · cameSet(sx,sy,-1)
   else if (tl) { const t = _tlNew(); tl.set(_tlKey(sx >> _TL_B, sy >> _TL_B), t); const i = ((sy & _TL_M) << _TL_B) | (sx & _TL_M); t.g[i] = 0; t.c[i] = -1; }
@@ -260,7 +261,7 @@ function _searchStepL(S, budget) {
   const oct = S.oct, hsx = S.sx, hsy = S.sy, invLen = S.invLen, biasW = S.biasW, hs = S.hs;   // `_hval` 이 읽는 칸
   let n = 0;
   while (open.n > 0) {
-    if (budget > 0 && n >= budget) return { done: false, path: null };
+    if (budget > 0 && n >= budget) { S.it += n; return { done: false, path: null }; }
     n++;
     // — 꺼내기(= `_hlPop`) —
     TG[0] = G[0]; const cx = X[0], cy = Y[0];
@@ -320,7 +321,7 @@ function _searchStepL(S, budget) {
       }
     }
   }
-  S.done = true;
+  S.it += n; S.done = true;
   S.path = S.found ? _searchTraceL(S) : null;
   return { done: true, path: S.path };
 }
