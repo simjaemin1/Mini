@@ -40,6 +40,11 @@
 //      `T1292_XZ_HIDE=0`(종전 넘김) → ⓚ① 빨강. 미끼 판은 넘김 셋을 보면 ⓒⓓ 기다림을 끝낸다(ⓗ 는 `XZ_KILL=0` 으로 뺀다).
 //   ★[T1139] 걸음표는 이 판에서 **물은 쌍만** 판다(두 존에 `T1139_XZ_LAZY=1` — 한 벌 = 걸음 ≤ infoRange · 그 밖은 econ · 몸 길이 물을 때 ·
 //      답은 전 쌍 한 벌과 글자 같다 — `scripts/t1139-lazy-proof.js`). 종전(전 쌍 한 벌)은 `T1139_XZ_LAZY=0`. 서버 기본은 끔(전 쌍)이다.
+//   ★★[T1352 할 일 6 · T1324 회부 4] **가상 시계 두 존 판(T1320 자) — 기본.** 두 존을 T745 가상 시계 + T1320 발맞춤(`scripts/lib-xz-lockstep.js` — 하네스가 지휘)으로 띄운다:
+//      존 사이 HTTP 는 가로대에서만 건너고 실제 시간 시한이 없다(받는 존이 바빠도 "답 없음" 0) · 하네스 표본(`/perf`)은 가로대마다 하나(걸음 꼴 'step' — 판끼리 같은 자리) ·
+//      기다림 · 창(왕복 · 머묾 · 죽인 뒤 · 다시 뜬 뒤)은 **가상 ms**(가로대 시각 H)로 잰다 · 죽인 존은 셈에서 빠지고 다시 뜬 존은 그 가로대(`T745_V0 = H`)에서 이어 선다.
+//      벽시계는 상한(`XZ_WALL_S` · 기본 7200 — 판정에 안 든다)과 표의 기동 시간에만. `XZ_VCLOCK=0` = 종전 실시간 판(글자 그대로) · `XZ_Q` 가로대 간격(가상 ms · 기본 100 —
+//      머묾 1/24 하루 = 125ms 를 놓치지 않는 간격) · `XZ_SEED` 가상 시계 씨(기본 1 — `T577_SEED` 자리).
 // 실행: node scripts/e2e-xzone-caravan.js     (env: XZ_DAYMS 마을 하루 ms · 기본 3000 · XZ_WAIT_S 왕복 기다림 상한 · 기본 600 · T1139_XZ_LAZY 기본 1)
 'use strict';
 if (require.main === module) require('./lib-port').hold(3010, 3016, 3020, 3021);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
@@ -66,14 +71,25 @@ const WAIT_S = parseInt(process.env.XZ_WAIT_S || '600', 10);
 //   ⓖ 머문 몸 기다림은 10초 · ⓚ 앞에 꼬리(10초 — 넘는 중인 몸을 사라짐으로 안 센다) + 2초를 더 기다린다.
 const BAIT_OUTS = () => { let n = 0; for (const z of ['hanbando', 'nippon']) { try { n += (fs.readFileSync(`${process.env.__XZB_DIR}/xzb-${z}.jsonl`, 'utf8').match(/"k":"(out|back)"/g) || []).length; } catch (e) {} } return n; };
 const XZB = require('./fixture-xz-bodylog');   // ★[T1292] 몸 보존 적기 · 맞대기 정본
+//   ★[T1352] 가상 시계 두 존 판(기본) — 지휘 · 판 시각 · 걸음
+const VCLK = process.env.XZ_VCLOCK !== '0';
+const LS = VCLK ? require('./lib-xz-lockstep').create({ Q: +(process.env.XZ_Q || 100), mode: 'step', debug: process.env.XZ_LSDEBUG === '1' }) : null;
+const LSPORTS = { [CPORT]: 'central' }; for (const z of ZIDS) LSPORTS[ZONES[z].port] = z;
+const vnow = () => (VCLK ? (LS.H == null ? 0 : LS.H) : Date.now());   // 판 시각(ms) — 가상 판 = 가로대 H · 실시간 판 = 벽시계
+const WALL0 = Date.now(), WALL_CAP = +(process.env.XZ_WALL_S || 7200) * 1000;
+const wallOk = () => !VCLK || Date.now() - WALL0 < WALL_CAP;   // 가상 판 벽시계 상한(존이 멎었을 때 하네스가 끝나게 — 판정 무관)
+//   기다림 — 실시간 판 = 잠 · 가상 판 = 그만큼 가로대를 민다(앞 표본이 이미 한 가로대 Q 를 밀었다)
+async function pace(ms) { if (!VCLK) return sleep(ms); if (ms > LS.Q) await LS.advance(ms - LS.Q); }
 
 let pass = 0, fail = 0;
 const ok = (c, m, extra) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (extra !== undefined && extra !== '' ? `  ${extra}` : '')); };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const procs = [];
 function boot(name, file, env) {
-  const p = spawn(process.execPath, [path.join(ROOT, 'server', file)], { cwd: ROOT, env: Object.assign({}, process.env, env), stdio: ['ignore', 'pipe', 'pipe'] });
+  const lz = VCLK && file === 'zone.js';   // ★[T1352] 가상 판 존 — 지휘 통로(IPC)
+  const p = spawn(process.execPath, [path.join(ROOT, 'server', file)], { cwd: ROOT, env: Object.assign({}, process.env, env), stdio: lz ? ['ignore', 'pipe', 'pipe', 'ipc'] : ['ignore', 'pipe', 'pipe'] });
   p._name = name; p._out = ''; p._err = '';
+  if (lz) { p.on('error', () => {}); LS.attach(name, p); }
   p.stdout.on('data', (b) => { p._out += String(b); }); p.stderr.on('data', (b) => { p._err += String(b); });
   procs.push(p); return p;
 }
@@ -82,11 +98,16 @@ function killAll() { for (const p of procs) { try { p.kill('SIGKILL'); } catch (
 process.on('exit', killAll);
 const portFree = (port) => new Promise((res) => { const s = net.createServer(); s.once('error', () => res(false)); s.once('listening', () => s.close(() => res(true))); s.listen(port, '127.0.0.1'); });
 const zurl = (z, p) => `http://localhost:${ZONES[z].port}${p}`;
-async function perf(z) { try { const j = await (await fetch(zurl(z, '/perf'), { signal: AbortSignal.timeout(10000) })).json(); if (j.xzone) j.xzone.now = j.now; return j.xzone || null; } catch (e) { return null; } }
-async function post(z, body) {
-  try { const r = await fetch(zurl(z, '/handoff_prepare'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(10000) });
+const RQT = VCLK ? 600000 : 10000;   // ★[T1352] 가상 판 요청은 다음 가로대에 처리된다(걸음표 일꾼이 도는 동안은 가로대가 멎는다) — 시한은 벽시계 상한일 뿐
+async function perfRaw(z) { try { const j = await (await fetch(zurl(z, '/perf'), { signal: AbortSignal.timeout(RQT) })).json(); if (j.xzone) j.xzone.now = j.now; return j.xzone || null; } catch (e) { return null; } }
+async function perf(z) { return VCLK ? LS.ask(z, () => perfRaw(z)) : perfRaw(z); }
+//   ★[T1352] 두 존 같은 가로대 표본(가상 판) · 실시간 판은 종전 차례(한반도 → 닛폰)
+async function perfBoth() { if (!VCLK) { const h = await perfRaw('hanbando'); return [h, await perfRaw('nippon')]; } return LS.askAll(ZIDS.map((z) => [z, () => perfRaw(z)])); }
+async function postRaw(z, body) {
+  try { const r = await fetch(zurl(z, '/handoff_prepare'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(RQT) });
     const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { status: r.status, text: t, json: j }; } catch (e) { return { status: 0, text: String(e.message) }; }
 }
+async function post(z, body) { return VCLK ? LS.ask(z, () => postRaw(z, body)) : postRaw(z, body); }
 const abs = (z, pt) => pt ? { x: pt.x + ZONES[z].worldOffsetX, y: pt.y + (ZONES[z].worldOffsetY || 0) } : null;
 const dist = (a, b) => (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity;
 
@@ -119,11 +140,16 @@ for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => {
   const zenv = (z) => Object.assign({ PORT: String(ZONES[z].port), ZONE_ID: z, DB_PATH: `${DDIR}/w-${z}.db` }, common,
     //   ★[T1292 ⓚ] 몸 보존 적기 — 존마다 사건 줄 파일 · 미끼(`XZ_BAIT`)는 그대로 넘긴다(빈 값 = 미끼 없음)
     { XZ_BODYLOG: `${DDIR}/xzb-${z}.jsonl`, XZ_BAIT: process.env.XZ_BAIT || '',
-      NODE_OPTIONS: ((common.NODE_OPTIONS != null ? common.NODE_OPTIONS : (process.env.NODE_OPTIONS || '')) + ' --require ' + path.join(ROOT, 'scripts/fixture-xz-bodylog.js')).trim() });   // ★[T1030 ⓗ] 다시 띄울 때 같은 줄
+      //   ★[T1352] 가상 판 — 가상 시계 · 발맞춤 프리로드가 맨 앞(픽스처보다 먼저 — 시계 · 타이머를 먼저 바꾼다) · 다시 뜬 존은 지금 가로대에서(`T745_V0 = H`)
+      ...(VCLK ? { T745_VCLOCK: '1', T577_SEED: process.env.XZ_SEED || '1', T745_LOCKSTEP: '1', T1320_PORTS: JSON.stringify(LSPORTS), ...(LS.H != null ? { T745_V0: String(LS.H) } : {}) } : {}),
+      NODE_OPTIONS: ((VCLK ? `--require ${path.join(ROOT, 'scripts/t745-vclock.js')} --require ${path.join(ROOT, 'scripts/t1320-lockstep.js')} ` : '')
+        + (common.NODE_OPTIONS != null ? common.NODE_OPTIONS : (process.env.NODE_OPTIONS || '')) + ' --require ' + path.join(ROOT, 'scripts/fixture-xz-bodylog.js')).trim() });   // ★[T1030 ⓗ] 다시 띄울 때 같은 줄
   for (const z of ZIDS) { const p = boot(z, 'zone.js', zenv(z)); ups[z] = FB.waitUp(p, /zone server up on/, { name: z, capMs: 900000 }); }
   for (const z of ZIDS) { const r = await ups[z]; ok(r.ok, `ⓔ ${z} 존 기동(마을 시딩 포함)`, r.ok ? `${(r.ms / 1000).toFixed(1)}s` : r.why); }
 
   // ── ⓑ 문 — kind ────────────────────────────────────────────────────────────
+  //   ★[T1352] 가상 판 — 걸음표 일꾼이 도는 동안 가상 시계가 멎어(T1320 ⓒ) 표 전 econ 날은 없다: 표 전 표본은 첫 가로대(기동 꼬리 · 이웃 명부를 받기 전) 두 존 한 장(ⓐ4 가 읽는다)
+  const preGeo = VCLK ? await perfBoth() : null;
   console.log('\n[ⓑ 문 — `/handoff_prepare` 의 `kind` (새 라우트 0)]');
   const p0 = await post('nippon', { name: 'x', x: 1, y: 1 });
   ok(p0.status === 400 && p0.text === 'no token', 'ⓑ1 ★`kind` 없음 = 종전 사람 문 그대로(토큰 없으면 400 no token)', `${p0.status} ${p0.text.slice(0, 40)}`);
@@ -141,19 +167,20 @@ for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => {
   let H = null, N = null;
   const t0 = Date.now();
   let stub0 = null, pre = 0;   // 표가 서기 전 표본들의 스텁 수(최댓값)
-  for (let i = 0; i < 600; i++) {
-    H = await perf('hanbando'); N = await perf('nippon');
+  if (preGeo) for (const P of preGeo) if (P && !P.ready.length) { pre++; stub0 = Math.max(stub0 || 0, P.stubs.length); }   // ★[T1352] 가상 판 첫 가로대 표본
+  for (let i = 0; i < 600 && wallOk(); i++) {
+    [H, N] = await perfBoth();
     if (H && !H.ready.length) { pre++; stub0 = Math.max(stub0 || 0, H.stubs.length); }
     if (N && !N.ready.length) { pre++; stub0 = Math.max(stub0 || 0, N.stubs.length); }
     if (H && N && H.ready.includes('nippon') && N.ready.includes('hanbando')) break;
-    await sleep(2000);
+    await pace(2000);
   }
   ok(!!H && !!N && H.peers.join() === 'nippon' && N.peers.join() === 'hanbando', 'ⓐ1 두 존이 서로를 이웃으로 안다(zone-config 동서남북 · 켜진 존만)', H && N ? `한반도 → ${H.peers} · 닛폰 → ${N.peers}` : '-');
   const gh = H && H.geo && H.geo.nippon, gn = N && N.geo && N.geo.hanbando;
   ok(!!gh && !!gn, 'ⓐ2 ★두 존 다 합친 걸음표가 섰다(워커 — 틱을 안 막는다)', gh && gn ? `한반도 ${(gh.wallMs / 1000).toFixed(0)}s${gh.cache ? `(${gh.cache})` : ''} · 닛폰 ${(gn.wallMs / 1000).toFixed(0)}s${gn.cache ? `(${gn.cache})` : ''} · 기동 뒤 ${((Date.now() - t0) / 1000).toFixed(0)}s` : '-');
   ok(!!gh && !!gn && gh.pairs === gn.pairs && gh.within === gn.within && gh.mine === gn.theirs && gh.theirs === gn.mine,
     'ⓐ3 ★같은 표(거울상) — 쌍 · 걸어 2km 안 · 경계 마을 이쪽/저쪽', gh && gn ? `쌍 ${gh.pairs}/${gn.pairs} · 2km 안 ${gh.within}/${gn.within}(합친 길 없음 ${gh.withinNoRoute}) · 경계 한반도 ${gh.mine}=${gn.theirs} · 닛폰 ${gh.theirs}=${gn.mine}` : '-');
-  ok(pre > 0 && stub0 === 0, 'ⓐ4 표가 오기 전엔 스텁 0(= 끔과 같다)', `표 서기 전 표본 ${pre} · 스텁 최대 ${stub0}`);
+  ok(pre > 0 && stub0 === 0, 'ⓐ4 표가 오기 전엔 스텁 0(= 끔과 같다)', `표 서기 전 표본 ${pre} · 스텁 최대 ${stub0}${VCLK ? ' (가상 판 — 표 전 표본은 첫 가로대 · 일꾼이 가상 시계를 멈춰 표 전 econ 날 0)' : ''}`);
 
   // ── ⓒⓓ 몸 · 왕복 — 한반도 캐러밴 하나를 끝까지 따라간다 ──────────────────────────
   console.log(`\n[ⓒ 몸 — 경계 칸에서 이어 걷는다 · ⓓ 왕복 — 팔고 사고 돌아와 곳간에 든다 (기다림 상한 ${WAIT_S}s)]`);
@@ -161,11 +188,11 @@ for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => {
   const seenN = new Map();   // 닛폰 몸 표본(열쇠 → [{x,y,t}])
   const mktOf = new Map();   // ★[T1030] 닛폰 econ 캐러밴 id → 장이 선 날(켬만)
   let done = null;
-  const tW = Date.now();
-  while (Date.now() - tW < WAIT_S * 1000) {
+  const tW = vnow();
+  while (vnow() - tW < WAIT_S * 1000 && wallOk()) {
     if (process.env.XZ_BAIT && BAIT_OUTS() >= 3) break;   // ★[T1292] 미끼 판 — 넘김 셋을 봤다(위 머리 주석)
-    H = await perf('hanbando'); N = await perf('nippon');
-    if (!H || !N) { await sleep(1000); continue; }
+    { const hn = await perfBoth(); H = hn[0]; N = hn[1]; }   // ★[T1352] 가상 판 = 같은 가로대 두 존 표본
+    if (!H || !N) { await pace(1000); continue; }
     if (!pick) { const o = H.trace.find((t) => t.k === 'out' && t.body && t.at); if (o) pick = o; }
     for (const b of N.bodies) { if (!b.key || !String(b.key).startsWith('xz:hanbando:')) continue; const L = seenN.get(b.key) || []; if (b.x != null) L.push({ x: b.x, y: b.y, t: N.now, bt: b.bodyAt, bc: b.bodyClk, prog: b.prog, len: b.len, nom: b.nomPxMs, dep: b.departAt, pend: b.pending, phase: b.phase, lu: b.lu, t952: b.t952, mk: b.mk, ax: b.ax, luW: (b.wt ? b.wt.lu : b.lu), btW: (b.wt ? b.wt.bodyAt : null) }); seenN.set(b.key, L); }   // ★[T1300] 축 표지 · 벽시계 ms(켬만 — 끔 = 원래 칸이 벽시계)
     for (const x of (N.caravans || [])) if (x.mktD != null && String(x.id).startsWith('xz:hanbando:')) mktOf.set(String(x.id), x.mktD);   // ★[T1030] 장이 선 날(켬만 칸이 선다)
@@ -173,7 +200,7 @@ for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => {
       const home = H.trace.find((t) => t.k === 'home' && t.id === pick.id);
       if (home) { done = home; break; }
     }
-    await sleep(BODY ? FRAME_MS : 500);
+    await pace(BODY ? FRAME_MS : 500);
   }
   ok(!!pick, 'ⓒ0 전제: 한반도 캐러밴이 **몸을 가진 채** 경계를 넘었다(넘는 순간의 몸 자리가 있다)', pick ? `#${pick.id} → ${pick.to}@${pick.toZone} ${pick.res}×${Math.round(pick.amt)} · 남은 ${pick.remain}일` : '없음');
   const key = pick ? `xz:hanbando:${pick.id}` : null;
@@ -214,7 +241,7 @@ for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => {
   ok(!!hin && (!back || !back.body || dist(aBackN, aBackH) <= 2 + 1e-9), 'ⓓ4 돌아오는 몸도 경계 칸에서 이어 걷는다(닛폰이 지운 자리 = 한반도가 세운 자리)',
     hin ? `닛폰 ${aBackN ? `(${aBackN.x},${aBackN.y})` : '(몸 없음)'} · 한반도 (${aBackH.x},${aBackH.y}) · 차 ${aBackN ? dist(aBackN, aBackH).toFixed(1) : '-'}px · 경계까지 걸음 ${(back && back.walked) || '바로'}` : '한반도 받은 몸 없음');
   ok(!!done && back && done.res === back.res && Math.abs(done.amt - back.amt) < 1e-9, 'ⓓ5 ★★한반도 곳간에 들었다 — econ 귀환 갈래가 돌려보낸 짐 그대로(질량 보존)',
-    done ? `#${pick.id} ${done.res}×${(done.amt || 0).toFixed(2)}${done.abandoned ? ' (빈손 귀환)' : ''} · 기다림 ${((Date.now() - tW) / 1000).toFixed(0)}s` : `기다림 ${((Date.now() - tW) / 1000).toFixed(0)}s 안에 안 끝났다`);
+    done ? `#${pick.id} ${done.res}×${(done.amt || 0).toFixed(2)}${done.abandoned ? ' (빈손 귀환)' : ''} · 기다림 ${((vnow() - tW) / 1000).toFixed(0)}s${VCLK ? '(가상)' : ''}` : `기다림 ${((vnow() - tW) / 1000).toFixed(0)}s${VCLK ? '(가상)' : ''} 안에 안 끝났다`);
 
   // ── ⓖ [T952] 받는 존 상인의 머묾 끝 ────────────────────────────────────────────
   {
@@ -222,13 +249,16 @@ for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => {
     console.log(`\n[ⓖ T952 — 받는 존(닛폰) 교차 존 상인의 머묾 끝 · ${ON ? '켬' : '끔'}]`);
     //   머묾은 하루의 1/24 ~ 4/24(이 판 125 ~ 500ms)라 500ms 표본이 놓칠 수 있다 — 머문 몸을 하나 볼 때까지 100ms 로 더 본다(상한 120초 · 값은 안 바꾼다)
     const lingerS = () => { const a = []; for (const [k, L] of seenN) for (let i = 0; i < L.length; i++) if (L[i].phase === 'linger') a.push({ k, i, s: L[i], next: L.slice(i + 1).find((q) => q.phase !== 'linger') || null }); return a; };
-    const tX = Date.now();
-    while (Date.now() - tX < (process.env.XZ_BAIT ? 10000 : 120000) && (lingerS().length === 0 || lingerS().every((q) => !q.next))) {
-      const Nn = await perf('nippon'); if (Nn) for (const b of Nn.bodies) { if (!b.key || !String(b.key).startsWith('xz:hanbando:')) continue; const L = seenN.get(b.key) || []; if (b.x != null) L.push({ x: b.x, y: b.y, t: Nn.now, prog: b.prog, len: b.len, phase: b.phase, lu: b.lu, t952: b.t952, mk: b.mk, ax: b.ax, luW: (b.wt ? b.wt.lu : b.lu), btW: (b.wt ? b.wt.bodyAt : null) }); seenN.set(b.key, L); }   // ★[T1300]
-      await sleep(100);
+    const tX = vnow();
+    while (vnow() - tX < (process.env.XZ_BAIT ? 10000 : 120000) && wallOk() && (lingerS().length === 0 || lingerS().every((q) => !q.next))) {
+      const Nn = await perf('nippon'); if (Nn) for (const b of Nn.bodies) { if (!b.key || !String(b.key).startsWith('xz:hanbando:')) continue; const L = seenN.get(b.key) || []; if (b.x != null) L.push({ x: b.x, y: b.y, t: Nn.now, bc: b.bodyClk, prog: b.prog, len: b.len, phase: b.phase, lu: b.lu, t952: b.t952, mk: b.mk, ax: b.ax, luW: (b.wt ? b.wt.lu : b.lu), btW: (b.wt ? b.wt.bodyAt : null) }); seenN.set(b.key, L); }   // ★[T1300]
+      await pace(100);
     }
     const S = lingerS(), dm = +DAYMS;
     const keys = [...new Set(S.map((q) => q.k))];
+    //   ★[T1352] 머문 몸을 하나도 못 봤으면 — 몸마다 도착(가는 길 끝) → 귀환 첫 표본에서 머묾 끝(lu · 몸 시계 축)이 그 표본의 몸 시계보다 앞이었나(머묾 0 길이 — 마감 한 틱 안에 섰다 떠났다)
+    if (!S.length) { const Z0 = []; for (const [k, L] of seenN) { const i = L.findIndex((q, j) => j > 0 && q.phase === 'inbound' && q.lu != null && L[j - 1].phase === 'outbound'); if (i > 0) Z0.push({ k, lu: L[i].lu, bc: L[i].bc, gap: L[i].t - L[i - 1].t }); }
+      console.log(`  · [ⓖ 진단] 머문 표본 0 — 넘어온 몸 ${seenN.size} · 가는 길 끝 → 귀환을 이웃 표본으로 본 몸 ${Z0.length} · 그중 머묾 끝 < 귀환 첫 표본의 몸 시계 ${Z0.filter((z) => z.bc != null && z.lu < z.bc).length}(표본 간격 ${[...new Set(Z0.map((z) => z.gap))].join('/')}ms · 예 ${JSON.stringify(Z0.slice(0, 3))})`); }
     ok(S.length > 0, 'ⓖ0 [전제] 받는 존에서 머무는(phase linger) 교차 존 상인을 실제로 봤다(0 이면 아래가 자명 통과다)', `몸 ${keys.length} · 표본 ${S.length}`);
     //   ★[T1300 · T1289 회부 5] 머묾 끝을 벽시계 표본 시각(`N.now` · `t952.at`)과 견주는 줄은 벽시계 ms(`luW` — `/perf` 의 `wt.lu` · 켬 · T1182 몸이면 econ 날 시계 값을 같은 econ 순간의 벽시계로)로 — 원래 칸끼리(`lu === t952.end`)는 같은 축 그대로
     const rows = keys.map((k) => { const q = S.find((x) => x.k === k), t = q.s.t952; return { k, lu: q.s.lu, luW: q.s.luW, t952: t, stayMs: t ? q.s.luW - t.at : null, left: q.next ? q.next.t : null }; });
@@ -295,7 +325,7 @@ for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => {
     //   ★[T1324 · T1321 회부 16 · 10판 재현 12판 하네스 멈춤] `/perf` 는 바쁜 존이 10초 안에 못 답하면 null 이다 — 종전은 그 표본을 그대로 읽어
     //     TypeError 로 판이 통째 멈췄다. null 표본은 세고 건너뛰어 다시 읽는다(H · N 은 마지막으로 둘 다 읽은 표본 · 셈 · 단언 무변).
     const h0 = await perf('hanbando'), n0 = await perf('nippon');
-    if (!h0 || !n0) { eNull++; await sleep(300); continue; }
+    if (!h0 || !n0) { eNull++; await pace(300); continue; }
     H = h0; N = n0;
     const inN = inZ(N, 'hanbando'), inH = inZ(H, 'nippon');
     E = { inN, inH, LN: N.live || {}, LH: H.live || {},
@@ -309,7 +339,7 @@ for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => {
       E.hReceive=ha?.core.arriveIn;
     }
     if (E.e1 && E.e2 && E.e3 && E.e4) break;
-    await sleep(300);
+    await pace(300);
   }
   if (!E) E = { inN: '?', inH: '?', LN: {}, LH: {}, e1: false, e2: false, e3: false, e4: false };   // ★[T1324] 스무 번 다 null — ⓔ1 ~ ⓔ4 는 빨강으로 선다(멈추지 않는다)
   //   ★[T598 추신 ①] 확인 표 — 판 끝에 `/perf` 를 촘촘히(60번 · 100ms) 보며 종전 셈(`st.pend`)과 새 셈(세 칸)이 각각 몇 번 어긋나는지 ·
@@ -325,7 +355,7 @@ for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => {
       if (!oldOk) { PR.oldBad++; if (L.inboxArrive) PR.inbox++; if (L.outReturn) PR.out++; if ((L.pendArrive | 0) !== (P.core.pend | 0)) PR.pendLate++; }
       if (!newOk) PR.newBad++;
     }
-    await sleep(100);
+    await pace(100);
   }
   if (!(E.e1 && E.e2 && E.e3 && E.e4)) {   // ★[T578 추신] 셈이 안 맞으면 그 순간의 두 존 줄을 남긴다(이동 중을 놓친 자리를 표로 — 값은 안 고친다)
     const dumpZ = (z, P) => { console.log(`  · [ⓔ 진단 ${z}] core ${JSON.stringify(P.core)} · st ${JSON.stringify(P.st)}`);
@@ -346,7 +376,7 @@ for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => {
   //     넘김 = 받음 인과는 ⓔ1 ~ ⓔ4 · 몸 보존은 ⓚ.
   //     못 보냄 · 다시 밂 · dup 은 표(종전 단언이었으면 몇 번 빨갰나도 같이 — 10판 재현 셈).
   let RQ = null;
-  for (let i = 0; i < 30; i++) { const h = await perf('hanbando'), n = await perf('nippon'); if (h && n) { RQ = { h: h.retry | 0, n: n.retry | 0, H: h, N: n }; if (!RQ.h && !RQ.n) break; } await sleep(500); }
+  for (let i = 0; i < 30; i++) { const h = await perf('hanbando'), n = await perf('nippon'); if (h && n) { RQ = { h: h.retry | 0, n: n.retry | 0, H: h, N: n }; if (!RQ.h && !RQ.n) break; } await pace(500); }
   const H5 = (RQ && RQ.H) || H, N5 = (RQ && RQ.N) || N;
   console.log(`  · [표 · T1324 ⓔ5] 답 없음(못 보냄) 한반도 ${H5.st.sentFail} · 닛폰 ${N5.st.sentFail} · 다시 밂 ${H5.st.retried} · ${N5.st.retried} · 받는 쪽 dup 한반도 ${H5.st.dup} · 닛폰 ${N5.st.dup} · 되돌림 ${H5.st.bounced} · ${N5.st.bounced} · 잃음 ${H5.st.lost | 0} · ${N5.st.lost | 0} · 판 끝 다시 밂 줄 ${RQ ? RQ.h : '?'} · ${RQ ? RQ.n : '?'} · 종전 단언(못 보냄 0 · 그 자리 그 값 H · N)이었으면 ${(H.st.sentFail === 0 && N.st.sentFail === 0 && H.st.bounced === 0 && N.st.bounced === 0) ? '초록' : '빨강'}(못 보냄 ${H.st.sentFail} · ${N.st.sentFail})`);
   ok(H5.st.bounced === 0 && N5.st.bounced === 0 && (H5.st.lost | 0) === 0 && (N5.st.lost | 0) === 0 && !!RQ && RQ.h === 0 && RQ.n === 0 && N5.st.dup <= H5.st.retried && H5.st.dup <= N5.st.retried,
@@ -361,7 +391,7 @@ for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => {
   // ── ⓚ [T1292] 몸 보존 — 두 존 몸 표를 한 시계로(ⓗ 죽이기 앞까지) ─────────────────────────────
   {
     console.log(`\n[ⓚ T1292 — 몸 보존(캐논 797): 같은 몸이 두 존에 동시에 보임 0 · 사라짐 0 · 표 틈 0 · 숨김은 풀린다 · 넘김 숨김 ${process.env.T1292_XZ_HIDE === '0' ? '끔(종전)' : '켬'}${process.env.XZ_BAIT ? ` · ★미끼 ${process.env.XZ_BAIT}` : ''}]`);
-    await sleep(process.env.XZ_BAIT ? 12000 : 600);   // 사건 줄은 200ms 마다 파일로 — 한 번 더 비운 뒤 읽는다(★미끼 판은 꼬리 10초를 넘겨 — 넘는 중인 몸이 판 끝 꼬리에 안 남게)
+    await pace(process.env.XZ_BAIT ? 12000 : (VCLK ? 1000 : 600));   // 사건 줄은 200ms 마다 파일로 — 한 번 더 비운 뒤 읽는다(★미끼 판은 꼬리 10초를 넘겨 — 넘는 중인 몸이 판 끝 꼬리에 안 남게)
     const R = XZB.analyze(XZB.readFiles(ZIDS.map((z) => `${DDIR}/xzb-${z}.jsonl`)), { tailMs: 10000 });
     ok(R.handoffs > 0 || (process.env.XZ_BAIT === 'nospawn' && R.vanished.n > 0), 'ⓚ0 [전제] 몸 넘김을 봤다(0 이면 아래가 자명 통과다)', `논리 몸 ${R.logical} · 넘김 ${R.handoffs}(나감 ${R.byDir.out} · 돌아옴 ${R.byDir.back})`);
     ok(R.both.n === 0, 'ⓚ1 ★★같은 몸이 두 존에 동시에 **보인** 때 0 — 넘기는 몸은 보내기 전에 숨는다(사람 넘기 껍데기 칸)',
@@ -388,43 +418,45 @@ for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => {
     const meta = () => { let db = null; try { db = new DatabaseSync(`${DDIR}/w-nippon.db`, { readOnly: true }); const r = db.prepare('SELECT data FROM world_meta WHERE zone = ?').get('nippon'); return r ? JSON.parse(r.data) : null; } catch (e) { return null; } finally { try { db && db.close(); } catch (e) {} } };
     const inWin = (x, day) => ON ? (x.mkt != null) : (x.state === 'inbound' && x.xback != null && x.xback > day);
     let tgt = null, Mrow = null, preN = null, preH = null;
-    const tK = Date.now();
+    const tK = vnow();
     if(BODY){
       fs.writeFileSync(path.join(checkpointDir,'arm'),'arm');
-      while(!fs.existsSync(path.join(checkpointDir,'ready.json')) && Date.now()-tK<WAIT_S*1000)await sleep(50);
+      //   ★[T1352] 가상 판 — 가로대를 민다(닛폰이 검문에서 스스로 멈추면 그 가로대는 안 끝난다 — 벽시계 250ms 마다 파일을 다시 본다 · 밀 걸음은 하나만 걸어 둔다)
+      while(!fs.existsSync(path.join(checkpointDir,'ready.json')) && vnow()-tK<WAIT_S*1000 && wallOk()) { if (VCLK) await LS.step(250); else await sleep(50); }
       if(fs.existsSync(path.join(checkpointDir,'ready.json'))){const R=JSON.parse(fs.readFileSync(path.join(checkpointDir,'ready.json'),'utf8'));if(R.error)throw new Error(R.error);tgt=R.target;Mrow=R.checkpoint;preN=R.before;}
       fs.rmSync(path.join(checkpointDir,'arm'),{force:true});
     }
-    while (!BODY && !tgt && Date.now() - tK < WAIT_S * 1000) {
+    while (!BODY && !tgt && vnow() - tK < WAIT_S * 1000 && wallOk()) {
       const Nn = await perf('nippon');
       if (Nn) for (const x of (Nn.caravans || [])) if (String(x.id).startsWith('xz:hanbando:') && inWin(x, Nn.day)) {
         //   그 캐러밴이 닛폰 DB 메타 행에 같은 창의 꼴로 실렸나(켬 = 정산 전 `_t707` · 끔 = 귀환 구간) — 실린 뒤에 죽인다(실리기 전이면 다음 경계까지 본다)
         for (let i = 0; i < 40 && !tgt; i++) {
           const M = meta(), mc = M && (M.caravans || []).find((q) => q.id === x.id);
           if (mc && (ON ? !!mc._t707 : (mc.state === 'inbound' && !mc._done && !mc._xzHandedBack))) { tgt = x; Mrow = { day: M.anchor && M.anchor.day, t707: !!mc._t707, state: mc.state, ret: mc._returningAmt || 0, from: typeof mc.from === 'object' ? 'stub' : mc.from }; }
-          else await sleep(50);
+          else await (VCLK ? LS.step() : sleep(50));
         }
         if (tgt) { preN = Nn; break; }
       }
-      if (!tgt) await sleep(200);
+      if (!tgt) await pace(200);
     }
     ok(!!tgt, 'ⓗ0 [전제] 창 안의 한반도 캐러밴이 닛폰 DB 메타 행에 실렸다(실린 뒤 죽인다)', tgt ? `${tgt.id} → ${tgt.to} ${tgt.res}×${(tgt.amt || 0).toFixed(2)} · 메타 날 ${Mrow.day} · ${JSON.stringify(Mrow)}` : '없음');
     if (tgt) {
       const hid = +String(tgt.id).split(':').pop();
-      preH = await perf('hanbando');
       const zp = procs.find((p) => p._name === 'nippon' && !p._dead);
-      zp._dead = true; zp.kill('SIGKILL');
-      const tKill = Date.now();
+      //   ★[T1352] 가상 판 — 검문에서 스스로 멈춘 닛폰이 가로대를 막는다: 먼저 죽이고(지휘 셈에서 뺀다) 같은 가로대의 한반도를 본다(그 가로대 머리에서 처리)
+      if (VCLK) { zp._dead = true; LS.kill('nippon'); preH = await perf('hanbando'); }
+      else { preH = await perf('hanbando'); zp._dead = true; zp.kill('SIGKILL'); }
+      const tKill = vnow();
       const preBack = (preN.trace || []).filter((t) => t.k === 'back' && t.id === hid).length, preIn = ((preH && preH.trace) || []).filter((t) => t.k === 'in' && t.back && t.key === hid).length;
       ok(preBack === 0 && preIn === 0, "ⓗ1 죽인 순간 — 닛폰이 그 캐러밴의 'return' 을 아직 안 적었다 · 한반도가 안 받았다", `닛폰 back ${preBack} · 한반도 in ${preIn}`);
-      await sleep(1500);
+      await pace(1500);   // ★[T1352] 가상 판 = 한반도 혼자 1.5초(가상) — 다시 뜬 닛폰은 그 가로대에서 선다
       const p2 = boot('nippon', 'zone.js', zenv('nippon'));
       const u2 = await FB.waitUp(p2, /zone server up on/, { name: 'nippon', capMs: 900000 });
       ok(u2.ok, 'ⓗ2 닛폰 다시 뜸(같은 DB)', u2.ok ? `${(u2.ms / 1000).toFixed(1)}s` : u2.why);
       const m728 = /\[T728\] 재기동 영속 — [^\n]*?캐러밴 (\d+)(?: · 못 이은 (\d+))?/.exec(p2._out);
       const lost = m728 ? +(m728[2] || 0) : null;
       //   한반도 곳간에 들 때까지(켬) · 끔은 걸음표가 다시 서고 그 캐러밴 귀환 날을 넘긴 뒤 하루씩 넷 더 본다
-      let home = null, N2 = null, H2 = null, until = Date.now() + WAIT_S * 1000, ready = null;
+      let home = null, N2 = null, H2 = null, until = vnow() + WAIT_S * 1000, ready = null;
       //   ★[T1324 · land1077 한 판 ⓗ4 · ⓗ5 빨강] 흔적은 존마다 400 줄 고리(`_xzTrace`)다 — 종전은 마지막 표본 한 장의 흔적만 읽어, 기다림이 길면
       //     닛폰 'back' 이 고리에서 밀려나거나(그 사이 흔적 400 넘음) 마지막 표본이 null(바쁜 존 · 10초 시한)이면 일어난 정산을 못 봤다.
       //     ⇒ 표본마다 앞 표본과 겹친 꼬리 뒤만 덧붙여 모은다(같은 내용 두 줄도 둘로 — 둘 셈(ⓗ4 `backs.length === 1`)을 감추지 않는다) · null 표본은 건너뛴다.
@@ -432,13 +464,13 @@ for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => {
       const takeTr = (z, P) => { if (!P) return; const T = (P.trace || []).map((t) => JSON.stringify(t)), Pv = prevT[z]; let add = T.length;
         if (Pv) for (let sh = 0; sh <= Pv.length; sh++) { const m = Pv.length - sh; if (m > T.length) continue; let eq = true; for (let i = 0; i < m && eq; i++) if (Pv[sh + i] !== T[i]) eq = false; if (eq) { add = T.length - m; break; } }
         for (let i = T.length - add; i < T.length; i++) TRZ[z].push(P.trace[i]); prevT[z] = T; };
-      while (Date.now() < until) {
-        const h2 = await perf('hanbando'), n2 = await perf('nippon'); if (h2) H2 = h2; if (n2) N2 = n2; takeTr('hanbando', h2); takeTr('nippon', n2);
+      while (vnow() < until && wallOk()) {
+        const [h2, n2] = await perfBoth(); if (h2) H2 = h2; if (n2) N2 = n2; takeTr('hanbando', h2); takeTr('nippon', n2);
         if (!h2) hNul.h++; if (!n2) hNul.n++;
         home = TRZ.hanbando.find((t) => t.k === 'home' && t.id === hid) || null;
         if (home) break;
-        if (N2 && N2.ready && N2.ready.includes('hanbando') && ready == null) { ready = Date.now(); readyDay = N2.day; if(!BODY)until = Math.min(until, ready + Math.max(4, (tgt.xback || 0) - (tgt.depart || 0) + 4) * dm + 20000); }
-        await sleep(500);
+        if (N2 && N2.ready && N2.ready.includes('hanbando') && ready == null) { ready = vnow(); readyDay = N2.day; if(!BODY)until = Math.min(until, ready + Math.max(4, (tgt.xback || 0) - (tgt.depart || 0) + 4) * dm + 20000); }
+        await pace(500);
       }
       const backs = TRZ.nippon.filter((t) => t.k === 'back' && t.id === hid);
       const homes = TRZ.hanbando.filter((t) => t.k === 'home' && t.id === hid);
@@ -448,14 +480,14 @@ for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => {
       const goneAmt = homes.length ? Math.abs((homes[0].amt || 0) - retAmt) : (backs.length ? retAmt : (Mrow.ret || null));
       console.log(`  · [표 · T1030 ⓗ] | 판 | 죽인 창 | 넘긴 짐 | 닛폰 다시 뜸: 이은 캐러밴 · 못 이은 | 닛폰 'return'(판 짐 · 돌려보낸 짐) | 한반도 곳간 | 한반도 그 캐러밴 | 생성 | 소멸 |`);
       console.log(`  · [표 · T1030 ⓗ] | ${ON ? '켬' : '끔'} | ${ON ? '장 중(정산 전)' : '판 뒤(귀환 구간)'} | ${tgt.res}×${sent.toFixed(2)} | ${m728 ? `${m728[1]} · ${lost}` : '-'} | ${backs.length ? backs.map((b) => `${b.sold ? `${b.sold.res}×${b.sold.amt}` : '-'} · ${b.res}×${(b.amt || 0).toFixed(2)}`).join(' / ') : '없음'} | ${homes.length ? homes.map((h) => `${h.res}×${(h.amt || 0).toFixed(2)}`).join(' / ') : '안 듦'} | ${hc ? hc.state : '없음(끝남)'} | ${made.toFixed(2)} | ${goneAmt == null ? '?' : (+goneAmt).toFixed(2)} |`);
-      console.log(`  · [표 · T1030 ⓗ] 죽인 뒤 닛폰 다시 뜨기 ${((Date.now() - tKill) / 1000).toFixed(0)}s 안 · 걸음표 다시 ${ready ? `${((ready - tKill) / 1000).toFixed(0)}s` : '안 섬'}`);
+      console.log(`  · [표 · T1030 ⓗ] 죽인 뒤 닛폰 다시 뜨기 ${((vnow() - tKill) / 1000).toFixed(0)}s 안 · 걸음표 다시 ${ready ? `${((ready - tKill) / 1000).toFixed(0)}s` : '안 섬'}${VCLK ? '(가상 — 다시 뜨는 동안 가로대는 멎는다)' : ''}`);
       //   ★[T1324 · 10판 재현 13판 ⓗ4 · ⓗ5 빨강(land1077 한 판과 같은 꼴) — 다시 뜬 닛폰이 600초 동안 그 캐러밴을 안 돌려보냈다] 안 들었으면 그 판의
       //     닛폰 날(걸음표 선 때 → 끝) · 그 캐러밴 줄 · 몸 줄 · 다시 밂 줄 · 다시 뜬 닛폰 로그의 예외 · 마감 줄을 남긴다(판정 무변)
       if (!(backs.length === 1 && homes.length === 1)) {
         const nc = N2 ? (N2.caravans || []).find((x) => x.id === tgt.id) : null, nb = N2 ? (N2.bodies || []).find((b) => b.key === tgt.id) : null;
         console.log(`  · [ⓗ 진단] 닛폰 날 죽일 때 ${preN ? preN.day : '?'} · 걸음표 선 때 ${readyDay == null ? '-' : readyDay} · 끝 ${N2 ? N2.day : '?'} · null 표본 한반도 ${hNul.h} · 닛폰 ${hNul.n} · 닛폰 다시 밂 줄 ${N2 ? N2.retry : '?'} · 넘김 줄 ${N2 && N2.t1321 ? (N2.t1321.pend || []).length : '-'}`);
         console.log(`  · [ⓗ 진단] 닛폰 그 캐러밴 ${JSON.stringify(nc)} · 몸 ${JSON.stringify(nb ? { phase: nb.phase, prog: nb.prog, len: nb.len, x: nb.x, y: nb.y, end: nb.end, hidden: nb.hidden, handing: nb.handing, pending: nb.pending } : null)} · 한반도 그 캐러밴 ${JSON.stringify(hc)}`);
-        const L = String(p2._out || '').split('\n').filter((l) => /econ 틱 실패|TypeError|ReferenceError|Cannot read|is not a function|\[T728\]|\[T1321\]|\[T1034\]/.test(l));
+        const L = (String(p2._out || '') + '\n' + String(p2._err || '')).split('\n').filter((l) => /econ 틱 실패|TypeError|ReferenceError|Cannot read|is not a function|\[T728\]|\[T731\]|\[T1321\]|\[T1034\]/.test(l));   // ★[T1352] stderr 도(마감 예외 줄은 stderr 에 선다)
         console.log(`  · [ⓗ 진단] 다시 뜬 닛폰 로그 — 걸린 줄 ${L.length}(econ 틱 실패 ${L.filter((l) => /econ 틱 실패/.test(l)).length})`);
         for (const l of L.slice(0, 6).concat(L.length > 12 ? ['…'] : [], L.slice(Math.max(6, L.length - 6)))) console.log('  · [ⓗ 진단 · 닛폰 로그] ' + l.slice(0, 240));
       }
@@ -484,24 +516,24 @@ for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => {
     //   ★[T1324 · land1077 한 판 · 10판 재현 4판 ⓗ'0 빨강 — 죽인 뒤 2분 안에 닛폰으로 민 'arrive' 가 하나도 없었다] 전제는 "죽인 뒤 넘는 캐러밴"이 있어야 선다 —
     //     죽이기 전에 한반도에 닛폰으로 가는(아직 안 넘은) 캐러밴이 경계 칸에 사흘 안에 닿는 때를 기다린다(3분 상한 · 못 찾으면 종전대로 바로 죽인다 · 단언 무변) —
     //     ⓗ 가 닛폰을 다시 띄운 직후(4 · 5판 — 다시 뜬 뒤 28 · 43초)엔 그 사이 끊긴 교역 줄이 아직 안 차 있다(스텁 · 새 출발 · 경계까지 며칠)
-    { const tW = Date.now(); let near = null;
-      while (Date.now() - tW < Math.max(180000, 60 * dm)) { const P = await perf('hanbando'); if (P && P.caravans) { near = P.caravans.find((c) => c.toZone === 'nippon' && c.state !== 'xzone' && c.cross != null && c.cross >= P.day && c.cross - P.day <= 3) || null; if (near) break; } await sleep(500); }
-      console.log(`  · [ⓗ' 준비] 죽이기 전 닛폰으로 넘을 한반도 캐러밴 ${near ? `#${near.id}(넘는 날 ${near.cross})` : '못 찾음(종전대로 바로)'} · 기다림 ${((Date.now() - tW) / 1000).toFixed(1)}s`); }
-    const np = live('nippon'); np._dead = true; np.kill('SIGKILL');
-    const tK = Date.now();
+    { const tW = vnow(); let near = null;
+      while (vnow() - tW < Math.max(180000, 60 * dm) && wallOk()) { const P = await perf('hanbando'); if (P && P.caravans) { near = P.caravans.find((c) => c.toZone === 'nippon' && c.state !== 'xzone' && c.cross != null && c.cross >= P.day && c.cross - P.day <= 3) || null; if (near) break; } await pace(500); }
+      console.log(`  · [ⓗ' 준비] 죽이기 전 닛폰으로 넘을 한반도 캐러밴 ${near ? `#${near.id}(넘는 날 ${near.cross})` : '못 찾음(종전대로 바로)'} · 기다림 ${((vnow() - tW) / 1000).toFixed(1)}s${VCLK ? '(가상)' : ''}`); }
+    const np = live('nippon'); np._dead = true; if (VCLK) LS.kill('nippon'); else np.kill('SIGKILL');   // ★[T1352] 가상 판 — 지휘 셈에서 뺀다
+    const tK = vnow();
     // ② 한반도 다시 밂 줄 · 메타 행에 그 줄(켬) — 닛폰에 한 번 이상 민(연결 안 섬) 'arrive' 가 줄에 선 때(끔이면 줄 · 메타 칸이 없다 — 다시 밂 줄 수 · 로그 줄을 본다)
     //   ★[T1321 추신] 첫 판은 줄에 막 선 기록(tries 0 — 경계 칸으로 걷는 중 · 아직 안 민 것)을 보자마자 대상을 로그 줄에서 골라 대상 0 이었다 —
     //   대상은 죽인 뒤 한반도 DB 메타 행(마지막 저장 그대로 = 다시 뜬 판이 되돌릴 그 줄)에서 읽는다
     let held = null, P0 = null;
     const metaArr = (M) => ((M && M.t1321 && M.t1321.p) || []).filter((q) => q && q.r && q.r.kind === 'arrive' && q.r.toZone === 'nippon');
-    while (Date.now() - tK < Math.max(120000, 40 * dm)) {   // ★[T1324] 60초 → 120초(land1077 한 판 ⓗ'0 빨강 — 닛폰이 꺼진 뒤 넘는 캐러밴이 늦게 닿는 판)
+    while (vnow() - tK < Math.max(120000, 40 * dm) && wallOk()) {   // ★[T1324] 60초 → 120초(land1077 한 판 ⓗ'0 빨강 — 닛폰이 꺼진 뒤 넘는 캐러밴이 늦게 닿는 판)
       P0 = await grab('hanbando');
       const rq = P0 ? (P0.retry || 0) : 0;
       if (KEEP) {
         const M = metaH(), p = metaArr(M);
         if (p.some((q) => (q.tries | 0) >= 1)) { held = { recs: p.map((q) => ({ key: q.key, id: q.r.id, to: q.r.to, res: q.r.giveRes, amt: q.r.giveAmt, tries: q.tries, unsure: q.unsure })), rowDay: M._rowDay, retry: rq }; break; }
       } else if (rq > 0 && /⚠ 넘김 답 없음 #\d+ → nippon/.test(live('hanbando')._out.slice(-200000))) { held = { recs: null, retry: rq }; break; }
-      await sleep(300);
+      await pace(300);
     }
     ok(!!held, `ⓗ'0 [전제] 닛폰이 꺼진 동안 한반도가 민 'arrive' 가 다시 밂 줄에 섰다${KEEP ? ' · 그 줄이 한반도 DB 메타 행에 실렸다(한 번 이상 민 것 ≥ 1)' : ''}`, held ? JSON.stringify(held).slice(0, 300) : '없음');
     if (held) {
@@ -510,9 +542,9 @@ for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => {
       const logH = hp._out, failIds = new Set();
       for (const m of logH.matchAll(/(?:넘김 답 없음|넘김 다시 밂 연결 실패) #(\d+) → nippon/g)) failIds.add(+m[1]);
       const bounced0 = new Set(TR.hanbando.filter((t) => t.k === 'bounce').map((t) => t.id));
-      hp._dead = true; hp.kill('SIGKILL');
-      const tKill = Date.now(), nPreH = TR.hanbando.length;
-      await sleep(1500);
+      hp._dead = true; if (VCLK) LS.kill('hanbando'); else hp.kill('SIGKILL');
+      const tKill = vnow(), nPreH = TR.hanbando.length;
+      await sleep(VCLK ? 300 : 1500);   // ★[T1352] 가상 판 — 두 존 다 죽어 가로대가 멎는다(파일이 닫히기만 기다린다 · 다시 뜬 두 존은 그 가로대에서 선다)
       //   대상 — 켬: 죽은 한반도 DB 메타 행의 'arrive' → nippon 전부 · 끔: 로그 줄("넘김 답 없음 #id → nippon")에서 죽이기 전 되돌림이 안 난 것(줄은 메모리)
       const MH = KEEP ? metaH() : null, finalAll = KEEP ? ((MH && MH.t1321 && MH.t1321.p) || []).filter((q) => q && q.r) : null;
       const targets = KEEP ? [...new Set(metaArr(MH).map((q) => q.r.id))] : [...failIds].filter((id) => !bounced0.has(id));
@@ -524,7 +556,7 @@ for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => {
       // ③ 기다림 — 대상마다 닛폰 받음 · 한반도 되돌림이 날 때까지(또는 걸음표가 선 뒤 하루 여덟)
       //   받음 = 닛폰 받은 열쇠(`hanbando:arrive:<id>` — 닛폰 DB 메타 행 · 켬) 또는 닛폰 몸 들어옴 줄('in') · 되돌림 = 다시 뜬 한반도 줄('bounce')
       const metaN = () => { let db = null; try { db = new DatabaseSync(`${DDIR}/w-nippon.db`, { readOnly: true }); const r = db.prepare('SELECT data FROM world_meta WHERE zone = ?').get('nippon'); const M = r ? JSON.parse(r.data) : null; return M && M.t1321 ? new Set(M.t1321.s || []) : null; } catch (e) { return null; } finally { try { db && db.close(); } catch (e) {} } };
-      const until = Date.now() + WAIT_S * 1000; let ready = null, H2 = null, N2 = null, seenN = null, exitWhy = 'WAIT_S', late = null;
+      const until = vnow() + WAIT_S * 1000; let ready = null, H2 = null, N2 = null, seenN = null, exitWhy = 'WAIT_S', late = null;
       const fate = () => targets.map((id) => {
         const inTr = TR.nippon.filter((t) => t.k === 'in' && !t.back && t.key === 'xz:hanbando:' + id).length;
         const seen = seenN ? (seenN.has('hanbando:arrive:' + id) ? 1 : 0) : null;
@@ -532,25 +564,25 @@ for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => {
         const recv = Math.max(seen || 0, inTr ? 1 : 0);
         return { id, recv, inTr, seen, bounce, n: recv + bounce, two: (inTr > 1 || (recv && bounce)) ? 1 : 0 };
       });
-      while (Date.now() < until) {
+      while (vnow() < until && wallOk()) {
         H2 = (await grab('hanbando')) || H2; N2 = (await grab('nippon')) || N2;   // 늦은 /perf 하나(null)로 마지막 관측을 잃지 않는다
         if (KEEP) seenN = metaN() || seenN;
-        if (ready == null && H2 && N2 && (H2.ready || []).includes('nippon') && (N2.ready || []).includes('hanbando')) ready = Date.now();
+        if (ready == null && H2 && N2 && (H2.ready || []).includes('nippon') && (N2.ready || []).includes('hanbando')) ready = vnow();
         const F = fate();
         if (F.length && F.every((f) => f.n >= 1) && (!KEEP || (H2 && H2.t1321 && !(H2.t1321.pend || []).length))) { exitWhy = 'done'; break; }
-        if (ready != null && Date.now() - ready > 8 * dm + 15000) {
+        if (ready != null && vnow() - ready > 8 * dm + 15000) {
           if (!KEEP) { exitWhy = 'ready+8날'; break; }
           //   ★[T1324 · 10판 재현 3판 ⓗ'5 빨강 — 대상은 다 받았는데 한반도 넘김 줄 넷이 걸음표 + 8날 + 15초 뒤에도 남음] 켬은 남은 줄이 비워질 때까지(WAIT_S 상한) 더 본다 —
           //     단언(ⓗ'5 남은 줄 0)은 그대로 · 종전 자르기 자리에서 남은 줄이 있었으면 그 판 진단을 찍는다(종전 자르기였으면 빨강 — 표)
-          if (!late) { late = { at: Date.now(), pend: (H2 && H2.t1321 && (H2.t1321.pend || []).length) | 0 }; if (late.pend) diag('종전 자르기(걸음표 + 8날 + 15초)'); }
+          if (!late) { late = { at: vnow(), pend: (H2 && H2.t1321 && (H2.t1321.pend || []).length) | 0 }; if (late.pend) diag('종전 자르기(걸음표 + 8날 + 15초)'); }
         }
-        await sleep(500);
+        await pace(500);
       }
-      if (late && late.pend) console.log(`  · [표 · T1324 ⓗ'] 종전 자르기(걸음표 + 8날 + 15초) 때 남은 줄 ${late.pend} — 종전이면 ⓗ'5 빨강 · 그 뒤 ${((Date.now() - late.at) / 1000).toFixed(0)}s 더 봄(${exitWhy})`);
+      if (late && late.pend) console.log(`  · [표 · T1324 ⓗ'] 종전 자르기(걸음표 + 8날 + 15초) 때 남은 줄 ${late.pend} — 종전이면 ⓗ'5 빨강 · 그 뒤 ${((vnow() - late.at) / 1000).toFixed(0)}s 더 봄(${exitWhy})`);
       //   ★[T1324] 끝에도 남은 줄이 있으면 그 판의 한반도 넘김 셈 · 다시 밂 · 로그 줄을 남긴다(판정 무변)
       if (KEEP && H2 && H2.t1321 && (H2.t1321.pend || []).length) diag('끝');
       function diag(when) {
-        console.log(`  · [ⓗ' 진단 · ${when}] 나감 ${exitWhy} · 걸음표 다시 ${ready ? ((ready - tK) / 1000).toFixed(0) + 's' : '안 섬'} · 그 뒤 ${ready ? ((Date.now() - ready) / 1000).toFixed(0) + 's' : '-'} · 한반도 st ${JSON.stringify(H2.st)} · 다시 밂 줄 ${H2.retry} · 날 ${H2.day} · 남은 줄 ${JSON.stringify(H2.t1321.pend).slice(0, 300)}`);
+        console.log(`  · [ⓗ' 진단 · ${when}] 나감 ${exitWhy} · 걸음표 다시 ${ready ? ((ready - tK) / 1000).toFixed(0) + 's' : '안 섬'} · 그 뒤 ${ready ? ((vnow() - ready) / 1000).toFixed(0) + 's' : '-'} · 한반도 st ${JSON.stringify(H2.st)} · 다시 밂 줄 ${H2.retry} · 날 ${H2.day} · 남은 줄 ${JSON.stringify(H2.t1321.pend).slice(0, 300)}`);
         console.log(`  · [ⓗ' 진단] 한반도 t1321 ${JSON.stringify(Object.assign({}, H2.t1321, { pend: undefined, trace: undefined })).slice(0, 600)}`);
         const L = String(pH._out || '').split('\n').filter((l) => /T1321|T533\] .*(넘김|다시|되돌|답)|xzone|걸음표/.test(l)).slice(-25);
         for (const l of L) console.log('  · [ⓗ\' 진단 · 한반도 로그] ' + l.slice(0, 240));

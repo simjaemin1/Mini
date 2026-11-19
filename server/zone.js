@@ -6224,7 +6224,11 @@ const _t1001RoadDayMs = parseInt(process.env.VILLAGE_DAY_MS || '', 10) || WORLD.
 let _t1001RoadOff = null;
 if (T990_ECON_DAY && Roads.setEconDay) Roads.setEconDay(() => { const d = SimVillages.econDay ? SimVillages.econDay() : null; if (!Number.isFinite(d)) return null;
   if (_t1001RoadOff === null) _t1001RoadOff = Math.floor((Date.now() - (WORLD.worldEpoch || 0)) / _t1001RoadDayMs) - d; return d + _t1001RoadOff; });
-SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall, anyViewerNear, perfMark,
+// ★[T1368 · 검사 카드 T1354 Q19] 새 사람이 맨손 · 조잡한 도구로 얻는 플레이어 품목 — 장부가 켬(T1341)에서 "새 사람이 낼 수 있는 의뢰"를 고를 때 읽는다(끔 = 장부가 안 쓴다).
+//   유도: 자연물 전리품 정본(`lootOfResource`)에서 맨손(덤불 · 약초) · 조잡한 도구(벌목 = 조잡한 돌도끼 · 채석 = 조잡한 돌괭이 — `T1065_NEED` 의 make)로 여는 자연물(나무 · 묘목 · 바위)의 몫
+//   + 맨손 줍기(`forage.sourceAt` 의 뭍 갈래 — 갈대 풀 · 숲 바닥 잔가지 · 자갈). 광맥(`ore`) · 운철은 금속 길이라 뺀다. 사본 0 — 표를 다시 적지 않고 정본 함수를 부른다.
+const _T1368_NEWBIE = (() => { const out = new Set(['fiber', 'twig', 'pebble']); for (const t of ['tree', 'sapling', 'rock', 'berry_bush', 'herb']) { try { for (const k of Object.keys(lootOfResource({ type: t, x: 0, y: 0, r: 8 }) || {})) out.add(k); } catch (e) {} } return [...out]; })();
+SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall, anyViewerNear, perfMark, newbieItems: _T1368_NEWBIE,
   elevKmAt,   // ★[T856] 지형 정본 고도(몸 기온이 쓰는 그 함수) — 생활층이 econ 마을 `land.elev` 를 이것으로 채운다(손잡이 `T856_LAND_ELEV` 끔이면 안 읽는다)
   ...(Streams.ON && Streams.load(ZONE_ID) ? { isStreamLocal } : {}),   // ★★[T585] 개울 술어 — 생활층 지형 어댑터가 `ta.isStream` 으로 묻는다(집터·밭·곳간·큰집 마당 · 시딩 `generate`). 끔이면 키 자체가 없다(종전 그대로)
   chiefGreet: (p, vid, by) => { try { Onboarding.sendGreet(p, vid, by); } catch (err) {} },   // ★[T529] 촌장 몸이 곁에 와서 하는 인사 — 문장·메시지는 온보딩 정본
@@ -7211,6 +7215,7 @@ const server = http.createServer((req, res) => {
           else if (data.kind === 'drain' && SimVillages.t1321DrainCmd) out = _t1321DrainCmd(data);   // ★[T1321 ④] 비우기 명령(안 문 · 켜기 · 끄기 · 상태)
           else if (data.kind === 'army') out = { ok: false, why: 'army — 칸만 예약(셋째 카드)' };
           else if (data.kind === 'e2e_emigrate' && E2E_GIVE) out = SimVillages.__e2eEmigrate ? SimVillages.__e2eEmigrate(data.vid | 0, data.n) : { ok: false, why: '미지원' };   // ★[T1324] 테스트 전용(판 꾸밈 · `E2E_GIVE` 만) — 그 마을 이탈 압력(가상 시계 판이 안 문으로 — 발맞춤 가로대에 같이 든다)
+          else if (data.kind === 'e2e_stage' && E2E_GIVE) out = SimVillages.__e2eStagePlan ? SimVillages.__e2eStagePlan(data.plan) : { ok: false, why: '미지원' };   // ★[T1352] 테스트 전용(판 꾸밈 · `E2E_GIVE` 만) — 존 하루 경계에서 도는 이탈 꾸밈 계획(d0 · every · k · n — 경계 마을 행복 낮은 k 곳)
           else if (data.kind === 'drop' && T1092_HANDOFF_BACK) out = _t1092Drop(data);   // ★[T1092] 보낸 존 ACK 시한 — 그 토큰을 놓는다(`_t1092Drop`)
           else { st = 400; out = { ok: false, why: 'unknown kind' }; }
           res.writeHead(st, { 'Content-Type': 'application/json' });
@@ -11620,6 +11625,7 @@ function _forageCtx(player) {
     isWell: T509_WELL ? (x, y) => _wellCellAt(x, y) : undefined,   // ★[T509] 우물 칸 민물 담기(끔이면 없음 = 종전)
     isStream: _streamOn() ? (x, y) => isStreamLocal(x, y) : undefined,   // ★[T585] 개울 칸 민물 담기(개울 없으면 없음 = 종전 · 갈대·자갈·낚시는 큰 물만)
     rockNear: T1065_TOOL_GATE ? _t1065RockNear : undefined,   // ★[T1065] 바위 개체 둘레 자갈(켬만 · 끔 = 없음 = 종전)
+    ...(_T1341_ON ? { rockFirst: true } : {}),   // ★[T1368] 켬(제 집 줄기) — 바위 덩이 곁은 숲 바닥보다 자갈이 먼저(`forage.sourceAt` · 끔 = 칸 없음 = 종전)
   };
 }
 // ★[T1065] 반경 안에 살아 있는 바위 개체가 있나(맨손 채석이 닫힌 판의 자갈 소스 — `forage.sourceAt` ③′)

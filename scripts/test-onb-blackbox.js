@@ -58,7 +58,9 @@ const Q = {
 };
 //   ★켬 전용 — 끔 판(종전 온보딩: 의뢰가 시세대로 갚는다 · 안내는 의뢰)에서 빨강이어야 하는 질문(미끼 단언)
 const ONLY_ON = ['Q2', 'Q3', 'Q14', 'Q15'];
-const GATHERABLE = new Set(['wood', 'stone', 'pebble', 'twig', 'fiber', 'berry', 'herb']);
+// ★[PM land1084 · T1368 회부 2] 도토리(`acorn`) = 벌목 부산물 — 전리품 정본 `lootOfResource`(server/zone.js · T124)가 나무 자리 해시로 그 나무에 단다(선물 · 주사위 아님 → 스스로 모은 것).
+//   구현 세션이 아니라 PM 이 넣는다(규약 ⑥ — 검사 하네스는 구현 세션이 못 고친다). 플레이어 손에 오는 벌목 부산물은 도토리 하나다(송진 · 나무껍질은 마을 회계에만).
+const GATHERABLE = new Set(['wood', 'stone', 'pebble', 'twig', 'fiber', 'berry', 'herb', 'acorn']);
 
 // ── 판 띄우기 ──────────────────────────────────────────────────────────────────────────────────
 function bootPair(env, tag) {

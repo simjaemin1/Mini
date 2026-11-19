@@ -1,0 +1,687 @@
+{
+ "tag": "NBLS_1020",
+ "env": {
+  "T1324_XZ_MIGRATE": "1",
+  "T1334_BUNDLE": "1",
+  "T1352_NEWS_LOCAL": "1",
+  "T1352_NEWS_SEAM": "1"
+ },
+ "days": 300,
+ "stagePlan": null,
+ "crossed": 33,
+ "depart": 0,
+ "arrive": 33,
+ "byDir": {
+  "hanbando→nippon": {
+   "depart": 0,
+   "crossed": 33,
+   "arrive": 33,
+   "home": 0,
+   "dead": 0
+  }
+ },
+ "conserve": {
+  "red": 66,
+  "balance": {
+   "depart": 0,
+   "sum": 33,
+   "ok": false
+  },
+  "bad": {
+   "twoIn": 0,
+   "inNoDepart": 33,
+   "crossedNoIn": 0,
+   "homeAndArrive": 0,
+   "backAndIn": 0,
+   "noDepart": 33
+  }
+ },
+ "perfConserve": {
+  "depart": 33,
+  "joined": 33,
+  "home": 0,
+  "dead": 0,
+  "onRoad": 0,
+  "ok": true,
+  "sentOk": 33,
+  "inRecv": 33,
+  "handOk": true,
+  "departLog": 0,
+  "departLogMuted": 33
+ },
+ "via": {},
+ "perHead": {
+  "n": 33,
+  "p50": 29,
+  "min": 23.2
+ },
+ "road": {
+  "dead": 0,
+  "deadBy": {},
+  "days": 66,
+  "hungry": 0
+ },
+ "herdMax": {
+  "vil": "nippon|쿠라마",
+  "n": 18,
+  "days": 5,
+  "sameLineMax": 18
+ },
+ "herd": [
+  {
+   "vil": "nippon|쿠라마",
+   "n": 18,
+   "days": 5,
+   "sameLineMax": 18,
+   "firstN": 26,
+   "lastN": 48,
+   "overK": 0,
+   "perHeadMin": 23.173809523809524,
+   "over": 0,
+   "line": [
+    [
+     200,
+     589075400,
+     null,
+     null,
+     null,
+     null,
+     27,
+     null,
+     66.3,
+     34.1
+    ],
+    [
+     200,
+     589075400,
+     null,
+     null,
+     null,
+     null,
+     28,
+     null,
+     66.3,
+     34.1
+    ],
+    [
+     227,
+     589075427,
+     null,
+     null,
+     null,
+     null,
+     33,
+     null,
+     70.9,
+     32.9
+    ],
+    [
+     227,
+     589075427,
+     null,
+     null,
+     null,
+     null,
+     34,
+     null,
+     70.9,
+     32.9
+    ],
+    [
+     227,
+     589075427,
+     null,
+     null,
+     null,
+     null,
+     35,
+     null,
+     70.9,
+     32.9
+    ],
+    [
+     227,
+     589075427,
+     null,
+     null,
+     null,
+     null,
+     36,
+     null,
+     70.9,
+     32.8
+    ],
+    [
+     227,
+     589075427,
+     null,
+     null,
+     null,
+     null,
+     37,
+     null,
+     70.9,
+     32.8
+    ],
+    [
+     228,
+     589075428,
+     null,
+     null,
+     null,
+     null,
+     38,
+     null,
+     71.1,
+     24.3
+    ],
+    [
+     228,
+     589075428,
+     null,
+     null,
+     null,
+     null,
+     39,
+     null,
+     71.1,
+     24.5
+    ],
+    [
+     228,
+     589075428,
+     null,
+     null,
+     null,
+     null,
+     40,
+     null,
+     71.1,
+     24.6
+    ],
+    [
+     228,
+     589075428,
+     null,
+     null,
+     null,
+     null,
+     41,
+     null,
+     71.1,
+     24.8
+    ],
+    [
+     229,
+     589075429,
+     null,
+     null,
+     null,
+     null,
+     42,
+     null,
+     71.3,
+     23.2
+    ],
+    [
+     229,
+     589075429,
+     null,
+     null,
+     null,
+     null,
+     43,
+     null,
+     71.3,
+     23.4
+    ],
+    [
+     229,
+     589075429,
+     null,
+     null,
+     null,
+     null,
+     44,
+     null,
+     71.3,
+     23.6
+    ],
+    [
+     229,
+     589075429,
+     null,
+     null,
+     null,
+     null,
+     45,
+     null,
+     71.3,
+     23.8
+    ],
+    [
+     230,
+     589075430,
+     null,
+     null,
+     null,
+     null,
+     46,
+     null,
+     71.5,
+     24.2
+    ],
+    [
+     230,
+     589075430,
+     null,
+     null,
+     null,
+     null,
+     47,
+     null,
+     71.5,
+     24.3
+    ],
+    [
+     230,
+     589075430,
+     null,
+     null,
+     null,
+     null,
+     48,
+     null,
+     71.5,
+     24.5
+    ]
+   ]
+  },
+  {
+   "vil": "nippon|오오임업",
+   "n": 8,
+   "days": 4,
+   "sameLineMax": 8,
+   "firstN": 21,
+   "lastN": 29,
+   "overK": 0,
+   "perHeadMin": 28.892857142857142,
+   "over": 0,
+   "line": [
+    [
+     191,
+     589075391,
+     null,
+     null,
+     null,
+     null,
+     22,
+     null,
+     78.8,
+     33.6
+    ],
+    [
+     191,
+     589075391,
+     null,
+     null,
+     null,
+     null,
+     23,
+     null,
+     78.8,
+     33.5
+    ],
+    [
+     191,
+     589075391,
+     null,
+     null,
+     null,
+     null,
+     24,
+     null,
+     78.8,
+     33.4
+    ],
+    [
+     192,
+     589075392,
+     null,
+     null,
+     null,
+     null,
+     25,
+     null,
+     79.5,
+     32.7
+    ],
+    [
+     192,
+     589075392,
+     null,
+     null,
+     null,
+     null,
+     26,
+     null,
+     79.5,
+     32.7
+    ],
+    [
+     193,
+     589075393,
+     null,
+     null,
+     null,
+     null,
+     27,
+     null,
+     80.8,
+     33.4
+    ],
+    [
+     194,
+     589075394,
+     null,
+     null,
+     null,
+     null,
+     28,
+     null,
+     82.1,
+     28.9
+    ],
+    [
+     194,
+     589075394,
+     null,
+     null,
+     null,
+     null,
+     29,
+     null,
+     82.1,
+     29
+    ]
+   ]
+  },
+  {
+   "vil": "nippon|후카임업",
+   "n": 4,
+   "days": 3,
+   "sameLineMax": 4,
+   "firstN": 32,
+   "lastN": 36,
+   "overK": 0,
+   "perHeadMin": 26.008333333333333,
+   "over": 0,
+   "line": [
+    [
+     202,
+     589075402,
+     null,
+     null,
+     null,
+     null,
+     33,
+     null,
+     70,
+     29.7
+    ],
+    [
+     202,
+     589075402,
+     null,
+     null,
+     null,
+     null,
+     34,
+     null,
+     70,
+     29.8
+    ],
+    [
+     204,
+     589075404,
+     null,
+     null,
+     null,
+     null,
+     35,
+     null,
+     70.1,
+     27.9
+    ],
+    [
+     208,
+     589075408,
+     null,
+     null,
+     null,
+     null,
+     36,
+     null,
+     69.9,
+     26
+    ]
+   ]
+  },
+  {
+   "vil": "nippon|사키농촌",
+   "n": 2,
+   "days": 2,
+   "sameLineMax": 2,
+   "firstN": 23,
+   "lastN": 27,
+   "overK": 0,
+   "perHeadMin": 29.03333333333333,
+   "over": 0,
+   "line": [
+    [
+     254,
+     589075454,
+     null,
+     null,
+     null,
+     null,
+     24,
+     null,
+     95.4,
+     29
+    ],
+    [
+     260,
+     589075460,
+     null,
+     null,
+     null,
+     null,
+     27,
+     null,
+     96.2,
+     33.9
+    ]
+   ]
+  },
+  {
+   "vil": "nippon|카토쿠",
+   "n": 1,
+   "days": 1,
+   "sameLineMax": 1,
+   "firstN": 28,
+   "lastN": 29,
+   "overK": 0,
+   "perHeadMin": 25.96551724137931,
+   "over": 0,
+   "line": [
+    [
+     195,
+     589075395,
+     null,
+     null,
+     null,
+     null,
+     29,
+     null,
+     106.4,
+     26
+    ]
+   ]
+  }
+ ],
+ "ageBands": [
+  {
+   "band": "0~1",
+   "n": 0,
+   "overMean": null,
+   "overPos": 0,
+   "perHeadP50": null,
+   "overK": 0
+  },
+  {
+   "band": "2~3",
+   "n": 0,
+   "overMean": null,
+   "overPos": 0,
+   "perHeadP50": null,
+   "overK": 0
+  },
+  {
+   "band": "4~7",
+   "n": 0,
+   "overMean": null,
+   "overPos": 0,
+   "perHeadP50": null,
+   "overK": 0
+  },
+  {
+   "band": "8~15",
+   "n": 0,
+   "overMean": null,
+   "overPos": 0,
+   "perHeadP50": null,
+   "overK": 0
+  },
+  {
+   "band": "16+",
+   "n": 0,
+   "overMean": null,
+   "overPos": 0,
+   "perHeadP50": null,
+   "overK": 0
+  }
+ ],
+ "ageAll": {
+  "n": 0,
+  "p50": null,
+  "p90": null,
+  "max": null
+ },
+ "ageLogCheck": {
+  "n": 0,
+  "eq": 0
+ },
+ "staged": {
+  "hanbando": {
+   "rounds": 0,
+   "took": 0,
+   "tries": 0,
+   "own": 0
+  },
+  "nippon": {
+   "rounds": 0,
+   "took": 0,
+   "tries": 0,
+   "own": 0
+  }
+ },
+ "perf": {
+  "hanbando": {
+   "t1352": {
+    "localOn": true,
+    "seamOn": true,
+    "seamKeys": 20,
+    "hist": 724,
+    "histDrop": 547,
+    "seamOut": 9000,
+    "seamIn": 299,
+    "seamRows": 5980,
+    "calls": 165,
+    "own": 22,
+    "local": 1008,
+    "seam": 2930,
+    "notYet": 0,
+    "pickOwn": 0,
+    "pickLocal": 8,
+    "pickSeam": 25,
+    "ageN": 33,
+    "ageSum": 33,
+    "ageMax": 1,
+    "stage": 0,
+    "staged": 0,
+    "roadDays": 33,
+    "roadHungry": 0
+   },
+   "why": {
+    "at": 0,
+    "geo": 0,
+    "far": 2938,
+    "split": 0,
+    "days": 0,
+    "h": 0,
+    "beds": 372,
+    "food": 614
+   },
+   "t1147": {
+    "pick": 37,
+    "nearest": 0,
+    "other": 37,
+    "none": 128
+   }
+  },
+  "nippon": {
+   "t1352": {
+    "localOn": true,
+    "seamOn": true,
+    "seamKeys": 30,
+    "hist": 966,
+    "histDrop": 706,
+    "seamOut": 6000,
+    "seamIn": 300,
+    "seamRows": 9000,
+    "calls": 0,
+    "own": 0,
+    "local": 0,
+    "seam": 0,
+    "notYet": 0,
+    "pickOwn": 0,
+    "pickLocal": 0,
+    "pickSeam": 0,
+    "ageN": 0,
+    "ageSum": 0,
+    "ageMax": 0,
+    "stage": 0,
+    "staged": 0,
+    "roadDays": 33,
+    "roadHungry": 0
+   },
+   "why": {
+    "at": 0,
+    "geo": 0,
+    "far": 0,
+    "split": 0,
+    "days": 0,
+    "h": 0,
+    "beds": 0,
+    "food": 0
+   },
+   "t1147": {
+    "pick": 0,
+    "nearest": 0,
+    "other": 0,
+    "none": 0
+   }
+  }
+ }
+}

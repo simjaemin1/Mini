@@ -20,7 +20,7 @@ const { execFileSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 let pass = 0, fail = 0;
 const ok = (c, m, d) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (d !== undefined && d !== '' ? `  ${d}` : '')); };
-const KNOBS = ['T1326_HUNT_CLOCK', 'T325_WOOD_ACT', 'T1195_HUNT_REAL', 'T1316_BODY_CLOCK', 'T1316_SUBSTEP', 'T1295_FARM_CLOCK', 'T1295_GOURD', 'T1284_FARM_YIELD', 'T1276_FARM_K', 'T1243_FARM_ON', 'T100_FIELD_YIELD', 'T368_FARM_ACT', 'T1201_BRONZE_CROPS', 'T1215_FIELD_M2', 'T1221_FARM_LABOR', 'T100_GARDEN', 'T227_EVEN'];
+const KNOBS = ['T1351_MINE_CLOCK', 'T1326_HUNT_CLOCK', 'T325_WOOD_ACT', 'T1195_HUNT_REAL', 'T1316_BODY_CLOCK', 'T1316_SUBSTEP', 'T1295_FARM_CLOCK', 'T1295_GOURD', 'T1284_FARM_YIELD', 'T1276_FARM_K', 'T1243_FARM_ON', 'T100_FIELD_YIELD', 'T368_FARM_ACT', 'T1201_BRONZE_CROPS', 'T1215_FIELD_M2', 'T1221_FARM_LABOR', 'T100_GARDEN', 'T227_EVEN'];
 const sub = (env, code) => {
   const e = Object.assign({}, process.env); delete e.NODE_OPTIONS; for (const k of KNOBS) delete e[k]; Object.assign(e, env);
   return JSON.parse(execFileSync(process.execPath, ['-e', code], { cwd: ROOT, env: e, encoding: 'utf8', maxBuffer: 64 << 20 }).trim().split('\n').filter((l) => l.startsWith('{')).pop());

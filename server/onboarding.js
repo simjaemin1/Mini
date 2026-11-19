@@ -784,7 +784,9 @@ function pickFirstQuest(vid) {
   const urg = (r) => r.remain / Math.max(1, r.qty);
   //   ★[T1341] 켬 — 갚음이 없으니 "먹을 것으로 갚는 의뢰"를 앞세울 까닭이 없다: 가장 급한 것 하나 · 갚음 칸은 비운다(끔 = 종전 그대로).
   const edible = T1341 ? [] : rows.filter((r) => { const it = toItem(r.rewItem); return it && food.has(it); });
-  const pool = edible.length ? edible : rows;
+  //   ★[T1368 · Q19] 켬 — 새 사람이 맨손 · 조잡한 도구로 낼 수 있는 의뢰를 먼저(장부 정본 `newbieHas` · 없으면 종전 차례)
+  const newbie = (T1341 && typeof ledger.newbieHas === 'function') ? rows.filter((r) => ledger.newbieHas(r.item)) : [];
+  const pool = edible.length ? edible : newbie.length ? newbie : rows;
   pool.sort((a, b) => urg(b) - urg(a));
   const r = pool[0];
   if (T1341) return { item: r.item, qty: r.qty, remain: r.remain, rewItem: null, rewQty: 0, rewPlayerItem: null, meal: false };

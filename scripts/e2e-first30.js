@@ -251,7 +251,9 @@ const fctx = (hasVessel) => ({                    // ★존 `_forageCtx` 와 같
   isRock: (x, y) => Z.isRockTileLocal(x, y), isWater: (x, y) => Z.isWaterTileLocal(x, y),
   isSea: (x, y) => Z.isSeaTileLocal(x, y), hasVessel: !!hasVessel,
   // ★[T1065] 켬이면 존이 `rockNear` 를 준다(바위 개체 둘레 자갈 ③′) — 자는 화면에 보이는 바위로 같은 술어를 준다(끔 = 없음 = 종전)
-  rockNear: GATE ? (x, y, rad) => RES.some((r) => r.on && r.t === 'rock' && Math.hypot(r.x - x, r.y - y) <= rad) : undefined });
+  rockNear: GATE ? (x, y, rad) => RES.some((r) => r.on && r.t === 'rock' && Math.hypot(r.x - x, r.y - y) <= rad) : undefined,
+  // ★[T1368] 켬(`--own` = 아이 존 `T1341_OWN_HOUSE=1`)이면 존이 `rockFirst` 를 준다(바위 덩이 곁은 숲 바닥보다 자갈 먼저) — 자도 같은 칸을 준다(끔 = 칸 없음)
+  ...(OWN ? { rockFirst: true } : {}) });
 // ★[T1065] 도구 문(존 `T1065_TOOL_GATE` 그대로 읽는다) — 켬이면 맞는 도구가 없을 때 나무 · 바위를 고르지 않는다(사람도 맨손이면 거절 이유를 보고 줍기로 간다)
 const GATE = !!Z.T1065_TOOL_GATE;
 let _tools = [];   // 마지막 `state()` 가 본 손 도구

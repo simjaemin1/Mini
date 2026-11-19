@@ -13,6 +13,7 @@
 //   가르는 근거 둘: ⓐ 글자(하네스 + 그것이 부르는 `scripts/` 자를 따라가며 — playwright · 존/central 경로 · `.listen(` · `child_process`)
 //   ⓑ **돌린 판**(`ci-probe.js` 탐침 — 실제로 일어난 자식 · 듣기 · 브라우저). 돌린 판이 있으면 판이 정본(글자는 돌리기 전 짐작 · 안 돌린 줄만 글자).
 // ★CI 올림 규칙(core): (가)(나) · 다섯 판 다 초록(러너 판정 — RC 0 · 결과 줄 있음) · 가장 긴 판 60초 이하. 그 밖은 까닭을 표에 적는다.
+// ★서버 잡(srv · T1367): (다) · 다섯 판 다 초록 · 가장 긴 판 60초 이하 — core 와 같은 문턱. 고정 포트를 쥐므로 **한 잡 안에서 차례로**(나란히 0).
 // ★표: `scripts/ci-class.json`(정본 · 커밋) — 줄마다 { name, cls, secs(판마다), rc(판마다), why, core, shard }.
 //   CI 의 core 목록은 `--write-yml` 이 이 표에서 `regress-unit.yml` 의 표지 사이 블록에 쓴다 · `test-ci-list` 가 둘이 같은지 본다.
 //
@@ -20,7 +21,9 @@
 //   node scripts/ci-class.js --static                      # 글자로만 가른다(돌리지 않음) — 표 머리 갱신
 //   node scripts/ci-class.js --measure [--runs 5] [--only a.js,b.js] [--cap 120]   # (가)(나) 후보를 탐침과 함께 돌려 표를 채운다
 //   node scripts/ci-class.js --times <러너 로그…>          # 러너 로그 `[소요]` 의 홀로 걸린 초(한 판)를 옮긴다 — 60초 넘는 판 · (라)는 다섯 판을 안 잰다
-//   node scripts/ci-class.js --write-yml [--shards 4]       # 표의 core 를 잡 몇 개로 나눠 yml 블록에 쓴다
+//   node scripts/ci-class.js --measure --server --only a.js,b.js   # (다) 를 다섯 판 잰다 — 판마다 제 무리(setsid)로 돌리고 끝나면 무리를 내린다(남은 포트 0)
+//   node scripts/ci-class.js --write-yml [--shards 4] [--srv-shards 1]   # 표의 core 를 잡 몇 개로 나눠 yml 블록에 쓴다 · 서버 잡 블록(표지 있으면)도
+//   node scripts/ci-class.js --srv                          # 서버 잡 목록(줄마다 하나)
 //   node scripts/ci-class.js --core                         # core 목록(줄마다 하나) — 다른 자가 부를 때
 //   node scripts/ci-class.js --table                        # 사람이 읽는 표(마크다운)
 'use strict';
@@ -67,14 +70,18 @@ function staticClass(name) {
 
 // ── ⓑ 돌린 판 ───────────────────────────────────────────────────────────────────
 //   러너(`run-regress.sh`)와 같은 판정: RC 0 이고 결과 줄(✓ ✗ 표시 또는 통과 · PASS · FAIL · 실패 · 결과)이 있으면 초록.
-function runOnce(name, capSec) {
+function runOnce(name, capSec, grp) {
   const out = path.join(os.tmpdir(), `ci-probe-${process.pid}-${name}.jsonl`);
   try { fs.unlinkSync(out); } catch (e) {}
   const env = Object.assign({}, process.env, { CI_PROBE_OUT: out, NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --require ${path.join(SCRIPTS, 'ci-probe.js')}`.trim(),
     TIDE_FREEZE_MS: process.env.TIDE_FREEZE_MS || '372603' });   // CI 잡과 같은 env(물때 고정)
   const t0 = Date.now();
-  const r = spawnSync(process.execPath, [path.join(SCRIPTS, name)], { cwd: ROOT, env, encoding: 'utf8', timeout: capSec * 1000, maxBuffer: 256 << 20, killSignal: 'SIGKILL' });
+  //   grp(서버 판) — `setsid` 로 제 무리를 만들어 돌리고(pid 그대로 — 실행만 바꿈) 끝나면 무리째 내린다(러너 `run-regress.sh` 의 무리 내리기와 같은 꼴)
+  const r = grp ? spawnSync('setsid', [process.execPath, path.join(SCRIPTS, name)], { cwd: ROOT, env, encoding: 'utf8', timeout: capSec * 1000, maxBuffer: 256 << 20, killSignal: 'SIGKILL' })
+    : spawnSync(process.execPath, [path.join(SCRIPTS, name)], { cwd: ROOT, env, encoding: 'utf8', timeout: capSec * 1000, maxBuffer: 256 << 20, killSignal: 'SIGKILL' });
   const secs = +((Date.now() - t0) / 1000).toFixed(1);
+  let left = false;
+  if (grp && r.pid) { try { process.kill(-r.pid, 0); left = true; process.kill(-r.pid, 'SIGKILL'); } catch (e) {} if (left) spawnSync('sleep', ['2']); }
   const txt = (r.stdout || '') + (r.stderr || '');
   const marks = (txt.match(/^[ \t]*(✓|✔|✗|✘)/gm) || []).length, words = (txt.match(/통과|PASS|FAIL|실패|결과/g) || []).length;
   const rc = r.error && r.error.code === 'ETIMEDOUT' ? 124 : (r.status == null ? 137 : r.status);
@@ -85,7 +92,7 @@ function runOnce(name, capSec) {
   //   지금 CI 27종 가운데 여럿이 이 꼴 — `test-kcal` · `test-body` …). 자식 프로세스가 들으면 서버를 띄운 것(다).
   const listen = ev.some((e) => e.ev === 'listen' && e.pid !== r.pid), inproc = ev.some((e) => e.ev === 'listen' && e.pid === r.pid), child = ev.some((e) => e.ev === 'child');
   const fails = (txt.match(/^[ \t]*✗.*$/gm) || []).slice(0, 2).map((s) => s.trim().slice(0, 120));
-  return { rc, secs, green: rc === 0 && marks + words > 0, dyn: browser ? '라' : listen ? '다' : child ? '나' : '가', inproc, fails,
+  return { rc, secs, left, green: rc === 0 && marks + words > 0, dyn: browser ? '라' : listen ? '다' : child ? '나' : '가', inproc, fails,
     childWhat: [...new Set(ev.filter((e) => e.ev === 'child').map((e) => e.what.split(' ').slice(0, 2).map((x) => path.basename(x)).join(' ')))].slice(0, 4) };
 }
 
@@ -105,7 +112,11 @@ function decide(row) {
   const same = runs.length >= RUNS_DEFAULT && runs.every((r) => r.green === runs[0].green);
   row.same5 = runs.length >= RUNS_DEFAULT ? same : null;
   let why = '';
-  if (cls === '다' || cls === '라') why = `${cls === '다' ? '서버' : '브라우저'}${row.dyn ? '' : '(글자)'} — CI 밖(야간 · 전수)`;
+  row.srv = false;
+  if (cls === '다' && runs.length >= RUNS_DEFAULT && maxS <= CORE_MAX_SEC && same && allGreen) { row.srv = true; why = 'srv'; }
+  else if (cls === '다' && runs.length >= 1 && row.dyn) why = maxS > CORE_MAX_SEC ? `서버 ${maxS}초 > ${CORE_MAX_SEC}초 — CI 밖(야간 · 전수)`
+    : runs.length < RUNS_DEFAULT ? `서버 ${runs.length}판만 잼` : !same ? `서버 다섯 판 갈림(초록 ${runs.filter((r) => r.green).length}/${runs.length})` : `서버 다섯 판 다 빨강 — ${(runs[0].fails[0] || 'RC ' + runs[0].rc)}`;
+  else if (cls === '다' || cls === '라') why = `${cls === '다' ? '서버' : '브라우저'}${row.dyn ? '' : '(글자)'} — CI 밖(야간 · 전수)`;
   else if (!runs.length && row.logSec > CORE_MAX_SEC) why = `러너 한 판 ${row.logSec}초 > ${CORE_MAX_SEC}초(안 돌림)`;
   else if (!runs.length) why = '안 잼';
   else if (maxS > CORE_MAX_SEC) why = `${maxS}초 > ${CORE_MAX_SEC}초`;
@@ -114,6 +125,7 @@ function decide(row) {
   else if (!allGreen) why = `다섯 판 다 빨강 — ${(runs[0].fails[0] || 'RC ' + runs[0].rc)}`;
   row.core = !why;
   row.why = why || 'core';
+  if (!row.srv) delete row.srv;
   return row;
 }
 
@@ -128,7 +140,7 @@ if (has('--static')) {
   console.log(`글자 분류 ${names.length}종 · ${CLS.map((k) => `${k} ${c[k] || 0}`).join(' · ')}`);
 }
 if (has('--measure')) {
-  const T = load(); const runsN = +arg('--runs', RUNS_DEFAULT), cap = +arg('--cap', 120);
+  const T = load(); const runsN = +arg('--runs', RUNS_DEFAULT), cap = +arg('--cap', 120), SRV = has('--server');
   const only = arg('--only', '') ? arg('--only', '').split(',') : null;
   //   잴 것: 글자 (라) 가 아니고 러너 로그 한 판이 60초 이하(또는 로그에 없음)인 것 — 글자 (다) 도 잰다(글자가 무겁게 볼 수 있다 · 판이 가린다)
   const names = only || Object.keys(T.rows).filter((n) => T.rows[n].cls0 !== '라' && !(T.rows[n].logSec > CORE_MAX_SEC) && !(T.rows[n].runs || []).length);
@@ -136,9 +148,9 @@ if (has('--measure')) {
   for (const n of names) {
     const row = T.rows[n] || { cls0: staticClass(n).cls }; row.runs = [];
     for (let k = 0; k < runsN; k++) {
-      const r = runOnce(n, cap); row.runs.push({ rc: r.rc, secs: r.secs, green: r.green, fails: r.fails });
+      const r = runOnce(n, cap, SRV); row.runs.push({ rc: r.rc, secs: r.secs, green: r.green, fails: r.fails }); if (r.left) row.left = true;
       row.dyn = row.dyn ? heavier(row.dyn, r.dyn) : r.dyn; if (r.childWhat.length) row.child = r.childWhat; if (r.inproc) row.inproc = true;
-      if (r.secs > CORE_MAX_SEC || r.dyn === '다' || r.dyn === '라') break;   // 못 오를 판은 한 판으로 끝(시간 아낌 · 표에 그 까닭)
+      if (r.secs > CORE_MAX_SEC || r.dyn === '라' || (r.dyn === '다' && !SRV)) break;   // 못 오를 판은 한 판으로 끝(시간 아낌 · 표에 그 까닭) — `--server` 면 (다) 도 다섯 판
     }
     T.rows[n] = decide(row); i++;
     console.log(`[${i}/${names.length}] ${n} ${row.cls} ${row.runs.map((r) => (r.green ? '초' : '빨') + r.secs).join(' ')} → ${row.why}`);
@@ -157,13 +169,25 @@ if (has('--times')) {
   }
   save(T);
 }
-function shardsOf(T, K) {
-  const core = Object.entries(T.rows).filter(([, r]) => r.core).map(([n, r]) => [n, r.maxSec || 1]).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
+function shardsOf(T, K, key) {
+  key = key || 'core';
+  const core = Object.entries(T.rows).filter(([, r]) => r[key]).map(([n, r]) => [n, r.maxSec || 1]).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
   const bins = Array.from({ length: K }, () => ({ s: 0, l: [] }));
   for (const [n, s] of core) { const b = bins.slice().sort((x, y) => x.s - y.s)[0]; b.s += s; b.l.push(n); }
   return bins.map((b) => ({ secs: +b.s.toFixed(1), list: b.l.sort() }));
 }
 const MARK_A = '# <ci-class core — scripts/ci-class.js --write-yml 이 쓴다 · 손으로 고치지 않는다>', MARK_B = '# </ci-class core>';
+const MARK_SA = '# <ci-class srv — scripts/ci-class.js --write-yml 이 쓴다 · 손으로 고치지 않는다>', MARK_SB = '# </ci-class srv>';
+function srvOf(T) { return Object.keys(T.rows).filter((n) => T.rows[n].srv).sort(); }
+//   서버 잡 블록 — 잡마다 한 러너 기계 · 잡 안은 차례로(러너 기본 -j 1 · 고정 포트 겹침 0). 잡 수 KS(기본 1) — 잡끼리는 다른 기계라 포트를 안 나눈다.
+function srvBlock(T, KS) {
+  KS = KS || 1;
+  const S = shardsOf(T, KS, 'srv');
+  const lines = [MARK_SA, `        # 분류표 ${T.at || '?'} · 서버 ${S.reduce((a, b) => a + b.list.length, 0)}종 · 잡 ${KS}개(합 초 ${S.map((b) => Math.round(b.secs)).join(' · ')} — 가장 긴 판 · 이 상자)`, '        include:'];
+  S.forEach((b, i) => { lines.push(`          - srv: '${i + 1}/${KS}'`); lines.push(`            list: >-`); for (const n of b.list) lines.push(`              ${n}`); });
+  lines.push(`        ${MARK_SB}`);
+  return lines.map((l, i) => (i === 0 ? '        ' + l : l)).join('\n');
+}
 function ymlBlock(T, K) {
   const S = shardsOf(T, K);
   const lines = [MARK_A, `        # 분류표 ${T.at || '?'} · core ${S.reduce((a, b) => a + b.list.length, 0)}종 · 잡 ${K}개(합 초 ${S.map((b) => Math.round(b.secs)).join(' · ')})`, '        include:'];
@@ -176,14 +200,19 @@ if (has('--write-yml')) {
   const y = fs.readFileSync(YML, 'utf8'); const a = y.indexOf(MARK_A), b = y.indexOf(MARK_B);
   if (a < 0 || b < 0) { console.error('yml 에 표지가 없다'); process.exit(2); }
   const s = y.lastIndexOf('\n', a) + 1, e = b + MARK_B.length;
-  fs.writeFileSync(YML, y.slice(0, s) + ymlBlock(T, K) + y.slice(e));
-  console.log(`yml core 블록 — ${shardsOf(T, K).map((x) => `${x.list.length}종 ${Math.round(x.secs)}초`).join(' · ')}`);
+  let y2 = y.slice(0, s) + ymlBlock(T, K) + y.slice(e);
+  const sa = y2.indexOf(MARK_SA), sb = y2.indexOf(MARK_SB);
+  const KS = +arg('--srv-shards', 1);
+  if (sa >= 0 && sb >= 0) { const s2 = y2.lastIndexOf('\n', sa) + 1, e2 = sb + MARK_SB.length; y2 = y2.slice(0, s2) + srvBlock(T, KS) + y2.slice(e2); }
+  fs.writeFileSync(YML, y2);
+  console.log(`yml core 블록 — ${shardsOf(T, K).map((x) => `${x.list.length}종 ${Math.round(x.secs)}초`).join(' · ')}${sa >= 0 ? ` · 서버 ${shardsOf(T, KS, 'srv').map((x) => `${x.list.length}종 ${Math.round(x.secs)}초`).join(' · ')}` : ''}`);
 }
+if (has('--srv')) { console.log(srvOf(load()).join('\n')); }
 if (has('--core')) { const T = load(); console.log(Object.keys(T.rows).filter((n) => T.rows[n].core).join('\n')); }
 if (has('--table')) {
-  const T = load(); const c = {}, cc = {}; for (const r of Object.values(T.rows)) { c[r.cls] = (c[r.cls] || 0) + 1; if (r.core) cc[r.cls] = (cc[r.cls] || 0) + 1; }
-  console.log(`# CI 분류표 — ${T.at || '?'} · ${Object.keys(T.rows).length}종 · ${CLS.map((k) => `${k} ${c[k] || 0}(core ${cc[k] || 0})`).join(' · ')}\n`);
-  console.log('| 하네스 | 분류(글자 → 판) | 판마다 초 · 초록 | 다섯 판 같음 | core | 까닭 |'); console.log('|---|---|---|---|---|---|');
-  for (const [n, r] of Object.entries(T.rows)) console.log(`| ${n} | ${r.cls0}${r.dyn && r.dyn !== r.cls0 ? ' → ' + r.dyn : ''} | ${(r.runs || []).map((x) => `${x.secs}${x.green ? '' : '✗'}`).join(' ') || (r.logSec != null ? `러너 ${r.logSec}` : '—')} | ${r.same5 == null ? '—' : r.same5 ? '같음' : '갈림'} | ${r.core ? '○' : ''} | ${r.why} |`);
+  const T = load(); const c = {}, cc = {}; for (const r of Object.values(T.rows)) { c[r.cls] = (c[r.cls] || 0) + 1; if (r.core || r.srv) cc[r.cls] = (cc[r.cls] || 0) + 1; }
+  console.log(`# CI 분류표 — ${T.at || '?'} · ${Object.keys(T.rows).length}종 · ${CLS.map((k) => `${k} ${c[k] || 0}(${k === '다' ? '서버 잡' : 'core'} ${cc[k] || 0})`).join(' · ')}\n`);
+  console.log('| 하네스 | 분류(글자 → 판) | 판마다 초 · 초록 | 다섯 판 같음 | CI | 까닭 |'); console.log('|---|---|---|---|---|---|');
+  for (const [n, r] of Object.entries(T.rows)) console.log(`| ${n} | ${r.cls0}${r.dyn && r.dyn !== r.cls0 ? ' → ' + r.dyn : ''} | ${(r.runs || []).map((x) => `${x.secs}${x.green ? '' : '✗'}`).join(' ') || (r.logSec != null ? `러너 ${r.logSec}` : '—')} | ${r.same5 == null ? '—' : r.same5 ? '같음' : '갈림'} | ${r.core ? 'core' : r.srv ? '서버' : ''} | ${r.why} |`);
 }
-module.exports = { staticClass, decide, shardsOf, ymlBlock, load, MARK_A, MARK_B, CORE_MAX_SEC };
+module.exports = { staticClass, decide, shardsOf, ymlBlock, srvOf, srvBlock, load, MARK_A, MARK_B, MARK_SA, MARK_SB, CORE_MAX_SEC };

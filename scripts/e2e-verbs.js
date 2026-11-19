@@ -16,6 +16,7 @@
 'use strict';
 if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 const path = require('path');
+const NM = require('./lib-notice-mark');   // [T1367] 표지 뒤 알림 · 조건 기다림("마지막 알림 N줄" 대신)
 const fs = require('fs');
 const { spawn } = require('child_process');
 const FB = require('./fixture-boot');   // ★T349 기동 기다리기 정본(사본 0)
@@ -149,7 +150,7 @@ async function waitHttp(url, tries = 600) {
   ok(await inWorld(C, 180), '[C] 존 입장');
 
   const snap = async (n) => { await R.screenshot({ path: path.join(SHOTS, n + '.png') }); };
-  const notices = (pg) => pg.evaluate(() => (window.__notices || []).slice(-40));
+  const notices = (pg) => pg.evaluate(() => (window.__notices || []).slice(-40));   // @notice-ok 고리 전부(40칸 = 클라 상한 · 자름 0)
   const clearNotices = (pg) => pg.evaluate(() => { window.__notices = []; });
   const rawAbs = (pg) => pg.evaluate(() => (window.__getSrvAbs ? window.__getSrvAbs() : window.__getMyAbs()));
   // ★`myPid` 는 공유 스코프의 변수다(창에 안 걸려 있다) — 초안이 `window.__myPid` 를 물어
@@ -207,6 +208,7 @@ async function waitHttp(url, tries = 600) {
   const V0 = rows[0], vx = V0.cx * 32 + 16, vy = V0.cy * 32 + 16;
   {
     await clearNotices(R);
+    const tgW = await NM.mark(R);   // [T1367] 보내기 뒤에 온 공지만
     await R.evaluate(([a, b]) => window.__sendPrimary({ type: 'teleport_debug', x: a, y: b }), [vx, vy]);
     // ★★[T880] 공지를 **1.5초 한 번**만 읽었다 — R 이 바쁜 판엔 그 한 번이 비어 오프셋이 0 으로 남고, 야생 자리를
     //   절대 좌표로 잡아 서버가 존 끝에 붙였다(T870 §4 · 켬 4/5 — 뒤 절이 통째로 엉뚱한 자리에서 돌았다).
@@ -217,7 +219,7 @@ async function waitHttp(url, tries = 600) {
     for (let i = 0; i < 15 && !a0; i++) {
       await sleep(i ? 900 : 1500);
       if (m) { a0 = await rawAbs(R); break; }
-      const nz = (await R.evaluate(() => (window.__notices || []).slice(-8))).filter((t) => /텔레포트/.test(t));
+      const nz = (await NM.since(R, tgW)).filter((t) => /텔레포트/.test(t));   // [T1367] 종전 마지막 여덟 줄 — 표지 뒤 전부
       m = nz.length ? String(nz[nz.length - 1]).match(/\((-?\d+),\s*(-?\d+)\)/) : null;
     }
     if (m && a0) OFF = { x: a0.x - (+m[1]), y: a0.y - (+m[2]) };
@@ -1248,6 +1250,7 @@ async function waitHttp(url, tries = 600) {
 
         // ── 말 걸기 → 그 사람 입에서 **마을이 아는 소식**이 나온다
         await clearNotices(R);
+        const tgTalk = await NM.mark(R);   // [T1367] 말 걸기 뒤에 온 알림만
         // ★★[T1035 2026-11-01] **메뉴가 연 그 사람**을 제품이 적어 둔 그대로 읽는다 — 누르는 그 틱에(`talkToNpc` 가 `_npcAsk` 를 놓고 · 답이 오면 `npcAskTake` 가 가져가며 지운다 · 46-h-verbs.js:315 · 331).
         //   제품 `pickAt`(46-h-verbs.js:32 · 42)은 짚은 자리 상자(±`PICK_PLAYER_HALF`) 안의 **첫** 사람을 낸다(가장 가까운 사람이 아니다) — 몰려 걷는 사람들
         //   (어부 다섯이 191 ~ 202px 에 붙어 걸었다) 가운데 하나를 짚으면 메뉴는 다른 사람 것으로 열리고 그 말은 그 사람 머리 위로 간다.
@@ -1260,11 +1263,13 @@ async function waitHttp(url, tries = 600) {
           npc = { ...npc, pid: _ask.pid, name: _ask.name };
         }
         await sleep(2500);
+        //   [T1367] 종전 2.5초 뒤 마지막 세 줄 — 그 사람 이름이 든 알림이 표지 뒤에 올 때까지 더(상한 15초 · 판정 그대로)
+        await NM.waitSince(R, tgTalk, (l) => l.some((t2) => t2.includes(npc.name)), { capMs: 15000 });
         const said = await R.evaluate((pid) => {
           const b = speechBubbles.get(pid);
-          return { bubble: b ? b.text : null, brief: window.__evLastBrief || null,
-                   notices: (window.__notices || []).slice(-3) };
+          return { bubble: b ? b.text : null, brief: window.__evLastBrief || null };
         }, npc.pid);
+        said.notices = await NM.since(R, tgTalk);
         ok(!!said.bubble, '★★⑬ **그 사람 머리 위에 말풍선**이 떴다(채팅이 쓰는 그 통로 · 새 UI 0)',
            JSON.stringify(said.bubble));
         // ★★문장이 **서버 장부에서 왔는가** — 클라가 지은 글자가 아니라는 증거다.
@@ -1330,7 +1335,7 @@ async function waitHttp(url, tries = 600) {
       { // ★[T1035] 진단(읽기만) — 옮긴 자리(서버 권위 · 존 로컬) · 가장 가까운 마을 · 클라 게이트 훅 · 텔레포트 거절 알림
         const tx = _wTx, ty = _wTy, p = _wOut;
         const nv = p ? vrows.map((v) => ({ v, d: Math.hypot(p.x - (v.cx * 32 + 16), p.y - (v.cy * 32 + 16)) })).sort((a, b) => a.d - b.d)[0] : null;
-        const ev = await R.evaluate(() => ({ dbg: window.__evDbg || null, tp: (window.__notices || []).slice(-12).filter((s) => /텔레포트/.test(s)).slice(-2) }));
+        const ev = await R.evaluate(() => ({ dbg: window.__evDbg || null, tp: (window.__notices || []).slice(-12).filter((s) => /텔레포트/.test(s)).slice(-2) }));   // @notice-ok 진단(판정 밖)
         console.log(`  · [상황] ⑬ 게이트 밖으로 — ${vsel.name}(${vsel.id}) ${_wDir || '넷 다 못 섬'}쪽 400px = (${tx},${ty}) · 선 자리 ${p ? `(${Math.round(p.x)},${Math.round(p.y)}) · 과녁에서 ${Math.round(Math.hypot(p.x - tx, p.y - ty))}px` : '-'}`
           + ` · 가장 가까운 마을 ${nv ? `${nv.v.name}(${nv.v.id}) ${Math.round(nv.d)}px` : '-'} · 게이트 훅 ${String(outGate)} · minD ${ev.dbg ? ev.dbg.minD : '-'} · 알림 ${JSON.stringify(ev.tp)}`);
       }

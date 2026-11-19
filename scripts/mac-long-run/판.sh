@@ -12,6 +12,7 @@
 #     CODE=<code-….tgz>                      판 코드(`make-pack.sh` 가 만든 것 · 이 폴더에)
 #     EVERY=<마디 날>                         T1308 체크포인트 간격(두 판을 견줄 땐 같은 값 — 마디 경계가 다르면 판이 갈린다 · 보고 T1308 §2)
 #     OBS=<관찰기 …>                          판 코드 뿌리 기준 경로(빈칸으로 가름) — 아이 존에 `-r` 로 싣는다(읽기만 하는 훅)
+#     DROP=1                                  (★[T1345] 있으면) 판이 끝나면 그 판의 세계 DB(`w.db*`) · 체크포인트(`ck/` · `stop-*.json`)를 지운다 — 관찰 json · 판 JSON 만 남긴다(맥 디스크 2 GB 안)
 #     <이름> <날> <시드> [<env> …]            판 하나(env 는 K=V — 판 조건 · 손잡이)
 #   판마다 폴더 `<판 폴더>/<이름>/`(T1308 꼴: progress.json · progress.txt · ck/ · seg-<날>.* · guard.log) + `guard.pid`.
 #   상태: progress.done → 끝 · guard.pid 가 살아 있음 → 도는 중 · progress.json 있고 감독 없음 → **이어 띄움**(`t1308-guard.sh resume`) · 없음 → 새로 띄움(`new`).
@@ -32,6 +33,7 @@ FREE=$(df -k "$BASE" | awk 'NR==2{print $4}')
 [ -n "$FREE" ] && [ "$FREE" -lt 3000000 ] && echo "⚠ 디스크 여유 $((FREE / 1024)) MB — 판 둘이 체크포인트까지 쓰면 2 GB 가까이 든다. 모자라면 판이 멈추고(자료는 마지막 체크포인트까지 남음), 여유를 만든 뒤 다시 더블클릭하면 이어 돈다."
 
 CODE=$(sed -n 's/^CODE=//p' "$LIST" | head -1); EVERY=$(sed -n 's/^EVERY=//p' "$LIST" | head -1); OBS=$(sed -n 's/^OBS=//p' "$LIST" | head -1)
+DROP=$(sed -n 's/^DROP=//p' "$LIST" | head -1)
 [ -n "$CODE" ] && [ -f "$BASE/$CODE" ] || { echo "판 코드 tgz 가 없습니다: $BASE/$CODE"; exit 1; }
 EVERY="${EVERY:-30}"
 running() { [ -f "$1/guard.pid" ] && kill -0 "$(cat "$1/guard.pid")" 2>/dev/null; }
@@ -57,13 +59,18 @@ fi
 NODEOPT=""; for o in $OBS; do [ -f "$RUN/$o" ] || { echo "관찰기가 판 코드에 없습니다: $o"; exit 1; }; NODEOPT="$NODEOPT -r $RUN/$o"; done
 
 # ② 판마다 — 끝 · 도는 중 · 이어 띄움 · 새로 띄움
+#   ★[T1345] 감독이 끝나면(DROP=1 이고 판이 끝났으면) 그 판의 DB · 체크포인트를 지운다 — 판 폴더 안 글자만(`w.db*` · `ck/` · `stop-*.json`)
+GUARD_THEN='g="$1"; d="$2"; drop="$3"; shift 3; bash "$g" "$@"; c=$?
+  if [ "$drop" = 1 ] && node -e "process.exit(require(process.argv[1]).done?0:1)" "$d/progress.json" 2>/dev/null; then
+    rm -rf "$d/ck" "$d/w.db" "$d/w.db-wal" "$d/w.db-shm" "$d"/stop-*.json; echo "$(date -u +%FT%TZ) 끝 — DB · 체크포인트 지움(DROP=1)"; fi
+  exit $c'
 bg() {   # $1 = 판 폴더 · 나머지 = 감독 인자 — 뒤에서(setsid · nohup · caffeinate), 창을 닫아도 산다
   local d="$1"; shift
   local CAF=""; command -v caffeinate >/dev/null 2>&1 && CAF="caffeinate -ims"
   if command -v perl >/dev/null 2>&1; then
-    nohup perl -MPOSIX -e 'POSIX::setsid(); exec @ARGV or die "exec: $!"' $CAF bash "$RUN/scripts/t1308-guard.sh" "$@" >> "$d/runner.txt" 2>&1 < /dev/null &
+    nohup perl -MPOSIX -e 'POSIX::setsid(); exec @ARGV or die "exec: $!"' $CAF bash -c "$GUARD_THEN" _ "$RUN/scripts/t1308-guard.sh" "$d" "${DROP:-0}" "$@" >> "$d/runner.txt" 2>&1 < /dev/null &
   else
-    nohup $CAF bash "$RUN/scripts/t1308-guard.sh" "$@" >> "$d/runner.txt" 2>&1 < /dev/null &
+    nohup $CAF bash -c "$GUARD_THEN" _ "$RUN/scripts/t1308-guard.sh" "$d" "${DROP:-0}" "$@" >> "$d/runner.txt" 2>&1 < /dev/null &
   fi
   echo $! > "$d/guard.pid"
 }

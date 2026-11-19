@@ -335,7 +335,7 @@ async function waitHttp(url, tries = 900) {
       await clickMenu('^영토 넓히기$');
       for (let i = 0; i < 40; i++) {
         const m = await menuNow(); if (m && m.some((l) => /^넓히기 — /.test(l))) { quoteLine = m.find((l) => /^넓히기 — /.test(l)); break; }
-        const nt = (await page.evaluate(() => (window.__notices || []).slice())).filter(_terrNo); if (nt.length) { lastWhy = `(${tx},${ty}) ${nt.slice(-1)[0]}`; break; }
+        const nt = (await page.evaluate(() => (window.__notices || []).slice())).filter(_terrNo); if (nt.length) { lastWhy = `(${tx},${ty}) ${nt.slice(-1)[0]}`; break; }   // @notice-ok 비운 뒤 고리 전부(`.slice()` — 자름 0 · `nt.slice(-1)` 은 걸러 낸 줄의 끝)
         await sleep(200);
       }
       if (quoteLine) { target = [tx, ty]; break; }
@@ -355,7 +355,7 @@ async function waitHttp(url, tries = 900) {
       await sleep(600);
       const t1 = await terrOf();
       const w1 = ((await page.evaluate(() => window.__getInv && window.__getInv())) || {}).wood || 0;
-      ok(!!done, `★[T1207] ③ 화면이 끝을 말한다 — ${done || JSON.stringify((await page.evaluate(() => (window.__notices || []).slice(-3))))}`);
+      ok(!!done, `★[T1207] ③ 화면이 끝을 말한다 — ${done || JSON.stringify((await page.evaluate(() => (window.__notices || []).slice(-3))))}`);   // @notice-ok 진단(판정 밖)
       ok(t0 != null && t1 === t0 + 1, `★[T1207] ③′ 서버 영토가 한 칸 늘었다 — ${t0} → ${t1}칸(/lifedbg)`);
       ok(need != null && w0 - w1 === need, `★[T1207] ③″ 짐의 통나무가 값만큼 빠졌다 — ${w0} → ${w1}(값 ${need}개)`);
       await snap('05c-terr-done');
@@ -451,7 +451,7 @@ async function waitHttp(url, tries = 900) {
   let inv = hall ? await openInv(hall.id) : null;
   ok(!!inv, '★재접속한 창설자가 **자기 마을 재고를 다시 볼 수 있다** — 소유가 세션을 넘어 유지된다(DB 영속)');
   if (!inv) {
-    const nt = await page.evaluate(() => (window.__notices || []).slice(-5));
+    const nt = await page.evaluate(() => (window.__notices || []).slice(-5));   // @notice-ok 진단(판정 밖)
     console.log(`    [진단] 알림: ${nt.join(' / ')}`);
     console.log(`    [진단] 페이지 오류: ${perrs.slice(-5).join(' | ') || '(없음)'}`);
   }
@@ -563,7 +563,7 @@ async function waitHttp(url, tries = 900) {
           await sleep(250);
           inv3 = await page2.evaluate(() => window.__villageInv);
         }
-        ok(!!inv3 && inv3.viewOnly === true && inv3.welcome == null && inv3.donate === true, `★[T1132] 남이 회관 곁에 오면 재고가 **읽기 전용**으로 온다(이방인 받기 칸 없음 · 기부 칸 있음) — ${JSON.stringify(inv3 ? { viewOnly: inv3.viewOnly, welcome: inv3.welcome != null, donate: inv3.donate } : { notes: (await page2.evaluate(() => (window.__notices || []).slice(-4))), me: await page2.evaluate(() => window.__getMyAbs && window.__getMyAbs()), hall: { x: hall.wx, y: hall.wy } })}`);
+        ok(!!inv3 && inv3.viewOnly === true && inv3.welcome == null && inv3.donate === true, `★[T1132] 남이 회관 곁에 오면 재고가 **읽기 전용**으로 온다(이방인 받기 칸 없음 · 기부 칸 있음) — ${JSON.stringify(inv3 ? { viewOnly: inv3.viewOnly, welcome: inv3.welcome != null, donate: inv3.donate } : { notes: (await page2.evaluate(() => (window.__notices || []).slice(-4))), me: await page2.evaluate(() => window.__getMyAbs && window.__getMyAbs()), hall: { x: hall.wx, y: hall.wy } })}`);   // @notice-ok 진단(판정 밖)
         const ro = await page2.evaluate(() => { const el = document.getElementById('villageInvPanel'); return el ? { ro: !!el.querySelector('[data-pvi-viewonly]'), wel: !!el.querySelector('#pviWel'), shown: el.style.display !== 'none' } : null; });
         ok(!!ro && ro.shown && ro.ro && !ro.wel, `★[T1132] 화면 — 패널에 "볼 수만 있습니다" 줄 · 이방인 받기 단추 없음 — ${JSON.stringify(ro)}`);
         await page2.screenshot({ path: `${SHOTS}/10-viewonly.png` }).catch(() => {});

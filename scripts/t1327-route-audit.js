@@ -86,7 +86,7 @@ const say = (...a) => process.stdout.write(a.join(' ') + '\n');
   let reach = 0, pairsAll = 0; const unreach = [];
   if (mat) for (let i = 0; i < VS.length; i++) for (let j = i + 1; j < VS.length; j++) { pairsAll++; if (mat[i] && isFinite(mat[i][j])) reach++; else unreach.push(VS[i].dbId + '_' + VS[j].dbId); }
   const segs = [...segMap.values()].sort((p, q) => q.pairs - p.pairs);
-  const out = { zone: ZID, arms: { T598_ROUTE_EDGE: process.env.T598_ROUTE_EDGE === '1', T1320_ROCK_PATH: process.env.T1320_ROCK_PATH === '1', T1327_ROUTE_FIX: process.env.T1327_ROUTE_FIX === '1' },
+  const out = { zone: ZID, arms: { T598_ROUTE_EDGE: process.env.T598_ROUTE_EDGE === '1', T1320_ROCK_PATH: process.env.T1320_ROCK_PATH === '1', T1327_ROUTE_FIX: process.env.T1327_ROUTE_FIX !== '0' },
     bakeS: +bakeS.toFixed(1), villages: VS.length, pairsAll, reach, unreach, routes: keys.length, routesBlk, lenSum: Math.round(lenSum), steps: nSum, blkSteps: blkSum,
     blkSegs: segs.length, blkSegsByKind: byKind, ditchCells: DITCH.size, body: bodyOn ? body : null,
     t1327: V.t1327Stat ? V.t1327Stat() : null, segs, routeLen: Object.fromEntries(keys.map((k) => [k, routes[k] ? routes[k].len : null])), routeBlk: Object.fromEntries(Object.entries(routes).filter(([, r]) => r.segs).map(([k, r]) => [k, r])),

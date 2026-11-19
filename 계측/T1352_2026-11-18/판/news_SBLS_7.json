@@ -1,0 +1,499 @@
+{
+ "tag": "SBLS_7",
+ "env": {
+  "T1324_XZ_MIGRATE": "1",
+  "T1334_BUNDLE": "1",
+  "T1352_NEWS_LOCAL": "1",
+  "T1352_NEWS_SEAM": "1"
+ },
+ "days": 120,
+ "stagePlan": [
+  30,
+  10,
+  3,
+  3
+ ],
+ "crossed": 15,
+ "depart": 18,
+ "arrive": 15,
+ "byDir": {
+  "nippon→hanbando": {
+   "depart": 16,
+   "crossed": 13,
+   "arrive": 13,
+   "home": 0,
+   "dead": 0
+  },
+  "hanbando→nippon": {
+   "depart": 2,
+   "crossed": 2,
+   "arrive": 2,
+   "home": 0,
+   "dead": 0
+  }
+ },
+ "conserve": {
+  "red": 0,
+  "balance": {
+   "depart": 18,
+   "sum": 18,
+   "ok": true
+  },
+  "bad": {
+   "twoIn": 0,
+   "inNoDepart": 0,
+   "crossedNoIn": 0,
+   "homeAndArrive": 0,
+   "backAndIn": 0,
+   "noDepart": 0
+  }
+ },
+ "perfConserve": {
+  "depart": 18,
+  "joined": 15,
+  "home": 0,
+  "dead": 0,
+  "onRoad": 3,
+  "ok": true,
+  "sentOk": 15,
+  "inRecv": 15,
+  "handOk": true,
+  "departLog": 18,
+  "departLogMuted": 0
+ },
+ "via": {
+  "seam": 17,
+  "local": 1
+ },
+ "perHead": {
+  "n": 15,
+  "p50": 34.1,
+  "min": 31.1
+ },
+ "road": {
+  "dead": 0,
+  "deadBy": {},
+  "days": 30,
+  "hungry": 0
+ },
+ "herdMax": {
+  "vil": "hanbando|농촌3",
+  "n": 6,
+  "days": 1,
+  "sameLineMax": 6
+ },
+ "herd": [
+  {
+   "vil": "hanbando|농촌3",
+   "n": 6,
+   "days": 1,
+   "sameLineMax": 6,
+   "firstN": 23,
+   "lastN": 29,
+   "overK": 0,
+   "perHeadMin": 33.51724137931034,
+   "over": 54,
+   "line": [
+    [
+     32,
+     589075232,
+     "키요어촌",
+     "seam",
+     1,
+     16,
+     24,
+     7,
+     48.9,
+     33.7
+    ],
+    [
+     32,
+     589075232,
+     "키요어촌",
+     "seam",
+     1,
+     16,
+     25,
+     7,
+     48.9,
+     33.7
+    ],
+    [
+     32,
+     589075232,
+     "타카노",
+     "seam",
+     1,
+     16,
+     26,
+     9,
+     48.9,
+     33.6
+    ],
+    [
+     32,
+     589075232,
+     "타카노",
+     "seam",
+     1,
+     16,
+     27,
+     9,
+     48.9,
+     33.6
+    ],
+    [
+     32,
+     589075232,
+     "새후보21",
+     "seam",
+     1,
+     16,
+     28,
+     11,
+     48.9,
+     33.6
+    ],
+    [
+     32,
+     589075232,
+     "새후보21",
+     "seam",
+     1,
+     16,
+     29,
+     11,
+     48.9,
+     33.5
+    ]
+   ]
+  },
+  {
+   "vil": "hanbando|어촌11",
+   "n": 2,
+   "days": 1,
+   "sameLineMax": 2,
+   "firstN": 29,
+   "lastN": 29,
+   "overK": 0,
+   "perHeadMin": 34.17333333333333,
+   "over": 9,
+   "line": [
+    [
+     62,
+     589075262,
+     "네코로",
+     "seam",
+     1,
+     24,
+     30,
+     5,
+     54.6,
+     34.2
+    ],
+    [
+     62,
+     589075262,
+     "아오어촌",
+     "seam",
+     1,
+     24,
+     29,
+     4,
+     54.6,
+     34.2
+    ]
+   ]
+  },
+  {
+   "vil": "hanbando|임업1",
+   "n": 2,
+   "days": 1,
+   "sameLineMax": 2,
+   "firstN": 41,
+   "lastN": 43,
+   "overK": 0,
+   "perHeadMin": 38.318604651162794,
+   "over": 20,
+   "line": [
+    [
+     62,
+     589075262,
+     "아오어촌",
+     "seam",
+     1,
+     31,
+     42,
+     10,
+     191.2,
+     38.5
+    ],
+    [
+     62,
+     589075262,
+     "아오어촌",
+     "seam",
+     1,
+     31,
+     43,
+     10,
+     191.2,
+     38.3
+    ]
+   ]
+  },
+  {
+   "vil": "hanbando|어촌14",
+   "n": 2,
+   "days": 1,
+   "sameLineMax": 2,
+   "firstN": 27,
+   "lastN": 29,
+   "overK": 0,
+   "perHeadMin": 35.04482758620689,
+   "over": 14,
+   "line": [
+    [
+     112,
+     589075312,
+     "오오임업",
+     "seam",
+     1,
+     20,
+     28,
+     7,
+     95.7,
+     35.1
+    ],
+    [
+     112,
+     589075312,
+     "오오임업",
+     "seam",
+     1,
+     20,
+     29,
+     7,
+     95.7,
+     35
+    ]
+   ]
+  },
+  {
+   "vil": "nippon|토오광산",
+   "n": 2,
+   "days": 1,
+   "sameLineMax": 2,
+   "firstN": 24,
+   "lastN": 26,
+   "overK": 0,
+   "perHeadMin": 34.13846153846154,
+   "over": 12,
+   "line": [
+    [
+     102,
+     589075302,
+     "광산7",
+     "seam",
+     1,
+     18,
+     25,
+     6,
+     82.7,
+     34.2
+    ],
+    [
+     102,
+     589075302,
+     "광산7",
+     "seam",
+     1,
+     18,
+     26,
+     6,
+     82.7,
+     34.1
+    ]
+   ]
+  },
+  {
+   "vil": "hanbando|광산7",
+   "n": 1,
+   "days": 1,
+   "sameLineMax": 1,
+   "firstN": 3,
+   "lastN": 4,
+   "overK": 0,
+   "perHeadMin": 31.075,
+   "over": 0,
+   "line": [
+    [
+     62,
+     589075262,
+     "키요어촌",
+     "local",
+     1,
+     3,
+     4,
+     0,
+     29.8,
+     31.1
+    ]
+   ]
+  }
+ ],
+ "ageBands": [
+  {
+   "band": "0~1",
+   "n": 15,
+   "overMean": 7.27,
+   "overPos": 14,
+   "perHeadP50": 34.1,
+   "overK": 0
+  },
+  {
+   "band": "2~3",
+   "n": 0,
+   "overMean": null,
+   "overPos": 0,
+   "perHeadP50": null,
+   "overK": 0
+  },
+  {
+   "band": "4~7",
+   "n": 0,
+   "overMean": null,
+   "overPos": 0,
+   "perHeadP50": null,
+   "overK": 0
+  },
+  {
+   "band": "8~15",
+   "n": 0,
+   "overMean": null,
+   "overPos": 0,
+   "perHeadP50": null,
+   "overK": 0
+  },
+  {
+   "band": "16+",
+   "n": 0,
+   "overMean": null,
+   "overPos": 0,
+   "perHeadP50": null,
+   "overK": 0
+  }
+ ],
+ "ageAll": {
+  "n": 18,
+  "p50": 1,
+  "p90": 1,
+  "max": 1
+ },
+ "ageLogCheck": {
+  "n": 18,
+  "eq": 18
+ },
+ "staged": {
+  "hanbando": {
+   "rounds": 30,
+   "took": 78,
+   "tries": 90,
+   "own": 12
+  },
+  "nippon": {
+   "rounds": 30,
+   "took": 77,
+   "tries": 90,
+   "own": 30
+  }
+ },
+ "perf": {
+  "hanbando": {
+   "t1352": {
+    "localOn": true,
+    "seamOn": true,
+    "seamKeys": 20,
+    "hist": 260,
+    "histDrop": 127,
+    "seamOut": 3600,
+    "seamIn": 119,
+    "seamRows": 2380,
+    "calls": 83,
+    "own": 18,
+    "local": 263,
+    "seam": 1406,
+    "notYet": 0,
+    "pickOwn": 0,
+    "pickLocal": 0,
+    "pickSeam": 2,
+    "ageN": 2,
+    "ageSum": 2,
+    "ageMax": 1,
+    "stage": 10,
+    "staged": 78,
+    "roadDays": 15,
+    "roadHungry": 0
+   },
+   "why": {
+    "at": 0,
+    "geo": 0,
+    "far": 1296,
+    "split": 0,
+    "days": 0,
+    "h": 62,
+    "beds": 43,
+    "food": 275
+   },
+   "t1147": {
+    "pick": 78,
+    "nearest": 4,
+    "other": 74,
+    "none": 5
+   }
+  },
+  "nippon": {
+   "t1352": {
+    "localOn": true,
+    "seamOn": true,
+    "seamKeys": 30,
+    "hist": 331,
+    "histDrop": 144,
+    "seamOut": 2400,
+    "seamIn": 120,
+    "seamRows": 3600,
+    "calls": 83,
+    "own": 35,
+    "local": 409,
+    "seam": 2271,
+    "notYet": 15,
+    "pickOwn": 0,
+    "pickLocal": 1,
+    "pickSeam": 15,
+    "ageN": 16,
+    "ageSum": 16,
+    "ageMax": 1,
+    "stage": 10,
+    "staged": 77,
+    "roadDays": 15,
+    "roadHungry": 0
+   },
+   "why": {
+    "at": 0,
+    "geo": 0,
+    "far": 2261,
+    "split": 0,
+    "days": 0,
+    "h": 36,
+    "beds": 175,
+    "food": 188
+   },
+   "t1147": {
+    "pick": 77,
+    "nearest": 2,
+    "other": 75,
+    "none": 6
+   }
+  }
+ }
+}
