@@ -1,0 +1,717 @@
+{
+ "fwh95-1020": {
+  "tag": "fwh95-1020",
+  "on": false,
+  "scale": "off",
+  "seed": 1020,
+  "target": 400,
+  "reached": 400,
+  "finished": true,
+  "exit": null,
+  "wall": 1345.9,
+  "timeout": null,
+  "fatal": false,
+  "logDay": 400,
+  "start": 2997,
+  "end": 2899,
+  "max": 2997,
+  "cpuSecDay": 2.902,
+  "cpuLast10": 2.342,
+  "dbBody": null,
+  "dbTotal": null,
+  "dbMB": null,
+  "rssMB": null,
+  "heapMB": 1390,
+  "huntKill": null,
+  "starve": null,
+  "born": null,
+  "mismatch": null,
+  "meatKgDay": 459.7,
+  "pop": 1371,
+  "sp": {
+   "100": {
+    "deer": 1485,
+    "wild_boar": 495,
+    "arctic_hare": 990
+   },
+   "200": {
+    "deer": 1481,
+    "wild_boar": 493,
+    "arctic_hare": 987
+   },
+   "300": {
+    "deer": 1454,
+    "wild_boar": 484,
+    "arctic_hare": 969
+   },
+   "400": {
+    "deer": 1449,
+    "wild_boar": 483,
+    "arctic_hare": 966
+   }
+  },
+  "ledgerSum": 14497192.4,
+  "popRatio": 1,
+  "meatRatio": 1
+ },
+ "fwhb-1020": {
+  "tag": "fwhb-1020",
+  "on": true,
+  "scale": 5000,
+  "seed": 1020,
+  "target": 400,
+  "reached": 400,
+  "finished": true,
+  "exit": null,
+  "wall": 1437,
+  "timeout": null,
+  "fatal": false,
+  "logDay": 400,
+  "start": 2925,
+  "end": 63,
+  "max": 2925,
+  "cpuSecDay": 3.069,
+  "cpuLast10": 10.342,
+  "dbBody": null,
+  "dbTotal": null,
+  "dbMB": null,
+  "rssMB": null,
+  "heapMB": 2212,
+  "huntKill": 2959,
+  "starve": 0,
+  "born": 41,
+  "mismatch": 0,
+  "meatKgDay": 12.2,
+  "pop": 1134,
+  "sp": {
+   "100": {
+    "wild_boar": 11,
+    "deer": 24,
+    "arctic_hare": 11
+   },
+   "200": {
+    "wild_boar": 13,
+    "deer": 26,
+    "arctic_hare": 13
+   },
+   "300": {
+    "wild_boar": 16,
+    "deer": 28,
+    "arctic_hare": 14
+   },
+   "400": {
+    "wild_boar": 16,
+    "deer": 32,
+    "arctic_hare": 15
+   }
+  },
+  "ledgerSum": null,
+  "popRatio": 0.827,
+  "meatRatio": 0.027
+ },
+ "fwoff-1020": {
+  "tag": "fwoff-1020",
+  "on": false,
+  "scale": "off",
+  "seed": 1020,
+  "target": 400,
+  "reached": 400,
+  "finished": true,
+  "exit": null,
+  "wall": 1826,
+  "timeout": null,
+  "fatal": false,
+  "logDay": 400,
+  "start": 2997,
+  "end": 2725,
+  "max": 2997,
+  "cpuSecDay": 3.367,
+  "cpuLast10": 2.972,
+  "dbBody": null,
+  "dbTotal": null,
+  "dbMB": null,
+  "rssMB": null,
+  "heapMB": 1679,
+  "huntKill": null,
+  "starve": null,
+  "born": null,
+  "mismatch": null,
+  "meatKgDay": 595.8,
+  "pop": 1505,
+  "sp": {
+   "100": {
+    "deer": 1478,
+    "wild_boar": 492,
+    "arctic_hare": 985
+   },
+   "200": {
+    "deer": 1437,
+    "wild_boar": 479,
+    "arctic_hare": 958
+   },
+   "300": {
+    "deer": 1397,
+    "wild_boar": 465,
+    "arctic_hare": 931
+   },
+   "400": {
+    "deer": 1362,
+    "wild_boar": 454,
+    "arctic_hare": 908
+   }
+  },
+  "ledgerSum": 13627516.8,
+  "popRatio": 1.098,
+  "meatRatio": 1.296
+ },
+ "fwon5k-1020": {
+  "tag": "fwon5k-1020",
+  "on": true,
+  "scale": 5000,
+  "seed": 1020,
+  "target": 400,
+  "reached": 400,
+  "finished": true,
+  "exit": null,
+  "wall": 1367.5,
+  "timeout": null,
+  "fatal": false,
+  "logDay": 400,
+  "start": 2981,
+  "end": 2974,
+  "max": 2981,
+  "cpuSecDay": 2.265,
+  "cpuLast10": 1.647,
+  "dbBody": null,
+  "dbTotal": null,
+  "dbMB": null,
+  "rssMB": null,
+  "heapMB": 1502,
+  "huntKill": 0,
+  "starve": 7,
+  "born": 0,
+  "mismatch": 0,
+  "meatKgDay": 0,
+  "pop": 811,
+  "sp": {
+   "100": {
+    "deer": 1497,
+    "wild_boar": 493,
+    "arctic_hare": 987
+   },
+   "200": {
+    "deer": 1497,
+    "wild_boar": 493,
+    "arctic_hare": 986
+   },
+   "300": {
+    "deer": 1496,
+    "wild_boar": 493,
+    "arctic_hare": 986
+   },
+   "400": {
+    "deer": 1495,
+    "wild_boar": 493,
+    "arctic_hare": 986
+   }
+  },
+  "ledgerSum": null,
+  "popRatio": 0.592,
+  "meatRatio": 0
+ },
+ "h95-1020": {
+  "tag": "h95-1020",
+  "on": false,
+  "scale": "off",
+  "seed": 1020,
+  "target": 400,
+  "reached": 400,
+  "finished": true,
+  "exit": null,
+  "wall": 602.1,
+  "timeout": null,
+  "fatal": false,
+  "logDay": 400,
+  "start": 2997,
+  "end": 2881,
+  "max": 2997,
+  "cpuSecDay": 1.094,
+  "cpuLast10": 0.831,
+  "dbBody": null,
+  "dbTotal": null,
+  "dbMB": null,
+  "rssMB": null,
+  "heapMB": 826,
+  "huntKill": null,
+  "starve": null,
+  "born": null,
+  "mismatch": null,
+  "meatKgDay": 0,
+  "pop": 2078,
+  "sp": {
+   "100": {
+    "deer": 1477,
+    "wild_boar": 492,
+    "arctic_hare": 984
+   },
+   "200": {
+    "deer": 1468,
+    "wild_boar": 489,
+    "arctic_hare": 978
+   },
+   "300": {
+    "deer": 1446,
+    "wild_boar": 482,
+    "arctic_hare": 964
+   },
+   "400": {
+    "deer": 1440,
+    "wild_boar": 480,
+    "arctic_hare": 960
+   }
+  },
+  "ledgerSum": 14407356,
+  "popRatio": 1.516,
+  "meatRatio": 0
+ },
+ "hb5k-1020": {
+  "tag": "hb5k-1020",
+  "on": true,
+  "scale": 5000,
+  "seed": 1020,
+  "target": 400,
+  "reached": 400,
+  "finished": true,
+  "exit": null,
+  "wall": 732.1,
+  "timeout": null,
+  "fatal": false,
+  "logDay": 400,
+  "start": 2974,
+  "end": 2209,
+  "max": 2974,
+  "cpuSecDay": 1.37,
+  "cpuLast10": 1.092,
+  "dbBody": null,
+  "dbTotal": null,
+  "dbMB": null,
+  "rssMB": null,
+  "heapMB": 1157,
+  "huntKill": 825,
+  "starve": 39,
+  "born": 92,
+  "mismatch": 0,
+  "meatKgDay": 0.2,
+  "pop": 2289,
+  "sp": {
+   "100": {
+    "deer": 1368,
+    "wild_boar": 426,
+    "arctic_hare": 878
+   },
+   "200": {
+    "deer": 1277,
+    "wild_boar": 396,
+    "arctic_hare": 819
+   },
+   "300": {
+    "deer": 1232,
+    "wild_boar": 389,
+    "arctic_hare": 802
+   },
+   "400": {
+    "deer": 1133,
+    "wild_boar": 353,
+    "arctic_hare": 723
+   }
+  },
+  "ledgerSum": null,
+  "popRatio": 1.67,
+  "meatRatio": 0
+ },
+ "off-1020": {
+  "tag": "off-1020",
+  "on": false,
+  "scale": "off",
+  "seed": 1020,
+  "target": 400,
+  "reached": 400,
+  "finished": true,
+  "exit": null,
+  "wall": 859,
+  "timeout": null,
+  "fatal": false,
+  "logDay": 400,
+  "start": 2997,
+  "end": 2736,
+  "max": 2997,
+  "cpuSecDay": 1.671,
+  "cpuLast10": 1.32,
+  "dbBody": null,
+  "dbTotal": null,
+  "dbMB": null,
+  "rssMB": null,
+  "heapMB": 1156,
+  "huntKill": null,
+  "starve": null,
+  "born": null,
+  "mismatch": null,
+  "meatKgDay": 709.6,
+  "pop": 3345,
+  "sp": {
+   "100": {
+    "deer": 1450,
+    "wild_boar": 483,
+    "arctic_hare": 967
+   },
+   "200": {
+    "deer": 1390,
+    "wild_boar": 463,
+    "arctic_hare": 927
+   },
+   "300": {
+    "deer": 1372,
+    "wild_boar": 457,
+    "arctic_hare": 914
+   },
+   "400": {
+    "deer": 1368,
+    "wild_boar": 456,
+    "arctic_hare": 912
+   }
+  },
+  "ledgerSum": 13682185.3,
+  "popRatio": 2.44,
+  "meatRatio": 1.544
+ },
+ "off-42": {
+  "tag": "off-42",
+  "on": false,
+  "scale": "off",
+  "seed": 42,
+  "target": 400,
+  "reached": 400,
+  "finished": true,
+  "exit": null,
+  "wall": 992.1,
+  "timeout": null,
+  "fatal": false,
+  "logDay": 400,
+  "start": 2997,
+  "end": 2647,
+  "max": 2997,
+  "cpuSecDay": 1.937,
+  "cpuLast10": 1.687,
+  "dbBody": null,
+  "dbTotal": null,
+  "dbMB": null,
+  "rssMB": null,
+  "heapMB": 1596,
+  "huntKill": null,
+  "starve": null,
+  "born": null,
+  "mismatch": null,
+  "meatKgDay": 934.2,
+  "pop": 3884,
+  "sp": {
+   "100": {
+    "deer": 1445,
+    "wild_boar": 481,
+    "arctic_hare": 963
+   },
+   "200": {
+    "deer": 1354,
+    "wild_boar": 451,
+    "arctic_hare": 903
+   },
+   "300": {
+    "deer": 1337,
+    "wild_boar": 445,
+    "arctic_hare": 891
+   },
+   "400": {
+    "deer": 1323,
+    "wild_boar": 441,
+    "arctic_hare": 882
+   }
+  },
+  "ledgerSum": 13237617.4,
+  "popRatio": 1,
+  "meatRatio": 1
+ },
+ "off-7": {
+  "tag": "off-7",
+  "on": false,
+  "scale": "off",
+  "seed": 7,
+  "target": 400,
+  "reached": 400,
+  "finished": true,
+  "exit": null,
+  "wall": 917.9,
+  "timeout": null,
+  "fatal": false,
+  "logDay": 400,
+  "start": 2997,
+  "end": 2698,
+  "max": 2997,
+  "cpuSecDay": 1.82,
+  "cpuLast10": 1.203,
+  "dbBody": null,
+  "dbTotal": null,
+  "dbMB": null,
+  "rssMB": null,
+  "heapMB": 2420,
+  "huntKill": null,
+  "starve": null,
+  "born": null,
+  "mismatch": null,
+  "meatKgDay": 765,
+  "pop": 3582,
+  "sp": {
+   "100": {
+    "deer": 1448,
+    "wild_boar": 482,
+    "arctic_hare": 965
+   },
+   "200": {
+    "deer": 1398,
+    "wild_boar": 466,
+    "arctic_hare": 932
+   },
+   "300": {
+    "deer": 1364,
+    "wild_boar": 454,
+    "arctic_hare": 909
+   },
+   "400": {
+    "deer": 1349,
+    "wild_boar": 449,
+    "arctic_hare": 899
+   }
+  },
+  "ledgerSum": 13492314.1,
+  "popRatio": 1,
+  "meatRatio": 1
+ },
+ "on5k-1020": {
+  "tag": "on5k-1020",
+  "on": true,
+  "scale": 5000,
+  "seed": 1020,
+  "target": 400,
+  "reached": 400,
+  "finished": true,
+  "exit": null,
+  "wall": 642.3,
+  "timeout": null,
+  "fatal": false,
+  "logDay": 400,
+  "start": 2981,
+  "end": 2936,
+  "max": 2981,
+  "cpuSecDay": 1.145,
+  "cpuLast10": 1.045,
+  "dbBody": null,
+  "dbTotal": null,
+  "dbMB": null,
+  "rssMB": null,
+  "heapMB": 1164,
+  "huntKill": 0,
+  "starve": 45,
+  "born": 0,
+  "mismatch": 0,
+  "meatKgDay": 0,
+  "pop": 1915,
+  "sp": {
+   "100": {
+    "deer": 1496,
+    "wild_boar": 493,
+    "arctic_hare": 987
+   },
+   "200": {
+    "deer": 1494,
+    "wild_boar": 490,
+    "arctic_hare": 983
+   },
+   "300": {
+    "deer": 1488,
+    "wild_boar": 489,
+    "arctic_hare": 978
+   },
+   "400": {
+    "deer": 1479,
+    "wild_boar": 486,
+    "arctic_hare": 971
+   }
+  },
+  "ledgerSum": null,
+  "popRatio": 1.397,
+  "meatRatio": 0
+ },
+ "on5k-42": {
+  "tag": "on5k-42",
+  "on": true,
+  "scale": 5000,
+  "seed": 42,
+  "target": 400,
+  "reached": 400,
+  "finished": true,
+  "exit": null,
+  "wall": 630.1,
+  "timeout": null,
+  "fatal": false,
+  "logDay": 400,
+  "start": 2981,
+  "end": 2913,
+  "max": 2981,
+  "cpuSecDay": 1.124,
+  "cpuLast10": 0.837,
+  "dbBody": null,
+  "dbTotal": null,
+  "dbMB": null,
+  "rssMB": null,
+  "heapMB": 1251,
+  "huntKill": 0,
+  "starve": 68,
+  "born": 0,
+  "mismatch": 0,
+  "meatKgDay": 0,
+  "pop": 2175,
+  "sp": {
+   "100": {
+    "deer": 1494,
+    "wild_boar": 493,
+    "arctic_hare": 986
+   },
+   "200": {
+    "deer": 1488,
+    "wild_boar": 490,
+    "arctic_hare": 980
+   },
+   "300": {
+    "deer": 1477,
+    "wild_boar": 489,
+    "arctic_hare": 972
+   },
+   "400": {
+    "deer": 1467,
+    "wild_boar": 485,
+    "arctic_hare": 961
+   }
+  },
+  "ledgerSum": null,
+  "popRatio": 0.56,
+  "meatRatio": 0
+ },
+ "on5k-7": {
+  "tag": "on5k-7",
+  "on": true,
+  "scale": 5000,
+  "seed": 7,
+  "target": 400,
+  "reached": 400,
+  "finished": true,
+  "exit": null,
+  "wall": 680.7,
+  "timeout": null,
+  "fatal": false,
+  "logDay": 400,
+  "start": 2981,
+  "end": 2936,
+  "max": 2981,
+  "cpuSecDay": 1.217,
+  "cpuLast10": 1.223,
+  "dbBody": null,
+  "dbTotal": null,
+  "dbMB": null,
+  "rssMB": null,
+  "heapMB": 1461,
+  "huntKill": 0,
+  "starve": 45,
+  "born": 0,
+  "mismatch": 0,
+  "meatKgDay": 0,
+  "pop": 2103,
+  "sp": {
+   "100": {
+    "deer": 1496,
+    "wild_boar": 493,
+    "arctic_hare": 985
+   },
+   "200": {
+    "deer": 1495,
+    "wild_boar": 493,
+    "arctic_hare": 983
+   },
+   "300": {
+    "deer": 1489,
+    "wild_boar": 493,
+    "arctic_hare": 980
+   },
+   "400": {
+    "deer": 1474,
+    "wild_boar": 491,
+    "arctic_hare": 971
+   }
+  },
+  "ledgerSum": null,
+  "popRatio": 0.587,
+  "meatRatio": 0
+ },
+ "r120-1020": {
+  "tag": "r120-1020",
+  "on": true,
+  "scale": 120,
+  "seed": 1020,
+  "target": 400,
+  "reached": 400,
+  "finished": true,
+  "exit": null,
+  "wall": 1660.1,
+  "timeout": null,
+  "fatal": false,
+  "logDay": 400,
+  "start": 124955,
+  "end": 122838,
+  "max": 124955,
+  "cpuSecDay": 3.574,
+  "cpuLast10": 3.358,
+  "dbBody": null,
+  "dbTotal": null,
+  "dbMB": null,
+  "rssMB": null,
+  "heapMB": 1652,
+  "huntKill": 70,
+  "starve": 2065,
+  "born": 18,
+  "mismatch": 0,
+  "meatKgDay": 0,
+  "pop": 1907,
+  "sp": {
+   "100": {
+    "deer": 62568,
+    "wild_boar": 20544,
+    "arctic_hare": 41625
+   },
+   "200": {
+    "deer": 62362,
+    "wild_boar": 20470,
+    "arctic_hare": 41481
+   },
+   "300": {
+    "deer": 62013,
+    "wild_boar": 20379,
+    "arctic_hare": 41285
+   },
+   "400": {
+    "deer": 61621,
+    "wild_boar": 20243,
+    "arctic_hare": 40974
+   }
+  },
+  "ledgerSum": null,
+  "popRatio": 1.391,
+  "meatRatio": 0
+ }
+}
