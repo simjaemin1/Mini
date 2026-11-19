@@ -17248,6 +17248,8 @@ const _tick = { n: 0, wall: 0, sim: 0, clip: 0, clipped: 0, maxGap: 0, debt: 0, 
 //   되돌렸으면 T1340 다시 찍기는 안 한다(`SimVillages.t1372NoRestamp`).
 let _t1372CgPend = null;
 const _t1372CgStat = { saved: 0, applied: 0, chunks: 0 };
+// ★[T1382 ㉡] 길 닳음 모듈 메모리 — 종료 저장에만 값 · 받는 즉시 건다(메타 읽기 = 마을 부팅 안 · 교역로 미리 파기보다 앞 — 같은 코스 지도로 판다)
+if (process.env.T1340_RESUME_EXACT !== '0' && Roads.t1382Dump) SimVillages.t742Bind('zone.t1382Roads', () => (shuttingDown ? Roads.t1382Dump() : null), (v) => { if (v && Roads.t1382Load(v)) console.log(`[${ZONE_ID}] 🛤️ [T1382] 길 닳음 되돌림 — 셀 ${v.cells.length} · 코스 ${v.coarse.length} · 다진 길 ${v.paved.length}`); });
 if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.t1372CG', () => (shuttingDown ? (_t1372CgStat.saved++, { g: [..._collGen], all: _collGenAll, br: _bridgeGen }) : null), (v) => { if (v && Array.isArray(v.g)) _t1372CgPend = v; });
 function _t1372CgApply() {
   const v = _t1372CgPend; _t1372CgPend = null; if (!v) return;

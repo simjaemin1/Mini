@@ -567,8 +567,38 @@ function dayTick() {
   _dayRoll(day);
 }
 
+// ★★[T1382 ㉡ 2026-11-19 · T1372 회부 3] **길 닳음 모듈 메모리 전부 — 종료 저장에 싣고 다시 뜬 판이 그대로 선다** (존 손잡이 `T1340_RESUME_EXACT` 안 · 새 손잡이 0).
+//   종전: 셀은 하루 마감에 바뀐 것만 DB 행으로(`flushDaily`) — 그날 찍힌 답압은 메모리에만 있어 다시 뜨면 잃었고, 부팅은 코스 지도 · 다져진 길 집합 · T688 표를
+//     **지금 셀로 새로** 세웠다(한 번에 돈 판의 코스 지도는 그날 아침 재구축 + 그날 오른 칸 · T688 표는 그날 건드린 칸 줄 `tg` · 내려갈 길 `low` 를 쥔다).
+//     → 다시 뜬 판의 몸 걸음 배율(`_rdMul`) · 교역로 A* 할인(`courseCostMul`)이 갈렸다.
+//   켜면(존이 부른다) 셀(차례 · 값 · 날) · 코스 지도 · 다져진 길 · 바뀐 키 · 셈 · 부팅 풀림 줄 · T688 표(등급 · 문턱 날 · 칸 셈은 0 아닌 칸만)를 내고 받는다.
+function t1382Dump() {
+  if (!S.ready) return null;
+  const sparse = (a) => { const o = []; if (a) for (let i = 0; i < a.length; i++) if (a[i]) o.push(i, a[i]); return o; };
+  return { cells: [...S.cells].map(([k, r]) => [k, r.v, r.d]), coarse: [...S.coarse], paved: [...S.paved], dirty: [...S.dirty], lastDay: S.lastDay, coarseGen: S.coarseGen,
+    stats: Object.assign({}, S.stats), bootUnpaved: S.bootUnpaved.slice(),
+    I: I.ready ? { lvl: [...I.lvl], sched: [...I.sched], due: [...I.due].map(([d, a]) => [d, [...a]]), c1: sparse(I.c1), c2: sparse(I.c2), tgMark: sparse(I.tgMark), n: I.c1 ? I.c1.length : 0,
+      graded: I.graded, tg: I.tg.slice(), low: [...I.low], same: I.coarse === S.coarse } : null };
+}
+function t1382Load(o) {
+  if (!S.ready || !o || !Array.isArray(o.cells)) return false;
+  //   같은 Map · Set 객체에 채운다(남이 쥔 참조 — `I.coarse` · 판 보기 — 가 그대로 산다)
+  S.cells.clear(); for (const [k, v, d] of o.cells) S.cells.set(k, { v, d });
+  S.coarse.clear(); for (const [k, v] of o.coarse) S.coarse.set(k, v);
+  S.paved.clear(); for (const k of o.paved) S.paved.add(k);
+  S.dirty.clear(); for (const k of o.dirty) S.dirty.add(k);
+  S.lastDay = o.lastDay; S.coarseGen = o.coarseGen; S.stats = Object.assign({}, o.stats); S.bootUnpaved = (o.bootUnpaved || []).slice();
+  if (o.I) {
+    const un = (a, n) => { const u = new Uint8Array(n); for (let i = 0; i + 1 < a.length; i += 2) u[a[i]] = a[i + 1]; return u; };
+    I.lvl = new Map(o.I.lvl); I.sched = new Map(o.I.sched); I.due = new Map(o.I.due.map(([d, a]) => [d, new Set(a)]));
+    I.c1 = un(o.I.c1, o.I.n); I.c2 = un(o.I.c2, o.I.n); I.tgMark = un(o.I.tgMark, o.I.n);
+    I.graded = o.I.graded; I.tg = o.I.tg.slice(); I.low = new Set(o.I.low); I.coarse = o.I.same ? S.coarse : new Map(S.coarse); I.ready = true;
+  }
+  return true;
+}
 // ★[T566] 다져진 길 셀 수 · 키(읽기만 — 존의 부팅 걷기 · 자)
 function pavedCount() { return S.ready ? S.paved.size : 0; }
 function pavedKeys() { return S.ready ? [...S.paved] : []; }
-module.exports = { SPD,   // ★[T1241] 사건 시뮬 걸음 토막이 칸 빠르기를 읽는다(도장 없이 — `levelOf` 등급 → 배율 · 읽기만)
+module.exports = { t1382Dump, t1382Load,   // ★[T1382 ㉡] 길 닳음 모듈 메모리(존 종료 저장 · 다시 뜬 판)
+  SPD,   // ★[T1241] 사건 시뮬 걸음 토막이 칸 빠르기를 읽는다(도장 없이 — `levelOf` 등급 → 배율 · 읽기만)
   setEconDay, dayTick, roadDayPerf, retouchCell, unpaveSoonKeys, init, onGameTick, stampCell, stampEntityPx, speedMulOf, levelOf, courseCostMul, courseCostMin, courseCostMinIn, takeCoarseChanges, frozenView, coarseGen, isReady: () => S.ready, clientRoads, pavedNear, pavedCount, pavedKeys, ENABLED, _S: S };
