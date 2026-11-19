@@ -20794,6 +20794,21 @@ const _t1049Floor = (r, vil) => T1049_FLOOR_STONE && r === 'stone' && !!vil && (
 //   품목 하나의 식량 값은 `v1.totalFoodEquivalent` 를 그 품목 1 만 든 곳간에 물어 얻는다(사본 0 · 새 수 0).
 const T825_FOOD_KEEP = !(typeof process !== 'undefined' && process.env && process.env.T825_FOOD_KEEP === '0');   // ★[T935 · PM 10-26 · T928 회부 1 ㄱ] 켬 기본 · 되돌림 `=0`(랩 = 번들 shim 빈 env = 켬 · 서버와 같다)
 const _t825FW = new Map();
+// ★★[T1384 ① 2026-11-19 · T1347 회부 4] **굶는 마을은 지나가는 먹을 것을 붙든다** — 손잡이 `T1384_FOOD_KEEP`('1' 만 켬 · 끔 기본 = 아래 줄이 한 번도 안 선다 = 종전 바이트).
+//   진단(보고 T1384 §2 · §3): 제 생산이 필요에 못 미치는 마을(식량 흐름 EMA < 0 — P1 · P2 · 위기 동원과 같은 신호)이 제 캐러밴으로 먹을 것을 사 오고(P1 귀로) 다음 캐러밴의
+//   첫째 화물로 다시 내보낸다 — 생곡 · 고기는 "그 외 15일치" · 품목 몫 36일치 줄로 잡혀 곳간 식량이 하루치만 넘으면 후보다(위 T825 하한).
+//   서버 자 400날 끔 1020: 광산1 · 광산3 · 광산7 이 굶는 날 내보낸 먹을 것(제 짐 + 남의 캐러밴이 사 간 것) = 그날 필요의 91 · 72 · 158 %(지나가는 마을 — 표 §8).
+//   켬: 굶는 마을의 먹을 것(식량 환산에 드는 품목 다 — `_t825FoodPer` > 0 · 품목 특례 0)은 곳간 식량 환산이 식량류 하한(36일치 — 위 식량 줄 `keep` 과 같은 식
+//   `SUBSISTENCE_PER_NPC.food × N × 30 × 1.2`)을 넘는 몫만 후보다(그 품목 단위로 · 넘는 몫이 없으면 후보가 아니다). 굶지 않는 마을(농촌 · 어촌 — 파는 쪽)은 종전 그대로
+//   (T928 · T905: 36일치를 모든 마을 하한으로 쓰면 1 ~ 36일치 파는 마을의 교역이 막혀 굶는 마을-날이 늘었다 — 이 문은 굶는 마을 하나에만 선다).
+const T1384_FOOD_KEEP = (typeof process !== 'undefined' && process.env && (process.env.T1384_FOOD_KEEP === '1' || process.env.T1384_MINE_FOOD === '1'));
+// ★★[T1384 ② 2026-11-19 · T1347 회부 4] **파는 쪽이 길 위의 먹을 것을 센다** — 손잡이 `T1384_FOOD_ROUTE`('1' 만 켬 · 끔 기본 = 아래 두 줄이 한 번도 안 선다 = 종전 바이트).
+//   진단(보고 T1384 §4): 굶는 마을은 먹을 것 값이 천장(1000 배)에 붙어 서로 같은 값이고 — 그러면 가까운 곳이 이긴다. 같은 날 먹을 것 짐의 62 ~ 64 % 가
+//   그날 다른 먹을 것 짐도 받는 마을로 갔다(한 마을 하루 최대 11 ~ 18 짐 · 서버 자 끔 1020 · 7). 값표는 사흘마다 서고 도착은 이튿날이라 먼저 떠난 짐이 값을 못 내린다.
+//   켬: 먹을 것(식량 환산에 드는 품목 — `_t825FoodPer` > 0 · 품목 특례 0) 다리의 받는 값 = 값표 값 × (길 위의 같은 품목이 그 다리보다 먼저 닿은 곳간의 값 ÷ 지금 곳간의 값)
+//   — 바구니(T1136)의 예약 ①(떼 몰림 — 가는 중인 짐을 받는 마을 재고에 미리 더한다 · 먼저 닿을 짐만)과 같은 셈을 첫째 화물 다리에(값 = 결정층 한 줄 `_priceFromV2(_targetV2)` ·
+//   그 짐이 닿은 곳간은 `_t1157View` 꼴 겉 — 세계 무변). 길 위에 짐이 없으면 비 = 1 · 새 수 0.
+const T1384_FOOD_ROUTE = (typeof process !== 'undefined' && process.env && (process.env.T1384_FOOD_ROUTE === '1' || process.env.T1384_MINE_FOOD === '1'));
 function _t825FoodPer(v, r) {   // 품목 1 단위의 식량 환산(정본 `totalFoodEquivalent` 그대로 · 세계가 주입한 작물 표는 그 마을의 `_world` 로)
   const k = r + '|' + ((v && v._world) ? 'w' : '-');
   if (_t825FW.has(k)) return _t825FW.get(k);
@@ -22087,6 +22102,15 @@ function _exportCandidatesV2(a, N) {   // a = 마을 칸({ v }) — 몸통 줄�
         //   **모른다** — 어쩌다 재고가 차면 그걸 잉여로 읽고 실어 보내고, 그 자리에서 다시 0 이 된다.
         //   ⇒ 돌 수출 후보는 **안전망 문턱 위**일 때만. 수는 v1 정본에서 읽는다(사본 0 · 새 수 0).
         //   되돌림 `T180_STONE_EXPORT=0` → 종전 비트 동일.
+        if (T1384_FOOD_KEEP && a.v.surplusEMA && a.v.surplusEMA.food < 0) {   // ★[T1384 ①] 굶는 마을의 먹을 것 = 곳간 식량 환산의 36일치 위 몫만(위 손잡이 주석 · 끔 = 이 블록 무동작)
+          const _f84 = _t825FoodPer(a.v, r);
+          if (_f84 > 0) {
+            const _room84 = (v1.totalFoodEquivalent(a.v) - (SUBSISTENCE_PER_NPC.food || 0) * N * 30 * 1.2) / _f84;
+            if (!(_room84 > 0)) continue;
+            if (stock > thresh) candidates.push({ res: r, surplus: Math.min(Math.max(1, stock - keep), _room84) });
+            continue;
+          }
+        }
         if (r === 'stone' && T180_STONE_EXPORT && stock < v1.stoneWorkStock(a.v)) continue;
         if (_t1049Floor(r, a.v)) continue;   // ★[T1049] ⓐ 돌 바닥 마을은 제 돌을 안 판다(위 손잡이 주석)
         if (T825_FOOD_KEEP && !FOODR[r] && stock > thresh) {   // ★[T825 · T928] 켬 — 먹을 것은 곳간 식량이 하루치를 넘는 몫까지만
@@ -22675,6 +22699,22 @@ function _destBlockedV2(a, b, day) {
 //   `tickTradeV2` 는 종전 그대로 끝까지 돈다(헤드리스 자 · 랩 · `tickWorldV2` 무변). 서버 하루 마감만 `tickWorldV2Parts().tradeSteps()` 로 조각을 민다.
 //   ⚠쉬는 사이 곳간·시세가 바뀌면 값이 갈린다 — 그 짝(마감 중 몸 결정 얼림 · 대기 큐)은 부르는 쪽(villages.js `T698_BOUNDARY_SLICE`) 몫이다.
 function tickTradeV2(world, day) { const g = tickTradeV2Steps(world, day); while (!g.next().done); }
+// ★[T1384 ②] 길 위의 먹을 것 — 바구니 예약 ①의 열(`_t1136RvAdd` · `_t1136Rv` — 받는 마을 → [품목, 양, 닿는 날])에 첫째 화물 캐러밴의 가는 길 먹을 것(첫째 · 둘째 화물)을 담는다.
+//   마을 차례마다 `world.caravans` 에서 다시 센다(저장 칸 0 · 같은 마을 차례 안의 둘째 캐러밴은 같은 (품목, 목적지)를 못 가므로(`alreadySent`) 차례마다 세면 넉넉하다).
+function _t1384Resv(world) {
+  const R = new Map();
+  for (const c of world.caravans || []) if (c.state === 'outbound' && !c._done && c.to) _t1136RvAdd(R, c.to, [{ res: c.giveRes, amt: c.giveAmt }, { res: c.giveRes2, amt: c.giveAmt2 }].filter((x) => x.res && _t825FoodPer(c.to, x.res) > 0), c.arriveDay);
+  return R;
+}
+// 받는 값 비 — 그 다리보다 먼저 닿을 같은 품목을 더한 곳간의 값 ÷ 지금 곳간의 값(결정층 한 줄 · 곳간 칸만 바꾼 겉 · 길 위 0 이면 1)
+function _t1384Disc(R, v, r, tBy) {
+  const q = _t1136Rv(R, v, r, tBy);
+  if (!(q > 0)) return 1;
+  const p0 = _priceFromV2(_targetV2(v, r, _targetCtxV2(v)));
+  const view = Object.assign({}, v, { storage: Object.assign({}, v.storage, { [r]: (v.storage[r] || 0) + q }) });
+  const p1 = _priceFromV2(_targetV2(view, r, _targetCtxV2(view)));
+  return p0 > 0 ? Math.min(1, p1 / p0) : 1;
+}
 function* tickTradeV2Steps(world, day) {
   // ★자정 일괄 폐지 — 매일 실행하되 마을별로 교역일을 분산((day+idx)%INTERVAL). 스파이크·시세 staleness↓.
   // 1) 가격표(캐시 — 이웃 시세 조회용)
@@ -22697,6 +22737,7 @@ function* tickTradeV2Steps(world, day) {
   let _t698n = 0;
   for (const a of data) {
     if (_t698n++) yield 'a';   // ★[T698] 쉼표 — 마을 하나 사이(첫 마을 앞은 안 쉰다 · `continue` 와 무관하게 사이마다 한 번)
+    const _r84 = T1384_FOOD_ROUTE ? _t1384Resv(world) : null;   // ★[T1384 ②] 길 위의 먹을 것(끔 = null · 아래 받는 값 곱 무동작)
     // ★3일 게이트·동시8%·가치상한 전부 폐지 — 매일 검사, 조건 되면 연속 교역.
     //   실질 제한은 아래 spareCap(여유노동)뿐 — 마을 글럿도에서 창발(하드 %캡 아님).
     if (a.v.isolated && day < a.v.isolatedUntilDay) continue;
@@ -22790,7 +22831,8 @@ function* tickTradeV2Steps(world, day) {
           const infoR = world.infoRange || 400;
           if (dist > infoR) continue;
           const pFrom = a.prices[cand.res];
-          const pTo = b.prices[cand.res] * FORWARD_PRICE_MARGIN; // 위험 마진
+          let pTo = b.prices[cand.res] * FORWARD_PRICE_MARGIN; // 위험 마진
+          if (_r84) pTo *= _t1384Disc(_r84, b.v, cand.res, day + travelDaysForDistance(dist));   // ★[T1384 ②] 먼저 닿을 길 위의 먹을 것을 센 받는 값(끔 = 무동작)
           const N_units = Math.min(cand.surplus, CARGO_PER_TRIP);
           const { transportCostPerUnit: _tc1136, expectedLossRatio } = _legRiskV2(world, a, b, dist);   // ★[T1136] 운반비 · 기대 손실(아래 함수 — 이름만 올렸다 · 값 · 차례 무변)
           const transportCostPerUnit = T1152_TC ? _t1152Tc(lp.mv, dist, cand.res) : _tc1136;   // ★[T1152 ②] 켬 = 상인 하루 몫 × 다리 날 × 낱개 kg ÷ 몸 짐(끔 = 종전 수 그대로)
@@ -24348,6 +24390,7 @@ module.exports = {
   T812_CARGO_TEMP, _t812Probe: { exp: _t812Exp },
   T1344_MIX_LOAD, _t1344MixPick,
   T1347_FETCH, T1347_MIX_DEST, _t1347Orders, _t1347Sells, _t1347Buys,   // ★[T1347] 받아 올 짐 · 섞어 싣기 목적지 발주(끔 기본) · 하네스가 정본 함수를 그대로 부른다(사본 0)   // ★[T1344] 섞어 싣기(끔 기본) · 하네스가 정본 함수를 그대로 부른다(사본 0)
+  T1384_FOOD_KEEP, T1384_FOOD_ROUTE, _t1384Resv, _t1384Disc,   // ★[T1384] ① 굶는 마을이 지나가는 먹을 것을 붙든다 · ② 파는 쪽이 길 위의 먹을 것을 센다(끔 기본) · 하네스가 정본 함수를 그대로 부른다
   T1136_BASKET, T1136_ESCORT_CARRY, basketFlush, basketBounce,   // ★[T1136] 바구니 교역 손잡이(끔 기본) · 사건 처리기(서버 호스트가 몸 시계로 부른다 · 헤드리스는 날 머리) · 몸이 막혀 되돌아섬(서버 §5.5b)
   _lowestProducer: lowestProducer,   // ★[T1152] 계측기가 상인 하루 몫을 같은 함수로 잰다(사본 0)
   T1152_MARKET, _t1152Probe: { cal: _t1152Cal, lean: _t1152Lean, rho: _t1152Rho, half: _t1152Half, food: _t1152Food, own: _t1152Own, keepHalf: _t1152KeepHalf, params: _t1152CalParams, tc: _t1152Tc, tcD: _t1152TcD, rvCal: _t1152RvCal, foodPer: _t825FoodPer,
