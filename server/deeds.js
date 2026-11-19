@@ -21,7 +21,7 @@
 //   ⚠점수(무엇이 몇 점인가 — `SCORE` · `P_USE` · `Q_WORK` · `Q_IDLE`)는 판으로 고를 **제안**이다 — 정본은 재민(보고 T1343 고를 표).
 
 const _num = (k, d) => { const v = parseFloat(process.env[k]); return Number.isFinite(v) ? v : d; };
-const ON = process.env.T1305_DEEDS === '1';
+const ON = process.env.T1305_DEEDS !== '0';   // ★[T1389 -on] 켬 기본(재민 "켜" 뒤 PM 착지) · 되돌림 `=0`
 const CFG = {
   // ★[T1343 ③] 버티는 날 D(N) = D0 × (N0 ÷ N)² — 재민 11-16 글의 두 수(15일 · 40칸)
   D0: Math.max(0.01, _num('T1343_D0', 15)),
