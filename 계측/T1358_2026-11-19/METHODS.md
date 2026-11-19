@@ -86,3 +86,5 @@ bash scripts/pm-old-code-red.sh origin/main test-t1358-terr-stake.js
 후보 A/1020의 첫 80→90 마디는 실행 부모가 사라진 뒤 자식이 좀비로 남아 econ 86날에서 멈췄다. 완료된 80날 체크포인트는 그대로 보존하고 `t1308-guard.sh resume`으로 같은 조건을 다시 실행했다. 중단된 부분 자료는 `/tmp/t1358/interruption-A-80`에 분리했으며 최종 집계에는 재실행하여 코드 0으로 끝난 마디만 넣는다. 복구 사실은 `provenance/a-resume-80.json`에 남긴다.
 
 몸 굶음 계수 `bodyExitStats()`의 `_bx`는 프로세스별 값이다. T577 STATE는 names/rows/fd/diag365/board만 이으며 `_bx`는 복원하지 않는다. 따라서 몸 굶음은 마디별 마지막 값을 합산하고, T1340이 복원하는 영토 완료·말뚝 계수는 마지막 누계 및 날별 차분으로 읽는다.
+
+실행 환경이 실제로 종료된 뒤 사용자의 재개 지시에 따라 세 1020 판을 복구했다. 마지막 표시 날은 OFF 246·BODY 229·A 212였으나, 코드 0으로 닫힌 체크포인트는 각각 240·220·210날이다. 중단된 다음 마디의 자료는 `/tmp/t1358/interrupted-environment`에 분리하고 정본 guard resume으로 같은 마디를 다시 돌린다. 시드 7의 세 100날 판은 모두 이미 코드 0으로 완료되어 재실행하지 않았다. `provenance/environment-resume.json`에 복구 출발점과 직전 진행 줄을 보존한다.
