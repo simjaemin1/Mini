@@ -7,7 +7,7 @@
 //      그날 생산 − 필요를 되푼다) · 그날 먹은 몫(`_foodEaten` × `storageFoodPer`) — 필요 = 사람 × `DAILY_FOOD_CONSUMPTION` · 생산 = (생산 − 필요) + 필요 · 모자람 = 필요 − 먹음
 //   ② 날 머리(그날 첫 부름 — 어제 하루가 다 돈 곳간): 마을마다 한 줄(`vcols`) — 사람 · 식량 안보(`_foodSecF`) · 곳간 식량 환산 · 어제 필요 · 생산 · 먹음 · 모자람 · 흐름 EMA ·
 //      굶어 죽음 · 죽음 · 떠남 · 못 떠남 누계 · 직업 · 교역 중 · 여유 몫(`_idleFrac`) · 교역 자리(`spareCap` — 종전 식 그대로) · 위기(흐름 EMA < 0) · 식량 값(`_priceCache.food`) ·
-//      금고(`treasury._cash`) · 내보낼 후보 수 · 그 가운데 먹을 것(`storageFoodPer` > 0) 수 · ★어제 틱의 K 분해(econ 진단 칸 `_kDbg` — 식량 자리 · 식량 흐름 · 땔감) · 인구 갱신 항(`_dpDebug` — K · 로지스틱 · 굶주림 · 건강 · 행복 · 집 · 집 문 · dP) · 들여온 식량 EMA(`_importEMA`)
+//      금고(`treasury._cash`) · 내보낼 후보 수 · 그 가운데 먹을 것(`storageFoodPer` > 0) 수 · ★어제 틱의 K 분해(econ 진단 칸 `_kDbg` — 식량 자리 · 식량 흐름 · 땔감) · 인구 갱신 항(`_dpDebug` — K · 로지스틱 · 굶주림 · 건강 · 행복 · 집 · 집 문 · dP) · 들여온 식량 EMA(`_importEMA`) · 나무꾼 · 곳간 목재 · 돌 · 땔감 충당(`_fuelCov`)
 //   ③ 교역 장부(`world.tradeLog` 꼬리 — 읽기만): 줄마다 보낸 짐 · 귀로 짐의 식량 환산 · 광산 · 임업 마을이 낀 줄은 품목 그대로(`legs`)
 //   ④ 광산 마을 제 캐러밴 문(날마다): 후보 × 가까운 20(`_near20` — econ 이 캐시한 그 열)마다 다리 이익(종전 식 — 운반비 · 손실 `_legRiskV2` · 신선도 `_t784F` · `_legProfitPerUnit`) →
 //      가장 좋은 다리 · 위기면 식량 있는 목적지 다리(P2) · 기회비용 문(최저 생산자 `_lowestProducer` × 왕복 날 × (1 − 0.5 × 여유)) — 그날 낼 수 있었나
@@ -50,7 +50,7 @@ const rec = {
   names: null,
   vcols: ['N', 'secF', 'stockEq', 'need', 'prod', 'eaten', 'short', 'surpEMA', 'fdDead', 'dead', 'emig', 'emigLost', 'farmer', 'forager', 'hunter', 'fisher', 'miner', 'smith', 'mason', 'warrior',
     'trading', 'idleFrac', 'spareCap', 'crisis', 'pFood', 'cash', 'nCand', 'foodCand',
-    'kSlot', 'kProd', 'kFuel', 'K', 'logi', 'hungerT', 'healthT', 'happyT', 'housing', 'gated', 'dP', 'impEMA'],   // 어제 틱의 K 분해(`_kDbg` — 식량 자리 · 식량 흐름 · 땔감) · 인구 갱신 항(`_dpDebug`) · 들여온 식량 EMA(`_importEMA` — K 흐름 몫에 든다)
+    'kSlot', 'kProd', 'kFuel', 'K', 'logi', 'hungerT', 'healthT', 'happyT', 'housing', 'gated', 'dP', 'impEMA', 'lumber', 'wood', 'stone', 'fuelCov'],   // 어제 틱의 K 분해(`_kDbg` — 식량 자리 · 식량 흐름 · 땔감) · 인구 갱신 항(`_dpDebug`) · 들여온 식량 EMA(`_importEMA` — K 흐름 몫에 든다)
   day: {},
   lcols: ['day', 'from', 'to', 'sentRes', 'sentAmt', 'sentEq', 'boughtRes', 'boughtAmt', 'boughtEq', 'dist', 'raided'],
   legs: [],                 // 광산 · 임업이 낀 줄(품목 그대로) + 다른 마을 사이 먹을 것 줄
@@ -156,7 +156,7 @@ function snap(day) {
     rows.push([N, r3(secF(v)), r3(stockEq(v)), r3(t && t[0]), r3(t && t[1]), r3(t && t[2]), r3(t && t[3]), r3(v.surplusEMA && v.surplusEMA.food), v._fdDeadTot || 0, v._deadTot || 0, v._emigTot || 0, r3(v._emigLost || 0),
       cnt.farmer || 0, cnt.forager || 0, cnt.hunter || 0, cnt.fisher || 0, cnt.miner || 0, cnt.smith || 0, cnt.mason || 0, cnt.warrior || 0,
       sp.tr, r3(v._idleFrac || 0), sp.sc, sp.crisis ? 1 : 0, r3(v._priceCache && v._priceCache.food), r3(v.treasury && v.treasury._cash), C.length, C.filter((c) => foodPer(v, c.res) > 0).length,
-      ...(() => { const k = v._kDbg || {}, p = v._dpDebug || {}; return [r3(k.slot), r3(k.prod), r3(k.fuel), r3(p.K), r3(p.logi), r3(p.hunger), r3(p.health), r3(p.happy), r3(p.housing), p.gated ? 1 : 0, r3(p.dP), r3(v._importEMA)]; })()]);
+      ...(() => { const k = v._kDbg || {}, p = v._dpDebug || {}; return [r3(k.slot), r3(k.prod), r3(k.fuel), r3(p.K), r3(p.logi), r3(p.hunger), r3(p.health), r3(p.happy), r3(p.housing), p.gated ? 1 : 0, r3(p.dP), r3(v._importEMA), cnt.lumberjack || 0, r3((v.storage || {}).wood), r3((v.storage || {}).stone), r3(v._fuelCov)]; })()]);
   }
   rec.day[day] = rows;
   const O = {}; for (const v of vils) if (isMine(v.name) && (v.npcs || []).length) O[v.name] = ownGate(v, day);
