@@ -1,0 +1,94 @@
+# 만진 함수 → 하네스 (touched-harness · base origin/main · 갈림점 07b429e77)
+· 바뀐 코드 파일 4 · 이름 21(물린 것 5 · 흔한 이름 뺌 1) · 바뀐 하네스 1 · 규약 다섯 · **돌릴 하네스 11**
+  scripts/t1372-moment-cmp.js: t1372-moment-cmp
+  scripts/t1372-moment-hook.js: t1372-moment-hook
+  server/villages.js: _T1372_PDENY _t1034Pack _t1372CarPack _t1372CarRestore _t1372Dec _t1372Enc _t1372PackObj _t1372Stat _t719Pend _t719Resume _t719Take _t719Vi _t728Restore _t929Note t1372NoRestamp t1372PidAt t1372Where t719ReachPreX
+  server/zone.js: zone
+· 이름 → 하네스 수: _t1034Pack 3 · _t719Vi 1 · _t728Restore 1 · t1372-moment-cmp 1 · t1372-moment-hook 1
+· 흔한 이름(하네스 절반 넘게 — 목록에 안 넣음): zone 313
+· 바뀐 하네스: test-t1372-resume.js
+· 돌릴 하네스: test-body-fields.js test-car-fast.js test-coll-grid.js test-harness-lint.js test-hp-src.js test-lon-day.js test-move-soa.js test-t1034-caravan-keep.js test-t1268-econ-clock.js test-t1273-clock-rest.js test-t1372-resume.js
+  [나란히] -j 2 · 11개 · 혼자 돌 것 0개 먼저 차례로 · 고정 포트 쥔 하네스는 같은 포트끼리 차례로
+##### test-body-fields.js #####
+=== 14 통과 / 0 실패 ===
+  ✓ ★자명 통과 금지 — `??=` 꼴도 문다 · 읽기(`==`)는 안 문다  zone.js:19781 npc._t673Bait2
+  ✓ ★[T1140 ③-가] 자명 통과 금지 — 값 하나(`nextDecisionAt: 1`)를 바꾸면 문다
+  ✓ ⑳ 판정 칸 쓰기 자리를 다 셌다(자명 통과 아님)  전체 456 · 걸음 문 안 256 · 문 밖 200(표 내림 75 · 까닭 125)
+=== 14 통과 / 0 실패 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-coll-grid.js #####
+=== 결과: 20 PASS / 0 FAIL ===
+  ✓ ② [전제 · 자명 통과 금지] 걸음이 **실제로 막힌다** · 옛 격자 질의의 셋에 하나 넘게에 **밭·마당이 섞였다**  막힘 10476/40000 · 밭 섞임 4525/10000
+=== 결과: 20 PASS / 0 FAIL ===
+  [소요] 14초
+  ✓ RC=0
+##### test-harness-lint.js #####
+  ✓ ★⑲b 자명 통과 금지 — 표지 · 수가 맞는 새 하네스만 보내고 · 표지 없음 · 수 어긋남 · 바꾼 자리 안 셈 · 표지 단 옛 하네스 어긋남 · 주석(보고)에만 적은 미끼는 문다  good=ok,nomark=bad,many=bad,nocount=bad,old=ok,oldmarked=bad,report=bad
+  ✓ ⑳ [전제] `@harness-only` 표지를 단 하네스가 실제로 있다(0 이면 아래가 자명 통과다)  test-ci-list.js
+  ✓ ★⑳ 자명 통과 금지 — 제품 부름 셋은 물고 · 주석 · scripts 자리는 보낸다  req=hit,join=hit,rel=hit,cmt=none,scr=none
+=== 99건 중 PASS 99 · FAIL 0 ===
+  [소요] 94초
+  ✓ RC=0
+##### test-hp-src.js #####
+=== 54 통과 / 0 실패 ===
+  ✓ [상황] 세 파일을 실제로 읽었다(못 읽으면 아래가 자명 통과다)  zone 1197167 · net 108838 · wildlife 96104
+  ✓ ★⓪ 자명 통과 금지 — 직접 대입 한 줄을 되살리면 잡힌다
+  ✓ [상황] `server/villages.js` 를 실제로 읽었다(못 읽으면 아래가 자명 통과다)  villages 1456895
+=== 54 통과 / 0 실패 ===
+  [소요] 2초
+  ✓ RC=0
+##### test-lon-day.js #####
+=== 22건 중 PASS 22 · FAIL 0 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-car-fast.js #####
+=== 11 통과 / 0 실패 ===
+  ✓ ★자명 통과 금지 — 끔 판 캐러밴은 부팅 복원 직후 전부 사전 모드(종전)  83/83
+=== 11 통과 / 0 실패 ===
+  [소요] 164초
+  ✓ RC=0
+##### test-move-soa.js #####
+  ✓ ② ★적중·실패 수까지 같다(메모가 같은 순서로 같은 칸을 채운다)  miss 39923/39923 = 39923/39923
+=== 결과: 287 PASS / 0 FAIL ===
+  ✓ ㉒ ① [자] 읽기만 판정이 멤버 쓰기·넣기를 문다(지역 대입은 통과)
+  ✓ ㉓ⓐ [자명 통과 금지] 차례만 뒤집은 가짜는 문다(같은 집합이어도)  길이 2
+  ✓ ㉓ⓓ [자명 통과 금지] 켬 갈래 차례를 뒤집은 사본은 문다  n2,pl,pl,n1
+=== 결과: 287 PASS / 0 FAIL ===
+  [소요] 98초
+  ✓ RC=0
+##### test-t1268-econ-clock.js #####
+② 끔(`T1253_CLOCK_FIX=0 T1258_ARTISAN_CLOCK=0`) — 같은 흔들림에 갈린다(자명 통과 금지)
+  ✓ ⑤ [자명 통과 금지] 끔 — 같은 흔들림에 세 칸이 갈린다(종전 벽시계 축)  갈림
+  ✓ ⑥ [자명 통과 금지] 끔(`T1253_CLOCK_FIX=0`) — 같은 흔들림에 전쟁 몸 세 칸이 갈린다(종전 벽시계 축)  첫 갈림 #0 ["march",1601152210000,1601152480000,0.00382945052951787,0,1033.95164296982,"march"] ↔ ["march",1599952210000,1599952480000,0.00382945052951787,0,1033.95164296982,"march"]
+=== PASS 32 / FAIL 0 ===
+  [소요] 5초
+  ✓ RC=0
+##### test-t1273-clock-rest.js #####
+  ✓ ⑨ [T1300] T1289 글자 사본은 옛 저장 → 끔 판에서 축 섞인 몸이 0 이 아니다(자명 통과 금지 · 회부 4)  2 + 0
+  ✓ ⑨ 고치기 전 사본은 축 섞인 몸이 0 이 아니다(자명 통과 금지)  9
+  ✓ ⑪ [자명 통과 금지] T1289 거리 규칙은 보통 판은 맞고 큰 판에서 틀린다(econ 값 > 저장 순간 벽시계의 반) — 새 경계가 그 판을 맞춘다  보통 0 · 큰 2
+=== PASS 104 / FAIL 0 ===
+  [소요] 65초
+  ✓ RC=0
+##### test-t1372-resume.js #####
+=== T1372 결과: 7 통과 · 0 실패 ===
+  ✓ [전제] 그 순간 길 위 캐러밴이 있고 첫 거름 표를 든 마을 몸이 있다(0 이면 아래가 자명 통과다)  캐러밴 78 · 표 든 몸 47
+=== T1372 결과: 7 통과 · 0 실패 ===
+  [소요] 373초
+  ✓ RC=0
+##### test-t1034-caravan-keep.js #####
+  ✓ 표 자리 다섯 — 귀환 출발 둘(장부 켬 · 끔 갈래) · 고립 · 재경로 실패 · 지연
+  ✓ ★★[자명 통과 금지] 끔 — 같은 판에서 장부가 가는 길로 되돌아간다(종전 · 메타 행이 아침 것)  inbound/4 → outbound/11
+=== T1034: 통과 27 · 실패 0 ===
+  [소요] 603초
+  ✓ RC=0
+
+=== 러너 요약 ===
+  통과 11: test-body-fields.js test-coll-grid.js test-harness-lint.js test-hp-src.js test-lon-day.js test-car-fast.js test-move-soa.js test-t1268-econ-clock.js test-t1273-clock-rest.js test-t1372-resume.js test-t1034-caravan-keep.js
+  실패 0: 없음
+  걸린 시간 상위(초): test-t1034-caravan-keep.js 603 · test-t1372-resume.js 373 · test-car-fast.js 164 · test-move-soa.js 98 · test-harness-lint.js 94 · test-t1273-clock-rest.js 65 · test-coll-grid.js 14 · test-t1268-econ-clock.js 5 · test-hp-src.js 2 · test-body-fields.js 1
+  걸린 시간 합: 하네스 1420초 · 러너 전체 767초(그 사이 = 배수 · 정리 기다림 · 머리)
+  나란히(T1288): -j 2 · 배수 쉼 없음(남은 포트는 lib-port 가 피한다)
+  배수(T1161): 쉼 0번 × 8초 · 건넘 0번(앞 판이 남긴 아이 없음)
+rc=0
