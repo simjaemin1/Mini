@@ -10952,6 +10952,9 @@ setInterval(() => {
   try { SimVillages.refreshAllFishSustain && SimVillages.refreshAllFishSustain(now); } catch (e) {}
   if (pruned) console.log(`[${ZONE_ID}] 🎣 어장 셀 ${pruned}개 만땅 회복 (번짐 ${r.moved} · 재생 ${r.regen})`);
 }, FISH_TICK_MS);
+// ★[T1382] 어장 번짐 시계 — 다시 뜬 판은 `_fishTickAt` 이 부팅 순간이라 첫 번짐이 지난 번짐부터가 아니라 부팅부터 잰 몫이었다(몸 세계 6날 · 4날 끊음: 어부 몸 29 자리 갈림).
+//   손잡이 `T1340_RESUME_EXACT` 안 · 종료 저장에만 값(T742 줄 `zone.t1382Fish`) · 끔 = 종전 글자.
+if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.t1382Fish', () => (shuttingDown ? { at: _fishTickAt } : null), (v) => { if (v && Number.isFinite(v.at)) _fishTickAt = v.at; });
 
 // 바이옴별 어종 — ★v1 의 목록을 **그대로 쓴다**(어종 확장은 이번 범위 밖 = 회부).
 // ★★[T59 2026-09-03] 표를 **`fishing.js` 로 옮겼다** — 여기 있어서 아무도 못 물어봤고,
