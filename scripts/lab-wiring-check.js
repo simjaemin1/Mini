@@ -1090,5 +1090,26 @@ console.log('\n[O] 랩 HTML 둘의 집 고리 — 서버 집 규칙 · 정본 �
   else bad(`ⓓ [자명 통과 금지] 비틀어도 같은 답 — LifeCrew ${m1 ? '문다' : '죽음'} · _t958Want ${m2 ? '문다' : '죽음'} · 곳간 출구 ${m3 ? '문다' : '죽음'} · 문 둘 ${m4 ? '문다' : '죽음'}`);
 }
 
+// ── P: ★[T1395] 랩 ↔ 서버 전수표의 손 사본 줄(값을 글자에서 뽑아 맞댄다 · 줄 목록 = `scripts/lib-lab-diff.js` 한 벌) ──────────
+//   SAME = 전수표 "같음 · 손 사본" → 어긋나면 ❌ · DIFFS = 전수표 "다름" → 두 값을 찍고 `scripts/lab-diff-ok.txt`(PM 만 편집)에 없으면 경고 한 줄.
+//   미끼(한쪽 값을 바꾸면 그 줄만 빨강)는 하네스 `scripts/test-t1395-lab-diff.js` 안에.
+console.log('\n[P] 랩 ↔ 서버 손 사본 대조 — T1395 전수표(`계측/T1395_2026-11-20/전수표.md`)');
+{
+  const LD = require(path.join(__dirname, 'lib-lab-diff.js'));
+  for (const r of LD.checkSame()) {
+    if (r.ok) ok(`${r.id} ${r.what} — 랩 = 서버 = ${r.lab}`);
+    else bad(`${r.id} ${r.what} — ${r.why}`);
+  }
+  const OKL = LD.okList();
+  const D = LD.checkDiffs(); const unok = [];
+  for (const r of D) {
+    if (!r.found) { bad(`${r.id} ${r.what} — 다름 줄의 글자를 못 찾음(정규식이 낡았다 · 자리를 다시 잡아라)`); continue; }
+    if (r.same) { wrn(`${r.id} ${r.what} — 다름 줄인데 지금 값이 같다(${r.lab}) · SAME 으로 옮길 차례`); continue; }
+    if (OKL.has(r.id)) ok(`${r.id} ${r.what} — 허락된 다름(랩 ${r.lab} · 서버 ${r.srv} · ${OKL.get(r.id).jb || '족보 —'})`);
+    else unok.push(`${r.id}(랩 ${r.lab} · 서버 ${r.srv}${r.knob ? ' · ' + r.knob : ''})`);
+  }
+  if (unok.length) wrn(`다름 ${unok.length}줄이 \`scripts/lab-diff-ok.txt\` 허락 줄 없음(후보 = 보고/T1395) — ${unok.join(' · ')}`);
+}
+
 console.log(`\n=== 배선 검사: 실패 ${fail} · 경고 ${warn} ===`);
 process.exit(fail ? 1 : 0);
