@@ -144,7 +144,8 @@ function sweepDead(t0) {
     for (const f of names) {
       if (!/\.db(?:-wal|-shm|-journal)?$/.test(f)) continue;
       const toks = [...f.matchAll(/(?:^|[-_.])(\d{3,})(?=[-_.]|$)/g)].map((m) => +m[1]);
-      if (!toks.length || toks.some((p) => alive(p))) continue;
+      //   pid 자리 밖 수(`Date.now()` 13자리 · 난수 토막 > 4,194,304 = 리눅스 pid 상한)가 하나라도 있으면 pid 이름이 아니다 — 안 건드린다(산 판의 시각 이름 DB 를 지우지 않게)
+      if (!toks.length || toks.some((p) => p > 4194304) || toks.some((p) => alive(p))) continue;
       const p = path.join(d, f);
       try { const st = fs.statSync(p); if (!st.isFile() || st.mtimeMs < t0) continue; fs.rmSync(p, { force: true }); n++; bytes += st.size; } catch (e) {}
     }

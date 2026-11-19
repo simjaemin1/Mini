@@ -183,12 +183,13 @@ console.log('\n⑧ 하네스 `/tmp` 치우기 — `lib-tmp` (T1400 · T1364 전�
   ok(BL.n === 1 && B.left.length === 2, '⑧ 미끼 — 신호 손잡이를 안 거는 사본은 SIGTERM 판의 찌꺼기를 남긴다(위 ★ 가 문다)', `바꾼 자리 ${BL.n} · 남음 ${B.left.length}`);
   for (const p of B.P) { try { fs.rmSync(p, { recursive: true, force: true }); } catch (e) {} }
   //   러너 몫 — 이 판 뒤 선 `.db` 가운데 이름의 숫자 토막이 다 죽은 pid 인 것만(산 pid 이름 · 숫자 없는 이름은 남긴다)
-  const t0 = Date.now() - 1000, dead = 2147480001, live = process.pid;
+  const t0 = Date.now() - 1000, dead = spawnSync('true').pid, live = process.pid;   // dead = 막 끝난 아이의 pid(pid 자리 안 · 죽음)
+  const ft = `/tmp/bite-sweep-${dead}-${Date.now()}.db`;   // 시각 토막(pid 자리 밖)이 든 이름 — 안 건드린다
   const fd = `/tmp/bite-sweep-${dead}.db`, fl = `/tmp/bite-sweep-${live}.db`, fn = '/tmp/bite-sweep-seed.db';
-  for (const f of [fd, fd + '-wal', fl, fn]) fs.writeFileSync(f, 'x');
+  for (const f of [fd, fd + '-wal', fl, fn, ft]) fs.writeFileSync(f, 'x');
   const S = require('./lib-tmp').sweepDead(t0);
-  ok(!fs.existsSync(fd) && !fs.existsSync(fd + '-wal') && fs.existsSync(fl) && fs.existsSync(fn), '★⑧ 러너 몫 `sweepDead` — 죽은 pid 이름 DB 만 지우고 산 pid · 숫자 없는 이름은 남긴다', `지움 ${S.n}`);
-  for (const f of [fd, fd + '-wal', fl, fn]) { try { fs.unlinkSync(f); } catch (e) {} }
+  ok(!fs.existsSync(fd) && !fs.existsSync(fd + '-wal') && fs.existsSync(fl) && fs.existsSync(fn) && fs.existsSync(ft), '★⑧ 러너 몫 `sweepDead` — 죽은 pid 이름 DB 만 지우고 산 pid · 숫자 없는 이름 · 시각(pid 자리 밖) 토막 이름은 남긴다', `지움 ${S.n}`);
+  for (const f of [fd, fd + '-wal', fl, fn, ft]) { try { fs.unlinkSync(f); } catch (e) {} }
 }
 
 fs.rmSync(R, { recursive: true, force: true });
