@@ -5,7 +5,7 @@ const fs = require('fs'), path = require('path');
 const root = process.argv[2]; if (!root) throw Error('runs 경로 필요');
 const read = p => JSON.parse(fs.readFileSync(p, 'utf8'));
 const fmt = x => x == null || !Number.isFinite(x) ? '—' : (+x.toFixed(3)).toString();
-const rows = [], diag = [], routes = [];
+const rows = [], diag = [], routes = [], producers = [];
 for (const dir of fs.readdirSync(root).sort()) {
   const base = path.join(root, dir); if (!fs.statSync(base).isDirectory()) continue;
   if (!fs.existsSync(path.join(base,'done.txt'))) { console.log(`<!-- 진행 중 ${dir} -->`); continue; }
@@ -14,6 +14,8 @@ for (const dir of fs.readdirSync(root).sort()) {
   if (!probeFile || !bandFile) { console.log(`<!-- 미완료 ${dir} -->`); continue; }
   const p = read(path.join(base, probeFile)), b = read(path.join(base, bandFile));
   if (p.err) throw Error(dir + ': ' + p.err);
+  const castCount = Array.isArray(p.casts) ? p.casts.length : p.casts.n;
+  if (b.casts.length !== castCount) throw Error(dir + ': 주조 훅 수 어긋남 ' + b.casts.length + '/' + castCount);
   const col = Object.fromEntries(p.dcols.map((k,i) => [k,i]));
   for (const end of [365, 730, p.days.at(-1)?.[0]].filter((v,i,a) => v && a.indexOf(v) === i)) {
     const d = p.days.find(x => x[0] === end); if (!d) continue;
@@ -25,6 +27,9 @@ for (const dir of fs.readdirSync(root).sort()) {
       d[col.tin] ? d[col.idleTin] / d[col.tin] * 100 : 0, 51 - snap.length, d[col.pop]]);
   }
   for (const [gate,g] of Object.entries(b.gates)) diag.push([dir, gate, g.days, g.cu/g.days, g.tin/g.days, g.hands/g.days, g.buyer, g.unknown, g.readyBuyer]);
+  const made = {};
+  for (const c of b.casts) made[c.village] = (made[c.village] || 0) + c.bronze;
+  for (const [name, quantity] of Object.entries(made).sort((a,b) => b[1]-a[1])) if (quantity > 0) producers.push([dir,name,quantity]);
   const aggregate = new Map();
   function add(t, item, from, to) {
     if (item?.res !== 'weapon') return;
@@ -40,7 +45,7 @@ for (const dir of fs.readdirSync(root).sort()) {
     if (t.retBasket) for (const i of t.retBasket) add(t,i,t.to,t.from); else add(t,t.bought,t.to,t.from);
   }
   for (const a of aggregate.values()) routes.push([dir, a.from, a.to, a.n, a.amount, a.distances.length ? a.distances.reduce((x,y) => x+y,0)/a.distances.length : null,
-    a.prices.length ? a.prices.reduce((x,y) => x+y,0)/a.prices.length : null]);
+    a.prices.length ? a.prices.reduce((x,y) => x+y,0)/a.prices.length : null, made[a.from] || 0]);
 }
 function table(headers, records) { console.log('| '+headers.join(' | ')+' |\n|'+headers.map(() => '---').join('|')+'|'); for (const row of records) console.log('| '+row.map(v => typeof v === 'number' ? fmt(v) : v).join(' | ')+' |'); }
 const pairs = [];
@@ -56,6 +61,8 @@ console.log('# 판 결과\n');
 table(['판','날','청동 생산 누계','쥔 마을 /51','병기고 절반 초과','상위 다섯 %','묵은 주석 %','빈 마을','인구'],rows);
 console.log('\n# 닫힌 조건 마을-날(구매자는 기존 값 캐시에 한함)\n');
 table(['판','문','마을-날','구리 평균','주석 평균','손 평균','구매자 양수','구매자 미관측','재료+손+구매자'],diag);
+console.log('\n# 청동 주조 마을\n');
+table(['판','마을','청동 생산 누계'],producers);
 console.log('\n# 무기 이동(청동만의 거래는 아님: 장부 품목이 weapon으로 합쳐져 있음)\n');
-table(['판','보낸 마을','산 마을','줄 수','양','거리 평균','도착값 평균'],routes);
-fs.writeFileSync(path.join(root,'summary.json'),JSON.stringify({ pairs, rows, diag, routes },null,2));
+table(['판','보낸 마을','산 마을','줄 수','양','거리 평균','도착값 평균','보낸 마을 청동 생산 누계'],routes);
+fs.writeFileSync(path.join(root,'summary.json'),JSON.stringify({ pairs, rows, diag, routes, producers },null,2));
