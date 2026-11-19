@@ -15397,7 +15397,8 @@ function _lifeNeedClear(vil) {   // 랩 needLand 동형: 보즈럽 수요 게이
   if (T1229_FIELD_GROW) return _t1229Need(vil);   // ★[T1229] 켬 = 일손 · 덮음 문(끔 = 아래 종전 목표)
   //   ★[T1284 ④] 켬 = 목표 = 사람 × `LAND_NEED` 12칸 그대로(T1215 고증 "사람당 **심는** 밭 3,000 m²" ÷ 250 m²) — 보즈럽 몫(0.55 ÷ 비옥 · 0.6 ~ 2.5 · 출처 없음)을 안 곱한다.
   //     비옥은 이미 칸 소출(`cellKgAt` — 비옥 자리 → 500 ~ 800 kg/ha · T1221)에 들어 있다 — 몫을 또 곱하면 비옥한 마을이 사람당 7.2칸으로 줄어 두 번 센다(랩 51곳 목표 가운데 9.7칸 · 보고/T1284 §1). 끔 = 아래 줄 그대로.
-  if (_t1284On()) return vil._farmSet.size < _t1388Target(vil, e);   // ★[T1388 ⓐ · ⓒ] 끔 = 사람 × `LAND_NEED` 그대로(T1284 ④)
+  if (_t1284On() && (T1388_FARMER_CELLS || T1388_FIELD_SHARE)) return vil._farmSet.size < _t1388Target(vil, e);   // ★[T1388 ⓐ · ⓒ] 팔 켬만(끔 = 아래 T1284 ④ 줄 글자 그대로)
+  if (_t1284On()) return vil._farmSet.size < e.npcs.length * _landNeed();
   const fert = (e.land && e.land.fertility != null) ? e.land.fertility : 0.55;
   return vil._farmSet.size < Math.ceil(e.npcs.length * _lifeVL().landNeedPer(fert, _landNeed()));
 }
