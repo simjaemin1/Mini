@@ -145,4 +145,3 @@
   ✓ ★⑳ 자명 통과 금지 — 제품 부름 셋은 물고 · 주석 · scripts 자리는 보낸다  req=hit,join=hit,rel=hit,cmt=none,scr=none
 
 === 99건 중 PASS 99 · FAIL 0 ===
-
