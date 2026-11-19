@@ -50,9 +50,9 @@ const rec = {
   gHold: { g1: [0, 0, 0], g2: [0, 0, 0], g3: [0, 0, 0], g4: [0, 0, 0] },
   gVill: {},   // 마을마다 [g1 · g1o · g2 · g2s · g3 · g4 · g4o · xThick]
   // 50날마다 · 끝에 마을 칸: [이름 · 사람 · 근접검 · 청동 근접검(곁) · 청동 몫(제품 · 없으면 null) · 주석 · 구리 · 대장장이 · 석공 · 청동 누계 · 석검 누계 · 식량 안보 · 전사]
-  vcols: ['name', 'pop', 'melee', 'bronzeS', 'qP', 'tin', 'copper', 'smith', 'mason', 'bronzeCum', 'stoneCum', 'secF', 'warrior'],
+  vcols: ['name', 'pop', 'melee', 'bronzeS', 'qP', 'tin', 'copper', 'smith', 'mason', 'bronzeCum', 'stoneCum', 'secF', 'warrior', 'fdDead'],
   snaps: {},
-  k5cols: ['day', 'pop', 'secF', 'smith', 'mason', 'warrior', 'tin', 'copper', 'oreTin', 'melee', 'bronzeS', 'bronzeCum', 'g1', 'g4', 'qP'],
+  k5cols: ['day', 'pop', 'secF', 'smith', 'mason', 'warrior', 'tin', 'copper', 'oreTin', 'melee', 'bronzeS', 'bronzeCum', 'g1', 'g4', 'qP', 'fdDead'],
   k5: [],
   ccols: ['day', 'v', 'amt', 'bz', 'meleeArm', 'bronzeArmS', 'bronzeArmP'],
   casts: [],
@@ -166,9 +166,9 @@ function snap(day) {
       if (any) { g[4]++; hold('g3'); }
     }
     if (smith > 0 && bz && (+st.weapon || 0) >= N * 0.8) { row.xThick++; g[7]++; }
-    per.push([name, N, r4(melee), r4(bronzeS), qP == null ? null : r4(qP), r4(tin), r4(cu), smith, mason, r4(bzC), r4(stoneC), secF == null ? null : r4(secF), war]);
+    per.push([name, N, r4(melee), r4(bronzeS), qP == null ? null : r4(qP), r4(tin), r4(cu), smith, mason, r4(bzC), r4(stoneC), secF == null ? null : r4(secF), war, e._fdDeadTot || 0]);
     if (name === K5) rec.k5.push([day, N, secF == null ? null : r4(secF), smith, mason, war, r4(tin), r4(cu), r4(oreTin), r4(melee), r4(bronzeS), r4(bzC),
-      (smith > 0 && bz && well && melee >= armory * C.FRAC) ? 1 : 0, (smith > 0 && bz && !well && melee >= Math.max(2, war * C.COV)) ? 1 : 0, qP == null ? null : r4(qP)]);
+      (smith > 0 && bz && well && melee >= armory * C.FRAC) ? 1 : 0, (smith > 0 && bz && !well && melee >= Math.max(2, war * C.COV)) ? 1 : 0, qP == null ? null : r4(qP), e._fdDeadTot || 0]);
   }
   row.weapQ = row.pop ? wq / row.pop : 0;
   rec.days.push(rec.dcols.map((k) => (k === 'day' ? day : r4(row[k]))));
