@@ -50,11 +50,11 @@ function feOf(v, r, a) {
 }
 function led(v) { let x = L.get(v.name); if (!x) { x = { b: {}, s0: null, inn: {}, eat: 0 }; L.set(v.name, x); } return x; }
 const TRANSFORM = new Set(['cook']);   // 요리사 — 곳간 식량을 조리식으로 바꾼다(새 식량 아님 · 든 몫으로 안 센다 — 그 차는 잔차)
-globalThis.__t1388in = (v, src, r, a) => { if (!v || !v.name || TRANSFORM.has(src)) return; const f = feOf(v, r, a); if (!(f > 0)) return; const k = JOBSRC[src] || src; const x = led(v); x.inn[k] = (x.inn[k] || 0) + f; };
+globalThis.__t1388in = (v, src, r, a) => { if (!v || !v.name) return; if (TRANSFORM.has(src)) { const f = feOf(v, r, a); rec.tot.trBy[src] = (rec.tot.trBy[src] || 0) + f; return; } const f = feOf(v, r, a); if (!(f > 0)) return; const k = JOBSRC[src] || src; const x = led(v); x.inn[k] = (x.inn[k] || 0) + f; };
 globalThis.__t1388eat = (v, a) => { if (!v || !v.name || !(a > 0)) return; led(v).eat += a; };
 const typeOf = (n) => (/^농촌/.test(n) ? '농촌' : /^어촌/.test(n) ? '어촌' : /^임업/.test(n) ? '임업' : /^광산/.test(n) ? '광산' : '그 밖');
 const seasonOf = (m) => (m >= 3 && m <= 5 ? '봄' : m >= 6 && m <= 8 ? '여름' : m >= 9 && m <= 11 ? '가을' : '겨울');
-const rec = { hooks: null, cols: ['ym', 'name', 'pop', 'tfe', 'eat', 'resid'], src: [], rows: [], ag: {}, tot: { eat: 0, eatBy: {}, inBy: {}, resid: 0, gain: 0, loss: 0, closeMax: 0 } };
+const rec = { hooks: null, cols: ['ym', 'name', 'pop', 'tfe', 'eat', 'resid'], src: [], rows: [], ag: {}, tot: { eat: 0, eatBy: {}, inBy: {}, trBy: {}, resid: 0, gain: 0, loss: 0, closeMax: 0 } };
 const MON = new Map();   // 마을-달 → { pop, tfe, eat, resid, eatBy, inBy }
 function settle(v, day) {
   const x = led(v), S1 = E.totalFoodEquivalent(v) || 0;
@@ -62,10 +62,18 @@ function settle(v, day) {
   const In = sumIn(x);
   for (const [k, f] of Object.entries(x.inn)) x.b[k] = (x.b[k] || 0) + f;
   const resid = S1 - x.s0 - In + x.eat;   // + 늘어남(들어옴 · 요리 덤) · − 줄어듦(썩음 · 갈무리 · 나감)
-  if (resid > 0) x.b.gain = (x.b.gain || 0) + resid;
+  //   늘어남은 먼저 앞서 줄어든 몫의 되돌아옴으로 본다(몸이 들고 나갔다 들여온 곡식 · 곳간 레코드 옮김 — 그때 뺀 칸 짜임 그대로 되돌린다) · 넘는 몫만 `gain`.
+  if (resid > 0) {
+    const P = x.pend || (x.pend = {}), pt = Object.values(P).reduce((a, c) => a + c, 0), back = Math.min(resid, pt);
+    if (back > 0) { const k = back / pt; for (const q of Object.keys(P)) { const d = P[q] * k; x.b[q] = (x.b[q] || 0) + d; P[q] -= d; } }
+    if (resid - back > 0) x.b.gain = (x.b.gain || 0) + (resid - back);
+  }
   const B = Object.values(x.b).reduce((a, c) => a + c, 0), out = x.eat + (resid < 0 ? -resid : 0);
   const eatBy = {};
-  if (B > 0) { const kE = x.eat / B, kO = Math.min(1, out / B); for (const k of Object.keys(x.b)) { eatBy[k] = x.b[k] * kE; x.b[k] -= x.b[k] * kO; } }
+  if (B > 0) {
+    const kE = x.eat / B, kO = Math.min(1, out / B), kL = resid < 0 ? Math.min(1, -resid / B) : 0, P = x.pend || (x.pend = {});
+    for (const k of Object.keys(x.b)) { eatBy[k] = x.b[k] * kE; if (kL > 0) P[k] = (P[k] || 0) + x.b[k] * kL; x.b[k] -= x.b[k] * kO; }
+  }
   else if (x.eat > 0) eatBy.unknown = x.eat;
   const t = CAL.dateOf(day), ym = t.year * 100 + t.month, key = ym + '|' + v.name;
   let m = MON.get(key); if (!m) { m = { ym, name: v.name, pop: 0, tfe: 0, eat: 0, resid: 0, eatBy: {}, inBy: {} }; MON.set(key, m); }
