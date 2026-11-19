@@ -95,7 +95,10 @@ if (MODE === 'cap') {
     const msgs = [], ws = { readyState: 1, send: (s) => { try { msgs.push(JSON.parse(s)); } catch (e) {} } };
     const p = { pid: 'p_cap', playerId: 't1389_cap', name: 'cap', persistent: false, ws, x: 0, y: 0, vx: 0, vy: 0, floor: 0, hp: 100, maxHp: 100, hunger: 100, thirst: 100, inventory: { wood: 9999, stone: 9999 }, equipment: [], equipSlots: {}, craftSkill: {} };
     H.players.set(p.pid, p);
-    for (let i = 0; i < 12; i++) { p.x = (54000 + i) * SZ + SZ / 2; p.y = 54000 * SZ + SZ / 2; H.tryClaim(p, 'personal'); }
+    //   끔은 영토 문(내 마을 땅 · 온보딩 빈터)이 숫자 상한보다 뒤라, 이어진 9칸을 먼저 놓아 두고(종전 상한까지 찬 사람) 세 칸을 더 청한다 · 켬은 12칸 다 청한다
+    const seed = H.Deeds.ON ? 0 : 9;
+    for (let i = 0; i < seed; i++) { const id = 't1389cap' + i; H.claims.set(id, { id, ownerPid: p.playerId, ownerName: p.name, x: (54000 + i) * SZ, y: 54000 * SZ, w: SZ, h: SZ, kind: 'personal', state: 'active' }); }
+    for (let i = seed; i < 12; i++) { p.x = (54000 + i) * SZ + SZ / 2; p.y = 54000 * SZ + SZ / 2; H.tryClaim(p, 'personal'); }
     const live = [...H.claims.values()].filter((c) => c.ownerPid === p.playerId && c.kind === 'personal').length;
     const cap = msgs.filter((m) => m.type === 'notice' && /한도/.test(m.text || '')).map((m) => m.text);
     R.cap = { on: H.Deeds.ON, live, cap: cap.length, text: cap[0] || '' };
@@ -144,8 +147,8 @@ if (MODE === 'zone') {
       const m = mk('meter'); T = now; claimAt(m, 53000, 53000);
       m.msgs.length = 0; claimAt(m, 53001, 53000);
       const nowN = () => { const x = m.msgs.filter((q) => q.type === 'deeds_meter').pop(); return x ? x.N : null; };
-      const n0 = nowN(); await new Promise((r) => setTimeout(r, 1300)); const n1 = nowN();
-      put(R, 'f_trail', n1 === 2, `둘째 칸 직후 계량기 N ${n0} → 1초 뒤 ${n1}`);
+      const n0 = nowN(), w0 = Date.now(); while (nowN() !== 2 && Date.now() - w0 < 5000) await new Promise((r) => setTimeout(r, 100)); const n1 = nowN(), waited = Date.now() - w0;   // 1초 끝 + 바쁜 판 여유(버려졌으면 끝내 안 온다)
+      put(R, 'f_trail', n1 === 2, `둘째 칸 직후 계량기 N ${n0} → ${waited} ms 뒤 ${n1}`);
     } catch (e) { R.err = String((e && e.stack) || e).slice(0, 400); }
     console.log('@@T1389 ' + JSON.stringify(R));
     for (const f of [process.env.DB_PATH, process.env.DB_PATH + '-wal', process.env.DB_PATH + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }

@@ -1,0 +1,45 @@
+{
+ "budgetMs": 16.666666666666668,
+ "rows": [
+  {
+   "N": 155,
+   "freed": 135,
+   "slowMs": 23.4,
+   "fastMs": 4.2,
+   "same": true,
+   "parts": 1,
+   "worstPart": 5.7,
+   "slicedFreed": 135
+  },
+  {
+   "N": 400,
+   "freed": 380,
+   "slowMs": 170.1,
+   "fastMs": 9.1,
+   "same": true,
+   "parts": 1,
+   "worstPart": 7.6,
+   "slicedFreed": 380
+  },
+  {
+   "N": 1000,
+   "freed": 980,
+   "slowMs": 956.3,
+   "fastMs": 13.3,
+   "same": true,
+   "parts": 1,
+   "worstPart": 13.3,
+   "slicedFreed": 980
+  },
+  {
+   "N": 5879,
+   "freed": 5859,
+   "slowMs": null,
+   "fastMs": 386.5,
+   "same": null,
+   "parts": 28,
+   "worstPart": 18.7,
+   "slicedFreed": 5859
+  }
+ ]
+}
