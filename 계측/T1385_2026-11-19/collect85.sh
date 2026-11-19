@@ -1,7 +1,7 @@
 #!/bin/bash
 # T1385 판 모으기 — 판 자리(기본 /root/t1385runs)의 서버 · 몸 판 `<판>-<시드>/` · 랩 판 `lab/<판>-<시드>/` → 이 폴더 `runs/`
 #   서버 · 몸: 판 JSON · fd-deaths · 관찰기 JSON(t1385 · t1333 · t1344 · t1347 · t1313 · t1256 · t1243 — 300 KB 넘으면 `.json.gz`) · 러너 출력(`<판>-<시드>-러너.txt`) · 로그 gz
-#   랩: probe.json(gz) · farm.json · 러너 로그 꼬리 · lab.txt
+#   랩: probe.json(gz) · farm.json · 러너 로그 꼬리 · lab.txt · 전쟁 창 war.jsonl
 #   쓰는 법(레포 뿌리): bash 계측/T1385_2026-11-19/collect85.sh [/root/t1385runs] — 다 끝난 판(판 JSON · probe.json 이 선 것)만 · 다시 돌려도 같다
 R=${1:-/root/t1385runs}; D=$(cd "$(dirname "$0")" && pwd)/runs; mkdir -p $D $D/lab
 n=0
@@ -26,4 +26,5 @@ for d in "$R"/lab/*/; do
 done
 [ -f "$R/lab.txt" ] && cp "$R/lab.txt" $D/lab/
 [ -f "$R/done.txt" ] && cp "$R/done.txt" $D/
+[ -f "$R/war.jsonl" ] && cp "$R/war.jsonl" $D/   # 전쟁 창(`scripts/t1385-war.js` — 표 §8 이 판 자리에서 읽는다)
 echo "판 $n · 랩 $m 옮김 → $D"

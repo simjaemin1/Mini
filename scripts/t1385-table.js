@@ -103,6 +103,21 @@ const kr = SSEEDS.map((s) => keepRow(off(s)));
 out(`| (찾음) 주석 수출 비축 v2 \`TIN_EXPORT_KEEP_PC\` 1.2 · \`SURPLUS_PC\` 0.3 — 주석(> 0.12)을 쥔 마을-날 가운데 수출 문턱 max(3, 사람 × 1.2) + 사람 × 0.3 밑(괄호 = 구리 < 0.3 — 쥔 마을이 못 쓴다) | ${kr.map((k) => (k ? `${f0(k.n)}(${f0(k.nNoCu)})` : '—')).join(' | ')} | 주석 ${kr[0] ? f2(kr[0].tinAvg) : '—'} | — |`);
 out('');
 out('마을-날 합(1020 · 7 · 42): ' + SSEEDS.map((s) => (off(s) ? f0(off(s).vd) : '—')).join(' · ') + ' · ㉰ 값을 잰 마을-날(세계 공급 캐시가 그날 선 날): ' + SSEEDS.map((s) => (off(s) ? f0(off(s).g3ok) : '—')).join(' · '));
+// 몸 · 랩 · 두 해 랩 끔 — 같은 문 셈(랩 곁 관찰기 칸 g1 · g2 · g3(품목 합) · g4)
+{
+  const gs = (P) => { if (!P || !P.days) return null; const C = P.dcols, I = (k) => C.indexOf(k), g = (k) => (I(k) < 0 ? null : sum(P.days.map((r) => r[I(k)]))); return { vd: g('vill'), g1: g('g1'), g2: g('g2'), g3: I('g3') >= 0 ? g('g3') : (I('g3tin') >= 0 ? g('g3tin') + g('g3cu') + g('g3otin') + g('g3ocu') : null), g4: g('g4') }; };
+  const rowsG = [];
+  for (const s of BSEEDS) { const O = rd(`BOFF-${s}`, 't1385'); const G = gs(O); if (G) rowsG.push([`몸 ${s} · 100날`, G]); }
+  { const G = gs(rdf(path.join(LAB, 'LOFF-0', 'probe.json'))); if (G) rowsG.push(['랩 · 100날', G]); }
+  for (const s of SSEEDS) { const G = gs(rdf(path.join(LAB, `YOFF-${s}`, 'probe.json'))); if (G) rowsG.push([`두 해 랩 ${s} · 800날`, G]); }
+  if (rowsG.length) {
+    out('');
+    out('몸 · 랩 · 두 해 랩 끔 — 같은 문이 닫은 마을-날(㉰ = 품목 합):\n');
+    out('| 판 | 마을-날 | ㉮ | ㉯ | ㉰ | ㉱ |');
+    out('|---|---:|---:|---:|---:|---:|');
+    for (const [n, G] of rowsG) out(`| ${n} | ${f0(G.vd)} | ${f0(G.g1)} | ${f0(G.g2)} | ${G.g3 == null ? '—' : f0(G.g3)} | ${f0(G.g4)} |`);
+  }
+}
 out('');
 out('문마다 많이 닫힌 마을(1020 · 끔 — [㉮ · ㉯ · ㉰ · ㉱ 닫은 날]):');
 { const o = off(1020); if (o) { const rows = Object.entries(o.gVill).map(([n, x]) => [n, x[0], x[2], x[4], x[5]]).sort((a, b) => (b[1] + b[2] + b[3] + b[4]) - (a[1] + a[2] + a[3] + a[4])).slice(0, 8); out(rows.map((r) => `${r[0]} ${r[1]} · ${r[2]} · ${r[3]} · ${r[4]}`).join(' / ')); } }
@@ -155,15 +170,20 @@ out('');
 
 // ── §5 수출 주조(할 일 6) ──
 out('## 5. 수출 주조 — 끔 · 걷음 · 걷음 + 수출 (병기고를 채운 청동 위에 부은 주조 = 수출 몫)\n');
-out('| 판 · 팔 | 주조(줄 · 청동) | 병기고를 넘겨 부은 주조(줄 · 청동) | 무기 교역 줄 · 양 · 산 마을 | 판 마을 굶어 죽음(끝 · 판 마을 합 — 끔 판 같은 마을) |');
-out('|---|---|---|---|---|');
-for (const s of SSEEDS) for (const a of ['OFF', 'NOCAP', 'NOCAPX']) {
-  const R = S[`${a}-${s}`]; if (!R) continue; const O0 = S[`OFF-${s}`];
+out('| 판 · 팔 | 주조(줄 · 청동) | 병기고를 넘겨 부은 주조(줄 · 청동 · 날 · 마을) | 마을 청동 ÷ 병기고(사람 × 0.72) 최대(50날 꾸러미) | 무기 교역 줄 · 양 · 산 마을 | 판 마을 굶어 죽음(끝 · 판 마을 합 — 끔 판 같은 마을) |');
+out('|---|---|---|---|---|---|');
+const armMax = (n) => { const O = rd(n, 't1385'); if (!O || !O.snaps) return '—'; const V = O.vcols, VI = (k) => V.indexOf(k); let mx = 0, who = ''; for (const [d, rows] of Object.entries(O.snaps)) for (const r of rows) { const p = r[VI('pop')]; if (!(p > 0)) continue; const q = r[VI('bronzeS')] / (p * 0.72); if (q > mx) { mx = q; who = `${r[0]} 날 ${d}`; } } return `${f2(mx)}${who ? ' (' + who + ')' : ''}`; };   // 0.72 = MELEE_ARMORY_PC(병기고 사람 × 0.72 — 걷은 판의 청동 수요 끝)
+const overS = (R) => { const O = rd(R.n, 't1385'); const ov = ((O && O.casts) || []).filter((c) => c[5] != null && c[5] >= 1); return `${R.over} · ${f1(R.overBz)}${ov.length ? ' · 날 ' + [...new Set(ov.map((c) => c[0]))].join(' · ') + ' · ' + [...new Set(ov.map((c) => c[1]))].join(' · ') : ''}`; };
+for (const [lab, M, seeds, arms, pre] of [['서버', S, SSEEDS, ['OFF', 'NOCAP', 'NOCAPX'], 'S'], ['몸', Bd, BSEEDS, ['OFF', 'NOCAPX'], 'B']]) for (const s of seeds) for (const a of arms) {
+  const R = M[`${a}-${s}`]; if (!R) continue; const O0 = M[`OFF-${s}`];
   const sell = R.wSellers || [], fdS = sum(sell.map((n) => R.fdBy[n] || 0)), fdS0 = O0 ? sum(sell.map((n) => O0.fdBy[n] || 0)) : null;
-  out(`| 서버 ${s} · ${ANAME[a]} | ${R.casts} · ${f1(R.castBz)} | ${R.over} · ${f1(R.overBz)} | ${R.wLegs} · ${f1(R.wAmt)} · ${R.wBuyers} | ${sell.length} 마을 · ${f0(fdS)} (끔 ${f0(fdS0)}) |`);
+  out(`| ${lab} ${s} · ${ANAME[a]} | ${R.casts} · ${f1(R.castBz)} | ${overS(R)} | ${armMax(`${pre}${a}-${s}`)} | ${R.wLegs} · ${f1(R.wAmt)} · ${R.wBuyers} | ${sell.length} 마을 · ${f0(fdS)} (끔 ${f0(fdS0)}) |`);
 }
+const labArmMax = (P) => { if (!P || !P.snaps) return '—'; let mx = 0, who = ''; const VI = (k) => P.vcols.indexOf(k); for (const [d, rows] of Object.entries(P.snaps)) for (const r of rows) { const p = r[VI('pop')]; if (!(p > 0)) continue; const q = r[VI('bronzeS')] / (p * 0.72); if (q > mx) { mx = q; who = `${r[0]} 날 ${d}`; } } return `${f2(mx)}${who ? ' (' + who + ')' : ''}`; };   // 꾸러미 전부(랩 100날 = 끝 하나 · 두 해 = 365 · 730 · 100날마다 · 끝)
 for (const a of ['OFF', 'NOCAP', 'NOCAPX']) { const R = Lb[a]; if (!R) continue; const T = R.trade || {}, Cc = R.casts || {};
-  out(`| 랩 100날 · ${ANAME[a]} | ${Cc.n} · ${f1(Cc.bz)} | ${Cc.over} · ${f1(Cc.overBz)} | ${T.weaponRows} · ${f1(T.weaponAmt)} · ${Object.keys(T.weaponBuyers || {}).length} | ${Object.keys(T.weaponSellers || {}).length} 마을 |`); }
+  out(`| 랩 100날 · ${ANAME[a]} | ${Cc.n} · ${f1(Cc.bz)} | ${Cc.over} · ${f1(Cc.overBz)} | ${labArmMax(rdf(path.join(LAB, `L${a}-0`, 'probe.json')))} | ${T.weaponRows} · ${f1(T.weaponAmt)} · ${Object.keys(T.weaponBuyers || {}).length} | ${Object.keys(T.weaponSellers || {}).length} 마을 |`); }
+for (const s of SSEEDS) for (const a of ['OFF', 'NOCAPX']) { const P = rdf(path.join(LAB, `Y${a}-${s}`, 'probe.json')); if (!P || !P.snaps) continue; const R = labSum(P), T = R.trade || {}, Cc = R.casts || {};
+  out(`| 두 해 랩 ${s} · ${ANAME[a]} | ${Cc.n} · ${f1(Cc.bz)} | ${Cc.over} · ${f1(Cc.overBz)} | ${labArmMax(P)} | ${T.weaponRows} · ${f1(T.weaponAmt)} · ${Object.keys(T.weaponBuyers || {}).length} | ${Object.keys(T.weaponSellers || {}).length} 마을 |`); }
 out('');
 
 // ── §6 마을별 최악(걷음 + 수출 ↔ 끔 · 서버 3시드) ──
@@ -184,13 +204,13 @@ out('');
 
 // ── §7 두 해 랩(t176-ab 800날 · 3시드) ──
 out('## 7. 두 해 랩(t176-ab 800날 · 해 끝 날 · 365 · 730 · 800) — 끔 ↔ 걷음 + 수출\n');
-out('| 시드 · 팔 | 해 | 인구(끔비) | 산 마을 | 청동 검 쥔 마을 | 병기고 절반 넘게 청동 | 세계 병기고 중 청동 | 청동 누계(끔비) | 굶어 죽음 누계 | 묵은 주석 / 주석 | 무기 질 |');
-out('|---|---|---|---:|---:|---:|---:|---|---:|---|---:|');
+out('| 시드 · 팔 | 해 | 인구(끔비) | 산 마을 | 청동 검 쥔 마을 | 병기고 절반 넘게 청동 | 세계 병기고 중 청동 | 청동 상위 다섯 마을 몫 | 청동 누계(끔비) | 굶어 죽음 누계 | 묵은 주석 / 주석 | 무기 질 |');
+out('|---|---|---|---:|---:|---:|---:|---:|---|---:|---|---:|');
 const Y = {}; for (const s of SSEEDS) for (const a of ['OFF', 'NOCAPX']) { const P = rdf(path.join(LAB, `Y${a}-${s}`, 'probe.json')); if (P && P.snaps) Y[`${a}-${s}`] = P; }
 const yDays = (P) => [365, 730, Math.max(...Object.keys(P.snaps).map(Number))].filter((d, i, A) => P.snaps[d] && A.indexOf(d) === i);
 for (const s of SSEEDS) for (const a of ['OFF', 'NOCAPX']) {
   const P = Y[`${a}-${s}`]; if (!P) continue; const P0 = Y[`OFF-${s}`];
-  for (const d of yDays(P)) { const R = labSum(P, d), R0 = P0 && P0.snaps[d] ? labSum(P0, d) : null; out(`| ${s} · ${ANAME[a]} | 날 ${d} | ${f0(R.pop)} (${f3(rat(R.pop, R0 && R0.pop))}) | ${R.vill} | ${R.hold1} | ${R.half} | ${pc(R.worldQ)} | ${f1(R.bzCum)} (${f2(rat(R.bzCum, R0 && R0.bzCum))}) | ${f0(R.fd)} | ${f2(R.idleTin)} / ${f2(R.tin)} | ${f3(R.weapQ)} |`); }
+  for (const d of yDays(P)) { const R = labSum(P, d), R0 = P0 && P0.snaps[d] ? labSum(P0, d) : null; out(`| ${s} · ${ANAME[a]} | 날 ${d} | ${f0(R.pop)} (${f3(rat(R.pop, R0 && R0.pop))}) | ${R.vill} | ${R.hold1} | ${R.half} | ${pc(R.worldQ)} | ${pc(R.top5)} | ${f1(R.bzCum)} (${f2(rat(R.bzCum, R0 && R0.bzCum))}) | ${f0(R.fd)} | ${f2(R.idleTin)} / ${f2(R.tin)} | ${f3(R.weapQ)} |`); }
 }
 out('');
 // 두 해 랩 마을별 최악(끝 날 · 걷음 + 수출 ↔ 끔)
