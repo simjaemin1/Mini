@@ -3,14 +3,14 @@
 // T1398 계측 JSON에서만 표를 낸다. 판을 돌리거나 수를 제품에 되먹이지 않는다.
 const fs = require('fs'), path = require('path');
 const root = process.argv[2]; if (!root) throw Error('runs 경로 필요');
-const read = p => JSON.parse(fs.readFileSync(p, 'utf8'));
+const read = p => { const bytes=fs.readFileSync(p); return JSON.parse(p.endsWith('.gz') ? require('zlib').gunzipSync(bytes).toString('utf8') : bytes.toString('utf8')); };
 const fmt = x => x == null || !Number.isFinite(x) ? '—' : (+x.toFixed(3)).toString();
 const rows = [], diag = [], routes = [], producers = [];
 for (const dir of fs.readdirSync(root).sort()) {
   const base = path.join(root, dir); if (!fs.statSync(base).isDirectory()) continue;
   if (!fs.existsSync(path.join(base,'done.txt'))) { console.log(`<!-- 진행 중 ${dir} -->`); continue; }
-  const probeFile = fs.readdirSync(base).find(p => p === 'probe.json' || p.endsWith('.t1385.json'));
-  const bandFile = fs.readdirSync(base).find(p => p === 'band.json' || p.endsWith('.t1398.json'));
+  const probeFile = fs.readdirSync(base).find(p => p.replace(/\.gz$/, '') === 'probe.json' || /\.t1385\.json(?:\.gz)?$/.test(p));
+  const bandFile = fs.readdirSync(base).find(p => p.replace(/\.gz$/, '') === 'band.json' || /\.t1398\.json(?:\.gz)?$/.test(p));
   if (!probeFile || !bandFile) { console.log(`<!-- 미완료 ${dir} -->`); continue; }
   const p = read(path.join(base, probeFile)), b = read(path.join(base, bandFile));
   if (p.err) throw Error(dir + ': ' + p.err);
@@ -27,9 +27,11 @@ for (const dir of fs.readdirSync(root).sort()) {
       d[col.tin] ? d[col.idleTin] / d[col.tin] * 100 : 0, 51 - snap.length, d[col.pop]]);
   }
   for (const [gate,g] of Object.entries(b.gates)) diag.push([dir, gate, g.days, g.cu/g.days, g.tin/g.days, g.hands/g.days, g.buyer, g.unknown, g.readyBuyer]);
+  const farmFile = ['farm.json','farm.json.gz'].map(n => path.join(base,n)).find(n => fs.existsSync(n));
+  const farmPer = new Map(farmFile ? read(farmFile).per.map(v => [v.name,v]) : []);
   const made = {};
   for (const c of b.casts) made[c.village] = (made[c.village] || 0) + c.bronze;
-  for (const [name, quantity] of Object.entries(made).sort((a,b) => b[1]-a[1])) if (quantity > 0) producers.push([dir,name,quantity]);
+  for (const [name, quantity] of Object.entries(made).sort((a,b) => b[1]-a[1])) if (quantity > 0) { const f=farmPer.get(name); producers.push([dir,name,quantity,f?.fuelCovMean ?? null,f ? f.jobDays.miner || 0 : null,f ? f.jobDays.smith || 0 : null]); }
   const aggregate = new Map();
   function add(t, item, from, to) {
     if (item?.res !== 'weapon') return;
@@ -62,7 +64,7 @@ table(['판','날','청동 생산 누계','쥔 마을 /51','병기고 절반 초
 console.log('\n# 닫힌 조건 마을-날(구매자는 기존 값 캐시에 한함)\n');
 table(['판','문','마을-날','구리 평균','주석 평균','손 평균','구매자 양수','구매자 미관측','재료+손+구매자'],diag);
 console.log('\n# 청동 주조 마을\n');
-table(['판','마을','청동 생산 누계'],producers);
+table(['판','마을','청동 생산 누계','생활 연료 충족 평균','광부 사람-날','대장장이 사람-날'],producers);
 console.log('\n# 무기 이동(청동만의 거래는 아님: 장부 품목이 weapon으로 합쳐져 있음)\n');
 table(['판','보낸 마을','산 마을','줄 수','양','거리 평균','도착값 평균','보낸 마을 청동 생산 누계'],routes);
 fs.writeFileSync(path.join(root,'summary.json'),JSON.stringify({ pairs, rows, diag, routes, producers },null,2));
