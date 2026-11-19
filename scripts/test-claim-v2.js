@@ -169,11 +169,14 @@ if (T1305_SUB) {
   F.SAFETY = s0; wipe(sp);
   // ⑤ D(N) 식 — 15 × (40 ÷ N)²: 40칸 15일 · 70칸 4.9일(식) · 실제로 40칸을 쥔 사람이 안 돌보면 15일째에 풀린다(그 앞날은 남는다)
   put('dFormula', D.daysOf(40) === 15 && Math.abs(D.daysOf(70) - 4.898) < 0.01 && Math.abs(D.daysOf(24) - 41.667) < 0.01 && Math.abs(D.daysOf(155) - 0.999) < 0.01, `40 ${D.daysOf(40)} · 70 ${D.daysOf(70).toFixed(2)} · 24 ${D.daysOf(24).toFixed(2)} · 155 ${D.daysOf(155).toFixed(2)}`);
-  const f40 = fresh('t13f'); T = now0; block(f40, 30000, 30000, 8, 5); offline(f40);   // 40칸(청크 둘 × 16 + 8)
-  const [, f40c] = cellOf(f40, 30000, 30000);
-  at(14.9); H._t1343Advance(f40.playerId, T); const alive149 = (f40c.state || 'active') !== 'free';
-  at(15.01); H._t1343Advance(f40.playerId, T);
-  put('d40', myCells(f40).length === 40 && alive149 && (f40c.state || 'active') === 'free', `14.9일 ${alive149 ? '남음' : '풀림'} · 15.01일 ${f40c.state}`);
+  const f40 = fresh('t13f'); T = now0; block(f40, 30000, 30000, 8, 5); offline(f40);   // 40칸(청크 둘 × 16 + 8) · 집 = 처음 선포한 칸(30000, 30000)
+  const live = (p) => [...claims.values()].filter((c) => c.ownerPid === p.playerId && c.kind === 'personal' && (c.state || 'active') !== 'free').length;   // 살아 있는 내 칸(풀린 칸은 주인 칸이 남는다)
+  const [, f40c] = cellOf(f40, 30000, 30000), [, f40far] = cellOf(f40, 30007, 30004);   // ★[T1386] 집에서 가장 먼 칸(걸음 11)
+  at(14.9); H._t1343Advance(f40.playerId, T); const n149 = live(f40);
+  // ★[T1386 · 족보 879] 통째로 안 풀린다 — 저축이 15일째 바닥난 뒤 빚이 하루 N³ ÷ 240 = 266.7점씩 쌓여 100점(0.375일)마다 먼 칸 하나
+  at(15.3); H._t1343Advance(f40.playerId, T); const n153 = live(f40);
+  at(15.5); H._t1343Advance(f40.playerId, T); const n155 = live(f40);
+  put('d40', n149 === 40 && n153 === 40 && n155 === 39 && (f40far.state || 'active') === 'free' && (f40c.state || 'active') !== 'free', `14.9일 ${n149}칸 · 15.3일 ${n153}칸(빚 자투리) · 15.5일 ${n155}칸 · 먼 칸 ${f40far.state} · 집 ${f40c.state || 'active'}`);
   wipe(f40);
   // ⑥ 청크 3칸 = 상한 300 · 10칸 = 1,000 · 같은 날 수에 빈다(같은 사람 — N 같음)
   const g = fresh('t13g'); T = now0;
@@ -243,13 +246,15 @@ if (T1305_SUB) {
   put('crossZoneN', Math.abs(rateX - D.rateOf(2, 40) * DM) < 0.5 && D.rateOf(2, 40) > D.rateOf(2, 3), `N = 3 + 다른 존 37 = 40 → 하루 ${rateX.toFixed(1)}(N 3 이면 ${(D.rateOf(2, 3) * DM).toFixed(2)})`);
   wipe(w); offline(w);
   // ⑫ 풀린 칸 — 남이 값을 내고 이어받는다(부재 상태기 승계 그대로) · 새 주인의 가득 · 풀린 내 칸 다시 잡기
-  const v = fresh('t13v'); T = now0; claimAt(v, 25000, 25000); claimAt(v, 25001, 25000); offline(v);
-  const [, vc] = cellOf(v, 25000, 25000), [, vc1] = cellOf(v, 25001, 25000);
-  at(D.daysOf(2) + 0.01); H._t1343Advance(v.playerId, T);
-  put('free', (vc.state || 'active') === 'free' && (vc1.state || 'active') === 'free', `${vc.state}/${vc1.state}`);
+  const v = fresh('t13v'); T = now0; claimAt(v, 25000, 25000); claimAt(v, 25001, 25000); claimAt(v, 25002, 25000); offline(v);   // ★[T1386] 3칸 줄 — 집(25000)에서 먼 칸부터
+  const [, vc] = cellOf(v, 25000, 25000), [, vc1] = cellOf(v, 25001, 25000), [, vc2] = cellOf(v, 25002, 25000);
+  const tv = D.daysOf(3) + F.PT / D.dailyNeed(3) + F.PT / D.dailyNeed(2);   // 바닥 · 100점(N 3) · 100점(N 2)
+  at(tv - 0.01); H._t1343Advance(v.playerId, T); const two = (vc2.state || 'active') === 'free' && (vc1.state || 'active') !== 'free';
+  at(tv + 0.01); H._t1343Advance(v.playerId, T);
+  put('free', two && (vc2.state || 'active') === 'free' && (vc1.state || 'active') === 'free' && (vc.state || 'active') !== 'free', `${tv.toFixed(0)}일 앞 먼 칸만 · 뒤 ${vc2.state}/${vc1.state} · 집 ${vc.state || 'active'}`);
   const t2 = fresh('t13t');
-  const tt = claimAt(t2, 25000, 25000);
-  put('takeover', /이어받았습니다/.test(tt) && vc.ownerPid === t2.playerId && (vc.state || 'active') === 'active' && row(t2, 25000, 25000) && row(t2, 25000, 25000).m === F.PT, tt);
+  const tt = claimAt(t2, 25002, 25000);
+  put('takeover', /이어받았습니다/.test(tt) && vc2.ownerPid === t2.playerId && (vc2.state || 'active') === 'active' && row(t2, 25002, 25000) && row(t2, 25002, 25000).m === F.PT, tt);
   players.set(v.pid, v);
   const re = claimAt(v, 25001, 25000);
   put('retake', /이어받았습니다/.test(re) && (vc1.state || 'active') === 'active' && vc1.ownerPid === v.playerId, re);
@@ -257,14 +262,17 @@ if (T1305_SUB) {
   // ⑬ 부재 상태기와 — 24칸은 계량기가 먼저(41.7일 < 42일) · 20칸은 부재가 먼저(42일 < 60일)
   const o24 = fresh('t13o'); T = now0; block(o24, 26000, 26000, 6, 4); offline(o24);
   const [, oc] = cellOf(o24, 26000, 26000);
-  at(41.7); H._t1343Advance(o24.playerId, T);
-  const meterFirst = (oc.state || 'active') === 'free' && H.Claims.stageFor(oc, 41.7 * 86400000) !== 'free';
+  // ★[T1386] 24칸 — 저축은 41.7일에 바닥나도 첫 칸은 빚 100점(하루 57.6점 · 1.7일) 뒤 = 43.4일 > 부재 풀림 42일 ⇒ 이제 부재가 먼저(24칸도)
+  at(42.01); H._t1343Advance(o24.playerId, T);
+  const rec24 = H.deedDebt.get(o24.playerId) || {};
+  const live24 = [...claims.values()].filter((c) => c.ownerPid === o24.playerId && (c.state || 'active') !== 'free').length;
+  const meterFirst = live24 === 24 && (oc.state || 'active') !== 'free' && H.Claims.stageFor(oc, 42.01 * 86400000) === 'free' && rec24.debt > 0 && rec24.debt < F.PT;
   wipe(o24);
   const o20 = fresh('t13q'); T = now0; block(o20, 27000, 27000, 5, 4); offline(o20);
   const [, oc2] = cellOf(o20, 27000, 27000);
   at(42.01); H._t1343Advance(o20.playerId, T);
   const absFirst = (oc2.state || 'active') !== 'free' && H.Claims.stageFor(oc2, 42.01 * 86400000) === 'free' && row(o20, 27000, 27000).m > 0;
-  put('absenceOrder', meterFirst && absFirst, `24칸 41.7일 계량기 풀림 · 부재 ${H.Claims.stageFor(oc, 41.7 * 86400000)} / 20칸 42.01일 부재 ${H.Claims.stageFor(oc2, 42.01 * 86400000)} · 계량기 m ${row(o20, 27000, 27000).m.toFixed(0)}`);
+  put('absenceOrder', meterFirst && absFirst, `24칸 42.01일 계량기 ${live24}칸 · 빚 ${(+rec24.debt || 0).toFixed(1)} · 부재 ${H.Claims.stageFor(oc, 42.01 * 86400000)} / 20칸 42.01일 부재 ${H.Claims.stageFor(oc2, 42.01 * 86400000)} · 계량기 m ${row(o20, 27000, 27000).m.toFixed(0)}`);
   wipe(o20);
   // ⑭ 칸을 버리면 상한이 내려간다(넘는 몫 버림) — 4칸 청크 가득 400 → 칸 하나 버리면 300
   const u = fresh('t13u'); players.set(u.pid, u); T = now0; line(u, 28000, 28000, 4);
@@ -590,7 +598,7 @@ console.log('\n⑨ ★[T1305 → T1343] 사유지 돌봄(청크 계량기 · 실
     insideNonMember: '⑨ 마을 영토 안 — 비구성원은 거절', insideMember: '⑨ 마을 영토 안 — 인정 구성원은 된다',
     safety: '⑨ 숨은 안전판 — 문이 산다(이 판만 3) · 문구에 숫자 0',
     dFormula: '⑨ ★[T1343] D(N) = 15 × (40 ÷ N)² — 40칸 15일 · 70칸 4.9일 · 24칸 41.7일 · 155칸 1.0일',
-    d40: '⑨ ★[T1343] 40칸을 쥐고 안 돌보면 15일째에 풀린다(14.9일엔 남는다)',
+    d40: '⑨ ★[T1343 → T1386] 40칸을 쥐고 안 돌보면 15일째 저축이 바닥나고 · 그 뒤 빚 100점(0.375일)마다 집에서 가장 먼 칸 하나(통째로 0 아님)',
     cap: '⑨ ★[T1343] 청크 상한 = 칸 수 × 100(3칸 300 · 10칸 1,000) · 새로 잡은 칸은 가득',
     sameDays: '⑨ ★[T1343] 칸 수가 달라도 같은 날 수에 빈다(반 날에 둘 다 반)',
     anyCell: '⑨ ★[T1343] 청크 안 어느 칸을 돌봐도 그 청크 관리도가 오른다', neighborSame: '⑨ ★[T1343] 옆 청크는 안 오른다',
@@ -600,9 +608,9 @@ console.log('\n⑨ ★[T1305 → T1343] 사유지 돌봄(청크 계량기 · 실
     persist: '⑨ ★[T1343] 계량기 줄 DB 영속(`deed_chunks` m · t)', body: '⑨ ★[T1343] 몸 칸 `deeds.z`(존마다 내 칸 수) 저장 · 복원',
     offlineFlows: '⑨ ★[T1343] 나가 있던(꺼져 있던) 시간도 흐른다 — 실제 날짜로 낡음',
     crossZoneN: '⑨ ★[T1343] 다른 존의 내 칸도 N 에 든다(몸 칸) — 그만큼 빨리 준다',
-    free: '⑨ 관리도 0 — 그 청크의 내 칸이 풀린다(빈 땅 · 부재 상태기의 `free`)',
+    free: '⑨ ★[T1386] 저축 바닥 뒤 빚 100점마다 한 칸 — 집에서 먼 칸부터(빈 땅 · 부재 상태기의 `free`) · 집 칸이 마지막',
     takeover: '⑨ 풀린 칸 — 남이 값을 내고 이어받는다(승계 규약 그대로 · 새 주인의 가득)', retake: '⑨ 풀린 내 칸 — 값을 내고 다시 잡는다',
-    absenceOrder: '⑨ ★[T1343] 부재 상태기와 — 24칸은 계량기가 먼저(41.7 < 42일) · 20칸은 부재가 먼저(42 < 60일)',
+    absenceOrder: '⑨ ★[T1343 → T1386] 부재 상태기와 — 24칸도 이제 부재가 먼저(첫 칸 43.4일 > 42일 · 빚 자투리만) · 20칸도 부재가 먼저(42 < 60일)',
     unclaimCap: '⑨ ★[T1343] 칸을 버리면 상한이 내려간다(넘는 몫 버림)',
     migrate: '⑨ 이행 — 켜기 앞의 옛 칸은 켜는 순간 가득(줄지 않는다)',
     ui: '⑨ 화면 설정 — 청크 4 · D0 15 · N0 40 · PT 100 · 점수 꼴 · 머묾 초',
@@ -613,9 +621,9 @@ console.log('\n⑨ ★[T1305 → T1343] 사유지 돌봄(청크 계량기 · 실
   const BAITS = [
     ['gate', '마을 문을 되살린 사본(영토 밖도 마을 사람만)', 'if (_t1305P && !_onbLot) {', 'if (false && _t1305P && !_onbLot) {', ['outsideAny']],
     ['cap', '숫자 상한을 되살린 사본(9 한도)', 'if (!_t1305P && usedCount >= max) {', 'if (usedCount >= max) {', ['noCap']],
-    ['online', '★[T1343] 접속해 있을 때만 줄이는 사본(접속한 날만 세는 꼴)', 'function _t1343Advance(pid, now) {\n', 'function _t1343Advance(pid, now) {\n  if (!_t1343Online(pid)) return { N: 0, chunks: _t1332MyChunks(pid), freed: 0 };\n', ['offlineFlows', 'd40']],
+    ['online', '★[T1343] 접속해 있을 때만 줄이는 사본(접속한 날만 세는 꼴)', 'function _t1343Advance(pid, now, noStage) {', 'function _t1343Advance(pid, now, noStage) {\n  if (!_t1343Online(pid)) { const m0 = _t1332MyChunks(pid); return { N: 0, chunks: m0, freed: 0, P: _t1386Build(pid, m0, 0) }; }\n', ['offlineFlows', 'd40']],
     ['flat', '★[T1343] 칸 수에 비례 안 하는 사본(청크 상한 100 고정)', 'const capOf = (n) => CFG.PT * Math.max(0, n | 0);', 'const capOf = (n) => CFG.PT * (n > 0 ? 1 : 0);', ['cap'], 'deeds'],
-    ['all', '★[T1343] 전 청크를 한꺼번에 올리는 사본', '  Deeds.add(r, pts == null ? Deeds.CFG.P_USE : pts, n);', '  for (const ee of st.chunks.values()) Deeds.add(_t1343Row(pid, ee.cx, ee.cy), pts == null ? Deeds.CFG.P_USE : pts, ee.cells.length);', ['neighborSame']],
+    ['all', '★[T1343] 전 청크를 한꺼번에 올리는 사본', '  Deeds.addPts(P, w, pts == null ? Deeds.CFG.P_USE : pts);', '  for (const ww of P.chunks) { Deeds.addPts(P, ww, pts == null ? Deeds.CFG.P_USE : pts); ww.row.m = ww.m; }', ['neighborSame']],
   ];
   for (const [tag, what, from, to, reds, mod] of BAITS) {
     const f = path.join(ROOT, 'server', `_t1305bait-${tag}-${process.pid}.js`);
