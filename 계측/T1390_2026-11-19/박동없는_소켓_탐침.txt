@@ -1,0 +1,13 @@
+[hanbando] DB에서 claim 0개 로드
+idle 30 s · 소켓 3 · 닫힘 [25,1006,""] · 내 땅 24 · 받은 removed/state 0
+idle 60 s · 소켓 3 · 닫힘 [25,1006,""] · 내 땅 24 · 받은 removed/state 0
+idle 90 s · 소켓 3 · 닫힘 [25,1006,""] · 내 땅 24 · 받은 removed/state 0
+idle 120 s · 소켓 3 · 닫힘 [25,1006,""] · 내 땅 24 · 받은 removed/state 0
+idle 150 s · 소켓 3 · 닫힘 [25,1006,""] · 내 땅 24 · 받은 removed/state 0
+idle 180 s · 소켓 3 · 닫힘 [25,1006,""] · 내 땅 24 · 받은 removed/state 0
+idle 210 s · 소켓 3 · 닫힘 [25,1006,""] · 내 땅 24 · 받은 removed/state 0
+idle 240 s · 소켓 3 · 닫힘 [25,1006,""] · 내 땅 24 · 받은 removed/state 0
+idle 270 s · 소켓 3 · 닫힘 [25,1006,""] · 내 땅 24 · 받은 removed/state 0
+idle 300 s · 소켓 3 · 닫힘 [25,1006,""] · 내 땅 24 · 받은 removed/state 0
+idle 330 s · 소켓 3 · 닫힘 [25,1006,""] · 내 땅 24 · 받은 removed/state 0
+bbA 땅 24 거절 0 → 다시 접속 0칸 · welcome claims 24 · N 0 · 내 pid bbA · 소유 ["bbA"] · 첫 거절 [] · 끊긴 뒤 
