@@ -1,0 +1,103 @@
+##### test-t1347-fetch.js #####
+  [소요] 173초
+  ✓ RC=0
+##### test-seed-reserve.js #####
+=== 결과: 27 PASS / 0 FAIL ===
+  ✓ ⓖ [자명 통과 금지] 비축이 서는 줄을 뺀 v1 사본 — 켬에서도 비축 없음 ⇒ ⓑ · ⓓ 가 빨개진다  비축 null
+  ✓ ⓖ [자명 통과 금지] 발주 후보 자리를 종전 읽기로 되돌린 v2 사본 — 켬에서도 발주가 비축을 판다 ⇒ ⓓ 가 빨개진다  발주 침범 2 · 식 맞음 51/85
+=== 결과: 27 PASS / 0 FAIL ===
+  [소요] 22초
+  ✓ RC=0
+##### test-cargo-age.js #####
+  ✓ ① [자명 통과 금지] 끔(`=0`)은 세계를 바꾼다(T784 앞 세계)  가:47/f657/c0 나:88/f5855/c315 다:56/f432/c459 라:55/f806/c77 마:26/f944/c0
+  ✓ ⑧ [자명 통과 금지] 고도를 넣은 판(마을 0 · 0.8 · 1.6 · 0.4 · 2 km)에선 켬이 세계를 바꾼다  가:49/f1674/c0 나:82/f3455/c0 다:59/f1850/c22 라:57/f2204/c357 마:26/f346/c0 → 가:42/f893/c0 나:80/f2186/c0 다:60/f1828/c8 라:57/f2397/c240 마:27/f1043/c0
+=== 45건 중 PASS 45 · FAIL 0 ===
+  [소요] 333초
+  ✓ RC=0
+##### test-floor-stone.js #####
+  ✓ ★★자명 통과 금지 — 끔(기본)에선 같은 세계에서 바닥 마을 돌이 교역 문(수출 · 귀환 화물)으로 나간다  1728.46
+=== 10건 중 PASS 10 · FAIL 0 ===
+  [소요] 61초
+  ✓ RC=0
+##### test-lab-stone.js #####
+  · [상황] 문이 실제로 호출된다(자명 통과 금지)  1800회
+  · [상황] 켠 판에서 둘째가 실제로 실린다(자명 통과 금지)  231건 · 8750 단위
+  ✓ ㉖ ★★끈 판과 켠 판은 **다른 세계**다(문이 죽어 있지 않다 · 자명 통과 금지)
+=== T299 둘째 화물 기본 끔(정정) 포함: 통과 133 · 실패 0 ===
+  [소요] 730초
+  ✓ RC=0
+##### test-one-target.js #####
+=== 결과: 24 PASS / 0 FAIL ===
+  ✓ ⓕ [자명 통과 금지] 정산 문을 뺀 사본은 켬에서도 정산 ≠ 결정 ⇒ ⓑ 가 빨개진다  1796/3228 칸
+=== 결과: 24 PASS / 0 FAIL ===
+  [소요] 53초
+  ✓ RC=0
+##### test-t1344-bronze-mix.js #####
+  [소요] 77초
+  ✓ RC=0
+##### test-body-fields.js #####
+=== 14 통과 / 0 실패 ===
+  ✓ ★자명 통과 금지 — `??=` 꼴도 문다 · 읽기(`==`)는 안 문다  zone.js:19730 npc._t673Bait2
+  ✓ ★[T1140 ③-가] 자명 통과 금지 — 값 하나(`nextDecisionAt: 1`)를 바꾸면 문다
+  ✓ ⑳ 판정 칸 쓰기 자리를 다 셌다(자명 통과 아님)  전체 454 · 걸음 문 안 256 · 문 밖 198(표 내림 73 · 까닭 125)
+=== 14 통과 / 0 실패 ===
+  [소요] 2초
+  ✓ RC=0
+##### test-coll-grid.js #####
+=== 결과: 20 PASS / 0 FAIL ===
+  ✓ ② [전제 · 자명 통과 금지] 걸음이 **실제로 막힌다** · 옛 격자 질의의 셋에 하나 넘게에 **밭·마당이 섞였다**  막힘 10476/40000 · 밭 섞임 4525/10000
+=== 결과: 20 PASS / 0 FAIL ===
+  [소요] 29초
+  ✓ RC=0
+##### test-hp-src.js #####
+=== 54 통과 / 0 실패 ===
+  ✓ [상황] 세 파일을 실제로 읽었다(못 읽으면 아래가 자명 통과다)  zone 1192392 · net 108838 · wildlife 96104
+  ✓ ★⓪ 자명 통과 금지 — 직접 대입 한 줄을 되살리면 잡힌다
+  ✓ [상황] `server/villages.js` 를 실제로 읽었다(못 읽으면 아래가 자명 통과다)  villages 1444351
+=== 54 통과 / 0 실패 ===
+  [소요] 4초
+  ✓ RC=0
+##### test-lon-day.js #####
+=== 22건 중 PASS 22 · FAIL 0 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-harness-lint.js #####
+  ✓ ★⑲b 자명 통과 금지 — 표지 · 수가 맞는 새 하네스만 보내고 · 표지 없음 · 수 어긋남 · 바꾼 자리 안 셈 · 표지 단 옛 하네스 어긋남 · 주석(보고)에만 적은 미끼는 문다  good=ok,nomark=bad,many=bad,nocount=bad,old=ok,oldmarked=bad,report=bad
+  ✓ ⑳ [전제] `@harness-only` 표지를 단 하네스가 실제로 있다(0 이면 아래가 자명 통과다)  test-ci-list.js
+  ✓ ★⑳ 자명 통과 금지 — 제품 부름 셋은 물고 · 주석 · scripts 자리는 보낸다  req=hit,join=hit,rel=hit,cmt=none,scr=none
+=== 99건 중 PASS 99 · FAIL 0 ===
+  [소요] 191초
+  ✓ RC=0
+##### test-stone-planning.js #####
+PASS stone recipe planning T419=true
+PASS raw stone demand follows actual missing tools, including when production is blocked
+  [소요] 0초
+  ✓ RC=0
+##### test-stone-real.js #####
+  [소요] 27초
+  ✓ RC=0
+##### test-t1207-terr-real.js #####
+=== T1207: 32건 중 PASS 32 · FAIL 0 ===
+  [소요] 10초
+  ✓ RC=0
+##### test-t1213-terr-supply.js #####
+=== T1213: 19건 중 PASS 19 · FAIL 0 ===
+  [소요] 2초
+  ✓ RC=0
+##### test-t1333-alloy-order.js #####
+  [소요] 19초
+  ✓ RC=0
+##### test-valuechain.js #####
+  ✔   검사 상황이 유효하다(순수취가 양수 — 0=0 자명통과가 아님)
+  ✔   ★검사 상황 확인: 기대 지불액이 양수다 (30.370) — 0 = 0 통과 방지
+결과: PASS
+  [소요] 1초
+  ✓ RC=0
+
+=== 러너 요약 ===
+  통과 18: test-t1347-fetch.js test-seed-reserve.js test-cargo-age.js test-floor-stone.js test-lab-stone.js test-one-target.js test-t1344-bronze-mix.js test-body-fields.js test-coll-grid.js test-hp-src.js test-lon-day.js test-harness-lint.js test-stone-planning.js test-stone-real.js test-t1207-terr-real.js test-t1213-terr-supply.js test-t1333-alloy-order.js test-valuechain.js
+  실패 0: 없음
+  걸린 시간 상위(초): test-lab-stone.js 730 · test-cargo-age.js 333 · test-harness-lint.js 191 · test-t1347-fetch.js 173 · test-t1344-bronze-mix.js 77 · test-floor-stone.js 61 · test-one-target.js 53 · test-coll-grid.js 29 · test-stone-real.js 27 · test-seed-reserve.js 22
+  걸린 시간 합: 하네스 1735초 · 러너 전체 1744초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 1번 × 8초 · 건넘 18번(앞 판이 남긴 아이 없음)
+RC=0

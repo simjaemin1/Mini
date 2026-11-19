@@ -1,0 +1,173 @@
+{
+ "tag": "SB0_1020",
+ "days": {
+  "hanbando": 120,
+  "nippon": 120
+ },
+ "crossed": {
+  "arriveOut": 645,
+  "returnOut": 628,
+  "soldOk": 616,
+  "deposited": 619,
+  "lost": 0,
+  "bodyOut": 1273,
+  "bodyIn": 1273,
+  "bodyInSkip": 0,
+  "sentFail": 0,
+  "bounced": 0,
+  "retried": 0,
+  "dup": 0
+ },
+ "t952": {
+  "hanbando": {
+   "stays": 395,
+   "joined": 126
+  },
+  "nippon": {
+   "stays": 235,
+   "joined": 79
+  }
+ },
+ "bodies": {
+  "logical": 654,
+  "handoffs": 1281,
+  "byDir": {
+   "out": 651,
+   "back": 630
+  },
+  "byWhy": {
+   "hide→set": 1281
+  },
+  "neither": {
+   "n": 1281,
+   "p50": 333.38,
+   "p95": 334.14,
+   "max": 334.22,
+   "le100ms": 635,
+   "le1s": 646,
+   "le5s": 0,
+   "gt5s": 0
+  },
+  "both": {
+   "n": 0,
+   "p50": null,
+   "p95": null,
+   "max": null,
+   "totalMs": 0,
+   "sample": []
+  },
+  "vanished": {
+   "n": 0,
+   "sample": []
+  },
+  "mapGap": {
+   "n": 0,
+   "p50": null,
+   "p95": null,
+   "max": null,
+   "sample": []
+  },
+  "mapBoth": {
+   "n": 1281,
+   "totalMs": 640495.25
+  },
+  "within": {
+   "n": 1281,
+   "over": 0,
+   "overSample": []
+  },
+  "hidden": {
+   "n": 1281,
+   "p50": 833.38,
+   "p95": 834.14,
+   "max": 834.21,
+   "left": 0,
+   "leftSample": [],
+   "byEnd": {
+    "del": 1281
+   }
+  },
+  "esc": {
+   "n": 1281,
+   "same": 1281,
+   "more": 0,
+   "less": 0,
+   "sumOut": 570,
+   "sumIn": 570,
+   "byDir": {
+    "out": 0,
+    "back": 0
+   },
+   "moreSample": [],
+   "lessSample": [],
+   "way": {
+    "n": 1281,
+    "died": 0,
+    "diedSum": 0
+   }
+  },
+  "tEnd": 1767225960000.01,
+  "tailMs": 10000
+ },
+ "lag": {
+  "dueMinusSend": {
+   "1": 1273
+  },
+  "recvNowMinusSend": {
+   "0": 1281
+  },
+  "late": {
+   "lateArrival": 0,
+   "noDayInAtNext": 0,
+   "unexplained": 0
+  }
+ },
+ "stuck": {
+  "hanbando": {
+   "day": 119,
+   "foreign": 10,
+   "foreignInbound": 2,
+   "overdue": 0,
+   "overdueAge": {},
+   "homeOut": 9
+  },
+  "nippon": {
+   "day": 120,
+   "foreign": 4,
+   "foreignInbound": 3,
+   "overdue": 0,
+   "overdueAge": {},
+   "homeOut": 18
+  }
+ },
+ "final": {
+  "hanbando": {
+   "pop": 1540,
+   "dead": 0,
+   "ever": 51,
+   "deaths": 4,
+   "fdDeaths": 0,
+   "trades": 3694,
+   "skip": 0
+  },
+  "nippon": {
+   "pop": 723,
+   "dead": 0,
+   "ever": 36,
+   "deaths": 3,
+   "fdDeaths": 0,
+   "trades": 2306,
+   "skip": 0
+  }
+ },
+ "cpu": {
+  "hanbando": {
+   "meanMsPerDay": 5121.3,
+   "days": 121
+  },
+  "nippon": {
+   "meanMsPerDay": 3759.8,
+   "days": 121
+  }
+ }
+}

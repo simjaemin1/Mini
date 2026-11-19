@@ -1,0 +1,267 @@
+{
+ "made": "2026-11-18",
+ "card": "T1371",
+ "world": "끔 세계(main 기본 · server-baseline-check 판 조건 · --vclock)",
+ "days": 1200,
+ "seeds": [
+  1020,
+  7,
+  42
+ ],
+ "def": {
+  "year": "365날 토막(4 = 1,096 ~ 1,200 · 토막)",
+  "endPop": "해 끝 날 마을 명부 합",
+  "starve": "_fdDeadTot 그 해 증분 합",
+  "kDeath": "(_deadTot − _fdDeadTot − _natDeadTot) 그 해 증분 합 — 인구 식 음수 고리(K 위 죽음)",
+  "nat": "_natDeadTot 그 해 증분 합",
+  "empty": "해 끝 날 사람 0 마을",
+  "peak": "그 해 가장 많은 세계 인구(peakDay = 그 날)",
+  "dropPct": "그 해 안 그때까지 꼭대기 대비 가장 깊은 내림 %(T1357 L2 식)",
+  "worst": "그 해 한 마을 굶어 죽음 최댓값 · 그 마을",
+  "toolQ": "해 끝 날 곳간 tool × _toolQ 합",
+  "weapQ": "해 끝 날 곳간 weapon × _weapQ 합",
+  "det": "두 판 날 지문(econ sha1 12) · 날 줄 같음 · 날 수 같음"
+ },
+ "byseed": {
+  "7": {
+   "done": 876,
+   "incomplete": true,
+   "det": {
+    "daysA": 876,
+    "daysB": 876,
+    "fpA": 0,
+    "fpB": 0,
+    "fpSame": null,
+    "fpFirstDiff": null,
+    "linesSame": true,
+    "linesFirstDiff": null,
+    "linesCmp": 876,
+    "basis": "날 줄만(날 지문 없음 — 판이 끝 줄을 못 썼다)",
+    "ok": true
+   },
+   "years": [
+    {
+     "year": 1,
+     "from": 1,
+     "to": 365,
+     "full": true,
+     "endPop": 3547,
+     "starve": 267,
+     "kDeath": 1251,
+     "nat": 46,
+     "empty": 0,
+     "peak": 3900,
+     "peakDay": 260,
+     "dropPct": 9.1,
+     "worst": {
+      "name": "어촌7",
+      "starve": 40
+     },
+     "toolQ": 3590.5,
+     "weapQ": 183
+    },
+    {
+     "year": 2,
+     "from": 366,
+     "to": 730,
+     "full": true,
+     "endPop": 4595,
+     "starve": 26,
+     "kDeath": 966,
+     "nat": 59,
+     "empty": 1,
+     "peak": 4835,
+     "peakDay": 633,
+     "dropPct": 5.6,
+     "worst": {
+      "name": "농촌11",
+      "starve": 15
+     },
+     "toolQ": 9571.1,
+     "weapQ": 737
+    },
+    {
+     "year": 3,
+     "from": 731,
+     "to": 876,
+     "full": false,
+     "endPop": 6991,
+     "starve": 0,
+     "kDeath": 159,
+     "nat": 35,
+     "empty": 1,
+     "peak": 6991,
+     "peakDay": 876,
+     "dropPct": 0.7,
+     "worst": {
+      "name": null,
+      "starve": 0
+     },
+     "toolQ": 10861.4,
+     "weapQ": 871
+    }
+   ],
+   "runEnd": null
+  },
+  "42": {
+   "done": 995,
+   "incomplete": true,
+   "det": {
+    "daysA": 995,
+    "daysB": 995,
+    "fpA": 0,
+    "fpB": 0,
+    "fpSame": null,
+    "fpFirstDiff": null,
+    "linesSame": true,
+    "linesFirstDiff": null,
+    "linesCmp": 995,
+    "basis": "날 줄만(날 지문 없음 — 판이 끝 줄을 못 썼다)",
+    "ok": true
+   },
+   "years": [
+    {
+     "year": 1,
+     "from": 1,
+     "to": 365,
+     "full": true,
+     "endPop": 3336,
+     "starve": 127,
+     "kDeath": 757,
+     "nat": 41,
+     "empty": 1,
+     "peak": 3437,
+     "peakDay": 257,
+     "dropPct": 3.2,
+     "worst": {
+      "name": "농촌11",
+      "starve": 27
+     },
+     "toolQ": 3558.5,
+     "weapQ": 174
+    },
+    {
+     "year": 2,
+     "from": 366,
+     "to": 730,
+     "full": true,
+     "endPop": 5379,
+     "starve": 26,
+     "kDeath": 1149,
+     "nat": 55,
+     "empty": 1,
+     "peak": 5979,
+     "peakDay": 629,
+     "dropPct": 10.2,
+     "worst": {
+      "name": "농촌10",
+      "starve": 14
+     },
+     "toolQ": 7765.3,
+     "weapQ": 531
+    },
+    {
+     "year": 3,
+     "from": 731,
+     "to": 995,
+     "full": false,
+     "endPop": 7019,
+     "starve": 0,
+     "kDeath": 435,
+     "nat": 63,
+     "empty": 1,
+     "peak": 7057,
+     "peakDay": 992,
+     "dropPct": 1.3,
+     "worst": {
+      "name": null,
+      "starve": 0
+     },
+     "toolQ": 12540.4,
+     "weapQ": 660
+    }
+   ],
+   "runEnd": null
+  },
+  "1020": {
+   "done": 946,
+   "incomplete": true,
+   "det": {
+    "daysA": 946,
+    "daysB": 946,
+    "fpA": 0,
+    "fpB": 0,
+    "fpSame": null,
+    "fpFirstDiff": null,
+    "linesSame": true,
+    "linesFirstDiff": null,
+    "linesCmp": 946,
+    "basis": "날 줄만(날 지문 없음 — 판이 끝 줄을 못 썼다)",
+    "ok": true
+   },
+   "years": [
+    {
+     "year": 1,
+     "from": 1,
+     "to": 365,
+     "full": true,
+     "endPop": 3680,
+     "starve": 132,
+     "kDeath": 857,
+     "nat": 40,
+     "empty": 0,
+     "peak": 4085,
+     "peakDay": 276,
+     "dropPct": 9.9,
+     "worst": {
+      "name": "임업5",
+      "starve": 42
+     },
+     "toolQ": 3581.1,
+     "weapQ": 200
+    },
+    {
+     "year": 2,
+     "from": 366,
+     "to": 730,
+     "full": true,
+     "endPop": 6071,
+     "starve": 62,
+     "kDeath": 962,
+     "nat": 67,
+     "empty": 0,
+     "peak": 6463,
+     "peakDay": 640,
+     "dropPct": 7,
+     "worst": {
+      "name": "임업5",
+      "starve": 25
+     },
+     "toolQ": 10277.4,
+     "weapQ": 626
+    },
+    {
+     "year": 3,
+     "from": 731,
+     "to": 946,
+     "full": false,
+     "endPop": 7442,
+     "starve": 0,
+     "kDeath": 284,
+     "nat": 62,
+     "empty": 0,
+     "peak": 7463,
+     "peakDay": 914,
+     "dropPct": 1.2,
+     "worst": {
+      "name": null,
+      "starve": 0
+     },
+     "toolQ": 11732.6,
+     "weapQ": 855
+    }
+   ],
+   "runEnd": null
+  }
+ }
+}

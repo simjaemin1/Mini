@@ -1,0 +1,4 @@
+const fs=require('fs');function load(dir,re){const m=new Map();for(const f of fs.readdirSync(dir).filter(f=>re.test(f))){const o=JSON.parse(fs.readFileSync(dir+'/'+f));for(const r of o.rows){const x={};o.cols.forEach((c,i)=>x[c]=r[i]);m.set(r[0],x);}}return m;}
+const W=[[1,25],[26,50],[51,75],[76,100],[101,115]];
+for(const s of [1020,42]){for(const [n,dir,re] of [['몸',`body-${s}`,/^seg-\d+\.t1351\.json$/],['판',`srv/FH-${s}`,/\.t1351\.json$/]]){const m=load(dir,re);
+ console.log(s,n,W.map(([a,b])=>{let crew=0,trips=0,took=0,adv=0,stall=0,sites=0,k=0;for(let d=a;d<=b;d++){const x=m.get(d);if(!x)continue;k++;crew+=x.crew;trips+=x.trips;took+=x.took;adv+=x.adv;stall+=x.stall;sites+=x.sites;}const e=m.get(b)||{};return `${a}-${b} 집${e.houses} 크루${(crew/k).toFixed(1)} 왕복${trips} 자재${Math.round(took)} 전진${adv} 멈춤${stall} 터${(sites/k).toFixed(1)}`}).join(' | '));}}

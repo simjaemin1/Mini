@@ -1,0 +1,92 @@
+{
+ "wallS": 712,
+ "bars": 715,
+ "H": 1767225957500,
+ "zones": {
+  "hanbando": {
+   "started": true,
+   "at": false,
+   "st": {
+    "t": "upd",
+    "zone": "hanbando",
+    "H": 1767225957000,
+    "V": 1767225957000,
+    "cnt": {
+     "reqSent": {
+      "nippon": 719
+     },
+     "reqRecv": {
+      "ext": 347,
+      "nippon": 4014
+     },
+     "resSent": {
+      "ext": 347,
+      "nippon": 4009
+     },
+     "resRecv": {
+      "nippon": 719
+     }
+    },
+    "outW": 0,
+    "inbox": 5,
+    "held": 8,
+    "heldK": [
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare",
+     "res:nippon:200:/handoff_prepare"
+    ],
+    "inboxK": [
+     "nippon:/ghost_sync",
+     "nippon:/ghost_sync",
+     "nippon:/ghost_sync",
+     "nippon:/ghost_sync",
+     "nippon:/ghost_sync"
+    ],
+    "flushes": 714
+   }
+  },
+  "nippon": {
+   "started": true,
+   "at": true,
+   "st": {
+    "t": "at",
+    "zone": "nippon",
+    "H": 1767225957500,
+    "V": 1767225957500,
+    "cnt": {
+     "reqSent": {
+      "hanbando": 4019
+     },
+     "reqRecv": {
+      "ext": 347,
+      "hanbando": 719
+     },
+     "resSent": {
+      "ext": 347,
+      "hanbando": 719
+     },
+     "resRecv": {
+      "hanbando": 4014
+     }
+    },
+    "outW": 0,
+    "inbox": 0,
+    "held": 5,
+    "heldK": [
+     "res:hanbando:200:/ghost_sync",
+     "res:hanbando:200:/ghost_sync",
+     "res:hanbando:200:/ghost_sync",
+     "res:hanbando:200:/ghost_sync",
+     "res:hanbando:200:/ghost_sync"
+    ],
+    "inboxK": [],
+    "flushes": 715
+   }
+  }
+ }
+}

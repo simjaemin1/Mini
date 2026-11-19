@@ -1,0 +1,766 @@
+{
+ "tag": "SBLS_42",
+ "counts": {
+  "keys": 28,
+  "depart": 28,
+  "crossed": 24,
+  "crossedDup": 0,
+  "unknownEv": 0,
+  "back": 0,
+  "home": 0,
+  "inRecv": 24,
+  "arrive": 24,
+  "deadOut": 0,
+  "deadBack": 0,
+  "deadIn": 0,
+  "transitOut": 4,
+  "transitBack": 0,
+  "transitIn": 0,
+  "byDir": {
+   "hanbando→nippon": {
+    "depart": 10,
+    "crossed": 10,
+    "arrive": 10,
+    "home": 0,
+    "dead": 0
+   },
+   "nippon→hanbando": {
+    "depart": 18,
+    "crossed": 14,
+    "arrive": 14,
+    "home": 0,
+    "dead": 0
+   }
+  },
+  "reroute": 0
+ },
+ "balance": {
+  "depart": 28,
+  "sum": 28,
+  "ok": true
+ },
+ "bad": {
+  "twoIn": {
+   "n": 0,
+   "sample": []
+  },
+  "inNoDepart": {
+   "n": 0,
+   "sample": []
+  },
+  "crossedNoIn": {
+   "n": 0,
+   "sample": []
+  },
+  "homeAndArrive": {
+   "n": 0,
+   "sample": []
+  },
+  "backAndIn": {
+   "n": 0,
+   "sample": []
+  },
+  "noDepart": {
+   "n": 0,
+   "sample": []
+  }
+ },
+ "red": 0,
+ "gap": {
+  "n": 24,
+  "body": 24,
+  "noBody": 0,
+  "p50": 23765,
+  "max": 56609,
+  "over32": 24
+ },
+ "granary": [
+  {
+   "key": "nippon:mjuohs00:1",
+   "zone": "hanbando",
+   "vil": "농촌3",
+   "n": 27,
+   "fe": 1014.1,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:2",
+   "zone": "hanbando",
+   "vil": "농촌3",
+   "n": 28,
+   "fe": 1046.3,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:3",
+   "zone": "hanbando",
+   "vil": "농촌3",
+   "n": 29,
+   "fe": 1077.1,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:4",
+   "zone": "hanbando",
+   "vil": "농촌3",
+   "n": 30,
+   "fe": 1107.8,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:5",
+   "zone": "hanbando",
+   "vil": "농촌3",
+   "n": 31,
+   "fe": 1140.5,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:6",
+   "zone": "hanbando",
+   "vil": "농촌3",
+   "n": 32,
+   "fe": 1173.2,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:7",
+   "zone": "hanbando",
+   "vil": "광산7",
+   "n": 11,
+   "fe": 345.2,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:8",
+   "zone": "hanbando",
+   "vil": "광산7",
+   "n": 12,
+   "fe": 372.7,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:9",
+   "zone": "hanbando",
+   "vil": "광산7",
+   "n": 13,
+   "fe": 372.7,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:10",
+   "zone": "hanbando",
+   "vil": "어촌6",
+   "n": 23,
+   "fe": 804.7,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:11",
+   "zone": "hanbando",
+   "vil": "어촌6",
+   "n": 24,
+   "fe": 837.3,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:12",
+   "zone": "hanbando",
+   "vil": "어촌6",
+   "n": 25,
+   "fe": 870.1,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:13",
+   "zone": "hanbando",
+   "vil": "어촌6",
+   "n": 26,
+   "fe": 902.9,
+   "days": 2
+  },
+  {
+   "key": "nippon:mjuohs00:14",
+   "zone": "hanbando",
+   "vil": "광산2",
+   "n": 22,
+   "fe": 692.4,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:1",
+   "zone": "nippon",
+   "vil": "후카임업",
+   "n": 17,
+   "fe": 745.4,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:2",
+   "zone": "nippon",
+   "vil": "후카임업",
+   "n": 31,
+   "fe": 936.1,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:3",
+   "zone": "nippon",
+   "vil": "후카임업",
+   "n": 32,
+   "fe": 968.7,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:4",
+   "zone": "nippon",
+   "vil": "후카임업",
+   "n": 33,
+   "fe": 1001.2,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:5",
+   "zone": "nippon",
+   "vil": "아오어촌",
+   "n": 13,
+   "fe": 402.4,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:6",
+   "zone": "nippon",
+   "vil": "네코로",
+   "n": 17,
+   "fe": 625.5,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:7",
+   "zone": "nippon",
+   "vil": "네코로",
+   "n": 18,
+   "fe": 658.9,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:8",
+   "zone": "nippon",
+   "vil": "아오어촌",
+   "n": 14,
+   "fe": 435.9,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:9",
+   "zone": "nippon",
+   "vil": "네코로",
+   "n": 19,
+   "fe": 692.3,
+   "days": 2
+  },
+  {
+   "key": "hanbando:mjuohs00:10",
+   "zone": "nippon",
+   "vil": "네코로",
+   "n": 20,
+   "fe": 725.7,
+   "days": 2
+  }
+ ],
+ "heard": [],
+ "perfLast": {
+  "hanbando": {
+   "walk": {},
+   "knows": 95,
+   "knowVil": 18,
+   "t1147": {
+    "pick": 90,
+    "nearest": 6,
+    "other": 84,
+    "none": 0
+   },
+   "why": {
+    "at": 0,
+    "geo": 0,
+    "far": 1497,
+    "split": 0,
+    "days": 0,
+    "h": 72,
+    "beds": 57,
+    "food": 310
+   },
+   "none": [],
+   "knowList": [
+    [
+     1,
+     "광산1",
+     8,
+     0.674,
+     3
+    ],
+    [
+     2,
+     "광산2",
+     11,
+     1,
+     24
+    ],
+    [
+     3,
+     "광산3",
+     4,
+     0.819,
+     16
+    ],
+    [
+     5,
+     "어촌1",
+     4,
+     1,
+     29
+    ],
+    [
+     6,
+     "광산5",
+     2,
+     0.901,
+     40
+    ],
+    [
+     8,
+     "광산7",
+     9,
+     0.687,
+     8
+    ],
+    [
+     9,
+     "어촌2",
+     5,
+     1,
+     69
+    ],
+    [
+     11,
+     "임업2",
+     2,
+     0.968,
+     65
+    ],
+    [
+     12,
+     "임업3",
+     6,
+     1,
+     90
+    ],
+    [
+     15,
+     "임업5",
+     1,
+     1,
+     36
+    ],
+    [
+     17,
+     "임업6",
+     3,
+     0.828,
+     24
+    ],
+    [
+     19,
+     "농촌3",
+     11,
+     0.686,
+     39
+    ],
+    [
+     22,
+     "농촌5",
+     5,
+     0.951,
+     30
+    ],
+    [
+     24,
+     "어촌6",
+     8,
+     0.691,
+     18
+    ],
+    [
+     25,
+     "어촌7",
+     4,
+     0.823,
+     27
+    ],
+    [
+     29,
+     "어촌11",
+     4,
+     1,
+     23
+    ],
+    [
+     32,
+     "어촌14",
+     6,
+     0.757,
+     23
+    ],
+    [
+     51,
+     "농촌22",
+     2,
+     0.846,
+     28
+    ]
+   ],
+   "t1352": {
+    "localOn": true,
+    "seamOn": true,
+    "none": [],
+    "seamKeys": 20,
+    "hist": 323,
+    "histDrop": 173,
+    "seamOut": 3600,
+    "seamIn": 119,
+    "seamRows": 2380,
+    "calls": 90,
+    "own": 12,
+    "local": 342,
+    "seam": 1608,
+    "notYet": 21,
+    "pickOwn": 0,
+    "pickLocal": 3,
+    "pickSeam": 7,
+    "ageN": 10,
+    "ageSum": 10,
+    "ageMax": 1,
+    "stage": 10,
+    "staged": 90,
+    "roadDays": 24,
+    "roadHungry": 1
+   },
+   "news": 367,
+   "heard": 323,
+   "cand": 26,
+   "candSeen": 1962,
+   "pick": 10,
+   "depart": 10,
+   "bodied": 10,
+   "sent": 10,
+   "ok": 10,
+   "dup": 0,
+   "refused": 0,
+   "unknown": 0,
+   "back": 0,
+   "home": 0,
+   "in": 14,
+   "inRefuse": 0,
+   "inDup": 0,
+   "arrive": 14,
+   "joined": 14,
+   "roadDead": 0,
+   "reroute": 0,
+   "mark": 58,
+   "restored": 0,
+   "gapN": 10,
+   "gapOver": 10,
+   "gapMax": 56609
+  },
+  "nippon": {
+   "walk": {
+    "out": 4
+   },
+   "knows": 127,
+   "knowVil": 18,
+   "t1147": {
+    "pick": 86,
+    "nearest": 1,
+    "other": 85,
+    "none": 4
+   },
+   "why": {
+    "at": 0,
+    "geo": 0,
+    "far": 2853,
+    "split": 0,
+    "days": 0,
+    "h": 3,
+    "beds": 121,
+    "food": 218
+   },
+   "none": [
+    [
+     60,
+     "미도리광산",
+     0,
+     0.699
+    ],
+    [
+     60,
+     "타카노",
+     3,
+     0.714
+    ],
+    [
+     70,
+     "미도리광산",
+     0,
+     0.694
+    ],
+    [
+     120,
+     "새후보16",
+     3,
+     0.684
+    ]
+   ],
+   "knowList": [
+    [
+     1,
+     "타카쿠",
+     1,
+     1,
+     28
+    ],
+    [
+     3,
+     "마트노",
+     2,
+     0.998,
+     30
+    ],
+    [
+     4,
+     "카토쿠",
+     3,
+     1,
+     24
+    ],
+    [
+     6,
+     "네코로",
+     8,
+     0.73,
+     20
+    ],
+    [
+     7,
+     "사키농촌",
+     14,
+     0.995,
+     24
+    ],
+    [
+     8,
+     "타카노",
+     3,
+     0.768,
+     15
+    ],
+    [
+     13,
+     "새후보16",
+     3,
+     0.684,
+     22
+    ],
+    [
+     14,
+     "토오광산",
+     7,
+     0.706,
+     14
+    ],
+    [
+     16,
+     "후카임업",
+     11,
+     0.753,
+     33
+    ],
+    [
+     21,
+     "쿠라마",
+     10,
+     0.68,
+     16
+    ],
+    [
+     23,
+     "노라마",
+     16,
+     1,
+     36
+    ],
+    [
+     25,
+     "쿠라다",
+     8,
+     0.873,
+     30
+    ],
+    [
+     26,
+     "새후보21",
+     9,
+     0.758,
+     23
+    ],
+    [
+     28,
+     "아오어촌",
+     7,
+     0.891,
+     14
+    ],
+    [
+     30,
+     "키요어촌",
+     5,
+     0.681,
+     2
+    ],
+    [
+     31,
+     "오오임업",
+     4,
+     0.69,
+     16
+    ],
+    [
+     32,
+     "히로농촌",
+     6,
+     0.814,
+     15
+    ],
+    [
+     34,
+     "시로농촌",
+     10,
+     0.695,
+     11
+    ]
+   ],
+   "t1352": {
+    "localOn": true,
+    "seamOn": true,
+    "none": [
+     [
+      60,
+      "미도리광산",
+      0,
+      9,
+      26,
+      0.699,
+      {
+       "far": 34,
+       "food": 1
+      }
+     ],
+     [
+      60,
+      "타카노",
+      0,
+      10,
+      25,
+      0.714,
+      {
+       "far": 33,
+       "beds": 2
+      }
+     ],
+     [
+      70,
+      "미도리광산",
+      0,
+      6,
+      29,
+      0.694,
+      {
+       "far": 34,
+       "food": 1
+      }
+     ],
+     [
+      120,
+      "새후보16",
+      1,
+      9,
+      29,
+      0.684,
+      {
+       "far": 37,
+       "food": 2
+      }
+     ]
+    ],
+    "seamKeys": 30,
+    "hist": 367,
+    "histDrop": 176,
+    "seamOut": 2400,
+    "seamIn": 120,
+    "seamRows": 3600,
+    "calls": 90,
+    "own": 36,
+    "local": 750,
+    "seam": 2454,
+    "notYet": 36,
+    "pickOwn": 0,
+    "pickLocal": 9,
+    "pickSeam": 9,
+    "ageN": 18,
+    "ageSum": 18,
+    "ageMax": 1,
+    "stage": 10,
+    "staged": 86,
+    "roadDays": 24,
+    "roadHungry": 1
+   },
+   "news": 328,
+   "heard": 367,
+   "cand": 45,
+   "candSeen": 3240,
+   "pick": 18,
+   "depart": 18,
+   "bodied": 18,
+   "sent": 14,
+   "ok": 14,
+   "dup": 0,
+   "refused": 0,
+   "unknown": 0,
+   "back": 0,
+   "home": 0,
+   "in": 10,
+   "inRefuse": 0,
+   "inDup": 0,
+   "arrive": 10,
+   "joined": 10,
+   "roadDead": 0,
+   "reroute": 0,
+   "mark": 66,
+   "restored": 0,
+   "gapN": 14,
+   "gapOver": 14,
+   "gapMax": 40130
+  }
+ },
+ "final": {
+  "hanbando": {
+   "pop": 1450,
+   "deaths": 3,
+   "fdDeaths": 0
+  },
+  "nippon": {
+   "pop": 737,
+   "deaths": 4,
+   "fdDeaths": 0
+  }
+ }
+}

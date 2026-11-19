@@ -1,0 +1,306 @@
+{
+ "tag": "SLS_1020",
+ "env": {
+  "T1324_XZ_MIGRATE": "1",
+  "T1352_NEWS_LOCAL": "1",
+  "T1352_NEWS_SEAM": "1"
+ },
+ "days": 120,
+ "stagePlan": [
+  30,
+  10,
+  3,
+  3
+ ],
+ "crossed": 4,
+ "depart": 4,
+ "arrive": 4,
+ "byDir": {
+  "nippon→hanbando": {
+   "depart": 4,
+   "crossed": 4,
+   "arrive": 4,
+   "home": 0,
+   "dead": 0
+  }
+ },
+ "conserve": {
+  "red": 0,
+  "balance": {
+   "depart": 4,
+   "sum": 4,
+   "ok": true
+  },
+  "bad": {
+   "twoIn": 0,
+   "inNoDepart": 0,
+   "crossedNoIn": 0,
+   "homeAndArrive": 0,
+   "backAndIn": 0,
+   "noDepart": 0
+  }
+ },
+ "perfConserve": {
+  "depart": 4,
+  "joined": 4,
+  "home": 0,
+  "dead": 0,
+  "onRoad": 0,
+  "ok": true,
+  "sentOk": 4,
+  "inRecv": 4,
+  "handOk": true,
+  "departLog": 4,
+  "departLogMuted": 0
+ },
+ "via": {
+  "seam": 4
+ },
+ "perHead": {
+  "n": 4,
+  "p50": 37.6,
+  "min": 36
+ },
+ "road": {
+  "dead": 0,
+  "deadBy": {},
+  "days": 8,
+  "hungry": 0
+ },
+ "herdMax": {
+  "vil": "hanbando|임업3",
+  "n": 2,
+  "days": 1,
+  "sameLineMax": 2
+ },
+ "herd": [
+  {
+   "vil": "hanbando|임업3",
+   "n": 2,
+   "days": 1,
+   "sameLineMax": 2,
+   "firstN": 50,
+   "lastN": 52,
+   "overK": 0,
+   "perHeadMin": 36.042307692307695,
+   "over": 21,
+   "line": [
+    [
+     72,
+     589075272,
+     "사키농촌",
+     "seam",
+     1,
+     40,
+     51,
+     10,
+     205.6,
+     36.1
+    ],
+    [
+     72,
+     589075272,
+     "시로농촌",
+     "seam",
+     1,
+     40,
+     52,
+     11,
+     205.6,
+     36
+    ]
+   ]
+  },
+  {
+   "vil": "hanbando|임업2",
+   "n": 2,
+   "days": 1,
+   "sameLineMax": 2,
+   "firstN": 54,
+   "lastN": 56,
+   "overK": 0,
+   "perHeadMin": 37.56071428571429,
+   "over": 3,
+   "line": [
+    [
+     72,
+     589075272,
+     "사키농촌",
+     "seam",
+     1,
+     53,
+     55,
+     1,
+     211.6,
+     37.6
+    ],
+    [
+     72,
+     589075272,
+     "시로농촌",
+     "seam",
+     1,
+     53,
+     56,
+     2,
+     211.6,
+     37.6
+    ]
+   ]
+  }
+ ],
+ "ageBands": [
+  {
+   "band": "0~1",
+   "n": 4,
+   "overMean": 6,
+   "overPos": 4,
+   "perHeadP50": 37.6,
+   "overK": 0
+  },
+  {
+   "band": "2~3",
+   "n": 0,
+   "overMean": null,
+   "overPos": 0,
+   "perHeadP50": null,
+   "overK": 0
+  },
+  {
+   "band": "4~7",
+   "n": 0,
+   "overMean": null,
+   "overPos": 0,
+   "perHeadP50": null,
+   "overK": 0
+  },
+  {
+   "band": "8~15",
+   "n": 0,
+   "overMean": null,
+   "overPos": 0,
+   "perHeadP50": null,
+   "overK": 0
+  },
+  {
+   "band": "16+",
+   "n": 0,
+   "overMean": null,
+   "overPos": 0,
+   "perHeadP50": null,
+   "overK": 0
+  }
+ ],
+ "ageAll": {
+  "n": 4,
+  "p50": 1,
+  "p90": 1,
+  "max": 1
+ },
+ "ageLogCheck": {
+  "n": 4,
+  "eq": 4
+ },
+ "staged": {
+  "hanbando": {
+   "rounds": 30,
+   "took": 15,
+   "tries": 90,
+   "own": 22
+  },
+  "nippon": {
+   "rounds": 30,
+   "took": 13,
+   "tries": 90,
+   "own": 30
+  }
+ },
+ "perf": {
+  "hanbando": {
+   "t1352": {
+    "localOn": true,
+    "seamOn": true,
+    "seamKeys": 20,
+    "hist": 323,
+    "histDrop": 219,
+    "seamOut": 3600,
+    "seamIn": 119,
+    "seamRows": 2380,
+    "calls": 40,
+    "own": 8,
+    "local": 142,
+    "seam": 702,
+    "notYet": 8,
+    "pickOwn": 0,
+    "pickLocal": 0,
+    "pickSeam": 0,
+    "ageN": 0,
+    "ageSum": 0,
+    "ageMax": 0,
+    "stage": 10,
+    "staged": 15,
+    "roadDays": 4,
+    "roadHungry": 0
+   },
+   "why": {
+    "at": 0,
+    "geo": 0,
+    "far": 621,
+    "split": 0,
+    "days": 0,
+    "h": 32,
+    "beds": 199,
+    "food": 0
+   },
+   "t1147": {
+    "pick": 15,
+    "nearest": 3,
+    "other": 12,
+    "none": 25
+   }
+  },
+  "nippon": {
+   "t1352": {
+    "localOn": true,
+    "seamOn": true,
+    "seamKeys": 30,
+    "hist": 378,
+    "histDrop": 235,
+    "seamOut": 2400,
+    "seamIn": 120,
+    "seamRows": 3600,
+    "calls": 73,
+    "own": 13,
+    "local": 290,
+    "seam": 2035,
+    "notYet": 95,
+    "pickOwn": 0,
+    "pickLocal": 0,
+    "pickSeam": 4,
+    "ageN": 4,
+    "ageSum": 4,
+    "ageMax": 1,
+    "stage": 10,
+    "staged": 13,
+    "roadDays": 4,
+    "roadHungry": 0
+   },
+   "why": {
+    "at": 0,
+    "geo": 0,
+    "far": 1851,
+    "split": 0,
+    "days": 0,
+    "h": 28,
+    "beds": 453,
+    "food": 0
+   },
+   "t1147": {
+    "pick": 15,
+    "nearest": 0,
+    "other": 15,
+    "none": 58
+   }
+  }
+ }
+}

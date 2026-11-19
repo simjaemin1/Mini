@@ -50,7 +50,7 @@ if (process.env.T1266_ARM !== '0') process.env.T1266_ORE_BODY = '1';
 if (MUT) {   // 미끼 — 정본 파일을 읽어 한 줄만 바꾼 사본으로 싣는다(파일 무변)
   const M = require('module'), old = M._extensions['.js'];
   const R = {
-    dgate: ['server/villages.js', 'const left = T66 ? Infinity : E.mineDemandLeft(', 'const left = E.mineDemandLeft('],
+    dgate: ['server/villages.js', 'let left = T66 ? Infinity : E.mineDemandLeft(', 'let left = E.mineDemandLeft('],
     cap: ['sim/economy-sim.js', "const u = T1266_ORE_BODY ? ((typeof units === 'number' && units > 0) ? units : 0) : actDemandCap(", 'const u = actDemandCap('],
     formula: ['sim/economy-sim.js', "(job === 'miner' && T1188_ORE_SPLIT)", "(job === 'miner' && T1188_ORE_SPLIT && !T1266_ORE_BODY)",
       'function mineActOn(v) { return !!(T724_MINE_ACT && v && ((v._t724Walk | 0) > 0 || (T1188_ORE_SPLIT && productionActsBound(v)))); }', 'function mineActOn(v) { return !!(T724_MINE_ACT && v && ((v._t724Walk | 0) > 0 || (T1188_ORE_SPLIT && productionActsBound(v) && !T1266_ORE_BODY))); }'],   // 켬이면 몸이 안 친 날 수식이 원석을 낸다

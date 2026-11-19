@@ -14,6 +14,7 @@ const Ev = require(path.join(__dirname, '..', 'server', 'events'));
 const mk = Ev.createLedger;
 const days = [];
 let L0 = null;
+const NB_ECON = process.env.T1368_NB_ECON ? new Set(process.env.T1368_NB_ECON.split(',')) : null;   // [T1368] 옛 코드 재기용
 const open = new Map();   // vid → Map(item → rewItem)
 const arr = [];          // [날, 도착 지점 수, 영토 안, 안일 때 밖까지 셀(중앙값), 최대]
 Ev.createLedger = function (o) {
@@ -44,7 +45,14 @@ Ev.createLedger = function (o) {
           locked += rw.size;
         }
         const S = L.stats || {};
-        days.push([d, vils, reqs, locked, unpaid, S.reqOpened | 0, S.reqClosed | 0, S.reqShrunk | 0, S.reqNoPay | 0, S.reqRevalidated | 0, (world.villages || []).length]);
+        //   ★[T1368] 새 사람이 낼 수 있는 의뢰(장부 `newbieHas` — 켬만 참)가 걸린 마을 수 · 그중 "날마다 쓰는 것" 의뢰(`daily`) 수
+        //     옛 코드(장부에 `newbieHas` 없음)를 같은 자로 재려면 econ 품목 목록을 env 로 준다(`T1368_NB_ECON=fruit,herb,wood,stone` — 켬 장부가 내는 목록 그대로).
+        let nbV = 0, daily = 0;
+        const nbHas = NB_ECON ? (it) => NB_ECON.has(it) : (typeof L.newbieHas === 'function' ? L.newbieHas : null);
+        if (nbHas) for (const vid of open.keys()) {
+          const rows = (L.board(vid) || []); if (rows.some((q) => nbHas(q.item))) nbV++; daily += rows.filter((q) => q.fit === 'daily').length;
+        }
+        days.push([d, vils, reqs, locked, unpaid, S.reqOpened | 0, S.reqClosed | 0, S.reqShrunk | 0, S.reqNoPay | 0, S.reqRevalidated | 0, (world.villages || []).length, nbV, daily]);
         //   ★도착 지점이 영토 안인가(25날마다) — 온보딩 도착 표(부팅 때 굽는다) × 마을 영토 칸(`villageOfCell` 정본) · 안이면 바깥(마을을 등진 쪽)으로 몇 셀 가야 영토 밖인가
         if (d % 25 === 0) {
           try {
@@ -74,6 +82,6 @@ process.on('exit', () => {
   try {
     const tag = process.env.T577_OUT ? path.basename(process.env.T577_OUT) : String(process.pid);
     fs.writeFileSync(process.env.T1353_BOARD_OUT.replace(/\.json$/, '') + '-' + tag + '.json',
-      JSON.stringify({ knob: !!Ev.T1341_OWN_HOUSE, cols: ['day', 'vilsWithReq', 'openReqs', 'lockedRewItems', 'openNoRew', 'opened', 'closed', 'shrunk', 'noPay', 'revalidated', 'villages'], days, arrCols: ['day', 'arrivals', 'insideTerritory', 'cellsOutMedian', 'cellsOutMax'], arr }));
+      JSON.stringify({ knob: !!Ev.T1341_OWN_HOUSE, cols: ['day', 'vilsWithReq', 'openReqs', 'lockedRewItems', 'openNoRew', 'opened', 'closed', 'shrunk', 'noPay', 'revalidated', 'villages', 'vilsWithNewbieReq', 'dailyReqs'], days, arrCols: ['day', 'arrivals', 'insideTerritory', 'cellsOutMedian', 'cellsOutMax'], arr }));
   } catch (e) {}
 });
