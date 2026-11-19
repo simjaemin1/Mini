@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
+const LB = require('./lib-bait');   // [T1383] 미끼 사본을 지으며 바꾼 자리를 센다
 // @regress
+// @bait 2   ← [T1383] 옛 미끼 표지 — 미끼 판정 줄에 바꾼 자리 수(뜻 그대로)
 // === scripts/test-t1322-prefilter.js — 서 있는 몸 첫 거름(T1322 · `server/stand-skip.js` · 존 `_t1322*`) = 종전 걸음 문 ===
 //   존 글자(`npcStep` 전체 · 막힘 · 따라가기 · 한 점 길 갈래 · 거울 · `_t1322*` 여덟)를 떠서 샌드박스 두 벌(끔 · 켬)에 넣고
 //   같은 몸 1,000 × 틱 1,000(결정 · 목표 바뀜 · 침대 · 해 질 녘 · 판 시계 몸 · 밀기 · 체력 · 빠짐/돌아옴 · 관측 들여다보기)을 나란히 돌린다.
@@ -138,12 +140,12 @@ ok(R3.diffTick === 0 && R3.diffFull === 0 && R3.st.vchecks > 0 && R3.st.bad === 
 console.log('\n④ 미끼');
 {
   const a = "  if (!why && !(now < A.NDA[s])) why = ";   // ★[T1337 · T1348] 결정 시각 갈래(잠 · 일터 깨움 표 몸은 결정 문까지) — 그 줄 머리를 `if (false)` 로(뒤 `else if` 해 질 녘 갈래는 산다)
-  const baitA = SRC0.replace(a, '  if (false) why = ');
+  const BA = LB.swap(SRC0, a, '  if (false) why = '), baitA = BA.src;
   ok(baitA !== SRC0, 'ⓐ 결정 시각이 된 몸을 거르는 사본을 지었다');
   const RA = run(baitA, '1', 300, 300, { stepCheck: true });
-  ok(RA.stepBad > 0 && (RA.diffTick > 0 || RA.diffFull > 0), 'ⓐ ① · ② 가 문다(빨강)', `① ${RA.stepBad}${RA.stepBadEx ? ' · ' + RA.stepBadEx : ''} · ② ${RA.diffTick}/${RA.diffFull}`);
-  const RB = run(SRC0, '1', 300, 300, { noTouch: true });
-  ok(RB.diffTick > 0 || RB.diffFull > 0, 'ⓑ 몸을 옮기기 전에 표를 안 내리는 쓰기 길 — ② 가 문다(빨강)', `② ${RB.diffTick}/${RB.diffFull}${RB.firstDiff ? ' · ' + RB.firstDiff : ''}`);
+  ok(BA.n === 1 && RA.stepBad > 0 && (RA.diffTick > 0 || RA.diffFull > 0), 'ⓐ [미끼] ① · ② 가 문다(빨강)', `바꾼 자리 ${BA.n} · ① ${RA.stepBad}${RA.stepBadEx ? ' · ' + RA.stepBadEx : ''} · ② ${RA.diffTick}/${RA.diffFull}`);
+  const RB = run(SRC0, '1', 300, 300, { noTouch: true }), nB = LB.count(LB.self(__filename), '!opt.' + 'noTouch)');   // 판 갈래 미끼 — 표 내리기를 건너뛰는 쓰기 길 셋(밀기 · 쓰러짐 · 대피)
+  ok(nB === 3 && (RB.diffTick > 0 || RB.diffFull > 0), 'ⓑ [미끼] 몸을 옮기기 전에 표를 안 내리는 쓰기 길 — ② 가 문다(빨강)', `바꾼 자리 ${nB}(쓰기 길 셋) · ② ${RB.diffTick}/${RB.diffFull}${RB.firstDiff ? ' · ' + RB.firstDiff : ''}`);
   const RV = run(SRC0, 'verify', 300, 300, { noTouch: true });
   ok(RV.st.bad > 0 && RV.diffTick === 0, 'ⓑ 같은 미끼를 `verify` 판으로 — 어긋남을 세고(자리 옮김) 그 몸은 종전 길(몸 칸 같음)', `어긋남 ${RV.st.bad} ${JSON.stringify(RV.st.why)} · 틱 ${RV.diffTick}`);
 }

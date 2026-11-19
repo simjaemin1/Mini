@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @bait 1   ← [T1383] 옛 미끼 표지 — 미끼 판정 줄에 바꾼 자리 수(뜻 그대로)
 // === scripts/test-t1325-one-rot.js — T1325: 썩음은 한 길로만 센다(`T1325_ONE_ROT` · ★T1336 켬 기본 · `=0` 끔) — 같은 곳간이면 몸 = 랩 직업 고르기 입력 ===
 //
 // ★T1325 ①: 몸 판(로트 켬 · 장부 버림 `T789_DISCARD` 끔)은 econ 일일 부패가 재고를 깎고(랩과 같은 길), 식량 합계(`storageFoodEquivalent`)는
@@ -13,6 +14,7 @@
 //
 // 실행: node scripts/test-t1325-one-rot.js
 'use strict';
+const LB = require('./lib-bait');   // [T1383] 미끼 사본을 지으며 바꾼 자리를 센다
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');
@@ -111,7 +113,7 @@ const decoy = path.join(ROOT, 'sim', `.t1325-decoy-${process.pid}.js`);
 try {
   fs.writeFileSync(decoy, src.replace(GATE, 'true'));
   const D = child({ T1325_ONE_ROT: '', T1325_DECOY: decoy });   // 기본(켬) 판에서 손잡이 갈래를 지운 사본 = 두 번 빼기
-  ok(D.feB < D.feL && !(D.needB === D.needL && D.jobsSame), '★미끼(손잡이 갈래 지운 사본) — ② 가 빨강(몸 합계 < 랩 · 직업 표 갈림)', `몸 ${f1(D.feB)} : 랩 ${f1(D.feL)} · ${D.needB} : ${D.needL}`);
+  ok(LB.count(src, GATE) === 1 && (D.feB < D.feL && !(D.needB === D.needL && D.jobsSame)), `★미끼(손잡이 갈래 지운 사본) — ② 가 빨강(몸 합계 < 랩 · 직업 표 갈림) · 미끼 바꾼 자리 ${LB.count(src, GATE)}`, `몸 ${f1(D.feB)} : 랩 ${f1(D.feL)} · ${D.needB} : ${D.needL}`);
 } finally { try { fs.unlinkSync(decoy); } catch (e) {} }
 
 console.log(`\n${fail ? '✗' : '✓'} test-t1325-one-rot ${pass}/${fail}`);

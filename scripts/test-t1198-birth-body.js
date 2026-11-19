@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @bait 5   ← [T1383] 옛 미끼 표지 — 미끼 판정 줄에 바꾼 자리 수(뜻 그대로)
 // === scripts/test-t1198-birth-body.js — 출생 = 집의 짝 곁 몸 · 명부 ↔ 몸 1:1 (T1198 · 추상 걷기 D) ==========================
 //
 // ★무엇을 보나
@@ -20,6 +21,7 @@
 //
 // 실행: node scripts/test-t1198-birth-body.js   (존 안 띄움 · 몇 초)
 'use strict';
+const LB = require('./lib-bait');   // [T1383] 미끼 사본을 지으며 바꾼 자리를 센다
 // ★[PM land1049] `T1195_HUNT_REAL` · `T1197_MEAL_BODY`(+ T1198) 끔 기본으로(켬 판 서버 빈 마을 1 → 15 · 켤 날 T1209 — 게이트 못 넘음 · 묶음 그대로) — 이 하네스는 켬 판의 일을 잰다 → 켬에 묶는다(기본값 줄만 끔 기본으로).
 if (process.env.T1197_MEAL_BODY == null) process.env.T1197_MEAL_BODY = '1';
 const path = require('path');
@@ -77,7 +79,7 @@ if (process.argv[2] === '--child-t1306') {
   const out = { knob: E.T1306_BIRTH_GRADE, t1297: E.T1297_BIRTH_FOOD, real: run(E) };
   if (E.T1306_BIRTH_GRADE) {
     const src = fs.readFileSync(PP, 'utf8'), L1 = '  return dP * r;\n', L2 = '  const r = t1306Ratio(fe, need);\n';
-    out.baitLine = src.split(L1).length === 2 && src.split(L2).length === 2;
+    out.baitLine = src.split(L1).length === 2 && src.split(L2).length === 2; out.baitN1 = src.split(L1).length - 1; out.baitN2 = src.split(L2).length - 1;
     const Module = require('module');
     const bait = (from, rep, tag) => { const m = new Module(PP + tag, null); m.filename = PP; m.paths = Module._nodeModulePaths(path.dirname(PP)); m._compile(src.replace(from, rep), PP); return run(m.exports); };
     out.bait1 = bait(L1, '  return 0;\n', '.g1');            // 단계 문을 전부/0 로 되돌린 사본
@@ -105,7 +107,7 @@ if (process.argv[2] === '--child-t1319') {
   const out = { knob: E.T1319_AUTUMN_LOOK, mig: E.T1319_AUTUMN_MIG, t1297: E.T1297_BIRTH_FOOD, real: run(E) };
   if (E.T1319_AUTUMN_LOOK) {
     const src = fs.readFileSync(PP, 'utf8'), AL = 'T1319_AUTUMN_LOOK ? t1319AutumnLeft(day) : 0';
-    out.baitLine = src.split(AL).length === 2;
+    out.baitLine = src.split(AL).length === 2; out.baitN = src.split(AL).length - 1;
     const Module = require('module'), m = new Module(PP + '.bait19', null); m.filename = PP; m.paths = Module._nodeModulePaths(path.dirname(PP)); m._compile(src.replace(AL, '0'), PP);
     out.bait = run(m.exports);   // 가을 항을 뺀 사본(가을에도 30일치)
   }
@@ -129,7 +131,7 @@ if (process.argv[2] === '--child-t1297') {
   const out = { knob: E.T1297_BIRTH_FOOD, famine: E.T1297_FAMINE_DAYS, real: run(E) };
   if (E.T1297_BIRTH_FOOD) {
     const src = fs.readFileSync(PP, 'utf8'), line = 'totalFoodEquivalent(v) < (_homeN + 1) * DAILY_FOOD_CONSUMPTION * t1297NeedDays(day)';
-    out.baitLine = src.split(line).length === 2;
+    out.baitLine = src.split(line).length === 2; out.baitN = src.split(line).length - 1;
     const Module = require('module');
     const bait = (rep, tag) => { const m = new Module(PP + tag, null); m.filename = PP; m.paths = Module._nodeModulePaths(path.dirname(PP)); m._compile(src.replace(line, rep), PP); return run(m.exports); };
     out.bait1 = bait('(_homeN + 1) * DAILY_FOOD_CONSUMPTION * 45 < (_homeN + 1) * DAILY_FOOD_CONSUMPTION * t1297NeedDays(day)', '.bait1');   // 곳간 대신 상수 일치(45일치)
@@ -237,8 +239,8 @@ console.log('\n=== T1297 ⑤ 출생 곳간 문(`T1297_BIRTH_FOOD`) — 곳간 �
     const gl = EC.split('\n').find((x) => x.includes('if (T1297_BIRTH_FOOD) { v._t1297Gate = 0;')) || '';
     ok(gl && !/T325|T1243|T1238|T1207|_t1238Land|founder/.test(gl), '세계 갈래 0 — 출생 문 줄이 세계 손잡이를 안 읽는다(v2 · 밭 · 끔 같은 길)', gl.slice(0, 160));
     const B1 = ON.bait1, B2 = ON.bait2;
-    ok(ON.baitLine && B1 && !shut(B1.a) && shut(R.a), `★미끼 1 — 곳간 대신 상수 일치(45일치)를 읽는 사본은 20일치 마을을 막지 못한다(빨강 · dP ${B1 && B1.a.dP})`, JSON.stringify(B1 && B1.a));
-    ok(ON.baitLine && B2 && !open(B2.b) && open(R.b), `★미끼 2 — 곳간 칸을 지운(0) 사본은 45일치 마을도 막는다(빨강 · dP ${B2 && B2.b.dP})`, JSON.stringify(B2 && B2.b));
+    ok(ON.baitN === 1 && (ON.baitLine && B1 && !shut(B1.a) && shut(R.a)), `★미끼 1 — 곳간 대신 상수 일치(45일치)를 읽는 사본은 20일치 마을을 막지 못한다(빨강 · dP ${B1 && B1.a.dP}) · 미끼 바꾼 자리 ${ON.baitN}`, JSON.stringify(B1 && B1.a));
+    ok(ON.baitN === 1 && (ON.baitLine && B2 && !open(B2.b) && open(R.b)), `★미끼 2 — 곳간 칸을 지운(0) 사본은 45일치 마을도 막는다(빨강 · dP ${B2 && B2.b.dP}) · 미끼 바꾼 자리 ${ON.baitN}`, JSON.stringify(B2 && B2.b));
   }
 }
 
@@ -265,8 +267,8 @@ console.log('\n=== T1306 ⑥ 단계 문(`T1306_BIRTH_GRADE` · T1297 켬 안) �
     const fb = EC.slice(EC.indexOf('function t1306GradeDP('), EC.indexOf('function t1306GradeDP(') + 900);
     ok(/t1297NeedDays\(day\)/.test(fb) && /totalFoodEquivalent\(v\)/.test(fb) && !/T325|T1243|T1238|T1207|founder/.test(fb) && !/\b(0\.\d+|[2-9]\d*)\b/.test(fb.replace(/\/\/.*$/gm, '').replace(/homeN \+ 1/, '')), '새 수 0 · 세계 갈래 0 — 문턱은 T1297 날 수 · 곳간은 피커가 읽는 그 합', J(fb.split('\n')[3].trim()));
     const B1 = G.bait1, B2 = G.bait2;
-    ok(G.baitLine && B1 && grade(R.a, raw.a) && !grade(B1.a, raw.a) && B1.a.dP === 0, `★미끼 1 — 단계 문을 전부/0 로 되돌린 사본은 10일치 마을을 0 으로 막는다(빨강 · dP ${B1 && B1.a.dP})`, J(B1 && B1.a));
-    ok(G.baitLine && B2 && !grade(B2.a, raw.a) && near(B2.a.dP, raw.a.dP), `★미끼 2 — 비율이 곳간을 안 보는 사본은 10일치 마을도 다 는다(빨강 · dP ${B2 && B2.a.dP})`, J(B2 && B2.a));
+    ok(G.baitN1 === 1 && (G.baitLine && B1 && grade(R.a, raw.a) && !grade(B1.a, raw.a) && B1.a.dP === 0), `★미끼 1 — 단계 문을 전부/0 로 되돌린 사본은 10일치 마을을 0 으로 막는다(빨강 · dP ${B1 && B1.a.dP}) · 미끼 바꾼 자리 ${G.baitN1}`, J(B1 && B1.a));
+    ok(G.baitN2 === 1 && (G.baitLine && B2 && !grade(B2.a, raw.a) && near(B2.a.dP, raw.a.dP)), `★미끼 2 — 비율이 곳간을 안 보는 사본은 10일치 마을도 다 는다(빨강 · dP ${B2 && B2.a.dP}) · 미끼 바꾼 자리 ${G.baitN2}`, J(B2 && B2.a));
   }
 }
 
@@ -285,7 +287,7 @@ console.log('\n=== T1319 ⑦ 가을 문(`T1319_AUTUMN_LOOK` · T1297 켬 안) �
     ok(open(R0.g) && R0.g.need === 30 && shut(R0.h) && R0.h.need === 89, '봄 · 여름 · 겨울은 그대로 — 8월 31일 45일치 는다(문턱 30) · 겨울 들머리 60일치 막힘(문턱 89)', J({ g: R0.g, h: R0.h }));
     ok(open(T.real.a) && T.real.a.need === 30, 'T1297 만(가을 문 끔) — 9월 1일 60일치가 는다(종전 30일치 문턱)', J(T.real.a));
     ok(MG.knob === false && MG.mig === true && open(MG.real.a) && MG.real.a.need === 30 && shut(MG.real.h), '`\'mig\'`(이주 문만) — 출생 문은 그대로: 9월 1일 60일치가 는다(문턱 30) · 겨울 들머리 60일치는 막힘(89)', J({ a: MG.real.a, h: MG.real.h }));
-    ok(A.baitLine && A.bait && open(A.bait.a) && A.bait.a.need === 30 && shut(R0.a), '★미끼 — 가을 항을 뺀 사본(가을에도 30일치)은 9월 1일 60일치 마을이 는다(빨강 · 진짜는 막힘)', J(A.bait && A.bait.a));
+    ok(A.baitN === 1 && (A.baitLine && A.bait && open(A.bait.a) && A.bait.a.need === 30 && shut(R0.a)), `★미끼 — 가을 항을 뺀 사본(가을에도 30일치)은 9월 1일 60일치 마을이 는다(빨강 · 진짜는 막힘) · 미끼 바꾼 자리 ${A.baitN}`, J(A.bait && A.bait.a));
   }
 }
 

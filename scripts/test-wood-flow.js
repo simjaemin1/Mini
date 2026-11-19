@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @bait 1   ← [T1383] 옛 미끼 표지 — 미끼 판정 줄에 바꾼 자리 수(뜻 그대로)
 // === scripts/test-wood-flow.js — 통나무 흐름 닻 손잡이 `T659_WOOD_FLOW`(기본 끔) =========================
 //
 // ★왜 [T659 · T652 회부 ①]
@@ -20,6 +21,7 @@
 //
 // 실행: node scripts/test-wood-flow.js
 'use strict';
+const LB = require('./lib-bait');   // [T1383] 미끼 사본을 지으며 바꾼 자리를 센다
 process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '0';
 const path = require('path');
 const fs = require('fs');
@@ -111,7 +113,7 @@ ok(inl === 0, 'ⓔ 랩 두 벌 인라인 = 번들(`inline-engine --check`)');
 
 console.log('\nⓕ 미끼 — 손잡이 줄을 뺀 사본');
 let BAIT = null; try { BAIT = child({ T659_WOOD_FLOW: '1' }, [KNOB_LINE, '']); } catch (e) { BAIT = { err: String(e.message).slice(0, 120) }; }
-ok(!!BAIT && BAIT.g && BAIT.g.wood[0] === true && BAIT.hi.t === SUBS_T, 'ⓕ [자명 통과 금지] 판정 줄을 뺀 사본은 켬에서도 통나무 가드 참 · 목표 = 닻 ⇒ ⓑ · ⓒ 가 빨개진다',
+ok(LB.count(SRC, KNOB_LINE) === 1 && (!!BAIT && BAIT.g && BAIT.g.wood[0] === true && BAIT.hi.t === SUBS_T), `ⓕ [자명 통과 금지] 판정 줄을 뺀 사본은 켬에서도 통나무 가드 참 · 목표 = 닻 ⇒ ⓑ · ⓒ 가 빨개진다 · 미끼 바꾼 자리 ${LB.count(SRC, KNOB_LINE)}`,
   BAIT && BAIT.g ? `가드 ${BAIT.g.wood[0]} · 목표 ${BAIT.hi.t}` : (BAIT && BAIT.err));
 
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===`);

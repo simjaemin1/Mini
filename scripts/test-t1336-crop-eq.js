@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @bait 1   ← [T1383] 옛 미끼 표지 — 미끼 판정 줄에 바꾼 자리 수(뜻 그대로)
 // === scripts/test-t1336-crop-eq.js — T1336: 복원한 세계도 작물을 먹는다(`T1336_CROP_EQ` · 끔 기본) · 같은 조건이면 직업 하루 생산 몸 = 랩 ===
 //
 // ★T1336 ②: 작물 식량 값 표(`world.cropFoodEq`)는 세계 객체의 칸이라 저장되지 않는다. 서버가 다시 서면(배포 · T1308 이어 돌리기 마디마다)
@@ -14,6 +15,7 @@
 //
 // 실행: node scripts/test-t1336-crop-eq.js
 'use strict';
+const LB = require('./lib-bait');   // [T1383] 미끼 사본을 지으며 바꾼 자리를 센다
 process.env.T1243_FARM_ON = process.env.T1243_FARM_ON || '1';
 const path = require('path');
 const fs = require('fs');
@@ -61,7 +63,8 @@ function restoreAttaches(src) {
 ok(restoreAttaches(VSRC), '★복원 갈래 — `ev._world = world` · 첫 시작 시딩 줄 바로 뒤에 같은 함수로 심는다(손잡이 + 작물 칸 켬만)');
 ok(/const T1336_CROP_EQ = process\.env\.T1336_CROP_EQ === '1';/.test(VSRC) && VSRC.split('T1336_CROP_EQ &&').length === 2, '손잡이 끔 기본(`=1` 만 켬) · 부르는 자리 하나');
 ok(/function _t368Attach\(vil\)[\s\S]{0,400}W\.cropFoodEq = t;/.test(VSRC) && /for \(const id of C\.IDS\) t\[id\] = \+K\.econUnitsOf\(id, 1\) \|\| 0;/.test(VSRC), '심는 함수는 종전 그대로(작물 표 정본 × 열량 정본 · 하네스 ② 의 표와 같은 식)');
-ok(!restoreAttaches(VSRC.replace(LINE, '')), '★미끼(심는 줄 지운 사본) — ③ 이 빨강');
+{ const B = LB.swap(VSRC, LINE, '');
+  ok(B.n === 1 && !restoreAttaches(B.src), '★미끼(심는 줄 지운 사본) — ③ 이 빨강', `바꾼 자리 ${B.n}`); }
 
 console.log('\n④ 같은 조건 ⇒ 같은 직업 하루 생산(몸 호스트 : 랩)');
 const mk = (bound) => {

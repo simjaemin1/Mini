@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @bait 2   ← [T1383] 옛 미끼 표지 — 미끼 판정 줄에 바꾼 자리 수(뜻 그대로)
 // === scripts/test-t1341-own-house.js — T1341 온보딩 다시: 스스로 집을 짓게 · 마을 의뢰는 갚음 없이 받아들임만 ====================
 //
 // ★왜 [★재민 11-16] "마을이 필요한 물건이 아니라 스스로 집을 지을 수 있도록 유도 · 마을이 정말 필요한 물건은 구해오면 받아들임 수치가
@@ -21,6 +22,7 @@
 //
 // 실행: node scripts/test-t1341-own-house.js
 'use strict';
+const LB = require('./lib-bait');   // [T1383] 미끼 사본을 지으며 바꾼 자리를 센다
 if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다(PM land1082)
 const fs = require('fs');
 const path = require('path');
@@ -344,19 +346,19 @@ const baits = [];
 try {
   const EV = rd('server/events.js'), ON = rd('server/onboarding.js');
   //   ⓐ 갚음 되살림 — 납품 함수의 켬 갈래(갚음 0)를 걷는다
-  const evBait = EV.replace("  if (T1341_OWN_HOUSE) {\n    return { ok: true, take: c.take, refused: c.refused, taken: dep.taken, moved: dep.moved,\n      rew: 0, rewRes: null, rewItem: null, done: c.done, req: c.req, noRepay: true };\n  }\n", '');
+  const BEV = LB.swap(EV, "  if (T1341_OWN_HOUSE) {\n    return { ok: true, take: c.take, refused: c.refused, taken: dep.taken, moved: dep.moved,\n      rew: 0, rewRes: null, rewItem: null, done: c.done, req: c.req, noRepay: true };\n  }\n", ''); const evBait = BEV.src;
   //   ⓑ 빈터 선물 — 첫 의뢰 빈터 문의 켬 막음을 걷는다
-  const onBait = ON.replace("const _fjLot = _fj && !s.lot_ok && !T1341;", 'const _fjLot = _fj && !s.lot_ok;');
+  const BON = LB.swap(ON, "const _fjLot = _fj && !s.lot_ok && !T1341;", 'const _fjLot = _fj && !s.lot_ok;'), onBait = BON.src;
   ok(evBait !== EV && onBait !== ON, '[상황] 미끼 사본 둘을 만들었다(제품 글자에서 그 줄만 걷음)');
   const fe = path.join(ROOT, 'server', `_t1341_bait_ev_${process.pid}.js`), fo = path.join(ROOT, 'server', `_t1341_bait_onb_${process.pid}.js`);
   fs.writeFileSync(fe, evBait); fs.writeFileSync(fo, onBait.replace("require('./events')", `require('./_t1341_bait_ev_${process.pid}')`));
   baits.push(fe, fo);
   const rb = child({ T1341_OWN_HOUSE: '1', T1341_BAIT_EVENTS: path.basename(fe) });
   const repayRed = !(rb.rew === 0 && rb.invStone === 0 && rb.stoStone === 80);   // ① 의 판정 그대로
-  ok(repayRed, '★미끼 ⓐ 갚음을 되살린 사본 — ① 판정(가방 = 낸 것만 · 곳간 갚을 품목 그대로)이 빨갛다', JSON.stringify({ rew: rb.rew, invStone: rb.invStone, sto: rb.stoStone }));
+  ok(BEV.n === 1 && repayRed, '★미끼 ⓐ 갚음을 되살린 사본 — ① 판정(가방 = 낸 것만 · 곳간 갚을 품목 그대로)이 빨갛다', `바꾼 자리 ${BEV.n} · ${JSON.stringify({ rew: rb.rew, invStone: rb.invStone, sto: rb.stoStone })}`);
   const lb = child({ T1341_OWN_HOUSE: '1', T1341_BAIT_ONB: path.basename(fo) });
   const giftRed = !(lb.lot === 0 && lb.vacant === false && lb.hook && !lb.hook.some((l) => /빈터/.test(l)));   // ③ 의 판정 그대로
-  ok(giftRed, '★미끼 ⓑ 첫 의뢰에 빈터를 선물하는 사본 — ③ 판정(빈터 0 · 빈터 말 0)이 빨갛다', JSON.stringify({ lot: lb.lot, vacant: lb.vacant, hook: lb.hook }));
+  ok(BON.n === 1 && giftRed, '★미끼 ⓑ 첫 의뢰에 빈터를 선물하는 사본 — ③ 판정(빈터 0 · 빈터 말 0)이 빨갛다', `바꾼 자리 ${BON.n} · ${JSON.stringify({ lot: lb.lot, vacant: lb.vacant, hook: lb.hook })}`);
   const real = child({ T1341_OWN_HOUSE: '1' });
   ok(real.rew === 0 && real.invStone === 0 && real.stoStone === 80 && real.lot === 0 && real.vacant === false && !real.hook.some((l) => /빈터|밥/.test(l)), '제품 글자(켬)는 같은 판정이 초록(미끼만 빨강)', JSON.stringify({ rew: real.rew, lot: real.lot }));
 } catch (e) { ok(false, '⑩ 예외: ' + (e && e.stack || e)); }

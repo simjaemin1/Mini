@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress
+// @bait 1   ← [T1383] land1084 옛 목록(규칙 앞 가지)에서 뺌 — 미끼 뜻 그대로 · 판정 줄에 바꾼 자리 수
 // === scripts/test-t1352-xz-hold.js — 다시 뜬 존의 첫 하루 안전망(T1352 · T1324 회부 15 · econ `_t1321Hold` 를 비우기 명령과 떼어 낸 손잡이 `T1352_XZ_HOLD`) ==========
 //
 // ★무엇: 다시 뜬 존(팔 `T525_CROSS_ZONE` 켬)은 이웃 존 걸음표가 서기 전(`_xzOn` 거짓 — 이웃 명부가 와야 워커)에 첫 하루를 연다. 메타가 되돌린 **이웃 존 캐러밴**(`_xzHome`)의
@@ -94,7 +95,7 @@ for (const [name, B] of Object.entries(BAITS)) {
   const n = SRC.split(B.at[0]).length - 1;
   if (n !== 1) { ok(false, `미끼 ${name} — 소스 자리가 꼭 한 번(지금 ${n}번)`, B.at[0].slice(0, 60)); continue; }
   const red = rows(name).filter((r) => !r[1]).map((r) => r[0]).sort();
-  ok(JSON.stringify(red) === JSON.stringify(B.red.slice().sort()), `미끼 ${name} — 빨강 줄이 꼭 {${B.red.join(', ')}}`, `빨강 {${red.join(', ')}}`);
+  ok(n === 1 && JSON.stringify(red) === JSON.stringify(B.red.slice().sort()), `미끼 ${name} — 빨강 줄이 꼭 {${B.red.join(', ')}}`, `바꾼 자리 ${n} · 빨강 {${red.join(', ')}}`);
 }
 console.log(`\n=== ${pass}/${pass + fail} 통과 ===`);
 process.exit(fail ? 1 : 0);

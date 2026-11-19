@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @regress
 // @harness-only
-// @bait 1
+// @bait 2
 // === scripts/test-harness-bite.js — 옛 코드 빨강 자가 `scripts/` 운영 파일을 재는 하네스도 무는가 (T1375 · T1369 "여전히 초록" 셋) =====================
 //
 // ★왜: T1369 의 옛 코드 빨강 판에서 셋이 고침 앞 제품에서도 초록이었다. 둘(`test-live-lag-net` · `test-lint-harness-words`)은 재는 고침이 제품 자리
@@ -69,6 +69,34 @@ console.log('\n③ 미끼 — 표지 한 줄을 뺀 하네스 사본');
   const n = withMark.split('\n').length - noMark.split('\n').length;
   const B = ocr(noMark);
   ok(n === 1 && /^초록 ✗ \| test-op\.js/.test(B.line) && B.rc === 1, '★③ [미끼] 표지를 뺀 사본 — 자가 "초록 ✗"(옛 판에서도 초록 · T1369 그 꼴)로 빨강', `바꾼 자리 ${n} · ${B.line.slice(0, 80)} · RC ${B.rc}`); }
+
+console.log('\n④ 옛 판 뒤 새로 생긴 제품 파일 · 옛 판에 없던 제품 자리 (T1383 — 자 고침)');
+//   종전 자는 `git checkout <옛> -- <제품 자리>` 만 했다 — 옛 판 뒤 새로 생긴 제품 파일이 사본에 남아, 새 모듈을 재는 하네스가 옛 판에서도 초록이었다
+//   (`test-t1314-cols` ← `server/hot-cols.js`). 옛 판에 없던 제품 자리(9월의 `lab`)는 checkout 이 멈춰 줄이 비었다.
+{
+  const R2 = fs.mkdtempSync(path.join(os.tmpdir(), 'thbite2-'));
+  const G2 = (...a) => execFileSync('git', ['-C', R2, '-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'commit.gpgsign=false', ...a], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  const W2 = (rel, t) => { fs.mkdirSync(path.dirname(path.join(R2, rel)), { recursive: true }); fs.writeFileSync(path.join(R2, rel), t); };
+  const TOOL = fs.readFileSync(path.join(SCRIPTS, 'pm-old-code-red.sh'), 'utf8');
+  G2('init', '-q', '-b', 'main'); W2('prod/keep.js', '1\n'); W2('scripts/pm-old-code-red.sh', TOOL); G2('add', '-A'); G2('commit', '-q', '-m', 'c1'); const o1 = G2('rev-parse', 'HEAD');
+  W2('prod/new.js', "module.exports = 'new';\n"); W2('gone/x.js', '1\n');
+  W2('scripts/test-nw.js', "#!/usr/bin/env node\n'use strict';\nconst v = require('../prod/new.js');\nconsole.log((v === 'new' ? '  ✓ ' : '  ✗ ') + '새 모듈이 답한다');\nprocess.exit(v === 'new' ? 0 : 1);\n");
+  G2('add', '-A'); G2('commit', '-q', '-m', 'c2');
+  const run2 = (toolText) => {
+    W2('scripts/pm-old-code-red.sh', toolText);
+    const OUT = path.join(R2, '.ocr-out.txt'); try { fs.unlinkSync(OUT); } catch (e) {}
+    const r = spawnSync('bash', ['scripts/pm-old-code-red.sh', o1, 'test-nw.js'], { cwd: R2, encoding: 'utf8', env: Object.assign({}, process.env, { TIMEOUT_SEC: '60', OUT, PROD: 'prod gone' }) });
+    let txt = ''; try { txt = fs.readFileSync(OUT, 'utf8'); } catch (e) {}
+    return { rc: r.status, line: txt.split('\n').find((l) => /\| test-nw\.js \|/.test(l)) || ((r.stderr || '') + (r.stdout || '')).trim().slice(0, 120) };
+  };
+  const C = run2(TOOL);
+  ok(/^빨강/.test(C.line) && C.rc === 0, '★★④ 옛 판 뒤 새로 생긴 제품 파일은 사본에서 지운다 — 새 모듈을 재는 하네스가 옛 판에서 빨강(옛 판에 없던 제품 자리 `gone` 이 있어도 자가 안 멈춘다)', C.line.slice(0, 100));
+  const from = /^git -C "\$TMP\/w" -c core\.quotepath=off diff --name-only --diff-filter=A[^\n]*\n/m;
+  const n = (TOOL.match(new RegExp(from.source, 'gm')) || []).length;
+  const B = run2(TOOL.replace(from, ''));
+  ok(n === 1 && /^초록 ✗ \| test-nw\.js/.test(B.line) && B.rc === 1, '★④ [미끼] 새 파일 지우는 줄을 뺀 자 사본 — 같은 하네스가 "초록 ✗"(T1314 그 꼴)', `바꾼 자리 ${n} · ${B.line.slice(0, 60)} · RC ${B.rc}`);
+  fs.rmSync(R2, { recursive: true, force: true });
+}
 
 fs.rmSync(R, { recursive: true, force: true });
 console.log(`\n=== test-harness-bite 결과: ${pass} 통과 / ${fail} 실패 ===`);

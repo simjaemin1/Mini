@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(표 없으면 안 돈다)
+// @bait 2   ← [T1383] 옛 미끼 표지 — 미끼 판정 줄에 바꾼 자리 수(뜻 그대로)
 // === scripts/test-t835-quote-weight.js — 무거운 물건 견적도 고른 그 개체들의 무게로 [T835] ==========
 //
 // ★왜 [T807 정보] 견적은 낼 물건의 단위를 한 개짜리 어림(첫 아이템 1개 단위 × 개수 — 호스트 `villageTradeQuote`)으로 잡고,
@@ -17,6 +18,7 @@
 //
 // 실행: node scripts/test-t835-quote-weight.js   (존 안 띄움 · 약 3분)
 'use strict';
+const LB = require('./lib-bait');   // [T1383] 미끼 사본을 지으며 바꾼 자리를 센다
 // ★[T1127 2026-11-04] 이 하네스가 재는 것은 굶주림 길(식량 빚 · 보호막) 밖이다 — 판 세계를 T1127 앞(`T1074_FOOD_DEBT=0 T858_NO_SHIELD=0` = 종전 바이트)으로 묶는다.
 //   T1127 이 두 손잡이를 켬 기본으로 바꾼 뒤 이 하네스의 작은 판 세계(인구 · 곳간 · 교역)가 갈려 단언이 빨개졌다(main 에선 초록 · 보고 T1127 §4). 켬 기본 세계에서 같은 단언을 다시 세우는 일은 회부. 부르는 쪽이 값을 주면 그 값이 먼저다.
 if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
@@ -128,7 +130,7 @@ console.log('\n③ 같은 곳간 · 같은 순간 — 무게 다른 짐');
   ok(off.on === false && on.on === true && off.gives.length === 2, '③ 전제 — 손잡이가 실제로 읽힌다 · 무게 다른 아이템 여럿인 낼 것 둘', `${off.gives.join(' · ')}`);
   ok(on.rows.length > 300 && on.rows.filter((r) => r[7]).length > 100, '③ 전제 — 바뀐 판이 넉넉하다(자명 통과 금지)', `${on.rows.length} 판 · 됨 ${on.rows.filter((r) => r[7]).length}`);
   const offBad = off.rows.filter(lie), onBad = on.rows.filter(lie);
-  ok(offBad.length > 0, 'ⓐ 미끼(끔) — 낼 양 주문에서 견적 ≠ 실행이 있다', `${offBad.length}/${off.rows.length} · 예 ${JSON.stringify(offBad[0])}`);
+  ok(LB.knob('T835_QUOTE_WEIGHT') === 1 && (offBad.length > 0), `ⓐ 미끼(끔) — 낼 양 주문에서 견적 ≠ 실행이 있다 · 미끼 바꾼 자리 ${LB.knob('T835_QUOTE_WEIGHT')}`, `${offBad.length}/${off.rows.length} · 예 ${JSON.stringify(offBad[0])}`);
   ok(onBad.length === 0, '★★ⓑ 켬 — 견적 받을 양 = 실행이 준 양 · giveUsed = 실행이 낸 낱개 · 실행이 못 하면 견적 0', `${onBad.length}/${on.rows.length}${onBad.length ? ' · 예 ' + JSON.stringify(onBad[0]) : ''}`);
   const ex = (r) => JSON.stringify([r[7], r[8], r[9], r[10]]);
   ok(on.rows.every((r, i) => ex(r) === ex(off.rows[i])), '★ⓒ 켬 — 실행(됨 · 낸 · 받은 · 곳간 나감)은 끔과 한 자리도 안 다르다(낼 양 주문)');
@@ -136,7 +138,7 @@ console.log('\n③ 같은 곳간 · 같은 순간 — 무게 다른 짐');
   //   받을 양 주문 = [마을 · 열량짝 · 짝 · 받을 · 견적 낼 낱개 · 견적 받을 · 실행 됨 · 실행 낸 · 실행 받은 · 최소]
   const wlie = (r) => (r[6] ? (r[4] !== r[7] || r[5] !== r[8]) : (r[4] != null && r[4] > 0));
   const wOff = off.wrows.filter(wlie), wOn = on.wrows.filter(wlie), wDone = on.wrows.filter((r) => r[6]);
-  ok(wOff.length > 0, 'ⓓ 미끼(끔) — 받을 양 주문에서 견적 ≠ 실행이 있다', `${wOff.length}/${off.wrows.length} · 예 ${JSON.stringify(wOff[0])}`);
+  ok(LB.knob('T835_QUOTE_WEIGHT') === 1 && (wOff.length > 0), `ⓓ 미끼(끔) — 받을 양 주문에서 견적 ≠ 실행이 있다 · 미끼 바꾼 자리 ${LB.knob('T835_QUOTE_WEIGHT')}`, `${wOff.length}/${off.wrows.length} · 예 ${JSON.stringify(wOff[0])}`);
   ok(wDone.length > 50 && wOn.length === 0, '★★ⓓ 켬 — 받을 양 주문: 견적의 낼 낱개 · 받을 양 = 실행', `${wOn.length}/${on.wrows.length} · 됨 ${wDone.length}${wOn.length ? ' · 예 ' + JSON.stringify(wOn[0]) : ''}`);
   const wex = (r) => JSON.stringify([r[6], r[7], r[8]]);
   ok(on.wrows.every((r, i) => wex(r) === wex(off.wrows[i])), '★ⓓ 켬 — 받을 양 주문의 실행(됨 · 낸 · 받은)도 끔과 한 자리도 안 다르다 — 고친 것은 견적뿐');

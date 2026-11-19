@@ -33,7 +33,14 @@ TMP="$(mktemp -d /tmp/ocr.XXXXXX)"
 git worktree add -q --detach "$TMP/w" HEAD || exit 2
 trap 'git worktree remove --force "$TMP/w" >/dev/null 2>&1; rm -rf "$TMP"' EXIT
 # shellcheck disable=SC2086
-git -C "$TMP/w" checkout -q "$OLD" -- $PROD || exit 2
+# ★[T1383] 제품 자리를 옛 ref 그대로 — ① 옛 ref 에 없던 자리(예: 9월의 `lab`)는 통째로 지운다(종전: checkout 이 pathspec 오류로 자가 멈춰 줄이 비었다)
+#   ② 옛 ref 뒤에 **새로 생긴 제품 파일**은 지운다(종전: `checkout <옛> -- server` 는 옛 파일을 덮어쓰기만 해 새 파일이 남았다 — 새 모듈을 재는 하네스가
+#      옛 판에서도 초록으로 섰다 · `test-t1314-cols` 가 `server/hot-cols.js` 를 그렇게 읽었다)
+for d in $PROD; do
+  if git cat-file -e "$OLD:$d" 2>/dev/null; then git -C "$TMP/w" checkout -q "$OLD" -- "$d" || exit 2
+  else rm -rf "${TMP:?}/w/$d"; fi
+done
+git -C "$TMP/w" -c core.quotepath=off diff --name-only --diff-filter=A "$OLD" HEAD -- $PROD | while IFS= read -r f; do rm -f "$TMP/w/$f"; done
 [ -d "$ROOT/node_modules" ] && ln -s "$ROOT/node_modules" "$TMP/w/node_modules"
 red=0; weak=0; green=0; unk=0; skip=0
 {

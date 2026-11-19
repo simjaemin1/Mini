@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(표 없으면 안 돈다)
+// @bait 3   ← [T1383] 옛 미끼 표지 — 미끼 판정 줄에 바꾼 자리 수(뜻 그대로)
 // === scripts/test-t999-trade-cap.js — 상한의 마지막 한 개도 판다 · 상한 탐색은 상한에 닿을 때까지 넓힌다 [T999] ==========
 //
 // ★왜 [T999 · T988 회부 1 · 2] ① 상한 절삭이 낼 낱개를 `⌊maxGive ÷ 평균 단위⌋` 로 깎았다. `maxGive = ⌊T⌋`(T = 마을이 내줄 몫 전부를 사는 낼 단위)라
@@ -25,6 +26,7 @@
 // 실행: node scripts/test-t999-trade-cap.js   (존 안 띄움 · 아이 판 둘(나란히) · 약 9분)
 //       [T999_DUMP=<폴더>] — 아이 판 출력(켬 · 끔)을 그 폴더에 on.json · off.json 으로 남긴다(계측용 · 판정 무변)
 'use strict';
+const LB = require('./lib-bait');   // [T1383] 미끼 사본을 지으며 바꾼 자리를 센다
 // ★[T1127 2026-11-04] 이 하네스가 재는 것은 굶주림 길(식량 빚 · 보호막) 밖이다 — 판 세계를 T1127 앞(`T1074_FOOD_DEBT=0 T858_NO_SHIELD=0` = 종전 바이트)으로 묶는다.
 //   T1127 이 두 손잡이를 켬 기본으로 바꾼 뒤 이 하네스의 작은 판 세계(인구 · 곳간 · 교역)가 갈려 단언이 빨개졌다(main 에선 초록 · 보고 T1127 §4). 켬 기본 세계에서 같은 단언을 다시 세우는 일은 회부. 부르는 쪽이 값을 주면 그 값이 먼저다.
 if (process.env.T1074_FOOD_DEBT == null) process.env.T1074_FOOD_DEBT = '0';
@@ -234,8 +236,8 @@ const inv = (r) => !r.x.ok && (E3.test(r.x.err || '') || E3g.test(r.x.err || '')
   const G = on.map((r, i) => i).filter((i) => tgtG(off[i])), W = on.map((r, i) => i).filter((i) => tgtW(off[i]));
   const shortG = (r) => !r.x.ok || r.x.take < r.q.cap, shortW = (r) => !inv(r) && (!r.x.ok || r.x.take < r.n);
   const gOff = G.filter((i) => shortG(off[i])), wOff = W.filter((i) => shortW(off[i]));
-  ok(G.length >= 100 && gOff.length === G.length && wOff.length >= 1,
-    'ⓐ 미끼(끔) — 상한에 닿은 낼 양 주문(한 개 넘침 아님 · 가진 것 안)이 다 상한보다 덜 받거나 거절 · 받을 양이 상한 안인데 못 닿는 줄이 있다',
+  ok(LB.knob('T999_TRADE_CAP') === 1 && (G.length >= 100 && gOff.length === G.length && wOff.length >= 1),
+    `ⓐ 미끼(끔) — 상한에 닿은 낼 양 주문(한 개 넘침 아님 · 가진 것 안)이 다 상한보다 덜 받거나 거절 · 받을 양이 상한 안인데 못 닿는 줄이 있다 · 미끼 바꾼 자리 ${LB.knob('T999_TRADE_CAP')}`,
     `낼 양 ${gOff.length}/${G.length}(거절 ${gOff.filter((i) => !off[i].x.ok).length}) · 받을 양 ${wOff.length}/${W.length}`);
   const gOn = G.filter((i) => shortG(on[i])), wOn = W.filter((i) => shortW(on[i]));
   ok(gOn.length === 0 && wOn.length === 0, '★★ⓑ 켬 — 그 줄이 다 상한 전부(낼 양) · 받을 양(받을 양)을 받는다',
@@ -278,13 +280,13 @@ const inv = (r) => !r.x.ok && (E3.test(r.x.err || '') || E3g.test(r.x.err || '')
   const P = ON.pairs.map((p, i) => ({ p, o: OFF.pairs[i] })).filter((z) => z.p.T != null);
   const pOn = P.filter((z) => z.p.maxGive !== Math.floor(z.p.T)), pOff = P.filter((z) => z.o.maxGive < Math.floor(z.p.T));
   ok(P.length >= 40 && P.every((z) => z.p.T === z.o.T), '④ 전제 — 짝 넉넉 · 참 경계는 손잡이와 무관(두 판 T 같다)', `${P.length} 짝`);
-  ok(pOff.length >= 1, '④ 미끼(끔) — 첫 상계가 못 닿아 maxGive 가 ⌊T⌋ 보다 작은 짝이 있다', pOff.map((z) => `마을${z.p.vi} ${z.p.pair} ${z.o.maxGive} < ${Math.floor(z.p.T)}`).join(' · '));
+  ok(LB.knob('T999_TRADE_CAP') === 1 && (pOff.length >= 1), `④ 미끼(끔) — 첫 상계가 못 닿아 maxGive 가 ⌊T⌋ 보다 작은 짝이 있다 · 미끼 바꾼 자리 ${LB.knob('T999_TRADE_CAP')}`, pOff.map((z) => `마을${z.p.vi} ${z.p.pair} ${z.o.maxGive} < ${Math.floor(z.p.T)}`).join(' · '));
   ok(pOn.length === 0, '★④ 켬 — 짝마다 maxGive = ⌊T⌋', pOn.length ? JSON.stringify(pOn.slice(0, 3)) : `${P.length} 짝`);
 
   console.log('\n⑤ 판 — 같은 세계 · 상한 1 판(받을 것 곳간 재고만 상한 1 · 짝마다 되돌림) · 낱개 하나 = T × 0.6 · 가진 것 30 · 낼 양 1 · 2 · 받을 양 1');
   const kz = (A, ax, n) => A.filter((r) => r.axis === ax && r.n === n);
   ok(kOn.length >= 12 && kOn.length === kOff.length && kOn.every((r) => !r.q.err && r.q.cap === 1 && !r.oneOver), '⑤ 전제 — 그 판이 선다 · 상한 1 · 한 개 넘침 아님', `${kOn.length / 3} 짝`);
-  ok(kOff.every((r) => !r.x.ok) && kz(kOff, 'give', 1).every((r) => r.cf == null), '⑤ 미끼(끔) — 세 줄 다 거절 · 낼 양 1 에서 2 ~ 30 개 실제 실행이 서는 것 0(어느 양으로도 안 선다)');
+  ok(LB.knob('T999_TRADE_CAP') === 1 && (kOff.every((r) => !r.x.ok) && kz(kOff, 'give', 1).every((r) => r.cf == null)), `⑤ 미끼(끔) — 세 줄 다 거절 · 낼 양 1 에서 2 ~ 30 개 실제 실행이 서는 것 0(어느 양으로도 안 선다) · 미끼 바꾼 자리 ${LB.knob('T999_TRADE_CAP')}`);
   const g1 = kz(kOn, 'give', 1), g2 = kz(kOn, 'give', 2), w1 = kz(kOn, 'want', 1);
   ok(g2.every((r) => r.x.ok && r.x.give === 2 && r.x.take === 1 && r.q.take === 1 && r.q.giveUsed === 2) && w1.every((r) => r.x.ok && r.x.give === 2 && r.x.take === 1 && r.q.giveNeeded === 2 && r.q.takeAtNeeded === 1),
     '★⑤ 켬 — 낼 양 2 · 받을 양 1 이 선다(받는 1 · 낸 2 · 견적 = 실행)');

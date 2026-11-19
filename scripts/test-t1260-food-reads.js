@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @bait 7   ← [T1383] 옛 미끼 표지 — 미끼 판정 줄에 바꾼 자리 수(뜻 그대로)
 // === scripts/test-t1260-food-reads.js — T1260: 식량을 한 품목(`storage.food`)만 읽는 문(손잡이 `T1260_FOOD_READS` · 끔 기본 · `'1'` 만 켬) ======
 //   아이 판 둘(끔 · 켬)이 같은 가짜 마을(곳간 `food` 0 · 생선 · 곡식 넉넉)을 정본 함수로 물어 JSON 한 줄을 낸다 — 판 몸통은 이 파일 하나(사본 0).
 //   ① 끔 = 종전 — 문이 `food` 칸만 본다(요리 문 0 · 개간 문 열림) · 요리 재료 갈래는 끔이면 안 부른다(③ 글자)
@@ -12,6 +13,7 @@
 //   ⑤ [T1279] 손잡이 `T1279_COOK`(끔 기본 · `'1'` 만 · T1260 켬 안에서만) — 켜면 ① 식량 흐름 장부(`dailyFoodProd`)가 조리식 칸을 0 으로 센다(요리는 옮김) · ② 정원 요리사 0(`cookTarget`)
 //      · 장부 자리 하나 · 끔 = 종전 글자 · [미끼] 장부 자리를 종전으로 되돌린 사본 · T1260 과 떼어 놓은 사본을 검사가 문다
 'use strict';
+const LB = require('./lib-bait');   // [T1383] 미끼 사본을 지으며 바꾼 자리를 센다
 const path = require('path');
 const fs = require('fs');
 const { spawnSync } = require('child_process');
@@ -119,12 +121,15 @@ ok((WS.match(/process\.env\.T1260_FOOD_READS/g) || []).length === 1 && /const _f
   && (wc.match(/warFE\(/g) || []).length === 2 && (wc.match(/_feD\(/g) || []).length >= 9,
   '③ 전쟁 층 — 식량 추정 문이 `_feD`(켬 = 주입 정본 `_feOf` · 끔 = `warFE`) · `createWar` 안에 `warFE` 직접 부름 0(정의 둘뿐)', { warFE: (wc.match(/warFE\(/g) || []).length, feD: (wc.match(/_feD\(/g) || []).length });
 //   ④ 미끼 — 문 하나씩 `storage.food` 로 되돌린 사본
-const baitCook = ES.replace('t1260FoodOf(v) < N * 8', '(v.storage.food || 0) < N * 8');
-const baitClear = VS.replace('_lifeEcon().t1260FoodOf(e) > e.npcs.length * 120', '((e.storage && e.storage.food) || 0) > e.npcs.length * 120');
-const baitGran = VS.replace('const food = _lifeEcon().t1260FoodOf(vil.econ);', 'const food = (vil.econ.storage && vil.econ.storage.food) || 0;');
+//   [T1383] 미끼 사본마다 바꾼 자리 수(NS) — 미끼 판정 줄이 "정확히 한 곳"을 본다
+const NS = {}, rb = (k, S, a, b) => { NS[k] = LB.count(S, a); return S.replace(a, b); };
+const one = (...ks) => ks.every((k) => NS[k] === 1), nsTxt = (...ks) => ks.map((k) => NS[k]).join('·');
+const baitCook = rb('baitCook', ES, 't1260FoodOf(v) < N * 8', '(v.storage.food || 0) < N * 8');
+const baitClear = rb('baitClear', VS, '_lifeEcon().t1260FoodOf(e) > e.npcs.length * 120', '((e.storage && e.storage.food) || 0) > e.npcs.length * 120');
+const baitGran = rb('baitGran', VS, 'const food = _lifeEcon().t1260FoodOf(vil.econ);', 'const food = (vil.econ.storage && vil.econ.storage.food) || 0;');
 const b1 = gates(baitCook, VS), b2 = gates(ES, baitClear), b3 = gates(ES, baitGran);
-ok(baitCook !== ES && baitClear !== VS && baitGran !== VS && !b1.cook && !b2.clear && !b3.gran,
-  '④ [자명 통과 금지] 요리 · 개간 · 곳간 증설 문을 하나씩 `storage.food` 로 되돌린 사본 셋 — ③ 의 검사가 셋 다 문다', { cook: b1.cook, clear: b2.clear, gran: b3.gran });
+ok(one('baitCook', 'baitClear', 'baitGran') && baitCook !== ES && baitClear !== VS && baitGran !== VS && !b1.cook && !b2.clear && !b3.gran,
+  `④ [자명 통과 금지 · 미끼] 요리 · 개간 · 곳간 증설 문을 하나씩 \`storage.food\` 로 되돌린 사본 셋 — ③ 의 검사가 셋 다 문다 · 바꾼 자리 ${nsTxt('baitCook', 'baitClear', 'baitGran')}`, { cook: b1.cook, clear: b2.clear, gran: b3.gran });
 //   ⑤ T1279 — 요리는 옮김(식량 흐름 장부에서 조리식 칸 0)
 const k1 = run({ T1260_FOOD_READS: '1', T1279_COOK: '1' }), k2 = run({ T1279_COOK: '1' }), k3 = run({ T1260_FOOD_READS: '1', T1279_COOK: 'yes' });
 ok(!off.err && !on.err && off.cook79 === false && on.cook79 === false, '⑤ T1279 끔(기본) — T1260 끔 · 켬 둘 다 `T1279_COOK` 꺼짐', { off: off.cook79, on: on.cook79 });
@@ -144,13 +149,13 @@ ok(!k1.err && !on.err && on.cook > 0 && k1.cook === 0 && k2.cook === off.cook &&
 const quota = (es) => (es.match(/if \(T1279_COOK\) return 0;/g) || []).length === 1
   && /function cookTarget\(v\) \{\n  if \(T1279_COOK\) return 0;/.test(es);
 ok(quota(ES), '⑤ 글자 — 정원 자리 하나(`cookTarget` 첫 줄 · 켬 = 0) · 다른 자리 0');
-const baitQ = ES.replace('  if (T1279_COOK) return 0;', '');
-ok(baitQ !== ES && !quota(baitQ), '⑤ [자명 통과 금지 · 미끼] 정원 줄을 뺀 사본 — 글자 검사가 문다', { Q: quota(baitQ) });
-const baitL = ES.replace('T1279_COOK ? Object.assign({}, dailyProduction, { cooked_food: 0 }) : dailyProduction, v)', 'dailyProduction, v)');
-const baitK = ES.replace('const T1279_COOK = T1260_FOOD_READS && (', 'const T1279_COOK = (');
-const baitP = ES.replace("Object.assign({}, dailyProduction, { cooked_food: 0 })", "Object.assign({}, dailyProduction, { fish: 0 })");
-ok(baitL !== ES && baitK !== ES && baitP !== ES && !ledger(baitL) && !ledger(baitK) && !ledger(baitP),
-  '⑤ [자명 통과 금지 · 미끼] 장부 자리를 종전으로 · 손잡이를 T1260 과 떼어 · 0 으로 만드는 칸을 딴 품목으로 바꾼 사본 셋 — 글자 검사가 셋 다 문다', { L: ledger(baitL), K: ledger(baitK), P: ledger(baitP) });
+const baitQ = rb('baitQ', ES, '  if (T1279_COOK) return 0;', '');
+ok(one('baitQ') && baitQ !== ES && !quota(baitQ), `⑤ [자명 통과 금지 · 미끼] 정원 줄을 뺀 사본 — 글자 검사가 문다 · 바꾼 자리 ${nsTxt('baitQ')}`, { Q: quota(baitQ) });
+const baitL = rb('baitL', ES, 'T1279_COOK ? Object.assign({}, dailyProduction, { cooked_food: 0 }) : dailyProduction, v)', 'dailyProduction, v)');
+const baitK = rb('baitK', ES, 'const T1279_COOK = T1260_FOOD_READS && (', 'const T1279_COOK = (');
+const baitP = rb('baitP', ES, "Object.assign({}, dailyProduction, { cooked_food: 0 })", "Object.assign({}, dailyProduction, { fish: 0 })");
+ok(one('baitL', 'baitK', 'baitP') && baitL !== ES && baitK !== ES && baitP !== ES && !ledger(baitL) && !ledger(baitK) && !ledger(baitP),
+  `⑤ [자명 통과 금지 · 미끼] 장부 자리를 종전으로 · 손잡이를 T1260 과 떼어 · 0 으로 만드는 칸을 딴 품목으로 바꾼 사본 셋 — 글자 검사가 셋 다 문다 · 바꾼 자리 ${nsTxt('baitL', 'baitK', 'baitP')}`, { L: ledger(baitL), K: ledger(baitK), P: ledger(baitP) });
 //   ⑥ T1286 — 남는 시간 요리(정원 0 · 옮김 · 식량을 안 늘림) · 부양력 조리식 칸 0
 const s1 = run({ T1260_FOOD_READS: '1', T1279_COOK: '1', T1286_COOK_SPARE: '1', T1286_PRODK: '1' }), s2 = run({ T1260_FOOD_READS: '1', T1286_COOK_SPARE: '1', T1286_PRODK: '1' }), s3 = run({ T1260_FOOD_READS: '1', T1279_COOK: '1', T1286_COOK_SPARE: 'yes', T1286_PRODK: 'yes' });
 ok(!s1.err && !s2.err && !s3.err && off.spare86 === false && on.spare86 === false && k1.spare86 === false && k1.prodk86 === false && s1.spare86 === true && s1.prodk86 === true && s2.spare86 === false && s2.prodk86 === false && s3.spare86 === false && s3.prodk86 === false,
@@ -171,13 +176,13 @@ const spare = (es) => { const b = body86(es); if (!b) return false;
     && /const T1286_PRODK = T1279_COOK && \(\(typeof process !== 'undefined' && process\.env\) \? process\.env\.T1286_PRODK === '1' : false\);/.test(es)
     && /const dailyFoodProdPotential = totalFoodProductionEquivalent\((?:T1298_LEDGER \? _t1298Moved\(dailyProductionPotential\) : )?T1286_PRODK \? Object\.assign\(\{\}, dailyProductionPotential, \{ cooked_food: 0 \}\) : dailyProductionPotential, v\);/.test(es); };
 ok(spare(ES), '⑥ 글자 — 남는 시간 요리 함수(직업 · 정원 · 차출 · 부재료를 안 건드림 · 조리식 ≤ 든 환산 · 재료를 뗀다) · 몸 머리 · 꼬리 자리 하나씩 · 손잡이 둘(T1279 와 곱) · 부양력 자리 하나');
-const baitPost = ES.replace('  v.storage.cooked_food = (v.storage.cooked_food || 0) + cooked;\n', "  npc.currentJob = 'cook';\n  v.storage.cooked_food = (v.storage.cooked_food || 0) + cooked;\n");
-const baitMake = ES.replace(', per > 0 ? s / per : 0)', ', Infinity)');
-const baitSide = ES.replace('  if (ck) v.storage[ck[0]] -= s / ck[1]; else v.storage.food -= s;\n', '  if (ck) v.storage[ck[0]] -= s / ck[1]; else v.storage.food -= s;\n  for (const r of COOK_SIDE_INGREDIENTS) if ((v.storage[r] || 0) >= 0.5 * s) v.storage[r] -= 0.5 * s;\n');
-const baitFree = ES.replace('  if (ck) v.storage[ck[0]] -= s / ck[1]; else v.storage.food -= s;\n', '');
-const baitKnob = ES.replace('const T1286_COOK_SPARE = T1279_COOK && (', 'const T1286_COOK_SPARE = (');
-ok([baitPost, baitMake, baitFree, baitKnob, baitSide].every((b) => b !== ES && !spare(b)),
-  '⑥ [자명 통과 금지 · 미끼] 남는 시간 요리가 요리사를 세우는 사본 · 조리식이 든 환산을 넘어 새로 생기는 사본 · 재료를 안 떼는 사본 · 손잡이를 T1279 와 뗀 사본 · 부재료(건강 칸)를 조리식으로 먹어 치우는 사본 — 다섯 다 문다',
+const baitPost = rb('baitPost', ES, '  v.storage.cooked_food = (v.storage.cooked_food || 0) + cooked;\n', "  npc.currentJob = 'cook';\n  v.storage.cooked_food = (v.storage.cooked_food || 0) + cooked;\n");
+const baitMake = rb('baitMake', ES, ', per > 0 ? s / per : 0)', ', Infinity)');
+const baitSide = rb('baitSide', ES, '  if (ck) v.storage[ck[0]] -= s / ck[1]; else v.storage.food -= s;\n', '  if (ck) v.storage[ck[0]] -= s / ck[1]; else v.storage.food -= s;\n  for (const r of COOK_SIDE_INGREDIENTS) if ((v.storage[r] || 0) >= 0.5 * s) v.storage[r] -= 0.5 * s;\n');
+const baitFree = rb('baitFree', ES, '  if (ck) v.storage[ck[0]] -= s / ck[1]; else v.storage.food -= s;\n', '');
+const baitKnob = rb('baitKnob', ES, 'const T1286_COOK_SPARE = T1279_COOK && (', 'const T1286_COOK_SPARE = (');
+ok(one('baitPost', 'baitMake', 'baitFree', 'baitKnob', 'baitSide') && [baitPost, baitMake, baitFree, baitKnob, baitSide].every((b) => b !== ES && !spare(b)),
+  `⑥ [자명 통과 금지 · 미끼] 남는 시간 요리가 요리사를 세우는 사본 · 조리식이 든 환산을 넘어 새로 생기는 사본 · 재료를 안 떼는 사본 · 손잡이를 T1279 와 뗀 사본 · 부재료(건강 칸)를 조리식으로 먹어 치우는 사본 — 다섯 다 문다 · 바꾼 자리 ${nsTxt('baitPost', 'baitMake', 'baitFree', 'baitKnob', 'baitSide')}`,
   { post: spare(baitPost), make: spare(baitMake), free: spare(baitFree), knob: spare(baitKnob), side: spare(baitSide) });
 //   ⑦ T1298 — 옮김은 생산이 아니다(장부 · 잠재에서 조리식 · 보존식 칸 0) · 조리식 · 보존식이 재료의 건강 몫을 잇는다
 const t1 = run({ T1260_FOOD_READS: '1', T1298_LEDGER: '1', T1298_HEALTH: '1' }), t2 = run({ T1298_LEDGER: '1', T1298_HEALTH: '1' }), t3 = run({ T1260_FOOD_READS: '1', T1298_LEDGER: 'yes', T1298_HEALTH: 'yes' });
@@ -198,12 +203,12 @@ const hl98 = (es) => (es.match(/_t1298Carry\(v, /g) || []).length === 4
   && es.includes('if (!_f09 && T1298_HEALTH && v._t1298H && v._t1298H[id] > 0) stats.health += v._t1298H[id] * sat;')
   && es.includes('T[P] = (b * (T[P] || 0) + Math.max(0, H)) / (b + out);');
 ok(led98(ES) && hl98(ES), '⑦ 글자 — 장부 · 잠재 자리 하나씩(켬 = 옮김 칸 0) · 옮김 칸 함수 · 손잡이 둘(T1260 과 곱) · 건강 잇는 자리 넷(갈무리 · 갈래 요리 · 남는 시간 요리 · 어종 갈무리) · 마을 건강 자리 하나');
-const baitL98 = ES.replace('T1298_LEDGER ? _t1298Moved(dailyProduction) : ', '');
-const baitP98 = ES.replace('for (const r of PRESERVED_FOODS) o[r] = 0; ', '');
-const baitH98 = ES.replace('if (!_f09 && T1298_HEALTH && v._t1298H && v._t1298H[id] > 0) stats.health += v._t1298H[id] * sat;', '');
-const baitC98 = ES.replace('T[P] = (b * (T[P] || 0) + Math.max(0, H)) / (b + out);', 'T[P] = 0;');
-ok([baitL98, baitP98].every((b) => b !== ES && !led98(b)) && [baitH98, baitC98].every((b) => b !== ES && !hl98(b)),
-  '⑦ [자명 통과 금지 · 미끼] 갈무리를 다시 생산으로 센 사본 둘(장부 자리 종전 · 보존식 칸을 안 지움) · 건강을 0 으로 되돌린 사본 둘(마을 건강 자리 뺌 · 칸을 0 으로) — 넷 다 문다',
+const baitL98 = rb('baitL98', ES, 'T1298_LEDGER ? _t1298Moved(dailyProduction) : ', '');
+const baitP98 = rb('baitP98', ES, 'for (const r of PRESERVED_FOODS) o[r] = 0; ', '');
+const baitH98 = rb('baitH98', ES, 'if (!_f09 && T1298_HEALTH && v._t1298H && v._t1298H[id] > 0) stats.health += v._t1298H[id] * sat;', '');
+const baitC98 = rb('baitC98', ES, 'T[P] = (b * (T[P] || 0) + Math.max(0, H)) / (b + out);', 'T[P] = 0;');
+ok(one('baitL98', 'baitP98', 'baitH98', 'baitC98') && [baitL98, baitP98].every((b) => b !== ES && !led98(b)) && [baitH98, baitC98].every((b) => b !== ES && !hl98(b)),
+  `⑦ [자명 통과 금지 · 미끼] 갈무리를 다시 생산으로 센 사본 둘(장부 자리 종전 · 보존식 칸을 안 지움) · 건강을 0 으로 되돌린 사본 둘(마을 건강 자리 뺌 · 칸을 0 으로) — 넷 다 문다 · 바꾼 자리 ${nsTxt('baitL98', 'baitP98', 'baitH98', 'baitC98')}`,
   { L: led98(baitL98), P: led98(baitP98), H: hl98(baitH98), C: hl98(baitC98) });
 //   ⑧ T1309 — 건강은 먹은 것으로 · 서버 곳간 로트가 재료 건강을 잇고 먹을 때 그 로트 건강이 든다
 const u1 = run({ T1260_FOOD_READS: '1', T1309_HEALTH_EATEN: '1', T1309_DIVERSITY_EATEN: '1', T1298_HEALTH: '1' }), u0 = run({ T1260_FOOD_READS: '1', T1309_HEALTH_EATEN: '1', T1298_HEALTH: '1' }), u2 = run({ T1309_HEALTH_EATEN: '1' }), u3 = run({ T1260_FOOD_READS: '1', T1309_HEALTH_EATEN: 'yes' });
@@ -226,8 +231,8 @@ ok(!u1.err && !u2.err && !u3.err && off.dv09 === false && off.he09 === false && 
     "⑧ T1309 ① `T1309_MOVE_CONS` — 끔 기본 · T1260 켬 안에서만 · 생선 5 를 말리면 끔 = 흐름 소비 5 · 켬 = 0(옮김)", { off: on.cs09, on: m1.cs09, k: [on.mc09, m1.mc09, m2.mc09] }); }
 const mc09 = (es) => es.includes("v.storage[_fr] -= _take; if (!T1309_MOVE_CONS) _cons(v, _fr, _take);") && es.includes('v.storage[from]-=take;if(!T1309_MOVE_CONS)_cons(v,from,take);')
   && /const T1309_MOVE_CONS = T1260_FOOD_READS && /.test(es);
-const baitMC = ES.replace('if (!T1309_MOVE_CONS) _cons(v, _fr, _take);', '_cons(v, _fr, _take);');
-ok(mc09(ES) && baitMC !== ES && !mc09(baitMC), '⑧ 글자 — 갈무리 흐름 소비 자리 둘(갈무리 · 어종 갈무리)이 손잡이를 본다 · [미끼] 갈무리를 다시 소비로 적는 사본을 문다', { bait: mc09(baitMC) });
+const baitMC = rb('baitMC', ES, 'if (!T1309_MOVE_CONS) _cons(v, _fr, _take);', '_cons(v, _fr, _take);');
+ok(mc09(ES) && one('baitMC') && baitMC !== ES && !mc09(baitMC), `⑧ 글자 — 갈무리 흐름 소비 자리 둘(갈무리 · 어종 갈무리)이 손잡이를 본다 · [미끼] 갈무리를 다시 소비로 적는 사본을 문다 · 바꾼 자리 ${nsTxt('baitMC')}`, { bait: mc09(baitMC) });
 const he09 = (es) => /const T1309_HEALTH_EATEN = T1260_FOOD_READS && /.test(es)
   && es.includes('if (_f09 && stat === \'health\') continue;') && es.includes('if (T1309_HEALTH_EATEN) stats.health += _t1309EatenHealth(v, pop);')
   && es.includes('h += (H[g] / X[g]) * Math.min(1, (X[g] / pop) / xb);') && es.includes('const xb = DAILY_FOOD_CONSUMPTION * (T86_W[g] || 0);')
@@ -238,12 +243,12 @@ const GS = fs.readFileSync(path.join(ROOT, 'server', 'granary-lots.js'), 'utf8')
 const lot09 = (gs) => gs.includes('if (r.h != null) o.h = r.h; return o; }') && gs.includes('&& last.it == null && last.h == null) last.u += left;')
   && (gs.match(/if \(_eatV === v && r\.h != null\) _eatAdd\(res, take, r\.h\);/g) || []).length === 2;
 ok(he09(ES) && lot09(GS), '⑧ 글자 — 손잡이(T1260 과 곱) · 식량 품목 곳간 건강 뺌 · 먹은 것 건강 한 자리(T86 군 몫 자) · 로트 적는 자리 넷(갈무리 · 갈래 요리 · 남는 시간 요리 · 어종 갈무리) · 끼니 묶음 · 로트가 h 를 잇고(복사 · 합치지 않음) · 먹는 동안 두 길에서 모은다');
-const baitS09 = ES.replace("if (_f09 && stat === 'health') continue;", '');
-const baitE09 = ES.replace('if (T1309_HEALTH_EATEN) stats.health += _t1309EatenHealth(v, pop);', '');
-const baitC09 = GS.replace('if (r.h != null) o.h = r.h; return o; }', 'return o; }');
-const baitM09 = GS.replace('&& last.it == null && last.h == null) last.u += left;', '&& last.it == null) last.u += left;');
-ok(baitS09 !== ES && baitE09 !== ES && !he09(baitS09) && !he09(baitE09) && baitC09 !== GS && baitM09 !== GS && !lot09(baitC09) && !lot09(baitM09),
-  '⑧ [자명 통과 금지 · 미끼] 곳간 재고로 건강을 세는 옛 글자로 돌린 사본 둘(곳간 건강 다시 셈 · 먹은 것 자리 뺌) · 로트 건강을 버리는 사본 둘(복사에서 h 뺌 · 새 몫을 h 로트에 합침) — 넷 다 문다',
+const baitS09 = rb('baitS09', ES, "if (_f09 && stat === 'health') continue;", '');
+const baitE09 = rb('baitE09', ES, 'if (T1309_HEALTH_EATEN) stats.health += _t1309EatenHealth(v, pop);', '');
+const baitC09 = rb('baitC09', GS, 'if (r.h != null) o.h = r.h; return o; }', 'return o; }');
+const baitM09 = rb('baitM09', GS, '&& last.it == null && last.h == null) last.u += left;', '&& last.it == null) last.u += left;');
+ok(one('baitS09', 'baitE09', 'baitC09', 'baitM09') && baitS09 !== ES && baitE09 !== ES && !he09(baitS09) && !he09(baitE09) && baitC09 !== GS && baitM09 !== GS && !lot09(baitC09) && !lot09(baitM09),
+  `⑧ [자명 통과 금지 · 미끼] 곳간 재고로 건강을 세는 옛 글자로 돌린 사본 둘(곳간 건강 다시 셈 · 먹은 것 자리 뺌) · 로트 건강을 버리는 사본 둘(복사에서 h 뺌 · 새 몫을 h 로트에 합침) — 넷 다 문다 · 바꾼 자리 ${nsTxt('baitS09', 'baitE09', 'baitC09', 'baitM09')}`,
   { S: he09(baitS09), E: he09(baitE09), C: lot09(baitC09), M: lot09(baitM09) });
 console.log(`\n=== T1260 식량 한 품목 읽는 문: 통과 ${pass} · 실패 ${fail} ===`);
 process.exit(fail ? 1 : 0);

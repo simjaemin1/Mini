@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
+const LB = require('./lib-bait');   // [T1383] 미끼 사본을 지으며 바꾼 자리를 센다
 // @regress
+// @bait 2   ← [T1383] 옛 미끼 표지 — 미끼 판정 줄에 바꾼 자리 수(뜻 그대로)
 // === scripts/test-t1337-wake.js — 잠 깨움 표(T1337 · 결정 문까지 건넌다) = 종전 결정 문 ===
 //   존 글자(`npcStep` 전체 · 막힘 · 따라가기 · 한 점 길 · 거울 · `_t1322*` · `_t1337*`)를 떠서 샌드박스 두 벌(끔 · 켬)에 넣는다.
 //   결정 문은 대역이다 — 머리는 존 글자 그대로(씨 `(신원 · 셀 · 게임일 · 틱)` · 결정 시각 · 판 시계 배율 · 늑대 질의)이고 생활층은 취침 갈래 꼴(깨어 일 · 저녁 끼니 · 귀가 · 잠)이다.
@@ -140,12 +142,12 @@ ok(R2.diffTick === 0 && R2.diffFull === 0 && R2.st.dvq > 1000 && R2.cmp === R2.s
 console.log('\n③ 미끼');
 {
   const a = "  for (const m of near) { if (m.type !== 'wolf' || m.tameOwner) continue; if (Math.hypot(m.x - x, m.y - y) < NPC_FLEE_RANGE) { SS.stat.dwolf++; return false; } }\n";
-  const bait = SRC0.replace(a, '');
+  const BA = LB.swap(SRC0, a, ''), bait = BA.src;
   ok(bait !== SRC0, 'ⓐ 늑대가 반경에 들어도 안 깨우는 사본을 지었다');
   const RA = run(bait, '', '1', 1000, 1000, {});
-  ok(RA.diffTick > 0 || RA.diffFull > 0, 'ⓐ ① 이 문다(빨강)', `${RA.diffTick}/${RA.diffFull}${RA.firstDiff ? ' · ' + RA.firstDiff : ''}`);
-  const RB = run(SRC0, '', '1', 1000, 1000, { noMeal: true });
-  ok(RB.diffTick > 0 || RB.diffFull > 0, 'ⓑ 끼니 때를 넘겨 거르는 사본(잠 판정이 끼니를 안 봄) — ① 이 문다(빨강)', `${RB.diffTick}/${RB.diffFull}${RB.firstDiff ? ' · ' + RB.firstDiff : ''}`);
+  ok(BA.n === 1 && (RA.diffTick > 0 || RA.diffFull > 0), 'ⓐ [미끼] ① 이 문다(빨강)', `바꾼 자리 ${BA.n} · ${RA.diffTick}/${RA.diffFull}${RA.firstDiff ? ' · ' + RA.firstDiff : ''}`);
+  const RB = run(SRC0, '', '1', 1000, 1000, { noMeal: true }), nB = LB.count(LB.self(__filename), '!noMeal ' + '&& fv');   // 판 갈래 미끼 — 잠 판정이 끼니를 보는 한 자리
+  ok(nB === 1 && (RB.diffTick > 0 || RB.diffFull > 0), 'ⓑ [미끼] 끼니 때를 넘겨 거르는 사본(잠 판정이 끼니를 안 봄) — ① 이 문다(빨강)', `바꾼 자리 ${nB} · ${RB.diffTick}/${RB.diffFull}${RB.firstDiff ? ' · ' + RB.firstDiff : ''}`);
   const RV = run(SRC0, '', 'verify', 1000, 1000, { noMeal: true });
   ok(RV.st.dbad > 0 && RV.diffTick === 0, 'ⓑ 같은 미끼를 `verify` 로 — 어긋남을 세고 그 몸은 종전 길(몸 칸 같음)', `어긋남 ${RV.st.dbad} ${JSON.stringify(RV.st.dwhy)}`);
 }

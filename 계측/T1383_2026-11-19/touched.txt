@@ -1,0 +1,367 @@
+# 만진 함수 → 하네스 (touched-harness · base origin/main · 갈림점 311d0773a)
+· 바뀐 코드 파일 2 · 이름 3(물린 것 2 · 흔한 이름 뺌 0) · 바뀐 하네스 53 · 규약 다섯 · **돌릴 하네스 63**(@regress 아님 1: test-t1245-lot-clock.js)
+  scripts/lib-bait.js: lib-bait
+  scripts/t1295-probe.js: BAIT_N dump
+· 이름 → 하네스 수: dump 7 · lib-bait 29
+· 바뀐 하네스: test-backup-live.js test-ci-changes.js test-disk-check.js test-e2e-src.js test-forage-act.js test-handoff-body.js test-harness-bite.js test-harness-lint.js test-hp-src.js test-lint-harness-words.js test-live-lag-net.js test-nightly.js test-one-target.js test-redeploy-light.js test-redeploy.js test-reset-world.js test-seam-walk.js test-server-market.js test-t1001-econ-day.js test-t1013-band-day.js test-t1087-crew-cap.js test-t1198-birth-body.js test-t1238-terr-v2.js test-t1243-farm-on.js test-t1246-food-price.js test-t1260-food-reads.js test-t1266-ore-body.js test-t1292-t952-axis.js test-t1292-xz-esc.js test-t1292-xz-hide.js test-t1294-perf.js test-t1314-cols.js test-t1322-prefilter.js test-t1325-one-rot.js test-t1336-crop-eq.js test-t1337-wake.js test-t1341-own-house.js test-t1342-gate-home.js test-t1345-body-day.js test-t1351-mine-clock.js test-t1352-xz-hold.js test-t1352-xz-news.js test-t772-leg.js test-t835-quote-weight.js test-t877-dry-fix.js test-t965-want-start.js test-t969-shelter-day.js test-t976-want-capped.js test-t999-trade-cap.js test-terraincache.js test-update-snap.js test-wood-flow.js test-xhost-env.js
+· 돌릴 하네스: test-backup-live.js test-battle-fast.js test-body-fields.js test-charsheet.js test-ci-changes.js test-coll-grid.js test-disk-check.js test-e2e-src.js test-forage-act.js test-granary-item.js test-handoff-body.js test-harness-bite.js test-harness-lint.js test-hp-src.js test-lint-harness-words.js test-live-lag-net.js test-lon-day.js test-moment-lot.js test-nightly.js test-one-target.js test-redeploy-light.js test-redeploy.js test-reset-world.js test-road-tail.js test-seam-walk.js test-server-market.js test-t1001-econ-day.js test-t1013-band-day.js test-t1087-crew-cap.js test-t1198-birth-body.js test-t1238-terr-v2.js test-t1243-farm-on.js test-t1245-lot-clock.js test-t1246-food-price.js test-t1260-food-reads.js test-t1266-ore-body.js test-t1292-t952-axis.js test-t1292-xz-esc.js test-t1292-xz-hide.js test-t1294-perf.js test-t1314-cols.js test-t1322-prefilter.js test-t1325-one-rot.js test-t1336-crop-eq.js test-t1337-wake.js test-t1341-own-house.js test-t1342-gate-home.js test-t1345-body-day.js test-t1351-mine-clock.js test-t1352-xz-hold.js test-t1352-xz-news.js test-t772-leg.js test-t835-quote-weight.js test-t877-dry-fix.js test-t965-want-start.js test-t969-shelter-day.js test-t976-want-capped.js test-t999-trade-cap.js test-terraincache.js test-update-snap.js test-village-boot-mem.js test-wood-flow.js test-xhost-env.js
+##### test-backup-live.js #####
+⑥ ★자명 통과 금지 — sha 확인 줄을 뺀 미끼
+=== PASS 30 / FAIL 0 ===
+  [소요] 16초
+  ✓ RC=0
+##### test-battle-fast.js #####
+=== 결과: 25 PASS / 0 FAIL ===
+  ✓ [자명 통과 금지] 끔 — 핸들 · 교전 병사 6 이 다 사전 모드 · 대형 병사는 둘째부터 사전(첫 몸만 새 길을 낸다 — `TransitionToDifferentAccessor`)  빠른 꼴 0 · 0/6 · 1/6
+=== 결과: 25 PASS / 0 FAIL ===
+  [소요] 1초
+  ✓ RC=0
+##### test-body-fields.js #####
+=== 14 통과 / 0 실패 ===
+  ✓ ★자명 통과 금지 — `??=` 꼴도 문다 · 읽기(`==`)는 안 문다  zone.js:19736 npc._t673Bait2
+  ✓ ★[T1140 ③-가] 자명 통과 금지 — 값 하나(`nextDecisionAt: 1`)를 바꾸면 문다
+  ✓ ⑳ 판정 칸 쓰기 자리를 다 셌다(자명 통과 아님)  전체 454 · 걸음 문 안 256 · 문 밖 198(표 내림 73 · 까닭 125)
+=== 14 통과 / 0 실패 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-charsheet.js #####
+=== test-charsheet 결과: 통과 194 · 실패 0 ===
+  [소요] 14초
+  ✓ RC=0
+##### test-ci-changes.js #####
+=== test-ci-changes 결과: 9 통과 / 0 실패 ===
+=== test-ci-changes 결과: 9 통과 / 0 실패 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-coll-grid.js #####
+=== 결과: 20 PASS / 0 FAIL ===
+  ✓ ② [전제 · 자명 통과 금지] 걸음이 **실제로 막힌다** · 옛 격자 질의의 셋에 하나 넘게에 **밭·마당이 섞였다**  막힘 10476/40000 · 밭 섞임 4525/10000
+=== 결과: 20 PASS / 0 FAIL ===
+  [소요] 15초
+  ✓ RC=0
+##### test-disk-check.js #####
+  ✓ ★같은 판 · 빈 자리만 60 MB → bad(자명 통과 0 — 64 MB 여유도 못 넣는다)
+⑦ ★자명 통과 금지 — 되돌리기 이미지를 지킬 줄을 뺀 미끼
+=== PASS 14 / FAIL 0 ===
+  [소요] 6초
+  ✓ RC=0
+##### test-e2e-src.js #####
+=== 76 통과 / 0 실패 ===
+  ✓ ★⑤-c 자명 통과 금지 — 이모지 한 줄을 되살린 소스는 잡힌다
+  ✓ ★⑤-c 자명 통과 금지 — 인라인 hex 한 줄을 되살리면 잡힌다
+  ✓ ★⑩ 자명 통과 금지 — 훅을 되살린 소스는 잡힌다
+=== 76 통과 / 0 실패 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-forage-act.js #####
+=== 결과: 251 PASS / 0 FAIL ===
+  ✓ ⓔ ★미끼 — kcal 문 한 줄을 뺀 몸통은 **벌집을 넣는다**(ⓐ 가 빨갛다 · 자명 통과 아님) · 미끼 바꾼 자리 1  정본 berry_bush·herb·mushroom_patch·greens_patch · 미끼 berry_bush·herb·mushroom_patch·beehive·greens_patch
+  ✓ ⓔ [자명 통과 금지] `else` 를 지운 미끼(손이 하루에 두 번 든다)면 갈래 검사가 **문다** · 미끼 바꾼 자리 1  문다
+  ✓ ㉑ [전제 · 자명 통과 금지] 판이 한도에 걸린다 — 1짐 × 짐당 개체 × econ 2 < 군락 40 · 끔은 T561 칸이 안 선다  짐 1 · 짐당 13 · 한도 26 · 딴 26
+=== 결과: 251 PASS / 0 FAIL ===
+  [소요] 22초
+  ✓ RC=0
+##### test-granary-item.js #####
+  ✓ ★⑤ 되돌림(교환 실패) — 장부 · 품목 셈 둘 다 그 순간으로(든 · 난 단위 무변)
+=== 42건 중 PASS 42 · FAIL 0 ===
+  [소요] 16초
+  ✓ RC=0
+##### test-handoff-body.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 2초 쉰다
+=== 94 통과 / 0 실패 ===
+  ✓ ★[상황 · T890 켬] 같은 손님 토큰으로 새 소켓 → 옛 세션 승계(옛 소켓 kicked · 같은 playerId · 사람 하나) · 행이 산 몸의 장부 · 신체 · HP 를 아직 안 가졌다(자명 통과 0)  시도 1 · kicked true · 사람 1 · 행 신체 {"cold":0.0004,"fatigue":0,"injury":0,"morale":0} · 산 신체 {"cold":0.7987,"fatigue":0.5992,"injury":0.3998,"morale":0.2988}
+  ✓ ★[상황 · T916 켬] central 을 내린 채 산 몸을 바꾸고 끊었다 → central 다시 뜸 · 다시 붙기 전 행은 바꾼 값을 아직 안 가졌다(줄이 존에 있다 · 자명 통과 0) · 같은 playerId  central true · 시도 1 · 행 신체 {"cold":0.0005,"fatigue":0,"injury":0,"morale":0} · 산 신체 {"cold":0.7987,"fatigue":0.5992,"injury":0.3998,"morale":0.2988}
+  ✓ ★[상황 · T927 켬] 존이 저장한 행에 몸 버전이 있다(0 이 아니다 — 아래가 자명 통과가 아니다)  행 몸 버전 2
+=== 94 통과 / 0 실패 ===
+  [소요] 339초
+  ✓ RC=0
+##### test-harness-bite.js #####
+=== test-harness-bite 결과: 8 통과 / 0 실패 ===
+  ✓ ② [전제] 표지 단 하네스가 실제로 있다(0 이면 아래가 자명 통과다)  test-backup-live.js test-disk-check.js test-lint-harness-words.js test-live-lag-net.js test-nightly.js test-redeploy-light.js test-redeploy.js test-reset-world.js test-t1345-body-day.js test-update-snap.js test-xhost-env.js
+  ✓ ★★④ 옛 판 뒤 새로 생긴 제품 파일은 사본에서 지운다 — 새 모듈을 재는 하네스가 옛 판에서 빨강(옛 판에 없던 제품 자리 `gone` 이 있어도 자가 안 멈춘다)  빨강(크래시) △ | test-nw.js | RC=1 · ✓ 0 · ✗ 0 | Error: Cannot find module '../prod/new.js'
+=== test-harness-bite 결과: 8 통과 / 0 실패 ===
+  [소요] 0초
+  ✓ RC=0
+##### test-harness-lint.js #####
+  ✓ ★⑲b 자명 통과 금지 — 표지 · 수가 맞는 새 하네스만 보내고 · 표지 없음 · 수 어긋남 · 바꾼 자리 안 셈 · 표지 단 옛 하네스 어긋남 · 주석(보고)에만 적은 미끼는 문다  good=ok,nomark=bad,many=bad,nocount=bad,old=ok,oldmarked=bad,report=bad
+  ✓ ⑳ [전제] `@harness-only` 표지를 단 하네스가 실제로 있다(0 이면 아래가 자명 통과다)  test-ci-changes.js test-ci-list.js test-harness-bite.js test-notice-mark.js
+  ✓ ★⑳ 자명 통과 금지 — 제품 부름 셋은 물고 · 주석 · scripts 자리는 보낸다  req=hit,join=hit,rel=hit,cmt=none,scr=none
+=== 99건 중 PASS 99 · FAIL 0 ===
+  [소요] 78초
+  ✓ RC=0
+##### test-hp-src.js #####
+=== 54 통과 / 0 실패 ===
+  ✓ [상황] 세 파일을 실제로 읽었다(못 읽으면 아래가 자명 통과다)  zone 1193483 · net 108838 · wildlife 96104
+  ✓ ★⓪ 자명 통과 금지 — 직접 대입 한 줄을 되살리면 잡힌다
+  ✓ [상황] `server/villages.js` 를 실제로 읽었다(못 읽으면 아래가 자명 통과다)  villages 1459050
+=== 54 통과 / 0 실패 ===
+  [소요] 2초
+  ✓ RC=0
+##### test-lint-harness-words.js #####
+  ✓ ★② 커밋 2(말투) — FAIL · 빨강 = /먹였다/ 하나 · 주석에 남은 옛 글자가 숨기지 않는다    ✗ test-x.js:7 ok() 조건 "/먹였다/" — 지금 없음 먹였다 (그때 있음 먹였다) · 태어난 판 b07a83f3
+  ✓ ★⑨ 얇은 클론(깊이 3) — 경계 너머 넷은 못 잼(빨강에도 초록에도 안 듦 · 끝 줄 · ⚠ 줄) · 잰 줄(별 · 커밋 3)은 전체 클론과 같은 빨강  전체 빨강 4 · 얇은 빨강 1 · LINT-HARNESS-WORDS FAIL · 빨강 1 · 못 잼 4 · test-y.js:8 별이 떴다
+  ✓ ⑥ 부분 클론 — 망 0 · 빨강 · 참고 줄 둘을 못 잼으로 센다(조용히 초록 아님 · 끝 줄 · ⚠ 줄) · 빨리 끝난다  LINT-HARNESS-WORDS PASS · 빨강 0 · 한글 판정 리터럴 4 · 참고 0(하네스 제 글자 · 런타임 이름) · 못 잼 2(태어난 판이 지역에 없음 — 얇은 · 부분 클론 · 망 0) · 0.1초
+  ✓ ④ 커밋 3(하네스 고침) — PASS  LINT-HARNESS-WORDS PASS · 빨강 0 · 한글 판정 리터럴 4 · 참고 1(하네스 제 글자 · 런타임 이름)
+  ✓ ⑦ 커밋 1 — 여러 줄 `/* */` 속에만 있는 글자(노을)는 지금 · 옛 판 둘 다 "없다"(같은 눈) — 거짓 빨강 0  LINT-HARNESS-WORDS PASS · 빨강 0 · 한글 판정 리터럴 4 · 참고 1(하네스 제 글자 · 런타임 이름)
+=== PASS 9 / FAIL 0 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-live-lag-net.js #####
+12 통과 · 0 실패
+12 통과 · 0 실패
+  [소요] 53초
+  ✓ RC=0
+##### test-lon-day.js #####
+=== 22건 중 PASS 22 · FAIL 0 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-moment-lot.js #####
+  ✓ ★⑤ 교환 실패 되돌림 — 장부도 그 순간으로(새 로트 0)
+  ✓ ★⑤ 실패한 문 — 장부가 문 앞으로(되돌린 곳간 값과 맞는다 · 새 로트 0)
+  ✓ ★⑨② 맞대기 — 길을 다 막았으니 어긋남 0 · 줄 밖에서 짐 칸을 바꾸면 센다(자명 통과 금지)  [0,0,1]
+  ✓ ⑨⑥ 저장 → 복원 같은 줄 · 줄 합 = 비축 · 줄 밖에서 비축을 바꾸면 센다(자명 통과 금지)  [0,0,1]
+=== 107건 중 PASS 107 · FAIL 0 ===
+  [소요] 124초
+  ✓ RC=0
+##### test-nightly.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 2초 쉰다
+  ✓ ★★이어 돈 밤 — 끊긴 test-b 를 뒤 판이 메웠다(한 하네스 한 줄 · 끊김 0 · 미측정 0)  · 오늘 묶음 **A** · 목록 **4종** · 돈 것 **4** · 통과 **3** · 실패 **1** · 끊김 **0** · 미측정 **0**
+  ✓ 자명 통과 금지 — 이어 돌지 않은 로그는 종전 그대로(끊김 1 · 미측정 2 · 이어 돌기 줄 없음)  · 오늘 묶음 **A** · 목록 **4종** · 돈 것 **2** · 통과 **1** · 실패 **0** · 끊김 **1** · 미측정 **2**
+  ✓ ★못 읽는 꼴의 보고에서 **멈췄다고 말한다**(조용히 이어 세지 않는다)  | `B` | 상시(기계 의존) | 초록 **14밤** · 2026-09-01 보고에서 멈춤(꼴을 못 읽음) · 손 보고 2026-09-10 건너뜀(통과 줄 없음) | **뺄 차례
+  ✓ ★자명 통과 금지 — 초를 바꾸면 1위가 바뀐다 · 천 단위 쉼표(로캘 0)  | 1 | `test-a` | 3,001 | 99.8% | 초록 |
+  ✓ ★§6 의 초록 줄은 다음 밤 연속 셈에 **안 든다**(test-b 1밤) · §1 빨강 줄은 든다(test-d 2밤 — 자명 통과 금지)  연속 **1밤** · 연속 **2밤**
+=== 77건 중 PASS 77 · FAIL 0 ===
+  [소요] 16초
+  ✓ RC=0
+##### test-one-target.js #####
+=== 결과: 24 PASS / 0 FAIL ===
+  ✓ ⓕ [자명 통과 금지] 정산 문을 뺀 사본은 켬에서도 정산 ≠ 결정 ⇒ ⓑ 가 빨개진다 · 미끼 바꾼 자리 1  1796/3228 칸
+=== 결과: 24 PASS / 0 FAIL ===
+  [소요] 16초
+  ✓ RC=0
+##### test-redeploy-light.js #####
+=== PASS 11 / FAIL 0 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-redeploy.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 2초 쉰다
+  ✓ 스탬프가 없으면(첫 실행·지난 배포 실패) **전부** 한다  기준점을 모르는데 건너뛰면 빠뜨린다
+② ★자명 통과 금지 — 필요할 땐 반드시 한다
+  ✓ ⑦ [T940 · 자명 통과 금지] 미끼(재생성 두 줄 차례만 바꾼 사본 — 존 먼저)는 같은 자가 잡는다  미끼: central run #13 · 한반도 stop #8 · rc 0
+=== PASS 21 / FAIL 0 ===
+  [소요] 44초
+  ✓ RC=0
+##### test-reset-world.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 2초 쉰다
+  ✓ ★[T892] `--live` 는 컨테이너 · env 손잡이 · 관측자 줄을 찍고 DB 는 안 읽는다(`--check` 는 읽는다 — 자명 통과 0)  --check DB 줄 true · --live DB 줄 false
+⑫ ★자명 통과 금지 — 값을 흘리는 미끼 사본
+=== PASS 69 / FAIL 0 ===
+  [소요] 35초
+  ✓ RC=0
+##### test-road-tail.js #####
+=== 결과: 7 PASS / 0 FAIL ===
+⑤ 자명 통과 금지
+=== 결과: 7 PASS / 0 FAIL ===
+  [소요] 6초
+  ✓ RC=0
+##### test-seam-walk.js #####
+  ✓ ⑤ 전제 [T1320] — 두 자리의 곧은 줄이 바위 칸을 지난다(자명 통과 금지)  교역로 마디 8 · 다시 붙기 10점
+  ✓ ⑥ 전제 [T1327] — 끔이면 세 자리 다 교역로가 막힌 칸을 지난다(자명 통과 금지)  꼭짓점 4 · 건널목 12 · 도랑 앞 0 → 뒤 4
+=== PASS 31 / FAIL 0 ===
+  [소요] 36초
+  ✓ RC=0
+##### test-server-market.js #####
+=== 28건 중 PASS 28 · FAIL 0 ===
+  [소요] 6초
+  ✓ RC=0
+##### test-t1001-econ-day.js #####
+=== PASS 4 / FAIL 0 ===
+  [소요] 2초
+  ✓ RC=0
+##### test-t1013-band-day.js #####
+=== PASS 3 / FAIL 0 ===
+  [소요] 252초
+  ✓ RC=0
+##### test-t1087-crew-cap.js #####
+=== 8건 중 PASS 8 · FAIL 0 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-t1198-birth-body.js #####
+=== T1198 결과: 47 통과 · 0 실패 ===
+  ✓ [자명 통과 금지] 맨 앞 몸은 그대로 서 있다(맨 앞을 눕히는 사본이면 갈린다)
+=== T1198 결과: 47 통과 · 0 실패 ===
+  [소요] 3초
+  ✓ RC=0
+##### test-t1238-terr-v2.js #####
+  ✓ ★켬 = 부서진 울타리는 콜라이더 통과(종전엔 부서져도 막았다 — 회부)
+=== T1238: 117건 중 PASS 117 · FAIL 0 ===
+  [소요] 7초
+  ✓ RC=0
+##### test-t1243-farm-on.js #####
+85 통과 · 0 실패
+  ✓ ② ★자명 통과 금지 — 끈 묶음 + 밭 산출만 켠 판의 작물 없는 수확 = `T100_K` 그대로  5.342 = K 5.342
+85 통과 · 0 실패
+  [소요] 1983초
+  ✓ RC=0
+##### test-t1245-lot-clock.js #####
+PASS same absolute clock for startup, fresh receipt and expiry
+  [소요] 0초
+  ✓ RC=0
+##### test-t1246-food-price.js #####
+PASS grain-only, monotone price, seed, actual consumption, milling once, normalized/preserved units, production, spoilage and trade
+PASS grain-only, monotone price, seed, actual consumption, milling once, normalized/preserved units, production, spoilage and trade
+PASS 미끼 ① mutant old food-only read is rejected · 바꾼 자리 1
+PASS 미끼 ② mutant double rot subtraction is rejected · 바꾼 자리 1
+  [소요] 2초
+  ✓ RC=0
+##### test-t1260-food-reads.js #####
+  ✓ ⑥ [자명 통과 금지 · 미끼] 남는 시간 요리가 요리사를 세우는 사본 · 조리식이 든 환산을 넘어 새로 생기는 사본 · 재료를 안 떼는 사본 · 손잡이를 T1279 와 뗀 사본 · 부재료(건강 칸)를 조리식으로 먹어 치우는 사본 — 다섯 다 문다 · 바꾼 자리 1·1·1·1·1  {"post":false,"make":false,"free":false,"knob":false,"side":false}
+  ✓ ⑦ [자명 통과 금지 · 미끼] 갈무리를 다시 생산으로 센 사본 둘(장부 자리 종전 · 보존식 칸을 안 지움) · 건강을 0 으로 되돌린 사본 둘(마을 건강 자리 뺌 · 칸을 0 으로) — 넷 다 문다 · 바꾼 자리 1·1·1·1  {"L":false,"P":false,"H":false,"C":false}
+  ✓ ⑧ [자명 통과 금지 · 미끼] 곳간 재고로 건강을 세는 옛 글자로 돌린 사본 둘(곳간 건강 다시 셈 · 먹은 것 자리 뺌) · 로트 건강을 버리는 사본 둘(복사에서 h 뺌 · 새 몫을 h 로트에 합침) — 넷 다 문다 · 바꾼 자리 1·1·1·1  {"S":false,"E":false,"C":false,"M":false}
+=== T1260 식량 한 품목 읽는 문: 통과 41 · 실패 0 ===
+  [소요] 3초
+  ✓ RC=0
+##### test-t1266-ore-body.js #####
+=== 63 통과 / 0 실패 ===
+=== 63 통과 / 0 실패 ===
+  [소요] 7초
+  ✓ RC=0
+##### test-t1292-t952-axis.js #####
+=== PASS 12 / FAIL 0 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-t1292-xz-esc.js #####
+=== PASS 16 / FAIL 0 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-t1292-xz-hide.js #####
+  ✓ ③ 미끼 nosure → 빨강 — 확실한 실패 가름을 뺀 사본 → ⓒ 숨은 채 다시 민다(드러나지 않는다) · 바꾼 자리 1  sent: 보임 0/3 · 숨김 → answer: 보임 0/3 · 숨김 → resent: 보임 0/3 · 숨김 → answer2: 보임 0/3 · 숨김 · 줄 hide
+=== PASS 16 / FAIL 0 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-t1294-perf.js #####
+=== T1294 성능 자리 14 통과 · 0 실패 ===
+  ✓ 미끼는 세대가 바뀐 뒤에도 안 묻는다 → ② 의 단언이 문다(자명 통과 아님)  바꾼 자리 1 · {"same":true,"asked":false}
+  ✓ 전제 — `_t671Shape` 를 안 거친 몸은 모양이 다르다(자명 통과 아님)
+=== T1294 성능 자리 14 통과 · 0 실패 ===
+  [소요] 4초
+  ✓ RC=0
+##### test-t1314-cols.js #####
+=== T1314 몸 칸 열 10 통과 · 0 실패 ===
+  ✓ [미끼] ① 의 열 견줌(`check`)이 문다(자명 통과 아님)  바꾼 자리 1 · 어긋남 765
+=== T1314 몸 칸 열 10 통과 · 0 실패 ===
+  [소요] 0초
+  ✓ RC=0
+##### test-t1322-prefilter.js #####
+=== T1322 첫 거름 21 통과 · 0 실패 ===
+=== T1322 첫 거름 21 통과 · 0 실패 ===
+  [소요] 25초
+  ✓ RC=0
+##### test-t1325-one-rot.js #####
+  [소요] 2초
+  ✓ RC=0
+##### test-t1336-crop-eq.js #####
+  [소요] 0초
+  ✓ RC=0
+##### test-t1337-wake.js #####
+=== T1337 잠 깨움 11 통과 · 0 실패 ===
+=== T1337 잠 깨움 11 통과 · 0 실패 ===
+  [소요] 45초
+  ✓ RC=0
+##### test-t1341-own-house.js #####
+=== 62건 중 PASS 62 · FAIL 0 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-t1342-gate-home.js #####
+=== T1342 문 앞에서 집으로: 통과 15 · 실패 0 ===
+  [소요] 137초
+  ✓ RC=0
+##### test-t1345-body-day.js #####
+=== 12건 중 PASS 12 · FAIL 0 ===
+  [소요] 382초
+  ✓ RC=0
+##### test-t1351-mine-clock.js #####
+4 통과 · 0 실패
+4 통과 · 0 실패
+  [소요] 610초
+  ✓ RC=0
+##### test-t1352-xz-hold.js #####
+=== 8/8 통과 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-t1352-xz-news.js #####
+  합: 79 통과 · 0 실패
+  합: 79 통과 · 0 실패
+  [소요] 2초
+  ✓ RC=0
+##### test-t772-leg.js #####
+=== 24건 중 PASS 24 · FAIL 0 ===
+  [소요] 2초
+  ✓ RC=0
+##### test-t835-quote-weight.js #####
+  ✓ ③ 전제 — 바뀐 판이 넉넉하다(자명 통과 금지)  1440 판 · 됨 294
+=== 16건 중 PASS 16 · FAIL 0 ===
+  [소요] 18초
+  ✓ RC=0
+##### test-t877-dry-fix.js #####
+  ✓ ⑤ `=0` 판 = 종전 꼴(건굴 · 마른 미역 칸이 안 선다) · 기본 판엔 선다(자명 통과 금지)
+=== 28/28 통과 ===
+  [소요] 30초
+  ✓ RC=0
+##### test-t965-want-start.js #####
+  ✓ ③ 전제 — 받을 양에 닿은 실행이 넉넉하다(자명 통과 금지)  82/180
+=== 15건 중 PASS 15 · FAIL 0 ===
+  [소요] 7초
+  ✓ RC=0
+##### test-t969-shelter-day.js #####
+=== PASS 4 / FAIL 0 ===
+  [소요] 755초
+  ✓ RC=0
+##### test-t976-want-capped.js #####
+  ✓ ③ 전제 — 무거운 짐은 전부 절삭 0 판이다(넉넉하다 · 자명 통과 금지)  30 판
+  ✓ ③ 전제 — 무거운 짐은 전부 절삭 0 판이다(넉넉하다 · 자명 통과 금지)  30 판
+=== 27건 중 PASS 27 · FAIL 0 ===
+  [소요] 4초
+  ✓ RC=0
+##### test-t999-trade-cap.js #####
+=== 22건 중 PASS 22 · FAIL 0 ===
+  [소요] 27초
+  ✓ RC=0
+##### test-terraincache.js #####
+  ✓ ★자명 통과 금지 — 옛 계약 글자 `=== '1'` 가 zone.js 에 없다(있으면 위 둘 중 하나가 거짓말이다)
+  ✓ ★자명 통과 금지 — 미끼(셀 중심 대신 **모서리**를 묻는 캐시)라면 이 표본에서 답이 갈린다 ⇒ 위 비트 동일은 공짜가 아니다  물 15 · 바위 2 점에서 갈림
+  ✓ ★자명 통과 금지 — 미끼 소스(계산 함수가 모서리를 묻는다)를 정적 절이 **거절한다** · 바꾼 자리 1
+=== PASS 26 / FAIL 0 ===
+  [소요] 4초
+  ✓ RC=0
+##### test-update-snap.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 2초 쉰다
+⑧ ★자명 통과 금지 — 디스크 멈춤 줄을 뺀 미끼
+=== PASS 26 / FAIL 0 ===
+  [소요] 19초
+  ✓ RC=0
+##### test-village-boot-mem.js #####
+=== 10 통과 / 0 실패 ===
+  ✓ [상황] 살찐 DB 가 서울 사본만큼 크다(village_buildings ≥ 100만 행 · 자명 통과 금지)  1264721
+── 자명 통과 금지 ──
+=== 10 통과 / 0 실패 ===
+  [소요] 201초
+  ✓ RC=0
+##### test-wood-flow.js #####
+=== 결과: 18 PASS / 0 FAIL ===
+  ✓ ⓕ [자명 통과 금지] 판정 줄을 뺀 사본은 켬에서도 통나무 가드 참 · 목표 = 닻 ⇒ ⓑ · ⓒ 가 빨개진다 · 미끼 바꾼 자리 1  가드 true · 목표 12
+=== 결과: 18 PASS / 0 FAIL ===
+  [소요] 1초
+  ✓ RC=0
+##### test-xhost-env.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 2초 쉰다
+=== PASS 33 / FAIL 0 ===
+  [소요] 7초
+  ✓ RC=0
+
+=== 러너 요약 ===
+  통과 63: test-backup-live.js test-battle-fast.js test-body-fields.js test-charsheet.js test-ci-changes.js test-coll-grid.js test-disk-check.js test-e2e-src.js test-forage-act.js test-granary-item.js test-handoff-body.js test-harness-bite.js test-harness-lint.js test-hp-src.js test-lint-harness-words.js test-live-lag-net.js test-lon-day.js test-moment-lot.js test-nightly.js test-one-target.js test-redeploy-light.js test-redeploy.js test-reset-world.js test-road-tail.js test-seam-walk.js test-server-market.js test-t1001-econ-day.js test-t1013-band-day.js test-t1087-crew-cap.js test-t1198-birth-body.js test-t1238-terr-v2.js test-t1243-farm-on.js test-t1245-lot-clock.js test-t1246-food-price.js test-t1260-food-reads.js test-t1266-ore-body.js test-t1292-t952-axis.js test-t1292-xz-esc.js test-t1292-xz-hide.js test-t1294-perf.js test-t1314-cols.js test-t1322-prefilter.js test-t1325-one-rot.js test-t1336-crop-eq.js test-t1337-wake.js test-t1341-own-house.js test-t1342-gate-home.js test-t1345-body-day.js test-t1351-mine-clock.js test-t1352-xz-hold.js test-t1352-xz-news.js test-t772-leg.js test-t835-quote-weight.js test-t877-dry-fix.js test-t965-want-start.js test-t969-shelter-day.js test-t976-want-capped.js test-t999-trade-cap.js test-terraincache.js test-update-snap.js test-village-boot-mem.js test-wood-flow.js test-xhost-env.js
+  실패 0: 없음
+  걸린 시간 상위(초): test-t1243-farm-on.js 1983 · test-t969-shelter-day.js 755 · test-t1351-mine-clock.js 610 · test-t1345-body-day.js 382 · test-handoff-body.js 339 · test-t1013-band-day.js 252 · test-village-boot-mem.js 201 · test-t1342-gate-home.js 137 · test-moment-lot.js 124 · test-harness-lint.js 78
+  걸린 시간 합: 하네스 5398초 · 러너 전체 5412초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 7번 × 2초 · 건넘 57번(앞 판이 남긴 아이 없음)

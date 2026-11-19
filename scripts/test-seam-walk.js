@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh)
+// @bait 4   ← [T1383] 옛 미끼 표지 — 미끼 판정 줄에 바꾼 자리 수(뜻 그대로)
 // === scripts/test-seam-walk.js — 쇠재 · 한재 골짜기를 몸이 걸어서 넘는다 (T1311 · T1296 회부 3 · 4) ======================
 //
 // ★왜 [T1311] T1296 이 한반도 ↔ 닛폰 원 고개 둘(지름 115칸)을 폭 320(10칸) 골짜기로 바꿨다. `test-seam` ⑤ 는 땅(틈 · 꿰뚫음 · 거울)을 잰다.
@@ -13,6 +14,7 @@
 //     ⓐ 닛폰 골짜기 폭을 4칸(128)으로 줄인 사본 → ③ 빨강   ⓑ 한반도 짝 골짜기 끝(갈고리 · 이음매 쪽 마디)을 막은 사본 → ① 빨강
 // 실행: node scripts/test-seam-walk.js
 'use strict';
+const LB = require('./lib-bait');   // [T1383] 미끼 사본을 지으며 바꾼 자리를 센다
 if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
@@ -49,6 +51,7 @@ if (process.argv[2] === '--routechild') {
     const Module = require('module'), vf = require.resolve(path.join(ROOT, 'server', 'villages'));
     const SRC = fs.readFileSync(vf, 'utf8'), [A0, A1] = BAITS[process.env.T1327_BAIT];
     if (SRC.split(A0).length !== 2) { console.log('@@' + JSON.stringify({ err: '미끼 자리 못 찾음' })); process.exit(0); }
+    process.__baitN = SRC.split(A0).length - 1;   // [T1383] 바꾼 자리 — 판 JSON 에 싣는다
     const m = new Module(vf, module); m.filename = vf; m.paths = Module._nodeModulePaths(path.dirname(vf));
     require.cache[vf] = m; m._compile(SRC.replace(A0, A1), vf); m.loaded = true; V = m.exports;
   } else V = require(path.join(ROOT, 'server', 'villages'));
@@ -88,6 +91,7 @@ if (process.argv[2] === '--routechild') {
     const w1 = (pts) => { let b = 0; for (let i = 1; i < pts.length; i++) { const a = pts[i - 1], c = pts[i], k = Math.max(1, Math.ceil(Math.hypot(c.x - a.x, c.y - a.y))); for (let q = 0; q <= k; q++) if (blk(a.x + (c.x - a.x) * q / k, a.y + (c.y - a.y) * q / k)) b++; } return b; };
     R.cornerStraight = w1([P0, P1]); R.corner = w1(body.pts); R.cornerN = body.pts.length; }
   R.stat = V.t1327Stat ? V.t1327Stat() : null;
+  R.baitN = process.__baitN == null ? null : process.__baitN;
   console.log('@@' + JSON.stringify(R));
   process.exit(0);
 }
@@ -103,6 +107,7 @@ if (process.argv[2] === '--rockchild') {
     const Module = require('module'), vf = require.resolve(path.join(ROOT, 'server', 'villages'));
     const SRC = fs.readFileSync(vf, 'utf8'), [A0, A1] = BAITS[process.env.T1320_BAIT];
     if (SRC.split(A0).length !== 2) { console.log('@@' + JSON.stringify({ err: '미끼 자리 못 찾음' })); process.exit(0); }
+    process.__baitN = SRC.split(A0).length - 1;   // [T1383] 바꾼 자리 — 판 JSON 에 싣는다
     const m = new Module(vf, module); m.filename = vf; m.paths = Module._nodeModulePaths(path.dirname(vf));
     require.cache[vf] = m; m._compile(SRC.replace(A0, A1), vf); m.loaded = true; V = m.exports;
   } else V = require(path.join(ROOT, 'server', 'villages'));
@@ -137,6 +142,7 @@ if (process.argv[2] === '--rockchild') {
     P.pts(b0, open); P.pts(b1, fixIn); P.pts(b2, fixIn); P.pts(b3, b1.pts);
     R.ident = { open: b0.pts === open, twice: b1.pts === b2.pts, again: b3.pts === b1.pts, changed: b1.pts !== fixIn }; }
   R.stat = V.t1320Stat ? V.t1320Stat() : null;
+  R.baitN = process.__baitN == null ? null : process.__baitN;
   console.log('@@' + JSON.stringify(R));
   process.exit(0);
 }
@@ -235,8 +241,8 @@ ok(bB.every((r) => !r.we || !r.inValley), '★미끼 ⓑ 한반도 짝 골짜기
   ok(ON.vtxBlocked > 0 && ON.vtx && ON.vtx.rock === 0 && ON.vtx.reached, '⑤c [T1320] 손잡이 켬 — 교역로 꼭짓점이 다리 옆 물 칸에 선 자리에서 몸 걸음 막힌 칸 0 · 끝에 닿는다', `막힌 꼭짓점 ${ON.vtxBlocked} · ${JSON.stringify(ON.vtx || ON)}`);
   ok(ON.ident && ON.ident.open && ON.ident.twice && ON.ident.again && ON.ident.changed, '⑤d [T1320] 손잡이 켬 — 같은 배열 계약(고칠 것 없음 = 그 배열 · 같은 배열 두 번 = 같은 결과 · 고친 배열 다시 = 그대로)', JSON.stringify(ON.ident || ON));
   ok(OFF.ident && OFF.ident.open && OFF.ident.twice && OFF.ident.again && !OFF.ident.changed, '⑤d′ [T1320] 손잡이 끔 — 몸 길 = 들어온 배열 그대로(종전 글자)', JSON.stringify(OFF.ident || OFF));
-  ok(BAIT.on === true && BAIT.seg && BAIT.seg.rock === 0 && BAIT.rejoin && BAIT.rejoin.rock > 0, '⑤★미끼 ⓐ — 다시 붙기만 곧은 줄로 되돌린 사본(손잡이 켬)이면 다시 붙기 바위 걸음이 선다(빨강)', `마디 ${BAIT.seg && BAIT.seg.rock} · 다시 붙기 ${BAIT.rejoin && BAIT.rejoin.rock}${BAIT.err ? ' · ' + BAIT.err : ''}`);
-  ok(BAIT2.ident && !(BAIT2.ident.open && BAIT2.ident.twice && BAIT2.ident.again), '⑤★미끼 ⓒ — 고친 줄이 늘 새 배열인 사본이면 ⑤d 가 빨강', JSON.stringify(BAIT2.ident || BAIT2));
+  ok(BAIT.baitN === 1 && (BAIT.on === true && BAIT.seg && BAIT.seg.rock === 0 && BAIT.rejoin && BAIT.rejoin.rock > 0), `⑤★미끼 ⓐ — 다시 붙기만 곧은 줄로 되돌린 사본(손잡이 켬)이면 다시 붙기 바위 걸음이 선다(빨강) · 미끼 바꾼 자리 ${BAIT.baitN}`, `마디 ${BAIT.seg && BAIT.seg.rock} · 다시 붙기 ${BAIT.rejoin && BAIT.rejoin.rock}${BAIT.err ? ' · ' + BAIT.err : ''}`);
+  ok(BAIT2.baitN === 1 && (BAIT2.ident && !(BAIT2.ident.open && BAIT2.ident.twice && BAIT2.ident.again)), `⑤★미끼 ⓒ — 고친 줄이 늘 새 배열인 사본이면 ⑤d 가 빨강 · 미끼 바꾼 자리 ${BAIT2.baitN}`, JSON.stringify(BAIT2.ident || BAIT2));
   ok(OFF.on === false && OFF.seg && OFF.seg.rock > 0 && OFF.rejoin && OFF.rejoin.rock > 0 && OFF.vtx && OFF.vtx.rock > 0, '⑤★미끼 ⓑ — 끔(곧은 줄 그대로)이면 세 자리 다 막힌 칸 걸음이 선다(빨강)', `마디 ${OFF.seg && OFF.seg.rock} · 다시 붙기 ${OFF.rejoin && OFF.rejoin.rock} · 꼭짓점 ${OFF.vtx && OFF.vtx.rock}`);
 }
 // ⑥ [T1327] 길 층 — 손잡이 켬이면 교역로가 막힌 칸을 안 지난다(꼭짓점 · 건널목 · 판 중 도랑) · ★미끼: 도랑 다시 굽기 뺀 사본 · 코스 이음 거름 뺀 사본 · 끔
@@ -254,8 +260,8 @@ ok(bB.every((r) => !r.we || !r.inValley), '★미끼 ⓑ 한반도 짝 골짜기
   ok(sb(OFF).length === 6 && sb(OFF).every((x) => x > 0) && sb(ON).length === 6 && sb(ON).every((x) => x === 0), '⑥d [T1327] 정적 표본 — 막힌 마디가 있던 실제 마을 쌍 여섯이 켬이면 막힌 칸 0(끔은 모두 > 0 · 다 닿음)', `끔 ${sb(OFF).join(' · ')} → 켬 ${sb(ON).join(' · ')}`);
   ok(ON.ringOpen && OFF.ring && OFF.ring.b > 0 && ON.ring && ON.ring.b === 0, '⑥e [T1327] 켬 — 몸 길(T1320 몸 잇기 켬)이 환호 둘레 안 → 밖 마디를 출입구로 돈다(재경로 상한 밖 · 막힌 칸 0 · 끔은 둘레를 밟는다)', `켬 ${JSON.stringify(ON.ring)} · 끔 ${JSON.stringify(OFF.ring)}`);
   ok(ON.cornerStraight > 0 && ON.corner === 0 && OFF.corner > 0, '⑥f [T1327] 켬 — 막힌 칸 모서리를 표본 사이로 깎는 곧은 몸 마디도 잡는다(지나는 칸 전부 · 1px 잼 0 · 끔은 깎는다)', `곧은 줄 ${ON.cornerStraight}px · 켬 ${ON.corner}px(점 ${ON.cornerN}) · 끔 ${OFF.corner}px`);
-  ok(BD.on === true && !(BD.ditchDropped === true && BD.ditchPost && BD.ditchPost.b === 0), '⑥★미끼 ⓐ — 도랑 다시 굽기를 뺀 사본(켬)이면 ⑥c 빨강', `빠짐 ${BD.ditchDropped} · ${JSON.stringify(BD.ditchPost)}${BD.err ? ' · ' + BD.err : ''}`);
-  ok(BE.on === true && !(BE.ford && BE.ford.b === 0), '⑥★미끼 ⓑ — 코스 이음 거름을 뺀 사본(켬)이면 ⑥b 빨강', `${JSON.stringify(BE.ford)}${BE.err ? ' · ' + BE.err : ''}`);
+  ok(BD.baitN === 1 && (BD.on === true && !(BD.ditchDropped === true && BD.ditchPost && BD.ditchPost.b === 0)), `⑥★미끼 ⓐ — 도랑 다시 굽기를 뺀 사본(켬)이면 ⑥c 빨강 · 미끼 바꾼 자리 ${BD.baitN}`, `빠짐 ${BD.ditchDropped} · ${JSON.stringify(BD.ditchPost)}${BD.err ? ' · ' + BD.err : ''}`);
+  ok(BE.baitN === 1 && (BE.on === true && !(BE.ford && BE.ford.b === 0)), `⑥★미끼 ⓑ — 코스 이음 거름을 뺀 사본(켬)이면 ⑥b 빨강 · 미끼 바꾼 자리 ${BE.baitN}`, `${JSON.stringify(BE.ford)}${BE.err ? ' · ' + BE.err : ''}`);
 }
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
 process.exit(fail ? 1 : 0);

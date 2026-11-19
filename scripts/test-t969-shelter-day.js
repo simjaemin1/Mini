@@ -28,7 +28,9 @@ function collect(dir) {   // 판 JSON 과 쉼터가 선 날(백필 줄 앞 가�
     const i = L.findIndex((l) => /공용 쉼터 백필 — \d+곳에 세웠다/.test(l));
     // ★[PM land1084] 백필 줄이 첫 `마을 econ day` 줄보다 앞이면 0(= 첫 하루 마감 전에 섰다) — 줄이 아예 없을 때만 null.
     //   `T1327_ROUTE_FIX` 켬 기본 뒤 새 판 폴더 기동(교역로를 새로 판다)이 길어져 끔(벽시계 15초 타이머) 판의 쉼터가 첫 요약 줄 앞에 선다(main 은 날 4).
-    if (i >= 0) { day = 0; for (let j = i; j >= 0; j--) { const m = /마을 econ day (\d+)/.exec(L[j]); if (m) { day = +m[1]; break; } } }
+    //   ★[T1383] 0 은 그 뒤에 요약 줄이 실제로 있을 때만(판이 하루 마감까지 돌았다) — 백필 뒤 판이 죽은 끔 판이 0 으로 읽혀 ③ 이 초록이 되던 틈을 막는다
+    //     (`계측/T1383_2026-11-19/t969-공격.js` — 죽은 판 · 요약 줄 0 · 판 JSON 0 → 고침 전 0 · 뒤 null).
+    if (i >= 0) { day = L.slice(i + 1).some((l) => /마을 econ day \d+/.test(l)) ? 0 : null; for (let j = i; j >= 0; j--) { const m = /마을 econ day (\d+)/.exec(L[j]); if (m) { day = +m[1]; break; } } }
   } catch (e) {}
   return { json, day };
 }
