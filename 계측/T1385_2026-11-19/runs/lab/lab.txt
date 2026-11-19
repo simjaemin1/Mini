@@ -1,0 +1,14 @@
+2026-11-19T14:54:13Z LOFF 0 rc=0 69s kind=real days=100 arm=off 958e6ff2b
+2026-11-19T14:55:19Z LARMORY 0 rc=0 66s kind=real days=100 arm=armory 958e6ff2b
+2026-11-19T14:56:23Z LTINGATE 0 rc=0 64s kind=real days=100 arm=tingate 958e6ff2b
+2026-11-19T14:57:23Z LWS 0 rc=0 60s kind=real days=100 arm=ws 958e6ff2b
+2026-11-19T14:58:24Z LPOOR 0 rc=0 61s kind=real days=100 arm=poor 958e6ff2b
+2026-11-19T14:59:26Z LNOCAP 0 rc=0 62s kind=real days=100 arm=nocap 958e6ff2b
+2026-11-19T14:59:47Z LNOCAPX 0 rc=0 64s kind=real days=100 arm=nocapx 958e6ff2b
+2026-11-19T15:00:29Z LOFFNP 0 rc=0 63s kind=real days=100 arm=off 958e6ff2b
+2026-11-19T15:15:42Z YOFF 1020 rc=0 913s kind=ab days=800 arm=off 958e6ff2b
+2026-11-19T15:25:39Z YNOCAPX 1020 rc=0 887s kind=ab days=800 arm=nocapx 958e6ff2b
+2026-11-19T15:28:29Z YOFF 7 rc=0 767s kind=ab days=800 arm=off 958e6ff2b
+2026-11-19T15:36:17Z YNOCAPX 7 rc=0 638s kind=ab days=800 arm=nocapx 958e6ff2b
+2026-11-19T15:39:15Z YOFF 42 rc=0 646s kind=ab days=800 arm=off 958e6ff2b
+2026-11-19T15:47:24Z YNOCAPX 42 rc=0 667s kind=ab days=800 arm=nocapx 958e6ff2b

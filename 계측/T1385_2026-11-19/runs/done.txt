@@ -1,0 +1,44 @@
+2026-11-19T07:57:35Z [W1] rc=0 780s :: bash /root/minirepo/계측/T1385_2026-11-19/run85.sh /root/wt85on SOFF 400 off 1020 > /root/t1385runs/SOFF-1020.out 2>&1
+2026-11-19T08:12:06Z [W1] rc=0 871s :: bash /root/minirepo/계측/T1385_2026-11-19/run85.sh /root/wt85on SOFF 400 off 7 > /root/t1385runs/SOFF-7.out 2>&1
+2026-11-19T08:26:50Z [W1] rc=0 884s :: bash /root/minirepo/계측/T1385_2026-11-19/run85.sh /root/wt85on SOFF 400 off 42 > /root/t1385runs/SOFF-42.out 2>&1
+2026-11-19T08:40:52Z [W1] rc=0 842s :: bash /root/minirepo/계측/T1385_2026-11-19/run85.sh /root/wt85on SNOCAPX 400 nocapx 1020 > /root/t1385runs/SNOCAPX-1020.out 2>&1
+2026-11-19T09:08:48Z [W1] rc=0 1676s :: bash /root/minirepo/계측/T1385_2026-11-19/run85.sh /root/wt85on SNOCAPX 400 nocapx 7 > /root/t1385runs/SNOCAPX-7.out 2>&1
+2026-11-19T09:22:39Z [W1] rc=0 831s :: bash /root/minirepo/계측/T1385_2026-11-19/run85.sh /root/wt85on SNOCAPX 400 nocapx 42 > /root/t1385runs/SNOCAPX-42.out 2>&1
+2026-11-19T09:44:14Z [W2] rc=0 847s :: bash /root/minirepo/계측/T1385_2026-11-19/run85.sh /root/wt85on SNOCAP 400 nocap 1020 > /root/t1385runs/SNOCAP-1020.out 2>&1
+2026-11-19T10:12:19Z [W2] rc=0 1685s :: bash /root/minirepo/계측/T1385_2026-11-19/run85.sh /root/wt85on SNOCAP 400 nocap 7 > /root/t1385runs/SNOCAP-7.out 2>&1
+2026-11-19T10:25:48Z [W2] rc=0 809s :: bash /root/minirepo/계측/T1385_2026-11-19/run85.sh /root/wt85on SNOCAP 400 nocap 42 > /root/t1385runs/SNOCAP-42.out 2>&1
+2026-11-19T10:40:22Z [W2] rc=0 874s :: bash /root/minirepo/계측/T1385_2026-11-19/run85.sh /root/wt85on SARMORY 400 armory 42 > /root/t1385runs/SARMORY-42.out 2>&1
+2026-11-19T10:55:07Z [W2] rc=0 885s :: bash /root/minirepo/계측/T1385_2026-11-19/run85.sh /root/wt85on STINGATE 400 tingate 42 > /root/t1385runs/STINGATE-42.out 2>&1
+2026-11-19T11:09:33Z [W2] rc=0 866s :: bash /root/minirepo/계측/T1385_2026-11-19/run85.sh /root/wt85on SWS 400 ws 42 > /root/t1385runs/SWS-42.out 2>&1
+2026-11-19T11:25:07Z [W2] rc=0 934s :: bash /root/minirepo/계측/T1385_2026-11-19/run85.sh /root/wt85on SPOOR 400 poor 42 > /root/t1385runs/SPOOR-42.out 2>&1
+2026-11-19T11:32:59Z [W1] rc=0 7820s :: bash /root/minirepo/계측/T1385_2026-11-19/body85.sh /root/wt85on BNOCAPX 100 nocapx 1020 > /root/t1385runs/BNOCAPX-1020.out 2>&1
+2026-11-19T11:39:07Z [W2] rc=0 840s :: cd /root/wt85on && node scripts/server-baseline-check.js 계측/서버기준선_2026-11-18.json --vclock --plan 1020:400 > /root/t1385runs/baseline.out 2>&1
+2026-11-19T13:45:26Z [W1] rc=2 7947s :: bash /root/minirepo/계측/T1385_2026-11-19/body85.sh /root/wt85on BOFF 100 off 7 > /root/t1385runs/BOFF-7.out 2>&1
+2026-11-19T13:52:12Z [수동] BOFF-7 마디 묶기(러너 꼬리가 고친 줄에서 끊김 — 판은 끝)
+2026-11-19T13:53:28Z [W2] rc=2 8061s :: bash /root/minirepo/계측/T1385_2026-11-19/body85.sh /root/wt85on BNOCAPX 100 nocapx 7 > /root/t1385runs/BNOCAPX-7.out 2>&1
+2026-11-19T14:01:28Z [W1] rc=0 962s :: bash /root/minirepo/계측/T1385_2026-11-19/run85.sh /root/wt85on SARMORY 400 armory 1020 > /root/t1385runs/SARMORY-1020.out 2>&1
+2026-11-19T14:02:09Z [수동] BNOCAPX-7 마디 묶기(러너 꼬리가 고친 줄에서 끊김 — 판은 끝)
+2026-11-19T14:11:27Z [W2] rc=0 1079s :: bash /root/minirepo/계측/T1385_2026-11-19/run85.sh /root/wt85on SARMORY 400 armory 7 > /root/t1385runs/SARMORY-7.out 2>&1
+2026-11-19T14:16:54Z [W1] rc=0 926s :: bash /root/minirepo/계측/T1385_2026-11-19/run85.sh /root/wt85on STINGATE 400 tingate 1020 > /root/t1385runs/STINGATE-1020.out 2>&1
+2026-11-19T14:27:50Z [W2] rc=0 983s :: bash /root/minirepo/계측/T1385_2026-11-19/run85.sh /root/wt85on STINGATE 400 tingate 7 > /root/t1385runs/STINGATE-7.out 2>&1
+2026-11-19T14:33:15Z [W1] rc=0 981s :: bash /root/minirepo/계측/T1385_2026-11-19/run85.sh /root/wt85on SWS 400 ws 1020 > /root/t1385runs/SWS-1020.out 2>&1
+2026-11-19T14:43:44Z [W2] rc=0 954s :: bash /root/minirepo/계측/T1385_2026-11-19/run85.sh /root/wt85on SWS 400 ws 7 > /root/t1385runs/SWS-7.out 2>&1
+2026-11-19T14:53:04Z [W1] rc=0 1189s :: bash /root/minirepo/계측/T1385_2026-11-19/run85.sh /root/wt85on SPOOR 400 poor 1020 > /root/t1385runs/SPOOR-1020.out 2>&1
+2026-11-19T14:54:13Z [W1] rc=0 69s :: bash /root/minirepo/계측/T1385_2026-11-19/lab85.sh /root/wt85on LOFF real 100 off 0
+2026-11-19T14:55:19Z [W1] rc=0 66s :: bash /root/minirepo/계측/T1385_2026-11-19/lab85.sh /root/wt85on LARMORY real 100 armory 0
+2026-11-19T14:56:23Z [W1] rc=0 64s :: bash /root/minirepo/계측/T1385_2026-11-19/lab85.sh /root/wt85on LTINGATE real 100 tingate 0
+2026-11-19T14:57:23Z [W1] rc=0 60s :: bash /root/minirepo/계측/T1385_2026-11-19/lab85.sh /root/wt85on LWS real 100 ws 0
+2026-11-19T14:58:24Z [W1] rc=0 61s :: bash /root/minirepo/계측/T1385_2026-11-19/lab85.sh /root/wt85on LPOOR real 100 poor 0
+2026-11-19T14:58:43Z [W2] rc=0 899s :: bash /root/minirepo/계측/T1385_2026-11-19/run85.sh /root/wt85on SPOOR 400 poor 7 > /root/t1385runs/SPOOR-7.out 2>&1
+2026-11-19T14:59:26Z [W1] rc=0 62s :: bash /root/minirepo/계측/T1385_2026-11-19/lab85.sh /root/wt85on LNOCAP real 100 nocap 0
+2026-11-19T14:59:47Z [W2] rc=0 64s :: bash /root/minirepo/계측/T1385_2026-11-19/lab85.sh /root/wt85on LNOCAPX real 100 nocapx 0
+2026-11-19T15:00:29Z [W1] rc=0 63s :: NOPROBE=1 bash /root/minirepo/계측/T1385_2026-11-19/lab85.sh /root/wt85on LOFFNP real 100 off 0
+2026-11-19T15:10:52Z [W2] rc=0 665s :: cd /root/wt85on && T17_JSON=/root/t1385runs/t17.json node scripts/t17-metrics.js 800 1020 > /root/t1385runs/t17.log 2>&1
+2026-11-19T15:15:42Z [W1] rc=0 913s :: bash /root/minirepo/계측/T1385_2026-11-19/lab85.sh /root/wt85on YOFF ab 800 off 1020
+2026-11-19T15:25:39Z [W2] rc=0 887s :: bash /root/minirepo/계측/T1385_2026-11-19/lab85.sh /root/wt85on YNOCAPX ab 800 nocapx 1020
+2026-11-19T15:28:29Z [W1] rc=0 767s :: bash /root/minirepo/계측/T1385_2026-11-19/lab85.sh /root/wt85on YOFF ab 800 off 7
+2026-11-19T15:36:17Z [W2] rc=0 638s :: bash /root/minirepo/계측/T1385_2026-11-19/lab85.sh /root/wt85on YNOCAPX ab 800 nocapx 7
+2026-11-19T15:39:15Z [W1] rc=0 646s :: bash /root/minirepo/계측/T1385_2026-11-19/lab85.sh /root/wt85on YOFF ab 800 off 42
+2026-11-19T15:39:15Z [W1] 줄 빔 — 끝
+2026-11-19T15:47:24Z [W2] rc=0 667s :: bash /root/minirepo/계측/T1385_2026-11-19/lab85.sh /root/wt85on YNOCAPX ab 800 nocapx 42
+2026-11-19T15:47:24Z [W2] 줄 빔 — 끝

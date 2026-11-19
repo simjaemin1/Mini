@@ -1,0 +1,29 @@
+# T1385 하네스 — touched-harness.js origin/main --list(갈림점 311d0773a) 9 + 전쟁 편성 하네스 8 · 작업 트리 /root/minirepo(가지 batch/bronze-nocap-1119)
+
+## touched 9(줄 = 이름 rc 벽 :: 끝 줄)
+test-body-fields rc=0 1s :: 14 ok-ish · 
+test-coll-grid rc=0 17s :: 20 ok-ish · === 결과: 20 PASS / 0 FAIL ===
+test-harness-lint rc=0 115s :: 100 ok-ish · 
+test-hp-src rc=0 3s :: 54 ok-ish · 
+test-lon-day rc=0 0s :: 22 ok-ish · 
+test-t1333-alloy-order rc=0 13s :: 70 ok-ish · === 69/69 ✓ (미끼 8/8) ===
+test-t1344-bronze-mix rc=0 50s :: 45 ok-ish · === 37/37 ✓ (미끼 7/7) ===
+test-t1347-fetch rc=0 104s :: 41 ok-ish · === 30/30 ✓ (미끼 10/10) ===
+test-t1385-bronze-nocap rc=0 4s :: 21 ok-ish · === 15/15 ✓ (미끼 5/5) ===
+test-harness-lint(표 자 · 전쟁 창 자 더한 뒤 다시) :: === 99건 중 PASS 99 · FAIL 0 ===
+
+## 전쟁 편성 하네스 8
+test-t1094-arms-trip :: === 결과: 13 PASS / 0 FAIL ===
+test-t1094-carry-cap :: === 결과: 15 PASS / 0 FAIL ===
+test-t1044-scram-walk :: === 결과: 18 PASS / 0 FAIL ===
+test-t1060-scram-hold :: === 결과: 16 PASS / 0 FAIL ===
+test-t1089-ret-walk :: === 결과: 19 PASS / 0 FAIL ===
+test-battle-fast :: === 결과: 25 PASS / 0 FAIL ===
+test-t1183-physical-war :: 16 통과 / 0 실패
+test-war-nosnap :: === 결과: 61 PASS / 0 FAIL ===
+
+## 끝 줄 셋(요약 줄이 비던 하네스)
+test-body-fields :: === 14 통과 / 0 실패 ===
+test-harness-lint :: === 99건 중 PASS 99 · FAIL 0 ===
+test-hp-src :: === 54 통과 / 0 실패 ===
+test-lon-day :: === 22건 중 PASS 22 · FAIL 0 ===

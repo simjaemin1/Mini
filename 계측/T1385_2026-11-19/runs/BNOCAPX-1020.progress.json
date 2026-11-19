@@ -1,0 +1,65 @@
+{
+ "v": 1,
+ "tag": "BNOCAPX",
+ "seed": 1020,
+ "days": 100,
+ "every": 20,
+ "dir": "/root/t1385runs/BNOCAPX-1020",
+ "ck": 100,
+ "segs": [
+  {
+   "from": 0,
+   "to": 20,
+   "sec": 833,
+   "code": 0,
+   "at": "2026-11-19T09:36:32.656Z"
+  },
+  {
+   "from": 20,
+   "to": 40,
+   "sec": 1283.8,
+   "code": 0,
+   "at": "2026-11-19T09:57:57.377Z"
+  },
+  {
+   "from": 40,
+   "to": 60,
+   "sec": 1519.2,
+   "code": 0,
+   "at": "2026-11-19T10:23:17.500Z"
+  },
+  {
+   "from": 60,
+   "to": 80,
+   "sec": 1907.3,
+   "code": 0,
+   "at": "2026-11-19T10:55:05.817Z"
+  },
+  {
+   "from": 80,
+   "to": 100,
+   "sec": 2272,
+   "code": 0,
+   "at": "2026-11-19T11:32:58.288Z"
+  }
+ ],
+ "done": true,
+ "env": {
+  "VILLAGE_NPC_CAP": "Infinity",
+  "NODE_OPTIONS": "-r /root/wt85on/scripts/t745-vclock.js -r /root/wt85on/scripts/t1243-observe.js -r /root/wt85on/scripts/t1221-observe.js -r /root/wt85on/scripts/t1230-observe.js -r /root/wt85on/scripts/t1256-observe.js -r /root/wt85on/scripts/t1266-observe.js -r /root/wt85on/scripts/t1277-observe.js -r /root/wt85on/scripts/t1293-observe.js -r /root/wt85on/scripts/t1313-observe.js -r /root/wt85on/scripts/t1333-observe.js -r /root/wt85on/scripts/t1385-observe.js -r /root/wt85on/scripts/t1344-observe.js -r /root/wt85on/scripts/t1347-observe.js",
+  "T745_VCLOCK": "1",
+  "T577_DIR": "/root/t1385runs/BNOCAPX-1020",
+  "T1244_BODY_MS": "10000",
+  "VILLAGE_CARAVAN_MAX": "0",
+  "T1333_EXPORT_CAST": "1",
+  "T400_BUILD_ACT": "0",
+  "T577_TAG": "BNOCAPX",
+  "T1385_BRONZE_NOCAP": "1",
+  "T1221_EVERY": "10",
+  "T1256_BODY_MS": "10000",
+  "VILLAGE_DAY_MS": "1440000"
+ },
+ "started": "2026-11-19T09:22:39.393Z",
+ "tries": 0,
+ "ended": "2026-11-19T11:32:58.492Z"
+}
