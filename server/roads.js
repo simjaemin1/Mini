@@ -576,7 +576,7 @@ function t1382Dump() {
   if (!S.ready) return null;
   const sparse = (a) => { const o = []; if (a) for (let i = 0; i < a.length; i++) if (a[i]) o.push(i, a[i]); return o; };
   return { cells: [...S.cells].map(([k, r]) => [k, r.v, r.d]), coarse: [...S.coarse], paved: [...S.paved], dirty: [...S.dirty], lastDay: S.lastDay, coarseGen: S.coarseGen,
-    stats: Object.assign({}, S.stats), bootUnpaved: S.bootUnpaved.slice(),
+    stats: Object.assign({}, S.stats), bootUnpaved: S.bootUnpaved.slice(), chgOn: S.chgOn, chg: S.chg ? [...S.chg] : null,
     I: I.ready ? { lvl: [...I.lvl], sched: [...I.sched], due: [...I.due].map(([d, a]) => [d, [...a]]), c1: sparse(I.c1), c2: sparse(I.c2), tgMark: sparse(I.tgMark), n: I.c1 ? I.c1.length : 0,
       graded: I.graded, tg: I.tg.slice(), low: [...I.low], same: I.coarse === S.coarse } : null };
 }
@@ -587,7 +587,7 @@ function t1382Load(o) {
   S.coarse.clear(); for (const [k, v] of o.coarse) S.coarse.set(k, v);
   S.paved.clear(); for (const k of o.paved) S.paved.add(k);
   S.dirty.clear(); for (const k of o.dirty) S.dirty.add(k);
-  S.lastDay = o.lastDay; S.coarseGen = o.coarseGen; S.stats = Object.assign({}, o.stats); S.bootUnpaved = (o.bootUnpaved || []).slice();
+  S.lastDay = o.lastDay; S.coarseGen = o.coarseGen; S.stats = Object.assign({}, o.stats); S.bootUnpaved = (o.bootUnpaved || []).slice(); if ('chgOn' in o) { S.chgOn = !!o.chgOn; S.chg = o.chg ? new Set(o.chg) : null; }   // ★[T619] 바뀐 코스 칸 줄(교역로 다시 파기가 읽는다)
   if (o.I) {
     const un = (a, n) => { const u = new Uint8Array(n); for (let i = 0; i + 1 < a.length; i += 2) u[a[i]] = a[i + 1]; return u; };
     I.lvl = new Map(o.I.lvl); I.sched = new Map(o.I.sched); I.due = new Map(o.I.due.map(([d, a]) => [d, new Set(a)]));

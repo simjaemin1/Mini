@@ -17248,6 +17248,39 @@ const _tick = { n: 0, wall: 0, sim: 0, clip: 0, clipped: 0, maxGap: 0, debt: 0, 
 //   되돌렸으면 T1340 다시 찍기는 안 한다(`SimVillages.t1372NoRestamp`).
 let _t1372CgPend = null;
 const _t1372CgStat = { saved: 0, applied: 0, chunks: 0 };
+// ★★[T1382 ㉢ 2026-11-19 · T1372 회부 4] **몹 집 · 무리 · 배회도 재기동을 넘는다** — 손잡이 `T1340_RESUME_EXACT` 안(새 손잡이 0 · 끔 = 종전 글자).
+//   종전: 몹 행(DB)은 종 · 자리 · 피 · 길듦만 — 다시 뜨면 지금 자리가 집(`homeX/Y`)이 되고 무리(`packId`) · 배회 시각 · 걸음 · 어그로가 0 부터였다(30날 판: 몹 449 중 150 갈림).
+//   켜면 종료 저장(T742 줄 `zone.t1382Mob`)에 DB 행 몹마다 칸(수 · 글자 · 참거짓 · JSON 이 되는 평 칸 — 자리 · 피 · 열쇠는 행이 쥔다)을 싣고, 메타를 받는 즉시(몹은 존 부팅이 이미 실었다)
+//   같은 DB 행 몹에 덮는다. 벽시계 칸은 저장 순간에서 잰 차로(T1340 문법). 들짐승 그림자 몹(`isWild` · DB 행 없음)은 들짐승 모듈의 것이라 안 싣는다.
+const _T1382_MDENY = new Set(['mid', 'dbId', 'x', 'y', 'hp', 'dirty', '_wildRef']);
+const _t1382MobStat = { saved: 0, restored: 0, miss: 0, skip: 0 };
+function _t1382MobTake() {
+  const at = Date.now(), L = [];
+  for (const m of mobs.values()) {
+    if (m.dbId == null || m.isWild) continue;
+    const f = {};
+    for (const k of Object.keys(m)) { if (_T1382_MDENY.has(k)) continue; const v = m[k];
+      if (typeof v === 'number') f[k] = (v > 1e12 && Math.abs(v - at) < 3.2e10) ? { $t: v - at } : (Number.isFinite(v) ? v : { $n: String(v) });
+      else if (v === null || typeof v === 'string' || typeof v === 'boolean') f[k] = v;
+      else if (v === undefined) f[k] = { $u: 1 };
+      else if (typeof v === 'object') { try { const s = JSON.stringify(v); if (s !== undefined && s.length < 4000 && (Array.isArray(v) || Object.getPrototypeOf(v) === Object.prototype)) f[k] = { $j: s }; else _t1382MobStat.skip++; } catch (e) { _t1382MobStat.skip++; } } }
+    L.push([m.dbId, f]); _t1382MobStat.saved++;
+  }
+  return { at, L };
+}
+function _t1382MobRestore(o) {
+  if (!o || !Array.isArray(o.L)) return;
+  const by = new Map(); for (const m of mobs.values()) if (m.dbId != null && !m.isWild) by.set(m.dbId, m);
+  const now = Date.now();
+  for (const [dbId, f] of o.L) {
+    const m = by.get(dbId); if (!m) { _t1382MobStat.miss++; continue; }
+    for (const k of Object.keys(f)) { const v = f[k];
+      m[k] = (v && typeof v === 'object') ? (v.$t !== undefined ? now + v.$t : v.$n !== undefined ? Number(v.$n) : v.$u ? undefined : v.$j !== undefined ? JSON.parse(v.$j) : v) : v; }
+    _t1382MobStat.restored++;
+  }
+  console.log(`[${ZONE_ID}] 🐾 [T1382] 몹 집 · 무리 · 배회 되돌림 — ${_t1382MobStat.restored}/${o.L.length} · 없음 ${_t1382MobStat.miss}`);
+}
+if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.t1382Mob', () => (shuttingDown ? _t1382MobTake() : null), (v) => { if (v) _t1382MobRestore(v); });
 // ★[T1382 ㉡] 길 닳음 모듈 메모리 — 종료 저장에만 값 · 받는 즉시 건다(메타 읽기 = 마을 부팅 안 · 교역로 미리 파기보다 앞 — 같은 코스 지도로 판다)
 if (process.env.T1340_RESUME_EXACT !== '0' && Roads.t1382Dump) SimVillages.t742Bind('zone.t1382Roads', () => (shuttingDown ? Roads.t1382Dump() : null), (v) => { if (v && Roads.t1382Load(v)) console.log(`[${ZONE_ID}] 🛤️ [T1382] 길 닳음 되돌림 — 셀 ${v.cells.length} · 코스 ${v.coarse.length} · 다진 길 ${v.paved.length}`); });
 if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.t1372CG', () => (shuttingDown ? (_t1372CgStat.saved++, { g: [..._collGen], all: _collGenAll, br: _bridgeGen }) : null), (v) => { if (v && Array.isArray(v.g)) _t1372CgPend = v; });
