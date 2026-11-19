@@ -40,10 +40,13 @@ const CAL = require(path.join(ROOT, 'server', 'calendar'));
 const JOBSRC = { farmer: 'farm', fisher: 'fish', hunter: 'hunt', forager: 'forage' };
 const L = new Map();   // 마을 이름 → { b: {출처: 칸}, s0: 지난 곳간, inn: {출처: 오늘 든}, eat: 오늘 먹은 }
 let curV = null;
+const FAC = new Map();
 function feOf(v, r, a) {
   if (!(a > 0) || /^seed_/.test(r)) return 0;
   try { if (E.T1243_FARM_ON) { const f = E.storageFoodPer(v, r); return f > 0 ? a * f : 0; } } catch (_) {}
-  try { const o = Object.create(v), st = { food: 0, fish: 0, meat: 0, cooked_food: 0 }; for (const k of Object.keys(v.storage || {})) st[k] = 0; st[r] = a; o.storage = st; const f = E.totalFoodEquivalent(o); return f > 0 ? f : 0; } catch (_) { return 0; }   // 그 품목만 든 곳간(칸은 다 0 — 끈 세계 합계식이 칸 없음을 NaN 으로 읽는다)
+  let k = FAC.get(r);   // 끈 세계 합계식은 품목마다 곧은 비례(곳간 칸 무관) — 품목 하나 한 번 잰다(1 낱개의 식량 환산)
+  if (k === undefined) { try { const o = Object.create(v), st = { food: 0, fish: 0, meat: 0, cooked_food: 0 }; for (const q of Object.keys(v.storage || {})) st[q] = 0; st[r] = 1; o.storage = st; const f = E.totalFoodEquivalent(o); k = f > 0 ? f : 0; } catch (_) { k = 0; } FAC.set(r, k); }
+  return a * k;   // 그 품목만 든 곳간(칸은 다 0 — 끈 세계 합계식이 칸 없음을 NaN 으로 읽는다)
 }
 function led(v) { let x = L.get(v.name); if (!x) { x = { b: {}, s0: null, inn: {}, eat: 0 }; L.set(v.name, x); } return x; }
 const TRANSFORM = new Set(['cook']);   // 요리사 — 곳간 식량을 조리식으로 바꾼다(새 식량 아님 · 든 몫으로 안 센다 — 그 차는 잔차)
@@ -78,8 +81,14 @@ function settle(v, day) {
   if (close > T.closeMax) T.closeMax = close;
   x.s0 = S1; x.inn = {}; x.eat = 0;
 }
-let _B = null;
-function cellsOf(name) {   // 생활층 밭 칸(그 마을 `_farmSet` — 판 자 서버 · 한 프로세스 판 0)
+let _B = null, _CD = -1, _CM = null;
+function cellsOf(name) {   // 날마다 한 번 마을 표를 짓는다
+  if (_CD === lastDay && _CM) return _CM.get(name) || 0;
+  _CD = lastDay; _CM = new Map();
+  try { if (!_B) { const V = require(path.join(ROOT, 'server', 'villages')); _B = V.__p3Bind ? V.__p3Bind({}) : null; } const vs = _B && _B.state && _B.state.villages; if (vs) for (const vil of vs) if (vil.econ) _CM.set(vil.econ.name, vil._farmSet ? vil._farmSet.size : 0); } catch (_) {}
+  return _CM.get(name) || 0;
+}
+function cellsOf0(name) {   // 생활층 밭 칸(그 마을 `_farmSet` — 판 자 서버 · 한 프로세스 판 0)
   try { if (!_B) { const V = require(path.join(ROOT, 'server', 'villages')); _B = V.__p3Bind ? V.__p3Bind({}) : null; } const vs = _B && _B.state && _B.state.villages; if (!vs) return 0; for (const vil of vs) if (vil.econ && vil.econ.name === name) return vil._farmSet ? vil._farmSet.size : 0; } catch (_) {} return 0;
 }
 function sumIn(x) { let a = 0; for (const f of Object.values(x.inn)) a += f; return a; }
