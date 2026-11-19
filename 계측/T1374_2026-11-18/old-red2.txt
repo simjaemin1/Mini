@@ -1,0 +1,3 @@
+# 옛 코드 빨강 — 하네스 = 0b897083c · 제품(server sim public lab) = f7fd33cc5 · 시한 600초
+빨강 ○ | test-t1374-farm-winter.js | RC=1 · ✓ 0 · ✗ 1 |   ✗ ① T1374 — 끔 기본 · 켬은 밭 세계에서만 · 문턱 날 수 = max(30, 다음 거둠 − 오늘)  {"u0":{"f":"undefined"},"u1":{"f":"undefined
+# 합: 빨강 1 · 크래시 0 · 초록 0 · 모름 0 · 제품 무관 0
