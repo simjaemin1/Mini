@@ -66,8 +66,12 @@ ok(/^\s+T1046_WOOD_SHARE,/m.test(SRC), 'econ 이 내보낸다');
 { const L = SRC.split('\n').filter((l) => /T1046_WOOD_SHARE/.test(l) && !/^\s*\/\//.test(l) && !/^const T1046_WOOD_SHARE/.test(l) && !/^\s+T1046_WOOD_SHARE,/.test(l));
   ok(L.length === 1 && /const _hPick = T1046_WOOD_SHARE$/.test(L[0].trimEnd()), '읽는 자리는 안전망 `_hPick` 한 줄', `${L.length}줄`); }
 { const cap = 'Math.min(v.housing !== undefined ? v.housing : Infinity, v._mapBeds !== undefined ? v._mapBeds : Infinity)';
+  // ★[T1373 2026-11-18] 두 자리(출생 문 `_hcap` · 안전망 `_hPick` 켬 갈래)가 한 함수 `t1373Hcap(v)` 를 부른다 — 식(econ 주거 ∧ 지은 침상)은 그 함수 안 한 자리
+  //   (T1373 켬이면 집터 수 × 가구원도 같이 — 두 자리가 같은 상한을 읽는 것은 그대로 · 새 수 0). 종전 단언 "같은 글자 두 자리"를 "같은 함수 두 자리 + 식 한 자리"로 옮겼다.
   const hc = SRC.split('\n').filter((l) => l.includes(cap));
-  ok(hc.length === 2 && hc.some((l) => /const _hcap = /.test(l)) && hc.some((l) => /^\s+\? Math\.min/.test(l)), '켬 갈래의 식 = 출생 문 `_hcap` 의 식(같은 글자 두 자리 · 새 수 0)', `${hc.length}자리`);
+  const call = SRC.split('\n').filter((l) => /t1373Hcap\(v\)/.test(l) && !/^\s*\/\//.test(l) && !/^function /.test(l));
+  ok(hc.length === 1 && /^\s+const h = Math\.min/.test(hc[0]) && call.length === 2 && call.some((l) => /const _hcap = t1373Hcap\(v\);/.test(l)) && call.some((l) => /^\s+\? t1373Hcap\(v\)/.test(l)),
+    '켬 갈래의 식 = 출생 문 `_hcap` 의 식(두 자리가 같은 함수 `t1373Hcap` · 식은 그 안 한 자리 · 새 수 0)', `식 ${hc.length}자리 · 부름 ${call.length}자리`);
   ok(/: \(T958_HOUSE_REAL && v\._t958Plan !== undefined\) \? v\._t958Plan : v\.housing;/.test(SRC), '끔 갈래 = 종전 글자(T966 계획 주거)'); }
 const ON = sub({ T1046_WOOD_SHARE: '1' }), OFF = sub({}), X = sub({ T1046_WOOD_SHARE: 'true' });
 console.log('\n② 한 마을 60날 — 집 행위 마을 · 지은 침상 20 · 인구 20 · 목재 0');

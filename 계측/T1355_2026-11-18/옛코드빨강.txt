@@ -1,0 +1,6 @@
+# 옛 코드 빨강 — 하네스 = 6efefeddc · 제품(server sim public lab) = 07b429e77 · 시한 900초
+빨강 ○ | test-t1355-lot-day.js | RC=1 · ✓ 2 · ✗ 11 |   ✗ K1 손잡이 — `T1309_HEALTH_EATEN` 끔이면 새 칸 0(몸 끼니 길은 그대로 돈다) · 켬이면 선다  {"on":{"he":true,"body":true,"m":true},
+# 합: 빨강 1 · 크래시 0 · 초록 0 · 모름 0 · 제품 무관 0
+# 옛 코드 빨강 — 하네스 = eca9381f8 · 제품(server sim public lab) = 652249848 · 시한 900초
+빨강 ○ | test-t1260-food-reads.js | RC=1 · ✓ 12 · ✗ 29 |   ✗ ① 끔(기본) — 손잡이 꺼짐 · 식량 읽기 = `food` 칸 0(곳간엔 생선 · 곡식이 있다 — 자명 통과 금지 · 합계 > 0)  "bject.
+# 합: 빨강 1 · 크래시 0 · 초록 0 · 모름 0 · 제품 무관 0

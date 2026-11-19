@@ -1,0 +1,276 @@
+{
+ "pid": 4511,
+ "at": "2026-11-17T22:00:40.363Z",
+ "stacks": [
+  [
+   "H :184",
+   "_searchStep :357",
+   "_search :381",
+   "localPath :407",
+   "findPath :56",
+   "_t1320Link :5836",
+   "_t1320Chain :5889",
+   "_t1320ChainOf :5883",
+   "setBodyPts :5182",
+   "_bxWalk :2271",
+   "_t765Depart :2350",
+   "walkToVillage :263",
+   "_t1075Leave :242",
+   "tickVillage :5905",
+   "_villageBody :3093",
+   "village :3080",
+   "(anon) :11096",
+   "mute :11069",
+   "(anon) :11096",
+   "g :11067",
+   "_drainTickJobs :11627",
+   "_t731Tick :11053",
+   "onGameTick :10935",
+   "V.onGameTick :23",
+   "(anon) :17147",
+   "pump :110",
+   "processImmediate :484"
+  ],
+  [
+   "get size :89",
+   "_searchStep :335",
+   "_search :381",
+   "localPath :407",
+   "findPath :56",
+   "_t1320Link :5836",
+   "_t1320Chain :5889",
+   "_t1320ChainOf :5883",
+   "setBodyPts :5182",
+   "_bxWalk :2271",
+   "_t765Depart :2350",
+   "walkToVillage :263",
+   "_t1075Leave :242",
+   "tickVillage :5905",
+   "_villageBody :3093",
+   "village :3080",
+   "(anon) :11096",
+   "mute :11069",
+   "(anon) :11096",
+   "g :11067",
+   "_drainTickJobs :11627",
+   "_t731Tick :11053",
+   "onGameTick :10935",
+   "V.onGameTick :23",
+   "(anon) :17147",
+   "pump :110",
+   "processImmediate :484"
+  ],
+  [
+   "H :184",
+   "_searchStep :357",
+   "_search :381",
+   "localPath :407",
+   "findPath :56",
+   "_t1320Link :5836",
+   "_t1320Chain :5889",
+   "_t1320ChainOf :5883",
+   "setBodyPts :5182",
+   "_bxWalk :2271",
+   "_t765Depart :2350",
+   "walkToVillage :263",
+   "_t1075Leave :242",
+   "tickVillage :5905",
+   "_villageBody :3093",
+   "village :3080",
+   "(anon) :11096",
+   "mute :11069",
+   "(anon) :11096",
+   "g :11067",
+   "_drainTickJobs :11627",
+   "_t731Tick :11053",
+   "onGameTick :10935",
+   "V.onGameTick :23",
+   "(anon) :17147",
+   "pump :110",
+   "processImmediate :484"
+  ]
+ ],
+ "profile": {
+  "samples": 34982,
+  "top": [
+   [
+    "gGet sim/path-core.js:196",
+    32.2
+   ],
+   [
+    "cameSet sim/path-core.js:199",
+    15.5
+   ],
+   [
+    "(garbage collector) :0",
+    8.9
+   ],
+   [
+    "pop sim/path-core.js:72",
+    4.1
+   ],
+   [
+    "_terrBlocked0 server/zone.js:2350",
+    4.1
+   ],
+   [
+    "_searchStep sim/path-core.js:325",
+    3.9
+   ],
+   [
+    "blockedStep0 server/pathfind.js:42",
+    3.2
+   ],
+   [
+    "canon scripts/t740-side-hook.js:102",
+    2.8
+   ],
+   [
+    "gSet sim/path-core.js:197",
+    2.8
+   ],
+   [
+    "isBlockedByWall server/zone.js:16871",
+    2.4
+   ],
+   [
+    "isTerrainBlockedLocal server/zone.js:2357",
+    2.1
+   ],
+   [
+    "_search sim/path-core.js:380",
+    1.8
+   ],
+   [
+    "_edgeScan server/zone.js:16348",
+    1.1
+   ],
+   [
+    "isBlockedByStairSide server/zone.js:16506",
+    1
+   ],
+   [
+    "key sim/path-core.js:195",
+    1
+   ],
+   [
+    "queryCircle server/quadtree.js:81",
+    0.9
+   ],
+   [
+    "sideSnap scripts/t740-side-hook.js:120",
+    0.9
+   ],
+   [
+    "_isPointInRiver server/terrain.js:305",
+    0.8
+   ],
+   [
+    "push sim/path-core.js:66",
+    0.7
+   ],
+   [
+    "findStairBuildingForCell server/zone.js:16496",
+    0.7
+   ],
+   [
+    "isWaterCellLocal server/terrain.js:353",
+    0.6
+   ],
+   [
+    "villageOfCell server/villages.js:15587",
+    0.5
+   ],
+   [
+    "run :0",
+    0.4
+   ],
+   [
+    "_terrGrowCore server/villages.js:8068",
+    0.4
+   ],
+   [
+    "territoryBoundary server/villages.js:3309",
+    0.4
+   ],
+   [
+    "enc sim/path-core.js:201",
+    0.3
+   ],
+   [
+    "_targetV2 sim/economy-sim-v2.js:843",
+    0.3
+   ],
+   [
+    "generateChunkResources server/chunk.js:659",
+    0.2
+   ],
+   [
+    "H sim/path-core.js:184",
+    0.2
+   ],
+   [
+    "stampCell server/roads.js:98",
+    0.2
+   ],
+   [
+    "isRockCellLocal server/terrain.js:376",
+    0.2
+   ],
+   [
+    "findEdgeWall server/zone.js:16377",
+    0.2
+   ],
+   [
+    "_i688Set server/roads.js:203",
+    0.1
+   ],
+   [
+    "L server/region-profiles.js:149",
+    0.1
+   ],
+   [
+    "getForestMultiplier server/terrain.js:433",
+    0.1
+   ],
+   [
+    "update :0",
+    0.1
+   ],
+   [
+    "npcReachStep server/zone.js:4670",
+    0.1
+   ],
+   [
+    "serializeEcon server/villages.js:1774",
+    0.1
+   ],
+   [
+    "_num server/trees.js:20",
+    0.1
+   ],
+   [
+    "computeShadowPrices sim/economy-sim-v2.js:959",
+    0.1
+   ]
+  ]
+ },
+ "heap": {
+  "usedSize": 1890214072,
+  "totalSize": 2010411008
+ },
+ "eval": {
+  "groups": 0,
+  "units": 0,
+  "searching": 0,
+  "roadSearching": 0,
+  "failMem": 0,
+  "roadFailMem": 0,
+  "following": 0,
+  "popsTop": [],
+  "popsSum": 0,
+  "distinctTargets": 0,
+  "topTargets": [],
+  "wars": []
+ }
+}

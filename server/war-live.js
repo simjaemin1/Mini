@@ -218,10 +218,31 @@ function createWarLive(opts) {
     const us = g.units, n = us.length; if (n < 2) return;
     const R = MU.SEP_R, R2 = R * R, str = MU.SEP_STR * dDays;
     const px = new Float64Array(n), py = new Float64Array(n);
-    for (let i = 0; i < n; i++) { const a = us[i]; let sx = 0, sy = 0, cnt = 0;
-      for (let j = 0; j < n; j++) { if (j === i) continue; const b = us[j]; const dx = a.x - b.x, dy = a.y - b.y, d2 = dx * dx + dy * dy;
-        if (d2 < R2 && d2 > 1e-6) { const dv = Math.sqrt(d2); sx += dx / dv; sy += dy / dv; cnt++; } }
-      if (cnt) { px[i] = sx / cnt; py[i] = sy / cnt; } }
+    // ★[T1349] 값 같은 손(손잡이 0) — 긴 전쟁 날(씨 1020 날 387) CPU 의 61 % 가 여기였다: 몸 쌍 n² 마다 사설 게터(`#p.x / #k`)를 두 번씩 읽었다.
+    //   ① 자리를 한 번만 읽어 둔다(이 첫 고리는 읽기만 — 같은 게터 · 같은 값) ② 몸이 많으면(48 넘음) 칸 R·1.0001 격자로 이웃 후보만 —
+    //   후보를 j 차례로 다시 늘어세워 같은 차례로 더한다(같은 d2 < R2 판정 · 같은 덧셈 차례 = 바이트 같음). NaN · 무한 · 아주 먼 자리가 하나라도 있으면 종전 고리 그대로.
+    const ax = new Float64Array(n), ay = new Float64Array(n);
+    for (let i = 0; i < n; i++) { ax[i] = us[i].x; ay[i] = us[i].y; }
+    let plain = n < 48;   // 몸이 적거나 NaN · 무한 · 아주 먼 자리가 하나라도 있으면 종전 n² 고리(같은 값)
+    if (!plain) for (let i = 0; i < n; i++) { const kx = ax[i] / R, ky = ay[i] / R; if (!(Math.abs(kx) < 1e9 && Math.abs(ky) < 1e9)) { plain = true; break; } }
+    if (plain) {
+      for (let i = 0; i < n; i++) { let sx = 0, sy = 0, cnt = 0; const xi = ax[i], yi = ay[i];
+        for (let j = 0; j < n; j++) { if (j === i) continue; const dx = xi - ax[j], dy = yi - ay[j], d2 = dx * dx + dy * dy;
+          if (d2 < R2 && d2 > 1e-6) { const dv = Math.sqrt(d2); sx += dx / dv; sy += dy / dv; cnt++; } }
+        if (cnt) { px[i] = sx / cnt; py[i] = sy / cnt; } }
+    } else {
+      const C = R * 1.0001, G = new Map(), ck = new Float64Array(n), cl = new Float64Array(n);
+      for (let i = 0; i < n; i++) { const kx = Math.floor(ax[i] / C), ky = Math.floor(ay[i] / C);
+        ck[i] = kx; cl[i] = ky; const key = kx * 4294967296 + ky; let b = G.get(key); if (!b) G.set(key, b = []); b.push(i); }
+      const cand = [];
+      for (let i = 0; i < n; i++) { let sx = 0, sy = 0, cnt = 0; const xi = ax[i], yi = ay[i];
+        cand.length = 0;
+        for (let ddx = -1; ddx <= 1; ddx++) for (let ddy = -1; ddy <= 1; ddy++) { const b = G.get((ck[i] + ddx) * 4294967296 + (cl[i] + ddy)); if (b) for (let q = 0; q < b.length; q++) cand.push(b[q]); }
+        cand.sort((p, q) => p - q);
+        for (let q = 0; q < cand.length; q++) { const j = cand[q]; if (j === i) continue; const dx = xi - ax[j], dy = yi - ay[j], d2 = dx * dx + dy * dy;
+          if (d2 < R2 && d2 > 1e-6) { const dv = Math.sqrt(d2); sx += dx / dv; sy += dy / dv; cnt++; } }
+        if (cnt) { px[i] = sx / cnt; py[i] = sy / cnt; } }
+    }
     for (let i = 0; i < n; i++) { const a = us[i]; if (a.cmd) continue; if (px[i] || py[i]) { const d = Math.hypot(px[i] * str, py[i] * str), cap = budget ? budget[i] : d, mul = d > 0 ? Math.min(1, cap / d) : 0; const nx2 = a.x + px[i] * str * mul, ny2 = a.y + py[i] * str * mul; if (!blockedCell || !blockedCell(nx2, ny2)) { a.x = nx2; a.y = ny2; } } }
   }
   // 슬롯 추종 — ★[T284] 한 걸음이 막힌 칸(물·바위·건물 행)이면 그 축을 버린다(대형도 존 콜라이더를 본다).
@@ -398,23 +419,45 @@ function createWarLive(opts) {
   function toStandoff(f) { setSideCtl(f, 'A', true); setSideCtl(f, 'B', true); f.state = 'form'; f.contactT = -1; f.bestGap = Infinity; }
 
   // [T1183] 진에 선 군대도 실제 사거리 안 적과 날아가는 화살을 본다.
+  // ★★[T1338 ①] 사거리 안 적 — 사수마다 전 몸을 훑던 것(O(사수 × N))을 칸 격자로. 술어는 그대로(`e.side !== u.side && e.hp > 0 && hypot ≤ D.ranged`) ·
+  //   답은 "있나 없나" 하나라 훑는 차례와 무관하다(바이트 같음). 칸 한 변 = 지금 몸들 가운데 가장 긴 사거리의 두 배(새 수 0) — 사거리 안이면 칸 차가
+  //   반 칸 안이라 나눗셈 반올림이 어떻든 3×3 칸 안이다. 열쇠가 겹쳐도(좌표 범위 밖) 후보만 늘 뿐 술어가 그대로라 답은 같다. 격자는 부르는 자리마다 새로.
+  function _rangedGrid(units) {
+    let cs = 0; for (const u of units) { const D = BC.UNITS[u.type]; if (u.hp > 0 && D && D.ranged > cs) cs = D.ranged; }
+    if (!(cs > 0)) return null;
+    cs *= 2;
+    const by = new Map();   // 편마다 따로(제 편 몸은 후보가 아니다 — 한 칸에 몰린 제 편을 훑지 않는다)
+    for (const e of units) { if (!(e.hp > 0)) continue; let m = by.get(e.side); if (!m) by.set(e.side, m = new Map());
+      const k = Math.floor(e.x / cs) * 65536 + Math.floor(e.y / cs); const c = m.get(k); if (c) c.push(e); else m.set(k, [e]); }
+    return { cs, by };
+  }
+  function _enemyWithin(G, u, R) {
+    if (!G) return false;
+    const bx = Math.floor(u.x / G.cs), by = Math.floor(u.y / G.cs);
+    for (const [side, m] of G.by) { if (side === u.side) continue;
+      for (let ix = bx - 1; ix <= bx + 1; ix++) for (let iy = by - 1; iy <= by + 1; iy++) { const c = m.get(ix * 65536 + iy); if (!c) continue;
+        for (const e of c) if (e.side !== u.side && e.hp > 0 && Math.hypot(e.x-u.x,e.y-u.y) <= R) return true; } }
+    return false;
+  }
   function hasRangedContact(f) {
     if (f.ctx.arrows.length) return true;
+    let G;
     return f.ctx.units.some(u => {
       const D = BC.UNITS[u.type];
       return u.hp > 0 && D && D.ranged > 0 && f.ctx.sides[u.side][D.ammo || 'arrows'] > 0
-        && f.ctx.units.some(e => e.side !== u.side && e.hp > 0 && Math.hypot(e.x-u.x,e.y-u.y) <= D.ranged);
+        && _enemyWithin(G === undefined ? (G = _rangedGrid(f.ctx.units)) : G, u, D.ranged);
     });
   }
   // stepFight(f) — 존 틱 한 번(dt = 1/TICK_HZ). 반환 = 이번 틱의 사건 { contact, standoff, rout:'A'|'B'|null }.
   function stepFight(f) {
     const ctx = f.ctx; f.t += STEP_DT;
     const guards = [];
+    let G;   // ★[T1338 ①] 사거리 안 적 — 칸 격자(처음 필요할 때 한 번 · 이 고리는 몸을 안 옮기고 hp 도 안 바꾼다)
     if (f.physical) for (const u of ctx.units) {
       const D = BC.UNITS[u.type];
       if (u.hp <= 0 || !u.ctl || !D || !(D.ranged > 0)) continue;
       const ammo = ctx.sides[u.side][D.ammo || 'arrows'];
-      if (ammo > 0 && ctx.units.some(e => e.side !== u.side && e.hp > 0 && Math.hypot(e.x-u.x,e.y-u.y) <= D.ranged)) {
+      if (ammo > 0 && _enemyWithin(G === undefined ? (G = _rangedGrid(ctx.units)) : G, u, D.ranged)) {
         u.ctl = false; guards.push(u); // 사격도 정본 전투 스텝이 수행한다.
       } else u.cd -= STEP_DT;
     }

@@ -1,0 +1,40 @@
+[hanbando] 🐂 캐러밴#7575 귀환 출발: 어촌2→광산3 mushroom×14 — econ d366 도착 예정
+[hanbando] 🐂 캐러밴#7576 귀환 출발: 농촌15→광산4 food×11 — econ d366 도착 예정
+[hanbando] 🐂 캐러밴#7577 귀환 출발: 어촌13→광산6 meat×73 — econ d366 도착 예정
+[hanbando] 🐂 캐러밴#7578 귀환 출발: 어촌11→광산7 meat×20 — econ d366 도착 예정
+[hanbando] 🐂 캐러밴#7579 귀환 출발: 농촌11→임업2 clothes×15 — econ d366 도착 예정
+[hanbando] 🐂 캐러밴#7580 귀환 출발: 어촌4→임업4 food×9 — econ d366 도착 예정
+[hanbando] 🐂 캐러밴#7581 귀환 출발: 임업6→임업5 food×0 — econ d366 도착 예정
+[hanbando] 🐂 캐러밴#7582 귀환 출발: 어촌16→농촌4 armor×1 — econ d366 도착 예정
+[hanbando] 🐂 캐러밴#7583 귀환 출발: 농촌22→농촌5 ramie×1 — econ d366 도착 예정
+[hanbando] 🐂 캐러밴#7584 귀환 출발: 농촌17→어촌8 food×1 — econ d366 도착 예정
+[hanbando] 🐂 캐러밴#7585 귀환 출발: 농촌13→어촌9 feather×10 — econ d366 도착 예정
+[hanbando] 🐂 캐러밴#7586 귀환 출발: 어촌15→어촌10 ramie×1 — econ d366 도착 예정
+[hanbando] 🐂 캐러밴#7587 귀환 출발: 농촌17→어촌16 food×0 — econ d366 도착 예정
+[hanbando] 🐂 캐러밴#7588 귀환 출발: 어촌15→어촌16 food×0 — econ d366 도착 예정
+[hanbando] 🐂 캐러밴#7589 귀환 출발: 농촌15→농촌7 (빈손) — econ d366 도착 예정
+[hanbando] 🐂 캐러밴#7590 귀환 출발: 농촌16→농촌8 food×0 — econ d366 도착 예정
+[hanbando] 🐂 캐러밴#7591 귀환 출발: 농촌6→농촌14 food×0 — econ d366 도착 예정
+[hanbando] 🐂 캐러밴#7592 귀환 출발: 어촌4→농촌15 food×30 — econ d366 도착 예정
+[hanbando] 🐂 캐러밴#7593 귀환 출발: 광산5→농촌19 food×133 — econ d366 도착 예정
+[hanbando] 🐂 캐러밴#7594 귀환 출발: 농촌20→농촌21 clothes×2 — econ d366 도착 예정
+
+<--- Last few GCs --->
+
+[31737:0xe433000]   821207 ms: Mark-Compact 2042.0 (2066.7) -> 2040.8 (2066.7) MB, pooled: 0 MB, 1596.01 / 0.00 ms  (average mu = 0.333, current mu = 0.311) allocation failure; GC in old space requested
+[31737:0xe433000]   823223 ms: Mark-Compact 2040.8 (2066.7) -> 2040.8 (2070.7) MB, pooled: 0 MB, 2015.89 / 0.00 ms  (average mu = 0.181, current mu = 0.000) allocation failure; GC in old space requested
+
+
+<--- JS stacktrace --->
+
+FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 0xe48bbe node::OOMErrorHandler(char const*, v8::OOMDetails const&) [/opt/node22/bin/node]
+ 2: 0x1248d00 v8::Utils::ReportOOMFailure(v8::internal::Isolate*, char const*, v8::OOMDetails const&) [/opt/node22/bin/node]
+ 3: 0x1248fd7 v8::internal::V8::FatalProcessOutOfMemory(v8::internal::Isolate*, char const*, v8::OOMDetails const&) [/opt/node22/bin/node]
+ 4: 0x1477ee5  [/opt/node22/bin/node]
+ 5: 0x1477f13  [/opt/node22/bin/node]
+ 6: 0x1490fea  [/opt/node22/bin/node]
+ 7: 0x14941b8  [/opt/node22/bin/node]
+ 8: 0x1cfcc61  [/opt/node22/bin/node]

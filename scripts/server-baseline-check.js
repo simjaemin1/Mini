@@ -163,6 +163,10 @@ function runOne(dir, seed, days, dumpDay) {
     const env = Object.assign({}, process.env, COND, { SBC_HOOK: '1', T577_DIR: dir, T577_TAG: 'sbc', T577_PAR: '1',
       NODE_OPTIONS: ((VCLOCK ? `--require ${path.join(__dirname, 't745-vclock.js')} ` : '') + (process.env.NODE_OPTIONS || '') + ` --require ${__filename}`
         + (SIDE ? ` --require ${path.join(__dirname, 't740-side-hook.js')}` : '')).trim() });
+    //   ★[T1349] 전쟁 팔 몸∞(`--war inf`) 아이 힙 — 몸 무제한 세계의 산 힙(큰 GC 뒤)이 기본 힙(2,096 MB) 곁까지 자란다(날 391 1,705 MB · 날 758 2,004 MB 에서
+    //     넘침 — 보고/T1349 §1). 부르는 쪽이 `--max-old-space-size` 를 안 줬으면 T1342 §10 판 자 힙(4,608 MB · `SBC_WAR_HEAP_MB` 로 바꾼다 · `0` = 안 붙임)을 붙인다.
+    //     판 결과는 무변(힙 상한은 계산을 안 바꾼다 — 넘치면 죽을 뿐).
+    if (WAR === 'inf' && !/--max-old-space-size/.test(env.NODE_OPTIONS) && process.env.SBC_WAR_HEAP_MB !== '0') env.NODE_OPTIONS = `--max-old-space-size=${process.env.SBC_WAR_HEAP_MB || '4608'} ` + env.NODE_OPTIONS;
     if (VCLOCK) env.T745_VCLOCK = '1';   // ★[T745] 가상 시계 갈래(아이 존만 · 프리로드 맨 앞 — 벽시계 · 타이머를 econ 날에 묶는다)
     if (ROUTE_CACHE) env.T699_ROUTE_CACHE = ROUTE_CACHE; else delete env.T699_ROUTE_CACHE;
     if (dumpDay) env.SBC_DUMP_DAY = String(dumpDay);   // 없으면 바깥 env 의 SBC_DUMP_DAY 를 그대로 넘긴다

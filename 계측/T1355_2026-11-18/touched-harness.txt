@@ -1,0 +1,9 @@
+# 만진 함수 → 하네스 (touched-harness · base origin/main · 갈림점 07b429e77)
+· 바뀐 코드 파일 4 · 이름 5(물린 것 3 · 흔한 이름 뺌 0) · 바뀐 하네스 1 · 규약 다섯 · **돌릴 하네스 8**
+  sim/economy-engine.browser.js: _t1197Eat _t1355LotAdd t1197Day
+  sim/economy-sim.js: _t1197Eat _t1355LotAdd t1197Day
+  계측/T1355_2026-11-18/t1355-lab-probe.js: t1355-lab-probe
+  계측/T1355_2026-11-18/t1355-observe.js: t1355-observe
+· 이름 → 하네스 수: _t1197Eat 1 · _t1355LotAdd 1 · t1197Day 3
+· 바뀐 하네스: test-t1355-lot-day.js
+· 돌릴 하네스: test-body-fields.js test-coll-grid.js test-harness-lint.js test-hp-src.js test-lon-day.js test-t1197-meal-body.js test-t1209-meal-triage.js test-t1355-lot-day.js

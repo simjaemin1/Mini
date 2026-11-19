@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @bait 1   ← [T1375] 미끼 판정 줄에 바꾼 자리 수(이미 있던 자리 셈을 그 줄로 옮김 · lint ⑲b)
 // === scripts/test-t1087-crew-cap.js — 판 자(t577) 가시 몸 상한 기본 = 집 크루 몫(T1087 · 2026-11-02) ==================
 //
 // ★왜 [T1055 1위 → T1087] 집 크루는 명부(가시 몸) 앞 `min(LIFE_CREW, 몸 수)` 명이다(`server/villages.js` `_t400Crew`).
@@ -64,7 +65,8 @@ ok(inf && inf.has === false, '③ `=Infinity` 면 아이 env 에서 뺀다(운�
   const bait = path.join(path.dirname(RULER), `._t1087-bait-${process.pid}.js`);
   fs.writeFileSync(bait, src.replace(a, "VILLAGE_NPC_CAP: process.env.VILLAGE_NPC_CAP || '1',"));
   let b = null; try { b = kidEnv({}, bait); } finally { fs.rmSync(bait, { force: true }); }
-  ok(b && b.cap === '1' && b.cap !== CREW_PROBE, '④ 미끼 — 종전 글자로 되돌린 판 자 사본은 집 행위 켬 판에도 1 을 준다(① 이 문다)', JSON.stringify(b));
+  const na = src.split(a).length - 1;   // [T1375] 바꾼 자리 — 위 단언이 세던 그 셈
+  ok(na === 1 && b && b.cap === '1' && b.cap !== CREW_PROBE, '④ 미끼 — 종전 글자로 되돌린 판 자 사본은 집 행위 켬 판에도 1 을 준다(① 이 문다)', `바꾼 자리 ${na} · ${JSON.stringify(b)}`);
 }
 ok(/function _t400Crew\(vil\) \{[^\n]*\n[^\n]*\n\s*for \(const pid of \(vil\.npcPids \|\| \[\]\)\) \{ if \(out\.length >= LIFE_CREW\) break;/.test(VSRC),
   '⑤ 크루 규칙 그대로 — `_t400Crew` 는 명부 `npcPids` 앞에서 LIFE_CREW 명까지(몸 수가 크루를 묶는 줄)');

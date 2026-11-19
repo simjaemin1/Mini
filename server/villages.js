@@ -8958,8 +8958,9 @@ function warCenterPx(vil) { return { x: vil.ccx * SZ + SZ / 2, y: vil.ccy * SZ +
 // 공격 주둔 링(셀) — 방어 포진 거리 + 두 대형 접근 거리(war-live 상수의 합 · 새 수 아님).
 function _warCampBackCells() { const WL = state.warLive; return WL.WAR_ENGAGE_R + WL.WAR_DEF_STANDOFF; }
 // 본대 행군 속도(셀/틱) — battle-core 병종 spd(m/s) × 틱 dt ÷ 셀(m). 대치 재편·주둔 복귀 걸음의 상한.
+let _t1349BC = null;
 function _warWalkCap(g) {
-  const WL = state.warLive, U = require('../sim/battle-core').UNITS;
+  const WL = state.warLive, U = (_t1349BC || (_t1349BC = require('../sim/battle-core'))).UNITS;   // ★[T1349] 모듈은 한 번만 찾는다(걸음마다 `require` 길 찾기 — 긴 전쟁 날 CPU 2.5 % · 같은 모듈 객체)
   let m = Infinity; for (const u of (g && g.units) || []) { if (u.dead) continue; const D = U[u.type]; if (D && D.spd < m) m = D.spd; }
   if (!isFinite(m)) m = U.spear.spd;
   return m * WL.STEP_DT / WL.M_PER_CELL;
@@ -9167,11 +9168,20 @@ function _warSnapToSlots(g) {
 }
 // ★[T541 ⓑ] 설 수 있는 가장 가까운 칸 — 존 정본 나선(`deps.standCellNear` = zone `_standCellNear` · px)을 전쟁 술어로 부른다.
 //   (cx,cy) = 셀(실수 · 셀 = m). 이미 설 수 있으면 그 자리, 못 찾거나 미주입이면 null.
+// ★[T1349 ②] 나선 답 기억 — 같은 막힘 술어 세대(`state._warRectCells` — T1330 기억과 같은 세대 · 그 세대 안에서 술어는 칸마다 처음 답 그대로) 안에서
+//   같은 (cx, cy)(실수 그대로 — 나선 점은 실수 원점에서 돈다)의 답은 같다 ⇒ 기억한 답의 사본을 준다(손잡이 0 · 값 같음). 멈춘 판(씨 42 날 372)의 하루 몫에서
+//   선 대형 병사가 걸음마다 같은 막힌 슬롯을 다시 나선으로 돌던 몫(CPU 30 + 14%)이다. 세대가 바뀌거나 칸이 20만을 넘으면 비운다(비워도 값은 같다).
+const _t1349Stand = { gen: null, m: new Map(), hit: 0, miss: 0 };
 function _warStandNear(cx, cy) {
   if (!_warBlockedCell(cx, cy)) return { cx, cy };
   const f = state.deps && state.deps.standCellNear; if (!f) return null;
+  const gen = state._warNoCollide ? null : state._warRectCells, M = _t1349Stand;
+  if (gen) { if (M.gen !== gen || M.m.size > 200000) { M.gen = gen; M.m.clear(); }
+    const k = cx + ',' + cy, v = M.m.get(k); if (v !== undefined) { M.hit++; return v ? { cx: v.cx, cy: v.cy } : null; } }
   let c = null; try { c = f(cx * SZ, cy * SZ, (x, y) => _warBlockedCell(x / SZ, y / SZ)); } catch (_) { c = null; }
-  return c ? { cx: c.x / SZ, cy: c.y / SZ } : null;
+  const r = c ? { cx: c.x / SZ, cy: c.y / SZ } : null;
+  if (gen) { M.miss++; M.m.set(cx + ',' + cy, r ? { cx: r.cx, cy: r.cy } : null); }
+  return r;
 }
 // ★[T541 ⓐ] 곧은 걸음이 막혔을 때의 **걸음 경로** — path-core `localPath`(걸음 프리셋 · 4방 · 사본 0) · 술어 = `_warBlockedCell`.
 //   ★왜: 대형 추종(`_muStepFollow`)과 풀린 병사(`_warWorld.advance`)는 목표점으로 **곧게** 한 걸음씩 간다. 산 모서리를
@@ -9186,6 +9196,18 @@ function _warStandNear(cx, cy) {
 //     끝점 하나가 아는 닫힌 덩이 안이고 다른 하나가 그 덩이 밖이면 4방 연결이 없다 ⇒ `localPath` 는 어떤 탐색 차례로도 null(끝점 막힘 · 꺼냄 상한 · 다 뒤짐 셋 다 null) —
 //     그래서 탐색 없이 null 이 같은 답이다. 두 끝점이 같은 덩이 안이면 종전처럼 묻는다. 칠한 판이 상한에 닿으면(열린 땅) 그 칸만 "열림"으로 적고 다시 칠하지 않는다.
 const _t1330Stat = { ask: 0, hit: 0, fail: 0, gen: 0, apart: 0, comp: 0, open: 0 };
+// ★★[T1338 ② · T1330 회부 1] 틱당 처음 묻는 길 물음 상한 — 손잡이 `T1338_PATH_BUDGET`(★끔 기본 · '1' 켬 · 전투 결과가 바뀐다 → 재민 판정).
+//   대형이 풀리는 틱에 처음 묻는 물음 25 ~ 27개가 한 틱에 몰려 틱 246 ~ 459ms(예산 33ms 의 7 ~ 14배)였다(보고 T1330 §3).
+//   켬: 교전 하나의 한 틱에 **기억에 없는 물음(실제 탐색)은 하나만** — 상한 = 1(유도: 꺼냄 상한 `LOCAL_MAX_NODES` 탐색 한 번 ≈ 38ms 가 이미 틱 예산 33ms 를 넘는다).
+//   넘친 병사는 이번 틱 길 점으로 곧장(걸음 경로 없음 · 기억 안 함) · 다음 틱에 다시 묻는다. 순서 = 전투 스텝 차례(battle-core 몸 차례 · 결정적).
+const T1338_PATH_BUDGET = process.env.T1338_PATH_BUDGET === '1';
+const _t1338Stat = { ask: 0, defer: 0, walkLive: 0, walkSkip: 0 };
+// ★★[T1338 ③ · 행군 걸음 먼 탐색] 손잡이 `T1338_WALK_BUDGET`(★끔 기본 · '1' 켬 · 걸음이 바뀐다 → 재민 판정).
+//   까닭(보고 T1338 §2): T821 재개형 걸음 탐색(꺼냄 상한 `ROUTE_MAX_POPS` 250,000)은 몸마다 하나씩 산다 — 닿을 수 없는 먼 진(2,000칸 밖)을 여러 몸이 함께 물으면
+//     탐색 상태(Map 두 개 · 문자열 열쇠)가 동시에 수십 개 살아 힙이 1~2 GB 로 부풀고 큰 GC 한 번이 0.2~2초 · 끝내 힙이 넘친다(시드 42 날 638 · 시드 1020 날 617).
+//   켬: 첫 몫(종전 T804 동기 물음 — `LOCAL_MAX_NODES`)은 그대로 · 그 안에 못 찾아 **이어 밀 탐색은 존에 하나만**. 이미 하나가 살아 있으면 그 물음은 T821 이전(T804)처럼
+//     "길 없음"(그 목표 칸 기억 · 행군로 `_t804Road`). 상한 1 = path-core 재개형 문 계약 "한 저장을 쓰는 탐색은 한 번에 하나"(새 수 0).
+const T1338_WALK_BUDGET = process.env.T1338_WALK_BUDGET === '1';
 function _t1330Memo() {
   if (state._warNoCollide || !state._warRectCells) return null;
   const C = state._t1330Path;
@@ -9210,7 +9232,7 @@ function _t1330Learn(x0, y0) {
   }
   const id = ++C.n; for (const k of seen) C.cell.set(k, id); _t1330Stat.comp++;
 }
-function _warPathNext(u, tx, ty) {
+function _warPathNext(u, tx, ty, fight) {
   const MPC = state.warLive.M_PER_CELL;
   const sx = Math.floor(u.x / MPC), sy = Math.floor(u.y / MPC);
   let P = u._wpth;
@@ -9233,6 +9255,11 @@ function _warPathNext(u, tx, ty) {
     if (M && M.has(mk)) { pts = M.get(mk); _t1330Stat.hit++; }
     else if (M && _t1330Apart(sx, sy, gx, gy)) { pts = null; M.set(mk, null); _t1330Stat.apart++; }   // 끝점 하나가 이미 아는 닫힌 덩이 안 · 다른 하나는 밖 — 길이 없다(탐색 없이 같은 답)
     else {
+      if (T1338_PATH_BUDGET && fight) {   // ★[T1338 ②] 켬 — 이 교전 이 틱의 처음 묻는 물음은 하나만(넘친 몸은 다음 틱)
+        if (fight._t1338T !== fight.t) { fight._t1338T = fight.t; fight._t1338N = 0; }
+        if (fight._t1338N >= 1) { _t1338Stat.defer++; return null; }
+        fight._t1338N++; _t1338Stat.ask++;
+      }
       pts = null; try { pts = PathCore.localPath(sx, sy, gx, gy, { blocked: blk, blockedStep: (fx, fy, x2, y2) => blk(x2, y2) }); } catch (_) { pts = null; }
       if (M) { M.set(mk, pts); _t1330Stat.ask++; if (!pts) { _t1330Stat.fail++; _t1330Learn(gx, gy); _t1330Learn(sx, sy); } }
     }
@@ -9288,6 +9315,13 @@ function _t804Local(mem, x, y, tx, ty, st) {   // 걸음 프리셋 길 — 반�
     const sx = Math.floor(x), sy = Math.floor(y), gx = Math.floor(gl.cx), gy = Math.floor(gl.cy), key = gx * 65536 + gy;
     if (sx === gx && sy === gy) return null;   // 이미 그 칸 — 마지막 한 칸은 호출측 걸음
     if (mem._t804f === key) return false;      // 이 목표 칸은 길이 없었다 — 되묻지 않는다(T381 꼴 · 목표 칸이 바뀌면 다시 묻는다)
+    let _sk = null;
+    if (T1349_WAR_PATH_SHARE) {   // ★[T1349] 덩이 쌍 표 — ① 못 찾음 · ② 다른 병사가 묻는 중
+      const T = _t1349T(); _sk = _t1349Key(sx, sy, gx, gy);
+      if (T.fail.has(_sk)) { _t1349Stat.hit++; _t804Stat.fail++; mem._t804f = key; return false; }
+      const L = T.live.get(_sk); if (L && L.mem !== mem && L.mem._t821s === L) { _t1349Stat.wait++; return { x, y }; }
+      _t1349Stat.own++;
+    }
     if (!PathCore) PathCore = require('../sim/path-core.js');
     const blk = (cx, cy) => _warBlockedCell(cx, cy);
     //   ★[T821] 재개형 문(같은 걸음 프리셋 · 상한 = 재개형 문 정본 `ROUTE_MAX_POPS`). 첫 몫은 종전 동기 물음 그대로 — 한 꺼냄씩 밀어
@@ -9296,7 +9330,15 @@ function _t804Local(mem, x, y, tx, ty, st) {   // 걸음 프리셋 길 — 반�
     _t804Stat.ask++;
     if (!S) { _t804Stat.fail++; mem._t804f = key; return false; }   // 끝점이 막혔다(동기 문과 같은 첫 줄)
     mem._t821s = { S, key, n: 0 };
+    if (_sk) { mem._t821s.sk = _sk; mem._t821s.mem = mem; _t1349T().live.set(_sk, mem._t821s); }   // ★[T1349]
     let r; try { do { r = PathCore.pathStep(S, 1); } while (!r.done && S.pops <= PathCore.LOCAL_MAX_NODES); } catch (_) { r = { done: true, path: null }; }
+    if (!r.done && T1338_WALK_BUDGET) {   // ★[T1338 ③] 켬 — 이어 미는 먼 탐색은 존에 하나만(다른 기억이 쥐고 있으면 이 물음은 종전 T804 처럼 "길 없음" → 행군로)
+      const L = state._t1338WalkLive;
+      //   쥔 기억이 버려졌으면(대형이 사라졌다 — 이틀째 안 밀렸다) 자리를 넘긴다(그 탐색은 아무도 안 민다 · 쓰레기)
+      const day = state.world ? state.world.day | 0 : 0;
+      if (L && L !== mem && L._t821s && !(L._t821s.d < day - 1)) { mem._t821s = null; _t804Stat.fail++; mem._t804f = key; _t1338Stat.walkSkip++; return false; }
+      state._t1338WalkLive = mem; mem._t821s.d = day; _t1338Stat.walkLive++;
+    }
     if (!r.done) { _t821Stat.far++; return { x, y }; }   // 종전이면 여기서 "길 없음" — 버리지 않고 다음 걸음부터 이어 민다 · 그동안 선다
     _t821Done(mem, r.path, false);
     P = mem._t804p; if (!P) return false;
@@ -9338,10 +9380,23 @@ function _t804Road(mem, x, y, tx, ty, st, body) {
 //     · 탐색은 몸마다 하나(그 몸 · 원점 · 행군로 다리의 기억에 `_t821s` — 영속 아님 · 저장은 Map 이라 여럿을 번갈아 밀어도 안전 · path-core ④).
 //   셈(`_t821Stat`): far 첫 몫 안에 못 찾아 이어 민 물음 · found 이어 밀어 찾음 · fail 이어 밀어도 못 찾음 · steps 이어 민 걸음(= 선 걸음) · maxSteps 한 물음에 가장 오래 선 걸음.
 const _t821Stat = { far: 0, found: 0, fail: 0, steps: 0, maxSteps: 0 };
+// ★★[T1349 2026-11-17 · T1331 회부 13 · 씨 42 날 372] **대형 병사 길 물음 나눠 쓰기** — 손잡이 `T1349_WAR_PATH_SHARE`(★끔 기본 · `=1` 켬 · 끔 = 종전 글자 — 판 결과가 바뀐다).
+//   멈춘 판(씨 42 · 날 372 → 373 창 머리 `_t681Flush`)에서 잰 것: 교전 중 대형 넷 · 병사 450 이 강 건너 28 ~ 60칸 슬롯을 겨누는데 그 슬롯은 시작 칸과 30만 칸 안에서 안 이어진다.
+//     병사마다 제 재개형 물음(T821 · 상한 `ROUTE_MAX_POPS` 25만 꺼냄 · Map 열쇠)을 세워 53개가 한꺼번에 돌고(꺼냄 합 280만 · 힙 3 GB) · 못 찾은 목표 칸 기억(T381 `_t804f`)은
+//     **그 병사 · 그 칸** 하나라 슬롯이 한 칸 밀리면 다시 25만을 판다 — 하루 몫(`_t681Flush` 가 가상 시계에선 한 콜백에 다 돈다)이 끝나지 않는다.
+//   켜면 물음을 대형 밖 표 하나(`state._t1349`)로 나눠 쓴다 — 열쇠 = (시작 칸 16칸 덩이 · 목표 칸 16칸 덩이):
+//     ① 같은 econ 날에 그 덩이 쌍이 못 찾음으로 끝났으면 묻지 않고 못 찾음(T381 · 행군로로 — 이 병사가 직접 물어 못 찾은 것과 같은 갈래).
+//     ② 그 덩이 쌍을 다른 병사가 묻는 중이면 제 물음을 세우지 않고 선다(제 물음을 세웠을 때와 같은 "찾는 중 선다" · 답이 나면 ①이거나 제 물음).
+//   새 수 0(덩이 16칸 = 행군 칸 셈 `CHUNK` 이 아니라 이 표의 열쇠 폭일 뿐 — 회부) · 주사위 0. 셈 `_t1349Stat`: hit ① · wait ② · own 제 물음 · put 못 찾음 기록.
+const T1349_WAR_PATH_SHARE = process.env.T1349_WAR_PATH_SHARE === '1';
+const _t1349Stat = { hit: 0, wait: 0, own: 0, put: 0 };
+const _T1349_B = 16;
+function _t1349Key(sx, sy, gx, gy) { const B = _T1349_B; return Math.floor(sx / B) + ',' + Math.floor(sy / B) + '>' + Math.floor(gx / B) + ',' + Math.floor(gy / B); }
+function _t1349T() { const d = (state.world && state.world.day) | 0; let T = state._t1349; if (!T || T.day !== d) T = state._t1349 = { day: d, fail: new Set(), live: new Map() }; return T; }
 function _t821Push(mem, budget) {   // 찾는 중인 탐색을 budget(꺼냄 수)만큼 민다 — 끝났으면 true(길 → `mem._t804p` · 못 찾음 → `mem._t804f`) · 아직이면 false
   const J = mem._t821s;
   let r; try { r = PathCore.pathStep(J.S, budget); } catch (_) { r = { done: true, path: null }; }
-  J.n++; _t821Stat.steps++;
+  J.n++; _t821Stat.steps++; if (J.d !== undefined && state.world) J.d = state.world.day | 0;   // ★[T1338 ③] 켬 — 마지막으로 민 날
   if (!r.done) return false;
   if (J.n > _t821Stat.maxSteps) _t821Stat.maxSteps = J.n;
   _t821Done(mem, r.path, true);
@@ -9349,6 +9404,7 @@ function _t821Push(mem, budget) {   // 찾는 중인 탐색을 budget(꺼냄 수
 }
 function _t821Done(mem, pts, far) {   // 물음이 끝났다 — 길이면 그 몸의 길(T370) · 없으면 그 목표 칸 기억(T381)
   const J = mem._t821s; mem._t821s = null;
+  if (J && J.sk) { const T = _t1349T(); if (T.live.get(J.sk) === J) T.live.delete(J.sk); if (!pts || pts.length < 2) { T.fail.add(J.sk); _t1349Stat.put++; } }   // ★[T1349]
   if (!pts || pts.length < 2) { _t804Stat.fail++; if (far) _t821Stat.fail++; mem._t804f = J.key; return; }
   if (far) _t821Stat.found++;
   mem._t804f = null; mem._t804p = { pts, i: 0 };
@@ -9358,7 +9414,18 @@ function _t804RoadPts(body) {   // 행군로(px) → 셀 점열(몸에 기억 ·
   if (body._t804rs !== body.pts) { body._t804rs = body.pts; body._t804rp = body.pts.map((p) => ({ x: p.x / SZ, y: p.y / SZ })); }
   return body._t804rp;
 }
-function _t804Nearest(pts, x, y) { let b = 0, bd = Infinity; for (let i = 0; i < pts.length; i++) { const d = Math.hypot(pts[i].x - x, pts[i].y - y); if (d < bd) { bd = d; b = i; } } return b; }
+//   ★[T1349 ③] 같은 점열 · 같은 (x, y) 의 답은 같다 — 점열마다 마지막 물음 몇을 기억한다(선 병사 · 같은 슬롯이 걸음마다 같은 물음 · CPU 9%).
+const _t1349Near = new WeakMap(), _T1349_NEAR_CAP = 4096, _T1349_NEAR_EPS = 1e-9;   // 기억 크기 상한(넘으면 비운다 — 답은 늘 바로 센 값과 같다 · 값에 안 드는 수)
+function _t804Nearest(pts, x, y) {
+  let M = _t1349Near.get(pts); if (!M) { M = new Map(); _t1349Near.set(pts, M); }
+  const k = x + ',' + y, v = M.get(k); if (v !== undefined) return v;
+  //   제곱 거리로 먼저 거른다 — 지금 가장 가까운 거리의 제곱 × (1 + _T1349_NEAR_EPS) 보다 확실히 먼 점은 hypot 을 안 센다(그 점은 hypot 으로도 더 멀다 —
+  //   반올림 몇 ulp ≪ ε). 가까운 점 · 비슷한 점 · NaN · 넘침(∞)은 종전대로 hypot 으로 견준다 ⇒ 같은 차례 · 같은 비교 · 같은 답.
+  let b = 0, bd = Infinity, lim = Infinity;
+  for (let i = 0; i < pts.length; i++) { const dx = pts[i].x - x, dy = pts[i].y - y, d2 = dx * dx + dy * dy; if (d2 > lim && d2 !== Infinity) continue;
+    const d = Math.hypot(dx, dy); if (d < bd) { bd = d; b = i; lim = bd * bd * (1 + _T1349_NEAR_EPS); } }
+  if (M.size > _T1349_NEAR_CAP) M.clear(); M.set(k, b); return b;
+}
 // ★[T804 ②] 전진 풀기의 걸음 — 막힌 칸 안에 선 몸을 가장 가까운 설 칸(T541 ⓑ 나선)까지 몸 걸음으로 한 걸음 옮긴다. 아직 막힌 몸이 남았으면 true(풀기를 미룬다).
 //   나선이 못 찾는 몸은 종전대로 그 자리에서 풀린다(옮기지 않는다).
 function _t804WalkOut(g) {
@@ -9570,7 +9637,7 @@ function _warWorld(fight) {
       if (!wp) return r;
       // ★[T541 ⓐ] 길 점까지의 곧은 줄도 막혔으면(길에서 벗어나 산·물 모서리에 걸림) 걸어서 돌아간다 — 판정은 같은 0.5초 메모
       if (memo) u._wpBlk = !_warClearLine(u.x, u.y, wp.x, wp.y);
-      if (u._wpBlk) { const n = _warPathNext(u, wp.x, wp.y); if (n) return dirTo(u.x, u.y, n.x, n.y) || r; }
+      if (u._wpBlk) { const n = _warPathNext(u, wp.x, wp.y, fight); if (n) return dirTo(u.x, u.y, n.x, n.y) || r; }
       return dirTo(u.x, u.y, wp.x, wp.y) || r;
     },
     hold(ctx, u, e) { return fight.holder === u.side && !!e.ctl && !(T790_NO_SNAP && u._t1183Shooter === e); },   // 추격 없음 — 물러나는(대형으로 돌아간) 적은 지키는 쪽이 쫓지 않는다
@@ -12063,13 +12130,14 @@ function __p3Bind(mock) {
     T790_NO_SNAP, _t790Stat, _t790Mark, _t790Place, _t790Lag, _warSetupReturn, _warPaceReturn,   // ★[T790] 하네스(`test-war-nosnap`)가 운영과 같은 문을 부른다(내보내기만)
     _t804Way, _t804WalkOut, _t804Stat, _warWalkGroupTo,   // ★[T804] 걷는 몸의 길 · 전진 풀기 걸음 — 하네스가 운영과 같은 문을 부른다(내보내기만)
     _t821Stat,   // ★[T821] 재개형 걸음 탐색 셈(내보내기만 — 관찰자 · 하네스)
+    _t1349Stat, _t1349Stand, _t804Nearest, T1349_WAR_PATH_SHARE: () => T1349_WAR_PATH_SHARE,   // ★[T1349] 물음 나눠 쓰기 셈 · 나선 답 기억(내보내기만 — 관찰자 · 하네스)
     T822_BODY_SEED, _t822Rekey, _t833Boot, _t747Pack, _t747Restore, t1133Stat: () => Object.assign({ on: T1133_BAG }, _t1133Stat), t1166Stat: () => Object.assign({ on: T1166_LOT, pend: _t1166Pend.length }, _t1166Stat), _t1166Flush, t1167Stat, _t1167Pack, _t1167Early, _t1167Bind, _t1167Pref, _warDespawnPid, serializeEcon, restoreEcon, _t728Meta,   // ★[T833] 몸 주사위 신원 · 다시 뜬 판 — 하네스(`test-body-seed-restart`)가 운영과 같은 문을 부른다(내보내기만)
     _warDraftPids, _warReleasePid, _t1183SurrenderDeaths, econDayToMs, _warEnsureBody, _warSampleComp, _vbFootprint,
     threatOf, _warWriteThreats, _warOutMul, _lifeJobSites, _lifeJobSiteOK, _warRoutePts, _warTreeCell, computeRoutePts,
     _t619Region, _t619RedigKeep,   // ★[T619] 쌍 둘레 · 다시 파기 거르개 — 자(`t619-h-audit`)가 **이 함수**로 센다(사본 0)
     _econSameOf, _warEatBySpoil,   // ★[T458] 같은 물건 한 줄 · 상하는 것부터 — 하네스가 **이 함수**로 등가 표를 센다(사본 0)
     _warLootAccept, _warLootPickup,   // ★[T466] 약탈 = 행위 — 하네스가 운영과 같은 훅을 war-core 에 건다
-    _warSnapToSlots, _warStandNear, _warPathNext, _warReleaseAdv, _warDetourFor, _t1330Stat, _t1330Memo,   // ★[T541] 막힌 슬롯 → 설 수 있는 가장 가까운 칸 · 막힌 곧은 걸음 → 걸음 경로 — 하네스가 **이 함수들**을 부른다
+    _warSnapToSlots, _warStandNear, _warPathNext, _warReleaseAdv, _warDetourFor, _t1330Stat, _t1330Memo, _t1338Stat,   // ★[T541] 막힌 슬롯 → 설 수 있는 가장 가까운 칸 · 막힌 곧은 걸음 → 걸음 경로 — 하네스가 **이 함수들**을 부른다
     _t476Decide, _t476DenVil,   // ★[T476] 토벌 결단 · 소굴 어댑터 — 하네스가 운영과 같은 결단을 부른다
     _warRationLayDownBody, _warBagDrop, _t476DenRefresh, _t476DenSync,   // ★[T748] 켬 전용 일곱 길 — 하네스(`test-moment-lot` ⑨~)가 **이 함수들**을 그대로 부른다(사본 0)
     _t312Deliver, _t347Deliver, _t544PackPut, _t544PackIn, _t368Hold, _t368Deliver,
@@ -13723,8 +13791,35 @@ function _t1276Stand(vil) {
   vil.econ._t1276Stand = S;
   return S;
 }
+// ★★[T1374 ② 2026-11-18 · 지시 T1374 ㉳] **다음 거둠 날** — econ `_t1374Next`(출생 문 `T1374_BIRTH_HARV` · 기근 문 `T1374_FAMINE_HARV` 가 읽는다 · 밭 세계 · 둘 다 끔이면 무동작).
+//   = 이 마을 밭에 선 작물이 익는 날(작물 정본 `readyDay(작물, 심은 날)`) 가운데 가장 이른 날. 선 작물이 없으면(가을걷이 뒤 빈 밭) 앞으로 열두 달
+//     그 달 첫날에 심을 수 있는 작물(청동기 묶음 · 논 · 밭 · 작물 정본 `sowableMonth`)이 익는 가장 이른 날. 새 수 0 — 작물 달력 · 춘화 · 휴면 정본 그대로.
+const _T1374_RD = new WeakMap();   // 칸 항목 → 익는 날(심을 때 한 번 셈 · 저장 안 함)
+const _t1374Fb = new Map();        // '논|밭' + 달 첫날 → 그때부터 가장 이른 거둠 날(심을 수 있는 작물)
+function _t1374NextHarv(vil, day) {
+  const C = _Crops(); if (!C || !vil._crop) return null;
+  let next = Infinity;
+  for (const e of vil._crop.values()) { if (!e || !e.c) continue; let rd = _T1374_RD.get(e); if (rd === undefined) { rd = C.readyDay(e.c, e.p); _T1374_RD.set(e, rd); } if (rd != null && rd > day && rd < next) next = rd; }
+  if (next !== Infinity) return next;
+  const Cal = require('./calendar'), flds = [];
+  if (vil._farmSet && vil._farmSet.size) { const nD = vil._drySet ? [...vil._farmSet].filter((k) => vil._drySet.has(k)).length : 0; if (nD > 0) flds.push('밭'); if (vil._farmSet.size - nD > 0) flds.push('논'); }
+  for (let d = day, mo0 = -1; d < day + 366; d++) {
+    const mo = Cal.dateOf(d).month; if (mo === mo0 && d !== day) continue; mo0 = mo;
+    for (const f of flds) { const key = f + '|' + d; let r = _t1374Fb.get(key);
+      if (r === undefined) { r = Infinity; for (const id of C.sowableMonth(f, mo)) { if (!C.T1201_BRONZE_SET.has(id)) continue; const x = C.readyDay(id, d); if (x != null && x < r) r = x; } _t1374Fb.set(key, r); if (_t1374Fb.size > 4096) _t1374Fb.clear(); }
+      if (r < next) next = r; }
+    if (next !== Infinity && next <= d + 1) break;
+  }
+  return next === Infinity ? null : next;
+}
+function _t1374Next(vil) {
+  const E = _lifeEcon(); if (!E || !(E.T1374_BIRTH_HARV || E.T1374_FAMINE_HARV) || !vil || !vil.econ) return;
+  const day = state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0;
+  vil.econ._t1374Next = _t1374NextHarv(vil, day);
+}
 function _lifeHeadlessDay(vil) {
   _t1276Stand(vil);   // ★[T1276] 하루 한 번(라이브 · 판 자 — 몸 갈래여도 선다)
+  _t1374Next(vil);   // ★[T1374 ②] 다음 거둠 날(출생 문 · 끔 = 무동작)
   _lifeVL();   // lazy 로드 방어(단독 호출 경로 — 5e8d5f5 'is not defined' 클래스 재발 금지)
   const day = state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0;
   let farmerN = 0, popN = 0;

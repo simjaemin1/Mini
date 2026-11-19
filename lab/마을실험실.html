@@ -14304,14 +14304,31 @@ function _t1197Want(p, k) {
 function _t1197Eat(v, need, body) {
   const fe = v._foodEaten, before = {};
   if (fe) for (const r in fe) before[r] = fe[r];
+  const lh0 = T1309_HEALTH_EATEN ? v._t1309LotH : null;   // ★[T1355] 그날 칸의 로트 건강(이 끼니 앞 · 끔 = null)
   const gap = consumeFood(v, need);
   const now = v._foodEaten;
   if (body) {
     const b = v._t1197Body || (v._t1197Body = {});
     for (const r in now) { b[r] = (b[r] || 0) + now[r]; now[r] = 0; }
     for (const r in before) now[r] = before[r];
-  } else for (const r in before) now[r] = (now[r] || 0) + before[r];
+    if (T1309_HEALTH_EATEN) { v._t1197BodyLot = _t1355LotAdd(v._t1197BodyLot, v._t1309LotH); v._t1309LotH = lh0 || null; }   // ★[T1355] 몸 끼니의 로트 건강도 다음 날 경계로(식단 칸과 같은 길)
+  } else {
+    for (const r in before) now[r] = (now[r] || 0) + before[r];
+    if (T1309_HEALTH_EATEN) v._t1309LotH = _t1355LotAdd(lh0, v._t1309LotH);   // ★[T1355] 그날 칸에 이 끼니를 더한다(식단 칸과 같은 길)
+  }
   return gap;
+}
+// ★★[T1355 2026-11-18 · T1309 고침 — `T1309_HEALTH_EATEN` 켬 안 · 끔 = 무동작(종전 바이트)] **로트 건강 칸은 식단 칸과 같은 끼니를 모은다.**
+//   `consumeFood` 는 부를 때마다 식단 칸(`_foodEaten`)과 로트 건강 칸(`_t1309LotH` — 그 끼니에 나간 로트의 [건강 합, 단위])을 그 끼니로 새로 쓴다.
+//   T1197 몸 끼니(하루 여러 번)는 위 `_t1197Eat` 가 식단 칸만 모았다(몸 끼니 → `_t1197Body` → 다음 날 경계 · 마을 끼니 → 그날 칸에 더함) —
+//   로트 건강 칸은 마지막 한 끼만 남아, 몸 끼니로 나간 로트의 `h` 는 그날 먹은 것 건강(`_t1309EatenHealth`)에서 빠지고 그 단위는 평균 칸(`_t1298Hw`)으로 셌다(보고 T1355 §2).
+//   ⇒ 같은 길로 모은다: 몸 끼니 → `_t1197BodyLot` → 날 경계(`t1197Day`)에 그날 칸 · 마을 끼니 → 그날 칸에 더함. 새 수 0 · 몸 끼니가 없으면(T1197 끔) 하루 한 끼라 종전과 같다.
+function _t1355LotAdd(A, B) {   // 로트 건강 칸 둘을 품목마다 더한 새 칸(B 없으면 A 그대로)
+  if (!B) return A || null;
+  const o = {};
+  if (A) for (const k in A) o[k] = [A[k][0], A[k][1]];
+  for (const k in B) { const x = o[k] || (o[k] = [0, 0]); x[0] += B[k][0]; x[1] += B[k][1]; }
+  return o;
 }
 // ★★[T1209 2026-11-07 · ★재민 11-07 "몸이 꺼내 먹어도 마을이 비지 않는다"] **모자란 솥은 가장 위태로운 사람부터** — 손잡이 `T1209_MEAL_TRIAGE`(끔 기본 · `=1` 켬 · 끔 = T1197 한 솥 같은 비율 그대로 · T1197 끔이면 이 줄을 안 탄다).
 //   까닭(계측 · 보고 T1209 §1): 켬 판 · 끔 판의 곳간은 **같이** 빈다(보릿고개 — 여름 · 늦여름 생산 ≈ 제 몫 · 두 판의 못 먹은 몫 비율이 같다). 갈린 것은 나눔이다 —
@@ -14379,7 +14396,8 @@ function t1197Kill(v, p, body) {
 function t1197Day(v, day) {
   const M = _t1197(); const d0 = day - 1, d1 = day;
   v._t1197Dead = null; v._t1198Gone = null;   // 그날 빠진 사람 목록(호스트가 날 경계 뒤 읽는다)
-  { const fe = v._foodEaten || (v._foodEaten = {}), b = v._t1197Body; for (const r in fe) fe[r] = 0; if (b) for (const r in b) fe[r] = (fe[r] || 0) + b[r]; v._t1197Body = null; }   // 몸 끼니가 그날 식단의 앞 몫
+  { const fe = v._foodEaten || (v._foodEaten = {}), b = v._t1197Body; for (const r in fe) fe[r] = 0; if (b) for (const r in b) fe[r] = (fe[r] || 0) + b[r]; v._t1197Body = null;   // 몸 끼니가 그날 식단의 앞 몫
+    if (T1309_HEALTH_EATEN) { v._t1309LotH = v._t1197BodyLot || null; v._t1197BodyLot = null; } }   // ★[T1355] 로트 건강 칸도 같이(몸 끼니 몫이 그날 칸의 앞 몫 · 끔 = 무동작)
   const E = _fdEaters(v), eat = new Set(E);
   for (const p of v.npcs) { _t1197Init(p, d0); if (!eat.has(p) && p._mD < d1) p._mD = d1; }   // 원정 팩 병사 — 시간은 흐르되 게이지는 제 짐(T906)이 정한다
   for (const p of E) p._fdS = 0;
@@ -14958,6 +14976,30 @@ function houseCrewDay(v, s2, crew, labor, tripsEach, perLoad, roundS, dbg, advan
 //     서버 정본 두 수(`villages.js` 의 그 두 상수 · `__labProbe._t400Probe.LIFE_CREW` · `.LIFE_STAGE_PDAY` 로 읽는다 — 사본 0)를 준다. 안 붙인 마을(서버 · 다른 자 · 랩 HTML)은 한 글자도 안 닿는다.
 //   ★[T1056] 랩 HTML 둘(마을실험실 · 전쟁실험실)의 생활층 집 고리도 이 손잡이를 읽는다(켬 문 `_t1056H` — 켬 = 마을 집터를 아래 `labSiteCrewDay` 가 짓는다 · 끔 = 종전 셋째 규칙 = 종전 바이트).
 const T1050_LAB_HOUSE = !(typeof process !== 'undefined' && process.env && process.env.T1050_LAB_HOUSE === '0');
+// ★★★[T1373 2026-11-18 · ★재민 11-18 확정 · 지시 T1373] 손잡이 `T1373_HOME_CAP`(★켬 기본 · `'0'` = 끔 = 종전 바이트 · 세계 갈래 0) — **인구 상한의 땅 몫 = 집터 수.**
+//   재민 11-18: "사냥이나 벌목, 광업은 마을 밖에서 하는 건데 그게 대체 무슨 상관이야? … 순수 마을 셀 수로만 세는 게 옳지 않냐 · 난 집터 개수 때문에 상한을 뒀던 건데" ·
+//     "땅이 좁은 건 인구성장만 느려지는 거고, 지워지는 길은 없는 거 맞지? 그냥 상한 역할이잖아".
+//   종전 — 인구 식의 K = min(식량 자리 slotK · 식량 흐름 prodK · 땔감 fuelK). slotK = 농부 · 어부 · 사냥꾼 · 채집 자리 = 영토 크기 × 땅 밀도(`jobCapacity`)이고
+//     땅 밀도엔 계절 · 날씨 · 풍흉 배수(v2 `applyLandModifiers` — 겨울 지력 0.80 · 물 0.85 · 사냥감 0.90)가 걸려 겨울마다 slotK 가 사람 밑으로 내려가고,
+//     식량 빚 켬(T1074) 뒤 로지스틱 음수 몫 `min(slotK, fuelK)` 가 곳간과 무관하게 가장 늙은 사람을 지웠다("K 위 죽음"의 땅 몫 — 보고 T1373 §1).
+//   켬 — ⓐ 인구 식의 K 에서 slotK 를 뺀다: K = min(prodK · fuelK) · 지우는 몫 = fuelK 넘김만(땅으로 지우는 길 0).
+//        ⓑ 땅 상한 = 주거 문 하나(성장만 막는다 · 지우지 않는다 — "집 부족으론 안 죽음"): 주거 문 `_hcap` = min(econ 주거 · 지은 침상 `_mapBeds` · **집터 수 × 가구원**)
+//           집터 수 × 가구원 = 마을 칸(econ 땅 × 25 — 서버 `landSizeOfCells` 의 그 환산 · 영토 칸) ÷ 집터 원반(`village-layout` `LOT_CELLS` — 부지 원 r 6.5 · 124칸) 내림 × 한 집 6명(`HOUSE_CAP_PER_FLOOR`).
+//           계절 · 날씨 · 풍흉 배수는 상한에 안 탄다(마을 칸은 배수가 없는 크기 · `applyLandModifiers` 도 size 를 그대로 둔다).
+//   새 수 0 — 25 · 124 · 6 은 서버 · 마을 배치 정본의 수(배치 모듈을 읽는다 · 사본 0). 랩 · 서버 같은 줄(랩은 env 가 없어 켬).
+//   ⚠땔감 몫(fuelK — 나무 배수 0.90 이 벌목 자리 · 1인 산출 둘에 탄다)은 이 카드에서 안 바꾼다(표만 · 재민: 땔감 부족을 없애는 쪽).
+// ★[PM land1085 2026-11-19] **끔 기본으로 돌려 착지**('1' 만 켬 · 끔 = 종전 바이트) — land1084(길 고침 켬 기본) 위에서 켬 판 새 기준선이 시드 1020 빈 마을 4/51 · 7 1/51(끔 0 · 0 · 0 · 인구 켬 3,383 · 3,369 · 3,972 : 끔 3,345 · 3,582 · 3,884).
+//   "마을은 하나도 망하면 안 된다"(재민 11-04)와 부딪혀 재민 판정 뒤 켠다(족보 881 · 켬 후보 기준선 `계측/서버기준선_집터켬_후보_2026-11-19.json`).
+const T1373_HOME_CAP = (typeof process !== 'undefined' && process.env && process.env.T1373_HOME_CAP === '1');
+function t1373HomeCap(v) {   // 집터 수 × 가구원 — 마을 칸 ÷ 집터 원반 내림 × 한 집 6명(배치 모듈 없거나 땅 크기 없으면 무한 = 상한 없음)
+  const L = _villageLayoutMod();
+  if (!L || !L.LOT_CELLS || !(L.LOT_CELLS.length > 0) || !v || !v.land || !(v.land.size > 0)) return Infinity;
+  return Math.floor((v.land.size * 25) / L.LOT_CELLS.length) * L.HOUSE_CAP_PER_FLOOR;
+}
+function t1373Hcap(v) {   // 주거 문 상한 — econ 주거 ∧ 지은 침상(종전 `_hcap`) ∧ 켬이면 집터 수 × 가구원
+  const h = Math.min(v.housing !== undefined ? v.housing : Infinity, v._mapBeds !== undefined ? v._mapBeds : Infinity);
+  return T1373_HOME_CAP ? Math.min(h, t1373HomeCap(v)) : h;
+}
 function labHouseAttach(v, cells0, life) {
   if (!T1050_LAB_HOUSE || !T400_BUILD_ACT || !v || !life || !(life.crew > 0) || !(life.pday > 0)) return false;
   v._t1050 = { cells: (cells0 | 0), site: null, crew: life.crew, pday: life.pday, sum: { days: 0, crewDays: 0, trips: 0, took: 0, adv: 0, stallDays: 0, built: 0 } };
@@ -15228,6 +15270,29 @@ function farmFlowPerDay(v, fN) {
 //   ① 한 칸 1년 1작(생활층 `_t1243Pick`) — "다음 익는 날 − 앞 수확 ≥ 365날" 대신 "앞 수확과 다른 농사 해(봄 해 · 달력 정본 `springYearOf`)" (T1239 그루갈이 0).
 //   ② 마른 낟알 저장(작물 정본 `keepDaysOf`) — 곡물 · 콩류 낟알 = 唐六典 卷19 太倉署 「凡粟支九年，米及雜種三年」(T1247 K01) · 조 9년 · 그 밖 3년.
 //   ③ 개간 크루(생활층 `_lifeClearDay`) — 추상 상한 `LIFE_CREW` 2 대신 그날 농부 전부의 남은 낮(칸 개간 360분 = 드라베드 1.44분/m² × 250 m² · 농부 낮 1,008분 · T1221).
+// ★★[T1374 ① 2026-11-18 · 지시 T1374 · ★재민 11-18 "켤 수 있도록 계속 튜닝"] **밭 세계 농부의 부산물 곡식 = 이중계상** — 손잡이 `T1374_NO_BYGRAIN`(끔 기본 · `=1` · 밭 세계 켬일 때만).
+//   밭 세계(`T1243_FARM_ON`)는 농부의 주산출(`food`)을 걷고 몸이 거둔 칸만 곳간에 넣는다(위 `T100_FIELD_YIELD` 한 줄). 그런데 부산물 루프는 "끈 팔과 같은 길"로 남아
+//     농부 한 사람이 날마다 밀 0.25 · 쌀 0.20 · 보리 0.15 × `baseAmt` 를 곳간에 낸다(겨울에도 · 계절 배수만 곱해) — 밭이 벼 · 보리 · 밀을 **실제 작물로** 내는 세계에서
+//     같은 곡식을 수식이 한 번 더 낸다. 계측(보고 T1374 §1): 1020 켬 판 5월 한 달 부산물 곡식 23,327 하루치 = 그달 먹은 것(14,633)의 1.6배 · 6월 곳간 유입의 39%.
+//   켬 — 농부 부산물 가운데 **밭 작물 정본에 있는 품목**(청동기 묶음 `T1201_BRONZE_SET` — 벼 · 보리 · 밀)은 안 낸다. T135(나무 층이 대는 품목은 부산물로 안 낸다)와 같은 문법 · 같은 까닭.
+//   삼 · 모시(섬유)는 밭 작물 정본 밖이라 그대로. 새 수 0 · 배수 0. 작물 철(`T1179_CROP_SEASON`)은 이 몫을 밭 못자리에 쌓던 길이라 켬이면 밭 세계에서 쌓을 것이 없다.
+const T1374_NO_BYGRAIN = T1243_FARM_ON && (typeof process !== 'undefined' && process.env) && process.env.T1374_NO_BYGRAIN === '1';
+// ★★[T1374 ② 2026-11-18 · 지시 T1374 ㉳ 출생 문] **곳간이 다음 거둠까지 한 사람 더 먹일 때만 늘림** — 손잡이 `T1374_BIRTH_HARV`(끔 기본 · `=1` · 밭 세계 켬일 때만).
+//   밭 세계는 곳간이 한 해 두 번(6월 보리 · 밀 · 9 ~ 10월 나머지)만 찬다. 종전 출생은 K(부양력)만 봐서 첫 한 달에 마을이 8 → 20명(곳간은 그대로) · 가을걷이 뒤 석 달에 인구가 두 배가 되고
+//     곳간은 다음 6월까지 못 가 1 ~ 3월에 마을째 굶었다(보고 T1374 §1 — 1020 켬 판 날 60 ~ 100 굶어 죽음 821 · 1 ~ 3월 1,466 · 빈 마을 14).
+//   T1297 문(곳간 ≥ (사람 + 1) × 하루치 × max(30일, 겨울 남은 날))은 겨울 끝(3월 1일)까지만 본다 — 밭 세계의 굶는 철은 첫 거둠 앞(3 ~ 5월 · 보릿고개)이다.
+//   켬 — 문턱 날 수 = max(30일 · 기근 문 그 수, 다음 거둠 날 − 오늘). 다음 거둠 날 = 생활층이 적는 `_t1374Next`(그 마을 밭에 선 작물이 익는 가장 이른 날 — 작물 정본 `readyDay` ·
+//     선 작물이 없으면 앞 열두 달 심을 수 있는 작물이 익는 가장 이른 날). 그날 늘림만 0 — K · 로지스틱 · 죽음 · 이주 줄 무변. 새 수 0.
+const T1374_BIRTH_HARV = T1243_FARM_ON && (typeof process !== 'undefined' && process.env) && process.env.T1374_BIRTH_HARV === '1';
+// ★★[T1374 ③ 2026-11-18 · 지시 T1374 ㉯ 일손] **기근 문도 다음 거둠까지** — 손잡이 `T1374_FAMINE_HARV`(끔 기본 · `=1` · 밭 세계 켬일 때만).
+//   피커 기근 블록(`foodEquiv < N × 30` — 식량 직업 강제)은 곳간 30일치를 본다. 밭 세계의 곳간은 거둠 사이 석 달 ~ 여덟 달을 가야 하는데,
+//     30일치가 넘는 동안은 석공 · 전사 · 대장장이를 뽑아 8명 마을에서 식량 일 아닌 사람이 25 ~ 30%(보고 T1374 §1 — 1020 고침 판 날 45 ~ 75).
+//   켬 — 피커가 보는 곳간을 **다음 거둠까지의 날로 잰다**: foodEquiv = 곳간 ÷ (`t1374NeedDays` ÷ 30) — 기근 블록(30일치 밑)은 "곳간이 다음 거둠까지 못 간다"가 되고,
+//     블록 안팎의 다른 날 수 문턱(하드 플로어 6 · 광맥 18 · 땔감 날 수)도 같은 자로 읽는다(다음 거둠이 멀면 더 깐깐). 30 이하 지평(다음 거둠 30일 안)이면 ÷ 1 = 종전.
+//     블록 줄 글자(`foodEquiv < N * 30`)는 하네스 넷이 핀이라 그대로 두고 읽는 합계 한 줄만 바꾼다. 새 수 0.
+const T1374_FAMINE_HARV = T1243_FARM_ON && (typeof process !== 'undefined' && process.env) && process.env.T1374_FAMINE_HARV === '1';
+function t1374NeedDays(v, day) { const n = v && typeof v._t1374Next === 'number' ? v._t1374Next - day : 0; return Math.max(T1297_FAMINE_DAYS, n > 0 ? n : 0); }
+function _t1374FieldCrop(r) { const C = _crops(); return !!(C && C.T1201_BRONZE_SET && C.T1201_BRONZE_SET.has(r)); }
 const T1284_FARM_YIELD = T1243_FARM_ON && (typeof process !== 'undefined' && process.env) && process.env.T1284_FARM_YIELD === '1';
 const T1276_FARM_K = T1243_FARM_ON && (typeof process !== 'undefined' && process.env) && process.env.T1276_FARM_K === '1';
 const T1276_YEAR = 365;   // 한 해 날 수(달력 평년 · `calendar.yearLen` 평년과 같은 값 — econ 은 달력을 안 부른다)
@@ -17805,6 +17870,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
           //   벌목꾼의 `acorn 0.06/일` 이 그것이다: 도토리는 이제 참나무를 베거나 딸 때 실제로 나온다.
           //   주입이 없으면(되돌림·v1) 이 줄은 아무것도 안 한다(비트 동일).
           if (v._world && v._world.forageTakeFn && v._world.forageRealItems && v._world.forageRealItems.indexOf(r) >= 0) continue;
+          if (T1374_NO_BYGRAIN && npc.currentJob === 'farmer' && _t1374FieldCrop(r)) continue;   // ★[T1374 ①] 밭 세계 = 밭이 내는 곡식은 부산물로 안 낸다(위 T135 와 같은 이중계상 · 끔 = 이 줄 무동작)
           if (r === 'ramie') {
             if (v.npcs.length < RAMIE_MIN_POP) continue;   // 미성숙 마을(개척기) 모시 안 짬 — 콜로니 취약 궤적 무교란
             if ((v.storage.ramie || 0) >= Math.max(v.npcs.length * RAMIE_BOOT_PC, ((v._consEMA || {}).ramie || 0) * 30)) continue;   // 수요 충족 → 스킵(잉여 0)
@@ -18380,7 +18446,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
   const fuelK = v._fuelKema;
   v._kDbg = { slot: +slotK.toFixed(1), prod: +prodK.toFixed(1), fuel: +fuelK.toFixed(1) };   // ★K 분해 노출: "이 마을은 뭐에 막혔나"(경작지·식량흐름·연료) — 진단·UI 근거
   if (T931_SLOTK_EMA || T931_SLOTK_SEASON) v._kDbg.slotRaw = +_slotKraw.toFixed(1);   // ★[T931] 켬만 — 관성 앞 그날 자리(진단 · `slot` 은 K 에 든 값)
-  const Kraw = Math.min(slotK, prodK, fuelK);   // ★자연 리비히 min: 식량 자리·식량 흐름·연료 흐름. (옛 K_MAX=110 임의 천장 폐지 — 수준은 지형+MB/MC 확장이 결정)
+  const Kraw = T1373_HOME_CAP ? Math.min(prodK, fuelK) : Math.min(slotK, prodK, fuelK);   // ★자연 리비히 min: 식량 자리·식량 흐름·연료 흐름. (옛 K_MAX=110 임의 천장 폐지 — 수준은 지형+MB/MC 확장이 결정) · ★[T1373 ⓐ] 켬 = 식량 자리를 뺀다(땅 상한은 아래 주거 문)
   const K = Math.max(POP_MIN, Kraw);
 
   // 5) 인구 θ-로지스틱 갱신 — dP = r·N·(1−(N/K)^θ). θ>1: K의 ~80%까지 빠르고 이후 급감(S곡선의 상단을 압축)
@@ -18390,7 +18456,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
   //   식량 빚이 사람마다 치른다(아래 기아 사망 고리로 따로 죽이지 않는다). 출생 쪽(양수)은 그대로 prodK 가 막는다.
   //   음수는 식량 밖 K(자리 slotK · 땔감 fuelK)를 넘긴 몫만 남는다 — 그건 식량이 아니라 자리 · 연료의 일이다.
   if (T1074_FOOD_DEBT && _logiTerm < 0) {
-    const _Knf = Math.max(POP_MIN, Math.min(slotK, fuelK));
+    const _Knf = Math.max(POP_MIN, T1373_HOME_CAP ? fuelK : Math.min(slotK, fuelK));   // ★[T1373 ⓐ] 켬 = 땅으로 지우는 몫 0(땔감 넘김만)
     _logiTerm = Math.min(0, POP_GROWTH_RATE * _homeN * (1 - Math.pow(_homeN / Math.max(1, _Knf), LOGISTIC_THETA)));
   }
   let dP = _logiTerm;
@@ -18441,12 +18507,13 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
     v.lastStats = stats;
   }
   // ★주거 성장 게이트: 집이 부족하면(_homeN≥주거) 인구가 더 못 늚. 감소는 식량(famine)만 — 집 부족으론 안 죽음.
-  const _hcap = Math.min(v.housing !== undefined ? v.housing : Infinity, v._mapBeds !== undefined ? v._mapBeds : Infinity);   // ★완공 계약: 맵 완공 침대(_mapBeds)가 상한(3사본 동기화)
+  const _hcap = t1373Hcap(v);   // ★완공 계약: 맵 완공 침대(_mapBeds)가 상한(3사본 동기화) · ★[T1373 ⓑ] 켬 = 집터 수 × 가구원도(위 머리말 · 끔 = 종전 두 칸 min 그대로)
   const _gated = (dP > 0 && _hcap !== Infinity && _homeN >= _hcap);
   if (_gated) dP = 0;
   // ★[T1149 ⓑ] 출생에 곳간 문 — 곳간이 다가오는 겨울을 한 사람 더 먹일 만큼일 때만(위 `T1149` 주석) · 막힌 날 표지 `_t1149Gate`(표 기계가 센다)
   if (T1149.birth) { v._t1149Gate = 0; if (dP > 0 && totalFoodEquivalent(v) < (_homeN + 1) * DAILY_FOOD_CONSUMPTION * t1149WinterDays(day)) { dP = 0; v._t1149Gate = 1; } }
   if (T1297_BIRTH_FOOD) { v._t1297Gate = 0; if (T1306_BIRTH_GRADE) dP = t1306GradeDP(v, dP, _homeN, day); else if (dP > 0 && totalFoodEquivalent(v) < (_homeN + 1) * DAILY_FOOD_CONSUMPTION * t1297NeedDays(day)) { dP = 0; v._t1297Gate = 1; } }   // ★[T1297] 출생 곳간 문(위 머리말 · 끔 = 이 줄 무동작 · 칸 0)
+  if (T1374_BIRTH_HARV) { v._t1374Gate = 0; if (dP > 0 && totalFoodEquivalent(v) < (_homeN + 1) * DAILY_FOOD_CONSUMPTION * t1374NeedDays(v, day)) { dP = 0; v._t1374Gate = 1; } }   // ★[T1374 ②] 다음 거둠까지(밭 세계 · 끔 = 이 줄 무동작)
   if (T1346_BIRTH_FLOW) { v._t1346Gate = 0; if (dP > 0 && t1346FlowShort(v)) { dP = 0; v._t1346Gate = 1; } }   // ★[T1346 ⓑ] 흐름 문(위 머리말 · 끔 = 이 줄 무동작)
   v._dpDebug = { K: +K.toFixed(1), logi: +_logiTerm.toFixed(3), hunger: +_hungerTerm.toFixed(3), health: +_healthTerm.toFixed(3), happy: +_happyTerm.toFixed(3), prestige: +_prestigeTerm.toFixed(3), housing: (v.housing !== undefined ? +(+v.housing).toFixed(1) : null), gated: _gated, dP: +dP.toFixed(3) };
   // ΔP 상한
@@ -19427,7 +19494,7 @@ function pickDeficitJob_rational(v, world) {
   const N = v.npcs.length || 1;
   const cap = jobCapacity(v);
   const counts = jobCounts(v);
-  const foodEquiv = totalFoodEquivalent(v);
+  const foodEquiv = totalFoodEquivalent(v) / (T1374_FAMINE_HARV ? t1374NeedDays(v, (v._world && v._world.day) || 0) / T1297_FAMINE_DAYS : 1);   // ★[T1374 ③] 켬 = 곳간을 다음 거둠까지의 날로 잰다(기근 블록 30일치 = 다음 거둠까지 · 끔 = ÷ 1 그대로)
   const forageLandMean = Math.max(0.3, (v.land.fertility + v.land.wood + v.land.stone) / 3);
 
   // ★S2 도구 자본 우선(기근보다 앞): 도구(석기)가 치명적으로 부족하면(맨손 0.25× = 식량생산 폭락) 석공 먼저.
@@ -19564,7 +19631,7 @@ function pickDeficitJob_rational(v, world) {
   //     하나 더 읽는다: **남은 날 = 곳간 ÷ 하루 소비 EMA(`_consEMA.wood`) < 30** — 30 은 v2 가 흐름 수요를 재는 바로 그 창
   //     (`flowT = _consEMA × 30` · economy-sim-v2 computeShadowPrices)이다. 새 수 0. 끔이면 이 줄은 종전 그대로(비트 동일).
   const _hPick = T1046_WOOD_SHARE
-    ? Math.min(v.housing !== undefined ? v.housing : Infinity, v._mapBeds !== undefined ? v._mapBeds : Infinity)   // ★[T1046] 켬 = 출생 문 `_hcap` 과 같은 상한(econ 주거 ∧ 지은 침상)
+    ? t1373Hcap(v)   // ★[T1046] 켬 = 출생 문 `_hcap` 과 같은 상한(econ 주거 ∧ 지은 침상 · ★[T1373] 켬이면 집터 수 × 가구원도 — 같은 함수)
     : (T958_HOUSE_REAL && v._t958Plan !== undefined) ? v._t958Plan : v.housing;   // ★[T966] 켬 = 계획 주거(위 `_t958Plan`) · 끔 · 그 칸 없음 = 주거 그대로(종전)
   if (((v.housing !== undefined && N >= _hPick * 0.95 && (v.storage.wood || 0) < N * 2)
        || (woodEarlyOn() && (woodEarlyMode() === 1 || _t663Birth) && (v.storage.wood || 0) < ((v._consEMA && v._consEMA.wood) || 0) * 30))
@@ -20547,7 +20614,7 @@ module.exports = {
   T1259_WOOD_CAP, setT1259WoodReader, T1271_ORE_CAP, setT1271OreReader, jobCapacity,
   T1192_FISH_SPECIES,FishGoods,preservedFactor,fishPreserveReserve,_t1192Preserve,
   T1188_ORE_SPLIT, OreGoods, oreTotal, oreReserveTotal, oreValue, oreSourceMix, migrateOre, takeOre,
-  T1149, t1149LeanDays, t1149WinterDays, t1149WinterNeed, T1297_BIRTH_FOOD, T1297_FAMINE_DAYS, t1297WinterLeft, t1297NeedDays, T1306_BIRTH_GRADE, t1306Ratio, t1306GradeDP, T1319_AUTUMN_LOOK, T1319_AUTUMN_MIG, t1319AutumnLeft, t1319MigNeedDays, T1346_BIRTH_FLOW, t1346FlowShort,   // ★[T1346] 흐름 문(하네스가 정본 함수를 그대로 부른다) · ★[T1149] 겨울 골짜기 — 손잡이 갈래 · 달력 셈 · 다가오는 겨울에 모자랄 식량(v2 가을 사 모으기가 읽는다)
+  T1149, t1149LeanDays, t1149WinterDays, t1149WinterNeed, T1297_BIRTH_FOOD, T1297_FAMINE_DAYS, t1297WinterLeft, t1297NeedDays, T1306_BIRTH_GRADE, t1306Ratio, t1306GradeDP, T1319_AUTUMN_LOOK, T1319_AUTUMN_MIG, t1319AutumnLeft, t1319MigNeedDays, T1346_BIRTH_FLOW, t1346FlowShort, T1373_HOME_CAP, t1373HomeCap, t1373Hcap,   // ★[T1373] 땅 상한 = 집터 수 — 하네스가 정본 함수를 그대로 부른다 · ★[T1346] 흐름 문(하네스가 정본 함수를 그대로 부른다) · ★[T1149] 겨울 골짜기 — 손잡이 갈래 · 달력 셈 · 다가오는 겨울에 모자랄 식량(v2 가을 사 모으기가 읽는다)
   T1179_CROP_SEASON, t1179FieldDay, t1179Standing,   // ★[T1179] 작물 철 — 손잡이 · 밭 하루 · 밭에 선 먹을 것(계측)
   assignNPCJob, assignableJobs, JOB_SWITCH_COOLDOWN,
   t1113On, t1113Unhappy, t1113Happy, t1113LowMul, t1113IsFood, T1113_HAPPY_MID,   // ★[T1113] 행복 낮을 때 효과 셋 — war-core · 서버 · 하네스가 같은 술어를 읽는다(사본 0)   // ★[T1085] 촌장 지정 — 서버 동사 `assign_job` 이 부른다(규칙 사본 0)
@@ -20601,7 +20668,7 @@ module.exports = {
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)
   actDemandLeft, actDemandCap, fishDemandLeft, woodDemandLeft, forageDemandLeft, T374_DEMAND_STOP,
   setLotHook,   // ★[T748] 고르게 대기 칸 로트 훅(존 서버 켬만 꽂는다 · 랩 null)
-  T368_FARM_ACT, T1221_FARM_LABOR, T1243_FARM_ON, T1284_FARM_YIELD, T1276_FARM_K, t1276FieldFlow, t1276Note, T1260_FOOD_READS, T1279_COOK, T1286_COOK_SPARE, T1286_PRODK, t1286Cook: _t1286Cook, T1298_LEDGER, T1298_HEALTH, T1309_HEALTH_EATEN, T1309_DIVERSITY_EATEN, T1309_MOVE_CONS, t1309Group: _t1309Group, t1309EatenHealth: _t1309EatenHealth, t1298Moved: _t1298Moved, t1298Hw: _t1298Hw, t1298Carry: _t1298Carry, t1260FoodOf, t1260CookStaple: _t1260CookStaple, cookTarget, t368FoodPer: _t368FoodPer, t368EvenRelease, totalFoodProductionEquivalent,   // ★[T368] 농부 행위 — 손잡이 + 품목별 고르게 푸는 자리 + 생산 환산(하네스가 옮겨 적지 않는다 · 입구는 `harvestToGranary` 그대로)   // ★[T374] 그날 수요 — 몸통 하나 + 품목별 `D` 자리 셋 + 손잡이
+  T368_FARM_ACT, T1221_FARM_LABOR, T1243_FARM_ON, T1374_NO_BYGRAIN, T1374_BIRTH_HARV, T1374_FAMINE_HARV, t1374NeedDays, T1284_FARM_YIELD, T1276_FARM_K, t1276FieldFlow, t1276Note, T1260_FOOD_READS, T1279_COOK, T1286_COOK_SPARE, T1286_PRODK, t1286Cook: _t1286Cook, T1298_LEDGER, T1298_HEALTH, T1309_HEALTH_EATEN, T1309_DIVERSITY_EATEN, T1309_MOVE_CONS, t1309Group: _t1309Group, t1309EatenHealth: _t1309EatenHealth, t1298Moved: _t1298Moved, t1298Hw: _t1298Hw, t1298Carry: _t1298Carry, t1260FoodOf, t1260CookStaple: _t1260CookStaple, cookTarget, t368FoodPer: _t368FoodPer, t368EvenRelease, totalFoodProductionEquivalent,   // ★[T368] 농부 행위 — 손잡이 + 품목별 고르게 푸는 자리 + 생산 환산(하네스가 옮겨 적지 않는다 · 입구는 `harvestToGranary` 그대로)   // ★[T374] 그날 수요 — 몸통 하나 + 품목별 `D` 자리 셋 + 손잡이
   forageRegrowR, forageRegrowPerDay, actRegrowPerDay,   // ★[T347] 재생 — T341 과 **같은 몸통**(`_actRegrowR`), 분자만 갈린다   // ★[T325] 나무꾼 행위 · ★[T341] 예산식은 지웠다(나무는 개체다) — 남은 것은 게이트와 **재생 유도 둘**
   T100_ANCHOR_N, T100_HARVEST_PER_FARMER_YEAR, T100_K, T100_FIELD_YIELD,   // ★[T100 4판] 앵커 하나 · 실측 하나 · 유도값 하나 · 손잡이 — 생활층(`villages.js`)과 하네스가 **여기서만** 읽는다(사본 0)
   T1159_HOME_N, t1159HomeN,
@@ -20937,12 +21004,17 @@ if(T1188_ORE_SPLIT){
 // === 계절 시스템 ===
 //   v2 r7: 진폭 축소 — 인구 cycle 진동 완화. 평년 평균 = 1.0 유지.
 const SEASONS = ['spring', 'summer', 'autumn', 'winter'];
+// ★★[T1373 ⑤ 2026-11-18 · ★재민 11-18 "애초에 계절별로 나는 작물이 정해져 있잖아"] 손잡이 `T1373_NO_SEASON_YIELD`(끔 기본 · `'1'` 만 켬 · 끔 = 종전 바이트) —
+//   켜면 아래 계절 배수를 전부 1 로(겨울 지력 0.80 · 물 0.85 · 사냥감 0.90 · 나무 0.90 등 · 날씨 · 풍흉 배수는 그대로). 작물 철(`T1179_CROP_SEASON` — 작물마다 심는 달 · 익는 날)과
+//   실제 밭(`T1243_FARM_ON`)이 겨울을 따로 내므로 둘을 켠 세계에서 이 배수는 겨울을 두 번 센다(보고 T1373 §5 — 켤지는 재민).
+const T1373_NO_SEASON_YIELD = (typeof process !== 'undefined' && process.env && process.env.T1373_NO_SEASON_YIELD === '1');
 const SEASON_MULT = {
   spring: { fertility: 1.10, water: 1.0, game: 1.05, wood: 1.0, stone: 1.0, ore: 1.0 },
   summer: { fertility: 1.0, water: 1.15, game: 1.0, wood: 1.05, stone: 1.0, ore: 1.0 },
   autumn: { fertility: 1.15, water: 0.95, game: 1.0, wood: 1.0, stone: 1.0, ore: 1.0 },
   winter: { fertility: 0.80, water: 0.85, game: 0.90, wood: 0.90, stone: 0.95, ore: 0.95 },
 };
+if (T1373_NO_SEASON_YIELD) for (const _s of SEASONS) for (const _k of Object.keys(SEASON_MULT[_s])) SEASON_MULT[_s][_k] = 1;   // ★[T1373 ⑤] 켬 = 네 철 여섯 칸 다 1(위 표 글자는 그대로 — `test-t931-slotk-ema` 가 글자에서 읽는다)
 // ★★[T570 재민 10-02] 계절 = **달력 정본** `server/calendar.js` 의 달(기상청 봄 3~5 · 여름 6~8 · 가을 9~11 · 겨울 12~2 ·
 //   게임일 0 = 1년 3월 1일 · 윤년 4/100/400) — 이 줄 하나가 econ 의 계절이다(사본 0 · `events.seasonOf` 도 같은 함수를 부른다).
 //   되돌림 `T570_CALENDAR=0` = 옛 줄(`day % 365` · 경계 90/180/270) 글자 그대로(`calendar.legacySeasonOf`).
