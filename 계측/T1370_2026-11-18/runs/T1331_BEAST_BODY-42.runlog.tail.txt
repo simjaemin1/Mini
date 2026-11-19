@@ -1,0 +1,40 @@
+[hanbando] 🏘️ 마을 econ day 372: 인구 3636 · 스폰 NPC 429 · 캐러밴 실체 61/61(+17 도착27 회수31) · 저장큐 51행 분산 · 조각 746개 · 일 0ms(최대 조각 0ms ) · 마감 33.333251953125ms
+[hanbando] ⚔️ 전쟁 day 372: 선포 2[교역0·영토1·위신1·응징0] 전투 1(공승0/방승1) 사상 46 노획 0 · 활성 1 조공 0 · 실체 몸 1 교전 1
+[hanbando] 🐂 캐러밴#8446 귀환 출발: 광산7→광산5 food×8 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#8447 귀환 출발: 농촌11→광산6 charcoal×2 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#8448 귀환 출발: 어촌5→농촌1 food×0 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#8449 귀환 출발: 어촌4→임업4 herb×81 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#8451 귀환 출발: 어촌9→임업5 ramie×5 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#8452 귀환 출발: 어촌9→임업6 leather×84 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#8454 귀환 출발: 광산1→농촌3 feather×7 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#8455 귀환 출발: 어촌4→어촌9 ramie×7 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#8456 귀환 출발: 어촌4→어촌10 leather×277 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#8457 귀환 출발: 광산2→어촌14 stone×2 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#8458 귀환 출발: 농촌8→농촌6 hide×18 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#8459 귀환 출발: 어촌4→어촌16 pebble×3 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#8460 귀환 출발: 어촌9→농촌13 leather×0 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#8461 귀환 출발: 농촌16→농촌17 fur×10 — econ d372 도착 예정
+[hanbando] 🐂 캐러밴#8462 귀환 출발: 농촌21→농촌19 leather×52 — econ d372 도착 예정
+
+<--- Last few GCs --->
+
+[5339:0x14635000]   893028 ms: Mark-Compact (reduce) 2037.8 (2069.1) -> 2036.9 (2061.8) MB, pooled: 0 MB, 2068.51 / 0.00 ms  (average mu = 0.118, current mu = 0.000) last resort; GC in old space requested
+[5339:0x14635000]   895195 ms: Mark-Compact (reduce) 2036.9 (2061.8) -> 2036.9 (2061.3) MB, pooled: 0 MB, 2167.69 / 0.00 ms  (average mu = 0.060, current mu = 0.000) last resort; GC in old space requested
+
+
+<--- JS stacktrace --->
+
+FATAL ERROR: CALL_AND_RETRY_LAST Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 0xe48bbe node::OOMErrorHandler(char const*, v8::OOMDetails const&) [/opt/node22/bin/node]
+ 2: 0x1248d00 v8::Utils::ReportOOMFailure(v8::internal::Isolate*, char const*, v8::OOMDetails const&) [/opt/node22/bin/node]
+ 3: 0x1248fd7 v8::internal::V8::FatalProcessOutOfMemory(v8::internal::Isolate*, char const*, v8::OOMDetails const&) [/opt/node22/bin/node]
+ 4: 0x1466f8c v8::internal::HeapAllocator::AllocateRawWithRetryOrFailSlowPath(int, v8::internal::AllocationType, v8::internal::AllocationOrigin, v8::internal::AllocationAlignment) [/opt/node22/bin/node]
+ 5: 0x143f0ce v8::internal::Factory::AllocateRaw(int, v8::internal::AllocationType, v8::internal::AllocationAlignment) [/opt/node22/bin/node]
+ 6: 0x142d45a v8::internal::FactoryBase<v8::internal::Factory>::AllocateRawArray(int, v8::internal::AllocationType, v8::internal::AllocationAlignment) [/opt/node22/bin/node]
+ 7: 0x142d5b6 v8::internal::FactoryBase<v8::internal::Factory>::NewFixedArrayWithFiller(v8::internal::Handle<v8::internal::Map>, int, v8::internal::Handle<v8::internal::HeapObject>, v8::internal::AllocationType) [/opt/node22/bin/node]
+ 8: 0x1761a57 v8::internal::OrderedHashTable<v8::internal::OrderedHashMap, 2>::Allocate(v8::internal::Isolate*, int, v8::internal::AllocationType) [/opt/node22/bin/node]
+ 9: 0x1761ae2 v8::internal::OrderedHashTable<v8::internal::OrderedHashMap, 2>::Rehash(v8::internal::Isolate*, v8::internal::Handle<v8::internal::OrderedHashMap>, int) [/opt/node22/bin/node]
+10: 0x18977c6 v8::internal::Runtime_MapGrow(int, unsigned long*, v8::internal::Isolate*) [/opt/node22/bin/node]
+11: 0x7f367a66caf6 
