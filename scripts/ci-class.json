@@ -14621,6 +14621,50 @@
     "execFileSync node"
    ]
   },
+  "test-t1384-mine-food.js": {
+   "cls0": "나",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 10.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 10.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 10.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 10.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 11.8,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawnSync node"
+   ],
+   "cls": "나",
+   "maxSec": 11.8,
+   "same5": true,
+   "core": true,
+   "why": "core"
+  },
   "test-t721-apply.js": {
    "cls0": "나",
    "why0": "child_process",
@@ -16965,5 +17009,5 @@
    "srv": true
   }
  },
- "at": "2026-11-18"
+ "at": "2026-11-19"
 }
