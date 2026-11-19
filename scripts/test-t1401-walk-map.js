@@ -82,9 +82,9 @@ const sameOver = (J, T) => { const a = over(J); if (!a || !T) return { ok: false
 
   console.log('\n③ 미끼 — 지도 설정에서 다리를 지운 사본');
   const SA = sameOver(Ball.J, T);
-  ok(Ball.code === 0 && Ball.K && Ball.K.n > 0 && !q1(Ball.J), '[미끼] 다리 칸 전부를 지운 사본은 ① 빨강', `지운 칸 ${Ball.K ? Ball.K.n : '?'} · 못 닿는 쌍 ${Ball.J ? Ball.J.a.unreachAll : '?'} · ② ${SA.ok ? '초록' : '빨강'}`);
+  ok(Ball.code === 0 && Ball.K && Ball.K.n > 0 && !q1(Ball.J), `[미끼] 바꾼 자리 ${Ball.K ? Ball.K.n : '?'}칸 — 다리 칸 전부를 지운 사본은 ① 빨강`, `지운 칸 ${Ball.K ? Ball.K.n : '?'} · 못 닿는 쌍 ${Ball.J ? Ball.J.a.unreachAll : '?'} · ② ${SA.ok ? '초록' : '빨강'}`);
   const SO = sameOver(Bone.J, T);
-  ok(Bone.code === 0 && Bone.K && Bone.K.n > 0 && q1(Bone.J) && !SO.ok, '[미끼] 다리 하나(어촌3 북쪽 · (387,2070) 묶음)를 지운 사본은 ② 만 빨강(① 초록 — 끊기지 않고 더 돈다)', `지운 칸 ${Bone.K ? Bone.K.n : '?'} · ① ${q1(Bone.J) ? '초록' : '빨강'} · ② ${SO.ok ? '초록' : '빨강'} · ${SO.d}`);
+  ok(Bone.code === 0 && Bone.K && Bone.K.n > 0 && q1(Bone.J) && !SO.ok, `[미끼] 바꾼 자리 ${Bone.K ? Bone.K.n : '?'}칸 — 다리 하나(어촌3 북쪽 · (387,2070) 묶음)를 지운 사본은 ② 만 빨강(① 초록 — 끊기지 않고 더 돈다)`, `지운 칸 ${Bone.K ? Bone.K.n : '?'} · ① ${q1(Bone.J) ? '초록' : '빨강'} · ② ${SO.ok ? '초록' : '빨강'} · ${SO.d}`);
 
   console.log(`\n=== T1401 결과: ${pass} 통과 · ${fail} 실패 ===`);
   if (!fail) fs.rmSync(BASE, { recursive: true, force: true });

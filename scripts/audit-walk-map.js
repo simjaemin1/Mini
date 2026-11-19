@@ -102,6 +102,29 @@ module.exports = function walkAudit(ctx) {
     db.close();
     terrSets.push({ label, file, own, nCells, clash, kinds, routes, ditch });
   }
+  //   랩 식 넓이(`--terr-lab 이름=DB`) — 그 DB 의 econ 땅 크기 · 주거로 `village-layout.territoryTarget`(정본) 목표 칸 수 → 중심에서 가까운 열린 칸부터(남이 먼저 가진 칸 · 막힌 칸 뺌 · 마을 번호 차례)
+  for (const spec of String(opt('terr-lab', '') || '').split(',').filter(Boolean)) {
+    const [label, file] = spec.includes('=') ? spec.split('=') : [path.basename(spec), spec];
+    const VL = require(path.join(__dirname, '..', 'server', 'village-layout.js'));
+    const { DatabaseSync } = require('node:sqlite');
+    const db = new DatabaseSync(file, { readOnly: true });
+    const byName = new Map(vs.map((v) => [v.name, v]));
+    const own = new Int16Array(N); let nCells = 0; const want = [];
+    for (const r of db.prepare('SELECT id, name, econ_state FROM villages ORDER BY id').all()) {
+      const v = byName.get(r.name); if (!v || v.a < 0) continue;
+      let e = null; try { e = JSON.parse(r.econ_state); } catch (x) {}
+      const tt = VL.territoryTarget(e && e.land ? e.land.size : 0, e ? e.housing : 0);
+      want.push([v, tt.target]);
+    }
+    db.close();
+    for (const [v, target] of want) {
+      const R = Math.ceil(Math.sqrt(target / Math.PI) * 1.8) + 4, L = [];
+      for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) { const x = v.cx + dx, y = v.cy + dy; if (x < 0 || y < 0 || x >= NX || y >= NY) continue; const i = y * NX + x; if (blk[i] || own[i]) continue; L.push([dx * dx + dy * dy, i]); }
+      L.sort((p, q) => p[0] - q[0] || p[1] - q[1]);
+      for (let k = 0; k < Math.min(target, L.length); k++) { own[L[k][1]] = v.i + 1; nCells++; }
+    }
+    terrSets.push({ label, file, own, nCells, clash: 0, kinds: new Map(), routes: null, ditch: [], lab: true });
+  }
   const bOut = [];
   for (const T of terrSets) {
     const tB = Date.now();
