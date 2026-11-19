@@ -1,0 +1,730 @@
+{
+ "pid": 574,
+ "at": "2026-11-17T19:56:26.004Z",
+ "stacks": [
+  [
+   "set :79",
+   "_muStepFollow :252",
+   "_warAdvanceMarch :10673",
+   "_warTickOne :10584",
+   "_t681Flush :10475",
+   "(anon) :11034",
+   "g :11029",
+   "_drainTickJobs :11589",
+   "_t731Tick :11015",
+   "onGameTick :10897",
+   "(anon) :17147",
+   "pump :110",
+   "processImmediate :484"
+  ]
+ ],
+ "profile": {
+  "samples": 896,
+  "top": [
+   [
+    "gGet sim/path-core.js:196",
+    19.1
+   ],
+   [
+    "_standCellNear server/zone.js:15818",
+    18.4
+   ],
+   [
+    "blockedStep server/villages.js:8936",
+    9.9
+   ],
+   [
+    "_warStandNear server/villages.js:8811",
+    8
+   ],
+   [
+    "_muSeparate server/war-live.js:217",
+    6.8
+   ],
+   [
+    "get server/war-live.js:78",
+    6.6
+   ],
+   [
+    "cameSet sim/path-core.js:199",
+    5.8
+   ],
+   [
+    "(garbage collector) :0",
+    4.9
+   ],
+   [
+    "get server/war-live.js:79",
+    4.8
+   ],
+   [
+    "_searchStep sim/path-core.js:325",
+    4.2
+   ],
+   [
+    "pop sim/path-core.js:72",
+    2.7
+   ],
+   [
+    "_t804Nearest server/villages.js:9002",
+    2.3
+   ],
+   [
+    "_muStepFollow server/war-live.js:231",
+    1
+   ],
+   [
+    "pathStep sim/path-core.js:447",
+    0.9
+   ],
+   [
+    "_t804Road server/villages.js:8954",
+    0.7
+   ],
+   [
+    "gSet sim/path-core.js:197",
+    0.3
+   ],
+   [
+    "key sim/path-core.js:195",
+    0.3
+   ],
+   [
+    "_warTickOne server/villages.js:10571",
+    0.3
+   ],
+   [
+    "_t804Local server/villages.js:8913",
+    0.3
+   ],
+   [
+    "_warBlockedCell server/villages.js:9075",
+    0.2
+   ],
+   [
+    "_warRectHas server/villages.js:9051",
+    0.2
+   ],
+   [
+    "_warTerrBlocked server/villages.js:9054",
+    0.2
+   ],
+   [
+    "updateMorale sim/battle-core.js:426",
+    0.2
+   ],
+   [
+    "(anon) server/war-live.js:417",
+    0.2
+   ],
+   [
+    "stepFight server/war-live.js:410",
+    0.2
+   ],
+   [
+    "internalModuleStat :0",
+    0.1
+   ],
+   [
+    "buildGrid sim/battle-core.js:205",
+    0.1
+   ],
+   [
+    "_warWalkGroupTo server/villages.js:9527",
+    0.1
+   ],
+   [
+    "_warClearLine server/villages.js:9143",
+    0.1
+   ],
+   [
+    "_warAdvanceMarch server/villages.js:10667",
+    0.1
+   ],
+   [
+    "(anon) server/war-live.js:271",
+    0.1
+   ],
+   [
+    "(anon) cjs/loader:1346",
+    0.1
+   ],
+   [
+    "_warSyncMeta server/villages.js:9018",
+    0.1
+   ],
+   [
+    "H sim/path-core.js:184",
+    0.1
+   ],
+   [
+    "findParentPackageJSON modules/package_json_reader:142",
+    0.1
+   ]
+  ]
+ },
+ "heap": {
+  "usedSize": 2329856320,
+  "totalSize": 2705707008
+ },
+ "eval": [
+  {
+   "g": [
+    513,
+    2550
+   ],
+   "kind": "fail",
+   "units": 10,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 0,
+   "starts": [
+    [
+     541,
+     2548
+    ],
+    [
+     577,
+     2615
+    ],
+    [
+     542,
+     2551
+    ]
+   ]
+  },
+  {
+   "g": [
+    514,
+    2554
+   ],
+   "kind": "srch",
+   "units": 6,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 0,
+   "starts": [
+    [
+     577,
+     2614
+    ],
+    [
+     576,
+     2617
+    ],
+    [
+     542,
+     2552
+    ]
+   ]
+  },
+  {
+   "g": [
+    512,
+    2544
+   ],
+   "kind": "srch",
+   "units": 5,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 0,
+   "starts": [
+    [
+     576,
+     2612
+    ],
+    [
+     579,
+     2609
+    ],
+    [
+     578,
+     2616
+    ]
+   ]
+  },
+  {
+   "g": [
+    513,
+    2549
+   ],
+   "kind": "srch",
+   "units": 5,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 0,
+   "starts": [
+    [
+     577,
+     2612
+    ],
+    [
+     579,
+     2613
+    ],
+    [
+     541,
+     2548
+    ]
+   ]
+  },
+  {
+   "g": [
+    515,
+    2559
+   ],
+   "kind": "fail",
+   "units": 5,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 0,
+   "starts": [
+    [
+     543,
+     2558
+    ],
+    [
+     543,
+     2558
+    ],
+    [
+     580,
+     2610
+    ]
+   ]
+  },
+  {
+   "g": [
+    512,
+    2545
+   ],
+   "kind": "fail",
+   "units": 4,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 0,
+   "starts": [
+    [
+     541,
+     2545
+    ],
+    [
+     543,
+     2576
+    ],
+    [
+     576,
+     2615
+    ]
+   ]
+  },
+  {
+   "g": [
+    514,
+    2555
+   ],
+   "kind": "srch",
+   "units": 4,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 0,
+   "starts": [
+    [
+     580,
+     2611
+    ],
+    [
+     542,
+     2579
+    ],
+    [
+     577,
+     2617
+    ]
+   ]
+  },
+  {
+   "g": [
+    514,
+    2556
+   ],
+   "kind": "srch",
+   "units": 4,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 0,
+   "starts": [
+    [
+     578,
+     2610
+    ],
+    [
+     576,
+     2616
+    ],
+    [
+     543,
+     2556
+    ]
+   ]
+  },
+  {
+   "g": [
+    515,
+    2560
+   ],
+   "kind": "fail",
+   "units": 4,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 0,
+   "starts": [
+    [
+     544,
+     2560
+    ],
+    [
+     574,
+     2616
+    ],
+    [
+     576,
+     2611
+    ]
+   ]
+  },
+  {
+   "g": [
+    512,
+    2546
+   ],
+   "kind": "srch",
+   "units": 3,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 0,
+   "starts": [
+    [
+     579,
+     2612
+    ],
+    [
+     543,
+     2576
+    ],
+    [
+     541,
+     2546
+    ]
+   ]
+  },
+  {
+   "g": [
+    513,
+    2551
+   ],
+   "kind": "fail",
+   "units": 3,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 0,
+   "starts": [
+    [
+     543,
+     2576
+    ],
+    [
+     578,
+     2611
+    ],
+    [
+     577,
+     2611
+    ]
+   ]
+  },
+  {
+   "g": [
+    512,
+    2543
+   ],
+   "kind": "fail",
+   "units": 2,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 0,
+   "starts": [
+    [
+     541,
+     2546
+    ],
+    [
+     542,
+     2549
+    ]
+   ]
+  },
+  {
+   "g": [
+    512,
+    2542
+   ],
+   "kind": "srch",
+   "units": 2,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 0,
+   "starts": [
+    [
+     579,
+     2611
+    ],
+    [
+     576,
+     2616
+    ]
+   ]
+  },
+  {
+   "g": [
+    513,
+    2537
+   ],
+   "kind": "srch",
+   "units": 2,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 0,
+   "starts": [
+    [
+     576,
+     2614
+    ],
+    [
+     578,
+     2617
+    ]
+   ]
+  },
+  {
+   "g": [
+    515,
+    2562
+   ],
+   "kind": "srch",
+   "units": 2,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 0,
+   "starts": [
+    [
+     576,
+     2612
+    ],
+    [
+     542,
+     2579
+    ]
+   ]
+  },
+  {
+   "g": [
+    515,
+    2561
+   ],
+   "kind": "srch",
+   "units": 2,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 0,
+   "starts": [
+    [
+     578,
+     2615
+    ],
+    [
+     576,
+     2609
+    ]
+   ]
+  },
+  {
+   "g": [
+    647,
+    2569
+   ],
+   "kind": "fail",
+   "units": 1,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 1,
+   "starts": [
+    [
+     643,
+     2367
+    ]
+   ]
+  },
+  {
+   "g": [
+    647,
+    2568
+   ],
+   "kind": "fail",
+   "units": 1,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 1,
+   "starts": [
+    [
+     631,
+     2355
+    ]
+   ]
+  },
+  {
+   "g": [
+    646,
+    2566
+   ],
+   "kind": "fail",
+   "units": 1,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 1,
+   "starts": [
+    [
+     579,
+     2303
+    ]
+   ]
+  },
+  {
+   "g": [
+    645,
+    2565
+   ],
+   "kind": "fail",
+   "units": 1,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 1,
+   "starts": [
+    [
+     561,
+     2285
+    ]
+   ]
+  },
+  {
+   "g": [
+    644,
+    2563
+   ],
+   "kind": "fail",
+   "units": 1,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 1,
+   "starts": [
+    [
+     573,
+     2297
+    ]
+   ]
+  },
+  {
+   "g": [
+    643,
+    2562
+   ],
+   "kind": "fail",
+   "units": 1,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 1,
+   "starts": [
+    [
+     597,
+     2321
+    ]
+   ]
+  },
+  {
+   "g": [
+    648,
+    2566
+   ],
+   "kind": "fail",
+   "units": 1,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 1,
+   "starts": [
+    [
+     614,
+     2338
+    ]
+   ]
+  },
+  {
+   "g": [
+    647,
+    2565
+   ],
+   "kind": "fail",
+   "units": 1,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 1,
+   "starts": [
+    [
+     611,
+     2335
+    ]
+   ]
+  },
+  {
+   "g": [
+    646,
+    2563
+   ],
+   "kind": "fail",
+   "units": 1,
+   "goalBlocked": false,
+   "comp": 300001,
+   "capped": true,
+   "startsInComp": 1,
+   "starts": [
+    [
+     607,
+     2331
+    ]
+   ]
+  }
+ ]
+}

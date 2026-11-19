@@ -1,0 +1,403 @@
+{
+ "pid": 5256,
+ "at": "2026-11-18T00:01:37.934Z",
+ "stacks": [
+  [
+   "_warSyncMeta :9062",
+   "_warTickOne :10626",
+   "_t681Flush :10513",
+   "(anon) :11072",
+   "g :11067",
+   "_drainTickJobs :11627",
+   "_t731Tick :11053",
+   "onGameTick :10935",
+   "V.onGameTick :23",
+   "(anon) :17147",
+   "pump :110",
+   "processImmediate :484"
+  ],
+  [
+   "get :79",
+   "(anon) :257",
+   "_muStepFollow :257",
+   "_warAdvanceMarch :10711",
+   "_warTickOne :10622",
+   "_t681Flush :10513",
+   "(anon) :11072",
+   "g :11067",
+   "_drainTickJobs :11627",
+   "_t731Tick :11053",
+   "onGameTick :10935",
+   "V.onGameTick :23",
+   "(anon) :17147",
+   "pump :110",
+   "processImmediate :484"
+  ]
+ ],
+ "profile": {
+  "samples": 4476,
+  "top": [
+   [
+    "(garbage collector) :0",
+    18.4
+   ],
+   [
+    "_muSeparate server/war-live.js:217",
+    14.5
+   ],
+   [
+    "updateMorale sim/battle-core.js:426",
+    9.4
+   ],
+   [
+    "_muStepFollow server/war-live.js:252",
+    7.7
+   ],
+   [
+    "_warTickOne server/villages.js:10609",
+    5.4
+   ],
+   [
+    "internalModuleStat :0",
+    4.9
+   ],
+   [
+    "get server/war-live.js:78",
+    4.6
+   ],
+   [
+    "_warSyncMeta server/villages.js:9056",
+    4.3
+   ],
+   [
+    "get server/war-live.js:79",
+    3.3
+   ],
+   [
+    "buildGrid sim/battle-core.js:205",
+    3
+   ],
+   [
+    "_muDefHold server/war-live.js:295",
+    1.8
+   ],
+   [
+    "gGet sim/path-core.js:196",
+    1.7
+   ],
+   [
+    "stepBattle sim/battle-core.js:281",
+    1.7
+   ],
+   [
+    "stepFight server/war-live.js:431",
+    1.6
+   ],
+   [
+    "_t790Place server/villages.js:8782",
+    1.5
+   ],
+   [
+    "_warAdvanceMarch server/villages.js:10705",
+    1.4
+   ],
+   [
+    "(anon) server/war-live.js:292",
+    1.3
+   ],
+   [
+    "trackVel sim/battle-core.js:451",
+    1.2
+   ],
+   [
+    "(anon) server/villages.js:10703",
+    1.2
+   ],
+   [
+    "_searchStep sim/path-core.js:325",
+    0.9
+   ],
+   [
+    "_t804Nearest server/villages.js:9035",
+    0.8
+   ],
+   [
+    "_warStandNear server/villages.js:8815",
+    0.7
+   ],
+   [
+    "blockedStep server/villages.js:8952",
+    0.7
+   ],
+   [
+    "blockedCell server/villages.js:8459",
+    0.6
+   ],
+   [
+    "cameSet sim/path-core.js:199",
+    0.6
+   ],
+   [
+    "(anon) server/war-live.js:27",
+    0.6
+   ],
+   [
+    "_bcKnob sim/battle-core.js:421",
+    0.6
+   ],
+   [
+    "_warHoldCtlSides server/villages.js:10748",
+    0.4
+   ],
+   [
+    "_t804Road server/villages.js:8971",
+    0.4
+   ],
+   [
+    "_t804Way server/villages.js:8915",
+    0.4
+   ],
+   [
+    "_muSlotXY server/war-live.js:216",
+    0.4
+   ],
+   [
+    "_warClearLine server/villages.js:9181",
+    0.3
+   ],
+   [
+    "_t804Local server/villages.js:8922",
+    0.3
+   ],
+   [
+    "(anon) server/war-live.js:257",
+    0.3
+   ],
+   [
+    "_t681Flush server/villages.js:10502",
+    0.3
+   ],
+   [
+    "_warWalkGroupTo server/villages.js:9565",
+    0.3
+   ],
+   [
+    "_t1044Arrive server/villages.js:9388",
+    0.3
+   ],
+   [
+    "(anon) cjs/loader:1193",
+    0.2
+   ],
+   [
+    "findParentPackageJSON modules/package_json_reader:142",
+    0.2
+   ],
+   [
+    "(anon) server/villages.js:8783",
+    0.2
+   ]
+  ]
+ },
+ "heap": {
+  "usedSize": 731732760,
+  "totalSize": 1326505984
+ },
+ "eval": {
+  "groups": 12,
+  "units": 767,
+  "searching": 0,
+  "roadSearching": 0,
+  "failMem": 78,
+  "roadFailMem": 78,
+  "following": 11,
+  "popsTop": [],
+  "popsSum": 0,
+  "distinctTargets": 0,
+  "topTargets": [],
+  "wars": [
+   [
+    2,
+    "battle",
+    null,
+    "농촌19"
+   ],
+   [
+    3,
+    "battle",
+    null,
+    "광산5"
+   ],
+   [
+    4,
+    "battle",
+    null,
+    "어촌6"
+   ]
+  ]
+ },
+ "heapSample": {
+  "sec": 150,
+  "totMB": 55.6,
+  "sites": [
+   [
+    "set :0",
+    16.3
+   ],
+   [
+    "_searchStep sim/path-core.js:325",
+    12.5
+   ],
+   [
+    "add :0",
+    9.3
+   ],
+   [
+    "_warStandNear server/villages.js:8815",
+    5
+   ],
+   [
+    "computeShadowPrices sim/economy-sim-v2.js:959",
+    2.3
+   ],
+   [
+    "delete :0",
+    1.9
+   ],
+   [
+    "_i688Set server/roads.js:203",
+    1.8
+   ],
+   [
+    "_t1189PxRecord server/villages.js:19143",
+    1.3
+   ],
+   [
+    "generateChunkResources server/chunk.js:659",
+    1.3
+   ],
+   [
+    "_ringBuild server/zone.js:365",
+    0.5
+   ],
+   [
+    "_wwPreOne server/zone.js:16757",
+    0.3
+   ],
+   [
+    "weightsOf server/region-profiles.js:181",
+    0.3
+   ],
+   [
+    "_muStepFollow server/war-live.js:252",
+    0.3
+   ],
+   [
+    "tickTradeV2Steps sim/economy-sim-v2.js:1893",
+    0.3
+   ],
+   [
+    "_warEndFight server/villages.js:9617",
+    0.3
+   ],
+   [
+    "_t1196End sim/economy-sim.js:2907",
+    0.3
+   ],
+   [
+    "stampCell server/roads.js:98",
+    0.3
+   ],
+   [
+    "push :0",
+    0.3
+   ],
+   [
+    "_liveHut6x4 server/villages.js:15928",
+    0.3
+   ],
+   [
+    "spawnNpc server/zone.js:3978",
+    0.3
+   ],
+   [
+    "sideSnap scripts/t740-side-hook.js:120",
+    0.3
+   ],
+   [
+    "state.deps.spawnNpc server/villages.js:2369",
+    0.3
+   ],
+   [
+    "_t707Yard server/villages.js:16207",
+    0.3
+   ],
+   [
+    "_lifeJobSites server/villages.js:14814",
+    0.3
+   ]
+  ],
+  "stems": [
+   [
+    "set :0 < _searchStep sim/path-core.js:325 < _t804Local server/villages.js:8922 < _t804Way server/villages.js:8915",
+    14
+   ],
+   [
+    "_searchStep sim/path-core.js:325 < _t804Local server/villages.js:8922 < _t804Way server/villages.js:8915 < _warWalkGroupTo server/villages.js:9565",
+    12.5
+   ],
+   [
+    "add :0 < _i688Set server/roads.js:203 < stampCell server/roads.js:98 < _t1182Walk server/villages.js:5890",
+    6.6
+   ],
+   [
+    "_warStandNear server/villages.js:8815 < _muStepFollow server/war-live.js:252 < _muDefHold server/war-live.js:295 < _warHoldCtlSides server/villages.js:10748",
+    3
+   ],
+   [
+    "add :0 < stampCell server/roads.js:98 < _t1182Walk server/villages.js:5890 < tickCaravanBodies server/villages.js:5941",
+    2.5
+   ],
+   [
+    "_warStandNear server/villages.js:8815 < _t1044Arrive server/villages.js:9388 < _warHoldCtlSides server/villages.js:10748 < _warTickOne server/villages.js:10609",
+    2
+   ],
+   [
+    "set :0 < _warStandNear server/villages.js:8815 < _muStepFollow server/war-live.js:252 < _muDefHold server/war-live.js:295",
+    2
+   ],
+   [
+    "delete :0 < _i688Set server/roads.js:203 < stampCell server/roads.js:98 < _t1182Walk server/villages.js:5890",
+    1.9
+   ],
+   [
+    "computeShadowPrices sim/economy-sim-v2.js:959 < head sim/economy-sim-v2.js:3058 < (anon) server/villages.js:11074 < mute server/villages.js:11069",
+    1.8
+   ],
+   [
+    "_t1189PxRecord server/villages.js:19143 < _scanEventsSteps server/villages.js:19164 < next :0 < _scanEventsDaily server/villages.js:19163",
+    1.3
+   ],
+   [
+    "generateChunkResources server/chunk.js:659 < _ringBuild server/zone.js:365 < clearTreesInCells server/zone.js:5917 < _t566OnPaved server/zone.js:514",
+    1
+   ],
+   [
+    "_i688Set server/roads.js:203 < stampCell server/roads.js:98 < _t1182Walk server/villages.js:5890 < tickCaravanBodies server/villages.js:5941",
+    1
+   ],
+   [
+    "_i688Set server/roads.js:203 < stampCell server/roads.js:98 < _t1182Walk server/villages.js:5890 < _t1182Escort server/villages.js:5932",
+    0.8
+   ],
+   [
+    "_ringBuild server/zone.js:365 < clearTreesInCells server/zone.js:5917 < _t566OnPaved server/zone.js:514 < stampCell server/roads.js:98",
+    0.5
+   ],
+   [
+    "add :0 < _i688Set server/roads.js:203 < _i688Day server/roads.js:233 < _rebuildCoarseInc server/roads.js:243",
+    0.3
+   ]
+  ]
+ }
+}
