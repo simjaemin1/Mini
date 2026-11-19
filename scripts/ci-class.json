@@ -14621,6 +14621,51 @@
     "execFileSync node"
    ]
   },
+  "test-t1391-unhappy-bandit.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": 5.8,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 5.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 5.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 5.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 5.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 5.5,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawnSync node"
+   ]
+  },
   "test-t721-apply.js": {
    "cls0": "나",
    "why0": "child_process",
@@ -16965,5 +17010,5 @@
    "srv": true
   }
  },
- "at": "2026-11-18"
+ "at": "2026-11-19"
 }
