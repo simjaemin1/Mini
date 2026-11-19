@@ -1307,7 +1307,8 @@
         else if (cl.state === 'pref') { fill = 'rgba(120,200,140,0.16)'; stroke = 'rgba(140,220,160,0.75)'; label = `${cl.ownerName}`; }
         else if (cl.state === 'free') { fill = 'rgba(120,120,120,0.12)'; stroke = 'rgba(160,160,160,0.55)'; label = `빈 자리`; }
         // ★[T1305] 돌봄 — 오래 안 손본 개인 칸(서버가 준 `care === 'fade'` 그대로)은 경계가 바랜다(같은 색 · 옅은 칠 · 옅은 먹선).
-        else if (cl.care === 'fade' || cl.care === 'soon') { fill = 'rgba(240,198,116,0.07)'; stroke = 'rgba(240,198,116,0.32)'; }
+        else if (cl.care === 'soon') { fill = 'rgba(240,198,116,0.03)'; stroke = 'rgba(240,198,116,0.18)'; }   // ★[T1386] 다음 하루에 풀릴 칸(서버가 내다본 먼 칸부터) — 더 흐리게
+        else if (cl.care === 'fade') { fill = 'rgba(240,198,116,0.07)'; stroke = 'rgba(240,198,116,0.32)'; }
 
         // ★★[T57 2026-09-03 · 안개 게이트 **세 번째 층**] 사유지도 **셀마다** 안개를 본다.
         //   결함 기전은 배치 21(자연물)·08-30(마을 영토 띠)과 **같은 족**이다:
