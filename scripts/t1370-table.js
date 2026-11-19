@@ -12,6 +12,34 @@ const A = process.argv.slice(2);
 const dir = A.find((x) => !x.startsWith('--')) || '계측/T1370_2026-11-18';
 const opt = (k, d) => { const i = A.indexOf(k); return i >= 0 ? A[i + 1] : d; };
 const SEED = opt('--seed', '1020'), OFFN = opt('--off', 'OFF');
+// --cross 1020,7,42: 시드마다 끔 대비 · 짝 대비 % 를 나란히(손잡이마다 세 시드 같은 쪽인가) — 다른 칸은 시드별 표에
+const CROSS = opt('--cross', null);
+if (CROSS) {
+  const seeds = CROSS.split(','), names0 = fs.readFileSync(path.join(dir, 'knobs.tsv'), 'utf8').split('\n').filter(Boolean).map((l) => l.split('\t'));
+  let refs0 = []; try { refs0 = fs.readFileSync(path.join(dir, 'refs.tsv'), 'utf8').split('\n').filter(Boolean).map((l) => l.split('\t')); } catch (e) {}
+  const keep = opt('--list', null) ? new Set(fs.readFileSync(opt('--list'), 'utf8').split(/\s+/).filter(Boolean)) : null;
+  const get = (n, sd) => { try { return JSON.parse(fs.readFileSync(path.join(dir, 'runs', `${n}-${sd}.json`), 'utf8')); } catch (e) { return null; } };
+  const key = (e) => (e || '').split(' ').filter(Boolean).sort().join(' ');
+  const all = [...names0, ...refs0], envMap = new Map(all.map(([n, e]) => [key(e), n]));
+  const sg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
+  const o = [`# T1370 — 세 시드(${seeds.join(' · ')}) 끔 대비 인구 % · 짝 대비 %`, '', '| 손잡이 | ' + seeds.map((x) => `끔 대비 ${x}`).join(' | ') + ' | 세 시드 같은 쪽(±5%) | 짝 | ' + seeds.map((x) => `짝 대비 ${x}`).join(' | ') + ' |',
+    '|---|' + seeds.map(() => '---:').join('|') + '|---|---|' + seeds.map(() => '---:').join('|') + '|'];
+  const offs = seeds.map((sd) => get(OFFN, sd));
+  let up = [], dn = [], mix = [];
+  for (const [n, env] of names0) {
+    if (n === OFFN || (keep && !keep.has(n))) continue;
+    const parts = env.split(' ').filter(Boolean), own = parts.find((x) => x.startsWith(n + '=')) || parts[parts.length - 1];
+    const pn = parts.length > 1 ? envMap.get(key(parts.filter((x) => x !== own).join(' '))) : null;
+    const pc = seeds.map((sd, i) => { const r = get(n, sd); return r && offs[i] ? (r.eight.pop / offs[i].eight.pop - 1) * 100 : null; });
+    const pp = seeds.map((sd) => { const r = get(n, sd), q = pn && get(pn, sd); return r && q ? (r.eight.pop / q.eight.pop - 1) * 100 : null; });
+    const v = pc.filter((x) => x != null);
+    const side = v.length < seeds.length ? '시드 모자람(못 끝난 판)' : v.every((x) => x > 5) ? '↑ 셋 다 +5% 넘음' : v.every((x) => x < -5) ? '↓ 셋 다 −5% 밑' : '갈림';
+    (side.startsWith('↑') ? up : side.startsWith('↓') ? dn : mix).push(n);
+    o.push(`| ${n} | ${pc.map(sg).join(' | ')} | ${side} | ${pn || ''} | ${pn ? pp.map(sg).join(' | ') : seeds.map(() => '').join(' | ')} |`);
+  }
+  o.splice(1, 0, '', `셋 다 +5% 넘음 ${up.length}(${up.join(' · ') || '—'}) · 셋 다 −5% 밑 ${dn.length}(${dn.join(' · ') || '—'}) · 갈림 · 모자람 ${mix.length}(${mix.join(' · ') || '—'})`);
+  process.stdout.write(o.join('\n') + '\n'); process.exit(0);
+}
 let names = fs.readFileSync(path.join(dir, 'knobs.tsv'), 'utf8').split('\n').filter(Boolean).map((l) => l.split('\t'));
 // --list <파일>: 이 이름만(7 · 42 는 ±5% 넘은 손잡이 + 짝만 돈다 — 안 돈 줄을 표에 안 깐다)
 const LIST = opt('--list', null);
