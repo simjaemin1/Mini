@@ -14242,7 +14242,7 @@ function _t1399Fish(vil, npc, now, day) {
   if (c.day !== day || Math.hypot(npc.x - c.x, npc.y - c.y) > F.CFG.REACH_PX || (state.deps.isWaterTileLocal && !state.deps.isWaterTileLocal(c.x, c.y))) return _z('W67');   // 자리를 옮겼다(쓰기)
   if (!(now < c.biteAt)) return _z('W68');   // 입질 · 놓침(쓰기)
   if (!T720_LON_DAY) { const _cc = _carryCfg(), _cap = (_cc && _cc.CFG && _cc.CFG.CAP_KG) || 0; if (_cap > 0 && (npc._t312Kg || 0) >= _cap) return _z('W69'); }   // 짐이 찼다(종전 시계 · 쓰기)
-  if (npc._fishSpotX == null || !npc._fishT || now >= npc._fishT) return _z('W70');   // 자리 머묾이 끝났다(쓰기)
+  if (npc._fishSpotX == null || !npc._fishT || !(now < npc._fishT)) return _z('W70');   // 자리 머묾이 끝났다(쓰기 · `_fishT` 는 수 — `!npc._fishT` 가 0 · 없음 · NaN 을 먼저 거른다)
   if (!_t1365Same(npc, npc._fishSpotX, npc._fishSpotY, '낚시')) return _z('W71');
   if (_hzOn) { _hzD(c.biteAt); _hzD(npc._fishT); _hzP(c.x, c.y, F.CFG.REACH_PX, false); _hzQ = 1; _hzQX = c.x; _hzQY = c.y; }
   return 3;
