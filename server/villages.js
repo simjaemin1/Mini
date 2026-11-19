@@ -7609,11 +7609,7 @@ function _t1207Queue(vil, picked) {
   if (!vil._t1207Pend.length) {
     const plus = new Set();
     for (const k of picked) {
-      const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1);
-      const c = _t1207CellCost(vil, x, y, plus);
-      const job = { key: k, cx: x, cy: y, wood: +c.wood.toFixed(6), laborMin: c.laborMin, m: c.m, mat: {}, workMs: 0 };
-      if (T1238_TERR_V2) _t1238JobFromLand(job);   // ★[T1238 ②] 켬 = 땅에 남은 개간 몫 · 박힌 말뚝에서 시작한다
-      vil._t1207Pend.push(job);
+      vil._t1207Pend.push(_t1207Job(vil, k, plus));
       plus.add(k);
     }
     T.queued += picked.length;
@@ -7621,6 +7617,14 @@ function _t1207Queue(vil, picked) {
   let need = 0; for (const j of vil._t1207Pend) need += Math.max(0, j.wood - (j.mat.wood || 0));
   if (vil.econ) vil.econ._t1207Need = +need.toFixed(6);
   return [];
+}
+//   일감 하나(칸 `k` · 앞 칸 `plus` 를 치렀다 치고 잰 값) — 줄을 세울 때(`_t1207Queue`)와 ★[T1380 (가)] 부지 칸을 줄 머리에 넣을 때 같은 몸통(사본 0)
+function _t1207Job(vil, k, plus) {
+  const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1);
+  const c = _t1207CellCost(vil, x, y, plus);
+  const job = { key: k, cx: x, cy: y, wood: +c.wood.toFixed(6), laborMin: c.laborMin, m: c.m, mat: {}, workMs: 0 };
+  if (T1238_TERR_V2) _t1238JobFromLand(job);   // ★[T1238 ②] 켬 = 땅에 남은 개간 몫 · 박힌 말뚝에서 시작한다
+  return job;
 }
 function _t1207Crew(vil) {
   if (T1302_TERR_BODY) {
@@ -8431,7 +8435,11 @@ function _t1380LotFront(vil, picked, want) {
   const fs = new Set(front), out = front.slice(0, want);
   for (const k of picked) { if (out.length >= want) break; if (!fs.has(k)) out.push(k); }
   if (vil._t1238Pend && vil._t1238Pend.length) vil._t1238Pend = front.concat(vil._t1238Pend.filter((k) => !fs.has(k))).slice(0, TERR_GROW_MAX_PER_DAY);   // 빠진 칸의 일은 땅에 남는다
-  if (vil._t1207Pend && vil._t1207Pend.length) { const head = [], rest = []; for (const j of vil._t1207Pend) (fs.has(j.key) ? head : rest).push(j); vil._t1207Pend = head.concat(rest); }
+  if (vil._t1207Pend && vil._t1207Pend.length) {   // 몸 일감 줄(관측 마을 · T1302) — 부지 칸 일감을 줄 머리로(없는 칸은 일감을 세워 넣는다 · 그 밖 일감은 그 뒤 그대로)
+    const have = new Map(vil._t1207Pend.map((j) => [j.key, j])), plus = new Set(), head = [];
+    for (const k of front) { head.push(have.get(k) || _t1207Job(vil, k, plus)); plus.add(k); }
+    vil._t1207Pend = head.concat(vil._t1207Pend.filter((j) => !fs.has(j.key)));
+  }
   const S = _t1380Stat(vil); S.lfDays++; S.lfCells += Math.min(front.length, want); _t1380St.lfDays++; _t1380St.lfCells += Math.min(front.length, want);
   return out;
 }
