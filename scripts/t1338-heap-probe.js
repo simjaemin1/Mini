@@ -8,7 +8,8 @@ if (OUT && process.env.T577_SEED) {
   const fs = require('fs'), v8 = require('v8');
   const Module = require('module'), load0 = Module._load; let VIL = null;
   Module._load = function (req) { const m = load0.apply(this, arguments); if (!VIL && /villages(\.js)?$/.test(req) && m && m.__p3Bind) VIL = m; return m; };
-  const rec = []; let lastDay = -1, lastT = 0;
+  let rec = []; try { const o = JSON.parse(fs.readFileSync(OUT, 'utf8')); if (Array.isArray(o)) rec = o; } catch (e) {}   // ★[T1381] 이어 도는 판(마디마다 새 프로세스)은 앞 마디 기록을 이어 받는다(이어 돌 땐 부르는 쪽이 체크포인트 날 뒤를 먼저 자른다)
+  let lastDay = -1, lastT = 0;
   const cnt = (v, budget) => {   // 닿는 노드 수(상한 budget) — 무엇이 큰지 가늠
     const seen = new Set(), st = [v]; let n = 0;
     while (st.length && n < budget) { const x = st.pop(); if (!x || typeof x !== 'object' || seen.has(x)) continue; seen.add(x); n++;
