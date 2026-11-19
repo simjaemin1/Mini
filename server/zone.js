@@ -12625,7 +12625,8 @@ function _t1332Use(player, px, py, why, pts) {
   if (!e) { _t1386Stage(st.P, now); return false; }
   // ★[T1386 ⑦] 들어온 점수는 빚부터 지우고 남는 것이 이 청크 저축에(`deeds.addPts`)
   const P = st.P, w = P.chunks.find((q) => q.key === k), rec = _t1386Rec(pid);
-  Deeds.addPts(P, w, pts == null ? Deeds.CFG.P_USE : pts);
+  if (why === 'claim') Deeds.addClaim(P, w, pts == null ? Deeds.CFG.PT : pts);   // ★[T1389 Q12] 선포의 +PT 는 빚 · 빚 시계를 안 건드린다(`deeds.addClaim`)
+  else Deeds.addPts(P, w, pts == null ? Deeds.CFG.P_USE : pts);
   w.row.m = w.m; rec.debt = P.debt;
   _t1343Save(w.row); _t1386SaveRec(pid);
   _t1386Stage(P, now);

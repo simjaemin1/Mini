@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
-// @bait 3
+// @bait 4
 // === scripts/test-t1389-deeds-on.js — 사유지 돌봄 켬 준비(★T1389): 값 같은 빠른 셈 · 틱 예산 잇기 · 복도 막힘 ㉡ · 부재 훑기 시각 · 계량기 뒤늦은 보냄 ==========
 //
 // ★지키는 것
@@ -10,9 +10,10 @@
 //   ⓓ 복도 막힘 — ㉠(끔 기본) 복도 청크만 바닥나면 기다린다(목 칸뿐 · 풀린 칸 0) · ㉡(`T1389_NECK_GIVE=1`) 가장 먼 목 + 집이 안 든 조각 통째로 · 집 덩이는 그대로
 //   ⓔ 부재 훑기(T45) — 하루 전에 나간 주인의 칸은 그대로(`active`) · 50일 전이면 `free` (종전 `last_seen | 0` 은 ms 시각을 32비트로 잘라 둘 다 `free`)
 //   ⓕ 계량기 — 1초 안 두 번째 보냄은 버리지 않고 1초 끝에 보낸다(둘째 칸을 잡은 직후 패널이 새 N)
+//   ⓗ 다시 선포(PM 덧붙임 Q12) — 빚 선 땅에서 내놓고 다시 · 풀린 내 칸 다시 선포가 다음 풀림을 한 시간 넘게 늦추지 않는다(선포 +PT 는 빚 · 바닥난 청크에 안 든다)
 //   ⓖ 숫자 상한(S0 = 9) — 켬은 개인 사유지 숫자 상한 문구가 안 뜬다(12칸 다 선다) · 끔은 9칸에서 "한도 9"(종전 그대로)
-//   ★미끼 셋(이 파일 안 · 사본은 `server/_t1389bait-*` · 판 끝에 지움): ① 정수 이웃 하나를 빼먹은 claims 사본 → ⓐ 빨강 · ② 부재 시각을 `| 0` 으로 되돌린 claims 사본 → ⓔ 빨강 ·
-//     ③ 예산에서 멈출 때 셈 시각을 '지금'으로 건너뛰는 deeds 사본 → ⓒ 빨강
+//   ★미끼 넷(이 파일 안 · 사본은 `server/_t1389bait-*` · 판 끝에 지움): ① 정수 이웃 하나를 빼먹은 claims 사본 → ⓐ 빨강 · ② 부재 시각을 `| 0` 으로 되돌린 claims 사본 → ⓔ 빨강 ·
+//     ③ 예산에서 멈출 때 셈 시각을 '지금'으로 건너뛰는 deeds 사본 → ⓒ 빨강 · ④ 선포 +PT 를 빚부터 갚는 길로 되돌린 존 사본 → ⓗ 빨강
 // ★박힌 날짜 0 — 시각은 주입(존 `_t1332SetClock`) · 판의 0 = 지금에서 1,000일 뒤(부팅 벽시계 셈이 판을 안 건드린다).
 //   node scripts/test-t1389-deeds-on.js   (아이 판 아홉 · 약 50초)
 'use strict';
@@ -135,6 +136,27 @@ if (MODE === 'zone') {
       const ra = [...H.deedChunks.values()].filter((r) => r.pid === a).map((r) => [r.cx - D.chunkOf(50000, 0)[0], r.cy, +r.m.toFixed(6)]).sort().join(';');
       const rb = [...H.deedChunks.values()].filter((r) => r.pid === b).map((r) => [r.cx - D.chunkOf(51000, 0)[0], r.cy, +r.m.toFixed(6)]).sort().join(';');
       put(R, 'c_slice', parts > 50 && sa.length > 0 && sa.length < 400 && JSON.stringify(sa.sort()) === JSON.stringify(sb.sort()) && Math.abs(da - db2) < 1e-6 && ra === rb, `한 번 ${sa.length}칸 · 빚 ${(+da).toFixed(3)} / ${parts}토막 ${sb.length}칸 · 빚 ${(+db2).toFixed(3)} · 청크 줄 ${ra === rb ? '같음' : '다름'}`);
+      // ⓗ 다시 선포가 빚 · 빚 시계를 안 건드린다(PM 덧붙임 Q12) — 30칸(6 × 5) · 27일 안 들어와 바닥 · 빚이 도는 땅에서
+      {
+        const q = mk('q12'), X0 = 55000, Y0 = 55000;
+        for (let y = 0; y < 5; y++) for (let x = 0; x < 6; x++) claimAt(q, X0 + x, Y0 + y);
+        players.delete(q.pid); T = T0 + 30 * DM + 27 * DM;   // ⓒ 뒤 시각에서 이어(셈 시각은 거꾸로 안 간다) · D(30) = 26.7일 → 모든 청크 바닥 · 빚이 돈다 · 첫 풀림(27.6일) 앞
+        const fc = () => { const st = H._t1343Advance(q.playerId, T, true); return Deeds_first(st.P); };
+        const Deeds_first = (P) => D.forecast(P, T, H.Claims).first;
+        const f0 = fc(); players.set(q.pid, q);
+        // ⓐ 집에서 먼 쪽 끝 칸 하나를 내놓고 그 자리를 다시 선포
+        const far = [...claims.values()].find((c) => c.ownerPid === q.playerId && (c.state || 'active') !== 'free' && Math.floor(c.x / SZ) === X0 + 5 && Math.floor(c.y / SZ) === Y0 + 4);
+        q.x = far.x + SZ / 2; q.y = far.y + SZ / 2; H.tryUnclaim(q, far.id); claimAt(q, X0 + 5, Y0 + 4);
+        const f1 = fc();
+        // ⓑ 빚으로 풀린 내 칸을 다시 선포 — 빚이 한 칸 몫 차도록 시계를 흘려 한 칸 풀리게 한 뒤
+        T = Math.max(T, f1) + 1000; H._t1343Advance(q.playerId, T, true);
+        const freed = [...claims.values()].find((c) => c.ownerPid === q.playerId && c.state === 'free');
+        const f2a = fc(); if (freed) { q.x = freed.x + SZ / 2; q.y = freed.y + SZ / 2; H.tryClaim(q, 'personal'); }
+        const f2 = fc(), back = !!freed && (claims.get(freed.id) || {}).state !== 'free';
+        players.delete(q.pid);
+        const hr = (a, b) => ((b - a) / 3600000).toFixed(2);
+        put(R, 'h_reclaim', Number.isFinite(f0) && f0 > T0 && f1 - f0 < 3600000 && back && f2 - f2a < 3600000, `ⓐ 내놓고 다시 선포: 다음 풀림 ${hr(f0, f1)}시간 늦춤 · ⓑ 풀린 칸 다시 선포(${back ? '됨' : '안 됨'}): ${hr(f2a, f2)}시간 늦춤(한 시간 안이어야)`);
+      }
       // ⓔ 부재 훑기 — central 을 이 판이 대신 답한다(하루 전 · 50일 전)
       const central = require(path.join(ROOT, 'server', 'central-client.js'));
       const now = Date.now(); T = now;
@@ -174,6 +196,7 @@ if (MODE === 'zone') {
   show(RP, 'd_give', 'ⓓ ㉡(`T1389_NECK_GIVE`) 가장 먼 목 + 집이 안 든 조각을 한 순간에 통째로 · 집 덩이 16칸 그대로');
   const RZ = run('zone');
   show(RZ, 'c_slice', 'ⓒ 존 셈을 틱 예산으로 잘라 이어도(400칸 · 30일) 한 번에 셈한 것과 같다 — 남은 칸 · 빚 · 청크 저축');
+  show(RZ, 'h_reclaim', 'ⓗ 다시 선포가 빚 · 빚 시계를 안 건드린다(Q12) — 빚 선 30칸에서 내놓고 다시 · 풀린 칸 다시 → 다음 풀림이 한 시간 넘게 안 늦춰진다');
   show(RZ, 'e_absence', 'ⓔ 부재 훑기 — 하루 전 나간 주인 칸은 그대로 · 50일 전이면 free(ms 시각을 그대로 뺀다)');
   show(RZ, 'f_trail', 'ⓕ 계량기 — 1초 안 두 번째 보냄은 1초 끝에 보낸다(둘째 칸 직후 N = 2)');
   {
@@ -203,6 +226,12 @@ if (MODE === 'zone') {
     const n = DS.split(from).length - 1, fd = tmp('jump'), fz = tmp('jump', '-zone');
     const RB = withFiles([[fd, DS.split(from).join("    if (budget && it > 1 && Date.now() - t0 > budget) { done = false; T = now; break; }")], [fz, ZS.split("require('./deeds')").join(`require('./${path.basename(fd, '.js')}')`)]], () => run('zone', { __T1389_ZONE: fz }));
     ok(n === 1 && !!RB && RB.c_slice === false && RB.e_absence === true, '★미끼 ③ — 예산에서 멈출 때 셈 시각을 지금으로 건너뛰는 deeds 사본 → ⓒ 빨강(ⓔ 는 초록)', `바꾼 자리 ${n} · c_slice=${RB && RB.c_slice} e_absence=${RB && RB.e_absence} · ${RB ? (RB['c_slice#'] || RB.err || '') : ''}`);
+  }
+  {
+    const from = "  if (why === 'claim') Deeds.addClaim(P, w, pts == null ? Deeds.CFG.PT : pts);";
+    const n = ZS.split(from).length - 1, fz = tmp('claim', '-zone');
+    const RB = withFiles([[fz, ZS.split(from).join("  if (why === 'claim') Deeds.addPts(P, w, pts == null ? Deeds.CFG.PT : pts);")]], () => run('zone', { __T1389_ZONE: fz }));
+    ok(n === 1 && !!RB && RB.h_reclaim === false && RB.e_absence === true, '★미끼 ④ — 선포의 +PT 를 일한 점수 길(빚부터)로 되돌린 존 사본 → ⓗ 빨강(ⓔ 는 초록)', `바꾼 자리 ${n} · h_reclaim=${RB && RB.h_reclaim} e_absence=${RB && RB.e_absence} · ${RB ? (RB['h_reclaim#'] || RB.err || '') : ''}`);
   }
   console.log(`\n=== T1389 사유지 켬 준비: ${pass} 통과 / ${fail} 실패 ===`);
   process.exit(fail ? 1 : 0);

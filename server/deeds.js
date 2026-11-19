@@ -243,6 +243,14 @@ function addPts(P, ch, pts) {
   const before = ch.m; add(ch, v - paid, ch.n);
   return { paid, saved: ch.m - before };
 }
+// ★[T1389 · PM 덧붙임 Q12 — 재민 11-19 "카운트다운을 처음부터 다시 세면 안"] 선포(새 칸 · 풀린 내 칸 다시 · 이어받기)의 +PT 는 **빚을 안 지우고 · 바닥난 청크엔 안 든다**.
+//   종전(T1386 회부 6)은 일한 점수와 같은 길(`addPts` — 빚부터)이라 내놓고 다시 선포(나무 3 · 돌 2)만으로 빚 100점 = 다음 풀림 한 칸 몫을 샀다.
+//   저축이 남은 청크(빚을 안 만드는 청크)에 든 새 칸만 그 몫을 채운다(종전처럼 "새 칸은 가득") · 바닥난 청크의 새 칸은 빈 채 — 빚 · 빚 시계 그대로.
+function addClaim(P, ch, pts) {
+  if (!(ch.m > 0)) return { paid: 0, saved: 0 };
+  const before = ch.m; add(ch, pts, ch.n);
+  return { paid: 0, saved: ch.m - before };
+}
 // 다음 사건 시각 — 청크 단계 바뀜(흐림 · 하루 안 바닥 · 바닥) · 빚이 한 칸 몫이 되는 때
 function nextEventAt(P) {
   const N = P.chunks.reduce((a, c) => a + c.n, 0) + (P.others | 0);
@@ -285,4 +293,4 @@ function othersOf(player, zone) { const d = bodyOf(player); if (!d) return 0; le
 function chunkOf(cellX, cellY) { const K = CFG.CHUNK; return [Math.floor(cellX / K), Math.floor(cellY / K)]; }
 
 module.exports = { ON, CFG, daysOf, dailyNeed, capOf, rateOf, init, settle, zeroAt, stageOf, nextAt, add, bodyOf, setZone, othersOf, chunkOf,
-  stepsFrom, pickFar, pickFarFast, advance, addPts, nextEventAt, forecast, setDebt, _debtStat, NECK_GIVE };   // ★[T1386] 빚
+  stepsFrom, pickFar, pickFarFast, advance, addPts, addClaim, nextEventAt, forecast, setDebt, _debtStat, NECK_GIVE };   // ★[T1386] 빚
