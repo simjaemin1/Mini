@@ -7717,7 +7717,8 @@ function _t1283BodyHaul(vil, npc, t) {
 }
 function _t1207BodyDone(vil, job) {
   const i = vil._t1207Pend ? vil._t1207Pend.indexOf(job) : -1;
-  if (i >= 0) { vil._t1207Pend.splice(i, 1); t1399Bump(vil); }
+  t1399Bump(vil);   // ★[T1399] 마을 바뀜 도장(아래 줄 영토 일감 줄)
+  if (i >= 0) vil._t1207Pend.splice(i, 1);
   if (!_t1207CanTake(vil, job.cx, job.cy)) { if (T1238_TERR_V2) _t1238JobToLand(job, vil.dbId); return 0; }   // 그 사이 남의 땅이 됐거나 막혔다(놓은 말뚝은 소비 장부에 이미 찍혔다 · ★[T1238] 켬 = 한 일은 땅에)
   const T = _t1207Stat(vil); T.cells++; T.body++; T.wood += (job.mat.wood || 0); T.laborMin += job.laborMin;
   return _terrAdd(vil, [job.key], null, !T1302_TERR_BODY);
@@ -16554,7 +16555,8 @@ function _lifeAddHouseSiteInner(vil) {
         { stage: 1, x0: x - 5, y0: y - 5, x1: x + 0, y1: y - 2, owner: 'npc', floor: 0 }, `npc_simvil_${vil.dbId}`, `${vil.name} 새 움집터`, null) : null;   // ★NPC 정본 렉트를 hut_site 규약에 실음(완공 기하 동일)
       if (bo) state.deps.broadcast({ type: 'building_added', building: bo });
       state.db.insertVillageBuilding({ village_id: vil.dbId, type: 'housesite', cx: x, cy: y, floors: 0, data: null });
-      vil._site = { cx: x, cy: y, stage: 1, bo }; t1399Bump(vil);
+      t1399Bump(vil);   // ★[T1399] 마을 바뀜 도장(아래 줄 집터)
+      vil._site = { cx: x, cy: y, stage: 1, bo };
       _t1053Deforest(vil, x, y, L_DEFOREST_H);   // ★[T1053] 랩 집터 고름 → `deforestArea(±L_DEFOREST_H)`(끔 = 무동작)
       if (T1238_TERR_V2) _t1238StructAdd(vil, _t1238Lot(x, y), true);   // ★[T1238 ①] 켬 = 숲은 숲 그대로 — 집을 낼 때 그 부지만 벤다(정본 벌목 문 · 통나무는 곳간) · 사냥 장부 줄(T1053 — 나무 0) 뒤라 차례는 결과와 무관(test-deforest-game ⑤ 글자: 두 줄이 붙어 있다)
       _probe.siteLog.push(`${(state.world && state.world.day) | 0}:${vil.dbId}:${x},${y}:${strict ? 's' : 'l'}`);   // ★[T41] 비트 동일 대조용(선택된 자리만)
