@@ -18967,7 +18967,9 @@ function gracefulShutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
   console.log(`[${ZONE_ID}] ${signal} 받음 — 상태 flush 후 종료...`);
-  if (process.env.T1340_RESUME_EXACT !== '0') { try { if (T1322_PF) _t1372SSTake(); _t1322FlushAll(); } catch (e) {} }   // ★[T1372 ⓑ] 내리기 앞 표 행을 뜬다(T742 줄 `zone.t1372SS`)   // ★[T1340] 미룬 걸음 도장(T1322)을 몸에 내려 둔 채 저장한다(다시 뜬 몸은 미룸 표가 없다)
+  //   ★[T1382] 표를 뜬 판은 도장을 몸에 **안 내린다** — 한 번에 돈 판의 몸은 그 순간 미룬 채(옛 도장 · 표가 참값)다. 내리면 몸 칸(`_pathAt` · `_t540StepAt` · `nextDecisionAt` …)이
+  //     저장 순간 값으로 바뀌어 다시 뜬 몸이 다른 틱에 결정했다(몸 세계 8날 · 4날 끊음: econ 첫 갈림 5날 · 몸 자리 4/8). 표를 못 뜬 판(거름 끔 · 실패)은 종전처럼 내린다.
+  if (process.env.T1340_RESUME_EXACT !== '0') { try { if (T1322_PF) _t1372SSTake(); } catch (e) {} try { if (!(T1322_PF && _t1372SSSnap)) _t1322FlushAll(); } catch (e) {} }   // ★[T1372 ⓑ] 내리기 앞 표 행을 뜬다(T742 줄 `zone.t1372SS`)   // ★[T1340] 미룬 걸음 도장(T1322)을 몸에 내려 둔 채 저장한다(다시 뜬 몸은 미룸 표가 없다)
   if (SimVillages.t728On && SimVillages.t728On() && SimVillages.t728Shutdown) {
     SimVillages.t728Shutdown(T728_SHUTDOWN_CAP_MS, (r) => {
       console.log(`[${ZONE_ID}] 🏘️ [T728] 종료 저장 — ${r.why} · 마감 기다림 ${r.waitMs | 0}ms · 저장 ${r.saveMs | 0}ms · 마을 ${r.villages | 0} · econ 날 ${r.day}${r.err ? ' · 실패 ' + r.err : ''}`);

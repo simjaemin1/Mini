@@ -79,13 +79,20 @@ const pidQ = (Xa, Yb) => { const r = { n: 0, same: 0, vils: 0 }; if (!Xa || !Yb 
   return r; };
 const pidOk = (p) => p.n > 0 && p.same === p.n;
 //   ⓑ 길 닳음 칸 · 몹 집 · 무리 · 배회
-const MOBF = ['homeX', 'homeY', 'packId', 'wanderUntil'];
+//   무리 열쇠(`packId`)는 낳을 때 `Math.random` 꼬리가 붙어 **한 번에 돈 판끼리도** 글자가 다르다(캐러밴 몸 `playerId` 와 같은 꼴) — 글자 대신 묶음을 본다:
+//   무리마다 첫 몹 번호를 이름으로(몹 번호 차례) · 두 판의 몹마다 그 이름이 같으면 같은 무리
+const MOBF = ['homeX', 'homeY', 'wanderUntil'];
 const mobDiff = (M) => (M && M.mods && M.mods.mobs ? MOBF.reduce((s, f) => s + (M.mods.mobs.byField[f] || 0), 0) : -1);
+const packOf = (D) => { const r = new Map(), first = new Map(); if (!D || !D.mods || !D.mods.mobs) return r;
+  const ks = Object.keys(D.mods.mobs).filter((k) => k.endsWith('.packId')).sort((a, b) => (+a.replace(/\D/g, '')) - (+b.replace(/\D/g, '')));
+  for (const k of ks) { const mid = k.slice(0, -7), v = D.mods.mobs[k]; if (v === 'null' || v === 'u') { r.set(mid, '-'); continue; } if (!first.has(v)) first.set(v, mid); r.set(mid, first.get(v)); }
+  return r; };
+const packDiff = (Xa, Yb) => { const a = packOf(Xa), b = packOf(Yb); if (!a.size) return -1; let d = 0; for (const [mid, v] of a) if (b.get(mid) !== v) d++; for (const mid of b.keys()) if (!a.has(mid)) d++; return d; };
 const rdDiff = (M) => (M && M.rd ? M.rd.diff + M.rd.onlyA + M.rd.onlyB : -1);
 const qRoad = (M) => !!M && !!M.rd && M.rd.nA > 0 && rdDiff(M) === 0;
-const qMob = (Xa, M) => !!M && !!Xa && Xa.mods && Xa.mods.mobN > 0 && M.mods && mobDiff(M) === 0;
+const qMob = (Xa, M, Yb) => !!M && !!Xa && Xa.mods && Xa.mods.mobN > 0 && M.mods && mobDiff(M) === 0 && packDiff(Xa, Yb) === 0;
 const rdS = (M) => (M && M.rd ? `길 칸 A ${M.rd.nA} · B ${M.rd.nB} · 갈림 ${M.rd.diff} · A 에만 ${M.rd.onlyA} · B 에만 ${M.rd.onlyB}` : '길 칸 ?');
-const mobS = (Xa, M) => `몹 ${Xa && Xa.mods ? Xa.mods.mobN : '?'} · 집 · 무리 · 배회 갈림 ${mobDiff(M)}`;
+const mobS = (Xa, M, Yb) => `몹 ${Xa && Xa.mods ? Xa.mods.mobN : '?'} · 집 · 배회 갈림 ${mobDiff(M)} · 무리 묶음 갈림 ${packDiff(Xa, Yb)}`;
 
 (async () => {
   console.log(`\n=== T1382 몸 세계를 껐다 켜도 같은 세계 — 마을 몸 pid · 길 닳음 · 몹 집 (${BASE}) ===`);
@@ -102,6 +109,7 @@ const mobS = (Xa, M) => `몹 ${Xa && Xa.mods ? Xa.mods.mobN : '?'} · 집 · 무
   const AT = rd(path.join(D('A'), 'seg-0.json.t1340-at.json'));
   const AT2 = rd(path.join(D('A'), 'seg-0.json.t1372-at.json'));
   ok(B.code === 0 && A.code === 0 && RB && AT && AT2 && AT.V === RB.V, '판 둘이 끝까지 돌았고 같은 순간(다시 뜬 첫 틱 V)을 떴다', `B ${B.code} · A ${A.code} · V ${V}`);
+  const R3 = (dir) => rd(path.join(D(dir), `seg-${CUT}.json.t1372-ready.json`));   // 다시 뜬 첫 틱 몹 칸(무리 묶음)
   const momOf = (dir, tag) => (AT2 ? mom(path.join(D('A'), 'seg-0.json.t1372-at.json'), path.join(D(dir), `seg-${CUT}.json.t1372-ready.json`), tag) : null);
 
   console.log('\nⓐ 마을 몸 pid · econ');
@@ -113,16 +121,16 @@ const mobS = (Xa, M) => `몹 ${Xa && Xa.mods ? Xa.mods.mobN : '?'} · 집 · 무
 
   console.log('\nⓑ 길 닳음 · 몹 집');
   const M = momOf('B', 'B');
-  ok(qRoad(M) && qMob(AT2, M), 'ⓑ 길 닳음 칸(등급 · 닳은 날) 갈림 0 · 몹 집 · 무리 · 배회 갈림 0', `${rdS(M)} · ${mobS(AT2, M)}`);
+  ok(qRoad(M) && qMob(AT2, M, R3('B')), 'ⓑ 길 닳음 칸(등급 · 닳은 날) 갈림 0 · 몹 집 · 무리 · 배회 갈림 0', `${rdS(M)} · ${mobS(AT2, M, R3('B'))}`);
 
   console.log('\nⓒ 미끼 — 종료 저장 줄에서 한 자리만 뺀 사본');
   const bait = (dir) => rd(path.join(D(dir), 'seg-0.json.t1382-bait.json'));
   const KP = bait('Bp'), RP = rd(path.join(D('Bp'), `seg-${CUT}.json.t1340-ready.json`)), PP = pidQ(AT, RP), MP = momOf('Bp', 'Bp');
-  ok(Bp.code === 0 && KP && KP.n === 1 && KP.rows > 0 && !pidOk(PP) && qRoad(MP) && qMob(AT2, MP), '[미끼] 바꾼 자리 1 — 마을 몸 행의 저장 pid($p · 몸 번호)를 뺀 사본은 ⓐ 만 빨강(ⓑ 초록)',
-    `뺀 자리 ${KP ? KP.n : '?'}(행 ${KP ? KP.rows : '?'}) · pid 같음 ${PP.same}/${PP.n} · ⓐ ${pidOk(PP) ? '초록' : '빨강'} · ⓑ ${qRoad(MP) && qMob(AT2, MP) ? '초록' : '빨강'}`);
+  ok(Bp.code === 0 && KP && KP.n === 1 && KP.rows > 0 && !pidOk(PP) && qRoad(MP) && qMob(AT2, MP, R3('Bp')), '[미끼] 바꾼 자리 1 — 마을 몸 행의 저장 pid($p · 몸 번호)를 뺀 사본은 ⓐ 만 빨강(ⓑ 초록)',
+    `뺀 자리 ${KP ? KP.n : '?'}(행 ${KP ? KP.rows : '?'}) · pid 같음 ${PP.same}/${PP.n} · ⓐ ${pidOk(PP) ? '초록' : '빨강'} · ⓑ ${qRoad(MP) && qMob(AT2, MP, R3('Bp')) ? '초록' : '빨강'}`);
   const KR = bait('Br'), RR = rd(path.join(D('Br'), `seg-${CUT}.json.t1340-ready.json`)), PR = pidQ(AT, RR), MR = momOf('Br', 'Br');
-  ok(Br.code === 0 && KR && KR.n === 1 && !qRoad(MR) && qMob(AT2, MR) && pidOk(PR), '[미끼] 바꾼 자리 1 — 길 닳음 줄(zone.t1382Roads)을 뺀 사본은 ⓑ 의 길만 빨강(몹 · ⓐ 의 pid 초록)',
-    `뺀 자리 ${KR ? KR.n : '?'} · ${rdS(MR)} · 길 ${qRoad(MR) ? '초록' : '빨강'} · 몹 ${qMob(AT2, MR) ? '초록' : '빨강'} · pid ${pidOk(PR) ? '초록' : '빨강'}`);
+  ok(Br.code === 0 && KR && KR.n === 1 && !qRoad(MR) && qMob(AT2, MR, R3('Br')) && pidOk(PR), '[미끼] 바꾼 자리 1 — 길 닳음 줄(zone.t1382Roads)을 뺀 사본은 ⓑ 의 길만 빨강(몹 · ⓐ 의 pid 초록)',
+    `뺀 자리 ${KR ? KR.n : '?'} · ${rdS(MR)} · 길 ${qRoad(MR) ? '초록' : '빨강'} · 몹 ${qMob(AT2, MR, R3('Br')) ? '초록' : '빨강'} · pid ${pidOk(PR) ? '초록' : '빨강'}`);
 
   console.log(`\n=== T1382 결과: ${pass} 통과 · ${fail} 실패 ===`);
   if (!fail) fs.rmSync(BASE, { recursive: true, force: true });
