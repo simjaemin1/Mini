@@ -13749,6 +13749,24 @@ const MELEE_ARMORY_SECF = 0.45;        // 병기고(비긴급 비축) 축적 최
 //   청동/명 ≈ (청동마을 인구비중) × MELEE_ARMORY_PC × 이 값. 튜닝 주 레버 중 하나.
 const BRONZE_ARMORY_FRAC = 0.45;       // 청동 자격 마을 병기고 중 청동 최대 비중(나머지 ≥55%는 석기). 청동마을도 석기 다수 — 청동 위세 엘리트 표지, 석기 다수 보장. (병기고 총량 MELEE_ARMORY_PC와 독립 — 생존 무관, 청동:석기 비율만 결정. 청동/명 미세조정 레버.)
 const DECAY_MELEE_MAINT = 0.0004;      // 병기고 유지보수 계수(노동목표 마모항) — 무기 부패(DECAY_V2.weapon 0.0002)의 ~2배(사용마모 포함). 병기고 규모 유지에 필요한 지속 노동.
+// ★★[T1385 2026-11-19 · ★재민 11-19 "상한을 명시적으로 해놓는 게 아니라, 상한을 없애야지.. 청동이 희귀해지는 건 자연히 그래야지 상한 때문이 아니라"]
+//   손잡이 `T1385_BRONZE_NOCAP`('1' 만 켬 · 끔 기본 = 아래 갈래가 한 줄도 안 선다 = 종전 글자) — **청동 사슬의 명시적 상한 넷을 걷는다.**
+//   팔 하나씩 `T1385_BRONZE_NOCAP_<팔>`('1' — 판에서 몫을 가른다 · 손잡이 하나가 넷을 다 켠다):
+//   ㉮ `ARMORY` — 병기고 청동 몫(`BRONZE_ARMORY_FRAC` 0.45)을 걷는다: 청동 수요 = 병기고 전체(`MELEE_ARMORY_PC` — 근접 무기 실수요라 남긴다).
+//      그 곳간은 **청동 근접검**으로 센다 — 돌검은 청동 수요를 막지 않는다 = `T1344_BRONZE_STOCK` 의 뜻 그대로라 켬이 그 손잡이를 같이 켠다
+//      (같은 셈 `_t1344BronzeStock` · 같은 섞음 `_t1344Mix` · 같은 세 자리 — 주조 문 곳간 · 석공 문 · 대장장이 자리).
+//   ㉯ `TINGATE` — 청동 상비 자격(`_bronzeCapable` — 산지 · 주석 ≥ max(13, 사람 × 0.95))을 걷는다: 석공 청동 우선권은 재료(한 번 부을 구리 · 주석 — 종전 두 문턱 그대로)와
+//      손(붓는 대장장이가 있다)만 본다. 전쟁 편성의 같은 판정 사본(`war-core _warBronzeCapable` + 무기 질 ramp)도 같이 — 청동 근접검은 이 장부의 청동 몫으로 센다.
+//   ㉰ `WS` — 세계 몫 상한(v2 — 세계 공급 × 내 인구 몫 × 1.5 · 바닥 0.2)에서 원석 · 합금 재료를 뺀다 = `T1333_WS_INPUT` 실험 팔 그대로라 켬이 그 손잡이를 같이 켠다(`t1333WsFree`).
+//   ㉱ `POOR` — 취약 갈래 칼 한도(굶는 마을 대장장이 주조 문 = max(2, 전사 × 1.2))를 걷는다: 굶는 마을 주조 문도 병기고 몫(잘 먹는 마을과 같은 한도) ·
+//      대장장이 자리의 청동 몫 셈에서 잘 먹는 날 조건을 뺀다(T1347 판정 표 (나) "취약 갈래에도 청동 몫"과 같은 자리 · 곳간 셈은 종전 줄 그대로 — 근접검 전부).
+//   걷은 뒤의 규칙 하나: **근접 무기 수요가 있고 재료(구리 · 주석)와 손이 있으면 청동으로 붓고, 없으면 석기.**
+//     — 석공은 붓는 대장장이가 있을 때만 비켜선다(㉮ · ㉯ 켬 — 비켜선 뒤 붓는 손이 없으면 병기고가 빈다 · 종전 45 % 몫이 그 빈 몫을 반으로 묶어 두었다).
+//   대장장이 손 · 근접 무기 실수요(병기고) · 재료 kg · 한 번 부을 재료 문턱은 물리 · 수요라 남긴다. 새 수 0("병기고 전체"는 몫을 안 묶는다는 뜻 — 1).
+const _t1385On = (k) => !!(typeof process !== 'undefined' && process.env && (process.env.T1385_BRONZE_NOCAP === '1' || process.env['T1385_BRONZE_NOCAP_' + k] === '1'));
+const T1385_ARMORY = _t1385On('ARMORY'), T1385_TINGATE = _t1385On('TINGATE'), T1385_WS = _t1385On('WS'), T1385_POOR = _t1385On('POOR');
+const T1385_FRAC = T1385_ARMORY ? 1 : BRONZE_ARMORY_FRAC;   // 병기고 중 청동 몫(㉮ 켬 = 병기고 전체 · 끔 = 0.45 그대로)
+const T1385 = { armory: T1385_ARMORY, tingate: T1385_TINGATE, ws: T1385_WS, poor: T1385_POOR };   // (읽기 — 관찰기 · 하네스)
 // ★★[T1344 2026-11-16 · T1333 회부 3] 손잡이 `T1344_BRONZE_STOCK`('1' 만 켬 · 끔 기본 = 아래 갈래가 한 줄도 안 선다 = 종전 글자) — **청동 몫(위 45 %)의 곳간은 청동 근접검이다.**
 //   위 정본 글: "병기고 중 청동 최대 비중(나머지 ≥55%는 석기)" · `_smithBeatsMason` 머리 "BRONZE_ARMORY_FRAC 이 청동을 병기고의 일부까지만 허용하므로, 청동이 싸도 나머지는
 //   석공의 마제석검이 채운다" · 석공 갈래 "청동 우선권 + 비중 상한". 셋 다 **청동의 몫**을 말한다. 그런데 세 문(대장장이 주조 `_smSwordStock` · 석공 `_bronzeNow` ·
@@ -13763,7 +13781,8 @@ const DECAY_MELEE_MAINT = 0.0004;      // 병기고 유지보수 계수(노동�
 //      실제 청동 2.5 자루(15 %)에서 문이 닫힌다 — 청동 근접검 곳간이 아니다.)
 //   대장장이 자리(`smithTarget`)도 같은 몫이 비면 선다 — 종전 목표(근접검 전부 · 병기고 전체)와 **큰 쪽**(석검이 병기고를 채운 마을에서 자리가 0 이 되는 것만 막는다).
 //   취약 마을(`_secF` ≤ 문턱)은 종전대로 근접검 전부(전사 커버리지 — 그 갈래는 청동 몫이 아니다).
-const T1344_BRONZE_STOCK = (typeof process !== 'undefined' && process.env && process.env.T1344_BRONZE_STOCK === '1');
+const T1344_BRONZE_STOCK = (typeof process !== 'undefined' && process.env && process.env.T1344_BRONZE_STOCK === '1') || T1385_ARMORY;   // ★[T1385 ㉮] 켬이 같이 켠다(위 머리)
+const T1385_BZ = T1344_BRONZE_STOCK || T1385_TINGATE;   // ★[T1385] 청동 몫 장부(주조 청동 칸 · 하루 끝 섞음 `_t1344Mix`)가 선다 — ㉯ 는 전쟁 편성이 읽는다(war-core)
 function _t1344BronzeStock(v) {   // 청동 근접검 곳간 ≈ 근접검 곳간(`weapon × _swordFrac` — 종전 근접검 셈 그대로) × 청동 몫
   return (v.storage.weapon || 0) * (v._swordFrac != null ? v._swordFrac : SWORD_FRAC_INIT) * Math.max(0, Math.min(1, v._t1344Q || 0));
 }
@@ -17534,11 +17553,12 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
       //   ★청동 자격 마을도 마제석검 topup 허용: 대장장이 청동검은 tin(희소)에 묶여 병기고를 다 못 채움 → 석공이 *나머지*를 마제석검으로.
       //   → 청동은 tin 가용분까지만(자연 상한), 병기고 잔여는 석기 → 청동 자격 마을에서도 청동은 소수·석기 다수(주석 병목이 청동 비중을 결정). 홍수 시드서도 청동 폭주 억제.
       const _armoryTarget = (v.npcs.length || 0) * MELEE_ARMORY_PC;
-      const _bronzeArmoryCap = _armoryTarget * BRONZE_ARMORY_FRAC;   // 청동 병기고 한도(나머지는 석기 몫)
+      const _bronzeArmoryCap = _armoryTarget * T1385_FRAC;   // 청동 병기고 한도(나머지는 석기 몫) · ★[T1385 ㉮] 켬 = 병기고 전체(끔 = BRONZE_ARMORY_FRAC 그대로)
       const _meleeUrgent = _bladeUsers > 0 && _swordStock < _bladeUsers * MELEE_COV_BUFFER;   // 전사 무장 결손(긴급)
       // ★청동 우선권 + 비중 상한: 대장장이 청동검은 병기고의 BRONZE_ARMORY_FRAC까지. 그 한도 도달 또는 tin 고갈이면 석공이 *나머지*를 마제석검으로.
       //   → 청동마을도 석기 다수(청동은 한도까지만). 무산지 마을은 항상 석공 마제석검(청동 불가).
-      const _bronzeNow = _bronzeCapable(v) && ((T1344_BRONZE_STOCK && _secF > MELEE_ARMORY_SECF) ? _t1344BronzeStock(v) : _swordStock) < _bronzeArmoryCap && (v.storage.copper || 0) >= 0.3 && (v.storage.tin || 0) >= 0.12;   // 지금 청동 제작 몫 남음(한도·tin) · ★[T1344] 켬 · 잘 먹는 마을 = 청동 몫은 청동 근접검으로 센다(석검 빼고 — 모듈 머리 `T1344_BRONZE_STOCK` · 끔 = 종전 `_swordStock`)
+      const _t1385Hands = (T1385_ARMORY || T1385_TINGATE) ? (v.counts.smith || 0) > 0 : true;   // ★[T1385] 손 — 붓는 대장장이가 있어야 석공이 비켜선다(끔 = 참 · 종전 글자)
+      const _bronzeNow = _t1385Hands && (T1385_TINGATE || _bronzeCapable(v)) && ((T1344_BRONZE_STOCK && _secF > MELEE_ARMORY_SECF) ? _t1344BronzeStock(v) : _swordStock) < _bronzeArmoryCap && (v.storage.copper || 0) >= 0.3 && (v.storage.tin || 0) >= 0.12;   // 지금 청동 제작 몫 남음(한도·tin) · ★[T1344] 켬 · 잘 먹는 마을 = 청동 몫은 청동 근접검으로 센다(석검 빼고 — 모듈 머리 `T1344_BRONZE_STOCK` · 끔 = 종전 `_swordStock`)
       const _needStoneSword = _meleeUrgent && !_bronzeNow && (v.storage.stone || 0) >= _swCost;   // 긴급 무장인데 청동 몫 없음 → 마제석검(방어 최우선, 식량무관)
       // ★병기고(비긴급 비축)는 *식량 안보(secF 충분)일 때만* — 척박·기근 마을이 병기고 비축에 노동을 돌려 식량생산이 밀려 쇠퇴하는 것 방지(랩 취약 시드 인구 유지).
       const _armoryShort = _secF > MELEE_ARMORY_SECF && _swordStock < _armoryTarget * MELEE_ARMORY_HYST && !_bronzeNow && (v.storage.stone || 0) >= _swCost;   // 병기고 결손 + 청동 몫 없음(한도·tin 고갈) + 식량안보 → 석기 backfill
@@ -17597,8 +17617,8 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
       // ★청동 병기고 비중 상한 — 청동은 병기고의 BRONZE_ARMORY_FRAC까지만(나머지 석기). swordStock이 그 한도 미만일 때만 청동 제작 → 청동마을도 석기 다수·청동 소수(엘리트).
       //   ★식량 안보 게이트: 잘 먹는 마을만 병기고까지 청동 확충, 취약 마을은 전사 실수요(BUFFER)까지만(식량·생존 우선).
       let _smSwordStock = (v.storage.weapon || 0) * (v._swordFrac != null ? v._swordFrac : SWORD_FRAC_INIT);   // ★[T1344] `let` — 켬 · 잘 먹는 마을 · 오늘 배합이 청동이면 아래(`_melt` 뒤)에서 청동 근접검으로 선다(값은 종전 식 그대로)
-      const _bronzeArmoryCap = (_secF > MELEE_ARMORY_SECF)
-        ? (v.npcs.length || 0) * MELEE_ARMORY_PC * BRONZE_ARMORY_FRAC
+      const _bronzeArmoryCap = (_secF > MELEE_ARMORY_SECF || T1385_POOR)   // ★[T1385 ㉱] 켬 = 굶는 마을도 병기고 몫(끔 = 종전 갈래)
+        ? (v.npcs.length || 0) * MELEE_ARMORY_PC * T1385_FRAC   // ★[T1385 ㉮] 켬 = 병기고 전체(끔 = BRONZE_ARMORY_FRAC 그대로)
         : Math.max(2, (v.counts.warrior || 0) * MELEE_COV_BUFFER);   // 취약 마을 = 전사 커버리지만
       // ★청동 희소성: 청동검은 *청동 경제 자격* 마을(주석 산지·교역 허브)만 + 병기고 청동 한도 미만일 때. 흘러든 트레이스 주석뿐이거나 청동 한도 도달 마을은 석공 마제석검.
       // ★★[재민 확정] 청동검/철검/석검의 **이산 분기 3개를 연속 곡선 하나로** 바꾼다.
@@ -17636,7 +17656,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
         for (const m in _melt.take) { v.storage[m] -= _melt.take[m]; _cons(v, m, _melt.take[m]); }
         v._cuWeapUsed = (v._cuWeapUsed || 0) + (_melt.take.copper || 0);   // (계측 전용)
         v._bronzeWeaponMade = (v._bronzeWeaponMade || 0) + amt * _melt.bronzeness;
-        if (T1344_BRONZE_STOCK) v._t1344BzT = (v._t1344BzT || 0) + amt * _melt.bronzeness;   // ★[T1344] 오늘 부은 청동(같은 셈) — 하루 끝 청동 몫 섞음(`_t1344Mix`)이 읽는다(끔 = 이 줄 무동작)
+        if (T1385_BZ) v._t1344BzT = (v._t1344BzT || 0) + amt * _melt.bronzeness;   // ★[T1344] 오늘 부은 청동(같은 셈) — 하루 끝 청동 몫 섞음(`_t1344Mix`)이 읽는다(끔 = 이 줄 무동작)
         if (v._world && v._world.onCast) { try { v._world.onCast(v, _melt, amt); } catch (e) { /* 계측 */ } }   // ★[T1344 ⑥] 읽기만 하는 훅(관찰기가 줄 때만 · 서버 · 랩 · 자는 안 준다 = 종전 그대로) — 이 주조의 배합 · 등급 · 산출
         v._alloyGrade = _melt.grade;                       // (계측) 이 마을이 만든 합금의 등급
         v._swordMadeToday = (v._swordMadeToday || 0) + amt;
@@ -18177,7 +18197,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
     } else if (v._swordFrac == null) {
       v._swordFrac = SWORD_FRAC_INIT;
     }
-    if (T1344_BRONZE_STOCK) _t1344Mix(v);   // ★[T1344] 청동 몫 곳간 가중 섞음(EMA 갱신 뒤 · 오늘 칸을 돌리기 앞 · 끔 = 이 줄 무동작)
+    if (T1385_BZ) _t1344Mix(v);   // ★[T1344] 청동 몫 곳간 가중 섞음(EMA 갱신 뒤 · 오늘 칸을 돌리기 앞 · 끔 = 이 줄 무동작)
     v._swordMadeToday = 0; v._bowMadeToday = 0;
   }
   v._toolQnum = 0; v._toolQden = 0; v._weapQnum = 0; v._weapQden = 0; v._clothQnum = 0; v._clothQden = 0;
@@ -18918,7 +18938,7 @@ const COPPER_DERIV_DAYS = (typeof process !== 'undefined' && process.env && proc
 //     노 · 주조 한 곳에 몰린다 — 주석은 녹이는 마을-날 96 · 78 % 가 바닥이었고(T1313 §1), 합금 발주(ⓐ)의 구리도 3.42 → 0.2 ~ 0.6 으로 깎였다(T1333 서버 자 판).
 const T1333_ALLOY_ORDER = (typeof process !== 'undefined' && process.env && process.env.T1333_ALLOY_ORDER === '1');
 const T1333_EXPORT_CAST = (typeof process !== 'undefined' && process.env && process.env.T1333_EXPORT_CAST === '1');
-const T1333_WS_INPUT = (typeof process !== 'undefined' && process.env && process.env.T1333_WS_INPUT === '1');
+const T1333_WS_INPUT = (typeof process !== 'undefined' && process.env && process.env.T1333_WS_INPUT === '1') || T1385_WS;   // ★[T1385 ㉰] 켬이 같이 켠다(모듈 머리 `T1385`)
 function t1333WsFree(r) { return !!(T1333_WS_INPUT && (r === 'ore' || OreGoods.isOre(r) || _MELT_METALS.includes(r))); }   // v2 상한 줄이 부른다(판정은 여기 하나)
 function _t1333ExportCast(v) {
   const nef = (v && v._world && typeof v._world.netExportFn === 'function') ? v._world.netExportFn : null;
@@ -19079,8 +19099,8 @@ function smithTarget(v) {
   // ★[T1344] 켬 · 잘 먹는 청동 마을 — 청동 몫(병기고 × 45 %)이 청동 근접검으로 비면 대장장이 자리가 선다(종전 목표와 큰 쪽 · 같은 노동 식 · 같은 두 수).
   //   석검이 병기고를 채워 종전 목표(근접검 전부)가 0 인 마을에서만 갈린다(모듈 머리 `T1344_BRONZE_STOCK`). 끔 = 0(큰 쪽에 0 — 앞 두 항은 0 이상이라 종전 값).
   //   청동을 부을 주석이 있는 마을만(석공 청동 우선권 `_bronzeNow` 의 그 문턱 0.12 — 주석 없는 구리 마을은 청동 몫을 못 채운다 · 주조 문도 그 배합은 종전 곳간으로 잰다)
-  const _t1344L = (T1344_BRONZE_STOCK && hasBronze && (v.storage.tin || 0) >= 0.12 && _foodSecF(v) > MELEE_ARMORY_SECF)
-    ? craftLaborTarget(_t1344BronzeStock(v), N0 * MELEE_ARMORY_PC * BRONZE_ARMORY_FRAC, 0.5 * WEAPON_LABOR_MULT, { buffer: 1.0, catchup: 40, decay: DECAY_MELEE_MAINT, minStock: 2 }) : 0;
+  const _t1344L = (T1344_BRONZE_STOCK && hasBronze && (v.storage.tin || 0) >= 0.12 && (T1385_POOR || _foodSecF(v) > MELEE_ARMORY_SECF))   // ★[T1385] ㉱ 켬 = 굶는 마을도 · ㉮ 켬 = 병기고 전체(끔 = 종전 글자)
+    ? craftLaborTarget(_t1344BronzeStock(v), N0 * MELEE_ARMORY_PC * T1385_FRAC, 0.5 * WEAPON_LABOR_MULT, { buffer: 1.0, catchup: 40, decay: DECAY_MELEE_MAINT, minStock: 2 }) : 0;
   return Math.max(local, exportSmiths, _t1344L) + smeltTarget(v);
 }
 // ★전사 readiness 목표 — *정원 아님*. 교역 캐러밴 수 × 약탈위협으로 호위 수요 파생.
@@ -20625,6 +20645,7 @@ module.exports = {
   T1333_ALLOY_ORDER, T1333_EXPORT_CAST, COPPER_DERIV_ON, _t1333ExportCast,   // ★[T1333] 합금 발주 · 수출 주조 손잡이(끔 기본) · 구리 파생 손잡이(읽기) · 수출 주조 판정(하네스가 정본을 직접 부른다)
   T1333_WS_INPUT, t1333WsFree,   // ★[T1333 ④] 생산 투입재 인구 몫 상한 밖(실험 · 끔 기본) — v2 상한 줄이 부른다
   T1344_BRONZE_STOCK, _t1344BronzeStock, _t1344Mix, _foodSecF, _meltSearch, _oppPrice,   // ★[T1344] 청동 몫 곳간(끔 기본) · 하네스 · 관찰기가 정본 함수를 직접 부른다(읽기 · ⑥ 은 뺀 배합)
+  T1385, T1385_BZ, T1385_FRAC, _weaponThin,   // ★[T1385] 청동 사슬 상한 걷기 팔(끔 기본 — 읽기 · 관찰기 · 하네스)
   // ★[2026-08-03a ⑰] 국고 현금 배선 — 하네스가 **산술을 직접 재게** 노출한다(상수 복제 금지).
   //   `_treasuryTopUp` 은 실제 함수 그대로여야 검사가 그 코드를 밟는다(모형을 검사하면 의미가 없다).
   _treasuryTopUp, RESERVE_PC, _matPrice, expandCost,
@@ -27340,6 +27361,10 @@ const WAR_SUPPLY_DIST_K=0.06;        // 거리 보급 페널티 — 원거리 �
 const WAR_MOB_ODDS_MIN=0.42;         // ★승산 하한 — 산출 동원으로 이 승산 미달이면 소습격 축소, 그래도 미달이면 출정 포기(-EV 회피)
 // ★청동 자격(economy _bronzeCapable 로직 사본 — 모듈 사적 함수라 호출 불가, 동일 판정 재현). land.tin 산지 OR 대량 주석 비축.
 function _warBronzeCapable(v){ if(((v.land&&v.land.tin)||0)>0)return true; const N=v.npcs?v.npcs.length:1; return ((v.storage&&v.storage.tin)||0)>=Math.max(_warBRONZE_TIN_MIN_ABS,N*_warBRONZE_TIN_MIN_PC); }
+// ★[T1385 ㉯] 손잡이 `T1385_BRONZE_NOCAP` · `T1385_BRONZE_NOCAP_TINGATE`(쿼리 '1' — 엔진 `T1385` 머리) — 청동 상비 자격을 걷으면 이 사본도 같이 걷는다:
+//   편성의 청동 근접검 = 근접검 곳간 × 경제 장부의 청동 몫(`_t1344Q`) · 자격 · 무기 질 ramp 를 안 본다(sim/war-core 와 같은 줄 · 끔 = 종전 두 줄 그대로).
+const _T1385_TIN=!!(typeof process!=='undefined'&&process.env&&(process.env.T1385_BRONZE_NOCAP==='1'||process.env.T1385_BRONZE_NOCAP_TINGATE==='1'));
+function _t1385Q(e){ return Math.max(0,Math.min(1,(e&&e._t1344Q)||0)); }
 // ═══════════════════════════════════════════════════════════════════════════
 // ★[전쟁실험실 신규] 개인 무기 숙련 + 직업 도구→무기 매핑 + 개인 기반 편성 + 돌 공급
 //   전부 war*/_war* 접두사. economy-engine·battle-core 무수정: 무기숙련은 econ.npcs(영속)에 _ws* 부착(engine이 안 건드리는 키),
@@ -27453,7 +27478,8 @@ function _warConscriptIndividual(v, mode, opts){
   let swordStock=Math.floor(weapon*swordFrac), bowStock=Math.floor(weapon*(1-swordFrac));
   // 청동검 재고 = 청동자격+고품질이면 근접검 재고 중 일부(품질 비례). 나머지 근접검=석검.
   let bronzeStock=0;
-  if(_warBronzeCapable(e) && weapQavg>WAR_BRONZE_WEAPQ_TH){
+  if(_T1385_TIN) bronzeStock=Math.min(swordStock, Math.round(swordStock*_t1385Q(e)));   // ★[T1385 ㉯] 켬 = 장부의 청동 몫
+  else if(_warBronzeCapable(e) && weapQavg>WAR_BRONZE_WEAPQ_TH){
     const bf=Math.max(0,Math.min(1,(weapQavg-WAR_BRONZE_WEAPQ_TH)/(WAR_BRONZE_WEAPQ_CAP-WAR_BRONZE_WEAPQ_TH)));
     bronzeStock=Math.min(swordStock, Math.round(swordStock*bf));
   }
@@ -27706,7 +27732,8 @@ function _warConscriptAggregate(v,mode,opts){
   let melee=force-archer;
   const weapQ=(e._weapQ!=null?e._weapQ:_warWEAP_Q_STONE);
   let champion=0;
-  if(_warBronzeCapable(e) && weapQ>WAR_BRONZE_WEAPQ_TH){
+  if(_T1385_TIN){ champion=Math.round(melee*_t1385Q(e)); champion=Math.min(champion, warrior); champion=Math.min(champion, melee); }   // ★[T1385 ㉯] 켬 = 장부의 청동 몫
+  else if(_warBronzeCapable(e) && weapQ>WAR_BRONZE_WEAPQ_TH){
     const _bfrac=Math.max(0,Math.min(1,(weapQ-WAR_BRONZE_WEAPQ_TH)/(WAR_BRONZE_WEAPQ_CAP-WAR_BRONZE_WEAPQ_TH)));
     champion=Math.round(melee*_bfrac); champion=Math.min(champion, warrior); champion=Math.min(champion, melee);
   }
@@ -29516,7 +29543,7 @@ function renderWarUI(){
     return; }
   if(!PW.faction){ hint.innerHTML='지도에서 내 마을을 클릭해 세력을 고르세요.'; body.innerHTML=''; return; }
   const f=PW.faction, e=econOf(f), c=(e&&e.counts)||{}, N=(e&&e.npcs)?e.npcs.length:0;
-  const wq=(e&&e._weapQ!=null)?e._weapQ:0.5, brc=_warBronzeCapable(e);
+  const wq=(e&&e._weapQ!=null)?e._weapQ:0.5, brc=_T1385_TIN?(_t1385Q(e)>0):_warBronzeCapable(e);   // ★[T1385 ㉯] 켬 = 청동 몫이 있나
   const weap=(e&&e.storage&&e.storage.weapon)||0, food=foodOf(f);
   hint.innerHTML='내 세력: <b style="color:#7ab0ff">'+nameOf(f)+'</b> <button id="pwClearFac" style="padding:1px 7px;font-size:11px">해제</button>';
   const stoneStk=(e&&e.storage&&e.storage.stone)||0, slingCap=(typeof warSlingerCapByStone==='function'&&e)?warSlingerCapByStone(e):0;
