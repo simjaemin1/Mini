@@ -3,7 +3,7 @@
 #   (T1346 표 `계측/T1346_2026-11-17/t1346_table.py` 를 옮겨 t1363 훅 칸을 더했다 — 같은 셈 · 같은 칸 뜻)
 #   실행: python3 t1346_table.py <판 지도 JSON> [--out <폴더>] [--base off] [--tag 이름]
 #   판 지도 = { "<팔>": { "label": "…", "seeds": { "1020": {"dir": "/tmp/sbc-…", "hook": "t1346"|"t1342"}, … } }, … }
-#   훅 둘 가운데 하나(같은 칸 — 사람 = 그 마을 econ 명부 · 창업 마을 밖):
+#   훅 셋 가운데 하나(같은 칸 — 사람 = 그 마을 econ 명부 · 창업 마을 밖 · t1373 훅은 도구 몫 칸이 없어 그 칸은 —):
 #     · t1363(`계측/T1363_2026-11-18/t1363hook.js`) · t1346(`계측/T1346_2026-11-17/t1346hook.js`) — 30날마다 덮어 쓴다 · 굶음 · K 위 죽음은 마을 누계(`fdTot` · `kovTot`) · 도구 몫(`toolCov`)
 #     · t1342(`계측/T1342_2026-11-16/t1342hook.js` · 판 끝에 한 번) — 굶음 · K 위 죽음은 마을-날 차(`fdD` · `kovD`)
 #     세계 누계는 마을마다 오른 몫만 더한다(누계가 줄어든 날 — 마을이 명부에서 빠진 날 — 은 0 · 지난 몫은 남는다).
@@ -35,7 +35,7 @@ def load(e, s):
         if r[C['foodDays']] is not None: SW[day] += r[C['foodDays']] * n   # 사람 가중 곳간 날 수(그림 ③)
         tc = r[C['toolCov']] if 'toolCov' in C else None
         if tc is not None: TA[day] += 1; TL[day] += (1 if tc < 0.5 else 0)   # 도구 몫 0.5 밑 마을-날(도구 쓰는 일꾼 > 0 인 마을)
-        if h in ('t1346', 't1363'):
+        if h in ('t1346', 't1363', 't1373'):   # t1373 훅(`계측/T1373_2026-11-18/t1373hook.js`)도 마을 누계 fdTot · kovTot 를 쓴다(도구 몫 칸은 없다 — 표에 —)
             f, k = r[C['fdTot']] or 0, r[C['kovTot']] or 0
             df = max(0, f - lastF.get(v, f)); dk = max(0, k - lastK.get(v, k)); lastF[v] = f; lastK[v] = k
         else:
@@ -43,7 +43,7 @@ def load(e, s):
         FI[day] += df; KI[day] += dk; vF[v][day] += df
         if tc is not None and tc < 0.5: FL[day] += df   # 도구 몫 0.5 밑 날의 굶어 죽음
     days = sorted(P)
-    return {'days': days, 'P': P, 'FI': FI, 'KI': KI, 'TL': TL, 'TA': TA, 'FL': FL, 'S': {d: SW[d] / P[d] for d in days if P[d]}, 'vN': vN, 'vF': vF, 'nm': nm, 'last': days[-1] if days else 0}
+    return {'days': days, 'P': P, 'FI': FI, 'KI': KI, 'TL': TL, 'TA': TA, 'FL': FL, 'S': {d: SW[d] / P[d] for d in days if P[d]}, 'vN': vN, 'vF': vF, 'nm': nm, 'last': days[-1] if days else 0, 'hasTool': 'toolCov' in C}
 
 def csum(I, lo, hi): return sum(v for d, v in I.items() if lo <= d <= hi)
 
@@ -59,7 +59,8 @@ def stats(o, b):
         x[f'full{y}'] = L >= hi
     x['fdSeason'] = csum(o['FI'], 184, 548) if L >= 548 else None
     for y, (lo, hi) in (('2y', (0, 729)), ('y1', (0, 364)), ('y2', (365, 729)), ('y3', (730, 1094))):
-        x[f'lowTool{y}'] = csum(o['TL'], lo, hi) if L >= lo else None; x[f'allTool{y}'] = csum(o['TA'], lo, hi) if L >= lo else None; x[f'fdLow{y}'] = csum(o['FL'], lo, hi) if L >= lo else None
+        ok_ = L >= lo and o.get('hasTool', True)
+        x[f'lowTool{y}'] = csum(o['TL'], lo, hi) if ok_ else None; x[f'allTool{y}'] = csum(o['TA'], lo, hi) if ok_ else None; x[f'fdLow{y}'] = csum(o['FL'], lo, hi) if ok_ else None
     x['kovSeason'] = csum(o['KI'], 184, 548) if L >= 548 else None
     run, dd2, dd3 = 0, 0, 0
     for d in days:
