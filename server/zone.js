@@ -12462,6 +12462,9 @@ function _t1305Gate(player, px, py) {
   const vil = VillageKin.ON ? _kinLandOf(px, py) : null;
   if (vil) {
     if (Membership.isRecognized(player, vil.dbId | 0)) return { ok: true, why: 'member' };
+    //   ★[T1389] 제 마을 영토인데 아직 인정 전이면 끔 판(T1137) 문구 그대로 — 남은 부탁 수를 알려 준다(켬에서 이 안내가 사라졌었다 · test-member-open)
+    const _mv = Membership.T1137 ? _kinVilOf(player) : null;
+    if (_mv && (_mv.dbId | 0) === (vil.dbId | 0)) return { ok: false, why: `🏠 영토 안 집터는 구성원으로 인정된 사람만 잡을 수 있습니다. 마을 부탁을 ${Math.max(0, Membership.CFG.N_MEMBER - Membership.contribOf(player.playerId))}건 더 채우십시오.` };
     return { ok: false, why: `🏠 ${vil.name || '이 마을'} 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다.` };
   }
   if (VillageKin.ON) return { ok: true, why: 'open' };   // 마을로 접힌 판 — 영토 = 마을 영토 칸(`villageOfCell`) 하나
@@ -12535,30 +12538,31 @@ function _t1386Build(pid, mine, others) {
   P.home = _t1386Home(pid, P.cells);
   return P;
 }
-function _t1343Advance(pid, now, noStage) {   // noStage = 부르는 쪽이 곧 단계를 다시 칠한다(내다보기 한 번만)
+function _t1343Advance(pid, now, noStage, opt) {   // noStage = 부르는 쪽이 곧 단계를 다시 칠한다(내다보기 한 번만) · ★[T1389] opt = { budgetMs } — 넘치면 사건 시각까지 셈하고 `done: false`
   const mine = _t1332MyChunks(pid), others = _t1343Others(pid), rec = _t1386Rec(pid);
   const P = _t1386Build(pid, mine, others);
   const online = !!_t1343Online(pid) && _t1386Login !== pid;
-  const res = Deeds.advance(P, now, Claims.components, (cell, at) => {
+  const res = Deeds.advance(P, now, Claims, (cell, at) => {
     const c = cell.c; c.care = 'free'; Claims.setState(cell.id, c, 'free', null, at); broadcast({ type: 'claim_updated', claim: c });   // 풀림 = 부재 상태기의 그 개방(누구나 · 시설은 승계 규약 그대로)
     if (!online) rec.lost = (rec.lost | 0) + 1;
     _t1343Stat.freed = (_t1343Stat.freed | 0) + 1;
-  }, (ch) => { deedChunks.delete(ch.key); if (db.deleteDeedChunk) db.deleteDeedChunk(pid, ch.row.cx, ch.row.cy); });
+  }, (ch) => { deedChunks.delete(ch.key); if (db.deleteDeedChunk) db.deleteDeedChunk(pid, ch.row.cx, ch.row.cy); }, opt);
   for (const w of P.chunks) { w.row.m = w.m; w.row.t = w.t; _t1343Save(w.row); }
   rec.debt = P.debt; rec.t = P.t; _t1386SaveRec(pid);
   if (res.freed > (_t1343Stat.maxFreed | 0)) _t1343Stat.maxFreed = res.freed;
   if (res.capped) _t1343Stat.capped = (_t1343Stat.capped | 0) + 1;
   const left = _t1332MyChunks(pid); let local = 0; for (const e of left.values()) local += e.cells.length;
-  if (!noStage) _t1386Stage(P, now);
+  if (!noStage) _t1386Stage(P, now, opt);
   _t1343Local(pid, local);
-  return { N: local + others, chunks: left, freed: res.freed, P };
+  if (res.done === false) _t1389Later(pid);
+  return { N: local + others, chunks: left, freed: res.freed, P, done: res.done !== false };
 }
 // 칸 단계 — 그 칸이 든 청크의 단계(또렷 · 흐림) · 저축이 바닥났거나 하루 안에 바닥나는 청크 = 흐림 · ★다음 하루에 풀릴 칸 = 곧 풀림(먼 칸부터 — 내다보기)
-function _t1386Stage(P, now) {
+function _t1386Stage(P, now, opt) {
   const N = P.chunks.reduce((a, w) => a + w.n, 0) + (P.others | 0), DAYM = Deeds.CFG.DAY_MS;
   let soon = null;
   if (P.chunks.some((w) => !(w.m > 0) || Deeds.stageOf(w, w.n, N) === 'soon')) {
-    const f = Deeds.forecast(P, now, Claims.components); P._f = f;
+    const f = Deeds.forecast(P, now, Claims, opt); P._f = f;
     soon = new Set(f.hits.filter(([, at]) => at <= now + DAYM).map(([id]) => id));
   }
   for (const w of P.chunks) {
@@ -12592,20 +12596,39 @@ function _t1343Wake() {
   _t1343Timer = null; _t1343Due = Infinity;
   const now = _t1332Clock(), pids = new Set();
   for (const r of deedChunks.values()) pids.add(r.pid);
-  for (const pid of pids) { try { _t1343Advance(pid, now); _t1343Send(pid); } catch (e) {} }
+  for (const pid of pids) { try { _t1343Advance(pid, now, false, { budgetMs: _T1389_BUDGET_MS }); _t1343Send(pid); } catch (e) {} }
   _t1343Arm();
+}
+// ★[T1389 · T1386 회부 4] 넓은 땅 한 번 셈 — 예약 · 부팅의 셈은 틱 예산의 절반(1000 ÷ TICK_HZ ÷ 2 ms — 존의 미리 굽기와 같은 몫)까지만 하고
+//   남은 셈은 다음 틱에 잇는다(사건 차례대로 멈춘 자리부터 — 한 번에 셈한 것과 같은 답 · 하네스 `test-t1389-deeds-on`). 쓰기 · 접속 · 선포는 끝까지 셈한다.
+const _T1389_BUDGET_MS = 1000 / TICK_HZ / 2;
+const _t1389Pending = new Set(); let _t1389Timer = null;
+function _t1389Later(pid) {
+  _t1389Pending.add(pid);
+  if (_t1389Timer) return;
+  _t1389Timer = setTimeout(() => {
+    _t1389Timer = null;
+    const now = _t1332Clock(), list = [..._t1389Pending]; _t1389Pending.clear();
+    _t1343Stat.later = (_t1343Stat.later | 0) + 1;
+    for (const pid of list) { try { _t1343Advance(pid, now, false, { budgetMs: _T1389_BUDGET_MS }); _t1343Send(pid); } catch (e) {} }
+    _t1343Arm();
+  }, Math.ceil(1000 / TICK_HZ));
+  if (_t1389Timer.unref) _t1389Timer.unref();
 }
 // 계량기를 그 주인 화면에 — 청크마다 { cx, cy, n, m, cap, t, r(ms 당 줄어듦) } · N · 버티는 날 · 한 칸 더면 버티는 날(클라가 m 을 지금으로 줄여 그린다 — 닫힌 식)
 function _t1343Send(pid, force) {
   const p = _t1343Online(pid); if (!p || !p.ws) return;
   const now = _t1332Clock();
-  if (!force && p._t1343Sent && now - p._t1343Sent < 1000) return;
+  if (!force && p._t1343Sent && now - p._t1343Sent < 1000) {   // ★[T1389] 1초 안 두 번째는 1초 끝에 한 번 보낸다(종전 = 버렸다 — 둘째 칸을 잡은 직후 패널이 옛 N 에 머물렀다)
+    if (!p._t1389Trail) { p._t1389Trail = setTimeout(() => { p._t1389Trail = null; try { _t1343Send(pid, true); } catch (e) {} }, 1000); if (p._t1389Trail.unref) p._t1389Trail.unref(); }
+    return;
+  }
   p._t1343Sent = now;
   const mine = _t1332MyChunks(pid), others = _t1343Others(pid); let local = 0; for (const e of mine.values()) local += e.cells.length;
   const N = local + others, out = [];
   for (const e of mine.values()) { const r = deedChunks.get(_t1332Key(pid, e.cx, e.cy)); if (!r) continue; const n = e.cells.length; out.push({ cx: e.cx, cy: e.cy, n, m: +r.m.toFixed(3), cap: Deeds.capOf(n), t: r.t, r: Deeds.rateOf(n, N) }); }
   //   ★[T1386] 내다보기 — 손 안 대면 첫 칸이 풀리는 시각(`first` ms) · 그 뒤 하루에 풀리는 칸 수(`perDay`) · 빚(`debt`) · 다음 하루에 풀릴 칸(`next` — 먼 칸부터)
-  const P = _t1386Build(pid, mine, others), f = P.chunks.every((w) => Number.isFinite(w.t)) ? Deeds.forecast(P, now, Claims.components) : null;
+  const P = _t1386Build(pid, mine, others), f = P.chunks.every((w) => Number.isFinite(w.t)) ? Deeds.forecast(P, now, Claims) : null;
   send(p.ws, { type: 'deeds_meter', now, N, local, days: +Deeds.daysOf(N).toFixed(2), daysNext: +Deeds.daysOf(N + 1).toFixed(2), chunkPx: Deeds.CFG.CHUNK * BUILDING_SIZE, chunks: out,
     debt: +P.debt.toFixed(3), first: f && Number.isFinite(f.first) ? f.first : null, perDay: f ? f.perDay : 0, next: f ? f.hits.filter(([, at]) => at <= now + Deeds.CFG.DAY_MS).map(([id]) => id) : [] });
 }
@@ -12632,7 +12655,8 @@ function _t1332Use(player, px, py, why, pts) {
   if (!e) { _t1386Stage(st.P, now); return false; }
   // ★[T1386 ⑦] 들어온 점수는 빚부터 지우고 남는 것이 이 청크 저축에(`deeds.addPts`)
   const P = st.P, w = P.chunks.find((q) => q.key === k), rec = _t1386Rec(pid);
-  Deeds.addPts(P, w, pts == null ? Deeds.CFG.P_USE : pts);
+  if (why === 'claim') Deeds.addClaim(P, w, pts == null ? Deeds.CFG.PT : pts);   // ★[T1389 Q12] 선포의 +PT 는 빚 · 빚 시계를 안 건드린다(`deeds.addClaim`)
+  else Deeds.addPts(P, w, pts == null ? Deeds.CFG.P_USE : pts);
   w.row.m = w.m; rec.debt = P.debt;
   _t1343Save(w.row); _t1386SaveRec(pid);
   _t1386Stage(P, now);
@@ -12674,7 +12698,7 @@ if (Deeds.ON) {
     for (const r of (db.getDeedChunks ? db.getDeedChunks() : [])) deedChunks.set(_t1332Key(String(r.owner_id), r.cx | 0, r.cy | 0), { pid: String(r.owner_id), cx: r.cx | 0, cy: r.cy | 0, m: r.m == null ? NaN : +r.m, t: r.t == null ? NaN : +r.t });
     for (const r of (db.getDeedOwners ? db.getDeedOwners() : [])) { deedOthers.set(String(r.owner_id), r.others | 0); if (r.debt != null || r.dt != null || r.lost) deedDebt.set(String(r.owner_id), { debt: +r.debt || 0, t: r.dt == null ? NaN : +r.dt, lost: r.lost | 0 }); }   // ★[T1386] 빚 줄
     const pids = new Set(); for (const c of claims.values()) if (c.kind === 'personal' && (c.state || 'active') !== 'free') pids.add(c.ownerPid);
-    const now = Date.now(); for (const pid of pids) _t1343Advance(pid, now);
+    const now = Date.now(); for (const pid of pids) _t1343Advance(pid, now, false, { budgetMs: _T1389_BUDGET_MS });
     _t1343Arm();
   } catch (e) { console.warn(`[${ZONE_ID}] T1343 계량기 싣기 실패: ${e.message}`); }
 }
@@ -15162,7 +15186,7 @@ function __testBind() {
     nearestVillageWake, resolveDowned, buildings, _liveBuildRow, isTerrainBlockedLocal,
     Claims, db, tryClaim, tryUnclaim, countMyClaims, listRespawnOptions,
     findGuildClaimContaining, _claimFootprint, Onboarding, CLAIM_COST,
-    Deeds, _t1305Day, _t1305Gate, _t1332Use, _t1332Dwell, _t1332MyChunks, deedChunks, deedOthers, _t1343Stat, _t1343Advance, _t1343Arm, T1332_USE, _t1332SetClock, deedDebt, _t1386Home, _t1386Build, _t1343Send,   // ★[T1305 → T1332] 사유지 돌봄(청크) — 하네스가 정본 그대로 부른다
+    Deeds, _t1305Day, _t1305Gate, _t1332Use, _t1332Dwell, _t1332MyChunks, deedChunks, deedOthers, _t1343Stat, _t1343Advance, _t1343Arm, T1332_USE, _t1332SetClock, deedDebt, _t1386Home, _t1386Build, _t1343Send, _t1389Pending,   // ★[T1305 → T1332] 사유지 돌봄(청크) — 하네스가 정본 그대로 부른다
     CLAIM_SLOT_PERSONAL_START, CLAIM_SLOT_TEMPORARY_START, CLAIM_SLOT_GUILD_START,
     // ★[T1238] 영토 v2 존 몫 — 하네스(`test-t1238-terr-v2`)가 정본 함수를 그대로 부른다(벌점 · 갇힘 · 작물 · 칸 일)
     T1238_ON, VP_STEAL_CROP, VP_BREAK_FENCE, VP_TRESPASS_GATHER, VP_ATTACK_PLAYER, VP_THRESHOLD, VP_MAX,

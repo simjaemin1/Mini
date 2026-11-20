@@ -26,6 +26,7 @@ const WebSocket = require('ws');
 const { DatabaseSync } = require('node:sqlite');
 
 const ROOT = path.join(__dirname, '..');
+const DEEDS_ON = !!require(path.join(ROOT, 'server', 'deeds.js')).ON;   // ★[T1389] 사유지 돌봄 켬 여부(정본 손잡이 한 자리 · -on 가지는 켬 기본)
 // ⚠두 존은 **제 정본 포트**(zone-config hanbando 3020 · nippon 3021)여야 한다 — 존 넘김은 존→존 직통이다
 //   (`/handoff_prepare` → 받는 존의 config 포트 · `/handoff_ack` → 보낸 존의 config 포트 · test-handoff-body 와 같은 판).
 //   ★★[T1033 2026-11-01] central · 세는 문은 **빈 포트를 받는다**(`FB.freePort` · 세는 문 `listen(0)` — 커널이 고른 번호 · 종전 고정 3251 · 3252).
@@ -430,7 +431,8 @@ async function found(C, base, centers) {
   snd(D, { type: '__e2e_give', items: { stone: 50, wood: 50 } }); await sleep(500);
   snd(D, { type: 'teleport_debug', x: hx + 40, y: hy + 40 }); await sleep(800);
   D.notices.length = 0; snd(D, { type: 'claim', kind: 'personal' }); await sleep(900);
-  ok(D.notices.some((t) => /내 마을 땅 안에만/.test(t)), 'Ⓣ10 [C12] 개인 사유지는 **내 마을 땅** 안에만(마을 사람이 아니면 남의 마을 땅에 못 놓는다)', lastN(D, 2));
+  //   ★[T1389] 사유지 돌봄 켬(`T1305_DEEDS` — -on 가지 기본)이면 문은 사유지 캐논(`_t1305Gate` — 마을 영토 안 = 그 마을 인정 구성원만) — 같은 거절 · 문구만 그 캐논 것
+  ok(D.notices.some((t) => (DEEDS_ON ? /영토 안 집터는/ : /내 마을 땅 안에만/).test(t)), 'Ⓣ10 [C12] 개인 사유지는 **내 마을 땅** 안에만(마을 사람이 아니면 남의 마을 땅에 못 놓는다 · 돌봄 켬이면 영토 문)', lastN(D, 2));
   await close(D);
   //   C14 — 옛 길드 보관 줄(`guild:`)은 켬에서 길드 우선권이 아니다(새로는 안 생긴다) · 끔 = 종전 그대로(같은 줄 · 같은 사람)
   const _tk = (on) => { try { return JSON.parse(require('child_process').execFileSync(process.execPath, ['-e',

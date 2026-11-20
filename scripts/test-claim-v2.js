@@ -49,6 +49,7 @@ const ok = (c, m, extra) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '
 // ★[T1305] 아이 판(⑨) — 켬 손잡이 · 손보는 시간 1초 · 존 파일은 정본 또는 미끼 사본(`__T1305_ZONE`)
 const T1305_SUB = process.env.__T1305_SUB === '1';
 if (T1305_SUB) { process.env.T1305_DEEDS = '1'; process.env.T1305_CARE_S = '1'; }
+else process.env.T1305_DEEDS = '0';   // ★[T1389] 이 판(①~⑧ · ⑨ 끔 줄)은 끔 판 — 켬 기본 가지(-on)에서도 끔을 글자로 준다
 const _l = console.log, _w = console.warn, _e = console.error;
 console.log = () => {}; console.warn = () => {}; console.error = () => {};
 const Zone = require(process.env.__T1305_ZONE || path.join(ROOT, 'server', 'zone.js'));
@@ -621,9 +622,9 @@ console.log('\n⑨ ★[T1305 → T1343] 사유지 돌봄(청크 계량기 · 실
   const BAITS = [
     ['gate', '마을 문을 되살린 사본(영토 밖도 마을 사람만)', 'if (_t1305P && !_onbLot) {', 'if (false && _t1305P && !_onbLot) {', ['outsideAny']],
     ['cap', '숫자 상한을 되살린 사본(9 한도)', 'if (!_t1305P && usedCount >= max) {', 'if (usedCount >= max) {', ['noCap']],
-    ['online', '★[T1343] 접속해 있을 때만 줄이는 사본(접속한 날만 세는 꼴)', 'function _t1343Advance(pid, now, noStage) {', 'function _t1343Advance(pid, now, noStage) {\n  if (!_t1343Online(pid)) { const m0 = _t1332MyChunks(pid); return { N: 0, chunks: m0, freed: 0, P: _t1386Build(pid, m0, 0) }; }\n', ['offlineFlows', 'd40']],
+    ['online', '★[T1343] 접속해 있을 때만 줄이는 사본(접속한 날만 세는 꼴)', 'function _t1343Advance(pid, now, noStage, opt) {', 'function _t1343Advance(pid, now, noStage, opt) {\n  if (!_t1343Online(pid)) { const m0 = _t1332MyChunks(pid); return { N: 0, chunks: m0, freed: 0, P: _t1386Build(pid, m0, 0) }; }\n', ['offlineFlows', 'd40']],
     ['flat', '★[T1343] 칸 수에 비례 안 하는 사본(청크 상한 100 고정)', 'const capOf = (n) => CFG.PT * Math.max(0, n | 0);', 'const capOf = (n) => CFG.PT * (n > 0 ? 1 : 0);', ['cap'], 'deeds'],
-    ['all', '★[T1343] 전 청크를 한꺼번에 올리는 사본', '  Deeds.addPts(P, w, pts == null ? Deeds.CFG.P_USE : pts);', '  for (const ww of P.chunks) { Deeds.addPts(P, ww, pts == null ? Deeds.CFG.P_USE : pts); ww.row.m = ww.m; }', ['neighborSame']],
+    ['all', '★[T1343] 전 청크를 한꺼번에 올리는 사본', '  else Deeds.addPts(P, w, pts == null ? Deeds.CFG.P_USE : pts);', '  else for (const ww of P.chunks) { Deeds.addPts(P, ww, pts == null ? Deeds.CFG.P_USE : pts); ww.row.m = ww.m; }', ['neighborSame']],
   ];
   for (const [tag, what, from, to, reds, mod] of BAITS) {
     const f = path.join(ROOT, 'server', `_t1305bait-${tag}-${process.pid}.js`);
