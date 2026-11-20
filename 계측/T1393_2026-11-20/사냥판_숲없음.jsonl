@@ -1,0 +1,6 @@
+{"seed":7,"sp":"deer","hunters":1,"days":3,"perDay":0.33,"minPerKill":4315,"kills":1,"left":57,"hurtN":0,"hurt":0,"awakePeak":50,"wake":51,"sleep":8}
+{"seed":7,"sp":"wild_boar","hunters":1,"days":3,"perDay":0,"minPerKill":null,"kills":0,"left":58,"hurtN":0,"hurt":0,"awakePeak":50,"wake":58,"sleep":49}
+{"seed":7,"sp":"arctic_hare","hunters":1,"days":3,"perDay":2.67,"minPerKill":539,"kills":8,"left":50,"hurtN":0,"hurt":0,"awakePeak":50,"wake":56,"sleep":48}
+{"seed":1020,"sp":"deer","hunters":1,"days":3,"perDay":0.67,"minPerKill":2158,"kills":2,"left":56,"hurtN":0,"hurt":0,"awakePeak":50,"wake":61,"sleep":15}
+{"seed":1020,"sp":"wild_boar","hunters":1,"days":3,"perDay":0,"minPerKill":null,"kills":0,"left":58,"hurtN":0,"hurt":0,"awakePeak":50,"wake":53,"sleep":51}
+{"seed":1020,"sp":"arctic_hare","hunters":1,"days":3,"perDay":1.33,"minPerKill":1079,"kills":4,"left":54,"hurtN":0,"hurt":0,"awakePeak":50,"wake":52,"sleep":48}

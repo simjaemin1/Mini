@@ -30,7 +30,7 @@ if (OUT && /server[\/\\]zone\.js$/.test(process.argv[1] || '')) {
       const e = v.econ; if (!e) continue;
       const n = (e.npcs || []).length, h = (e.counts && e.counts.hunter) || 0;
       pop += n; hun += h; meat += ((e.dailyProductionBuf || {}).meat || 0);
-      vil.push([v.name, n, h, (v.npcPids || []).length, v._fdDeadTot || 0, v._t1195Got || 0]);
+      vil.push([v.name, n, h, (v.npcPids || []).length, (e._fdDeadTot || v._fdDeadTot || 0), v._t1195Got || 0]);
     }
     let body = null; try { const s = V.t1331Stat ? V.t1331Stat() : null; if (s && s.w) body = { alive: s.w.alive, by: s.w.by, mat: s.w.mat, died: s.w.st.died, born: s.w.st.born, start: s.w.st.start, mismatch: s.w.st.mismatch, cpuUs: s.cpuUs, huntKill: s.huntKill, home: (d % 50 === 0 || d <= 3) ? s.w.home : undefined }; } catch (e) { body = { err: e.message }; }
     let chase = null; try { chase = W.t1393Stat ? W.t1393Stat() : null; } catch (e) { chase = { err: e.message }; }
