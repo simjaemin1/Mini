@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @bait 1
 // === scripts/test-t1338-war-tick.js — 큰 전투 무거운 틱(T1338): 맞붙은 300 대 300 틱 예산 · 사거리 안 적 칸 격자 · 길 물음 상한 둘(손잡이 끔 기본) ===========
 //
 // ★왜 [T1338] 전쟁 판(시드 42 날 665 · 747)의 1.2초 틱. 잰 까닭(보고 T1338 §2): 맞붙은 교전의 셈 자체는 300 대 300 에서 틱 평균 4ms 안팎이고,
@@ -194,7 +195,7 @@ const sub = (mode, env) => {
   const a = time(() => WL.hasRangedContact(f)), b = time(() => oldHasRangedContact(BC, f));
   ok(a.r === false && b.r === false, '③ 상황 assert — 사거리 안 적 없음(두 진 사이 400m · 사수 3,200)', `격자 ${a.r} · 종전 ${b.r}`);
   ok(a.best <= TICK_MS, `③ 틱 예산 — 한 편 ${N} 판의 사거리 안 적 찾기 ${a.best.toFixed(2)}ms ≤ ${TICK_MS.toFixed(1)}ms`, '');
-  ok(b.best > TICK_MS, '③ ★미끼 — 종전 전 쌍 훑기 사본은 같은 판에서 예산을 넘는다(빨강)', `${b.best.toFixed(1)}ms(격자의 ${(b.best / Math.max(a.best, 1e-3)).toFixed(0)}배)`);
+  ok(b.best > TICK_MS, '③ ★미끼 — 종전 전 쌍 훑기 사본은 같은 판에서 예산을 넘는다(빨강)', `바꾼 자리 1(칸 격자 → 종전 전 쌍 훑기) · ${b.best.toFixed(1)}ms(격자의 ${(b.best / Math.max(a.best, 1e-3)).toFixed(0)}배)`);
 }
 
 // ④ 손잡이 T1338_PATH_BUDGET

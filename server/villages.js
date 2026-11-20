@@ -9131,6 +9131,33 @@ const _t1338Stat = { ask: 0, defer: 0, walkLive: 0, walkSkip: 0 };
 //   켬: 첫 몫(종전 T804 동기 물음 — `LOCAL_MAX_NODES`)은 그대로 · 그 안에 못 찾아 **이어 밀 탐색은 존에 하나만**. 이미 하나가 살아 있으면 그 물음은 T821 이전(T804)처럼
 //     "길 없음"(그 목표 칸 기억 · 행군로 `_t804Road`). 상한 1 = path-core 재개형 문 계약 "한 저장을 쓰는 탐색은 한 번에 하나"(새 수 0).
 const T1338_WALK_BUDGET = process.env.T1338_WALK_BUDGET === '1';
+// ★★[T1381 ㉠ · T1338 회부 3 · 4] 손잡이 `T1381_WALK_HEAP`(★끔 기본 · '1' 켬 · **값 무변** — 끈 판 같음 뒤 켬 기본 후보 → PM).
+//   먼 걸음 재개형 탐색(아래 `_t804Local` · T821)의 g · came 저장을 Map(문자열 열쇠 칸마다 둘)에서 path-core 칸 조각(64×64 타입 배열 · `tile`)으로.
+//   꺼냄 24만 탐색 하나 25 MB → 3 MB(보고 T1381 §3) · 타입 배열은 V8 힙 한도(old space) 밖이다. 답 · 꺼냄 · 민 횟수는 비트 같다(path-core 조각 판 머리 주석 · 하네스 ⓑ).
+const T1381_WALK_HEAP = process.env.T1381_WALK_HEAP === '1';
+// ★★[T1381 ㉡] 같은 손잡이 안 — **유령 물음**(같은 세대 · 같은 끝점 물음은 꺼냄 0 · 값 무변).
+//   막힘 술어(`_warBlockedCell`)는 세대(`state._warRectCells` — 직사각 칸 · 지형 메모 · 나무 메모가 한 자리에서 함께 갈린다) 안에서 칸마다 처음 답 그대로다(T1330 머리 주석).
+//   그래서 한 세대 안에서 시작해 끝난 먼 탐색(첫 몫을 넘긴 것)은 같은 끝점이면 같은 칸을 같은 차례로 꺼내 같은 걸음(민 횟수)에 같은 답을 낸다 —
+//   그 탐색의 "첫 몫 꺼냄 수 · 민 횟수 · 답"만 기억한다(`state._t1381G` · 세대가 바뀌면 비운다). 다음 같은 물음은 탐색 없이 그 민 횟수만큼 서고 같은 답을 낸다(유령).
+//   ★유령이 사는 동안 세대가 바뀌면(그날 첫 교전 — `_warBuildRectIndex`) 진짜 물음은 그 뒤 꺼냄부터 새 술어를 본다 → 그 자리에서 진짜 탐색을 세운다:
+//     지금까지 꺼냈을 수(첫 몫 + 민 몫 합)만큼은 유령을 세운 세대의 메모(붙잡아 둔 직사각 칸 · 지형 · 나무 메모 — 앞 탐색이 그 칸을 다 물어 둔 것)로 한 번에 다시 꺼내고,
+//     그다음부터 지금 술어로 민다(재개형 문은 예산을 어떻게 나눠도 같은 차례 — path-core 머리 ⓐⓑⓒ). 붙잡은 메모에 없는 칸은 지금 술어로 묻고 `_t1381Stat.miss` 에 센다(0 이어야 한다).
+const _T1381_GHOST = true;   // 유령 물음(하네스 ⓓ 미끼가 이 줄 한 곳을 끈다)
+const _t1381Stat = { rec: 0, ghost: 0, real: 0, miss: 0 };
+function _t1381G() { const g = state._warRectCells; if (!g) return null; let G = state._t1381G; if (!G || G.gen !== g) G = state._t1381G = { gen: g, m: new Map() }; return G; }
+function _t1381BlkAt(A) {   // 붙잡은 세대의 술어(`_warBlockedCell` 글자 · 같은 차례) — 메모에 없는 칸은 지금 술어(센다)
+  return (cx, cy) => { const ix = Math.floor(cx), iy = Math.floor(cy), k = ix * 65536 + iy;
+    if (A.rc.has(k)) return true;
+    let v = A.tm ? A.tm.get(k) : undefined; if (v === undefined) { _t1381Stat.miss++; return _warBlockedCell(cx, cy); } if (v === 1) return true;
+    if (!(state.deps && state.deps.treeCellBlocked)) return false;
+    v = A.trm ? A.trm.get(k) : undefined; if (v === undefined) { _t1381Stat.miss++; return _warTreeCell(ix, iy); } return v === 1; };
+}
+function _t1381Real(J) {   // 유령 → 진짜 탐색(세대가 바뀌었다): 지금까지 꺼냈을 수만큼 붙잡은 세대 술어로 다시 꺼낸 뒤 지금 술어로
+  let old = true; const bA = _t1381BlkAt(J.A), blk = (cx, cy) => (old ? bA(cx, cy) : _warBlockedCell(cx, cy));
+  let S = null; try { S = PathCore.localPathBegin(J.sx, J.sy, J.gx, J.gy, { blocked: blk, blockedStep: (fx, fy, x2, y2) => blk(x2, y2), maxNodes: PathCore.ROUTE_MAX_POPS, tile: true }); } catch (_) { S = null; }
+  if (S) { try { PathCore.pathStep(S, J.it); } catch (_) {} }
+  old = false; J.S = S; J.G = null; J.A = null; _t1381Stat.real++;
+}
 function _t1330Memo() {
   if (state._warNoCollide || !state._warRectCells) return null;
   const C = state._t1330Path;
@@ -9247,14 +9274,27 @@ function _t804Local(mem, x, y, tx, ty, st) {   // 걸음 프리셋 길 — 반�
     }
     if (!PathCore) PathCore = require('../sim/path-core.js');
     const blk = (cx, cy) => _warBlockedCell(cx, cy);
+    const _G = (T1381_WALK_HEAP && _T1381_GHOST) ? _t1381G() : null, _gk = _G ? sx + ',' + sy + '>' + gx + ',' + gy : '', _gr = _G ? _G.m.get(_gk) : undefined;
+    if (_gr) {   // ★[T1381 ㉡] 유령 물음 — 같은 세대 같은 끝점의 먼 탐색이 이미 끝났다: 첫 몫(꺼냄 0)은 "아직" · 그 민 횟수만큼 서고 같은 답
+      _t804Stat.ask++; _t1381Stat.ghost++;
+      mem._t821s = { S: null, G: _gr, key, n: 0, gen: _G.gen, it: _gr.c1, sx, sy, gx, gy, A: { rc: _G.gen, tm: state._warTerrMemo, trm: state._warTreeMemo } };
+      if (_sk) { mem._t821s.sk = _sk; mem._t821s.mem = mem; _t1349T().live.set(_sk, mem._t821s); }   // ★[T1349] (진짜 물음과 같은 자리)
+      if (T1338_WALK_BUDGET) {   // ★[T1338 ③] (진짜 물음과 같은 갈래)
+        const L = state._t1338WalkLive, day = state.world ? state.world.day | 0 : 0;
+        if (L && L !== mem && L._t821s && !(L._t821s.d < day - 1)) { mem._t821s = null; _t804Stat.fail++; mem._t804f = key; _t1338Stat.walkSkip++; return false; }
+        state._t1338WalkLive = mem; mem._t821s.d = day; _t1338Stat.walkLive++;
+      }
+      _t821Stat.far++; return { x, y };
+    }
     //   ★[T821] 재개형 문(같은 걸음 프리셋 · 상한 = 재개형 문 정본 `ROUTE_MAX_POPS`). 첫 몫은 종전 동기 물음 그대로 — 한 꺼냄씩 밀어
     //     걸음 프리셋 정본 상한(`LOCAL_MAX_NODES`)을 넘는 꺼냄에서 멈춘다(그 안이면 종전과 같은 차례 · 같은 답 · 같은 걸음에 닿는다).
-    let S = null; try { S = PathCore.localPathBegin(sx, sy, gx, gy, { blocked: blk, blockedStep: (fx, fy, x2, y2) => blk(x2, y2), maxNodes: PathCore.ROUTE_MAX_POPS }); } catch (_) { S = null; }
+    let S = null; try { S = PathCore.localPathBegin(sx, sy, gx, gy, { blocked: blk, blockedStep: (fx, fy, x2, y2) => blk(x2, y2), tile: T1381_WALK_HEAP, maxNodes: PathCore.ROUTE_MAX_POPS }); } catch (_) { S = null; }   // ★[T1381 ㉠] 켬 = 칸 조각 저장(같은 답)
     _t804Stat.ask++;
     if (!S) { _t804Stat.fail++; mem._t804f = key; return false; }   // 끝점이 막혔다(동기 문과 같은 첫 줄)
     mem._t821s = { S, key, n: 0 };
     if (_sk) { mem._t821s.sk = _sk; mem._t821s.mem = mem; _t1349T().live.set(_sk, mem._t821s); }   // ★[T1349]
     let r; try { do { r = PathCore.pathStep(S, 1); } while (!r.done && S.pops <= PathCore.LOCAL_MAX_NODES); } catch (_) { r = { done: true, path: null }; }
+    if (_G && !r.done && S.it >= 0) { mem._t821s.gen = _G.gen; mem._t821s.c1 = S.it; mem._t821s.gk = _gk; }   // ★[T1381 ㉡] 먼 탐색 — 이 세대 안에서 끝나면 기억한다(c1 = 첫 몫 꺼냄 수 · path-core 알뜰 고리가 센다)
     if (!r.done && T1338_WALK_BUDGET) {   // ★[T1338 ③] 켬 — 이어 미는 먼 탐색은 존에 하나만(다른 기억이 쥐고 있으면 이 물음은 종전 T804 처럼 "길 없음" → 행군로)
       const L = state._t1338WalkLive;
       //   쥔 기억이 버려졌으면(대형이 사라졌다 — 이틀째 안 밀렸다) 자리를 넘긴다(그 탐색은 아무도 안 민다 · 쓰레기)
@@ -9318,9 +9358,14 @@ function _t1349Key(sx, sy, gx, gy) { const B = _T1349_B; return Math.floor(sx / 
 function _t1349T() { const d = (state.world && state.world.day) | 0; let T = state._t1349; if (!T || T.day !== d) T = state._t1349 = { day: d, fail: new Set(), live: new Map() }; return T; }
 function _t821Push(mem, budget) {   // 찾는 중인 탐색을 budget(꺼냄 수)만큼 민다 — 끝났으면 true(길 → `mem._t804p` · 못 찾음 → `mem._t804f`) · 아직이면 false
   const J = mem._t821s;
-  let r; try { r = PathCore.pathStep(J.S, budget); } catch (_) { r = { done: true, path: null }; }
+  if (J.G && state._warRectCells !== J.gen) _t1381Real(J);   // ★[T1381 ㉡] 유령이 사는 동안 세대가 바뀌었다 — 그 자리에서 진짜 탐색으로
+  let r;
+  if (J.G) { r = (J.n + 1 >= J.G.n) ? { done: true, path: J.G.path } : { done: false, path: null }; J.it += budget; }   // ★[T1381 ㉡] 유령 — 꺼냄 0 · 같은 민 횟수에 같은 답
+  else if (!J.S) r = { done: true, path: null };
+  else { try { r = PathCore.pathStep(J.S, budget); } catch (_) { r = { done: true, path: null }; } }
   J.n++; _t821Stat.steps++; if (J.d !== undefined && state.world) J.d = state.world.day | 0;   // ★[T1338 ③] 켬 — 마지막으로 민 날
   if (!r.done) return false;
+  if (J.gk && state._warRectCells === J.gen) { const G = _t1381G(); if (G && G.gen === J.gen && !G.m.has(J.gk)) { G.m.set(J.gk, { c1: J.c1, n: J.n, path: r.path }); _t1381Stat.rec++; } }   // ★[T1381 ㉡] 이 세대 안에서 시작해 끝난 먼 탐색
   if (J.n > _t821Stat.maxSteps) _t821Stat.maxSteps = J.n;
   _t821Done(mem, r.path, true);
   return true;
@@ -12070,6 +12115,7 @@ function __p3Bind(mock) {
     _t804Way, _t804WalkOut, _t804Stat, _warWalkGroupTo,   // ★[T804] 걷는 몸의 길 · 전진 풀기 걸음 — 하네스가 운영과 같은 문을 부른다(내보내기만)
     _t821Stat,   // ★[T821] 재개형 걸음 탐색 셈(내보내기만 — 관찰자 · 하네스)
     _t1349Stat, _t1349Stand, _t804Nearest, T1349_WAR_PATH_SHARE: () => T1349_WAR_PATH_SHARE,   // ★[T1349] 물음 나눠 쓰기 셈 · 나선 답 기억(내보내기만 — 관찰자 · 하네스)
+    _t1381Stat, T1381_WALK_HEAP: () => T1381_WALK_HEAP,   // ★[T1381] 유령 물음 셈 · 손잡이(내보내기만 — 관찰자 · 하네스)
     T822_BODY_SEED, _t822Rekey, _t833Boot, _t747Pack, _t747Restore, t1133Stat: () => Object.assign({ on: T1133_BAG }, _t1133Stat), t1166Stat: () => Object.assign({ on: T1166_LOT, pend: _t1166Pend.length }, _t1166Stat), _t1166Flush, t1167Stat, _t1167Pack, _t1167Early, _t1167Bind, _t1167Pref, _warDespawnPid, serializeEcon, restoreEcon, _t728Meta,   // ★[T833] 몸 주사위 신원 · 다시 뜬 판 — 하네스(`test-body-seed-restart`)가 운영과 같은 문을 부른다(내보내기만)
     _warDraftPids, _warReleasePid, _t1183SurrenderDeaths, econDayToMs, _warEnsureBody, _warSampleComp, _vbFootprint,
     threatOf, _warWriteThreats, _warOutMul, _lifeJobSites, _lifeJobSiteOK, _warRoutePts, _warTreeCell, computeRoutePts,
