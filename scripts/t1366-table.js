@@ -6,7 +6,7 @@
 // 내는 것: 종마다 빨강 ○/n · 유보 ○ · 걸린 초(중앙 · 최대) · 빨강 판의 첫 ✗ 줄(같은 줄인가) · 가름
 //   가름  ㉮ 늘 빨강(유보 뺀 판이 모두 빨강)  ㉯ 같은 줄에서 흔들림  ㉰ 판마다 다른 줄에서 흔들림  ㉱ 초록 n/n
 //         ㉲ 빨강 0 · 유보 섞임(초록 n/n 이 아니라 따로 둔다)
-//   "같은 줄"은 첫 ✗ 줄의 숫자를 # 로 바꾼 글자가 같은 것(걸린 ms · 좌표 같은 수만 다른 줄은 같은 줄로 본다).
+//   "같은 줄"은 첫 ✗ 줄의 숫자(음수 부호 포함)를 # 로 바꾼 글자가 같은 것(걸린 ms · 좌표 같은 수만 다른 줄은 같은 줄로 본다).
 //   러너 자신의 판정 줄(`✗ RC=n …`)은 첫 ✗ 줄로 안 친다 — 하네스 ✗ 줄이 없으면 "(하네스 ✗ 줄 없음 · RC=n)".
 // 쓰는 법: R=/dev/shm/t1366 node scripts/t1366-table.js [--json out.json]
 'use strict';
@@ -28,7 +28,7 @@ const firstX = (name, run, rc) => {
   const hit = lines.find((l) => /^\s*✗/.test(l) && !/✗ RC=\d+/.test(l));
   return hit ? hit.trim().slice(0, 160) : `(하네스 ✗ 줄 없음 · RC=${rc})`;
 };
-const norm = (s) => s.replace(/\d+(\.\d+)?/g, '#');
+const norm = (s) => s.replace(/-?\d+(\.\d+)?/g, '#');
 const med = (a) => { const s = [...a].sort((x, y) => x - y); const n = s.length; return n ? (n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2) : 0; };
 
 const by = new Map();
