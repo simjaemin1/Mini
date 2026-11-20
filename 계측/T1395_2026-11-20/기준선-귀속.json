@@ -1,0 +1,23 @@
+{
+  "canonicalPass": false,
+  "economicFirstDifferenceDay": 226,
+  "sideFirstDifferenceDay": 1,
+  "sideFields": [
+    "_oreCells"
+  ],
+  "observedEconomicDays": 400,
+  "observedSideDays": 400,
+  "endMetricsSame": true,
+  "actualEndMetrics": {
+    "pop": 3345,
+    "dead": 0,
+    "ever": 51,
+    "weapQ": 165,
+    "expand": 513,
+    "board": 1798,
+    "toolQ": 3183.4,
+    "preserve": 0,
+    "grain": 10377
+  },
+  "productFilesChangedFromApiBase": 0
+}

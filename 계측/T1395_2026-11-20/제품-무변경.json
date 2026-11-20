@@ -1,0 +1,12 @@
+{
+  "base": "a1dd04a4794ff49f7a5926c42be60bedc82cc039",
+  "paths": [
+    "server",
+    "sim",
+    "lab",
+    "public"
+  ],
+  "changedTrackedProductFiles": [],
+  "sameBytes": true,
+  "note": "tools/report only; canonical baseline comparison failed at economic day226 and side day1 oreCells; not reported green"
+}

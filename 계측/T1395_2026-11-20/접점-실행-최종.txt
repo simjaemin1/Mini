@@ -1,0 +1,54 @@
+# 만진 함수 → 하네스 (touched-harness · base origin/main · 갈림점 352589754)
+· 바뀐 코드 파일 4 · 이름 3(물린 것 1 · 흔한 이름 뺌 0) · 바뀐 하네스 1 · 규약 다섯 · **돌릴 하네스 6**
+  scripts/lab-wiring-check.js: (이름 없음)
+  scripts/lib-lab-diff.js: lib-lab-diff
+  scripts/t1395-inventory.js: t1395-inventory
+  scripts/t1395-table.js: t1395-table
+· 이름 → 하네스 수: lib-lab-diff 1
+· 바뀐 하네스: test-t1395-lab-diff.js
+· 돌릴 하네스: test-body-fields.js test-coll-grid.js test-harness-lint.js test-hp-src.js test-lon-day.js test-t1395-lab-diff.js
+##### test-body-fields.js #####
+=== 14 통과 / 0 실패 ===
+  ✓ ★자명 통과 금지 — `??=` 꼴도 문다 · 읽기(`==`)는 안 문다  zone.js:19787 npc._t673Bait2
+  ✓ ★[T1140 ③-가] 자명 통과 금지 — 값 하나(`nextDecisionAt: 1`)를 바꾸면 문다
+  ✓ ⑳ 판정 칸 쓰기 자리를 다 셌다(자명 통과 아님)  전체 456 · 걸음 문 안 256 · 문 밖 200(표 내림 75 · 까닭 125)
+=== 14 통과 / 0 실패 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-coll-grid.js #####
+=== 결과: 20 PASS / 0 FAIL ===
+  ✓ ② [전제 · 자명 통과 금지] 걸음이 **실제로 막힌다** · 옛 격자 질의의 셋에 하나 넘게에 **밭·마당이 섞였다**  막힘 10476/40000 · 밭 섞임 4525/10000
+=== 결과: 20 PASS / 0 FAIL ===
+  [소요] 10초
+  ✓ RC=0
+##### test-harness-lint.js #####
+  ✓ ★⑲b 자명 통과 금지 — 표지 · 수가 맞는 새 하네스만 보내고 · 표지 없음 · 수 어긋남 · 바꾼 자리 안 셈 · 표지 단 옛 하네스 어긋남 · 주석(보고)에만 적은 미끼는 문다  good=ok,nomark=bad,many=bad,nocount=bad,old=ok,oldmarked=bad,report=bad
+  ✓ ⑳ [전제] `@harness-only` 표지를 단 하네스가 실제로 있다(0 이면 아래가 자명 통과다)  test-ci-changes.js test-ci-list.js test-harness-bite.js test-notice-mark.js
+  ✓ ★⑳ 자명 통과 금지 — 제품 부름 셋은 물고 · 주석 · scripts 자리는 보낸다  req=hit,join=hit,rel=hit,cmt=none,scr=none
+=== 99건 중 PASS 99 · FAIL 0 ===
+  [소요] 22초
+  ✓ RC=0
+##### test-hp-src.js #####
+=== 54 통과 / 0 실패 ===
+  ✓ [상황] 세 파일을 실제로 읽었다(못 읽으면 아래가 자명 통과다)  zone 1198258 · net 108838 · wildlife 96104
+  ✓ ★⓪ 자명 통과 금지 — 직접 대입 한 줄을 되살리면 잡힌다
+  ✓ [상황] `server/villages.js` 를 실제로 읽었다(못 읽으면 아래가 자명 통과다)  villages 1479746
+=== 54 통과 / 0 실패 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-lon-day.js #####
+=== 22건 중 PASS 22 · FAIL 0 ===
+  [소요] 0초
+  ✓ RC=0
+##### test-t1395-lab-diff.js #####
+  ✓ [전제] SAME 줄 403 ≥ 20(0 이면 아래가 자명 통과)
+=== T1395 랩↔서버 대조: 통과 16 · 실패 0 ===
+  [소요] 19초
+  ✓ RC=0
+
+=== 러너 요약 ===
+  통과 6: test-body-fields.js test-coll-grid.js test-harness-lint.js test-hp-src.js test-lon-day.js test-t1395-lab-diff.js
+  실패 0: 없음
+  걸린 시간 상위(초): test-harness-lint.js 22 · test-t1395-lab-diff.js 19 · test-coll-grid.js 10 · test-body-fields.js 1 · test-hp-src.js 1 · test-lon-day.js 0
+  걸린 시간 합: 하네스 53초 · 러너 전체 61초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 1번 × 8초 · 건넘 6번(앞 판이 남긴 아이 없음)
