@@ -1,0 +1,3 @@
+# 옛 코드 빨강 — 하네스 = b92253fe · 제품(server sim public lab scripts/lib-lab-diff.js scripts/lab-wiring-check.js) = a1dd04a4 · 시한 600초
+빨강 ○ | test-t1395-lab-diff.js | RC=1 · ✓ 12 · ✗ 4 |   ✗ 새 범위 — 마을랩·사냥랩·야생 표·기하 식·장 좌판을 각각 보호
+# 합: 빨강 1 · 크래시 0 · 초록 0 · 모름 0 · 제품 무관 0

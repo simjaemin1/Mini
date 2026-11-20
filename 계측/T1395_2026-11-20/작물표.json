@@ -1,0 +1,272 @@
+[
+  {
+    "ko": "벼",
+    "id": "rice",
+    "lab": 136,
+    "server": 136,
+    "fromTable": true,
+    "same": true,
+    "yieldC": 15
+  },
+  {
+    "ko": "보리",
+    "id": "barley",
+    "lab": 91,
+    "server": 91,
+    "fromTable": true,
+    "same": true,
+    "yieldC": 12
+  },
+  {
+    "ko": "미나리",
+    "id": "water_dropwort",
+    "lab": 55,
+    "server": 55,
+    "fromTable": false,
+    "same": true,
+    "yieldC": 9
+  },
+  {
+    "ko": "밀",
+    "id": "wheat",
+    "lab": 104,
+    "server": 104,
+    "fromTable": true,
+    "same": true,
+    "yieldC": 12
+  },
+  {
+    "ko": "조",
+    "id": "foxtail_millet",
+    "lab": 122,
+    "server": 122,
+    "fromTable": true,
+    "same": true,
+    "yieldC": 9
+  },
+  {
+    "ko": "기장",
+    "id": "millet",
+    "lab": 48,
+    "server": 48,
+    "fromTable": false,
+    "same": true,
+    "yieldC": 7
+  },
+  {
+    "ko": "수수",
+    "id": "sorghum",
+    "lab": 62,
+    "server": 62,
+    "fromTable": false,
+    "same": true,
+    "yieldC": 9
+  },
+  {
+    "ko": "메밀",
+    "id": "buckwheat",
+    "lab": 71,
+    "server": 71,
+    "fromTable": true,
+    "same": true,
+    "yieldC": 7
+  },
+  {
+    "ko": "율무",
+    "id": "adlay",
+    "lab": 66,
+    "server": 66,
+    "fromTable": false,
+    "same": true,
+    "yieldC": 7
+  },
+  {
+    "ko": "피",
+    "id": "barnyard_millet",
+    "lab": 60,
+    "server": 60,
+    "fromTable": false,
+    "same": true,
+    "yieldC": 5
+  },
+  {
+    "ko": "콩",
+    "id": "soybean",
+    "lab": 133,
+    "server": 133,
+    "fromTable": true,
+    "same": true,
+    "yieldC": 9
+  },
+  {
+    "ko": "팥",
+    "id": "azuki",
+    "lab": 112,
+    "server": 112,
+    "fromTable": true,
+    "same": true,
+    "yieldC": 7
+  },
+  {
+    "ko": "녹두",
+    "id": "mungbean",
+    "lab": 86,
+    "server": 86,
+    "fromTable": true,
+    "same": true,
+    "yieldC": 5
+  },
+  {
+    "ko": "참깨",
+    "id": "sesame",
+    "lab": 97,
+    "server": 97,
+    "fromTable": true,
+    "same": true,
+    "yieldC": 5
+  },
+  {
+    "ko": "들깨",
+    "id": "perilla",
+    "lab": 102,
+    "server": 102,
+    "fromTable": true,
+    "same": true,
+    "yieldC": 5
+  },
+  {
+    "ko": "토란",
+    "id": "taro",
+    "lab": 78,
+    "server": 78,
+    "fromTable": false,
+    "same": true,
+    "yieldC": 9
+  },
+  {
+    "ko": "마",
+    "id": "yam",
+    "lab": 80,
+    "server": 80,
+    "fromTable": false,
+    "same": true,
+    "yieldC": 7
+  },
+  {
+    "ko": "배추",
+    "id": "cabbage",
+    "lab": 61,
+    "server": 61,
+    "fromTable": true,
+    "same": true,
+    "yieldC": 10
+  },
+  {
+    "ko": "무",
+    "id": "radish",
+    "lab": 66,
+    "server": 66,
+    "fromTable": true,
+    "same": true,
+    "yieldC": 10
+  },
+  {
+    "ko": "오이",
+    "id": "cucumber",
+    "lab": 32,
+    "server": 32,
+    "fromTable": false,
+    "same": true,
+    "yieldC": 9
+  },
+  {
+    "ko": "가지",
+    "id": "eggplant",
+    "lab": 44,
+    "server": 44,
+    "fromTable": false,
+    "same": true,
+    "yieldC": 9
+  },
+  {
+    "ko": "상추",
+    "id": "lettuce",
+    "lab": 71,
+    "server": 71,
+    "fromTable": true,
+    "same": true,
+    "yieldC": 7
+  },
+  {
+    "ko": "아욱",
+    "id": "curled_mallow",
+    "lab": 45,
+    "server": 45,
+    "fromTable": true,
+    "same": true,
+    "yieldC": 9
+  },
+  {
+    "ko": "순무",
+    "id": "turnip",
+    "lab": 50,
+    "server": 50,
+    "fromTable": false,
+    "same": true,
+    "yieldC": 10
+  },
+  {
+    "ko": "부추",
+    "id": "chive",
+    "lab": 55,
+    "server": 55,
+    "fromTable": false,
+    "same": true,
+    "yieldC": 7
+  },
+  {
+    "ko": "대파",
+    "id": "scallion",
+    "lab": 52,
+    "server": 52,
+    "fromTable": false,
+    "same": true,
+    "yieldC": 9
+  },
+  {
+    "ko": "마늘",
+    "id": "garlic",
+    "lab": 101,
+    "server": 101,
+    "fromTable": true,
+    "same": true,
+    "yieldC": 10
+  },
+  {
+    "ko": "생강",
+    "id": "ginger",
+    "lab": 173,
+    "server": 173,
+    "fromTable": true,
+    "same": true,
+    "yieldC": 9
+  },
+  {
+    "ko": "참외",
+    "id": "korean_melon",
+    "lab": 56,
+    "server": 56,
+    "fromTable": false,
+    "same": true,
+    "yieldC": 10
+  },
+  {
+    "ko": "박",
+    "id": "gourd",
+    "lab": 70,
+    "server": 70,
+    "fromTable": false,
+    "same": true,
+    "yieldC": 10
+  }
+]

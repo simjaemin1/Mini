@@ -1,0 +1,652 @@
+[
+  {
+    "id": "R01",
+    "category": "다름(손잡이 없이)",
+    "what": "프리뷰 인구와 생활 시작 인구",
+    "lab": [
+      "lab/전쟁실험실.html",
+      "id=\"pop\""
+    ],
+    "srv": [
+      "server/villages.js",
+      "const INITIAL_POP"
+    ],
+    "labValue": "슬라이더 6; 생활 시작 max(8,슬라이더)",
+    "serverValue": "VILLAGE_INITIAL_POP 또는 8",
+    "knob": "랩 입력은 바꿀 수 있으나 env 손잡이 차이는 아님",
+    "pedigree": "미확인 — 다르게 두라는 승인 근거 없음"
+  },
+  {
+    "id": "R02",
+    "category": "다름(손잡이 없이)",
+    "what": "초기 지도와 마을 수",
+    "lab": [
+      "lab/전쟁실험실.html",
+      "const centers=pickCenters(NV,275)"
+    ],
+    "srv": [
+      "server/villages.js",
+      "pickSeedVillages"
+    ],
+    "labValue": "랩 합성 지형·마을수 기본 8/최대12",
+    "serverValue": "존 지도·시딩 후보를 사용(51마을 판과 별개 조건)",
+    "knob": "",
+    "pedigree": "미확인 — 다르게 두라는 승인 근거 없음"
+  },
+  {
+    "id": "R03",
+    "category": "다름(손잡이 없이)",
+    "what": "초기 역할별 비옥도 덮어쓰기",
+    "lab": [
+      "lab/전쟁실험실.html",
+      "_lp.fertility = (s.role==='agri')"
+    ],
+    "srv": [
+      "server/villages.js",
+      "fertility = clamp(+((fs / tn) * 1.4)"
+    ],
+    "labValue": "농업 2.8 / 광산 0.02 / 숲 0.63",
+    "serverValue": "지형 fert 평균×1.4, 0.1~2.0",
+    "knob": "",
+    "pedigree": "미확인 — 다르게 두라는 승인 근거 없음"
+  },
+  {
+    "id": "R04",
+    "category": "다름(손잡이 없이)",
+    "what": "광산 역할 디버그 부존",
+    "lab": [
+      "lab/전쟁실험실.html",
+      "_lp.ore = 1.5"
+    ],
+    "srv": [
+      "server/villages.js",
+      "function extractLandParamsApprox"
+    ],
+    "labValue": "ore=1.5, stone=1.5로 보장",
+    "serverValue": "실제 지형에서 추출",
+    "knob": "",
+    "pedigree": "미확인 — 다르게 두라는 승인 근거 없음"
+  },
+  {
+    "id": "R05",
+    "category": "같음",
+    "what": "경제 마을·초기 곳간 생성 함수",
+    "lab": [
+      "lab/전쟁실험실.html",
+      "const ev=EconEngine.createVillage"
+    ],
+    "srv": [
+      "server/villages.js",
+      "ev = econ.createVillage({ ...lp, initialPop: INITIAL_POP"
+    ],
+    "labValue": "같은 economy-sim.createVillage; R03·R04처럼 입력이 다르므로 결과 동일 주장은 아님",
+    "serverValue": "같은 economy-sim.createVillage; R03·R04처럼 입력이 다르므로 결과 동일 주장은 아님",
+    "knob": "",
+    "pedigree": "공용 함수/검사된 상수의 연결. 별도 수치 채택 판정 아님"
+  },
+  {
+    "id": "R06",
+    "category": "같음",
+    "what": "집 발자국·부지·골목 기하",
+    "lab": [
+      "lab/전쟁실험실.html",
+      "const HALL_YARD=10"
+    ],
+    "srv": [
+      "server/village-layout.js",
+      "const HALL_YARD"
+    ],
+    "labValue": "HOUSE_CAP/LAND_PER_HOUSE/LOT_R/LOT_CELLS/LIFE_HOUSE_GAP 등 P1·P7 보호; 전체 배치 동일 주장은 아님",
+    "serverValue": "HOUSE_CAP/LAND_PER_HOUSE/LOT_R/LOT_CELLS/LIFE_HOUSE_GAP 등 P1·P7 보호; 전체 배치 동일 주장은 아님",
+    "knob": "",
+    "pedigree": "공용 함수/검사된 상수의 연결. 별도 수치 채택 판정 아님"
+  },
+  {
+    "id": "R07",
+    "category": "랩만",
+    "what": "초기 프리뷰·합성 지형 조작",
+    "lab": [
+      "lab/마을실험실.html",
+      "function buildTerrain"
+    ],
+    "srv": null,
+    "labValue": "seed·지형·크기 슬라이더; 서버 존 지도를 대신하지 않음",
+    "serverValue": "—",
+    "knob": "",
+    "pedigree": "미확인 — 다르게 두라는 승인 근거 없음"
+  },
+  {
+    "id": "R08",
+    "category": "랩만",
+    "what": "생활 보조 상태·레거시 상수",
+    "lab": [
+      "lab/마을실험실.html",
+      "const L_MAXSK=8"
+    ],
+    "srv": null,
+    "labValue": "L_CONSUME/L_BIRTH/L_STARVE/L_SK*/로컬 food·UI 상태; 실제 econ 연결 경로와 폴백을 구분",
+    "serverValue": "동일 이름의 서버 상수 사본 없음; 경제 코어는 인라인 묶음으로 별도 대조",
+    "knob": "",
+    "pedigree": "미확인 — 다르게 두라는 승인 근거 없음"
+  },
+  {
+    "id": "R09",
+    "category": "같음",
+    "what": "달력·월동·휴면 술어",
+    "lab": [
+      "lab/전쟁실험실.html",
+      "function cropDormant"
+    ],
+    "srv": [
+      "server/crops.js",
+      "function dormantAt"
+    ],
+    "labValue": "EconEngine.Crops.dormantAt/grownDays 등 정본 호출. 랩의 날은 L_START=120을 빼 전달",
+    "serverValue": "EconEngine.Crops.dormantAt/grownDays 등 정본 호출. 랩의 날은 L_START=120을 빼 전달",
+    "knob": "",
+    "pedigree": "공용 함수/검사된 상수의 연결. 별도 수치 채택 판정 아님"
+  },
+  {
+    "id": "R10",
+    "category": "다름(손잡이 뒤)",
+    "what": "마을랩 전역 날과 서버 현지 자정",
+    "lab": [
+      "lab/마을실험실.html",
+      "function lifeDayAll"
+    ],
+    "srv": [
+      "server/villages.js",
+      "const T731_ON ="
+    ],
+    "labValue": "전역 lifeDayAll 순회(전쟁랩 L_T731 고리 없음)",
+    "serverValue": "마을별 현지 자정 창",
+    "knob": "서버 T731_LOCAL_MIDNIGHT 기본 켬; 전쟁랩 L_T731 기본 켬/마을랩 연결 없음",
+    "pedigree": "족보의 랩=목표 원칙과 T720/T731 기록; 마을랩만 다르게 두라는 승인 미확인"
+  },
+  {
+    "id": "R11",
+    "category": "같음",
+    "what": "전쟁랩의 현지 자정 식 연결",
+    "lab": [
+      "lab/전쟁실험실.html",
+      "function _t731LD"
+    ],
+    "srv": [
+      "server/villages.js",
+      "function _t731LD"
+    ],
+    "labValue": "경도 위상+게임날로 현지 자정 계산. 절대 좌표의 입력 지도는 R02처럼 다름",
+    "serverValue": "경도 위상+게임날로 현지 자정 계산. 절대 좌표의 입력 지도는 R02처럼 다름",
+    "knob": "",
+    "pedigree": "공용 함수/검사된 상수의 연결. 별도 수치 채택 판정 아님"
+  },
+  {
+    "id": "R12",
+    "category": "다름(손잡이 없이)",
+    "what": "관찰/빨리감기의 배치 근사",
+    "lab": [
+      "lab/전쟁실험실.html",
+      "function lifeDay(doBulk)"
+    ],
+    "srv": [
+      "server/villages.js",
+      "function _lifeDay"
+    ],
+    "labValue": "관찰 relayoutVillage / 빨리감기 growTerritory·집터 근사",
+    "serverValue": "서버 생활·몸 고리; doBulk UI 모드 자체는 없음",
+    "knob": "",
+    "pedigree": "미확인 — 다르게 두라는 승인 근거 없음"
+  },
+  {
+    "id": "R13",
+    "category": "같음",
+    "what": "영토 목표 식의 공용 입구",
+    "lab": [
+      "lab/전쟁실험실.html",
+      "function _terrTargetOf"
+    ],
+    "srv": [
+      "server/village-layout.js",
+      "const territoryTarget ="
+    ],
+    "labValue": "EconEngine.Layout.territoryTarget ↔ VillageLayout.territoryTarget; 확장 속도·실행 권한은 별도 D1/R14",
+    "serverValue": "EconEngine.Layout.territoryTarget ↔ VillageLayout.territoryTarget; 확장 속도·실행 권한은 별도 D1/R14",
+    "knob": "",
+    "pedigree": "공용 함수/검사된 상수의 연결. 별도 수치 채택 판정 아님"
+  },
+  {
+    "id": "R14",
+    "category": "다름(손잡이 뒤)",
+    "what": "영토의 권리·말뚝·진척·사용일",
+    "lab": [
+      "lab/전쟁실험실.html",
+      "_claimedAll=new Map()"
+    ],
+    "srv": [
+      "server/villages.js",
+      "const T1207_TERR_REAL ="
+    ],
+    "labValue": "로컬 claimed map·배치 증가",
+    "serverValue": "마을 간 권리·말뚝·남은 진척을 DB에 기록, 사용일·재생 차단",
+    "knob": "T1207_TERR_REAL/T1238_TERR_V2 기본 끔; 묶음 T1334_BUNDLE 기본 끔",
+    "pedigree": "족보 875는 랩 식을 목표로 지정. 다르게 유지하라는 승인은 아님"
+  },
+  {
+    "id": "R15",
+    "category": "같음",
+    "what": "집 건설 크루의 재료·단계 계산",
+    "lab": [
+      "lab/전쟁실험실.html",
+      "EconEngine.labSiteCrewDay"
+    ],
+    "srv": [
+      "sim/economy-sim.js",
+      "function houseCrewDay"
+    ],
+    "labValue": "labSiteCrewDay → houseCrewDay; 서버도 같은 단계·자재 계산. LIFE_CREW/LIFE_STAGE_PDAY는 번들 정본",
+    "serverValue": "labSiteCrewDay → houseCrewDay; 서버도 같은 단계·자재 계산. LIFE_CREW/LIFE_STAGE_PDAY는 번들 정본",
+    "knob": "",
+    "pedigree": "공용 함수/검사된 상수의 연결. 별도 수치 채택 판정 아님"
+  },
+  {
+    "id": "R16",
+    "category": "다름(손잡이 없이)",
+    "what": "집 크루의 몸·이동·배달",
+    "lab": [
+      "lab/전쟁실험실.html",
+      "const _t1056H="
+    ],
+    "srv": [
+      "server/villages.js",
+      "function _t400"
+    ],
+    "labValue": "하루의 크루 사람-날을 계산하는 랩 어댑터",
+    "serverValue": "현장에 걸어가 자재를 나르고 놓는 서버 몸 고리; 같은 단계식만으로 이동 지연은 같아지지 않음",
+    "knob": "",
+    "pedigree": "미확인 — 다르게 두라는 승인 근거 없음"
+  },
+  {
+    "id": "R17",
+    "category": "다름(손잡이 뒤)",
+    "what": "개간의 노동·단위·밭 세계",
+    "lab": [
+      "lab/전쟁실험실.html",
+      "function clearCell"
+    ],
+    "srv": [
+      "server/villages.js",
+      "function _t1243On"
+    ],
+    "labValue": "L_CLEAR=90 기준 로컬 개간 진척",
+    "serverValue": "terrain-cost의 면적·노동시간, 씨·수확을 몸/곳간 장부에 연결",
+    "knob": "T1243_FARM_ON 기본 끔; T1221_FARM_LABOR 기본 끔(밭 묶음 켬이면 켬)",
+    "pedigree": "미확인 — 다르게 두라는 승인 근거 없음"
+  },
+  {
+    "id": "R18",
+    "category": "서버만",
+    "what": "몸이 못 한 밭 일의 나머지 몫",
+    "lab": null,
+    "srv": [
+      "server/villages.js",
+      "const T1212_FARM_REST"
+    ],
+    "labValue": "—",
+    "serverValue": "몸 수행량을 뺀 나머지만 일괄 처리. REST는 휴경이 아님",
+    "knob": "T1212_FARM_REST 기본 켬; T1224_ECON_FARM 기본 끔",
+    "pedigree": "미확인 — 다르게 두라는 승인 근거 없음"
+  },
+  {
+    "id": "R19",
+    "category": "같음",
+    "what": "휴경의 별도 회복률/비율 부재",
+    "lab": [
+      "lab/전쟁실험실.html",
+      "function resourceTick"
+    ],
+    "srv": [
+      "server/villages.js",
+      "휴경(묵히는 밭)은 비율 근거가 미확인"
+    ],
+    "labValue": "독립적인 휴경 회복률 표를 새로 적용하지 않음; 작물 휴면·재파종과 구분. 서버 T1238 사용일 기록은 R14",
+    "serverValue": "독립적인 휴경 회복률 표를 새로 적용하지 않음; 작물 휴면·재파종과 구분. 서버 T1238 사용일 기록은 R14",
+    "knob": "",
+    "pedigree": "공용 함수/검사된 상수의 연결. 별도 수치 채택 판정 아님"
+  },
+  {
+    "id": "R20",
+    "category": "같음",
+    "what": "전쟁랩 장마당의 손 사본",
+    "lab": [
+      "lab/전쟁실험실.html",
+      "const L_MKT_LINGER"
+    ],
+    "srv": [
+      "server/village-layout.js",
+      "const MKT_SPOTS"
+    ],
+    "labValue": "참여 0.18 / 좌판6곳 / 4시간=4/24일; P8 네 줄 보호",
+    "serverValue": "참여 0.18 / 좌판6곳 / 4시간=4/24일; P8 네 줄 보호",
+    "knob": "",
+    "pedigree": "공용 함수/검사된 상수의 연결. 별도 수치 채택 판정 아님"
+  },
+  {
+    "id": "R21",
+    "category": "서버만",
+    "what": "마을랩에 없는 장마당 주민 모임",
+    "lab": null,
+    "srv": [
+      "server/villages.js",
+      "MKT_FRAC"
+    ],
+    "labValue": "마을랩에 L_MKT_FRAC/MKT_SPOTS 연결 없음(전쟁랩에는 있음)",
+    "serverValue": "VL.MKT_FRAC·장 방문 명부; 전쟁랩 수를 정본으로 연결",
+    "knob": "",
+    "pedigree": "T707 주석에 랩 값 그대로 명시; 마을랩 누락을 허락한 근거 미확인"
+  },
+  {
+    "id": "R22",
+    "category": "다름(손잡이 뒤)",
+    "what": "하루 사냥 수입과 추격 사냥의 연결",
+    "lab": [
+      "lab/전쟁실험실.html",
+      "function _huntIncomeMode"
+    ],
+    "srv": [
+      "server/villages.js",
+      "function* _huntHuntersSteps"
+    ],
+    "labValue": "L_HUNTINCOME 기본 abstract / real 선택. 몹 추격이 보인다고 모두 실제 고기 수입은 아님",
+    "serverValue": "하루 huntTakeAt에서 먼저 몫을 정하고 몸 연출 예산으로 전달; 실물 팔은 T1195",
+    "knob": "랩 L_HUNTREAL 기본1·L_HUNTINCOME 기본abstract; 서버 T1195_HUNT_REAL 기본 끔",
+    "pedigree": "T1393/T1396이 연결을 검사·수리할 카드. 스탯 같음으로 규칙 같음을 대신하지 않음"
+  },
+  {
+    "id": "R23",
+    "category": "다름(손잡이 없이)",
+    "what": "야생 개체 활성 범위·플레이어 어댑터",
+    "lab": [
+      "lab/원본/사냥실험실_0707.html",
+      "function _mobView"
+    ],
+    "srv": [
+      "server/wildlife.js",
+      "function tick(now)"
+    ],
+    "labValue": "원본 사냥랩 전 맵 활성; 플레이어 없음",
+    "serverValue": "존 tick·플레이어 주변 활성 범위와 proxy actor·피해 브리지",
+    "knob": "",
+    "pedigree": "미확인 — 다르게 두라는 승인 근거 없음"
+  },
+  {
+    "id": "R24",
+    "category": "다름(손잡이 없이)",
+    "what": "원본 사냥랩 길 시스템",
+    "lab": [
+      "lab/원본/사냥실험실_0707.html",
+      "const setPath="
+    ],
+    "srv": [
+      "server/villages.js",
+      "function _walkLineClear"
+    ],
+    "labValue": "setPath는 빈 함수; driveHunters가 직선 보행",
+    "serverValue": "일상 몸은 PathCore+지형·벽 술어, 경로 재개·이동 실행",
+    "knob": "",
+    "pedigree": "미확인 — 다르게 두라는 승인 근거 없음"
+  },
+  {
+    "id": "R25",
+    "category": "다름(손잡이 없이)",
+    "what": "원본 사냥랩의 빠른 현장 회복",
+    "lab": [
+      "lab/원본/사냥실험실_0707.html",
+      "(a.rest?0.5:0.03)"
+    ],
+    "srv": [
+      "server/villages.js",
+      "const regenMul = _lifeEcon().npcRegenMul"
+    ],
+    "labValue": "게임분당 요양0.5 / 이동0.03",
+    "serverValue": "일일 요양18·근무6 ×건강·행복·식량·약재; npcRegenMul 정본",
+    "knob": "",
+    "pedigree": "미확인 — 다르게 두라는 승인 근거 없음"
+  },
+  {
+    "id": "R26",
+    "category": "다름(손잡이 뒤)",
+    "what": "벌목 수입의 출구",
+    "lab": [
+      "lab/전쟁실험실.html",
+      "function _woodIncomeMode"
+    ],
+    "srv": [
+      "sim/economy-sim.js",
+      "const T325_WOOD_ACT"
+    ],
+    "labValue": "L_WOODINCOME 기본abstract, real이면 실제 절단 수 주입",
+    "serverValue": "T325_WOOD_ACT 켬이면 몸의 나무·짐 흐름을 반영",
+    "knob": "랩 L_WOODINCOME=abstract/real; 서버 T325_WOOD_ACT 기본 끔(묶음은 켬)",
+    "pedigree": "미확인 — 다르게 두라는 승인 근거 없음"
+  },
+  {
+    "id": "R27",
+    "category": "랩만",
+    "what": "전쟁랩의 수종별 나무 표시·실험 표",
+    "lab": [
+      "lab/전쟁실험실.html",
+      "const TREES="
+    ],
+    "srv": null,
+    "labValue": "랩 TREES·TREE_IDS·열매/목재 실험 조립",
+    "serverValue": "서버는 server/trees.js와 trees.json·존 나무 실물. 표 모양만으로 같은 수종 생태라고 합치지 않음",
+    "knob": "",
+    "pedigree": "미확인 — 다르게 두라는 승인 근거 없음"
+  },
+  {
+    "id": "R28",
+    "category": "다름(손잡이 없이)",
+    "what": "숲·채집·광맥·어장 상태의 좌표 어댑터",
+    "lab": [
+      "lab/전쟁실험실.html",
+      "function resourceTick"
+    ],
+    "srv": [
+      "server/sustain.js",
+      "L_WOODREGLOG"
+    ],
+    "labValue": "로컬 forestRich/oreRich/fishRich의 칸/버킷 갱신",
+    "serverValue": "존 sustain/specialty/fishing의 원본 맵·버킷·DB 상태. 주요 같은 계수는 P3로 별도 보호",
+    "knob": "",
+    "pedigree": "미확인 — 다르게 두라는 승인 근거 없음"
+  },
+  {
+    "id": "R29",
+    "category": "다름(손잡이 없이)",
+    "what": "마을랩 전쟁 결판",
+    "lab": [
+      "lab/마을실험실.html",
+      "const powA=aEff"
+    ],
+    "srv": [
+      "sim/war-core.js",
+      "function runBattleHeadless"
+    ],
+    "labValue": "유효병력×무장×난수의 추상 powA/powD 비교",
+    "serverValue": "BattleCore를 틱해 실제 사상·궤주·승패를 얻음(전쟁랩도 전술 코어)",
+    "knob": "",
+    "pedigree": "미확인 — 다르게 두라는 승인 근거 없음"
+  },
+  {
+    "id": "R30",
+    "category": "같음",
+    "what": "전투실험실 전술 코어",
+    "lab": [
+      "lab/전투실험실.html",
+      "const BC=window.BattleCore"
+    ],
+    "srv": [
+      "sim/battle-core.js",
+      "function stepBattle"
+    ],
+    "labValue": "BattleCore.stepBattle의 같은 인라인 글자. 독립 실험 배치와 존의 실제 병사 위치는 R31",
+    "serverValue": "BattleCore.stepBattle의 같은 인라인 글자. 독립 실험 배치와 존의 실제 병사 위치는 R31",
+    "knob": "",
+    "pedigree": "공용 함수/검사된 상수의 연결. 별도 수치 채택 판정 아님"
+  },
+  {
+    "id": "R31",
+    "category": "다름(손잡이 없이)",
+    "what": "전투 시작 위치·장애물",
+    "lab": [
+      "lab/전투실험실.html",
+      "const LAB_WORLD"
+    ],
+    "srv": [
+      "server/war-live.js",
+      "const ctx = BC.createContext()"
+    ],
+    "labValue": "독립 WORLD 130×130 표준 배치/실험 장애물",
+    "serverValue": "존 좌표의 실제 병사·지형 어댑터를 주입. 같은 battle-core가 다른 입력을 받음",
+    "knob": "",
+    "pedigree": "미확인 — 다르게 두라는 승인 근거 없음"
+  },
+  {
+    "id": "R32",
+    "category": "다름(손잡이 없이)",
+    "what": "징집 명부·개체의 연결 어댑터",
+    "lab": [
+      "lab/전쟁실험실.html",
+      "function conscript"
+    ],
+    "srv": [
+      "sim/war-core.js",
+      "function _warConscriptIndividual"
+    ],
+    "labValue": "econ NPC/무기 숙련으로 편성 → 랩 agent/행군 그룹",
+    "serverValue": "econ NPC/무기 숙련으로 편성 → npcPids·서버 몸/WarLive 연결",
+    "knob": "편성 수식이 다르다는 주장이 아니라 입력/소유 개체의 연결 차이",
+    "pedigree": "미확인 — 다르게 두라는 승인 근거 없음"
+  },
+  {
+    "id": "R33",
+    "category": "다름(손잡이 없이)",
+    "what": "집결·행군·대치의 좌표 작성자",
+    "lab": [
+      "lab/전쟁실험실.html",
+      "function tickMarch"
+    ],
+    "srv": [
+      "server/war-live.js",
+      "function _muStepFollow"
+    ],
+    "labValue": "랩 MU·tickMarch/tickWarGroups가 Canvas agent 이동",
+    "serverValue": "서버 war-live가 player/NPC 몸 좌표·명부를 소유. D5의 간격·흔들림·포위 거리 차이",
+    "knob": "",
+    "pedigree": "미확인 — 다르게 두라는 승인 근거 없음"
+  },
+  {
+    "id": "R34",
+    "category": "다름(손잡이 없이)",
+    "what": "전투 갱신 예산·종료",
+    "lab": [
+      "lab/전쟁실험실.html",
+      "const LB_MAXSUB="
+    ],
+    "srv": [
+      "server/war-live.js",
+      "BC._stepBattle"
+    ],
+    "labValue": "랩 LB_MAXSUB/LB_STEP_BUDGET/LB_MAX_LOCALT의 프레임 예산",
+    "serverValue": "존 스케줄러·전투 진행/중단 상태를 사용; WAR_BATTLE_DT 같은 수만으로 같은 시간선은 아님",
+    "knob": "",
+    "pedigree": "미확인 — 다르게 두라는 승인 근거 없음"
+  },
+  {
+    "id": "R35",
+    "category": "서버만",
+    "what": "전투 뒤 영속 명부·재시작 장부",
+    "lab": null,
+    "srv": [
+      "server/war-live.js",
+      "module.exports"
+    ],
+    "labValue": "—",
+    "serverValue": "서버 NPC/포로/무기·상태를 존 DB와 연계; 랩 재로드는 같은 이어받기가 아님",
+    "knob": "",
+    "pedigree": "미확인 — 다르게 두라는 승인 근거 없음"
+  },
+  {
+    "id": "R36",
+    "category": "서버만",
+    "what": "영속 지도·새 플레이어 마을·동면",
+    "lab": null,
+    "srv": [
+      "server/villages.js",
+      "initialPop: 0"
+    ],
+    "labValue": "—",
+    "serverValue": "플레이어 창건 0명·기부/출입·서버 부팅/동면 경로. 8명 실험 마을과 다름",
+    "knob": "",
+    "pedigree": "미확인 — 다르게 두라는 승인 근거 없음"
+  },
+  {
+    "id": "R37",
+    "category": "랩만",
+    "what": "전투 편성/품질/사기 대조 UI",
+    "lab": [
+      "lab/전투실험실.html",
+      "const SPEC_KEY"
+    ],
+    "srv": null,
+    "labValue": "진영·병종·품질·진형을 직접 넣어 반복하는 과녁",
+    "serverValue": "서버에서는 원정 편성과 실물 재고가 입력을 정함",
+    "knob": "",
+    "pedigree": "미확인 — 다르게 두라는 승인 근거 없음"
+  },
+  {
+    "id": "R38",
+    "category": "랩만",
+    "what": "원본 사냥 시나리오·배치",
+    "lab": [
+      "lab/원본/사냥실험실_0707.html",
+      "function resetAll"
+    ],
+    "srv": null,
+    "labValue": "종/개체수/지형·숙련·위장·비/바람을 조작하는 독립 과녁",
+    "serverValue": "플레이어·경제 마을·DB를 포함한 월드 아님",
+    "knob": "",
+    "pedigree": "미확인 — 다르게 두라는 승인 근거 없음"
+  },
+  {
+    "id": "R39",
+    "category": "랩만",
+    "what": "화면·색·그리기·관측 상태",
+    "lab": [
+      "lab/전쟁실험실.html",
+      "const MU_TYPE_COL"
+    ],
+    "srv": null,
+    "labValue": "렌더 배율·종류 색·통계·Canvas 상태(선언목록에 모두 기록)",
+    "serverValue": "같은 이름의 서버 표시 상태를 요구하지 않음; 게임 수치의 허락된 차이 목록과 구분",
+    "knob": "",
+    "pedigree": "미확인 — 다르게 두라는 승인 근거 없음"
+  },
+  {
+    "id": "R40",
+    "category": "같음",
+    "what": "econ 세계의 고르기·소문·기습률",
+    "lab": [
+      "lab/전쟁실험실.html",
+      "picker:'rational',infoRange:5000,raidPer100:0.005"
+    ],
+    "srv": [
+      "server/villages.js",
+      "picker: 'rational'"
+    ],
+    "labValue": "rational / infoRange5000 / raidPer1000.005; P2와 V-P2 보호",
+    "serverValue": "rational / infoRange5000 / raidPer1000.005; P2와 V-P2 보호",
+    "knob": "",
+    "pedigree": "공용 함수/검사된 상수의 연결. 별도 수치 채택 판정 아님"
+  }
+]
