@@ -1,0 +1,6 @@
+=== 러너 요약 ===
+  통과 44: test-bridge-act.js test-claim-v2.js test-donate.js test-doors.js test-drop-kg.js test-emptystart.js test-fishing.js test-fixture-reap.js test-food-sick.js test-forage-act.js test-game-meat.js test-granary-age.js test-granary-item.js test-granary-rot.js test-guest-identity.js test-hall-units.js test-jungwon-boot.js test-member-open.js test-mob-hp-door.js test-physical-stone-cycle.js test-preserve-carry.js test-preserve.js test-regrow.js test-reset-world.js test-shelter.js test-spoil2.js test-t1065-tool-gate.js test-t1066-village-fire.js test-t1093-shelter-roof.js test-t1120-next-tool.js test-t1125-welcome.js test-t1126-rock-yield.js test-t1128-kcal-tidy.js test-t1132-hall-view.js test-t1146-stone-rule.js test-t1163-welcome-sig.js test-t1186-blade-wear.js test-t1238-terr-v2.js test-t989-chunk-save.js test-terraincache.js test-weight.js test-well.js test-xhost-env.js test-zone-fauna.js
+  실패 2: test-guest-rejoin.js(rc=1) test-t1118-rack-age.js(rc=1)
+  걸린 시간 상위(초): test-zone-fauna.js 106 · test-shelter.js 70 · test-fishing.js 60 · test-granary-age.js 49 · test-weight.js 49 · test-t1093-shelter-roof.js 45 · test-reset-world.js 37 · test-jungwon-boot.js 33 · test-member-open.js 33 · test-guest-rejoin.js 30
+  걸린 시간 합: 하네스 941초 · 러너 전체 1009초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 8번 × 8초 · 건넘 39번(앞 판이 남긴 아이 없음)
