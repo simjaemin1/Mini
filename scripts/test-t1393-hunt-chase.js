@@ -31,10 +31,10 @@ const kid = (env, code) => { const e = Object.assign({}, process.env); for (cons
 const BAIT = (file, needle, rep) => `const __M=require('module'),__c=__M.prototype._compile,__F=require('path').join(process.cwd(),${JSON.stringify(file)});globalThis.__baitN=-1;
 __M.prototype._compile=function(c,f){if(f===__F){globalThis.__baitN=c.split(${JSON.stringify(needle)}).length-1;if(globalThis.__baitN===1)c=c.replace(${JSON.stringify(needle)},${JSON.stringify(rep)});}return __c.call(this,c,f);};`;
 // ── ① 손잡이 ──
-const K = kid({}, `const V=require('./server/villages'),W=require('./server/wildlife');console.log(JSON.stringify({v:V.T1393_HUNT_CHASE,on:V.t1393On(),w:W.T1393}));`);
-const K1 = kid({ T1393_HUNT_CHASE: '1' }, `const V=require('./server/villages'),W=require('./server/wildlife');console.log(JSON.stringify({v:V.T1393_HUNT_CHASE,on:V.t1393On(),w:W.T1393}));`);
-const K2 = kid({ T1393_HUNT_CHASE: '1', T1331_BEAST_BODY: '1' }, `const V=require('./server/villages'),W=require('./server/wildlife');console.log(JSON.stringify({v:V.T1393_HUNT_CHASE,on:V.t1393On(),w:W.T1393}));`);
-const K3 = kid({ T1393_HUNT_CHASE: 'yes', T1331_BEAST_BODY: '1' }, `const V=require('./server/villages'),W=require('./server/wildlife');console.log(JSON.stringify({v:V.T1393_HUNT_CHASE,on:V.t1393On(),w:W.T1393}));`);
+const K = kid({}, `const V=require('./server/villages'),W=require('./server/wildlife');console.log(JSON.stringify({v:V.T1393_HUNT_CHASE,on:typeof V.t1393On==='function'?V.t1393On():'없음',w:W.T1393}));`);
+const K1 = kid({ T1393_HUNT_CHASE: '1' }, `const V=require('./server/villages'),W=require('./server/wildlife');console.log(JSON.stringify({v:V.T1393_HUNT_CHASE,on:typeof V.t1393On==='function'?V.t1393On():'없음',w:W.T1393}));`);
+const K2 = kid({ T1393_HUNT_CHASE: '1', T1331_BEAST_BODY: '1' }, `const V=require('./server/villages'),W=require('./server/wildlife');console.log(JSON.stringify({v:V.T1393_HUNT_CHASE,on:typeof V.t1393On==='function'?V.t1393On():'없음',w:W.T1393}));`);
+const K3 = kid({ T1393_HUNT_CHASE: 'yes', T1331_BEAST_BODY: '1' }, `const V=require('./server/villages'),W=require('./server/wildlife');console.log(JSON.stringify({v:V.T1393_HUNT_CHASE,on:typeof V.t1393On==='function'?V.t1393On():'없음',w:W.T1393}));`);
 ok(K.v === false && K.on === false && K.w === false && K1.v === true && K1.on === false && K1.w === false && K2.on === true && K2.w === true && K3.on === false,
   '① T1393_HUNT_CHASE — 끔 기본 · `1` 만 · 몸 판 켬 안에서만 뜻', JSON.stringify({ K, K1, K2, K3 }));
 // ── ② · ③ 사냥판(가짜 존) ──
