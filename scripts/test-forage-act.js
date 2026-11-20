@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다
+// @bait 3   ← [T1383] 옛 미끼 표지 — 미끼 판정 줄에 바꾼 자리 수(뜻 그대로)
 // === scripts/test-forage-act.js — 채집 행위 이식 (T347) ====================================
 //
 // ★왜 [설계/설계_생산_실체.md §1 · 재민 09-22 · 지시 T347]
@@ -21,6 +22,7 @@
 //
 // 실행: node scripts/test-forage-act.js
 'use strict';
+const LB = require('./lib-bait');   // [T1383] 미끼 사본을 지으며 바꾼 자리를 센다
 if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 process.env.T449_BODY_DAY = '0';
 process.env.T491_BATCH_FROM_BODY = '0';
@@ -778,12 +780,12 @@ console.log('\n⑯ [T462] 야생 군락을 딴다 — 종 집합 하나 · 품�
     const mk = (src, kc) => new Function('WILD', 'WILD_HAB', 'WILD_P', 'GROVE_KINDS', 'FORAGE_RING', '_kcalMod', `let _FK_ON = null;\n${src}\nreturn forageKinds;`)(
       { ON: () => true }, CH.WILD_HAB, P, CH.GROVE_KINDS, CH.FORAGE_RING, () => kc)();
     const real = mk(fb, KC), noK = mk(fb.replace(gateK, ''), KC);
-    ok(!!gateK && real.join('|') === want.join('|') && noK.includes('beehive') && noK.join('|') !== want.join('|'),
-      'ⓔ ★미끼 — kcal 문 한 줄을 뺀 몸통은 **벌집을 넣는다**(ⓐ 가 빨갛다 · 자명 통과 아님)', `정본 ${real.join('·')} · 미끼 ${noK.join('·')}`);
+    ok(LB.spots(fb, fb.replace(gateK, '')) === 1 && (!!gateK && real.join('|') === want.join('|') && noK.includes('beehive') && noK.join('|') !== want.join('|')),
+      `ⓔ ★미끼 — kcal 문 한 줄을 뺀 몸통은 **벌집을 넣는다**(ⓐ 가 빨갛다 · 자명 통과 아님) · 미끼 바꾼 자리 ${LB.spots(fb, fb.replace(gateK, ''))}`, `정본 ${real.join('·')} · 미끼 ${noK.join('·')}`);
     const KG = { kcalPerKg: (it) => (it === 'grape' ? 500 : KC.kcalPerKg(it)) };   // 가정 — kcal.js 가 포도를 알게 된 날
     const realG = mk(fb, KG), noP = mk(fb.replace(gateP, ''), KG);
-    ok(!!gateP && !realG.includes('wild_vine') && noP.includes('wild_vine'),
-      'ⓔ ★미끼 — kcal.js 가 포도를 알게 돼도 정본은 **머루를 안 넣는다**(물가 밀도 0 — 세계에 없다) · 밀도 문을 빼면 든다(공급원 없이 수식에서 걷어낸다)', `정본 ${realG.join('·')} · 미끼 ${noP.join('·')}`);
+    ok(LB.spots(fb, fb.replace(gateP, '')) === 1 && (!!gateP && !realG.includes('wild_vine') && noP.includes('wild_vine')),
+      `ⓔ ★미끼 — kcal.js 가 포도를 알게 돼도 정본은 **머루를 안 넣는다**(물가 밀도 0 — 세계에 없다) · 밀도 문을 빼면 든다(공급원 없이 수식에서 걷어낸다) · 미끼 바꾼 자리 ${LB.spots(fb, fb.replace(gateP, ''))}`, `정본 ${realG.join('·')} · 미끼 ${noP.join('·')}`);
   } finally { V.__p3Bind({ deps: deps0 }); }
 }
 
@@ -924,7 +926,7 @@ console.log('\n⑰ [T475] 걷는 목록은 마을마다 — 그 마을 원판에
   { // 미끼 — 갈래를 없앤 판(두 자리가 한 하루에 **둘 다** 도는 꼴: `else` 를 지운다)이면 위 검사가 문다
     const bait = VC.replace(/(_econDayParts\(C, add\);\s*\n\s*)else (add\('econ')/, '$1$2');
     const forkB = /if \(T513_DAY_SLICE && [^\n]*tickWorldV2Parts[^\n]*\) _econDayParts\(C, add\);\s*\n\s*else add\('econ', \(\) => \{/.test(bait);
-    ok(bait !== VC && !forkB, 'ⓔ [자명 통과 금지] `else` 를 지운 미끼(손이 하루에 두 번 든다)면 갈래 검사가 **문다**', forkB ? '안 문다' : '문다'); }
+    ok(LB.spots(VC, bait) === 1 && (bait !== VC && !forkB), `ⓔ [자명 통과 금지] \`else\` 를 지운 미끼(손이 하루에 두 번 든다)면 갈래 검사가 **문다** · 미끼 바꾼 자리 ${LB.spots(VC, bait)}`, forkB ? '안 문다' : '문다'); }
   const hiBody = (VC.match(/function _lifeHandsIn\(vil\) \{[\s\S]*?\n\}/) || [''])[0];
   ok(/_t347Deliver\(vil, p\)/.test(hiBody) && /_t325Deliver\(vil, p\)/.test(hiBody) && !/ToGranary\(/.test(hiBody),
     'ⓔ ★같은 두 다리(`_t347Deliver`·`_t325Deliver`)를 부른다 — 회계를 새로 안 적었다(사본 0)');

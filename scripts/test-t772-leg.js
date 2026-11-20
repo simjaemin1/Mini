@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(표 없으면 안 돈다)
+// @bait 2   ← [T1383] 옛 미끼 표지 — 미끼 판정 줄에 바꾼 자리 수(뜻 그대로)
 // === scripts/test-t772-leg.js — 손잡이 `T772_LEG_FROM_LINGER`(★T782 켬 기본 · 되돌림 `=0`): 캐러밴 귀환 몸 — 장 뒤 따라잡기 질주 없애기 [T772] ==========
 //
 // ★왜 [T762 §2-4] 1일 귀환 다리 몸이 장이 끝난 뒤(하루 17.8~20.9 %) 몸 걸음의 최대 2.7배(171 px/s)로 뛴다 —
@@ -20,6 +21,7 @@
 //
 // 실행: node scripts/test-t772-leg.js   (존 안 띄움 · 1초)
 'use strict';
+const LB = require('./lib-bait');   // [T1383] 미끼 사본을 지으며 바꾼 자리를 센다
 // T1182: 이 자는 종전 일정 보간 길을 재며 실제 몸 정본은 별도 자가 잰다.
 if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 process.env.T762_CARAVAN_BODY='0';
@@ -109,7 +111,8 @@ console.log('\n③ 정본 글자 평가 — 가짜 세계 · 30Hz 하루(장 끝
 ok(zoneMove === MS, '전제 — 존 `MOVE_SPEED` = 64 px/s(몸 걸음 정본을 deps 로 넘긴다)', zoneMove);
 { const len = 0.6 * MS * 1440;   // 일정 = 몸 걸음의 0.6 배(하루 통째) — T762 실제 날 판 최대 0.80 아래
   const off = world(false, len), on = world(true, len);
-  ok(off.maxWin > MS * 1.5 && off.maxTick > MS * 2, 'ⓐ 미끼(끔) — 장 뒤 따라잡기가 몸 걸음을 넘는다(15초 평균 · 틱 순간)', `${off.maxWin.toFixed(1)} · ${off.maxTick.toFixed(1)} px/s`);
+  const nKnob = LB.count(C, 'process.env.T772_LEG_FROM_LINGER');   // [T1383] 끔 대조 미끼 — 바꾼 자리 = 그 손잡이를 읽는 제품 자리(규약 제안 ㉰)
+  ok(nKnob === 1 && off.maxWin > MS * 1.5 && off.maxTick > MS * 2, 'ⓐ 미끼(끔) — 장 뒤 따라잡기가 몸 걸음을 넘는다(15초 평균 · 틱 순간)', `바꾼 자리 ${nKnob}(손잡이) · ${off.maxWin.toFixed(1)} · ${off.maxTick.toFixed(1)} px/s`);
   ok(on.maxWin <= MS + 1e-6 && on.maxTick <= MS + 1e-6, '★ⓑ 켬 — 15초 평균 · 틱 순간 모두 ≤ 몸 걸음', `${on.maxWin.toFixed(1)} · ${on.maxTick.toFixed(1)} px/s · 일정 ${on.sched.toFixed(1)}`);
   ok(on.startProg !== null && on.startProg < 1, 'ⓑ 켬 — 장 끝 첫 틱의 자리 = 길 머리(뒤처져 서지 않는다)', on.startProg && on.startProg.toFixed(2));
   ok(on.remAtArrive <= 0.5 && on.stat.late === 0 && on.stat.home === 1 && on.stat.legs === 1, 'ⓑ 켬 — econ 도착 전에 집에 닿는다 · 늦음 0', `남은 ${on.remAtArrive.toFixed(1)}px · 늦음 ${on.stat.late}/${on.stat.home}`);
@@ -152,9 +155,9 @@ console.log('\n④ ★[T1289] 귀환 보간 축 — 켬 · T1182 몸으로 저�
     `몫 ${c2.f.toFixed(6)} · 머묾 끝 ${c2.S.lg - E0 - D * DAY}ms · 표지 ${c2.S.ax}`);
   ok(c3.S === w0 && JSON.stringify(c3.S) === w0s && !('ax' in c3.S) && Math.abs(c3.f - 0.4) < 1e-9, '★④′ [T1300] 끔 · 끔이 쓴 저장(칸이 다 벽시계) = 손대지 않는다(종전 바이트 · 표지 칸도 안 붙는다)', `바이트 ${JSON.stringify(c3.S) === w0s ? '같음' : '다름'} · 몫 ${c3.f.toFixed(6)}`);
   ok(Math.abs(c4.f - 0.4) < 1e-9 && c4.S.ax === 'w', '④′ [T1300] 켬 · 표지 없는 옛 켬 저장 → 이 판(종전 몸) — 같은 가리기로 옮긴다', `몫 ${c4.f.toFixed(6)}`);
-  const bait = SRC.replace('  if (!S || (!S.ax && !T1253_CLOCK_FIX && !T1300_OLD_AX)) return S;', '  return S;');   // ★[T1300] 첫 줄 글자가 바뀌었다(손잡이 하나 더) — 미끼 뜻 그대로(되살림 축 옮김 없음)
+  const B4 = LB.swap(SRC, '  if (!S || (!S.ax && !T1253_CLOCK_FIX && !T1300_OLD_AX)) return S;', '  return S;'), bait = B4.src;   // ★[T1300] 첫 줄 글자가 바뀌었다(손잡이 하나 더) — 미끼 뜻 그대로(되살림 축 옮김 없음)
   const d = run(null, rec('e'), bait);
-  ok(bait !== SRC && Math.abs(d.f - 1) < 1e-9, '④ ★미끼(되살림 축 옮김 없음 = 종전) — econ 날 시계 칸을 벽시계로 읽어 보간 몫 1(몸이 집 끝을 쫓는다 · 회부 5 섞임) ⇒ 빨강이 되는 판', `몫 ${d.f.toFixed(6)}`);
+  ok(B4.n === 1 && bait !== SRC && Math.abs(d.f - 1) < 1e-9, '④ ★미끼(되살림 축 옮김 없음 = 종전) — econ 날 시계 칸을 벽시계로 읽어 보간 몫 1(몸이 집 끝을 쫓는다 · 회부 5 섞임) ⇒ 빨강이 되는 판', `바꾼 자리 ${B4.n} · 몫 ${d.f.toFixed(6)}`);
 }
 
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);

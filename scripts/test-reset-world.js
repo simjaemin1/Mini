@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @old-red-also scripts/reset-world.sh scripts/reset-world.js   (재는 고침이 이 운영 스크립트 — 옛 코드 빨강 판에서 이것도 옛 판으로 · T1383)
 // === scripts/test-reset-world.js — `reset-world.sh` 가 **무엇을 지우고 무엇을 남기나** (T587) ======================
 //
 // ★`test-redeploy` · `test-redeploy-light` 문법 — **진짜 스크립트를 돌린다**(판정 사본 0). 가짜 `docker`(상태를 JSON 에 쥐는 작은 흉내) ·

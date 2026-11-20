@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @bait 1   ← [T1383] 옛 미끼 표지 — 미끼 판정 줄에 바꾼 자리 수(뜻 그대로)
 // === scripts/test-one-target.js — 목표 식 하나 `T726_ONE_TARGET`(기본 끔) ================================
 //
 // ★왜 [T726 · T718 회부 1 · 재민 08-01 "모든 기본 비축 목표 없애라"]
@@ -20,6 +21,7 @@
 //
 // 실행: node scripts/test-one-target.js
 'use strict';
+const LB = require('./lib-bait');   // [T1383] 미끼 사본을 지으며 바꾼 자리를 센다
 process.env.ENABLE_VILLAGES = process.env.ENABLE_VILLAGES || '0';
 // ★[T1208] 원석 한 품목 판에 묶는다 — ⓑ 고정물은 조성(`land.oreMix`)을 한 품목 `ore` 에 걸어 원석 상한을 재는데, T1188 원석 광물별(`T1188_ORE_SPLIT` · land1048 켬)
 //   판엔 `ore` 값이 없다(광물마다 `ore_<광물>`) — 그 판의 상한 정산 = 결정 대조는 이 하네스 밖(보고/T1208_K4 회부). 아이 판도 이 env 를 물려받는다.
@@ -157,7 +159,7 @@ ok(inl === 0, 'ⓔ 랩 두 벌 인라인 = 번들(`inline-engine --check`)');
 
 console.log('\nⓕ 미끼 — 정산 문 줄을 뺀 사본');
 let BAIT = null; try { BAIT = child({ T726_ONE_TARGET: '1' }, [SETTLE_DOOR, '']); } catch (e) { BAIT = { err: String(e.message).slice(0, 120) }; }
-ok(!!BAIT && BAIT.knob === true && BAIT.mism > 100, 'ⓕ [자명 통과 금지] 정산 문을 뺀 사본은 켬에서도 정산 ≠ 결정 ⇒ ⓑ 가 빨개진다',
+ok(LB.count(SRC, SETTLE_DOOR) === 1 && (!!BAIT && BAIT.knob === true && BAIT.mism > 100), `ⓕ [자명 통과 금지] 정산 문을 뺀 사본은 켬에서도 정산 ≠ 결정 ⇒ ⓑ 가 빨개진다 · 미끼 바꾼 자리 ${LB.count(SRC, SETTLE_DOOR)}`,
   BAIT && BAIT.cells ? `${BAIT.mism}/${BAIT.cells} 칸` : (BAIT && BAIT.err));
 
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===`);

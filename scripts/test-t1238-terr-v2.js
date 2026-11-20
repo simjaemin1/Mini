@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh)
+// @bait 5   ← [T1383] 옛 미끼 표지 — 미끼 판정 줄에 바꾼 자리 수(뜻 그대로)
 // === scripts/test-t1238-terr-v2.js — 영토 v2(T1238 · ★재민 11-09 · 족보 794 · 문 36 마감) =============================
 //
 // ★지키는 것(정본 함수를 그대로 부른다 — 마을 몫은 `__labProbe` 주입구 · 존 몫은 실서버를 임시 DB 로 띄워 `__testBind`):
@@ -24,6 +25,7 @@
 //
 // 실행: node scripts/test-t1238-terr-v2.js
 'use strict';
+const LB = require('./lib-bait');   // [T1383] 미끼 사본을 지으며 바꾼 자리를 센다
 if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
@@ -276,7 +278,7 @@ function runT1275() {
   // ③ 미끼 — 입구가 0 인 사본(고치기 전 글자: 나무꾼 몸 행위 끔이면 `woodToGranary` = 0)을 같은 판에 끼운다 → 곳간에 든 통나무 0 · 이튿날 말뚝 0 이어야 한다(그래서 위 판정이 빨개진다)
   const PP = path.join(ROOT, 'sim', 'economy-sim.js'), src = fs.readFileSync(PP, 'utf8');
   const fixed = "  if (!T325_WOOD_ACT) return v._t1238Land ? actToGranary(v, 'wood', actDemandCap(v, units, v._t1207Need || 0, '_t325InflowToday'), '_t325InflowToday', '_t325CutN') : 0;";
-  out.baitHasLine = src.includes(fixed);
+  out.baitHasLine = src.includes(fixed); out.baitN = LB.count(src, fixed);
   const Module = require('module'); const m = new Module(PP, null); m.filename = PP; m.paths = Module._nodeModulePaths(path.dirname(PP));
   m._compile(src.replace(fixed, '  if (!T325_WOOD_ACT) return 0;'), PP);
   const keep = E.woodToGranary;
@@ -324,7 +326,7 @@ function runT1283() {
   // ② 미끼 — 수요를 상수로 박은 사본(모자람 = 1 · 그날 틱 칸을 안 읽는다) → 모자람 0 인 마을(c4)도 나무꾼이 된다 · 그래서 위 판정이 빨개진다
   const src = fs.readFileSync(PP, 'utf8');
   const line = "  return { short: ((v && v._t1283FuelShort) || 0) + ((v && v._t1283HouseShort) || 0) + post,";
-  out.baitHasLine = src.includes(line);
+  out.baitHasLine = src.includes(line); out.baitN = LB.count(src, line);
   const Module = require('module'); const m = new Module(PP + '.t1283bait', null); m.filename = PP; m.paths = Module._nodeModulePaths(path.dirname(PP));
   m._compile(src.replace(line, '  return { short: 1,'), PP);
   out.bait = cases(m.exports);
@@ -492,7 +494,7 @@ function runT1302() {
   Module._extensions['.js']=function(m,f){
     if(f!==path.join(ROOT,'server/villages.js'))return compile(m,f);
     let src=fs.readFileSync(f,'utf8').replace('function _t1238Batch(vil, picked, cap) {','function _t1238Batch(vil, picked, cap) { global.__t1302BatchCalls++;');
-    if(process.env.T1302_BAIT==='1')src=src.replace('if (T1302_TERR_BODY) return _t1207Queue(vil, picked);','if (T1302_TERR_BODY && _t449Seen(vil)) return _t1207Queue(vil, picked);');
+    if(process.env.T1302_BAIT==='1'){const A='if (T1302_TERR_BODY) return _t1207Queue(vil, picked);';global.__baitNs=[LB.count(src,A)];src=src.replace(A,'if (T1302_TERR_BODY && _t449Seen(vil)) return _t1207Queue(vil, picked);');}
     m._compile(src,f);
   };
   const F=fixture(),{V,E,P}=F,S=V.__p3Bind({}).state;
@@ -530,13 +532,14 @@ function runT1329() {
     if(f!==path.join(ROOT,'server/villages.js'))return compile(m,f);
     let src=fs.readFileSync(f,'utf8');
     const ed=(a,b)=>{if(!src.includes(a))throw Error('T1329 harness anchor missing: '+a.slice(0,70));src=src.replace(a,b);};
+    const edB=(a,b)=>{(global.__baitNs=global.__baitNs||[]).push(LB.count(src,a));ed(a,b);};   // [T1383] 미끼 자리 — 바꾼 자리 셈
     ed('function _t1238Batch(vil, picked, cap) {','function _t1238Batch(vil, picked, cap) { global.__t1329.batch++;');
     ed('function _terrAdd(vil, keys, target, fell) {','function _terrAdd(vil, keys, target, fell) { for (const k of keys) global.__t1329.add[k]=(global.__t1329.add[k]||0)+1;');
     if(process.env.T1329_BAIT==='cell'){
-      ed('  if (mine && !_t1329Short(vil, npc, mine)) return mine;','  return vil._t1207Pend[0];');   // 맡은 몸을 안 보고 줄 머리
-      ed('  if (i >= 0) vil._t1207Pend.splice(i, 1);\n  if (!_t1207CanTake(vil, job.cx, job.cy)) {','  if (false) vil._t1207Pend.splice(i, 1);\n  if (false) {');
+      edB('  if (mine && !_t1329Short(vil, npc, mine)) return mine;','  return vil._t1207Pend[0];');   // 맡은 몸을 안 보고 줄 머리
+      edB('  if (i >= 0) vil._t1207Pend.splice(i, 1);\n  if (!_t1207CanTake(vil, job.cx, job.cy)) {','  if (false) vil._t1207Pend.splice(i, 1);\n  if (false) {');
     }
-    if(process.env.T1329_BAIT==='stock')ed('const wood=Math.min(bag.wood||0,npc.inventory.wood||0),got=wood>0?(E.woodToGranary(home.econ,wood)||0):0;','const wood=Math.min(bag.wood||0,npc.inventory.wood||0),got=wood>0?(E.woodToGranary(home.econ,wood)||0):0;if(wood>0)_t1207LogIn(home,wood);');
+    if(process.env.T1329_BAIT==='stock')edB('const wood=Math.min(bag.wood||0,npc.inventory.wood||0),got=wood>0?(E.woodToGranary(home.econ,wood)||0):0;','const wood=Math.min(bag.wood||0,npc.inventory.wood||0),got=wood>0?(E.woodToGranary(home.econ,wood)||0):0;if(wood>0)_t1207LogIn(home,wood);');
     m._compile(src,f);
   };
   const F=fixture(),{V,E,P}=F,S=V.__p3Bind({}).state;
@@ -583,8 +586,8 @@ function runT1329() {
     body:T.body||0,cells:T.cells||0,grew:v._terrSet.size-initial,left:(v._t1207Pend||[]).length,felled:T.felled||0,woodIn:+(T.woodIn||0).toFixed(6),placed:+(T.wood||0).toFixed(6),stakes:+stakes.toFixed(6),
     dStore:+(e.storage.wood-w0).toFixed(6),dPack:+((e._t717Pack||0)-p0).toFixed(6),loot:keys.length*3*2,deposits,maxCargo,perLoad:E.crewPerLoad('wood'),restored,dry,packKey0,trees:keys.map(k=>F.trees.get(k)||0),steps};
 }
-if (MODE === 't1329') { let o; try { o=runT1329(); } catch(e) { o={err:e.stack}; } process.stdout.write('@@T1238 '+JSON.stringify(o)+'\n');process.exit(0); }
-if (MODE === 't1302') { let o; try { o=runT1302(); } catch(e) { o={err:e.stack,batch:global.__t1302BatchCalls||0}; } process.stdout.write('@@T1238 '+JSON.stringify(o)+'\n');process.exit(0); }
+if (MODE === 't1329') { let o; try { o=runT1329(); } catch(e) { o={err:e.stack}; } o.baitNs=global.__baitNs||[]; process.stdout.write('@@T1238 '+JSON.stringify(o)+'\n');process.exit(0); }
+if (MODE === 't1302') { let o; try { o=runT1302(); } catch(e) { o={err:e.stack,batch:global.__t1302BatchCalls||0}; } o.baitNs=global.__baitNs||[]; process.stdout.write('@@T1238 '+JSON.stringify(o)+'\n');process.exit(0); }
 
 if (MODE === 'vil') { const o = runVil(); process.stdout.write('@@T1238 ' + JSON.stringify(o) + '\n'); process.exit(0); }
 if (MODE === 'off') { const o = runOff(); process.stdout.write('@@T1238 ' + JSON.stringify(o) + '\n'); process.exit(0); }
@@ -758,8 +761,8 @@ sec('ⓛ [T1275] 나무꾼 몸 행위 끔 세계 — 개간 통나무 입구 · 
     ok(R.d2.need > 0 && near(R.d2.woodIn, R.d2.need, 1e-6) && near(R.d2.store - R.d1.store, R.d2.woodIn * (1 - tax), 1e-3), `★이튿날 — 일괄이 막혀 모자람(${R.d2.need})이 서면 그날 벤 통나무가 모자람까지 곳간에(세금 뒤 ${+(R.d2.store - R.d1.store).toFixed(3)})`, R.d2);
     ok(near(R.d3.packIn, R.d2.need, 1e-6) && R.d3.postW > R.d2.postW && R.d3.added > B.d3.added, `★사흘째 — 일괄 앞에서 짐이 먼저 곳간에(어제 모자람 ${R.d2.need} 까지) → 그 통나무로 말뚝(${R.d2.postW} → ${R.d3.postW} 단) · 넓힘 ${R.d3.added} 칸`, R.d3);
     const pred = (x) => x.d2.woodIn > 0 && x.d3.packIn > 0 && x.d3.postW > x.d2.postW;
-    ok(L.baitHasLine && pred(R) && !pred(B) && B.d2.woodIn === 0 && B.d3.packIn === 0 && B.d3.postW === B.d2.postW && B.d3.store === B.d1.store,
-      `★미끼 — 입구 0 사본(고치기 전 글자)을 끼우면 곳간에 든 통나무 0 · 짐 넣기 0 · 사흘째 말뚝 0(${B.d2.postW} → ${B.d3.postW}) · 넓힘 ${B.d3.added} 칸 → 위 두 판정이 빨갛다`, B);
+    ok(L.baitN === 1 && L.baitHasLine && pred(R) && !pred(B) && B.d2.woodIn === 0 && B.d3.packIn === 0 && B.d3.postW === B.d2.postW && B.d3.store === B.d1.store,
+      `★미끼(바꾼 자리 ${L.baitN}) — 입구 0 사본(고치기 전 글자)을 끼우면 곳간에 든 통나무 0 · 짐 넣기 0 · 사흘째 말뚝 0(${B.d2.postW} → ${B.d3.postW}) · 넓힘 ${B.d3.added} 칸 → 위 두 판정이 빨갛다`, B);
     const UB = LB.unit;
     ok(LB.t325 === true && UB.off0 === 7 && UB.g1 === 3 && UB.g2 === 0 && UB.g3 === 0, '몸 세계(나무꾼 몸 행위 켬)는 종전 입구 그대로 — 표지와 무관하게 D = `woodShareD`(나무꾼 몫 + 말뚝 모자람 · 표지 전 7 · 표지 뒤 남은 3)', UB);
     ok(LB.real.d3.packIn === 0, '몸 세계에서 일괄 앞 짐 넣기는 안 선다 — 짐은 나무꾼 하루 절이 같은 함수로 넣는다(한 자리)', LB.real.d3);
@@ -791,7 +794,7 @@ sec('ⓜ [T1283] 나무 모자람 → 직업 고르기 · 미끼 · 틱 칸 · (
     ok(food(C.c7.need) && near(C.c7.w.perLJ, 0.4, 1e-6), '오늘 든 나무 중 개간 통나무는 나무꾼 몫에서 뺀다(1000 − 999.2 → 한 사람 0.4) → 식량 일', C.c7);
     ok(food(C.c8.need), '식량 일꾼 0 인 마을은 모자람이 있어도 이 문을 안 연다 → 기근 블록의 식량 일', C.c8);
     const B = M.bait;
-    ok(M.baitHasLine && B.c4.need === 'lumberjack' && food(C.c4.need), `★미끼 — 수요를 상수로 박은 사본(모자람 1)은 모자람 0 인 마을도 나무꾼으로 보낸다(${B.c4.need}) → 위 "모자람 0 → 식량 일" 판정이 빨갛다`, B.c4);
+    ok(M.baitN === 1 && M.baitHasLine && B.c4.need === 'lumberjack' && food(C.c4.need), `★미끼(바꾼 자리 ${M.baitN}) — 수요를 상수로 박은 사본(모자람 1)은 모자람 0 인 마을도 나무꾼으로 보낸다(${B.c4.need}) → 위 "모자람 0 → 식량 일" 판정이 빨갛다`, B.c4);
     const T = M.tick;
     ok(T.keys.join(',') === '_t1283Clear,_t1283ClearToday,_t1283Fuel,_t1283FuelShort,_t1283House,_t1283HouseShort' && T.fuel > 0 && T.fuelShort >= 0 && T.fuelShort <= T.fuel && T.house >= T.houseShort && T.clear1 === 2 && T.clear === 0,
       `틱 칸(켬) — 땔감 바람 ${T.fuel && T.fuel.toFixed(3)} · 못 땐 ${T.fuelShort && T.fuelShort.toFixed(3)} · 집 바람 ${T.house && T.house.toFixed(3)} · 못 지은 ${T.houseShort && T.houseShort.toFixed(3)} · 개간 통나무 칸(서버가 센 2)은 날 경계에 오늘치로 옮겨지고(${T.clear1}) 이튿날 0`, T);
@@ -844,7 +847,7 @@ sec('ⓝ [T1302] 관측자 없이 몸이 개간·귀환·말뚝 · 관측자 미
   ok(n&&!n.err&&n.far.work===0&&n.far.tree===1&&n.far.stock===n.stock&&n.heldBeforeReturn&&n.felled===1&&n.tree===0,'멀리선 일·벌목·입고0 · 벤 짐은 귀환 전에 손에',n);
   ok(n?.people?.full && n.people.selectedSame && n.people.joined && n.people.arrivalSame && n.people.ratio===1 && n.people.freshIndex && n.people.deathObserved && !n.people.meals && !n.people.bodyBirthFlag,'하루+5도 몸 전부 · 떠난 사람=걷는 몸=도착 사람 · 식사 켬 없이 1:1',n?.people);
   ok(v&&!v.err&&v.body===n?.body&&v.grew===n?.grew&&v.batch===0,'관측자1도 같은 몸 경로',v);
-  ok(b && b.batch>0 && /did not queue/.test(b.err||'') && !bodyCheck(b),'미끼: 관측자 갈래를 되살리면 위 완공 검사가 빨강',b);
+  ok(b && (b.baitNs||[]).join()==='1' && b.batch>0 && /did not queue/.test(b.err||'') && !bodyCheck(b),`미끼: 관측자 갈래를 되살리면 위 완공 검사가 빨강 · 바꾼 자리 ${(b&&b.baitNs||[]).join()}`,b);
 }
 sec('ⓝ [T1329] 몸 영토 일감 크루 여럿 — 한 칸 한 몸 · 완공 = 몸 작업 합 · 일괄 0 · 통나무 한 줄 · 재기동 일감 줄 · 미끼');
 {
@@ -874,8 +877,8 @@ sec('ⓝ [T1329] 몸 영토 일감 크루 여럿 — 한 칸 한 몸 · 완공 =
       `★말뚝 기다림 — 곳간 잉여 0 이면 말뚝 없이 할 칸(개간 · 벌목)으로 옮겨 가며 넷 다 개간하고(${dry.dry&&dry.dry.cleared}칸) 크루 둘은 일감을 쥔 채 제 일로(일감 없음 ${dry.dry&&dry.dry.free}몸 · 완공 0) · 통나무가 들자 다 완공(${dry.body}칸)`,dry.dry);
     ok(on.restored&&on.restored.packed>=2&&on.restored.same&&on.restored.held===0,
       `★재기동 — 일감 줄(일한 시간 · 놓은 말뚝)이 곁 칸(\`_t740Side\`)에 실려 되살아난다(${on.restored&&on.restored.packed}칸 · 맡은 몸은 다시 맡는다) · 뒤 완공 그대로`,on.restored);
-    ok(!oneBody(bc)&&!doneSum(bc),'미끼: 맡은 몸을 안 보고 줄 머리를 주는(두 몸이 한 칸 · 그 칸을 두 번 완공) 사본 — 위 두 검사가 빨강',{owners:bc.owners,add:bc.add});
-    ok(!logsOnce(bs)&&oneBody(bs)&&doneSum(bs),'미끼: 부림이 같은 통나무를 곳간에 두 번 넣는(T1283 줄이 한 번 더) 사본 — 통나무 검사가 빨강',{woodIn:bs.woodIn,dPack:bs.dPack,loot:bs.loot});
+    ok((bc.baitNs||[]).join()==='1,1'&&!oneBody(bc)&&!doneSum(bc),`미끼: 맡은 몸을 안 보고 줄 머리를 주는(두 몸이 한 칸 · 그 칸을 두 번 완공) 사본 — 위 두 검사가 빨강 · 바꾼 자리 ${(bc.baitNs||[]).join('+')}(한 갈래 두 줄)`,{owners:bc.owners,add:bc.add});
+    ok((bs.baitNs||[]).join()==='1'&&!logsOnce(bs)&&oneBody(bs)&&doneSum(bs),`미끼: 부림이 같은 통나무를 곳간에 두 번 넣는(T1283 줄이 한 번 더) 사본 — 통나무 검사가 빨강 · 바꾼 자리 ${(bs.baitNs||[]).join()}`,{woodIn:bs.woodIn,dPack:bs.dPack,loot:bs.loot});
   }
 }
 console.log(`\n=== T1238: ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`);

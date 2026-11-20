@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @bait 1   ← [T1383] 옛 미끼 표지 — 미끼 판정 줄에 바꾼 자리 수(뜻 그대로)
 // === scripts/test-t1001-econ-day.js — 길의 날 · NPC 광맥 시각 = econ 날(`T990_ECON_DAY`) 켬 기본 · 부팅 맞춤 몫(T1001 · 2026-10-30) =====================
 //
 // 판정 사본 0: 진짜 `server/roads.js` 를 판마다 새로 싣고(제 DB 하나 · `test-road-day` 의 그 꼴) 같은 연산 줄(스탬프 · 조회)을 econ 날마다 먹인다.
@@ -12,6 +13,7 @@
 //     ② 그리고 켬 판의 길의 날은 econ 날을 따른다(마지막 econ 날 + 맞춤 몫 = 길 하루 날)
 //     ③ ★자명 통과 금지 — 끔(함수 안 넘김 · 종전 벽시계 날)이면 같은 두 벽시계 판이 갈린다
 'use strict';
+const LB = require('./lib-bait');   // [T1383] 미끼 사본을 지으며 바꾼 자리를 센다
 if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const path = require('path');
 const fs = require('fs');
@@ -104,7 +106,7 @@ ok(on7.lastDay === on7.econ + 7173017989 && on1.lastDay === on1.econ, '★② �
 const off1 = run(mk('off1'), OPS, false, 0, 1);
 const off7 = run(mk('off7'), OPS, false, 0, 7.3);
 const fd0 = firstDiff(off1, off7);
-ok(fd0 !== null && firstDiff(on1, off1) === null, '[미끼 · ③] 끔(종전 벽시계 날) — 같은 두 벽시계 판이 갈린다(econ 하루 = 벽 1일 판은 켬과 같다 · 7.3일 판만 감쇠가 빨라진다)', `끔 첫 다름 날 ${fd0}`);
+ok(LB.knob('T990_ECON_DAY') === 1 && (fd0 !== null && firstDiff(on1, off1) === null), `[미끼 · ③] 끔(종전 벽시계 날) — 같은 두 벽시계 판이 갈린다(econ 하루 = 벽 1일 판은 켬과 같다 · 7.3일 판만 감쇠가 빨라진다) · 미끼 바꾼 자리 ${LB.knob('T990_ECON_DAY')}`, `끔 첫 다름 날 ${fd0}`);
 fs.rmSync(TMP, { recursive: true, force: true });
 console.log(`\n=== PASS ${pass} / FAIL ${fail} ===`);
 process.exit(fail ? 1 : 0);

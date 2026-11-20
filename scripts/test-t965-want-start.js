@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(표 없으면 안 돈다)
+// @bait 1   ← [T1383] 옛 미끼 표지 — 미끼 판정 줄에 바꾼 자리 수(뜻 그대로)
 // === scripts/test-t965-want-start.js — 받을 양 주문의 올림 걸음은 최소 낱개 아래에서 출발한다 [T965] ==========
 //
 // ★왜 [T965 · land1028 게이트 `test-t835-quote-weight` ⓓ 빨강] 올림 걸음(`_climbToWant`)은 위로만 걷는다 — 출발점이 최소 낱개 **아래**여야 최소가 나온다.
@@ -20,6 +21,7 @@
 //
 // 실행: node scripts/test-t965-want-start.js   (존 안 띄움 · 아이 판 넷)
 'use strict';
+const LB = require('./lib-bait');   // [T1383] 미끼 사본을 지으며 바꾼 자리를 센다
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');
@@ -112,7 +114,7 @@ console.log('\n③ 판 — 첫 개체가 가볍고 뒤가 무거운 짐(0날 세
   const done = on.rows.filter((r) => r[5] && r[7] >= r[2]);
   ok(done.length >= 20, '③ 전제 — 받을 양에 닿은 실행이 넉넉하다(자명 통과 금지)', `${done.length}/${on.rows.length}`);
   const over = (R) => R.filter((r) => r[8] === 0);
-  ok(over(off.rows).length > 0, 'ⓐ 미끼(끔) — 넘침이 있다(하나 적게 내도 닿는다)', `${over(off.rows).length} · 예 ${JSON.stringify(over(off.rows)[0])}`);
+  ok(LB.knob('T965_WANT_START') === 1 && (over(off.rows).length > 0), `ⓐ 미끼(끔) — 넘침이 있다(하나 적게 내도 닿는다) · 미끼 바꾼 자리 ${LB.knob('T965_WANT_START')}`, `${over(off.rows).length} · 예 ${JSON.stringify(over(off.rows)[0])}`);
   ok(over(on.rows).length === 0 && on.rows.some((r) => r[8] === 1), '★★ⓑ 켬 — 실행이 낸 낱개는 최소다', `넘침 ${over(on.rows).length}`);
   const lie = on.rows.filter((r) => r[5] ? (r[3] !== r[6] || r[4] !== r[7]) : (r[3] != null && r[3] > 0));
   ok(lie.length === 0, '★★ⓑ 켬 — 견적의 낼 낱개 · 받을 양 = 실행(못 하면 견적도 못 한다)', `${lie.length}/${on.rows.length}${lie.length ? ' · 예 ' + JSON.stringify(lie[0]) : ''}`);

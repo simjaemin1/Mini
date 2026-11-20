@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @bait 2   ← [T1383] 옛 미끼 표지 — 미끼 판정 줄에 바꾼 자리 수(뜻 그대로)
 // === scripts/test-handoff-body.js — 존을 넘어도 **몸이 새지 않는다** ================
 //
 // ★왜 [재민 확정 2026-09-01 · T47 · 최우선]
@@ -42,6 +43,7 @@
 //
 // 실행: node scripts/test-handoff-body.js
 'use strict';
+const LB = require('./lib-bait');   // [T1383] 미끼 사본을 지으며 바꾼 자리를 센다
 if (require.main === module) require('./lib-port').hold(3010, 3020, 3021);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
 process.env.HANDOFF_ACK_MS = process.env.HANDOFF_ACK_MS || '3000'; process.env.HANDOFF_TOKEN_MS = process.env.HANDOFF_TOKEN_MS || '5000';   // ★[PM 11-03] 이 하네스는 종전 넘기 시한(3초 · 5초)으로 잰다 — 제품 기본은 12초 · 15초(server/zone.js HANDOFF_ACK_MS)
 const path = require('path');
@@ -494,10 +496,10 @@ async function bodyVerTrip() {
     && /function _handoffBody\(pending, playerId\) \{\s*const done = \(raw, src\) => \(\{ B: parseBody\(raw \|\| \{\}, \{ vitals: true \}\), src \}\);\s*if \(pending\.body\) return done\(pending\.body, 'payload'\);\s*return central\.getPlayer\(playerId\)/.test(s);
   ok(sameBody(src) && (src.match(/process\.env\.T868_PROMOTE_BODY/g) || []).length === 1 && /const T868_PROMOTE_BODY = process\.env\.T868_PROMOTE_BODY !== '0';/.test(src),
     '① ★★[T868] 두 갈래(토큰 · 승격)가 같은 몸 한 자리(`_handoffBody` — 페이로드 → central 행 · `parseBody`)를 부른다 · 손잡이 한 자리(`!== \'0\'` · 켬 기본)');
-  const decoyPromote = promoteOf(src).replace(/_handoffBody\(pending, pending\.player_id\)/g, 'null').replace(/^.*_bodyInto\(player, _t868hb\.B, .*$/m, '');
+  const DP = LB.chain(promoteOf(src), [[/_handoffBody\(pending, pending\.player_id\)/g, 'null'], [/^.*_bodyInto\(player, _t868hb\.B, .*$/m, '']]), decoyPromote = DP.src;   // [T1383] 바꾼 자리 — 몸 잇는 두 줄
   const decoySrc = src.replace(promoteOf(src), decoyPromote);
-  ok(promoteOf(src).length > 2000 && decoySrc !== src && !sameBody(decoySrc) && /equipment: \[\], equipSlots: \{\}, craftSkill: \{\}/.test(decoyPromote),
-    '① ★[T868] 미끼 — 몸 잇는 두 줄을 뺀 승격 갈래(스칼라만 쓰는 사본 · main 의 그 꼴)에는 위 검사가 문다(자명 통과 0)', `승격 갈래 ${promoteOf(src).length}자`);
+  ok(DP.one && promoteOf(src).length > 2000 && decoySrc !== src && !sameBody(decoySrc) && /equipment: \[\], equipSlots: \{\}, craftSkill: \{\}/.test(decoyPromote),
+    '① ★[T868] 미끼 — 몸 잇는 두 줄을 뺀 승격 갈래(스칼라만 쓰는 사본 · main 의 그 꼴)에는 위 검사가 문다(자명 통과 0)', `바꾼 자리 ${DP.ns.join('+')} · 승격 갈래 ${promoteOf(src).length}자`);
   // ★[T802] ② HP 기준점(`beforeCross` = 떠난 존의 껍데기)이 **찍힌 값**이려면 걷는 내내 hp 를 세우는 픽스처(`poke`)가 찍은 뒤 껍데기에 쓰면 안 된다.
   //   종전엔 썼다 — 400 ms 마다 오는 한 번이 찍은 뒤 닿으면 껍데기만 42 로 내려가 기준이 찍힌 값보다 3~4 낮았다(T802 · 단독 세 판 빨강).
   //   이 하네스가 그 문을 같이 지킨다(문이 풀리면 ② 가 다시 위상에 따라 깜빡인다).
@@ -715,9 +717,10 @@ async function bodyVerTrip() {
   ];
   const right873 = addOut(src).replace('  p.member = B.member;', '  p.member = B.member;\n  p.wetness = B.wetness;');
   const bit873 = decoys873.filter((d) => d !== src && !bodyIntoOne(d)).length;
-  ok(bodyIntoOne(src) && bit873 === 4 && right873 !== src && right873 !== addOut(src) && bodyIntoOne(right873),
+  const n873 = [LB.count(src, '..._bodyInto({}, _B, equipped),'), LB.count(src, proLine)];   // [T1383] 바꾼 자리 — 리터럴 한 줄 · 승격 한 줄(미끼 넷이 이 둘을 나눠 쓴다)
+  ok(n873.every((k) => k === 1) && bodyIntoOne(src) && bit873 === 4 && right873 !== src && right873 !== addOut(src) && bodyIntoOne(right873),
     '⑦ P ★★[T873] 몸을 사람에 얹는 함수는 하나(`_bodyInto`) — 일반 접속 리터럴 · 승격이 같은 칸 목록을 부른다 · 미끼(한 쪽에만 칸 더한 사본) 넷 다 문다 · 옳은 사본(새 칸을 `_bodyInto` 에만)은 지난다',
-    `몸 칸 ${bodyKeysOf(src).length}(생명값 → ${VITAL_KEYS.length}) · 미끼 ${bit873}/4 · 리터럴 ${litOf(src).length}자`);
+    `몸 칸 ${bodyKeysOf(src).length}(생명값 → ${VITAL_KEYS.length}) · 미끼 ${bit873}/4 · 바꾼 자리 ${n873.join('+')} · 리터럴 ${litOf(src).length}자`);
   {   // ★[T930] 미끼 — 몸 얹기의 hp 를 옛 직접 대입(`p.hp = …` · T868 이 넣은 그 줄)으로 되돌린 사본은 문다(hp 칸을 문으로만 본다는 것이 자명 통과가 아니다)
     const oldHp = src.replace("setHp(p, (V && typeof V.hp === 'number') ? V.hp : PLAYER_MAX_HP, 'takeover');", "p.hp = (V && typeof V.hp === 'number') ? V.hp : PLAYER_MAX_HP;");
     ok(oldHp !== src && !bodyIntoOne(oldHp), '⑦ P ★[T930] 몸 얹기의 hp 는 문(`setHp(p, …)`)으로 — 옛 직접 대입 사본(`p.hp = …`)은 문다', `직접 대입 사본 ${oldHp !== src ? '만듦' : '못 만듦'} · 문다 ${!bodyIntoOne(oldHp)}`);

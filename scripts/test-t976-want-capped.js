@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(표 없으면 안 돈다)
+// @bait 2   ← [T1383] 옛 미끼 표지 — 미끼 판정 줄에 바꾼 자리 수(뜻 그대로)
 // === scripts/test-t976-want-capped.js — 받을 양 견적의 wantCapped 는 상한 절삭이 놓은 그대로 [T976] ==========
 //
 // ★왜 [T976 · T965 회부 1] 받을 양 갈래 끝 줄 `out.wantCapped = false;`(T69)가 T835 상한 절삭이 놓은 `true` 를 곧바로 덮었다.
@@ -23,6 +24,7 @@
 //
 // 실행: node scripts/test-t976-want-capped.js   (존 안 띄움 · 아이 판 넷(세계 둘 × 켬 · 끔) · 약 1분)
 'use strict';
+const LB = require('./lib-bait');   // [T1383] 미끼 사본을 지으며 바꾼 자리를 센다
 // ★[T1010 2026-10-31 · T999 회부 4] 켬 기본 세계로 — 종전(T988 · 10-28)은 이 하네스를 `T988_TRADE_WORDS` 끈 판 하나에서 돌렸다(켬 기본 세계를 안 봤다).
 //   이제 ③ 은 켬 기본 세계(T988 말 켬 — 절삭 0 판의 참 말로)와 되돌림 짝(`=0` — 종전 판 · 종전 단언 한 글자 그대로) 둘 다 잰다(단언 무름 0).
 const path = require('path');
@@ -111,7 +113,7 @@ for (const W of WORLDS) {
     '③ 전제 — 무거운 짐은 전부 절삭 0 판이다(넉넉하다 · 자명 통과 금지)', `${onTz.length} 판`);
   ok(live(on.rows).filter((r) => r.kind === 'light').length >= 20 && !live(on.rows).some((r) => r.kind === 'light' && tz(r)),
     '③ 전제 — 가벼운 짐은 절삭 0 판이 아니다(대조)', `${live(on.rows).filter((r) => r.kind === 'light').length} 판`);
-  ok(offTz.length === onTz.length && offTz.every((r) => r.q.wantCapped === false), 'ⓐ 미끼(끔) — 절삭 0 판의 견적은 `wantCapped = false` · `giveNeeded = null`(덮어썼다)',
+  ok(LB.count(T, 'process.env.T976_WANT_CAPPED') === 1 && (offTz.length === onTz.length && offTz.every((r) => r.q.wantCapped === false)), `ⓐ 미끼(끔) — 절삭 0 판의 견적은 \`wantCapped = false\` · \`giveNeeded = null\`(덮어썼다) · 미끼 바꾼 자리 ${LB.count(T, 'process.env.T976_WANT_CAPPED')}`,
     `${offTz.length} 판 · 예 ${offTz[0] ? JSON.stringify({ v: offTz[0].vi, pair: offTz[0].give + '>' + offTz[0].take, cap: offTz[0].q.cap, maxGive: offTz[0].q.maxGive, wantCapped: offTz[0].q.wantCapped }) : '-'}`);
   ok(onTz.every((r) => r.q.wantCapped === true && r.q.takeAtNeeded == null), '★★ⓑ 켬 — 절삭 0 판은 전부 `wantCapped = true` · 낱개 · 받을 양 칸은 그대로 null', `${onTz.filter((r) => r.q.wantCapped === true).length}/${onTz.length}`);
   //   ★[T1010] 켬 기본 세계 = T988 의 참 말(무거운 짐은 낱개 하나가 마을이 내줄 몫 전부보다 무겁다 — 한 개 넘침) · 견적이 실은 `why` 와 한 글자 같다 · 되돌림 짝 = 종전 말 그대로
@@ -137,7 +139,7 @@ for (const W of WORLDS) {
   const hOn = draw(on, r1), hOff = draw(off, r0);
   //   ★[T1010] 켬 기본 세계의 경고 = 실행 거절 말 그대로(견적 `why` — ⓒ 가 그 글자를 잰다) · 되돌림 짝 = 종전 경고 글자
   const warn = W.words ? `<div class="tr-warn">${r1.x.err}</div>` : `<div class="tr-warn">마을이 지금 내줄 수 있는 ${on.ko[r1.take]}은(는) ${r1.q.cap}개까지입니다</div>`;
-  ok(!/tr-warn/.test(hOff) && !/내야 할/.test(hOff) && /id="trGo" disabled/.test(hOff), 'ⓔ 미끼(끔) — 그린 패널에 경고 · \'내야 할\' 줄이 없고 단추만 꺼졌다(까닭 0)');
+  ok(LB.count(T, 'process.env.T976_WANT_CAPPED') === 1 && (!/tr-warn/.test(hOff) && !/내야 할/.test(hOff) && /id="trGo" disabled/.test(hOff)), `ⓔ 미끼(끔) — 그린 패널에 경고 · '내야 할' 줄이 없고 단추만 꺼졌다(까닭 0) · 미끼 바꾼 자리 ${LB.count(T, 'process.env.T976_WANT_CAPPED')}`);
   ok(hOn.split(warn).length === 2 && !/내야 할/.test(hOn) && /id="trGo" disabled/.test(hOn), W.words
     ? '★★ⓔ 켬 — 그린 패널에 경고 한 줄(실행 거절과 같은 말) · 단추는 그대로 꺼짐' : '★★ⓔ 켬 — 그린 패널에 경고 한 줄(실행 거절과 같은 수) · 단추는 그대로 꺼짐', warn.replace(/<[^>]+>/g, ''));
   ok(hOn.replace(warn, '') === hOff, 'ⓔ 패널의 나머지 글자는 같다(경고 한 줄만 다르다)'); }

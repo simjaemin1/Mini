@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @bait 1   ← [T1383] 옛 미끼 표지 — 미끼 판정 줄에 바꾼 자리 수(뜻 그대로)
 // === scripts/test-terraincache.js — 타일 지형 메모 하네스 [2026-08-31] =========
 //
 // 대상: `server/terrain-tilecache.js` + 그것을 무는 `server/zone.js` 의 두 술어.
@@ -13,6 +14,7 @@
 //   · 속도 판정은 절대 시간이 아니라 **비율**이다(2코어 컨테이너 부하에 안 흔들리게).
 //   · zone.js 검사는 정규식 한 방이 아니라 두 가지 인자식을 **뽑아서 비교**한다.
 'use strict';
+const LB = require('./lib-bait');   // [T1383] 미끼 사본을 지으며 바꾼 자리를 센다
 if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
 const fs = require('fs');
 const path = require('path');
@@ -206,10 +208,10 @@ for (const [fn, call, which] of [['isWaterTileLocal', 'isWaterCellLocal', 'water
 }
 //   ★자명 통과 금지 — 위 정적 검사기가 **옛 결함 모양**(모서리를 묻는 계산 함수)을 실제로 거절하는가
 {
-  const bait = zsrc.replace('const _computeWaterCell = (tx, ty) => _terrain.isWaterCellLocal(ZONE_ID, tx * 32 + 16, ty * 32 + 16);',
-                            'const _computeWaterCell = (tx, ty) => _terrain.isWaterCellLocal(ZONE_ID, tx * 32, ty * 32);');
-  ok(bait !== zsrc && !helperAsksCenter(bait, 'isWaterTileLocal', 'isWaterCellLocal', 'water').ok,
-     `★자명 통과 금지 — 미끼 소스(계산 함수가 모서리를 묻는다)를 정적 절이 **거절한다**`);
+  const BW = LB.swap(zsrc, 'const _computeWaterCell = (tx, ty) => _terrain.isWaterCellLocal(ZONE_ID, tx * 32 + 16, ty * 32 + 16);',
+                            'const _computeWaterCell = (tx, ty) => _terrain.isWaterCellLocal(ZONE_ID, tx * 32, ty * 32);'), bait = BW.src;
+  ok(BW.n === 1 && bait !== zsrc && !helperAsksCenter(bait, 'isWaterTileLocal', 'isWaterCellLocal', 'water').ok,
+     `★자명 통과 금지 — 미끼 소스(계산 함수가 모서리를 묻는다)를 정적 절이 **거절한다** · 바꾼 자리 ${BW.n}`);
 }
 // ★terrain.js 안쪽에는 캐시를 걸지 않았다 — chunk.js:447 이 x±D 오프셋 점을 묻기 때문.
 const tsrc = fs.readFileSync(path.join(ROOT, 'server', 'terrain.js'), 'utf8');

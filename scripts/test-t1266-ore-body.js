@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress
+// @bait 3   ← [T1383] 옛 미끼 표지 — 미끼 판정 줄에 바꾼 자리 수(뜻 그대로)
 'use strict';
 // === scripts/test-t1266-ore-body.js — T1266 광부 원석의 양 = 몸이 친 만큼(손잡이 `T1266_ORE_BODY` · 끔 기본) ==========
 //   ① 손잡이: 끔 기본 · `=1` 만 켬.
@@ -69,7 +70,7 @@ if (MUT) {   // 미끼 — 정본 파일을 읽어 한 줄만 바꾼 사본으�
     cap030: ['sim/economy-sim.js', ': Math.floor(oreReach),', ': Math.floor(oreReach * 0.30),'],   // T1259 계수를 광맥에
     slot1: ['server/villages.js', 'return n == null ? null : n * MINE_TEAM; }', 'return n; }'],   // 자리 = 셀 수(조 사람 수 안 곱함)
   }[MUT];
-  M._extensions['.js'] = function (m, f) { if (f !== path.join(ROOT, R[0])) return old(m, f); let x = fs.readFileSync(f, 'utf8'); for (let i = 1; i < R.length; i += 2) { assert(x.includes(R[i]), '미끼 자리 없음 ' + MUT); x = x.replace(R[i], R[i + 1]); } (global.__t1266Src || (global.__t1266Src = {}))[R[0]] = x; m._compile(x, f); };
+  M._extensions['.js'] = function (m, f) { if (f !== path.join(ROOT, R[0])) return old(m, f); let x = fs.readFileSync(f, 'utf8'); const ns = []; for (let i = 1; i < R.length; i += 2) { assert(x.includes(R[i]), '미끼 자리 없음 ' + MUT); ns.push(x.split(R[i]).length - 1); x = x.replace(R[i], R[i + 1]); } console.log('  미끼 바꾼 자리 ' + ns.join('+'));   /* [T1383] 부모가 한 곳씩인지 본다 */ (global.__t1266Src || (global.__t1266Src = {}))[R[0]] = x; m._compile(x, f); };
 }
 const srcOf = (rel) => (global.__t1266Src && global.__t1266Src[rel]) || fs.readFileSync(path.join(ROOT, rel), 'utf8');   // 실린 글(미끼면 그 사본)
 const E = require('../sim/economy-sim'), E2 = require('../sim/economy-sim-v2'), O = E.OreGoods, Sp = require('../server/specialty'), W = require('../server/weights'), V = require('../server/villages'), Tr = require('../server/terrain');
@@ -372,6 +373,7 @@ if (!SUB) {
   for (const [kind, name] of [['dgate', 'D(0.01 단위'], ['cap', 'D(0.01 단위'], ['formula', '몸 호스트에 묶인 광산 마을'], ['restcopy', '쉰 값 식은 v2 에 한 자리'], ['capreach', '서버 읽개'], ['capform', 'econ `jobCapacity`'], ['nevmax', '녹임 목표 60'], ['daycache', '같은 날 곳간이'], ['cap030', 'econ `jobCapacity`'], ['slot1', '서버 읽개']]) test('미끼 ' + kind + ' 가 걸린다', () => {
     const r = spawnSync(process.execPath, [__filename], { cwd: ROOT, env: { ...process.env, T1266_MUTANT: kind }, encoding: 'utf8' });
     assert.strictEqual(r.status, 1, r.stdout + r.stderr); assert(r.stdout.split('\n').some((l) => l.includes('✗') && l.includes(name)), r.stdout);
+    assert(/미끼 바꾼 자리 (1\+)*1\n/.test(r.stdout), '미끼 ' + kind + ' — 바꾼 자리가 한 곳씩이 아니다: ' + ((/미끼 바꾼 자리 \S+/.exec(r.stdout) || ['없음'])[0]));
   });
   test('끈 팔(`T1266_ARM=0`) — 같은 고정판에서 종전 D 문 그대로(초록)', () => {
     const r = spawnSync(process.execPath, [__filename], { cwd: ROOT, env: { ...process.env, T1266_ARM: '0', T1266_MUTANT: '', T1266_ORE_BODY: '' }, encoding: 'utf8' });
@@ -390,6 +392,7 @@ if (!SUB) {
   for (const [kind, name] of [['satgone', '녹임 목표 60'], ['satconst', '문턱이 녹임 흐름을 따라간다'], ['satdays', '녹임 목표 60'], ['satcopy', '목표는 값표 목표 하나']]) test('미끼 ' + kind + ' 가 걸린다(⑫ 「' + name + '」 빨강)', () => {
     const r = spawnSync(process.execPath, [__filename], { cwd: ROOT, env: { ...process.env, T1266_SAT: '1', T1266_MUTANT: kind }, encoding: 'utf8' });
     assert.strictEqual(r.status, 1, r.stdout + r.stderr); assert(r.stdout.split('\n').some((l) => l.includes('✗') && l.includes(name)), r.stdout);
+    assert(/미끼 바꾼 자리 (1\+)*1\n/.test(r.stdout), '미끼 ' + kind + ' — 바꾼 자리가 한 곳씩이 아니다: ' + ((/미끼 바꾼 자리 \S+/.exec(r.stdout) || ['없음'])[0]));
   });
   console.log('⑬ ⑭ 손잡이 `T1313_SURPLUS_EXPORT` · `T1313_LAMBDA_ZERO` · 아이 판 · 미끼');
   for (const [body, sat, sur] of [['1', '1', '1'], ['1', '1', undefined], ['1', '1', '0'], ['1', '1', 'true'], ['1', '0', '1'], [undefined, '1', '1']]) test(`T1313 넘는 몫 손잡이 ${String(sur)} · T1293 ${String(sat)} · T1266 ${String(body)} → ${body === '1' && sat === '1' && sur === '1' ? '켬' : '끔'}`, () => {
@@ -410,6 +413,7 @@ if (!SUB) {
   for (const [kind, mode, name] of [['surown', 'T1266_SUR', '넘는 몫 = 빈자리 있는 이웃'], ['surnoroom', 'T1266_SUR', '이웃이 다 차면 0'], ['lzgone', 'T1266_LZ', 'λ 후보에서 목표 0 물건 뺌']]) test('미끼 ' + kind + ' 가 걸린다(「' + name + '」 빨강)', () => {
     const r = spawnSync(process.execPath, [__filename], { cwd: ROOT, env: { ...process.env, [mode]: '1', T1266_MUTANT: kind }, encoding: 'utf8' });
     assert.strictEqual(r.status, 1, r.stdout + r.stderr); assert(r.stdout.split('\n').some((l) => l.includes('✗') && l.includes(name)), r.stdout);
+    assert(/미끼 바꾼 자리 (1\+)*1\n/.test(r.stdout), '미끼 ' + kind + ' — 바꾼 자리가 한 곳씩이 아니다: ' + ((/미끼 바꾼 자리 \S+/.exec(r.stdout) || ['없음'])[0]));
   });
 }
 console.log(`=== ${pass} 통과 / ${fail} 실패 ===`); process.exitCode = fail ? 1 : 0;

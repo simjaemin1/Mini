@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @old-red-also scripts/update-live.sh scripts/backup-live.sh   (재는 고침이 이 운영 스크립트 — 옛 코드 빨강 판에서 이것도 옛 판으로 · T1383)
 // @date-ok 가짜 스냅샷 목록 픽스처의 시각 글자 — 벽시계와 안 맞댄다 [T1356]
 // === scripts/test-update-snap.js — `update-live.sh` 의 갱신 앞 디스크 · 스냅샷(T919 · 2026-10-25)을 **진짜 스크립트로** 돌린다 ==============
 //

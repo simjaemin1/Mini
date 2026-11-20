@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @bait 1   ← [T1383] 옛 미끼 표지 — 미끼 판정 줄에 바꾼 자리 수(뜻 그대로)
 // === scripts/test-e2e-src.js — e2e 의 소스만 보는 절을 **매일 밤** 돈다(브라우저 · 서버 0 · 1초 안) ==========================
 //
 // ★왜(T964 · T953 회부): 소스만 보는 절이 야간 묶음(A · B · C — 사흘에 한 밤)의 e2e 안에만 있으면 그 계약이 사흘 초록으로 선다(T930 · T953).
@@ -10,6 +11,7 @@
 //
 // 실행: node scripts/test-e2e-src.js
 'use strict';
+const LB = require('./lib-bait');   // [T1383] 미끼 사본을 지으며 바꾼 자리를 센다
 const L = require('./lib-e2e-src');
 
 let pass = 0, fail = 0;
@@ -47,8 +49,10 @@ for (const [name, file, anchor, mut, want] of DECOYS) {
   const decoy = mut(src, anchor);
   const bad = [];
   if (once && decoy !== src) L.SECTIONS[name]((c, m) => { if (!c) bad.push(m); }, L.reader({ [file]: decoy }));
-  ok(once && decoy !== src && bad.length >= 1 && bad.some((m) => want.test(m)),
-    `★★ ${name} — ${file} 를 깨뜨린 사본은 잡힌다(${want.source})`, `빨강 ${bad.length}${bad.length ? ' · ' + bad[0].slice(0, 60) : ''}${once ? '' : ' · ⚠자리가 한 번이 아니다'}`);
+  //   [T1383] 바꾼 자리 — 줄 덩이 셈. `aim` 미끼는 뜻이 '그 이름을 파일 전부에서 바꿈'이라 덩이 수 = 그 이름이 있던 줄 덩이 수(원본 셈)
+  const wantSp = name === 'aim' ? LB.spots(src, src.split('placementMode.dir').join('placementMode.dir/*·*/')) : 1, sp = LB.spots(src, decoy);
+  ok(sp === wantSp && (once && decoy !== src && bad.length >= 1 && bad.some((m) => want.test(m))),
+    `★★ ${name} — ${file} 를 깨뜨린 사본은 잡힌다(${want.source}) · 미끼 바꾼 자리 ${sp}${wantSp !== 1 ? '/' + wantSp : ''}`, `빨강 ${bad.length}${bad.length ? ' · ' + bad[0].slice(0, 60) : ''}${once ? '' : ' · ⚠자리가 한 번이 아니다'}`);
 }
 ok(DECOYS.length === Object.keys(L.SECTIONS).length && Object.keys(L.SECTIONS).every((k) => DECOYS.some((d) => d[0] === k)), '[상황] 절마다 미끼가 하나씩 있다',
   `절 ${Object.keys(L.SECTIONS).length} · 미끼 ${DECOYS.length}`);
