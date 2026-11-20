@@ -64,6 +64,7 @@ const state = {
 //      그걸 같이 끌고 오면 이 하네스가 재지도 않는 층을 떠안는다.)
 const _stubs = {
   noteVillageBuilt() {},           // T50 사건 장부 접점 — 여기선 무시한다
+  t1399Bump() {},                  // ★[T1399] 마을 바뀜 도장(일터 깨움 표가 읽는 곁 `Map` — 이 하네스가 재는 층이 아니다)
   _t435On() { return false; },     // ★[T435] 곳간 증설 행위 손잡이 — 이 하네스는 **끈 판**(종전 날짜 규칙)을 잰다 · 켠 판은 `test-build-act ⑥`
   _t1053Deforest() { return 0; },  // ★[T1053] 곳간 자리 벌채 → 사냥터 장부(랩 `deforestArea(±3)`) — 이 하네스가 재는 층이 아니다(장부 몫은 `test-deforest-game` 이 잰다)
   T1238_TERR_V2: false,            // ★[T1238] 영토 v2 손잡이(villages.js 한 자리 · 끔 기본) — 잘라낸 두 함수가 그 이름을 읽는다(켬 = 곳간 터 5×3 만 벤다 · 켠 판은 `test-t1238-terr-v2`) · 이 하네스는 끈 판

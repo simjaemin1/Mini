@@ -5484,7 +5484,13 @@ const T1365_WORK = T1322_PF && SS.WORK2_ON, T1365_VERIFY = T1365_WORK && SS.WORK
 //   켬 = 한 번 읽어 두 판정이 같이 쓴다(`TB.outAt`). 몸마다 멈출 수 있음은 그대로다. 가상 시계 판에서는 틱 안 시각이 한 값이라 같은 답이고,
 //   실시간에서는 두 읽기 사이(수십 ns)에 ms 가 넘어가는 경우만 공용 몫 판정이 그 ms 앞 시각으로 난다(실시간 멈춤 자리는 본디 판마다 다르다).
 const T1365_CLOCK = process.env.T1365_CLOCK !== '0';
+// ★★[T1399 ⓐ 2026-11-19 · µs 아홉째 · 손잡이 `T1399_TOK`(끔 기본 · `'1'` 켬 · `'verify'` 표를 적고 결정마다 판정을 다시 해 견줌 — 행동은 판정 답)] **일터 깨움 표 한 번 판정** — T1365 회부 1.
+//   일터 깨움 판정이 참이면 그 판정이 산 조건(시각 문턱 · 해 몫 쪽 · 날 셋 · 존 게임일 · 마을 바뀜 도장 · 판 시계 배율 · 자리 문턱 · 뷰)을 열(`WK` …)에 적고,
+//   다음 결정은 그 조건이 아직 사는가(`SimVillages.t1399Still`)만 본다. 늑대 · 결정 시각 · 미룬 도장은 종전 줄 그대로(결정마다).
+//   표는 일터 깨움 표를 새로 받을 때마다 지운다(`_t1348FGrant` — 몸이 진짜 걸음을 한 뒤 몸 칸이 바뀌었을 수 있다).
+const T1399_TOK = (T1348_WORK || T1365_WORK) && SS.TOK_ON, T1399_TVERIFY = T1399_TOK && SS.TOK_VERIFY;
 function _t1348FGrant(npc, s) {
+  SS.A.WK[s] = 0;   // ★[T1399] 새 표 = 판정 표 없음
   if (!npc.simVillageId || !npc.simJob) return;
   if (npc.simJob === 'farmer' ? !(T1348_WORK && SimVillages.t1348Farm) : !(T1365_WORK && SimVillages.t1365Work)) return;   // ★[T1365] 농부 밖 일터도
   if (npc.simJob !== 'farmer' && SimVillages.t1365Want && !SimVillages.t1365Want(npc)) return;   // ★[T1365] 결정 대부분이 몸을 바꾸는 일터는 표를 안 준다(판정 셈 낭비)
@@ -5496,22 +5502,40 @@ function _t1348Dec(s, now) {
   const near = qtMobs ? qtMobs.queryCircle(x, y, NPC_FLEE_RANGE) : Array.from(mobs.values());   // 결정 문 ① 그 질의(지금 자리)
   for (const m of near) { if (m.type !== 'wolf' || m.tameOwner) continue; if (Math.hypot(m.x - x, m.y - y) < NPC_FLEE_RANGE) { SS.stat.fwolf++; return false; } }
   const farm = p.simJob === 'farmer', vq = farm ? T1348_FVERIFY : T1365_VERIFY;   // ★[T1365] 농부 = `t1348Farm` · 그 밖 일터 = `t1365Work`
-  const k = farm ? SimVillages.t1348Farm(p, now) : SimVillages.t1365Work(p, now);
+  let k;
+  if (T1399_TOK && A.WK[s] && A.WGD[s] === zoneGameDay() && SimVillages.t1399Still(p, now, A.WT[s], A.WFP[s], A.WDY[s], A.WBD[s], A.WWD[s], A.WG[s], A.WSC[s], A.WPN[s], A.WPX[s], A.WPY[s], A.WPR[s], A.WPO[s], A.WVW[s], A.WQ[s], A.WQX[s], A.WQY[s])) {   // ★[T1399] 표가 산다 = 판정을 다시 해도 같은 답
+    k = A.WK[s]; SS.stat.thit++; _t1399J(p)[1]++;
+    if (T1399_TVERIFY) { const k2 = farm ? SimVillages.t1348Farm(p, now) : SimVillages.t1365Work(p, now); SS.stat.tvq++; if (k2 !== k) { const st = SS.stat, w = p.simJob + ':' + k + '>' + k2 + ':' + (SimVillages.t1365Why ? SimVillages.t1365Why() : ''); st.tbad++; st.twhy[w] = (st.twhy[w] || 0) + 1; if (st.tex.length < 8) st.tex.push(`${p.pid} ${w} t=${now}`); A.WK[s] = 0; } k = k2; }   // 견줌 = 행동은 판정 답
+  } else {
+    if (T1399_TOK && A.WK[s]) { SS.stat.tdead++; _t1399J(p)[2]++; A.WK[s] = 0; }
+    if (T1399_TOK) SimVillages.t1399Rec(A.TK[s] === 3);
+    k = farm ? SimVillages.t1348Farm(p, now) : SimVillages.t1365Work(p, now);
+    if (T1399_TOK) _t1399Put(s, p, now, k);
+  }
   if (!k && !vq) { SS.stat.fstill++; return false; }
   A.SH[s] = p._sh !== undefined ? p._sh : _SEED.pidHash(p.playerId || p.pid || p.mid || p.id || '');   // ★[T1365] 신원 해시는 결정 때 그 몸에서(`_shOf` 그 식 — 표를 준 뒤 `playerId` 가 서는 몸 · 400날 판 verify 가 찾았다)
   _t1337Dice.seed(_SEED.seedOf(A.SH[s], Math.floor(x / BUILDING_SIZE), Math.floor(y / BUILDING_SIZE), zoneGameDay(), _tick.n));
   let nda = now + 500 + _t1337Dice.next() * 1000;
   if (p.simVillageId && SimVillages.t1295S) { const sc = SimVillages.t1295S(p); if (sc > 1) nda = now + (nda - now) / sc; }
   if (vq) {   // 견줌 = 미룬 도장을 쓰고 결정 문을 그 자리에서 실제로 돌려 견준다(걸음 문은 이어 종전대로 · 결정은 이미 했다) · ★[T1365] 판정이 거짓인 결정도 돌려 직업마다 덮음을 센다
-    _t1322Wake(s); const snap = _t1337Snap(p), _nd0 = p.nextDecisionAt; decideNpcBehavior(p, now); _t1348Nd = [_nd0, now, p._t540DecAt, A.NDA[s], A.TK[s]];
+    _t1322Wake(s); const snap = _t1337Snap(p), _nd0 = p.nextDecisionAt; if (k === 3) snap.set('_lifeActAt', Date.now()); decideNpcBehavior(p, now); _t1348Nd = [_nd0, now, p._t540DecAt, A.NDA[s], A.TK[s]];   // ★[T1399 ⓒ] 3 = 라벨 시각이 그 결정의 시각
     const J = SS.stat.fjob[p.simJob] || (SS.stat.fjob[p.simJob] = [0, 0, 0, 0]);
     if (k) { if (_t1348FCmp(p, nda, snap, farm ? 'f' : 'x')) J[2]++; else J[3]++; if (farm) SS.stat.fvq++; else SS.stat.xvq++; }
     else { const nz = _t1365Noop(p, snap); J[nz ? 0 : 1]++; SS.stat.fstill++; if (nz) { const M = SS.stat.fmiss, kk = p.simJob + ':' + (p._lifeAct || '-') + ':' + (SimVillages.t1365Why ? SimVillages.t1365Why() : ''); M[kk] = (M[kk] || 0) + 1; } }   // 놓친 무동작(직업 : 라벨 — 다음 판정 감 · 셈 전용)
     return false;
   }
-  A.NDA[s] = nda; A.DK[s] = now;
-  if (farm) { SS.stat.fskip++; if (k === 1) SS.stat.fk1++; else SS.stat.fk2++; } else { SS.stat.xskip++; if (k === 1) SS.stat.xk1++; else SS.stat.xk2++; }
+  A.NDA[s] = nda; A.DK[s] = now; if (k === 3) A.LAT[s] = Date.now();   // ★[T1399 ⓒ] 3 = 그 결정이 썼을 라벨 시각(미룬 도장)
+  if (farm) { SS.stat.fskip++; if (k === 1) SS.stat.fk1++; else SS.stat.fk2++; } else { SS.stat.xskip++; if (k === 1) SS.stat.xk1++; else if (k === 2) SS.stat.xk2++; else SS.stat.xk3 = (SS.stat.xk3 || 0) + 1; }
   return true;
+}
+// ★[T1399] 판정이 참이면 표를 열에 적는다(생활층이 기록한 조건)
+function _t1399J(p) { const J = SS.stat.tjob; return J[p.simJob] || (J[p.simJob] = [0, 0, 0]); }
+function _t1399Put(s, p, now, k) {
+  const T = SimVillages.t1399Take(p, now, k), A = SS.A;
+  if (!T) { if (k) { const w = SimVillages.t1399Why ? SimVillages.t1399Why() || '?' : '?', N = SS.stat.tnone; N[w] = (N[w] || 0) + 1; } return; }
+  A.WK[s] = k; A.WT[s] = T.T; A.WFP[s] = T.pat; A.WDY[s] = T.day; A.WBD[s] = T.bday; A.WWD[s] = T.wday; A.WGD[s] = zoneGameDay(); A.WG[s] = T.gen; A.WSC[s] = T.sc;
+  A.WPN[s] = T.pn ? 1 : 0; A.WPX[s] = T.px; A.WPY[s] = T.py; A.WPR[s] = T.pr; A.WPO[s] = T.po; A.WVW[s] = T.vw; A.WQ[s] = T.q; A.WQX[s] = T.qx; A.WQY[s] = T.qy;
+  SS.stat.ttake++; _t1399J(p)[0]++;
 }
 // 견줌 — 결정 문을 돌린 바로 뒤(걸음 문 앞) 몸 칸 전부(도장 · 결정 칸 뺌)가 그 앞과 같고 결정 시각이 셈한 값인가(걸음 문이 쓰는 칸은 아직 안 썼다)
 let _t1348Nd = null;   // 견줌 셈 칸(어긋난 결정 시각의 앞 · 지금 · 결정 도장 · 표 열)
@@ -5671,11 +5695,13 @@ function _t1322Wake(s) {
   if (A.TK[s] === 3) {   // ★[T1348 ⓑ] 걷는 몸 — 길 번호 · 막힘 자리(마지막 셈 값) · 마지막 건넌 걸음 시각
     const p = SS.own[s]; p.pathIndex = A.PI[s]; const S = p._stuckPos; S.x = A.SPX[s]; S.y = A.SPY[s]; S.at = A.SPA[s]; if (t === t) p._t540StepAt = t;
     const d = A.DK[s]; if (d === d) { p.nextDecisionAt = A.NDA[s]; p._t540DecAt = d; if (p._sh === undefined) p._sh = A.SH[s]; A.DK[s] = NaN; SS.stat.dstamp++; }   // ★[T1348 ⓒ] 미룬 결정 도장(일터 깨움)
+    const la = A.LAT[s]; if (la === la) { p._lifeActAt = la; A.LAT[s] = NaN; }   // ★[T1399 ⓒ] 미룬 라벨 시각 도장
     SS.WPA[s] = null; A.TK[s] = 0; A.SK[s] = NaN; A.DS[s] = 0; SS.stat.wake++; return;
   }
   if (t === t) { const p = SS.own[s]; p._t540StepAt = t; const S = p._stuckPos; S.x = A.SX[s]; S.y = A.SY[s]; S.at = t; p._pathAt = t; SS.stat.stamp++; }
   const d = A.DK[s];   // ★[T1337] 미룬 결정 도장 — 마지막으로 건넌 결정이 썼을 결정 시각 · 관측 칸 · 신원 해시 캐시
   if (d === d) { const p = SS.own[s]; p.nextDecisionAt = A.NDA[s]; p._t540DecAt = d; if (p._sh === undefined) p._sh = A.SH[s]; A.DK[s] = NaN; SS.stat.dstamp++; }
+  const la = A.LAT[s]; if (la === la) { SS.own[s]._lifeActAt = la; A.LAT[s] = NaN; }   // ★[T1399 ⓒ] 미룬 라벨 시각 도장(던짐 대본 기다림)
   A.TK[s] = 0; A.SK[s] = NaN; A.DS[s] = 0; SS.stat.wake++;
 }
 // ★[T1322 · T1337] 체력 문 — 첫 거름은 `hp > 0` 만 본다 · 잠 깨움은 생활층 요양 문턱(`hp < maxHp × SCH_REST_IN`)도 본다
@@ -5782,7 +5808,7 @@ function _t1372SSApply() {
     //   ★[T1382] 틱 번호(VT) — 종전엔 옛 프로세스 틱 번호 그대로라 둘째 틱에 모든 표가 '빠짐'(`gap`)으로 깨어 몸 칸이 한꺼번에 찍혔다(한 번에 돈 판은 계속 미룸).
     //     저장 틱에서 잰 차(`VTd`)를 이 틱 앞 틱(`_tick.n - 1` = 한 번에 돈 판의 저장 틱)에 건다 · 차 없는 옛 저장 = 종전 그대로
     if (r.VTd != null && Number.isFinite(+r.VTd)) A.VT[s] = (_tick.n - 1) + (+r.VTd);
-    SS.WPA[s] = +r.TK === 3 ? p.path : null; _t1372SSStat.applied++;
+    SS.WPA[s] = +r.TK === 3 ? p.path : null; A.WK[s] = 0; _t1372SSStat.applied++;   // ★[T1399] 판정 표는 넘기지 않는다(마을 도장은 프로세스마다 0 부터 — 다시 뜬 판의 첫 결정이 다시 판정)
   }
   console.log(`[${ZONE_ID}] 🦶 [T1372] 첫 거름 표 되살림 — ${_t1372SSStat.applied}/${rows.length} · 몸 없음 ${_t1372SSStat.miss} · 길 다름 ${_t1372SSStat.path}`);
 }
