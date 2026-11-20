@@ -26,6 +26,9 @@ const WALK_ON = ON && KMODE !== '0', WALK_VERIFY = KMODE === 'verify';
 // ★[T1348 ⓒ] 일터 깨움 손잡이 `T1348_WORK` — 켬 기본 · `'0'` 끔 · `'verify'` 켬 + 건너려는 결정을 실제로 돌려 견줌(잠 깨움 `T1337_WAKE` 그 꼴 · 농부 일터 머묾)
 const FMODE = (typeof process !== 'undefined' && process.env && process.env.T1348_WORK || '').trim();
 const WORK_ON = ON && FMODE !== '0', WORK_VERIFY = FMODE === 'verify';
+// ★[T1365 ⓐ] 일터 깨움 나머지 손잡이 `T1365_WORK` — **끔 기본**(같은 자에서 이득이 안 섰다 — 판정 셈이 결정 문 셈과 거의 같다 · 보고 T1365 §5) · `'1'` 켬 · `'verify'` 켬 + 건너려는 결정을 실제로 돌려 견줌 + 직업마다 덮음 셈(무동작 결정 중 판정이 잡은 몫)
+const XMODE = (typeof process !== 'undefined' && process.env && process.env.T1365_WORK || '').trim();
+const WORK2_ON = ON && (XMODE === '1' || XMODE === 'verify'), WORK2_VERIFY = XMODE === 'verify';
 const A = { TK: new Uint8Array(0), W95: new Uint8Array(0), VT: new Int32Array(0), NDA: new Float64Array(0), LON: new Float64Array(0), SK: new Float64Array(0), SX: new Float64Array(0), SY: new Float64Array(0),
   // ★[T1337] 잠 깨움 표(결정 문까지 건넌다) — DS 표 · SH 신원 해시 · CX/CY 셀 · T95 판 시계 배율 · VID 마을 · SEG 창 쪽(1 저녁 · 2 새벽) · DOF `_dOff` · BDY 몸 날 · DAY 장부 날 · DK 미룬 결정 도장(`_t540DecAt`)
   // ★[T1348 ⓑ] 걷는 몸 표(표 종류 3) — PI 길 번호 · PN 길 길이(거울) · PX0/PY0 첫 점(거울) · PAT `_pathAt` · ST 길 만료 · SPX/SPY/SPA 막힘 자리(`_stuckPos`) · SPD 걸음 빠르기 · WD 해 질 녘에 깨움
@@ -41,6 +44,7 @@ const stat = { installed: 0, grant: 0, skip: 0, wake: 0, stamp: 0, touch: 0, flu
   compact: 0, gnbad: 0,   // ★[T1348 ⓐ]
   wgrant: 0, wstep: 0, wvi: 0, wvq: 0, wcmp: 0, wbad: 0, wwhy: {}, wex: [], clock: 0, stuck: 0, stale: 0, arrive: 0, verify: 0,   // ★[T1348 ⓑ] 걷는 몸 표 셈
   fgrant: 0, fskip: 0, fwolf: 0, fstill: 0, fvq: 0, fcmp: 0, fbad: 0, fwhy: {}, fex: [], fk1: 0, fk2: 0,   // ★[T1348 ⓒ] 일터 깨움 셈
+  xskip: 0, xk1: 0, xk2: 0, xvq: 0, xcmp: 0, xbad: 0, xwhy: {}, xex: [], fjob: {}, fmiss: {},   // ★[T1365 ⓐ] 일터 깨움 나머지 셈 · 직업마다 [판정 0 무동작 · 판정 0 바뀜 · 판정 참 무동작 · 판정 참 바뀜(어긋남)] (verify)
   dgrant: 0, dskip: 0, dstamp: 0, dwolf: 0, dstill: 0, dvq: 0, dcmp: 0, dbad: 0, dwhy: {}, dex: [] };   // ★[T1337] 잠 깨움 표 셈
 function _grow(need) {
   let c = cap || 1024; while (c < need) c *= 2;
@@ -84,7 +88,7 @@ function slot(pid) { const s = slotOf.get(pid); return s === undefined ? -1 : s;
 function count() { return n; }
 // 판 셈 — `T1322_STAT=<파일>`(`%p` = 프로세스 번호 — 판 여럿이 같이 돌 때) 이면 끝날 때(와 30초마다) 표 셈을 적는다(켬일 때만)
 if (ON && process.env.T1322_STAT) {
-  const fs = require('fs'), _f = process.env.T1322_STAT.replace('%p', String(process.pid)), put = () => { try { fs.writeFileSync(_f, JSON.stringify(Object.assign({ mode: MODE, wmode: WMODE, lmode: LMODE, kmode: KMODE, fmode: FMODE, slots: n }, stat))); } catch (e) {} };
+  const fs = require('fs'), _f = process.env.T1322_STAT.replace('%p', String(process.pid)), put = () => { try { fs.writeFileSync(_f, JSON.stringify(Object.assign({ mode: MODE, wmode: WMODE, lmode: LMODE, kmode: KMODE, fmode: FMODE, xmode: XMODE, slots: n }, stat))); } catch (e) {} };
   setInterval(put, 30000).unref(); process.on('exit', put);
 }
-module.exports = { ON, VERIFY, MODE, WAKE_ON, WAKE_VERIFY, WMODE, LOOP, LMODE, WALK_ON, WALK_VERIFY, KMODE, WORK_ON, WORK_VERIFY, FMODE, A, own, WPA, install, slot, count, stat, OrdSet, PMap, newPlayers, newNpcs };
+module.exports = { ON, VERIFY, MODE, WAKE_ON, WAKE_VERIFY, WMODE, LOOP, LMODE, WALK_ON, WALK_VERIFY, KMODE, WORK_ON, WORK_VERIFY, FMODE, WORK2_ON, WORK2_VERIFY, XMODE, A, own, WPA, install, slot, count, stat, OrdSet, PMap, newPlayers, newNpcs };
