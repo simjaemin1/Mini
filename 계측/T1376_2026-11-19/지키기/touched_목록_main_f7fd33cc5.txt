@@ -1,0 +1,10 @@
+# 만진 함수 → 하네스 (touched-harness · base origin/main · 갈림점 f7fd33cc5)
+· 바뀐 코드 파일 5 · 이름 6(물린 것 5 · 흔한 이름 뺌 0) · 바뀐 하네스 6 · 규약 다섯 · **돌릴 하네스 17**(@regress 아님 1: e2e-xzone-caravan.js)
+  scripts/t1030-xz-market-probe.js: (이름 없음)
+  scripts/t1182-e2e-checkpoint.js: T1030_XZ_MARKET tickCaravanBodies
+  server/villages.js: _drainTickJobs _drainVillageWaitQ _t1376FailClose
+  sim/economy-engine.browser.js: T1030_XZ_MARKET T1352_XZ_HOLD
+  sim/economy-sim-v2.js: T1030_XZ_MARKET T1352_XZ_HOLD
+· 이름 → 하네스 수: T1030_XZ_MARKET 5 · T1352_XZ_HOLD 2 · _drainTickJobs 2 · _t1376FailClose 1 · tickCaravanBodies 5
+· 바뀐 하네스: e2e-xzone-caravan.js test-t1321-xz-drain.js test-t1352-xz-hold.js test-t1352-xz-news.js test-t1376-tick-fail.js test-t1376-xz-market.js
+· 돌릴 하네스: e2e-xzone-caravan.js test-body-fields.js test-coll-grid.js test-harness-lint.js test-hp-src.js test-lon-day.js test-moment-lot.js test-t1268-econ-clock.js test-t1273-clock-rest.js test-t1278-perf.js test-t1292-t952-axis.js test-t1321-xz-drain.js test-t1352-xz-hold.js test-t1352-xz-news.js test-t1376-tick-fail.js test-t1376-xz-market.js test-t772-leg.js

@@ -10,7 +10,7 @@ if(require('worker_threads').isMainThread && process.env.T1182_E2E_STOP_DIR && p
 ;(()=>{const K=globalThis.__t1182Checkpoint,tick=tickCaravanBodies;
 tickCaravanBodies=function(...a){const r=tick.apply(this,a);
  if(K.stopped || !K.fs.existsSync(K.dir+'/arm') || state.tickJobs || state._t731 || (state.saveQueue&&state.saveQueue.length))return r;
- const market=process.env.T1030_XZ_MARKET==='1';
+ const market=process.env.T1030_XZ_MARKET!=='0';   // ★[T1376] 제품 기본 켬(팔 안 · '0' = 끔) — e2e ⓗ 와 같은 기본
  for(const c of state.world.caravans||[]){
   if(!c._xzHome || c._xzHome.zone!=='hanbando' || c._done || c._xzHandedBack || c.state!=='inbound')continue;
   const b=state.caravanBodies.get(c.id),p=b&&state.deps.players.get(b.pid);

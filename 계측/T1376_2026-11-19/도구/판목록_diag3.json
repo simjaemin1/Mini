@@ -1,0 +1,23 @@
+[
+ {
+  "tag": "D1",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wtd",
+  "env": {
+   "T1340_RESUME_EXACT": "0"
+  }
+ },
+ {
+  "tag": "D2",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wtd",
+  "env": {
+   "T1321_XZ_KEEP": "0"
+  }
+ },
+ {
+  "tag": "D3",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wtd",
+  "env": {
+   "T1292_XZ_HIDE": "0"
+  }
+ }
+]

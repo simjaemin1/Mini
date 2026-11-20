@@ -21242,7 +21242,11 @@ function _xzOn(world) { return !!(T525_CROSS_ZONE && world && world.xzone && typ
 //     ⓒ 'return'(`_xzHandBack`) — 장이 선 날(`_mktD`)엔 안 적는다. 귀환 갈래가 `_xzBack.day` 에(경계에 붙은 마을 `leg 0` 이면 정산한 날 = D+1) 적는다.
 //   ⓓ 존이 죽으면 — 장 중인 캐러밴은 받는 존 world 에 있다(정산 전 `_t707` 칸까지 · 서버 T728 메타가 마을 행과 같은 경계에 싣는다 — 서버 몫).
 //     다시 뜬 존이 호스트를 아직 안 꽂았으면(걸음표 전 `_xzOn` 거짓) 이웃 존 캐러밴의 도착 · 'return' 을 하루씩 미룬다(`_t1030Hold` — 짐은 그 캐러밴에 그대로).
-const T1030_XZ_MARKET = T525_CROSS_ZONE && (typeof process !== 'undefined' && process.env && process.env.T1030_XZ_MARKET === '1');
+//   ★★[T1376 2026-11-18 · 세션8 · 카드 할 일 2 "제품 결함이면 고친다 · 손잡이는 있는 것 안에서" · 캐논 재민 09-29 "존 경계가 없는 것처럼"] **팔 안 켬 기본**(되돌림 `T1030_XZ_MARKET=0`).
+//     결함: 같은 존 상인은 장 명부에 들어 다음 econ 머리 정산까지 장 마당에 서는데(T707 · T1182 — 가상 시계 두 존 판 보인 머묾 3,067ms) 이웃 존 상인은 장 밖에서
+//     종전 1게임시간(125ms)만 머물렀고 그 머묾은 현지 자정 창(333ms) 안에서 다 지나 보인 머묾 0 이었다(e2e-xzone-caravan ⓖ0 · ⓘ0 스무 판 다 빨강 — T1352 §6).
+//     켬이면 이웃 존 상인도 같은 장 갈래 — 보인 머묾 3,067ms(같은 존과 같다). 이 줄은 팔 `T525_CROSS_ZONE` 켬일 때만 참 ⇒ 팔 끔 세계(기준선 · 라이브) = 바이트 같음.
+const T1030_XZ_MARKET = T525_CROSS_ZONE && (typeof process !== 'undefined' && process.env && process.env.T1030_XZ_MARKET !== '0');
 function _t1030Hold(world, c) { return T1030_XZ_MARKET && !!(c && c._xzHome) && !_xzOn(world); }
 // ★★[T1321 2026-11-14 · T1292 회부 6] 손잡이 `T1321_XZ_DRAIN`('1' 만 켬 · 끔 기본 · 끔 = 아래 줄 늘 false = 종전 바이트) — **끈 판의 안전망.**
 //   팔이 꺼졌거나(`T525_CROSS_ZONE` 끔으로 다시 뜬 판) 호스트 · 걸음표가 아직이면(`_xzOn` 거짓) 메타에서 되돌린 이웃 존 캐러밴(`_xzHome`)의 도착 · 'return' 을 적지 않고
@@ -21254,7 +21258,10 @@ const T1321_XZ_DRAIN = (typeof process !== 'undefined' && process.env && process
 //   `_xzHandBack` 이 `world.xzone.zone` 을 읽다 예외 → 서버 현지 자정 창(T731)이 안 닫혀 그 존 econ 이 멎는다(e2e-xzone-caravan ⓗ4 · ⓗ5 — 실시간 판은 걸음표 · 첫 창 경주라
 //   가끔 · 가상 시계 판은 매번 · land1077 한 판 · T1324 판 13). 위 안전망(`_t1321Hold`)은 비우기 env(`T1321_XZ_DRAIN` — 새 넘김 0 · 끄기 절차)와 한 글자라 평소 판엔 없다 ⇒
 //   이 손잡이는 미룸만 켠다(비우기 0 · 새 수 0 — 미룸은 T1321 그 꼴: 경계에 선 채 하루씩 · 걸음표가 서면 그날부터 종전 그대로).
-const T1352_XZ_HOLD = (typeof process !== 'undefined' && process.env && process.env.T1352_XZ_HOLD === '1');
+//   ★★[T1376 2026-11-18 · 세션8 · T1352 회부 5 · 카드 할 일 2 "제품 결함이면 고친다 · 손잡이는 있는 것 안에서"] **켬 기본**(되돌림 `T1352_XZ_HOLD=0` = 종전 TypeError 글자).
+//     가상 시계 두 존 판 스물 판의 끔 열 열 판 다 다시 뜬 닛폰 econ 이 멎었다(ⓗ4 · ⓗ5 · ⓗ'0 · ⓕ) — 결함이다. 미룸 술어는 이웃 존 캐러밴(`_xzHome`)에만 닿는다 —
+//     그 캐러밴은 팔 `T525_CROSS_ZONE` 을 켠 판(과 그 판의 메타를 되돌린 판)에만 있다 ⇒ 팔을 안 켠 세계(기준선 · 라이브) = 이 줄 무동작 = 바이트 같음.
+const T1352_XZ_HOLD = (typeof process !== 'undefined' && process.env && process.env.T1352_XZ_HOLD !== '0');
 function _t1321Hold(world, c) { return (T1321_XZ_DRAIN || T1352_XZ_HOLD) && !!(c && c._xzHome) && !_xzOn(world); }
 // 거리 — 스텁이 끼면 호스트에 묻는다(걸음 · 존 경계 너머) · 아니면 종전 정본(`villageDist`) 그대로.
 function _xzDist(world, a, b) {

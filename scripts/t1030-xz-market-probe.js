@@ -82,7 +82,7 @@ if (process.env.T1030_SUB === '1') {
 let pass = 0, fail = 0;
 const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (x !== undefined && x !== '' ? `  ${x}` : '')); };
 const sub = (on) => {
-  const env = Object.assign({}, process.env, { T1030_SUB: '1', T525_CROSS_ZONE: '1', T1030_XZ_MARKET: on ? '1' : '' });
+  const env = Object.assign({}, process.env, { T1030_SUB: '1', T525_CROSS_ZONE: '1', T1030_XZ_MARKET: on ? '1' : '0' });
   const s = execFileSync(process.execPath, [__filename], { cwd: ROOT, env, encoding: 'utf8', maxBuffer: 64 << 20 });
   return JSON.parse(s.trim().split('\n').pop());
 };

@@ -772,7 +772,7 @@ function _t1352StageDay() {
     .sort((a, b) => (a.econ.lastStats.happiness - b.econ.lastStats.happiness) || (a.dbId - b.dbId)).slice(0, P.k);
   for (const v of pick) { const r = __e2eEmigrate(v.dbId, P.n); _t1352Stat.staged += (r && r.took) || 0; _xzLog(`[T1352] 꾸밈 ${day}날 ${v.name} 행복 ${(+v.econ.lastStats.happiness).toFixed(3)} — 떠남 ${(r && r.took) || 0}/${P.n} · 들은 줄 ${(r && r.heard) || 0}`); }
 }
-// ★★[T1030 2026-10-31 · T952 회부 2 ㄱ] 손잡이 `T1030_XZ_MARKET` — **econ 이 정본**(`sim/economy-sim-v2.js` · '1' 만 켬 · 팔 `T525_CROSS_ZONE` 켬일 때만 선다 · 끔 = main 바이트).
+// ★★[T1030 2026-10-31 · T952 회부 2 ㄱ] 손잡이 `T1030_XZ_MARKET` — **econ 이 정본**(`sim/economy-sim-v2.js` · ★[T1376] 팔 안 켬 기본 · `=0` 끔 · 팔 `T525_CROSS_ZONE` 켬일 때만 선다 · 팔 끔 = main 바이트).
 //   켜면 받는 존 econ 이 교차 존 캐러밴도 장 갈래로 치른다(`c._mktD` → 아래 `_t707Open` 이 장 기록 · 명부를 그대로 연다 · 상인 머묾 = 장 끝).
 //   서버 몫 둘: ⓐ 재기동 메타(T728)가 이웃 존이 낀 캐러밴을 **스텁째** 싣고 되돌린다(종전 = 이름으로 적어 다시 뜨면 못 이었다 — 받는 존의 장 · 집 존의 'xzone' 이 사라졌다)
 //   ⓑ `/perf` 교차 존 덤프에 장 칸(`mkt` · `mk` · `rowDay`) — 켬일 때만.
@@ -11925,6 +11925,21 @@ function _drainVillageWaitQ() {
 }
 
 // 프레임 한 번 — 예산이 찰 때까지 조각을 꺼내 돌린다. **최소 한 조각**은 반드시 돈다(굶지 않게).
+// ★★[T1376 2026-11-18 · 세션8 · T1352 회부 6] **창 꼬리(T731)가 던지면 창을 닫는다** — 아래 catch 의 "다음 경계에 재시도"를 지킨다.
+//   종전: 조각 하나가 던지면 catch 가 남은 조각을 통째로 버렸다 — 꼬리 조각 판이면 그 안의 창 닫음 조각('t731')도 같이 버려져 창(`state._t731`)이 열린 채 남았다 ⇒
+//   `_t731Tick` 은 창에 낼 마을이 없어 아무것도 안 열고(econ 날 0) · econ 날 시계(`_t1253Now`)는 닫는 날의 끝 한 순간에 영영 선다(T1182 몸 걸음 0) — 그 존이 멎었다
+//   (e2e-xzone-caravan 끔 열 다시 뜬 닛폰 · 그 존 `마을 econ day` 줄 0 · T1352 회부 6).
+//   이제 꼬리 조각 판(`C.t731mini` 거짓 = 창 마을을 다 냈다)이 던지면 창만 닫는다 — 그날 남은 꼬리 일('save' · 'dist' · 'events' …)은 종전 글자대로 버린다.
+//   창 머리 · 마을 조각 판이 던지면 창은 그대로(남은 마을 · 꼬리가 다음 조각 판에 온다 · 꼬리가 창을 닫는다). 던짐 0 판(기준선 · 라이브) = 무동작 = 바이트 같음 ·
+//   새 수 0 · 새 손잡이 0(창은 `T731_LOCAL_MIDNIGHT` 갈래 — 끔이면 `state._t731` 이 없다 = 무동작).
+function _t1376FailClose(C) {
+  const W = state._t731;
+  if (!W || !C || C.t731D !== W.D || C.t731mini || W.list.length) return false;
+  state.t731Day = W.D; state._t731 = null;
+  _t731Stat.failClose = (_t731Stat.failClose | 0) + 1;
+  console.error(`[${state.zoneId}] 🕛 [T731] 창 ${W.D} 닫음 — 꼬리 조각이 던졌다(그날 남은 꼬리 일은 버림 · 다음 경계에 다음 날)`);
+  return true;
+}
 function _drainTickJobs(now) {
   const C = state.tickCtx, J = state.tickJobs;
   if (!C || !J) { state.tickJobs = null; state.tickCtx = null; return; }
@@ -11961,6 +11976,7 @@ function _drainTickJobs(now) {
     console.error(`[${state.zoneId}] 🏘️ 마을 econ 틱 실패 (다음 경계에 재시도):`, e.message);
     state.tickJobs = null; state.tickCtx = null; _drainVillageWaitQ();
     if (_T732_ON) { const G = _t732Gran(); if (G) G.tickEnd(); }
+    _t1376FailClose(C);
     return;
   }
   // ★[T1] **한 프레임이 실제로 얼마나 막혔나** — 조각 하나가 아니라 이 값이 RTT 를 정한다.

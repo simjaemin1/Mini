@@ -1,0 +1,36 @@
+[
+ {
+  "tag": "LB7",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wl",
+  "env": {},
+  "script": "scripts/t1324-vclock-beast.js",
+  "args": [
+   "run",
+   "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/runs",
+   "LB7",
+   "7",
+   "300",
+   "3000",
+   "--nobeast",
+   "--env",
+   "T952_XZ_STAY=0"
+  ]
+ },
+ {
+  "tag": "LB42",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wl",
+  "env": {},
+  "script": "scripts/t1324-vclock-beast.js",
+  "args": [
+   "run",
+   "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/runs",
+   "LB42",
+   "42",
+   "300",
+   "3000",
+   "--nobeast",
+   "--env",
+   "T952_XZ_STAY=0"
+  ]
+ }
+]

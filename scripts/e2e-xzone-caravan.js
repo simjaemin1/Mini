@@ -19,7 +19,7 @@
 //   ⓕ 두 존 로그 예외 0.
 //   ⓖ [T952] 받는 존 상인의 머묾 끝 — `T952_XZ_STAY=1` 을 이 자에 주면 두 존에 그대로 넘기고 잰다: 머묾 끝 = 그 마을 장 끝(오늘 장 기록 ·
 //      없으면 도착 날 머리 + 4/24 하루) · 그 끝까지 실제로 머문다. 끔(기본)이면 그 셈 칸이 안 선다(null)는 것만 보고 머묾 끝을 표로 찍는다.
-//   ⓘ [T1030] 교차 존 장 — `T1030_XZ_MARKET=1` 을 이 자에 주면 두 존에 그대로 넘긴다: 받는 존(닛폰) 교차 존 상인이 그 마을 장 기록에 들고(장 명부) ·
+//   ⓘ [T1030] 교차 존 장 — ★[T1376] 팔 안 켬 기본(이 자에 `T1030_XZ_MARKET` 를 안 주면 켬 · `=0` 이면 끔 — 두 존에 그대로 넘긴다): 받는 존(닛폰) 교차 존 상인이 그 마을 장 기록에 들고(장 명부) ·
 //      머묾 끝 = 장 끝 · 그 끝까지 머문다 · 'return' 의 교역 행 날 = 장이 선 날 + 1(정산은 다음 econ 틱 머리 · 빈손이면 그날). 끔이면 장 칸이 안 선다.
 //   ⓙ ★[T1300 · T1289 회부 5] 관측 칸 축 — 켬이면 `/perf` `xzone.bodies` 가 축 표지 `ax` · 벽시계 ms `wt` · ISO `iso` 를 곁 칸으로 낸다. ⓖ ⓘ 의 머묾 끝 ↔ 표본 시각 견줌은 `wt.lu`(벽시계)로 —
 //      종전은 켬 · T1182 몸의 econ 날 시계 값(1970년 근처 수)을 벽시계 표본 시각과 견줬다(T1253 부터 축이 섞임 · 머묾 끝 ↔ `t952.at` · `mk.ls` 셈도 같음).
@@ -130,7 +130,7 @@ for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => {
     VILLAGE_CARAVAN_MAX: '400', ENABLE_WILDLIFE: '0',
     ...(BODY?{T1182_E2E_STOP_DIR:checkpointDir,NODE_OPTIONS:((process.env.NODE_OPTIONS||'')+' --require '+path.join(ROOT,'scripts/t1182-e2e-checkpoint.js')).trim()}:{}),
     T952_XZ_STAY: process.env.T952_XZ_STAY || '',   // ★[T952] 이 자에 준 그대로(끔 = 빈 값)
-    T1030_XZ_MARKET: process.env.T1030_XZ_MARKET || '',   // ★[T1030] 이 자에 준 그대로(끔 = 빈 값)
+    T1030_XZ_MARKET: process.env.T1030_XZ_MARKET || '',   // ★[T1030] 이 자에 준 그대로(★[T1376] 빈 값 = 켬 기본 · '0' = 끔)
     T1321_XZ_KEEP: process.env.T1321_XZ_KEEP || '',   // ★[T1321] 이 자에 준 그대로(★T1324 켬 기본 — 빈 값 = 켬 · '0' = 끔 · ⓗ' 보내는 존 죽이기 절이 켬 · 끔을 가른다)
     //   ★[T1139] 걸음표는 **물은 쌍만** 판다(`server/xzone.js` 손잡이 `T1139_XZ_LAZY` — 서버 기본은 끔 = 전 쌍 한 벌) · `T1139_XZ_LAZY=0` 을 주면 종전(전 쌍)
     T1139_XZ_LAZY: process.env.T1139_XZ_LAZY != null ? process.env.T1139_XZ_LAZY : '1',
@@ -277,7 +277,7 @@ for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => {
 
   // ── ⓘ [T1030] 교차 존 장 ─────────────────────────────────────────────────────
   {
-    const ON = process.env.T1030_XZ_MARKET === '1', dm = +DAYMS;
+    const ON = process.env.T1030_XZ_MARKET !== '0', dm = +DAYMS;   // ★[T1376] 제품 기본 켬(팔 안) — 이 자도 같은 기본을 본다(`=0` = 끔 열)
     console.log(`\n[ⓘ T1030 — 받는 존(닛폰) 교차 존 상인이 장을 연다 · ${ON ? '켬' : '끔'}]`);
     const firstL = new Map();   // 몸마다 첫 머묾 표본 · 그 뒤 첫 머묾 아닌 표본
     for (const [k, L] of seenN) { const i = L.findIndex((q) => q.phase === 'linger'); if (i >= 0) firstL.set(k, { s: L[i], next: L.slice(i + 1).find((q) => q.phase !== 'linger') || null }); }
@@ -412,7 +412,7 @@ for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => {
 
   // ── ⓗ [T1030] 존 하나가 중간에 죽는다 ─────────────────────────────────────────
   if (process.env.XZ_KILL !== '0') {
-    const ON = process.env.T1030_XZ_MARKET === '1', dm = +DAYMS;
+    const ON = process.env.T1030_XZ_MARKET !== '0', dm = +DAYMS;   // ★[T1376] 제품 기본 켬(팔 안)
     console.log(`\n[ⓗ T1030 — 받는 존(닛폰)이 'return' 전 창에서 죽는다(SIGKILL) · 다시 뜬다 · ${ON ? '켬(장 중 · 정산 전)' : '끔(판 뒤 · 귀환 구간)'}]`);
     const { DatabaseSync } = require('node:sqlite');
     const meta = () => { let db = null; try { db = new DatabaseSync(`${DDIR}/w-nippon.db`, { readOnly: true }); const r = db.prepare('SELECT data FROM world_meta WHERE zone = ?').get('nippon'); return r ? JSON.parse(r.data) : null; } catch (e) { return null; } finally { try { db && db.close(); } catch (e) {} } };

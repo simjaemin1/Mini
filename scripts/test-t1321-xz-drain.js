@@ -12,6 +12,8 @@
 //   ③ 끔(증인) — 같은 판이 TypeError(종전 결함이 아직 있다 — 안전망이 자명하지 않다)
 //   ④ 켬 + 팔 켬 + 호스트 있음 — 종전 그대로('return' 하나 · 미룸 0)
 //   ★미끼 [T1356] — econ 사본 한 곳: 돌아갈 날 자리(`_xzHandBack` 앞)의 안전망 부름 `!_t1321Hold(world, c)` 를 뺀다 → 켬 판 ① 이 빨강(TypeError).
+//   ★[T1376] 이 판은 비우기 손잡이 하나를 잰다 — 같은 술어에 드는 `T1352_XZ_HOLD`(T1376 켬 기본) · 장 미룸 `T1030_XZ_MARKET` 은 아이 env 에서 `'0'`(끔)으로 떼어 둔다
+//     (안 떼면 ③ · ④3 증인 — 안전망이 다 꺼진 판의 종전 TypeError — 이 켬 기본 미룸에 가려진다).
 // 실행: node scripts/test-t1321-xz-drain.js
 'use strict';
 const path = require('path');
@@ -66,7 +68,7 @@ if (process.argv[2] === '--child') {
 let pass = 0, fail = 0;
 const ok = (c, m, extra) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (extra !== undefined && extra !== '' ? `  ${extra}` : '')); };
 const child = (env) => {
-  const r = spawnSync(process.execPath, [__filename, '--child'], { cwd: ROOT, env: Object.assign({}, process.env, { T525_CROSS_ZONE: '', T1321_XZ_DRAIN: '', T1030_XZ_MARKET: '' }, env), encoding: 'utf8', maxBuffer: 1 << 26 });
+  const r = spawnSync(process.execPath, [__filename, '--child'], { cwd: ROOT, env: Object.assign({}, process.env, { T525_CROSS_ZONE: '', T1321_XZ_DRAIN: '', T1030_XZ_MARKET: '0', T1352_XZ_HOLD: '0' }, env), encoding: 'utf8', maxBuffer: 1 << 26 });
   try { return JSON.parse(r.stdout.trim().split('\n').pop()); } catch (e) { return { err: (r.stderr || '').slice(-400) }; }
 };
 console.log('\n=== 끈 판의 안전망 — econ `_t1321Hold` (T1321 ④) ===');

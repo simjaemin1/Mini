@@ -1,0 +1,173 @@
+[
+ {
+  "tag": "E01",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wtf2",
+  "env": {}
+ },
+ {
+  "tag": "E02",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wtf2",
+  "env": {}
+ },
+ {
+  "tag": "E03",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wtf2",
+  "env": {}
+ },
+ {
+  "tag": "E04",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wtf2",
+  "env": {}
+ },
+ {
+  "tag": "E05",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wtf2",
+  "env": {}
+ },
+ {
+  "tag": "E06",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wtf2",
+  "env": {}
+ },
+ {
+  "tag": "E07",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wtf2",
+  "env": {}
+ },
+ {
+  "tag": "E08",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wtf2",
+  "env": {}
+ },
+ {
+  "tag": "E09",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wtf2",
+  "env": {}
+ },
+ {
+  "tag": "E10",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wtf2",
+  "env": {}
+ },
+ {
+  "tag": "E11",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wtf2",
+  "env": {}
+ },
+ {
+  "tag": "E12",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wtf2",
+  "env": {}
+ },
+ {
+  "tag": "E13",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wtf2",
+  "env": {}
+ },
+ {
+  "tag": "E14",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wtf2",
+  "env": {}
+ },
+ {
+  "tag": "E15",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wtf2",
+  "env": {}
+ },
+ {
+  "tag": "E16",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wtf2",
+  "env": {}
+ },
+ {
+  "tag": "E17",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wtf2",
+  "env": {}
+ },
+ {
+  "tag": "E18",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wtf2",
+  "env": {}
+ },
+ {
+  "tag": "E19",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wtf2",
+  "env": {}
+ },
+ {
+  "tag": "E20",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wtf2",
+  "env": {}
+ },
+ {
+  "tag": "L1020",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wtf2",
+  "env": {},
+  "script": "scripts/t1324-vclock-beast.js",
+  "args": [
+   "run",
+   "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/runs",
+   "L1020",
+   "1020",
+   "300",
+   "3000",
+   "--nobeast",
+   "--env",
+   "T952_XZ_STAY=0"
+  ]
+ },
+ {
+  "tag": "L7",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wtf2",
+  "env": {},
+  "script": "scripts/t1324-vclock-beast.js",
+  "args": [
+   "run",
+   "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/runs",
+   "L7",
+   "7",
+   "300",
+   "3000",
+   "--nobeast",
+   "--env",
+   "T952_XZ_STAY=0"
+  ]
+ },
+ {
+  "tag": "L42",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wtf2",
+  "env": {},
+  "script": "scripts/t1324-vclock-beast.js",
+  "args": [
+   "run",
+   "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/runs",
+   "L42",
+   "42",
+   "300",
+   "3000",
+   "--nobeast",
+   "--env",
+   "T952_XZ_STAY=0"
+  ]
+ },
+ {
+  "tag": "TB",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wtf2",
+  "env": {},
+  "script": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/runB.js",
+  "args": []
+ },
+ {
+  "tag": "X1",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wl",
+  "env": {}
+ },
+ {
+  "tag": "X0",
+  "wt": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1376/wtf2",
+  "env": {
+   "T1030_XZ_MARKET": "0",
+   "T1352_XZ_HOLD": "0"
+  }
+ }
+]

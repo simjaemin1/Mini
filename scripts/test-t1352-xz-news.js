@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
-// @bait 1   ← [T1383] land1084 옛 목록(규칙 앞 가지)에서 뺌 — 미끼 뜻 그대로 · 판정 줄에 바꾼 자리 수
+// @bait 4   ← [T1356] 미끼 판정 줄 수(파일 안 · `test-harness-lint` ⑲b 가 센다 — ★[T1376] land1083 규칙에 맞춰 미끼 넷을 판정 줄 넷으로 폈다)
 // === scripts/test-t1352-xz-news.js — 소식이 번지는 길(T1352 · 손잡이 `T1352_NEWS_LOCAL` ⓐ · `T1352_NEWS_SEAM` ⓑ · 기본 끔) ==========
 //
 // ★왜(T1352 할 일 2 · 7): 이웃 존으로 떠나는 사람은 이웃 존 마을을 **들은 만큼만** 안다(T1324 — 그 집 캐러밴이 실어 온 줄).
@@ -191,14 +191,18 @@ function run(mode, bait) {
   }
   console.log('\n  ── 미끼(이 파일 안 · 자리 한 번 · 빨강 줄 단언)');
   const VSRC = fs.readFileSync(VFILE, 'utf8');
+  const BR = {};
   for (const [name, B] of Object.entries(BAITS)) {
     const n = VSRC.split(B.at[0]).length - 1;
-    if (n !== 1) { ok(false, `미끼 ${name} — 소스 자리가 꼭 한 번(지금 ${n}번)`, B.at[0].slice(0, 60)); continue; }
-    const r = await run(B.mode, name);
-    if (r.t !== 'done') { ok(false, `미끼 ${name} 아이`, r.err); continue; }
-    const red = r.out.filter((q) => !q.ok).map((q) => q.id).sort();
-    ok(n === 1 && JSON.stringify(red) === JSON.stringify(B.red.slice().sort()), `미끼 ${name}(${B.mode} 꼴) — 빨강 줄이 꼭 {${B.red.join(', ')}}`, `바꾼 자리 ${n} · 빨강 {${red.join(', ')}}`);
+    const r = n === 1 ? await run(B.mode, name) : { t: 'skip', err: `자리 ${n}번` };
+    const red = r.t === 'done' ? r.out.filter((q) => !q.ok).map((q) => q.id).sort() : null;
+    BR[name] = { n, red, same: !!red && JSON.stringify(red) === JSON.stringify(B.red.slice().sort()), err: r.t === 'done' ? '' : ` · 아이 ${r.err || r.t}` };
   }
+  const rd = (k) => `빨강 {${(BR[k].red || []).join(', ')}}${BR[k].err}`;
+  ok(BR.lag0.n === 1 && BR.lag0.same, '미끼 ㉠(LS 꼴) — ⓐ 일수 0(들은 날 곧장 앎) 사본 → 빨강 줄이 꼭 {A1, A2, A3, A4}', `바꾼 자리 ${BR.lag0.n} · ${rd('lag0')}`);
+  ok(BR.forget.n === 1 && BR.forget.same, '미끼 ㉡(LS 꼴) — 고리 지움(새 줄이 닿기 전 앞 줄을 잊음) 사본 → 빨강 줄이 꼭 {A4, A6}', `바꾼 자리 ${BR.forget.n} · ${rd('forget')}`);
+  ok(BR.seamlag.n === 1 && BR.seamlag.same, '미끼 ㉢(LS 꼴) — 이음매 일수 무시 사본 → 빨강 줄이 꼭 {B1}', `바꾼 자리 ${BR.seamlag.n} · ${rd('seamlag')}`);
+  ok(BR.defon.n === 1 && BR.defon.same, '미끼 ㉣(off 꼴) — ⓐ 기본 켬 사본(끔 판이 켬처럼 돈다) → 빨강 줄이 꼭 {A0, A1, A2, A3, A4, A5, A6, B5, B7, C1}', `바꾼 자리 ${BR.defon.n} · ${rd('defon')}`);
   console.log(`\n  합: ${pass} 통과 · ${fail} 실패`);
   process.exit(fail ? 1 : 0);
 })();
