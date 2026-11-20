@@ -17,6 +17,7 @@
 // 쓰는 법:
 //   node scripts/t1308-long-run.js <날> <시드> [--every 10] [--dir <폴더>] [--tag <이름>]      # 새 판(폴더가 비었거나 progress 없음)
 //   node scripts/t1308-long-run.js --resume <폴더>                                           # 끊긴 판 잇기(progress.json 의 날 · 시드 · env 그대로)
+//   --cuts 10,30,50,90 — 고르지 않은 끊는 날(그 날마다 껐다 켠다 · 마지막 끊는 날 뒤는 끝까지 한 마디 · `--every` 대신 · T1382)
 //   (하네스) --crash-at <날> — 그 날에서 끝나는 마디의 첫 시도는 멈춤 팔이 저장 없이 죽는다(`T722_CRASH=1` — 체크포인트 없음 · 코드 3) · 다시 부르면 그 마디부터.
 //   판 조건 env 는 부르는 쪽이 준다(T577 판 자와 같다 — 몸 판 정본 = 집 켬 묶음 `T577_BODY=1 T1243_FARM_ON=1` · T1315 ①).
 //     묶음 = VILLAGE_DAY_MS=1440000 VILLAGE_NPC_CAP=Infinity VILLAGE_CARAVAN_MAX=0 T745_VCLOCK=1(집 `T400_BUILD_ACT` 는 기본 켬 · 끔 판은 `T400_BUILD_ACT=0` 을 글자로).
@@ -48,6 +49,7 @@ if (RESUME_DIR) {
   const dir = path.resolve(opt('dir', `/tmp/t1308/${tag}-${seed}`));
   const env = {}; for (const [k, v] of Object.entries(process.env)) if (ENV_KEEP.test(k)) env[k] = v;
   P = { v: 1, tag, seed, days, every, dir, ck: 0, segs: [], done: false, env, started: new Date().toISOString(), tries: 0 };
+  const cuts = opt('cuts', null); if (cuts) P.cuts = cuts.split(',').map(Number).filter((d) => d > 0 && d < days).sort((a, b) => a - b);
 }
 if (opt('crash-at', null) != null) P.crashAt = parseInt(opt('crash-at', null), 10);   // 하네스 — 한 번만 죽는다(`crashDone`)
 const DIR = P.dir;
@@ -55,7 +57,7 @@ fs.mkdirSync(path.join(DIR, 'ck'), { recursive: true });
 const PJ = path.join(DIR, 'progress.json'), PT = path.join(DIR, 'progress.txt');
 if (!RESUME_DIR && fs.existsSync(PJ)) {   // 같은 폴더에 판이 있으면 새로 덮지 않는다(실수로 다시 부른 감독)
   const old = JSON.parse(fs.readFileSync(PJ, 'utf8'));
-  if (old.days === P.days && old.seed === P.seed && old.every === P.every) { console.log(`[t1308] 폴더에 같은 판이 있다 — 이어 간다(체크포인트 날 ${old.ck})`); P = Object.assign(old, { env: old.env }); for (const [k, v] of Object.entries(P.env || {})) process.env[k] = v; }
+  if (old.days === P.days && old.seed === P.seed && old.every === P.every && JSON.stringify(old.cuts || null) === JSON.stringify(P.cuts || null)) { console.log(`[t1308] 폴더에 같은 판이 있다 — 이어 간다(체크포인트 날 ${old.ck})`); P = Object.assign(old, { env: old.env }); for (const [k, v] of Object.entries(P.env || {})) process.env[k] = v; }
   else { console.error(`[t1308] 폴더에 다른 판이 있다(${old.days}날 · 시드 ${old.seed} · 마디 ${old.every}) — --resume ${DIR} 또는 다른 --dir`); process.exit(2); }
 }
 const saveP = () => { const t = PJ + '.tmp'; fs.writeFileSync(t, JSON.stringify(P, null, 1)); fs.renameSync(t, PJ); };
@@ -90,7 +92,7 @@ function preloads() {
 }
 
 async function segment(from) {
-  const to = Math.min(P.days, from + P.every), last = to >= P.days;
+  const to = P.cuts ? (P.cuts.find((d) => d > from) || P.days) : Math.min(P.days, from + P.every), last = to >= P.days;
   const name = `seg-${from}`, out = path.join(DIR, `${name}.json`), logf = path.join(DIR, `${name}.log`);
   for (const f of fs.readdirSync(DIR)) if (f.startsWith(name + '.')) try { fs.unlinkSync(path.join(DIR, f)); } catch (e) {}   // 같은 마디를 다시 돌면 앞 시도의 조각을 지운다
   if (from > 0) restoreCk(); else { for (const f of DBF(DB).concat([STATE])) try { fs.unlinkSync(f); } catch (e) {} }
@@ -169,7 +171,7 @@ function merge() {
 
 (async () => {
   saveP();
-  console.log(`=== T1308 이어 도는 판 — ${P.tag} · 시드 ${P.seed} · ${P.days}날 · 마디 ${P.every}날 · 가상 시계 ${VCLOCK ? '켬' : '끔'} · ${DIR} · 체크포인트 날 ${P.ck} ===`);
+  console.log(`=== T1308 이어 도는 판 — ${P.tag} · 시드 ${P.seed} · ${P.days}날 · 마디 ${P.cuts ? "끊는 날 " + P.cuts.join(",") : P.every + "날"} · 가상 시계 ${VCLOCK ? '켬' : '끔'} · ${DIR} · 체크포인트 날 ${P.ck} ===`);
   while (P.ck < P.days) {
     P.tries = (P.tries || 0) + 1; saveP();
     const r = await segment(P.ck);
