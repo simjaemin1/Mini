@@ -5661,9 +5661,80 @@ const _t1372SSStat = { snap: 0, rows: 0, applied: 0, miss: 0, path: 0 };
 function _t1372SSTake() {
   const A = SS.A, n = SS.count(), rows = [], K = Object.keys(A).filter((k) => k !== 'GN');
   for (let s = 0; s < n; s++) { const p = SS.own[s]; if (!p || !(A.TK[s] || A.DS[s])) continue;
-    const r = { pid: p.pid, w: SimVillages.t1372Where ? SimVillages.t1372Where(p.pid) : null }; for (const k of K) { const v = A[k][s]; r[k] = Number.isFinite(v) ? v : String(v); } rows.push(r); }   // `w` = 마을 몸의 (마을 · 자리) — 캐러밴 몸은 null(저장 pid 그대로 되살린다)
+    const r = { pid: p.pid, w: SimVillages.t1372Where ? SimVillages.t1372Where(p.pid) : null }; for (const k of K) { const v = A[k][s]; r[k] = Number.isFinite(v) ? v : String(v); }
+    r.VTd = A.VT[s] - _tick.n;   // ★[T1382] 거른 틱 번호는 이 프로세스의 틱 셈(`_tick.n`)이다 — 다시 뜬 판은 0 부터 세니 저장 틱에서 잰 차로(아래 되살림이 새 셈에 다시 건다)
+    rows.push(r); }   // `w` = 마을 몸의 (마을 · 자리) — 캐러밴 몸은 null(저장 pid 그대로 되살린다)
   _t1372SSSnap = rows; _t1372SSStat.snap++; _t1372SSStat.rows = rows.length;
   return rows;
+}
+// ★★[T1382 덧붙임 둘] **걸음 커널 지형 비트(`_WW.TB`)도 재기동을 넘는다** — 손잡이 `T1340_RESUME_EXACT` 안(새 손잡이 0 · 끔 = 종전 글자).
+//   종전: 커널 지형 비트는 몸이 걸으며 한 칸씩 굽는 캐시라 다시 뜬 판은 0(모름)부터 — 서 있는 몸 거름(`_wwIsStill`)이 모름 칸을 '서 있지 않다'로 읽어
+//     그 몸을 커널에 넘기고(`_wwPost`) 첫 거름 표를 깨웠다(몸 세계 8날 · 4날 끊음: 다시 뜬 둘째 틱에 459 몸 전부 · 한 번에 돈 판은 0 → 다시 결정 · 어부 몸 걸음 갈림 → 100날 econ 20날 갈림).
+//   켜면 종료 저장(T742 줄 `zone.t1382TB` · deflate)에 비트를 싣고 다시 뜬 판 첫 틱 머리에 같은 길이면 그대로 덮는다(값은 지형 술어 그대로라 구운 칸 집합만 같아진다).
+// ★★[T1382 덧붙임 둘] **메모리에 올라와 있던 마을 건물 조각(벽 · 바닥 — 콜라이더)도 재기동을 넘는다** — 손잡이 `T1340_RESUME_EXACT` 안(새 손잡이 0 · 끔 = 종전 글자).
+//   종전: 부팅 wipe(`owner_id LIKE 'npc_%'`) 뒤 Stage4A 가 집 조각을 DB 에만 다시 적고 메모리는 청크 활성 때만 올린다(lazy). 한 번에 돈 판에선
+//     판 중에 지은 집(live 행)이 메모리에 있어 벽이 막는데, 다시 뜬 판엔 0 — 직선 길 문(`straightPathClear`)이 벽을 뚫고 열렸다
+//     (몸 세계 4날 끊음: 메모리 건물 6,303 : 3 · 다시 뜬 4분 뒤 어부 몸이 집 옆을 곧게 갔다 → 몸 자리 · econ 갈림).
+//   켜면 종료 저장(T742 줄 `zone.t1382Bld`)에 메모리 건물 중 마을 행(`npc_`)의 모양(종 · 자리 · 층 · 주인)을 Map 차례로 싣고, 다시 뜬 첫 틱 머리에
+//     Stage4A 가 다시 적은 같은 모양 행을 같은 차례로 메모리에 올린다(`_rowToBuilding` — 청크 활성화의 그 문 · 행 번호만 새것 = ㉣).
+//   ★[T1382 덧붙임 둘] 문 그래프 표(T678 `chunk-gates`) — 다시 뜬 판은 부팅 미리 굽기로 새로 지어(벽 0 인 때 · 다른 차례) 묻기 답이 한 번에 돈 판과 달랐다. 통째로 넘긴다(deflate).
+//   ★[T1382 덧붙임 둘] players 차례 — 한 번에 돈 판은 낳은 때 차례(마을 몸 · 캐러밴 몸 · 뒤에 난 몸이 섞인다), 다시 뜬 판은 마을 몸 다 → 캐러밴 몸 차례라
+//     걸음 고리(`players.forEach(_moveOne)`) · 커널 차례(`_wwPre`)가 달라 몸이 밀리는 몫이 달랐다(다시 뜬 6분 뒤 어촌2 몸 1.4px). 저장 차례로 다시 넣는다(delete → set · 같은 객체).
+let _t1382OrdPend = null;
+function _t1382OrdApply() {
+  const L = _t1382OrdPend; _t1382OrdPend = null; if (!Array.isArray(L)) return;
+  const want = L.filter((k) => players.has(k)), seen = new Set(want), rest = [...players.keys()].filter((k) => !seen.has(k));
+  let moved = 0; for (const k of want.concat(rest)) { const v = players.get(k); players.delete(k); players.set(k, v); moved++; }
+  console.log(`[${ZONE_ID}] 🧭 [T1382] players 차례 되돌림 — ${want.length}/${L.length} · 나머지 ${rest.length}`);
+}
+let _t1382GatePend = null;
+function _t1382GateTake() { if (!_t678G || !_t678G.dump) return null; try { return { z: require('zlib').deflateSync(Buffer.from(JSON.stringify(_t678G.dump()))).toString('base64') }; } catch (e) { return null; } }
+function _t1382GateApply() {
+  const X = _t1382GatePend; _t1382GatePend = null; const G = _t678Init(); if (!X || !G || !G.load) return;
+  try { const ok = G.load(JSON.parse(require('zlib').inflateSync(Buffer.from(X.z, 'base64')).toString())); if (ok) console.log(`[${ZONE_ID}] 🚪 [T1382] 문 그래프 표 되돌림 — 표 ${G.size()}`); } catch (e) { console.error(`[${ZONE_ID}] [T1382] 문 그래프 표 되돌림 실패:`, e.message); }
+}
+let _t1382BldPend = null;
+const _t1382BldStat = { saved: 0, restored: 0, miss: 0 };
+function _t1382BldTake() {
+  const L = [];
+  for (const b of buildings.values()) { if (!b || b.dbId == null) continue; const ow = b.ownerId; if (!ow || !String(ow).startsWith('npc_')) continue; L.push([b.type, b.x, b.y, b.floor | 0, String(ow)]); }
+  _t1382BldStat.saved = L.length;
+  return L.length ? { L } : null;
+}
+function _t1382BldApply() {
+  const X = _t1382BldPend; _t1382BldPend = null; if (!X || !Array.isArray(X.L)) return;
+  const cs = chunkManager.chunkSize, byChunk = new Map();
+  const key = (t, x, y, f, o) => t + '|' + x + '|' + y + '|' + f + '|' + o;
+  for (const [t, x, y] of X.L) { const ck = Math.floor(x / cs) + '_' + Math.floor(y / cs); if (!byChunk.has(ck)) byChunk.set(ck, null); }
+  const rowOf = new Map(); let stairUp = false;
+  for (const ck of byChunk.keys()) {
+    const [cx, cy] = ck.split('_').map(Number); let rows = [];
+    try { rows = db.getBuildingsInRect(cx * cs, cy * cs, (cx + 1) * cs, (cy + 1) * cs); } catch (e) {}
+    for (const r of rows) { if (!r.owner_id || !String(r.owner_id).startsWith('npc_')) continue; let f = 0; try { const d = r.data ? JSON.parse(r.data) : null; if (d && typeof d.floor === 'number') f = d.floor; } catch (e) {}
+      const k = key(r.type, r.x, r.y, f, r.owner_id); const q = rowOf.get(k); if (q) q.push(r); else rowOf.set(k, [r]); }
+  }
+  for (const [t, x, y, f, o] of X.L) {
+    const q = rowOf.get(key(t, x, y, f, o)); const r = q && q.shift();
+    if (!r || buildings.has('b' + r.id)) { _t1382BldStat.miss++; continue; }
+    _rowToBuilding(r); _t1382BldStat.restored++; if (r.type === 'stair') stairUp = true;
+  }
+  if (stairUp) stairCellDirty = true;   // 청크 활성화의 그 규칙(계단을 올렸을 때만)
+  console.log(`[${ZONE_ID}] 🏠 [T1382] 메모리 마을 건물 조각 되올림 — ${_t1382BldStat.restored}/${X.L.length} · 못 찾음 ${_t1382BldStat.miss}`);
+}
+let _t1382TbPend = null;
+//   ★[T1382 덧붙임 둘] 틱 번호(`_tick.n`)도 넘긴다 — 틱 주사위 씨(`_diceTick.seed(…, _tick.n)` · 몹 배회 · 탈출 · 산출)와 틱 번호로 도는 일들이 이 셈을 읽는다.
+//   종전: 다시 뜬 판은 0 부터 세서 틱마다 주사위가 한 번에 돈 판과 달랐다(몸 세계 4날 끊음: 다시 뜬 뒤 4 ~ 5분 사이 어부 몸 8 · 10분 40 갈림). T742 줄 `zone.t1382Tick` · 끔 = 종전.
+let _t1382TickPend = null;
+const _t1382TbStat = { saved: 0, restored: 0, bytes: 0 };
+function _t1382TbTake() {
+  if (!_WW || !_WW.TB) return null;
+  try { const z = require('zlib').deflateSync(Buffer.from(_WW.TB.buffer, _WW.TB.byteOffset, _WW.TB.length)); _t1382TbStat.saved++; _t1382TbStat.bytes = z.length; return { n: _WW.TB.length, z: z.toString('base64') }; } catch (e) { return null; }
+}
+function _t1382TbApply() {
+  const X = _t1382TbPend; _t1382TbPend = null;
+  if (!X || !_WW || !_WW.TB || X.n !== _WW.TB.length) return;
+  try { const b = require('zlib').inflateSync(Buffer.from(X.z, 'base64')); if (b.length !== _WW.TB.length) return; _WW.TB.set(b); _wwTbGen++; _t1382TbStat.restored++; } catch (e) { return; }
+  console.log(`[${ZONE_ID}] 🦶 [T1382] 걸음 커널 지형 비트 되돌림 — ${X.n}바이트(싣기 ${_t1382TbStat.bytes || (X.z.length * 3 >> 2)})`);
 }
 function _t1372SSApply() {
   const rows = _t1372SSPend; _t1372SSPend = null; if (!Array.isArray(rows)) return;
@@ -5675,6 +5746,9 @@ function _t1372SSApply() {
     if (!p || p.pid !== pid || players.get(pid) !== p || (!r.w && !p.simCaravan)) { _t1372SSStat.miss++; continue; }
     if (+r.TK === 3 && !(Array.isArray(p.path) && p.path === p._t791P && p.path.length === +r.PN)) { _t1372SSStat.path++; continue; }   // 길이 같은 길이 아니면 표 없이(종전 길)
     for (const k of Object.keys(r)) { if (k === 'pid' || k === 'w' || !(k in A)) continue; const v = r[k]; A[k][s] = typeof v === 'number' ? v : Number(v); }
+    //   ★[T1382] 틱 번호(VT) — 종전엔 옛 프로세스 틱 번호 그대로라 둘째 틱에 모든 표가 '빠짐'(`gap`)으로 깨어 몸 칸이 한꺼번에 찍혔다(한 번에 돈 판은 계속 미룸).
+    //     저장 틱에서 잰 차(`VTd`)를 이 틱 앞 틱(`_tick.n - 1` = 한 번에 돈 판의 저장 틱)에 건다 · 차 없는 옛 저장 = 종전 그대로
+    if (r.VTd != null && Number.isFinite(+r.VTd)) A.VT[s] = (_tick.n - 1) + (+r.VTd);
     SS.WPA[s] = +r.TK === 3 ? p.path : null; _t1372SSStat.applied++;
   }
   console.log(`[${ZONE_ID}] 🦶 [T1372] 첫 거름 표 되살림 — ${_t1372SSStat.applied}/${rows.length} · 몸 없음 ${_t1372SSStat.miss} · 길 다름 ${_t1372SSStat.path}`);
@@ -10955,6 +11029,19 @@ setInterval(() => {
   try { SimVillages.refreshAllFishSustain && SimVillages.refreshAllFishSustain(now); } catch (e) {}
   if (pruned) console.log(`[${ZONE_ID}] 🎣 어장 셀 ${pruned}개 만땅 회복 (번짐 ${r.moved} · 재생 ${r.regen})`);
 }, FISH_TICK_MS);
+// ★[T1382] 어장 번짐 시계 — 다시 뜬 판은 `_fishTickAt` 이 부팅 순간이라 첫 번짐이 지난 번짐부터가 아니라 부팅부터 잰 몫이었다(몸 세계 6날 · 4날 끊음: 어부 몸 29 자리 갈림).
+//   손잡이 `T1340_RESUME_EXACT` 안 · 종료 저장에만 값(T742 줄 `zone.t1382Fish`) · 끔 = 종전 글자.
+// ★[T1382 덧붙임 둘] 길 닳음 날 오프셋(`_t1001RoadOff` — 프로세스 첫 부름에 벽시계 날 − econ 날로 굳는다) — 다시 뜬 판은 다시 뜬 순간에 굳혀 한 날 어긋났다
+//   (econ 날이 벽시계 날보다 늦은 순간 · 길 감쇠 날이 하루 늦어 같은 칸이 6.97 : 7 → 등급 0 : 1 → 몸 빠르기 1 : 1.1 · 다시 뜬 6분 뒤 첫 몸 갈림). 끔 = 종전.
+if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.t1382RoadOff', () => (shuttingDown && Number.isFinite(_t1001RoadOff) ? { o: _t1001RoadOff } : null), (v) => { if (v && Number.isFinite(v.o)) _t1001RoadOff = v.o; });
+//   같은 꼴 — 광맥 리젠 시각 오프셋(`_t1001OreOff` — 첫 부름에 벽시계 − econ 날 × 하루로 굳는다)
+if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.t1382OreOff', () => (shuttingDown && Number.isFinite(_t1001OreOff) ? { o: _t1001OreOff } : null), (v) => { if (v && Number.isFinite(v.o)) _t1001OreOff = v.o; });
+if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.t1382Ord', () => (shuttingDown ? [...players.keys()] : null), (v) => { if (Array.isArray(v)) _t1382OrdPend = v; });
+if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.t1382Gate', () => (shuttingDown ? _t1382GateTake() : null), (v) => { if (v && v.z) _t1382GatePend = v; });
+if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.t1382Bld', () => (shuttingDown ? _t1382BldTake() : null), (v) => { if (v && Array.isArray(v.L)) _t1382BldPend = v; });
+if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.t1382Tick', () => (shuttingDown ? { n: _tick.n } : null), (v) => { if (v && Number.isFinite(v.n)) _t1382TickPend = v.n; });
+if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.t1382TB', () => (shuttingDown ? _t1382TbTake() : null), (v) => { if (v && v.z) _t1382TbPend = v; });
+if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.t1382Fish', () => (shuttingDown ? { at: _fishTickAt } : null), (v) => { if (v && Number.isFinite(v.at)) _fishTickAt = v.at; });
 
 // 바이옴별 어종 — ★v1 의 목록을 **그대로 쓴다**(어종 확장은 이번 범위 밖 = 회부).
 // ★★[T59 2026-09-03] 표를 **`fishing.js` 로 옮겼다** — 여기 있어서 아무도 못 물어봤고,
@@ -17503,6 +17590,41 @@ const _tick = { n: 0, wall: 0, sim: 0, clip: 0, clipped: 0, maxGap: 0, debt: 0, 
 //   되돌렸으면 T1340 다시 찍기는 안 한다(`SimVillages.t1372NoRestamp`).
 let _t1372CgPend = null;
 const _t1372CgStat = { saved: 0, applied: 0, chunks: 0 };
+// ★★[T1382 ㉢ 2026-11-19 · T1372 회부 4] **몹 집 · 무리 · 배회도 재기동을 넘는다** — 손잡이 `T1340_RESUME_EXACT` 안(새 손잡이 0 · 끔 = 종전 글자).
+//   종전: 몹 행(DB)은 종 · 자리 · 피 · 길듦만 — 다시 뜨면 지금 자리가 집(`homeX/Y`)이 되고 무리(`packId`) · 배회 시각 · 걸음 · 어그로가 0 부터였다(30날 판: 몹 449 중 150 갈림).
+//   켜면 종료 저장(T742 줄 `zone.t1382Mob`)에 DB 행 몹마다 칸(수 · 글자 · 참거짓 · JSON 이 되는 평 칸 — 자리 · 피 · 열쇠는 행이 쥔다)을 싣고, 메타를 받는 즉시(몹은 존 부팅이 이미 실었다)
+//   같은 DB 행 몹에 덮는다. 벽시계 칸은 저장 순간에서 잰 차로(T1340 문법). 들짐승 그림자 몹(`isWild` · DB 행 없음)은 들짐승 모듈의 것이라 안 싣는다.
+const _T1382_MDENY = new Set(['mid', 'dbId', 'x', 'y', 'hp', 'dirty', '_wildRef']);
+const _t1382MobStat = { saved: 0, restored: 0, miss: 0, skip: 0 };
+function _t1382MobTake() {
+  const at = Date.now(), L = [];
+  for (const m of mobs.values()) {
+    if (m.dbId == null || m.isWild) continue;
+    const f = {};
+    for (const k of Object.keys(m)) { if (_T1382_MDENY.has(k)) continue; const v = m[k];
+      if (typeof v === 'number') f[k] = (v > 1e12 && Math.abs(v - at) < 3.2e10) ? { $t: v - at } : (Number.isFinite(v) ? v : { $n: String(v) });
+      else if (v === null || typeof v === 'string' || typeof v === 'boolean') f[k] = v;
+      else if (v === undefined) f[k] = { $u: 1 };
+      else if (typeof v === 'object') { try { const s = JSON.stringify(v); if (s !== undefined && s.length < 4000 && (Array.isArray(v) || Object.getPrototypeOf(v) === Object.prototype)) f[k] = { $j: s }; else _t1382MobStat.skip++; } catch (e) { _t1382MobStat.skip++; } } }
+    L.push([m.dbId, f]); _t1382MobStat.saved++;
+  }
+  return { at, L };
+}
+function _t1382MobRestore(o) {
+  if (!o || !Array.isArray(o.L)) return;
+  const by = new Map(); for (const m of mobs.values()) if (m.dbId != null && !m.isWild) by.set(m.dbId, m);
+  const now = Date.now();
+  for (const [dbId, f] of o.L) {
+    const m = by.get(dbId); if (!m) { _t1382MobStat.miss++; continue; }
+    for (const k of Object.keys(f)) { const v = f[k];
+      m[k] = (v && typeof v === 'object') ? (v.$t !== undefined ? now + v.$t : v.$n !== undefined ? Number(v.$n) : v.$u ? undefined : v.$j !== undefined ? JSON.parse(v.$j) : v) : v; }
+    _t1382MobStat.restored++;
+  }
+  console.log(`[${ZONE_ID}] 🐾 [T1382] 몹 집 · 무리 · 배회 되돌림 — ${_t1382MobStat.restored}/${o.L.length} · 없음 ${_t1382MobStat.miss}`);
+}
+if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.t1382Mob', () => (shuttingDown ? _t1382MobTake() : null), (v) => { if (v) _t1382MobRestore(v); });
+// ★[T1382 ㉡] 길 닳음 모듈 메모리 — 종료 저장에만 값 · 받는 즉시 건다(메타 읽기 = 마을 부팅 안 · 교역로 미리 파기보다 앞 — 같은 코스 지도로 판다)
+if (process.env.T1340_RESUME_EXACT !== '0' && Roads.t1382Dump) SimVillages.t742Bind('zone.t1382Roads', () => (shuttingDown ? Roads.t1382Dump() : null), (v) => { if (v && Roads.t1382Load(v)) console.log(`[${ZONE_ID}] 🛤️ [T1382] 길 닳음 되돌림 — 셀 ${v.cells.length} · 코스 ${v.coarse.length} · 다진 길 ${v.paved.length}`); });
 if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.t1372CG', () => (shuttingDown ? (_t1372CgStat.saved++, { g: [..._collGen], all: _collGenAll, br: _bridgeGen }) : null), (v) => { if (v && Array.isArray(v.g)) _t1372CgPend = v; });
 function _t1372CgApply() {
   const v = _t1372CgPend; _t1372CgPend = null; if (!v) return;
@@ -17551,6 +17673,7 @@ setInterval(() => {
   }
   // ★계측은 손잡이가 아니다 — 아무 동작도 안 바꾼다(관측자 규약 · `perfMark` 와 같은 자리).
   _tick.n++; _tick.wall += _elapsed; _tick.sim += dt; _tick.debt = _tickDebt;
+  if (_t1382TickPend != null) { _tick.n = _t1382TickPend + 1; _t1382TickPend = null; }   // ★[T1382] 다시 뜬 판 첫 틱 = 한 번에 돈 판의 저장 다음 틱 번호(틱 주사위 씨 · 거름 표 틱 · 틱 번호 주기가 그대로 이어진다)
   // ★★[T350 · 주사위 0] 틱 흐름 영점 — 이 틱 안에서 도는 **세계 자리**(몹 배회·스폰·산출)의 굴림은
   //   여기서 뿌린 씨에서 순서대로 난다. 주민 결정과 다른 점 하나를 표에 적는다:
   //   · 주민 결정 = **순수 해시**(신원·셀·날·틱) ⇒ 도는 **순서와 무관**하다 — SoA·워커가 나눠 돌려도 같다.
@@ -17558,7 +17681,11 @@ setInterval(() => {
   //   그 둘을 가른 이유: 순수 해시는 자리마다 '무엇이 신원인가'를 정해야 하는데, 몹 스폰·드랍처럼
   //   **신원이 아직 없는** 자리가 많다. 거기까지 순수 해시로 가는 건 다음 카드다(보고 §4).
   _diceTick.seed(_SEED.seedOf(_ZONE_SH, 0, 0, zoneGameDay(), _tick.n));
+  if (_t1382OrdPend) _t1382OrdApply();   // ★[T1382] players 차례(걸음 고리 · 커널 차례)
+  if (_t1382GatePend) _t1382GateApply();   // ★[T1382] 문 그래프 표(묻기보다 앞)
+  if (_t1382BldPend) _t1382BldApply();   // ★[T1382] 메모리에 올라와 있던 마을 집 조각 — 벽 세대 되돌림보다 앞(올릴 때 세대가 바뀌어도 아래가 저장 값으로 덮는다)
   if (_t1372CgPend) _t1372CgApply();   // ★[T1372 ⓒ] 첫 틱 머리 — 벽 세대(마을 첫 틱의 T1340 다시 찍기보다 앞)
+  if (_t1382TbPend) _t1382TbApply();   // ★[T1382] 걸음 커널 지형 비트(서 있는 몸 거름이 읽는다) — 첫 거름 표보다 앞 · 이 틱 `_wwPre` 앞
   if (_t1372SSPend) _t1372SSApply();   // ★[T1372 ⓑ] 다시 뜬 판의 첫 틱 머리 — 첫 거름 표 행을 그 몸 칸에(몸 · 캐러밴 몸이 다 선 뒤)
   if (_elapsed > DT_MAX) { _tick.clip++; _tick.clipped += _elapsed - DT_MAX; }
   if (_elapsed > _tick.maxGap) _tick.maxGap = _elapsed;
@@ -19188,7 +19315,9 @@ function gracefulShutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
   console.log(`[${ZONE_ID}] ${signal} 받음 — 상태 flush 후 종료...`);
-  if (process.env.T1340_RESUME_EXACT !== '0') { try { if (T1322_PF) _t1372SSTake(); _t1322FlushAll(); } catch (e) {} }   // ★[T1372 ⓑ] 내리기 앞 표 행을 뜬다(T742 줄 `zone.t1372SS`)   // ★[T1340] 미룬 걸음 도장(T1322)을 몸에 내려 둔 채 저장한다(다시 뜬 몸은 미룸 표가 없다)
+  //   ★[T1382] 표를 뜬 판은 도장을 몸에 **안 내린다** — 한 번에 돈 판의 몸은 그 순간 미룬 채(옛 도장 · 표가 참값)다. 내리면 몸 칸(`_pathAt` · `_t540StepAt` · `nextDecisionAt` …)이
+  //     저장 순간 값으로 바뀌어 다시 뜬 몸이 다른 틱에 결정했다(몸 세계 8날 · 4날 끊음: econ 첫 갈림 5날 · 몸 자리 4/8). 표를 못 뜬 판(거름 끔 · 실패)은 종전처럼 내린다.
+  if (process.env.T1340_RESUME_EXACT !== '0') { try { if (T1322_PF) _t1372SSTake(); } catch (e) {} try { if (!(T1322_PF && _t1372SSSnap)) _t1322FlushAll(); } catch (e) {} }   // ★[T1372 ⓑ] 내리기 앞 표 행을 뜬다(T742 줄 `zone.t1372SS`)   // ★[T1340] 미룬 걸음 도장(T1322)을 몸에 내려 둔 채 저장한다(다시 뜬 몸은 미룸 표가 없다)
   if (SimVillages.t728On && SimVillages.t728On() && SimVillages.t728Shutdown) {
     SimVillages.t728Shutdown(T728_SHUTDOWN_CAP_MS, (r) => {
       console.log(`[${ZONE_ID}] 🏘️ [T728] 종료 저장 — ${r.why} · 마감 기다림 ${r.waitMs | 0}ms · 저장 ${r.saveMs | 0}ms · 마을 ${r.villages | 0} · econ 날 ${r.day}${r.err ? ' · 실패 ' + r.err : ''}`);
