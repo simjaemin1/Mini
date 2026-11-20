@@ -1,0 +1,27 @@
+== master 17:33:38
+start sbc 17:33:38
+start main-1020 17:33:38
+done sbc 17:55:44
+--
+== 1020
+pos-days.jsonl: 30/30 다름 []
+world-days.jsonl: 30/30 다름 []
+body: 32/32 다름 []
+== 7
+pos-days.jsonl: 30/30 다름 []
+world-days.jsonl: 30/30 다름 []
+body: 32/32 다름 []
+== 42
+pos-days.jsonl: 30/30 다름 []
+world-days.jsonl: 30/30 다름 []
+body: 32/32 다름 []
+== F1020
+pos-days.jsonl: 30/30 다름 []
+world-days.jsonl: 30/30 다름 []
+body: 32/32 다름 []
+--
+== ruler start 23:00:09 fix=bd90fc892
+== ruler resume after reboot 00:24:04
+== ruler start 00:24:04 fix=bd90fc892
+ruler done 02:20:21
+diag2 done 02:32:09
