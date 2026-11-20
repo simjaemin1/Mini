@@ -378,7 +378,24 @@ function create(opt) {
     };
     return { pass: passAt, step };
   }
-  return { size: () => recs.size, busy, windowChunks, route, tick, sweep, invalidateAll, invalidateChunk, chunkOf, stats, enqueueAll, enqueueWindow, fastView, _recs: recs };
+  // ★[T1382 덧붙임 둘] 재기동 — 표 · 짓기 줄 · 짓는 중 · 판 · 묻기 도장 · 쓸기 자리 · 셈을 통째로 꺼내고 넣는다(존 종료 저장 · 다시 뜬 판 첫 틱 — 존 손잡이 `T1340_RESUME_EXACT` 안에서만 부른다 · 부르지 않으면 무동작).
+  //   표 비트는 지은 때의 술어 값이라 다시 뜬 판이 새로 지으면 그 사이 짓는 차례 · 낡음이 한 번에 돈 판과 달랐다(다시 뜬 4분 뒤 어부 몸 길 갈림).
+  const _pk = (v) => { if (v === undefined) return { $u: 1 }; if (v === null || typeof v !== 'object') return v; if (ArrayBuffer.isView(v)) return { $t: v.constructor.name, b: Buffer.from(v.buffer, v.byteOffset, v.byteLength).toString('base64') };
+    if (Array.isArray(v)) return v.map(_pk); if (v instanceof Map) return { $m: [...v].map(([k, x]) => [_pk(k), _pk(x)]) }; if (v instanceof Set) return { $s: [...v].map(_pk) };
+    const o = {}; for (const k of Object.keys(v)) o[k] = _pk(v[k]); return { $o: o }; };
+  const _upk = (v) => { if (v === null || typeof v !== 'object') return v; if (Array.isArray(v)) return v.map(_upk); if (v.$u) return undefined;
+    if (v.$t) { const B = Buffer.from(v.b, 'base64'), K = global[v.$t], a = new K(B.byteLength / K.BYTES_PER_ELEMENT); new Uint8Array(a.buffer).set(B); return a; }
+    if (v.$m) return new Map(v.$m.map(([k, x]) => [_upk(k), _upk(x)])); if (v.$s) return new Set(v.$s.map(_upk));
+    const o = {}; for (const k of Object.keys(v.$o || {})) o[k] = _upk(v.$o[k]); return o; };
+  function dump() { return _pk({ recs, queue, queued, gen, building, stamp, sweepKeys, sweepI, st }); }
+  function load(o) {
+    const X = _upk(o); if (!X || !(X.recs instanceof Map)) return false;
+    recs.clear(); for (const [k, r] of X.recs) recs.set(k, r);
+    queue.length = 0; for (const c of X.queue) queue.push(c); queued.clear(); for (const c of X.queued) queued.add(c);
+    gen = X.gen; building = X.building; stamp = X.stamp; sweepKeys = X.sweepKeys; sweepI = X.sweepI; Object.assign(st, X.st);
+    return true;
+  }
+  return { size: () => recs.size, busy, windowChunks, route, tick, sweep, invalidateAll, invalidateChunk, chunkOf, stats, enqueueAll, enqueueWindow, fastView, _recs: recs, dump, load };
 }
 
 module.exports = { create, UNR };
