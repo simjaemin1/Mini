@@ -102,7 +102,7 @@ async function round(zoneFile, full) {
   R.farFirst = st(c1c) === 'free' && st(c0c) !== 'free' && st(c0c) !== '없음';
   R.farFirst_ = `둘째 ${st(c1c)} · 집 ${st(c0c)} · ${tl.join(' · ')}`;
   if (full) {
-    const notes = await page.evaluate(() => (window.__notices || []).slice(-6));
+    const notes = await page.evaluate(() => (window.__notices || []).slice(-6));   // @notice-ok [PM land1086] 접속 직후 고리 끝 여섯 줄(풀림 알림 한 줄을 찾는다) — 표지 꼴로 옮기기는 T1402
     R.notice = notes.some((n) => /비운 동안 내 땅 1칸이 풀렸습니다/.test(n)); R.notice_ = notes.filter((n) => /비운 동안/.test(n)).join(' | ').slice(0, 140) || notes.slice(-2).join(' | ').slice(0, 140);
     await page.keyboard.press('y'); await sleep(1200);
     const txt2 = await page.evaluate(() => (document.getElementById('spBody') || {}).innerText || '');
@@ -116,7 +116,7 @@ async function round(zoneFile, full) {
     R.walk_ = `집 풀림까지 ${eta}초 남았을 때 출발 · 돌아오기 ${((Date.now() - tw) / 1000).toFixed(0)}초 · 집에 닿을 때 ${st0}`;
     await page.evaluate(() => { window.__notices = []; });
     await page.keyboard.press('c'); await sleep(1500);
-    const notes2 = await page.evaluate(() => (window.__notices || []).slice(-3));
+    const notes2 = await page.evaluate(() => (window.__notices || []).slice(-3));   // @notice-ok [PM land1086] 바로 앞 줄에서 고리를 비웠다(표지와 같은 뜻)
     const m3 = await page.evaluate(() => (window.__getClaims ? window.__getClaims() : []).filter((c) => c.kind === 'personal').map((c) => ({ cx: Math.floor(c.wx / 32), cy: Math.floor(c.wy / 32), state: c.state })));
     const st3 = (c) => { const q = m3.find((x) => x.cx === c[0] && x.cy === c[1]); return q ? (q.state || 'active') : '없음'; };
     R.retake = notes2.some((n) => /이어받았습니다|사유지를 두었습니다/.test(n)) && st3(c1c) === 'active' && st3(c0c) === 'active';
