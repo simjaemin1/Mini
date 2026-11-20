@@ -1,13 +1,13 @@
-# T1380 지키기 — 코드 88dd09293(제품 손 server/villages.js 한 파일 · 그 뒤 제품 손 0 이면 그대로)
+# T1380 지키기 — 제품 코드 43d9591fa(가지 끝 · server/villages.js 한 파일 · 그 뒤 커밋은 표 · CI 표 · 보고뿐) · 판은 이 상자(동시 판 2 와 나란히)
 
 # 끈 판 — node --experimental-sqlite scripts/server-baseline-check.js 계측/서버기준선_2026-11-18.json --vclock --plan 1020:400
   ○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 3345) · 마을 칸 지문 400일 같음 · 칸별 날 수: 경제 400/400 · 생활층(마을 칸) 400/400
-=== 같음 1/1 · 경제 400/400 · 생활층 400/400 · 판 1172초 ===
-kkeun rc=0 1173s 88dd09293
+=== 같음 1/1 · 경제 400/400 · 생활층 400/400 · 판 595초 ===
+kkeun rc=0 596s 83c6f9bb9
 
-# 랩 t17 — node scripts/t17-metrics.js 800 1020 (가지 · 베이스 311d0773a 둘 다)
-가지:   여덟 수   인구 6198 · 소멸 0/51 · 무기Q 805 · 확장셀 3812 · 게시 3962 · 도구Q 10564.9 · 보존식 49.4 · 생곡 46748.3
-베이스:   여덟 수   인구 6198 · 소멸 0/51 · 무기Q 805 · 확장셀 3812 · 게시 3962 · 도구Q 10564.9 · 보존식 49.4 · 생곡 46748.3
+# 랩 t17 — node scripts/t17-metrics.js 800 1020 (가지 끝 · 베이스는 88dd09293 때 잰 값 — 랩은 이 가지가 안 만진다)
+가지:  여덟 수   인구 6198 · 소멸 0/51 · 무기Q 805 · 확장셀 3812 · 게시 3962 · 도구Q 10564.9 · 보존식 49.4 · 생곡 46748.3
+베이스: 여덟 수   인구 6198 · 소멸 0/51 · 무기Q 805 · 확장셀 3812 · 게시 3962 · 도구Q 10564.9 · 보존식 49.4 · 생곡 46748.3
   ⚠ 카드의 5,929 는 land1084 앞 값 — 지금 정본 6,198(PM land1084 c2a1dc20c '공통 지금 정본(랩 t17 6,198)')과 같다
 
 # 게이트 셋
@@ -15,21 +15,28 @@ kkeun rc=0 1173s 88dd09293
 [inline] 마을실험실.html: 최신 ✅
 [inline] 전쟁실험실.html: 최신 ✅
 === 배선 검사: 실패 0 · 경고 1 ===
-gate1-bundle rc=0 220s 88dd09293
-gate2-inline rc=0 0s 88dd09293
-gate3-wiring rc=0 3s 88dd09293
+gate1-bundle rc=0 241s 43d9591fa
+gate2-inline rc=0 0s 43d9591fa
+gate3-wiring rc=0 4s 43d9591fa
 
-# 규약 다섯 · 손댄 하네스(node scripts/touched-harness.js origin/main --list → body-fields · coll-grid · harness-lint · hp-src · lon-day · t1380-terr-lot)
-test-harness-lint: === 99건 중 PASS 99 · FAIL 0 === · rc=0 98s
+# 규약 넷 · 손댄 하네스(node scripts/touched-harness.js origin/main --list → body-fields coll-grid harness-lint hp-src lon-day t1380-terr-lot)
+test-harness-lint: === 99건 중 PASS 99 · FAIL 0 === · rc=0 100s
 test-hp-src: === 54 통과 / 0 실패 === · rc=0 2s
 test-lon-day: === 22건 중 PASS 22 · FAIL 0 === · rc=0 1s
-test-body-fields: === 14 통과 / 0 실패 === · rc=0 0s
+test-body-fields: === 14 통과 / 0 실패 === · rc=0 1s
 test-coll-grid: === 결과: 20 PASS / 0 FAIL === · rc=0 16s
-test-t1380-terr-lot: ✓ T1380 영토 v2 를 랩 넓이에 — 17/17 · rc=0 2s
+test-t1380-terr-lot: ✓ T1380 영토 v2 를 랩 넓이에 — 24/24 · rc=0 6s
 
-# 곁 — 영토 · 집터 하네스(제품 손 자리)
-test-t1207-terr-real: === T1207: 32건 중 PASS 32 · FAIL 0 ===
-test-t1238-terr-v2: === T1238: 117건 중 PASS 117 · FAIL 0 ===
-test-site-memo: === 23 통과 / 0 실패 ===
-test-terr-persist: === PASS ===
-test-terr-overlap · test-terr-backfill: rc 0
+# 곁 — 영토 · 집터 하네스(제품 손 자리) · CI 목록
+test-t1207-terr-real: === T1207: 32건 중 PASS 32 · FAIL 0 === · rc=0 6s
+test-t1238-terr-v2: === T1238: 117건 중 PASS 117 · FAIL 0 === · rc=0 9s
+test-site-memo: === 23 통과 / 0 실패 === · rc=0 556s
+test-terr-persist: === PASS === · rc=0 332s
+test-terr-overlap: === 18건 중 PASS 18 · FAIL 0 === · rc=0 4s
+test-terr-backfill: 결과: PASS (전 항목) · rc=0 0s
+test-ci-list: === test-ci-list 결과: 16 통과 / 0 실패 === · rc=0 1s
+
+# 옛 코드 빨강 — bash scripts/pm-old-code-red.sh 74675b8f5 test-t1380-terr-lot.js
+# 옛 코드 빨강 — 하네스 = 83c6f9bb9 · 제품(server sim public lab) = 74675b8f5 · 시한 600초
+빨강 ○ | test-t1380-terr-lot.js | RC=1 · ✓ 1 · ✗ 24 |   ✗ ⓐ [전제] 영토 v2 켬 · 손잡이 끔 · 모퉁이 부지 후보 (988, 988)의 영토 밖 칸이 넣을 수 있는 칸이다 — 넣을 칸 undefine
+# 합: 빨강 1 · 크래시 0 · 초록 0 · 모름 0 · 제품 무관 0
