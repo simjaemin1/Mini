@@ -5749,7 +5749,12 @@ function _t1382RtTake() {
   const ds = T1327_ROUTE_FIX ? _t1327DitchSig() : null;
   const tl = W && Array.isArray(W.tradeLog) ? JSON.parse(JSON.stringify(W.tradeLog)) : null;
   let sig = null; try { sig = _routeSig(); } catch (e) {}   // 길 규칙 서명(영속 교역로와 같은 문 — 다시 뜬 판 서명이 다르면 아래 되돌림은 길 칸을 안 덮는다)
-  return { at: C.at, ord: Object.keys(o), o, dm, ds, tl, sig };
+  //   ★[T1382 덧붙임 둘] 길 찾기 메모 둘(이웃 잇기 `_t598Edge.done/ok` · 코스 칸 막힘 `_route.blk/openN`) — 지형이 바뀐 뒤에도 한 번에 돈 판은 옛 메모로 판다(낡은 칸).
+  //     다시 뜬 판이 새로 재면 같은 쌍을 다른 길로 판다(몸 세계 4날 끊음: 다시 뜬 1초 안에 교역로 1_5 · 3_4 가 297 : 291 · 241 : 233 점 → 어부 몸 갈림). 메모째 싣는다(deflate).
+  const z = (a) => { try { return require('zlib').deflateSync(Buffer.from(a.buffer, a.byteOffset, a.byteLength)).toString('base64'); } catch (e) { return null; } };
+  const ec = state._t598Edge ? { n: state._t598Edge.done.length, done: z(state._t598Edge.done), ok: z(state._t598Edge.ok) } : null;
+  const rb = state._route ? { n: state._route.blk.length, blk: z(state._route.blk), openN: z(state._route.openN) } : null;
+  return { at: C.at, ord: Object.keys(o), o, dm, ds, tl, sig, ec, rb };
 }
 function _t1382RtRestore() {
   const X = _t1382RtPend; _t1382RtPend = null; if (!X || !X.o) return;
@@ -5765,8 +5770,11 @@ function _t1382RtRestore() {
   for (const k of X.ord) { state[k] = _t1372Dec(X.o[k], C, T); _t1382RtStat.restored++; }
   if (Array.isArray(X.dm) && state.world) state.world._distMatrix = X.dm.map((r) => r.map((n) => (typeof n === 'number' ? n : Number(n))));
   if (X.ds != null) _t1382DsKeep = X.ds;
+  const uz = (b64, Ctor, n) => { try { const b = require('zlib').inflateSync(Buffer.from(b64, 'base64')); const a = new Ctor(n); if (b.length !== a.byteLength) return null; new Uint8Array(a.buffer).set(b); return a; } catch (e) { return null; } };
+  if (X.ec && X.ec.done && X.ec.ok) { const d = uz(X.ec.done, Uint16Array, X.ec.n), k = uz(X.ec.ok, Uint16Array, X.ec.n); if (d && k) { state._t598Edge = { done: d, ok: k }; _t1382RtStat.edge = X.ec.n; } }
+  if (X.rb && X.rb.blk) { const R = ensureRouteGrid(); if (R && R.blk.length === X.rb.n) { const b = uz(X.rb.blk, Int8Array, X.rb.n), o = uz(X.rb.openN, Int8Array, X.rb.n); if (b && o) { R.blk.set(b); R.openN.set(o); _t1382RtStat.rblk = X.rb.n; } } }
   if (Array.isArray(X.tl) && state.world && Array.isArray(state.world.tradeLog) && !state.world.tradeLog.length) { for (const e of X.tl) state.world.tradeLog.push(e); _t1382RtStat.tl = X.tl.length; }
-  console.log(`[${state.zoneId}] 🛣️ [T1382] 교역 거리 · 교역로 줄 되돌림 — 칸 ${_t1382RtStat.restored} · 교역로 ${state.routeCache ? state.routeCache.size : 0}쌍 · 다시 파기 줄 ${(state.routeRedigQ || []).length} · 행렬 ${X.dm ? X.dm.length : 0}`);
+  console.log(`[${state.zoneId}] 🛣️ [T1382] 교역 거리 · 교역로 줄 되돌림 — 칸 ${_t1382RtStat.restored} · 교역로 ${state.routeCache ? state.routeCache.size : 0}쌍 · 다시 파기 줄 ${(state.routeRedigQ || []).length} · 행렬 ${X.dm ? X.dm.length : 0} · 길 메모 ${_t1382RtStat.edge | 0} · ${_t1382RtStat.rblk | 0}`);
 }
 function _t1372CarRestore() {
   const X = state._t1372Car; state._t1372Car = null;
