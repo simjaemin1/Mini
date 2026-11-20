@@ -61,6 +61,48 @@
     }
     return false;
   }
+  // ★★[T1392 · ★재민 11-19 "첫 땅은 무조건 3x3 단위로만"] 첫 집터 아홉 칸 미리보기 — C 를 누르기 전 선 자리를 가운데로 한 3×3 테두리(막힌 칸은 붉게).
+//   판정은 서버 한 벌(`lot_probe` → `lot_preview` · `_t1392Check` — 남의 땅 · 물 · 바위 · 마을 시설 · 건물 · 영토 문)이다 — 클라는 칸을 옮길 때 묻고 받은 대로 그린다(재계산 0).
+//   켬(welcome `uiCfg.firstLot`)이고 내 살아 있는 개인 칸이 0 일 때만(첫 등록) — 끔 = 이 함수가 곧바로 돌아간다(그림 · 메시지 0).
+  let lotPreview = null, _lotProbeKey = '', _lotProbeAt = 0;
+  function lotPreviewWho() { return (typeof myPlayerId !== 'undefined' && myPlayerId) || (typeof myUsername !== 'undefined' && myUsername) || null; }
+  function lotPreviewWant() {
+    if (!(typeof uiCfg !== 'undefined' && uiCfg && uiCfg.firstLot)) return false;
+    const who = lotPreviewWho(); if (!who) return false;
+    for (const c of conns.values()) for (const cl of (c.claims ? c.claims.values() : [])) if (cl && cl.ownerPid === who && cl.kind === 'personal' && (cl.state || 'active') !== 'free') return false;
+    return true;
+  }
+  function lotPreviewOnMsg(msg, c) {
+    if (!msg || !msg.first) { lotPreview = null; return; }
+    const ox = (c && c.meta && c.meta.worldOffsetX) || 0, oy = (c && c.meta && c.meta.worldOffsetY) || 0;
+    lotPreview = { x0: msg.cx * 32 + ox, y0: msg.cy * 32 + oy, side: msg.side | 0 || 3, cells: msg.cells || [], gate: msg.gate || null, cost: msg.cost || null,
+      key: Math.floor((msg.cx * 32 + ox) / 32) + ',' + Math.floor((msg.cy * 32 + oy) / 32) };
+  }
+  function drawLotPreview() {
+    if (!lotPreviewWant()) { lotPreview = null; _lotProbeKey = ''; return; }
+    if (typeof myAbsPredicted === 'undefined' || !myAbsPredicted) return;
+    const k = Math.floor(myAbsPredicted.x / 32) + ',' + Math.floor(myAbsPredicted.y / 32), now = Date.now();   // [T1310 클라 시계] 미리보기 다시 묻기 간격(클라만의 간격 · 서버 시각과 안 견준다)
+    if (k !== _lotProbeKey || (now - _lotProbeAt > 1000 && (!lotPreview || lotPreview.key !== k))) { _lotProbeKey = k; _lotProbeAt = now; sendPrimary({ type: 'lot_probe' }); }
+    const L = lotPreview; if (!L || L.key !== k) return;
+    const h = (L.side - 1) / 2, cx0 = Math.floor(L.x0 / 32), cy0 = Math.floor(L.y0 / 32);
+    const myIso0 = w2i(myAbsPredicted.x, myAbsPredicted.y);
+    const pt = (cx2, cy2) => { const i = w2i(cx2 * 32, cy2 * 32); return { x: i.x - myIso0.x + W / 2, y: i.y - myIso0.y + H / 2 - (myFloor || 0) * FLOOR_HEIGHT }; };
+    const bad = new Map(); for (const [dx, dy, why] of L.cells) bad.set(dx + ',' + dy, why);
+    ctx.save();
+    for (let dy = -h; dy <= h; dy++) for (let dx = -h; dx <= h; dx++) {
+      const x = cx0 + dx, y = cy0 + dy, a = pt(x, y), b = pt(x + 1, y), c2 = pt(x + 1, y + 1), d = pt(x, y + 1), blk = bad.has(dx + ',' + dy);
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c2.x, c2.y); ctx.lineTo(d.x, d.y); ctx.closePath();
+      ctx.fillStyle = blk ? 'rgba(220,70,60,0.30)' : (L.gate ? 'rgba(220,150,60,0.12)' : 'rgba(240,198,116,0.10)'); ctx.fill();
+      if (blk) { ctx.strokeStyle = 'rgba(230,90,80,0.95)'; ctx.lineWidth = 1.5; ctx.stroke(); }
+    }
+    const p1 = pt(cx0 - h, cy0 - h), p2 = pt(cx0 + h + 1, cy0 - h), p3 = pt(cx0 + h + 1, cy0 + h + 1), p4 = pt(cx0 - h, cy0 + h + 1);
+    ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.lineTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y); ctx.closePath();
+    ctx.setLineDash([5, 4]); ctx.strokeStyle = (bad.size || L.gate) ? '#e0705f' : '#f0c674'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]);
+    ctx.font = 'bold 11px sans-serif'; ctx.fillStyle = '#ffe9b0'; ctx.textAlign = 'center';
+    ctx.fillText(bad.size ? `집터 3×3 — 막힌 칸 ${bad.size}` : (L.gate ? '집터 3×3 — 영토 안' : `집터 3×3${L.cost ? ` — 나무 ${L.cost.wood} · 돌 ${L.cost.stone}` : ''}`), (p1.x + p3.x) / 2, p1.y - 8);
+    ctx.textAlign = 'left';
+    ctx.restore();
+  }
   // 14.53-i: placement ghost — 마우스 위치에 실루엣 미리보기
   function drawPlacementGhost() {
     if (!placementMode) return;
@@ -73,8 +115,10 @@
       const kiln = placementMode.special === 'kiln_site';          // ★숯가마도 같은 2×2 계약
       const furn = placementMode.special === 'furnace_site' || kiln;   // ★노 2×2 발자국(재민 확정 — 사유지 안)
       // ★의뢰 집터의 발자국 규약은 **마을 정본**([cx-5..cx+0]×[cy-5..cy-2], 서버 lifeRequestPlayerSite와 동일)
-      const fx0 = furn ? ccx : (psite ? ccx - 5 : (hut ? ccx - 3 : ccx - 2)), fy0 = furn ? ccy : (psite ? ccy - 5 : (hut ? ccy - 2 : ccy - 1));
-      const fx1 = furn ? ccx + 1 : (psite ? ccx + 0 : (hut ? ccx + 2 : ccx + 2)), fy1 = furn ? ccy + 1 : (psite ? ccy - 2 : (hut ? ccy + 1 : ccy + 1));   // ★노 2×2 = 서버 tryFurnaceStart 규약 동형
+      const smallHut = hut && placementMode.kind === 'small';   // ★[T1392] 간이 움집 3×3 — 커서 칸이 가운데(서버 `_t1392HutStart` 와 같은 자리)
+      let fx0 = furn ? ccx : (psite ? ccx - 5 : (hut ? ccx - 3 : ccx - 2)), fy0 = furn ? ccy : (psite ? ccy - 5 : (hut ? ccy - 2 : ccy - 1));
+      let fx1 = furn ? ccx + 1 : (psite ? ccx + 0 : (hut ? ccx + 2 : ccx + 2)), fy1 = furn ? ccy + 1 : (psite ? ccy - 2 : (hut ? ccy + 1 : ccy + 1));   // ★노 2×2 = 서버 tryFurnaceStart 규약 동형
+      if (smallHut) { fx0 = ccx - 1; fy0 = ccy - 1; fx1 = ccx + 1; fy1 = ccy + 1; }
       const myIso0 = w2i(myAbsPredicted.x, myAbsPredicted.y);
       const pt = (cx2, cy2) => { const i = w2i(cx2 * 32, cy2 * 32); return { x: i.x - myIso0.x + W / 2, y: i.y - myIso0.y + H / 2 - (myFloor || 0) * FLOOR_HEIGHT }; };
       const p1 = pt(fx0, fy0), p2 = pt(fx1 + 1, fy0), p3 = pt(fx1 + 1, fy1 + 1), p4 = pt(fx0, fy1 + 1);
@@ -83,7 +127,7 @@
       ctx.fillStyle = hut ? 'rgba(154,122,74,0.25)' : 'rgba(165,129,63,0.25)'; ctx.fill();
       ctx.setLineDash([5, 4]); ctx.strokeStyle = hut ? '#c9b28a' : '#e0b060'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]);
       ctx.font = 'bold 11px sans-serif'; ctx.fillStyle = '#ffe9b0'; ctx.textAlign = 'center';
-      ctx.fillText(kiln ? '숯가마 2×2 — 사유지 안' : (furn ? `${placementMode.kind === 'bloomery' ? '괴련로' : '노(爐)'} 2×2 — 사유지 안` : (psite ? '마을에 집 의뢰 6×4 (재료 선납)' : (hut ? '움집터 6×4 (수혈 굴착)' : '마을 곳간 5×3 (밀폐)'))), (p1.x + p3.x) / 2, p1.y - 8);
+      ctx.fillText(kiln ? '숯가마 2×2 — 사유지 안' : (furn ? `${placementMode.kind === 'bloomery' ? '괴련로' : '노(爐)'} 2×2 — 사유지 안` : (psite ? '마을에 집 의뢰 6×4 (재료 선납)' : (hut ? (smallHut ? '간이 움집터 3×3 (내 집터 위)' : '움집터 6×4 (수혈 굴착)') : '마을 곳간 5×3 (밀폐)'))), (p1.x + p3.x) / 2, p1.y - 8);
       ctx.textAlign = 'left';
       ctx.restore();
       return;

@@ -1,0 +1,26 @@
+// 손 걷기 운전대 — 존을 띄우고 게스트 하나(어촌2 도착)를 입력 메시지로만 걷게 한다. 명령은 cmd 파일 줄(방향 · 밀리초). 위치는 lot_probe 의 칸.
+const path=require('path'),fs=require('fs');const {spawn}=require('child_process');const ROOT='/root/t1392';
+const WebSocket=require(path.join(ROOT,'node_modules','ws'));const FB=require(path.join(ROOT,'scripts','fixture-boot'));
+const CP=3810,ZP=3820,D='/tmp/t1392/walk';for(const f of ['c.db','z.db'])for(const s of['','-wal','-shm'])try{fs.unlinkSync(path.join(D,f+s))}catch(e){}
+const procs=[];const boot=(f,env)=>{const p=spawn(process.execPath,[path.join(ROOT,'server',f)],{cwd:ROOT,env:Object.assign({},process.env,env),stdio:['ignore','pipe','pipe']});p.stdout.on('data',()=>{});p.stderr.on('data',()=>{});procs.push(p);return p};
+process.on('exit',()=>procs.forEach(p=>{try{p.kill('SIGKILL')}catch(e){}}));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));const log=(s)=>fs.appendFileSync(D+'/out.txt',s+'\n');
+(async()=>{fs.writeFileSync(D+'/out.txt','');fs.writeFileSync(D+'/cmd.txt','');
+const c=boot('central.js',{PORT:String(CP),DB_PATH:D+'/c.db',PUBLIC_HOST:'localhost',ENABLED_ZONES:'hanbando'});
+const z=boot('zone.js',{PORT:String(ZP),ZONE_ID:'hanbando',DB_PATH:D+'/z.db',CENTRAL_URL:`http://localhost:${CP}`,ENABLE_VILLAGES:'1',ENABLE_BANDITS:'0',ENABLE_ROADS:'0',ENABLE_WILDLIFE:'0',VILLAGE_MAX:'4',T1341_OWN_HOUSE:'1',T1392_FIRST_LOT:'1'});
+await FB.waitUp(c,/central server up on/,{name:'c'});await FB.waitUp(z,/zone server up on/,{name:'z',capMs:300000});
+const q=new URLSearchParams({username:'hand1',password:'pw-hand1',name:'hand1',color:'#5a9ae0',start_vid:'2'});
+const ws=new WebSocket(`ws://localhost:${ZP}/?${q}`);let W=null,prev=null,own=null,notes=[];
+ws.on('message',raw=>{const m=JSON.parse(String(raw));if(m.type==='welcome')W=m;else if(m.type==='lot_preview')prev=m;else if(m.type==='onboarding_state'&&m.state)own=m.state.own;else if(m.type==='notice')notes.push(m.text)});
+while(!W)await sleep(100);setInterval(()=>{try{ws.send(JSON.stringify({type:'ping',t:0}))}catch(e){}},5000);
+const S=(o)=>ws.send(JSON.stringify(o));let seq=1;
+const where=async()=>{prev=null;S({type:'lot_probe'});for(let i=0;i<30&&!prev;i++)await sleep(50);return prev};
+S({type:'onboarding_state'});await sleep(1500);
+const p0=await where();log(`START self=${JSON.stringify({x:W.self&&W.self.x,y:W.self&&W.self.y,homeX:W.self&&W.self.homeX})} cell=${p0&&p0.cx},${p0&&p0.cy} own=${JSON.stringify(own)}`);
+let done=0;
+for(;;){await sleep(300);const L=fs.readFileSync(D+'/cmd.txt','utf8').split('\n').filter(Boolean);
+ while(done<L.length){const [cmd,a,b,c2]=L[done++].split(/\s+/);
+  if(cmd==='go'){const vx=+a,vy=+b,ms=+c2;const n=Math.ceil(ms/50);for(let i=0;i<n;i++){S({type:'input',seq:seq++,vx,vy,sprint:false,aim:false});await sleep(50);}S({type:'input',seq:seq++,vx:0,vy:0});await sleep(400);}
+  if(cmd==='quit'){process.exit(0)}
+  const p=await where();log(`${done}: ${L[done-1]} → cell ${p&&p.cx},${p&&p.cy} blocked=${JSON.stringify(p&&p.cells)} notes=${notes.splice(0).join('|').slice(0,120)}`);}
+}})();

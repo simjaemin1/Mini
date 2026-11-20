@@ -1036,6 +1036,7 @@
         if (msg.uiCfg && (msg.uiCfg.hidpi === true || HIDPI > 1)) _t1193Apply();   // ★[T1193] 서버 env `T1193_HIDPI` — 뒤판을 다시 잡는다(칸 없음 · 끔이면 안 부른다)
         if (((uiCfg && uiCfg.coast588) || '') !== _coast588At) { try { precomputeAllWaterTiles(); } catch (e) { console.warn('water tile recompute fail:', e); } }   // ★[T588] 해안 손잡이가 부트 때와 다르면 같은 파일로 다시 굽는다(★T604 추신3 — 클라 기본 'b' = 서버 기본이라 보통 무동작 · 서버 '0' 이면 지금 식으로)
         if (msg.uiCfg && msg.uiCfg.streams) { try { loadStreams(); } catch (e) {} }   // ★[T585] 개울 래스터(존마다 한 번)
+        for (const _sb of document.querySelectorAll('[data-action="small_hut_start"]')) _sb.style.display = (uiCfg && uiCfg.firstLot) ? '' : 'none';   // ★[T1392] 간이 움집 단추 — 서버 손잡이(`T1392_FIRST_LOT`)가 켰을 때만
         for (const _wb of document.querySelectorAll('[data-action="well_start"]')) _wb.style.display = (uiCfg && uiCfg.wellAct) ? '' : 'none';   // ★[T557] 우물 버튼 — 서버 손잡이(`T509_WELL`)가 정한다
         if (msg.tools) tools = msg.tools;
         if (Array.isArray(msg.toolItems)) toolItems = msg.toolItems;
@@ -1350,6 +1351,8 @@
         window.__simVillageAdds = (window.__simVillageAdds | 0) + 1;
         needsRedraw = true;
       }
+    } else if (msg.type === 'lot_preview') {
+      lotPreviewOnMsg(msg, c);   // ★[T1392] 첫 집터 아홉 칸 미리보기(서버 판정 그대로)
     } else if (msg.type === 'claim_state') {
       // ★[T45] 부재 상태 전이 — **한 칸만 갈아 끼운다**(레코드를 다시 보내지 않는다).
       //   판정은 서버가 다 했다. 클라는 색만 바꾼다(`34-m-renderloop.js`).

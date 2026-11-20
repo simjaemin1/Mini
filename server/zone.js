@@ -6533,7 +6533,8 @@ Onboarding.init({ SimVillages, terrain: _terrain, ZONE, ZONE_ID, db: db.db, send
   //   가까운 나무 · 바위 = 자연물 동사 술어(`_t1065ResKind` — 벌목 · 채석) + 살아 있음 · 집터 값 = `CLAIM_COST.personal` · 인정 = T1137 `isRecognized` · 문턱 = `MEMBER_N`.
   nearRes: (kind, x, y) => _t1341NearRes(kind, x, y),
   isRecognized: (p, vid) => Membership.isRecognized(p, vid),
-  get claimCost() { return CLAIM_COST.personal; },   // 늦게 읽는다(이 표는 파일 아래에서 선다)
+  get claimCost() { return T1392_FIRST_LOT ? _t1392Cost() : CLAIM_COST.personal; },   // 늦게 읽는다(이 표는 파일 아래에서 선다) · ★[T1392] 켬 — 제 집 줄기의 집터 = 첫 집터(아홉 칸 · 한 칸 값 × 4)
+  get firstLot() { return T1392_FIRST_LOT; },   // ★[T1392] 켬 — 제 집 줄기 칸에 갈대 자리(이엉 · 결속 풀)를 싣는다
   get memberNeed() { return Membership.CFG.N_MEMBER; },
   // ★[T115] 함께 도착 — 이름으로 물어 **vid → 벗 수**를 낸다. 세는 정본은 `friends.js` 하나다.
   //   ⚠못 물어보면 `null` 이고 시작 화면은 친구 칸 0 으로 그대로 뜬다(막지 않는다).
@@ -8235,6 +8236,7 @@ async function _acceptConnection(ws, req, C) {
       ...(process.env.T1020_STOP_MENU !== '0' ? { stopMenu: true } : {}),   // [T1020 · 켬 기본 후보] 맥락 메뉴의 "… 멈추기" 줄은 **누를 때도 멈추기만** 한다(46-h-verbs · 메뉴를 연 뒤 반복이 저절로 멎었으면 새로 시작하지 않는다) · 되돌림 `T1020_STOP_MENU=0` 이면 칸이 없다(옛 토글)
       ...(process.env.T1064_NEXT_STEP !== '0' ? { nextStep: true } : {}),   // [T1064 · 켬 기본 후보] 「지금 할 일」 칸 하나 — 서버가 이미 보내는 대본 상태(onboarding_state · 촌장 첫 인사 · 도착 기록)에서 클라가 다음 행동 한 줄과 그 쪽을 지도 판 밑에 그린다(70-lobby `onbNextRender` · 서버 동작 무변) · 되돌림 `T1064_NEXT_STEP=0` 이면 칸이 없다(옛 welcome · 종전 화면)
       ...(process.env.T1086_FIRST_JOIN !== '0' ? { firstJoin: { cost: CLAIM_COST.personal } } : {}),
+      ...(T1392_FIRST_LOT ? { firstLot: _t1392Cfg() } : {}),   // ★[T1392] 켬 — 첫 집터(한 변 · 값) · 움집 공정 표 둘(간이 · 6×4) · 움집 재료 레시피(서버 표를 옮긴 꼴 · 클라 상수 0)
       ...(process.env.T1204_NOW_WORDS !== '0' ? { nowWords: { cell: BUILDING_SIZE, near: 10 } } : {}),   // [T1204 · 켬 기본 — ★재민 11-07 문 29 ⓑ] 「지금 할 일」 칸이 화살 대신 글로 방위 · 걸음(방위말 `public/dir-word.js` 정본 · 걸음 = 셀 거리 — 1셀 = `BUILDING_SIZE` px = 1m = 한 걸음 · `near` 걸음 안이면 "바로 앞"(카드 T1204 ②) · 쉼터 자리는 온보딩 상태 · 인사의 `shelter` 칸 · `=0` = 종전 화살)
       ...(T1120_NEXT_TOOL ? { nextTool: _t1120Cfg() } : {}),   // [T1120 · 켬 기본 후보] 다음 막힘 — 거절 알림의 `need` 칸을 「지금 할 일」이 잇는 데 쓰는 표(도구 문 `T1065_NEED` · 재료 → 그 일 · 자연물 — 서버 정본을 옮긴 꼴 · 클라 상수 0) · 되돌림 `T1120_NEXT_TOOL=0` 이면 칸이 없다(옛 welcome · T1064 · T1086 칸 그대로)   // [T1086 · 켬 기본 후보] 첫 의뢰 = 빈터 + 마을 사람 권함(onboarding · membership) — 「지금 할 일」 칸이 가입 · 터 잡기 · 집 짓기 단계와 단추를 낸다 · 터 값은 서버 정본(`CLAIM_COST.personal` — 클라 상수 0) · 되돌림 `T1086_FIRST_JOIN=0` 이면 칸 없음(종전 K-2 · T1064 칸)
       ...(T1126_ROCK_YIELD ? { rockYield: { n: RESOURCE_HP_TABLE.rock } } : {}),   // [T1126 · 켬 기본 후보] 바위 하나 = 돌 n 개(hp 한 점 = 돌 하나) — 클라가 남은 hp 비율로 바위 그림을 줄인다(단계 셋 · 새 그림 0) · 되돌림 `T1126_ROCK_YIELD=0` 이면 칸 없음(종전 그림)
@@ -8502,7 +8504,8 @@ function handlePlayerInput(player, raw) {
   else if (msg.type === 'chest_take') tryChestTake(player, msg.buildingId, msg.item, +msg.amount || 1);
   else if (msg.type === 'build_guild_granary') tryBuildGuildGranary(player, +msg.atX, +msg.atY);   // ★길드 곳간 실물화[사용자 확정 — 커서 배치]
   else if (msg.type === 'request_village_house') tryRequestVillageHouse(player, +msg.atX, +msg.atY);   // ★[11차 T4] 마을 크루에게 집 짓기 의뢰(재료 선납)
-  else if (msg.type === 'hut_start') tryHutStart(player, +msg.atX, +msg.atY);   // ★움집 고증 건축 ①굴착(커서 배치)
+  else if (msg.type === 'hut_start') tryHutStart(player, +msg.atX, +msg.atY, msg.kind);   // ★움집 고증 건축 ①굴착(커서 배치) · ★[T1392] kind 'small' = 간이 움집(켬만)
+  else if (msg.type === 'lot_probe') _t1392Probe(player);   // ★[T1392] 첫 집터 아홉 칸 미리보기(켬만 · 끔 = 무동작)
   else if (msg.type === 'hut_advance') tryHutAdvance(player, msg.buildingId);   // ★움집 고증 건축 ②~④
   else if (msg.type === 'furnace_start') tryFurnaceStart(player, +msg.atX, +msg.atY, msg.kind);     // ★노 건설 ①(사유지 필수 — 재민 확정) · kind=도가니로/괴련로(시대 게이트)
   else if (msg.type === 'furnace_advance') tryFurnaceAdvance(player, msg.buildingId);      // ★노 건설 ②③·완공
@@ -11668,6 +11671,7 @@ function _t1065RockNear(x, y, rad) {
 //   술어 = 자연물 동사 정본(`_t1065ResKind`) + 그 동사의 원재료 개체(나무 · 바위 — 묘목 · 광맥 · 운석은 집터 값의 나무 · 돌이 아니다) · 반경은 넓혀 가며(가까운 것부터).
 const _T1341_RAD = [480, 1200, 2400, 4800];
 function _t1341NearRes(kind, x, y) {
+  if (kind === 'reed') return _t1392NearReed(x, y);   // ★[T1392] 켬만 부른다 — 갈대(풀) 자리
   const want = kind === 'chop' ? 'tree' : kind === 'quarry' ? 'rock' : null;
   if (!want || !Number.isFinite(x) || !Number.isFinite(y)) return null;
   for (const rad of _T1341_RAD) {
@@ -11679,6 +11683,23 @@ function _t1341NearRes(kind, x, y) {
       if (d <= rad && d < bd) { bd = d; best = r; }
     }
     if (best) return { x: best.x, y: best.y, id: best.id };
+  }
+  return null;
+}
+// ★[T1392] 가까운 갈대 자리 — 맨손 E 가 풀(`fiber`)을 내는 칸(채집 정본 `Forage.sourceAt` 이 그 칸을 '갈대 군락'으로 읽는 것 · 사본 0).
+//   선 칸에서 고리로 넓혀 가며 찾는다(가장 먼 고리 = `_T1341_RAD` 끝). 걸을 수 없는 칸은 건너뛴다.
+function _t1392NearReed(x, y) {
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  const S = BUILDING_SIZE, cx = Math.floor(x / S), cy = Math.floor(y / S), R = Math.ceil(_T1341_RAD[_T1341_RAD.length - 1] / S);
+  const ctx = { forestMult: () => 1, isRock: (a, b) => isRockTileLocal(a, b), isWater: (a, b) => isWaterTileLocal(a, b), isSea: (a, b) => isSeaTileLocal(a, b), hasVessel: false };
+  for (let r = 0; r <= R; r++) {
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+      const px = (cx + dx) * S + S / 2, py = (cy + dy) * S + S / 2;
+      if (isTerrainBlockedLocal(px, py)) continue;
+      const src = Forage.sourceAt(px, py, ctx);
+      if (src && src.kind === 'fiber') return { x: px, y: py };
+    }
   }
   return null;
 }
@@ -12229,6 +12250,103 @@ function countMyClaims(playerId) {
   return { personal: p, temporary: t, guild: g };
 }
 
+// ★★[T1392 · ★재민 11-19 판정 9] 첫 집터 = 3×3 한 덩이 · 값 = 한 칸 값의 4배 · 간이 움집 3×3 · 온보딩의 끝 = 간이 움집 완공.
+//   손잡이 `T1392_FIRST_LOT`('1' 만 켬 · ★기본 끔 · 끔 = 종전 바이트 — 이 줄들은 켬에서만 불린다).
+//   수 둘은 재민의 것(한 변 3 · 값 4배) — 값은 `CLAIM_COST.personal` 에서 유도(따로 박지 않는다).
+//   첫 등록 = 살아 있는(돌봄 `free` 아닌) 내 개인 칸이 0 인 사람(다 풀린 사람이 다시 잡을 때도 첫 등록 — 보고 T1392 회부).
+//   ★칸 행은 한 칸씩 아홉 행이다 — 돌봄(`deeds.js`)의 N · 청크가 행을 칸으로 센다(`_t1332MyChunks`) · 인접 · 내놓기(`claims.js`)도 칸 행 그대로.
+const T1392_FIRST_LOT = process.env.T1392_FIRST_LOT === '1';
+const T1392_SIDE = 3, T1392_MULT = 4;   // ★재민 11-19 "첫 땅은 무조건 3x3 단위로만" · "9배 말고 4배 정도만"
+function _t1392Cost() { const c = CLAIM_COST.personal; return { wood: c.wood * T1392_MULT, stone: c.stone * T1392_MULT }; }
+function _t1392Cfg() {
+  const HS = HutStages, row = (st) => ({ need: Object.assign({}, st.need || {}), tool: st.tool || null, label: st.label });
+  const rc = {}; for (const [k, r] of Object.entries(HS.HUT_RECIPES)) rc[k] = { from: Object.assign({}, r.from), to: Object.assign({}, r.to), tool: r.requiresTool || null };
+  return { side: T1392_SIDE, cost: _t1392Cost(), stages: { small: HS.SMALL_STAGES.map(row), big: HS.HUT_STAGES.map(row) }, recipes: rc };
+}
+function _t1392IsFirst(pid) {
+  for (const c of claims.values()) if (c.ownerPid === pid && c.kind === 'personal' && (c.state || 'active') !== 'free') return false;
+  return true;
+}
+const _T1392_DIR = [['북서', '북', '북동'], ['서', '가운데', '동'], ['남서', '남', '남동']];
+const _T1392_WHY = { claim: '남의 땅', mine: '풀린 내 땅', water: '물', rock: '바위', ditch: '도랑', village: '마을 시설', building: '건물' };
+//   선 칸(cx, cy)을 가운데로 한 아홉 칸 — 칸마다 막힌 까닭(없으면 null). 문(영토 · 인정)은 따로(`_t1392Check`).
+function _t1392Cells(pid, cx, cy) {
+  const S = BUILDING_SIZE, h = (T1392_SIDE - 1) / 2, out = [];
+  const near = qtBuildings ? qtBuildings.queryCircle(cx * S + S / 2, cy * S + S / 2, S * 3) : Array.from(buildings.values());
+  for (let dy = -h; dy <= h; dy++) for (let dx = -h; dx <= h; dx++) {
+    const x = cx + dx, y = cy + dy, px = x * S + S / 2, py = y * S + S / 2;
+    let why = null;
+    for (const c of claims.values()) {
+      if (c.kind === 'guild' || !(px >= c.x && px < c.x + c.w && py >= c.y && py < c.y + c.h)) continue;
+      if (!Claims.cellsOf(c).some(([qx, qy]) => qx === x && qy === y)) continue;   // 셀 집합이 정본
+      why = c.ownerPid === pid ? 'mine' : 'claim'; break;
+    }
+    if (!why && isTerrainBlockedLocal(px, py)) why = isWaterTileLocal(px, py) ? 'water' : (isRockTileLocal(px, py) ? 'rock' : 'ditch');
+    if (!why) for (const b of near) {
+      if ((b.floor || 0) !== 0) continue;
+      if (Math.floor(b.x / S) === x && Math.floor(b.y / S) === y) { why = isVillageTaggedBuilding(b) ? 'village' : 'building'; break; }
+    }
+    out.push({ dx, dy, x, y, why });
+  }
+  return out;
+}
+//   아홉 칸 판정 한 벌 — { cx, cy, cells, bad:[칸], gate:문 거절 | null, text:거절 한 줄 | null }
+function _t1392Check(player) {
+  const S = BUILDING_SIZE, cx = Math.floor(player.x / S), cy = Math.floor(player.y / S);
+  const cells = _t1392Cells(player.playerId, cx, cy), bad = cells.filter((c) => c.why);
+  let gate = null;
+  if (!bad.length) for (const c of cells) { gate = _claimGate(player, 'personal', c.x * S + S / 2, c.y * S + S / 2, Deeds.ON); if (gate) break; }
+  let text = null;
+  if (bad.length) {
+    const g = new Map(); for (const c of bad) { const k = _T1392_WHY[c.why]; if (!g.has(k)) g.set(k, []); g.get(k).push(_T1392_DIR[c.dy + 1][c.dx + 1]); }
+    text = `집터는 선 자리를 가운데로 아홉 칸(3×3)을 한 번에 잡습니다. ${[...g].map(([k, d]) => `${d.join(' · ')} 칸은 ${k}`).join(', ')}입니다. 아홉 칸이 다 빈 자리에 서서 다시 잡으십시오.`;
+  } else if (gate) text = gate.text;
+  return { cx, cy, cells, bad, gate, text };
+}
+//   첫 집터 — 아홉 칸 한 덩이(하나라도 막히면 통째로 거절) · 값 = 한 칸 값 × 4. 둘째 등록부터는 종전(`tryClaim` 아래 줄 그대로).
+function _t1392FirstLot(player) {
+  const S = BUILDING_SIZE, cost = _t1392Cost(), K = _t1392Check(player);
+  if (K.text) {
+    send(player.ws, Object.assign({ type: 'notice', text: K.text, kind: 'claim' }, K.bad.length ? { need: { lot: K.bad.map((c) => [c.dx, c.dy, c.why]) } } : {}));
+    return;
+  }
+  if ((player.inventory.wood || 0) < cost.wood || (player.inventory.stone || 0) < cost.stone) {
+    send(player.ws, { type: 'notice', text: `재료가 모자랍니다(나무 ${cost.wood}, 돌 ${cost.stone}).`, kind: 'claim' });
+    return;
+  }
+  if (Deeds.ON) { try { _t1343Advance(player.playerId, _t1332Clock()); } catch (e) {} }   // ★[T1343] N 이 바뀌기 앞 셈
+  player.inventory.wood -= cost.wood;
+  player.inventory.stone -= cost.stone;
+  const made = [];
+  for (const c of K.cells) {
+    const id = `c${nextClaimId++}`;
+    const claim = { id, ownerPid: player.playerId, ownerName: player.name, x: c.x * S, y: c.y * S, w: S, h: S, kind: 'personal',
+      guildTribeId: null, guildTribeName: null, createdAt: Date.now() };
+    if (Deeds.ON) claim.care = 'new';
+    claims.set(id, claim);
+    claim.dbId = db.insertClaim({ owner_id: player.playerId, owner_name: player.name, x: claim.x, y: claim.y, w: S, h: S,
+      kind: 'personal', guild_tribe_id: null, state: 'active', held_by: null });
+    made.push(claim);
+  }
+  if (Deeds.ON) for (const c of made) _t1332Use(player, c.x + S / 2, c.y + S / 2, 'claim', Deeds.CFG.PT);   // 새 칸은 가득(+PT) — 칸마다(종전 한 칸 선포와 같은 셈)
+  savePlayer(player);
+  sendInventory(player);
+  const _N = made.length + (Deeds.ON ? _t1343Others(player.playerId) : 0), _f = (d) => (d >= 10 ? Math.round(d) : +d.toFixed(1));
+  send(player.ws, { type: 'notice', kind: 'claim', text: `개인 사유지 아홉 칸(3×3)을 두었습니다(나무 ${cost.wood} · 돌 ${cost.stone}${Deeds.ON ? ` · 내 땅 ${_N}칸 — 안 돌보면 버티는 날 ${_f(Deeds.daysOf(_N))}일` : ''}). 이제 이 터에 간이 움집을 지을 수 있습니다.` });
+  for (const c of made) broadcast({ type: 'claim_added', claim: c });
+  try { Onboarding.pushOwn(player); } catch (e) {}
+}
+//   C 를 누르기 전 미리보기 — 클라가 칸을 옮길 때 묻는다(판정은 이 한 벌 · 클라 재계산 0). 첫 등록이 아니면 { first: false }.
+function _t1392Probe(player) {
+  if (!T1392_FIRST_LOT || !player || !player.ws) return;
+  const now = Date.now();
+  if (player._t1392At && now - player._t1392At < 200) return;
+  player._t1392At = now;
+  if (!_t1392IsFirst(player.playerId)) { send(player.ws, { type: 'lot_preview', first: false }); return; }
+  const K = _t1392Check(player);
+  send(player.ws, { type: 'lot_preview', first: true, cx: K.cx, cy: K.cy, side: T1392_SIDE, cost: _t1392Cost(),
+    cells: K.bad.map((c) => [c.dx, c.dy, c.why]), gate: K.gate ? K.gate.text : null });
+}
 // 14.18.b — guild_tribe_id 기준 영토 검색. 위치가 내 길드 영토 안인지.
 function findGuildClaimContaining(x, y, tribeId) {
   if (!tribeId) return null;
@@ -12242,6 +12360,7 @@ function findGuildClaimContaining(x, y, tribeId) {
 
 function tryClaim(player, kind = 'personal') {
   if (!['personal', 'temporary', 'guild'].includes(kind)) kind = 'personal';
+  if (T1392_FIRST_LOT && kind === 'personal' && _t1392IsFirst(player.playerId)) return _t1392FirstLot(player);   // ★[T1392] 켬 — 첫 등록 = 아홉 칸 한 덩이
   const cost = CLAIM_COST[kind];
   // 길드 사유지: 리더만 + 길드 소속 필수
   //   ★[T786 C11] T785 켬 — 길드 사유지는 **마을 땅**(그 마을 영토)으로 접혔다 · 따로 놓는 문은 닫는다(영토는 마을이 넓힌다).
@@ -12358,47 +12477,8 @@ function tryClaim(player, kind = 'personal') {
     }
   }
 
-  // 개인 사유지(personal)는 자기 길드의 길드 영토 안에만 설치 가능
-  // ★[온보딩 v2 §9.5] 예외 하나 — **마을 어귀 빈터**. 누적 기여를 채운 사람은 그 구역에서만 길드 요건이 면제된다(구역 밖은 종전 그대로).
-  const _onbLot = Onboarding.vacantLotAllows(player, cx + SZ / 2, cy + SZ / 2);
-  // ★★[T1305 · 재민 11-13 확정] 켬 — **사유지는 마을과 무관하다.** 마을 영토 밖(빈 들) = 누구나(가입 무관) · 영토 안 = 그 마을 인정 구성원만(T1137 문 그대로).
-  //   남의 사유지 · 다른 종류 겹침 거절은 위 겹침 검사 그대로 · 인접(변 맞댐)도 위 그대로. 끔 = 아래 종전 두 갈래 그대로.
-  //   ★★[T1341 · ★재민 11-16 "그거로 플레이어 사유지를 지을 수 있도록"] 켬 — 사유지 캐논(재민 11-13)의 선포 문만 이 손잡이 안에서 연다(돌봄 `T1305_DEEDS` 는 그대로 꺼 둔다):
-  //     영토 밖 빈 들 = 누구나(가입 무관) · 영토 안 = 그 마을 인정 구성원만 — 문 술어는 T1305 의 그것 하나(`_t1305Gate` · 사본 0). 시작 마을 어귀 빈터(`_onbLot` — 켬이면 "받아들여진 뒤")도
-  //     같은 문을 지난다(빈터 예외는 이제 인접 면제뿐). 글자는 이모지 없이(먹선 · 문 술어의 🏠 머리만 뗀다).
-  if (_T1341_ON && kind === 'personal' && !_t1305P) {
-    const _g = _t1305Gate(player, cx + SZ / 2, cy + SZ / 2);
-    if (!_g.ok) { send(player.ws, { type: 'notice', text: String(_g.why).replace(/^🏠 /, ''), kind: 'claim' }); return; }
-  } else
-  if (_t1305P && !_onbLot) {
-    const _g = _t1305Gate(player, cx + SZ / 2, cy + SZ / 2);
-    if (!_g.ok) { send(player.ws, { type: 'notice', text: _g.why }); return; }
-  } else
-  if (kind === 'personal' && !_onbLot && VillageKin.ON) {   // ★[T786 C12] 켬 — 개인 사유지는 **내 마을 땅** 안에만(종전 "내 길드 영토")
-    if (!_kinMyLand(player, cx + SZ / 2, cy + SZ / 2)) { send(player.ws, { type: 'notice', text: '개인 사유지는 내 마을 땅 안에만 둘 수 있습니다. 마을 사람이 되거나 임시 사유지(T)를 쓰십시오.' }); return; }
-    //   ★★[T1137] 켬 — 영토 안 집터(새로 · 넓히기)는 **인정 구성원**만(가입만으로는 안 된다 · 탈퇴해도 잡아 둔 땅은 그대로 — 이 문은 새로 잡는 것만 막는다).
-    //     영토 밖 들판 빈터(온보딩 빈터 권리 `_onbLot`)는 위 갈래 밖이라 종전 그대로다(첫 30분 움집 흐름 무변).
-    if (Membership.T1137) {
-      const _mv = _kinVilOf(player);
-      if (!(_mv && Membership.isRecognized(player, _mv.dbId | 0))) {
-        const _left = Math.max(0, Membership.CFG.N_MEMBER - Membership.contribOf(player.playerId));
-        send(player.ws, { type: 'notice', text: `🏠 영토 안 집터는 구성원으로 인정된 사람만 잡을 수 있습니다. 마을 부탁을 ${_left}건 더 채우십시오.` });
-        return;
-      }
-    }
-  } else
-  if (kind === 'personal' && !_onbLot) {
-    if (!player.tribeId) {
-      send(player.ws, { type: 'notice', text: '개인 사유지는 마을 땅 안에만 둘 수 있습니다. 마을에 들거나 임시 사유지(T)를 쓰십시오.' });
-      return;
-    }
-    const myGuildArea = findGuildClaimContaining(cx + SZ/2, cy + SZ/2, player.tribeId);
-    if (!myGuildArea) {
-      send(player.ws, { type: 'notice', text: '개인 사유지는 내 마을 땅 안에서만 둘 수 있습니다.' });
-      return;
-    }
-  }
-
+  // 개인 사유지(personal)는 자기 길드의 길드 영토 안에만 설치 가능 — 문 한 벌은 `_claimGate`(★[T1392] 첫 집터 아홉 칸도 같은 문을 칸마다 지난다 · 사본 0 · 글자 · 차례 무변)
+  { const _gate = _claimGate(player, kind, cx + SZ / 2, cy + SZ / 2, _t1305P); if (_gate) { send(player.ws, Object.assign({ type: 'notice' }, _gate)); return; } }
   player.inventory.wood -= cost.wood;
   player.inventory.stone -= cost.stone;
 
@@ -12431,6 +12511,49 @@ function tryClaim(player, kind = 'personal') {
   broadcast({ type: 'claim_added', claim });
 }
 
+// ★[T1392] 개인 사유지 선포 문 한 벌(종전 `tryClaim` 안 갈래를 그대로 옮긴 것 — 글자 · 차례 · 갈래 무변) — 거절이면 알림 몸 { text, kind? } · 지나면 null.
+//   종전 한 칸 선포와 첫 집터 아홉 칸이 같은 이 문을 칸마다 부른다(사본 0).
+function _claimGate(player, kind, px, py, _t1305P) {
+  // 개인 사유지(personal)는 자기 길드의 길드 영토 안에만 설치 가능
+  // ★[온보딩 v2 §9.5] 예외 하나 — **마을 어귀 빈터**. 누적 기여를 채운 사람은 그 구역에서만 길드 요건이 면제된다(구역 밖은 종전 그대로).
+  const _onbLot = Onboarding.vacantLotAllows(player, px, py);
+  // ★★[T1305 · 재민 11-13 확정] 켬 — **사유지는 마을과 무관하다.** 마을 영토 밖(빈 들) = 누구나(가입 무관) · 영토 안 = 그 마을 인정 구성원만(T1137 문 그대로).
+  //   남의 사유지 · 다른 종류 겹침 거절은 위 겹침 검사 그대로 · 인접(변 맞댐)도 위 그대로. 끔 = 아래 종전 두 갈래 그대로.
+  //   ★★[T1341 · ★재민 11-16 "그거로 플레이어 사유지를 지을 수 있도록"] 켬 — 사유지 캐논(재민 11-13)의 선포 문만 이 손잡이 안에서 연다(돌봄 `T1305_DEEDS` 는 그대로 꺼 둔다):
+  //     영토 밖 빈 들 = 누구나(가입 무관) · 영토 안 = 그 마을 인정 구성원만 — 문 술어는 T1305 의 그것 하나(`_t1305Gate` · 사본 0). 시작 마을 어귀 빈터(`_onbLot` — 켬이면 "받아들여진 뒤")도
+  //     같은 문을 지난다(빈터 예외는 이제 인접 면제뿐). 글자는 이모지 없이(먹선 · 문 술어의 🏠 머리만 뗀다).
+  if (_T1341_ON && kind === 'personal' && !_t1305P) {
+    const _g = _t1305Gate(player, px, py);
+    if (!_g.ok) return { text: String(_g.why).replace(/^🏠 /, ''), kind: 'claim' };
+  } else
+  if (_t1305P && !_onbLot) {
+    const _g = _t1305Gate(player, px, py);
+    if (!_g.ok) return { text: _g.why };
+  } else
+  if (kind === 'personal' && !_onbLot && VillageKin.ON) {   // ★[T786 C12] 켬 — 개인 사유지는 **내 마을 땅** 안에만(종전 "내 길드 영토")
+    if (!_kinMyLand(player, px, py)) return { text: '개인 사유지는 내 마을 땅 안에만 둘 수 있습니다. 마을 사람이 되거나 임시 사유지(T)를 쓰십시오.' };
+    //   ★★[T1137] 켬 — 영토 안 집터(새로 · 넓히기)는 **인정 구성원**만(가입만으로는 안 된다 · 탈퇴해도 잡아 둔 땅은 그대로 — 이 문은 새로 잡는 것만 막는다).
+    //     영토 밖 들판 빈터(온보딩 빈터 권리 `_onbLot`)는 위 갈래 밖이라 종전 그대로다(첫 30분 움집 흐름 무변).
+    if (Membership.T1137) {
+      const _mv = _kinVilOf(player);
+      if (!(_mv && Membership.isRecognized(player, _mv.dbId | 0))) {
+        const _left = Math.max(0, Membership.CFG.N_MEMBER - Membership.contribOf(player.playerId));
+        return { text: `🏠 영토 안 집터는 구성원으로 인정된 사람만 잡을 수 있습니다. 마을 부탁을 ${_left}건 더 채우십시오.` };
+      }
+    }
+  } else
+  if (kind === 'personal' && !_onbLot) {
+    if (!player.tribeId) {
+      return { text: '개인 사유지는 마을 땅 안에만 둘 수 있습니다. 마을에 들거나 임시 사유지(T)를 쓰십시오.' };
+    }
+    const myGuildArea = findGuildClaimContaining(px, py, player.tribeId);
+    if (!myGuildArea) {
+      return { text: '개인 사유지는 내 마을 땅 안에서만 둘 수 있습니다.' };
+    }
+  }
+
+  return null;
+}
 // 14.18 사유지 해제 — 슬롯 회수 + 위치 옮기기용
 function tryUnclaim(player, claimId) {
   const c = claims.get(claimId);
@@ -13440,7 +13563,7 @@ function _liveBuildRow(type, x, y, data, ownerId, ownerName, made) {
 //   완공 실체 = NPC 움집과 동일 6×4(벽=변·남벽 2칸 문·바닥). 발자국 [gx-3..gx+2]×[gy-4..gy-1](시전자 북쪽 — 갇힘 방지), 문 = 남벽 중앙 2칸.
 //   ★[T400] 공정 표의 정본은 `server/hut-stages.js` 다 — 이 파일은 그 표를 **부른다**(사본 0 · 값·순서 무변).
 const HUT_STAGES = HutStages.HUT_STAGES;
-function tryHutStart(player, atX, atY) {
+function tryHutStart(player, atX, atY, kind) {
   const SZg = BUILDING_SIZE;
   let x0, y0, x1, y1;
   if (Number.isFinite(atX) && Number.isFinite(atY)) {
@@ -13455,6 +13578,7 @@ function tryHutStart(player, atX, atY) {
   }
   const st = HUT_STAGES[0];
   if (!hasTool(player, st.tool)) { send(player.ws, { type: 'notice', text: `${st.label}에는 곡괭이가 있어야 합니다.`, ..._t1120N({ tool: st.tool }) }); return; }   // ★[T1120] 가질 도구(켬만)
+  if (T1392_FIRST_LOT && kind === 'small') return _t1392HutStart(player, atX, atY);   // ★[T1392] 켬 — 간이 움집 3×3(내 땅 아홉 칸 위에만 · 거리 · 곡괭이 문은 위 두 줄 그대로 — 간이 표 ① 도 곡괭이 · 같은 글)
   for (let x = x0 - 1; x <= x1 + 1; x++) for (let y = y0 - 1; y <= y1 + 1; y++) {
     const px = x * SZg + SZg / 2, py = y * SZg + SZg / 2;
     if (isTerrainBlockedLocal(px, py)) { send(player.ws, { type: 'notice', text: '물·바위를 피해서 파야 합니다' }); return; }
@@ -13478,6 +13602,46 @@ function tryHutStart(player, atX, atY) {
   broadcast({ type: 'building_added', building: bo });
   send(player.ws, { type: 'notice', text: `⛏️ ${st.label}을(를) 마쳤습니다. 다음은 ${HUT_STAGES[1].label}입니다. 움집터를 누르십시오.` });
   console.log(`[${ZONE_ID}] ⛏️ ${player.name} 움집터 굴착 [${x0}..${x1}]×[${y0}..${y1}]`);
+}
+// ★★[T1392 · ★재민 11-19 "3x3 소형 간이 움집"] 간이 움집 터파기 — 발자국 3×3 = **내 땅 아홉 칸 그 자리**(간이 움집은 내 땅 밖에 안 선다).
+//   커서 칸을 가운데로 한 3×3 이 다 내 살아 있는 개인 칸이면 거기 · 아니면 커서 칸을 품는 3×3 가운데 다 내 땅인 것(커서 칸 둘레 여덟 가운데 순서대로) — 없으면 거절.
+//   문 = 남벽 가운데 1칸(문 앞 바깥 한 칸은 걸을 수 있어야 한다) · 공정 표 = `hut-stages.js` 간이 움집 표(6×4 표에서 유도 · 사본 0).
+//   6×4 움집 자리 문(남의 땅만 아니면)은 이 카드에서 안 바꾼다(보고 T1392 회부).
+function _t1392Mine(pid, x, y) {
+  const S = BUILDING_SIZE, px = x * S + S / 2, py = y * S + S / 2;
+  for (const c of claims.values()) {
+    if (c.ownerPid !== pid || c.kind !== 'personal' || (c.state || 'active') === 'free') continue;
+    if (!(px >= c.x && px < c.x + c.w && py >= c.y && py < c.y + c.h)) continue;
+    if (Claims.cellsOf(c).some(([qx, qy]) => qx === x && qy === y)) return true;
+  }
+  return false;
+}
+function _t1392HutStart(player, atX, atY) {
+  const S = BUILDING_SIZE, h = (T1392_SIDE - 1) / 2, ST = HutStages.SMALL_STAGES, st = ST[0];
+  const ax = Number.isFinite(atX) ? atX : player.x, ay = Number.isFinite(atY) ? atY : player.y;   // 거리 · 곡괭이 문은 `tryHutStart` 머리(6×4 와 같은 두 줄)가 이미 지났다
+  const ccx = Math.floor(ax / S), ccy = Math.floor(ay / S);
+  const all = (cx, cy) => { for (let dy = -h; dy <= h; dy++) for (let dx = -h; dx <= h; dx++) if (!_t1392Mine(player.playerId, cx + dx, cy + dy)) return false; return true; };
+  let ctr = null;
+  for (const [dx, dy] of [[0, 0], [0, -1], [0, 1], [-1, 0], [1, 0], [-1, -1], [1, -1], [-1, 1], [1, 1]]) if (all(ccx + dx, ccy + dy)) { ctr = [ccx + dx, ccy + dy]; break; }
+  if (!ctr) { send(player.ws, { type: 'notice', text: '간이 움집은 내 땅 아홉 칸(3×3) 위에만 지을 수 있습니다. 내 집터 가운데를 고르십시오.' }); return; }
+  const x0 = ctr[0] - h, y0 = ctr[1] - h, x1 = ctr[0] + h, y1 = ctr[1] + h, doorX = x0 + h;
+  for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) {
+    if (isTerrainBlockedLocal(x * S + S / 2, y * S + S / 2)) { send(player.ws, { type: 'notice', text: '물·바위를 피해서 파야 합니다' }); return; }
+  }
+  if (isTerrainBlockedLocal(doorX * S + S / 2, (y1 + 1) * S + S / 2)) { send(player.ws, { type: 'notice', text: '문 앞(남쪽 가운데 바깥 한 칸)이 막혀 있어 드나들 수 없습니다.' }); return; }
+  const near = qtBuildings ? qtBuildings.queryCircle((ctr[0] + 0.5) * S, (ctr[1] + 0.5) * S, S * 4) : Array.from(buildings.values());
+  for (const b of near) {
+    if ((b.floor || 0) !== 0) continue;
+    const bx = Math.floor(b.x / S), by = Math.floor(b.y / S);
+    if (bx >= x0 && bx <= x1 && by >= y0 && by <= y1) { send(player.ws, { type: 'notice', text: '자리에 다른 건축물이 있습니다' }); return; }
+  }
+  consumeToolByType(player, st.tool, st.wear || 1);
+  const data = { stage: 1, x0, y0, x1, y1, owner: player.playerId, floor: 0, small: 1 };
+  const bo = _liveBuildRow('hut_site', (x0 + x1 + 1) / 2 * S, (y0 + y1 + 1) / 2 * S, data, player.playerId, `${player.name}의 간이 움집터`, null);
+  broadcast({ type: 'building_added', building: bo });
+  send(player.ws, { type: 'notice', text: `⛏️ ${st.label}을(를) 마쳤습니다. 다음은 ${ST[1].label}입니다. 움집터를 누르십시오.` });
+  try { Onboarding.pushOwn(player); } catch (e) {}
+  console.log(`[${ZONE_ID}] ⛏️ ${player.name} 간이 움집터 굴착 [${x0}..${x1}]×[${y0}..${y1}]`);
 }
 // ★★[11차 T4] 마을 NPC 크루에게 집 짓기를 의뢰한다 — 랩 10차 B안의 서버 접점.
 //   대가 = **재료 선납**(사용자 확정). 움집 4단계의 중간재 3종을 지정 시점에 한 번에 낸다.
@@ -13514,7 +13678,8 @@ function tryHutAdvance(player, buildingId) {
   if (Math.hypot(b.x - player.x, b.y - player.y) > 120) { send(player.ws, { type: 'notice', text: '움집터에서 너무 멀리 있습니다' }); return; }
   if (b.data.owner !== player.playerId) { send(player.ws, { type: 'notice', text: '내 움집터가 아닙니다' }); return; }
   const stage = b.data.stage | 0;
-  const st = HUT_STAGES[stage];
+  const _ST = b.data.small ? HutStages.SMALL_STAGES : HUT_STAGES;   // ★[T1392] 간이 움집 터(켬에서만 선다)는 간이 표
+  const st = _ST[stage];
   if (!st) return;
   for (const [it, amt] of Object.entries(st.need)) {
     if ((player.inventory[it] || 0) < amt) {
@@ -13527,25 +13692,29 @@ function tryHutAdvance(player, buildingId) {
     b.data.stage = stage + 1;
     db.updateBuildingData(b.dbId, JSON.stringify(b.data));
     broadcast({ type: 'building_added', building: b });
-    send(player.ws, { type: 'notice', text: `${st.label}을(를) 마쳤습니다. 다음은 ${HUT_STAGES[stage + 1].label}입니다.` });
+    send(player.ws, { type: 'notice', text: `${st.label}을(를) 마쳤습니다. 다음은 ${_ST[stage + 1].label}입니다.` });
+    if (b.data.small) { try { Onboarding.pushOwn(player); } catch (e) {} }   // ★[T1392] 「지금 할 일」 칸이 다음 재료를 바로 본다
   } else {
     // ④ 완공 — 터 제거 + NPC 정본 6×4 실체화(벽=변·남벽 2칸 문·바닥·앵커)
     const { x0, y0, x1, y1 } = b.data;
     buildings.delete(b.id); if (chunkManager.removeBuilding) chunkManager.removeBuilding(b); db.deleteBuilding(b.dbId);
     broadcast({ type: 'building_removed', id: b.id });
     const SZg = BUILDING_SIZE, made = [];
-    const doorXs = new Set([x0 + 2, x0 + 3]);   // 남벽 중앙 2칸(NPC 움집 문 규약 동형)
-    const oid = player.playerId, onm = `${player.name}의 움집`;
+    const _sm = !!b.data.small;   // ★[T1392] 간이 움집 — 문 = 남벽 가운데 1칸 · 모든 행에 `small` 표지(클라 6×4 지붕 · 실내 그림 · 화덕 자리는 안 탄다 — 3×3 그림이 없다 · 보고 T1392 ⓒ)
+    const doorXs = _sm ? new Set([x0 + 1]) : new Set([x0 + 2, x0 + 3]);   // 남벽 중앙 2칸(NPC 움집 문 규약 동형)
+    const oid = player.playerId, onm = `${player.name}의 ${_sm ? '간이 움집' : '움집'}`;
     const _hutTag = [x0, y0, x1, y1];   // ★클라 v3 반수혈 스킨 태그(NPC 움집과 동일 외형 — 물리 불변)
+    const _tg = (o) => (_sm ? Object.assign(o, { small: 1 }) : o);
     for (let x = x0; x <= x1; x++) {
-      _liveBuildRow('wall', x * SZg, y0 * SZg, { side: 'N', floor: 0, hut: _hutTag }, oid, onm, made);
-      if (!doorXs.has(x)) _liveBuildRow('wall', x * SZg, (y1 + 1) * SZg, { side: 'N', floor: 0, hut: _hutTag }, oid, onm, made);
+      _liveBuildRow('wall', x * SZg, y0 * SZg, _tg({ side: 'N', floor: 0, hut: _hutTag }), oid, onm, made);
+      if (!doorXs.has(x)) _liveBuildRow('wall', x * SZg, (y1 + 1) * SZg, _tg({ side: 'N', floor: 0, hut: _hutTag }), oid, onm, made);
     }
-    for (let y = y0; y <= y1; y++) { _liveBuildRow('wall', x1 * SZg, y * SZg, { side: 'E', floor: 0, hut: _hutTag }, oid, onm, made); _liveBuildRow('wall', (x0 - 1) * SZg, y * SZg, { side: 'E', floor: 0, hut: _hutTag }, oid, onm, made); }
-    for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) _liveBuildRow('floor', x * SZg + SZg / 2, y * SZg + SZg / 2, { floor: 0, hut: _hutTag }, oid, onm, made);
-    _liveBuildRow('hut', ((x0 + x1 + 1) / 2) * SZg, ((y0 + y1 + 1) / 2) * SZg, { owner: player.playerId, floor: 0 }, oid, onm, made);
+    for (let y = y0; y <= y1; y++) { _liveBuildRow('wall', x1 * SZg, y * SZg, _tg({ side: 'E', floor: 0, hut: _hutTag }), oid, onm, made); _liveBuildRow('wall', (x0 - 1) * SZg, y * SZg, _tg({ side: 'E', floor: 0, hut: _hutTag }), oid, onm, made); }
+    for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) _liveBuildRow('floor', x * SZg + SZg / 2, y * SZg + SZg / 2, _tg({ floor: 0, hut: _hutTag }), oid, onm, made);
+    _liveBuildRow('hut', ((x0 + x1 + 1) / 2) * SZg, ((y0 + y1 + 1) / 2) * SZg, _tg({ owner: player.playerId, floor: 0 }), oid, onm, made);
     broadcast({ type: 'buildings_spawn', buildings: made });
-    send(player.ws, { type: 'notice', text: '🏠 움집이 다 지어졌습니다. 구덩이를 파고 기둥을 세우고 뼈대를 엮고 이엉을 덮었습니다.' });
+    send(player.ws, { type: 'notice', text: _sm ? '🏠 간이 움집이 다 지어졌습니다. 구덩이를 파고 기둥 넷을 세우고 뼈대를 엮고 이엉을 덮었습니다.' : '🏠 움집이 다 지어졌습니다. 구덩이를 파고 기둥을 세우고 뼈대를 엮고 이엉을 덮었습니다.' });
+    if (_sm) { try { Onboarding.pushOwn(player); } catch (e) {} }
     console.log(`[${ZONE_ID}] 🏠 ${player.name} 움집 완공 @(${x0}..${x1},${y0}..${y1})`);
   }
   savePlayer(player);

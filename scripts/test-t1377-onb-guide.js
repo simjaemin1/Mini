@@ -115,9 +115,9 @@ const tmp = [];
 try {
   const SRC = fs.readFileSync(LIB, 'utf8');
   const cnt = (s, x) => s.split(x).length - 1;
-  const LA = "(/나무 곁에서/.test(txt) ? '나무' : /바위 곁에서/.test(txt) ? '바위' : null)";
-  const LB = "if (st === 'build') return tg ? { do: 'goto', target: tg, why: 'build' } : { do: 'hut' };";
-  const sa = SRC.replace(LA, 'null'), sb = SRC.replace(LB, "if (st === 'build') return { do: 'hut' };");
+  const LA = "(/나무 곁에서/.test(txt) ? '나무' : /바위 곁에서/.test(txt) ? '바위' : /갈대 곁에서/.test(txt) ? '갈대' : null)";   // ★[T1392] 갈대 한 갈래가 붙었다
+  const LB = "    return tg ? { do: 'goto', target: tg, why: 'build' } : { do: 'hut' };";   // ★[T1392] 'build' 갈래가 여러 줄(간이 움집 단추 줄이 앞에)
+  const sa = SRC.replace(LA, 'null'), sb = SRC.replace(LB, "    return { do: 'hut' };");
   const fa = path.join(__dirname, `_t1377_bait_a_${process.pid}.js`), fb = path.join(__dirname, `_t1377_bait_b_${process.pid}.js`);
   fs.writeFileSync(fa, sa); fs.writeFileSync(fb, sb); tmp.push(fa, fb);
   const JA = judge(require(fa).guideAct), JB = judge(require(fb).guideAct);

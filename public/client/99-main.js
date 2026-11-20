@@ -396,6 +396,7 @@
       else if (a === 'build_farmland') sendPrimary({ type: 'build', buildType: 'farmland', floor: myBuildFloor });
       else if (a === 'build_stair') sendPrimary({ type: 'build', buildType: 'stair', floor: myBuildFloor });
       else if (a === 'build_floor') sendPrimary({ type: 'build', buildType: 'floor', floor: myBuildFloor });
+      else if (a === 'small_hut_start') { buildMode = true; placementMode = { special: 'hut_site', kind: 'small' }; showNotice('간이 움집 자리를 고르십시오. 내 집터 아홉 칸 가운데를 누르면 거기 구덩이를 팝니다. 곡괭이가 있어야 하고, B를 누르면 그만둡니다.'); }   // ★[T1392] 간이 움집 3×3(서버 `hut_start` kind 'small' · 켬만 단추가 보인다)
       else if (a === 'hut_start') { buildMode = true; placementMode = { special: 'hut_site' }; showNotice('움집 자리를 고르십시오. 누른 곳에 움집 구덩이를 팝니다. 곡괭이가 있어야 하고, B를 누르면 그만둡니다.'); }   // ★움집 고증 건축(좀보이드 커서 배치)
       else if (a === 'furnace_start') {   // ★노 건설(재민 확정 — 움집 동형). kind=도가니로/괴련로(시대가 정한다)
         const kind = btn.dataset.kind || 'crucible';

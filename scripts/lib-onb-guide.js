@@ -14,9 +14,14 @@
 //   do 'claim'  — 칸이 집터 잡기 단추를 말한다 → C
 //   do 'goto'   — 칸이 화살만 준다(내 터 · 빈터) → 그 자리로
 //   do 'hut'    — 칸이 "터 안에서 움집 터파기"를 말한다(화살 없음 = 이미 터 안)
+//   ★[T1392] 켬(첫 집터 · 간이 움집 · 완공까지) — 칸이 더 말하는 넷:
+//   do 'small_hut' — 칸이 간이 움집 터파기 단추를 낸다(집터 가운데)
+//   do 'hut_adv'   — 칸이 움집 올리기 단추를 낸다(재료가 다 있고 터 곁)
+//   do 'craft_item'— 칸이 제작 창에서 중간재(기둥 · 서까래 · 이엉)를 만들라고 한다(step.what)
+//   do 'reed'      — 칸이 갈대 자리를 화살로 가리킨다(풀 · 맨손 E) — 그 자리로 가서 풀을 뜯는다
 'use strict';
-const NOUN_RES = { 나무: 'tree', 바위: 'rock' };
-const NOUN_ITEM = { 나무: 'wood', 바위: 'stone' };
+const NOUN_RES = { 나무: 'tree', 바위: 'rock', 갈대: 'reed' };
+const NOUN_ITEM = { 나무: 'wood', 바위: 'stone', 갈대: 'fiber' };
 function guideAct(plan) {
   if (!plan || typeof plan !== 'object') return null;
   const st = plan.stage, tg = plan.target && Number.isFinite(plan.target.x) && Number.isFinite(plan.target.y) ? { x: plan.target.x, y: plan.target.y } : null;
@@ -25,16 +30,23 @@ function guideAct(plan) {
     //   무엇을 — 칸 글이 말한 그대로("나무 곁에서 …" · "바위 곁에서 …"). 화면 칸(`__t1064Next`)은 글을 한 줄로 이어 주고 `noun` 칸이 없다 —
     //   제품 고르기 함수(`onbNextPlan`)가 낸 칸이면 `noun` 이 있다(같은 뜻 · 하네스가 둘 다 넣는다).
     const txt = Array.isArray(plan.guide) ? plan.guide.map((x) => (x && x.k != null) ? `[${x.k}]` : String(x)).join('') : String(plan.guide || '');
-    const noun = plan.noun || (/나무 곁에서/.test(txt) ? '나무' : /바위 곁에서/.test(txt) ? '바위' : null);
+    const noun = plan.noun || (/나무 곁에서/.test(txt) ? '나무' : /바위 곁에서/.test(txt) ? '바위' : /갈대 곁에서/.test(txt) ? '갈대' : null);
     const res = NOUN_RES[noun] || null;
     if (!tg || !res) return null;
-    return { do: 'gather', target: tg, res, item: NOUN_ITEM[noun] };
+    const want = plan.want || null;   // ★[T1392] 칸이 말한 더 있어야 할 수(움집 재료 — 없으면 집터 값)
+    if (res === 'reed') return { do: 'reed', target: tg, res, item: 'fiber', want };
+    return Object.assign({ do: 'gather', target: tg, res, item: NOUN_ITEM[noun] }, want ? { want } : {});
   }
   if (st === 'claim') {
     if (plan.btn === 'claim') return { do: 'claim' };
     return tg ? { do: 'goto', target: tg, why: 'claim' } : null;
   }
-  if (st === 'build') return tg ? { do: 'goto', target: tg, why: 'build' } : { do: 'hut' };
+  if (st === 'build') {
+    if (plan.btn === 'small_hut') return { do: 'small_hut' };   // ★[T1392]
+    return tg ? { do: 'goto', target: tg, why: 'build' } : { do: 'hut' };
+  }
+  if (st === 'site') return plan.btn === 'hut' ? { do: 'hut_adv' } : (tg ? { do: 'goto', target: tg, why: 'site' } : null);   // ★[T1392]
+  if (st === 'craft') return plan.step && plan.step.what ? { do: 'craft_item', what: plan.step.what } : null;   // ★[T1392]
   return null;
 }
 module.exports = { guideAct };

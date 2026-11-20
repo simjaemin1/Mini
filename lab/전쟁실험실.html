@@ -6729,8 +6729,40 @@ function stageStoneKg(i, n) {
   return (n == null ? need.pillar : n) * plinthKg();
 }
 
+// ── ★★[T1392 · ★재민 11-19 판정 9 "3x3 소형 간이 움집도 만들 수 있게"] 간이 움집 3×3 — **6×4 표에서 유도한 첫 후보**(새 수 0 · 고르는 것은 재민) ──
+//   발자국 둘(셀): 6×4 = NPC 움집 정본(`_vbFootprint` · 위 머리글 "완공 실체 = NPC 움집과 동일 6×4") · 3×3 = 재민이 정한 간이 움집.
+//   유도 규칙(카드 T1392 ③ 글자 그대로):
+//     기둥 = **모서리 넷**(6×4 의 6 = 모서리 4 + 긴 변 가운데 2 — 간이 움집은 긴 변이 없다) — 위 고증 `HUT_PILLARS_ATTESTED` 의 4(구덩이 둘레 4 기둥)와 같은 수
+//     서까래 = 둘레 비(2 × (6 + 4) = 20 → 2 × (3 + 3) = 12) · 결속 풀 · 이엉 = 넓이 비(24 → 9) — 올림(반 개는 못 쓴다)
+//   단계 넷 · 도구 · 닳음 · 레시피는 그대로(사본 0 — 6×4 표의 행을 고쳐 쓴다).
+const HUT_FOOT = { w: 6, h: 4 };
+const SMALL_FOOT = { w: 3, h: 3 };
+const _perim = (f) => 2 * (f.w + f.h), _area = (f) => f.w * f.h;
+const SMALL_PILLARS = 4;   // 모서리 넷(직사각형의 모서리 수 — 6×4 의 6 에서 긴 변 가운데 둘을 뺀 것)
+const _scale = { rafter: _perim(SMALL_FOOT) / _perim(HUT_FOOT), fiber: _area(SMALL_FOOT) / _area(HUT_FOOT), thatch: _area(SMALL_FOOT) / _area(HUT_FOOT) };
+function smallNeed(need) {
+  const o = {};
+  for (const [k, n] of Object.entries(need || {})) o[k] = k === 'pillar' ? SMALL_PILLARS : (_scale[k] ? Math.ceil(n * _scale[k]) : n);
+  return o;
+}
+const _KO = { pillar: '기둥', rafter: '서까래', fiber: '풀', thatch: '이엉' };
+//   글 — 6×4 표의 글 꼴 그대로 수만 갈아 끼운다(괄호 안 "이름 수" 를 새 수로)
+function _relabel(label, need) {
+  const parts = Object.entries(need).map(([k, n]) => `${_KO[k] || k} ${n}`);
+  return parts.length ? String(label).replace(/\([^)]*\)\s*$/, `(${parts.join('·')})`) : label;
+}
+const SMALL_STAGES = HUT_STAGES.map((st) => { const need = smallNeed(st.need); return Object.assign({}, st, { need, label: _relabel(st.label, need) }); });
+const stagesOf = (small) => (small ? SMALL_STAGES : HUT_STAGES);
+//   간이 움집 한 채의 원자재(레시피로 되돌린 것) — 보고 표 · 하네스가 읽는다
+const smallRaw = () => {
+  const out = {};
+  for (const st of SMALL_STAGES) for (const [k, n] of Object.entries(rawOfNeed(st.need))) out[k] = (out[k] || 0) + n;
+  return out;
+};
+
 module.exports = { HUT_STAGES, HUT_RECIPES, PSITE_COST, rawOfNeed, stageRaw, hutRaw, HUT_PILLARS_ATTESTED, stageRawPillars, hutRawPillars,
-  HUT_PLINTH_SRC, plinthKg, stageStoneKg };
+  HUT_PLINTH_SRC, plinthKg, stageStoneKg,
+  HUT_FOOT, SMALL_FOOT, SMALL_PILLARS, SMALL_STAGES, stagesOf, smallNeed, smallRaw };   // ★[T1392] 간이 움집 3×3
 
 ;return module.exports;})();
   modules["stoneu"]=(function(){var module={exports:{}};Object.defineProperty(module,"exports",{get:function(){return modules["stoneu"];},set:function(v){modules["stoneu"]=v;}});module.exports={};var exports=module.exports;var require=req;
