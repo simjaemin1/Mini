@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(표 없으면 안 돈다)
-// @bait 1   ← [T1383] land1084 옛 목록(규칙 앞 가지)에서 뺌 — 미끼 뜻 그대로 · 판정 줄에 바꾼 자리 수
+// @bait 1   ← [T1356] 미끼 판정 줄 수(파일 안 · `test-harness-lint` ⑲b 가 센다)
 // === scripts/test-t1351-mine-clock.js — 판 시계 광부의 수요 문 = 몸의 하루(T1351 · T1326 회부 3) =====================================
 //
 // 지키는 것:
@@ -40,7 +40,7 @@ const unitOk = ok(u0 && u0.has && u0.k === false && u0.fast === false && u1.k ==
   '① T1351 — 끔 기본 · 켬 = 판 시계 몸 축 광부 마을만(운영 시계 · 몸 축 끔 = 안 선다)', JSON.stringify({ u0, u1, uN }).slice(0, 200));
 if (!unitOk) { console.log(`\n${pass} 통과 · ${fail} 실패`); process.exit(1); }
 // ── ② · ③ 서버 판 ──
-const D = fs.mkdtempSync(path.join(os.tmpdir(), 't1351h-'));
+const D = fs.mkdtempSync(path.join(os.tmpdir(), 't1351h-')); require('./lib-tmp').own(D);   // [T1400] lib-tmp — 판 끝(빨강 · 상한 포함)에 지운다
 //   미끼 사본 = 메모리에서만(파일 무접촉) — 바늘 하나를 `if (false)` 로. 바늘 수를 세어 0 · 2 이상이면 빨강(아래 `bait.needle`).
 const NEEDLE = 'if (!T66 && left !== Infinity && _t1351MineOn(vil)) {';
 const BAIT_JS = path.join(D, 'bait.js');
@@ -66,7 +66,7 @@ ok(pred(fOn) && kg(R) > 0, '② T1351 켬 — 판 시계 50날: 곳간에 든 �
 const nPath = path.join(D, 'bait.n');
 const Bt = run('bait', { T1351_BAIT_N: nPath }), fB = frac(Bt);
 let needleN = -1; try { needleN = +fs.readFileSync(nPath, 'utf8'); } catch (e) {}
-ok(needleN === 1, '③ 미끼 바늘 = villages.js 에 정확히 한 곳', `${needleN}`);
-ok(needleN === 1 && fB != null && !pred(fB) && fB < 0.6, '③ 미끼 — 수요 문 켬 갈래만 끈 사본은 ② 의 줄이 빨강(몫 < 0.6)', `바꾼 자리 ${needleN} · ${Bt.err || (fB == null ? '—' : fB.toFixed(3))}`);
+ok(needleN === 1, '③ 바늘 = villages.js 에 정확히 한 곳(없거나 둘이면 사본이 엉뚱한 까닭으로 빨강)', `${needleN}`);
+ok(needleN === 1 && fB != null && !pred(fB) && fB < 0.6, '③ 미끼 — 바꾼 자리 1곳(수요 문 켬 갈래 `if (false)`)인 사본은 ② 의 줄이 빨강(몫 < 0.6)', Bt.err || `${fB == null ? '—' : fB.toFixed(3)}`);
 console.log(`\n${pass} 통과 · ${fail} 실패`);
 process.exit(fail ? 1 : 0);

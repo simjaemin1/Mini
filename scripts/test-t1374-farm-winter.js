@@ -41,7 +41,7 @@ const unitOk = ok(u0 && u0.f === 'function' && u0.a === false && u0.b === false 
   '① T1374 — 끔 기본 · 켬은 밭 세계에서만 · 문턱 날 수 = max(30, 다음 거둠 − 오늘)', JSON.stringify({ u0, u1, uN }).slice(0, 240));
 if (!unitOk) { console.log(`\n${pass} 통과 · ${fail} 실패`); process.exit(1); }
 // ── ② · ③ 서버 판 ──
-const D = fs.mkdtempSync(path.join(os.tmpdir(), 't1374h-'));
+const D = fs.mkdtempSync(path.join(os.tmpdir(), 't1374h-')); require('./lib-tmp').own(D);   // [T1400] lib-tmp — 판 끝(빨강 · 상한 포함)에 지운다
 const ES = path.join(ROOT, 'sim', 'economy-sim.js');
 const NEEDLE = {
   by: "if (T1374_NO_BYGRAIN && npc.currentJob === 'farmer' && _t1374FieldCrop(r)) continue;",

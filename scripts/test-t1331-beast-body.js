@@ -26,6 +26,15 @@ const path = require('path'), fs = require('fs'), os = require('os'), Module = r
 const ROOT = path.join(__dirname, '..');
 const MODE = process.env.T1331_TB_MODE || '';
 const MUTS = ['resettle', 'ledger', 'teleport', 'farkid', 'keepledger'];
+// ★[T1400 ㉲] 미끼 다섯 — [파일, 바늘, 바꿀 글자] 한 표(사본 0): 아이(`mutate`)가 바꾸고 · 부모가 바늘이 정본에 몇 번 있는지 센다(바꾼 자리)
+const MUT_SWAP = {
+  resettle: ['beast-body.js', "      b.walk = { to: v, at: src[1] }; W.st.walkers++; sent++;", "      _put({ id: W.next++, sp: b.sp, sex: 0, born: -1, mom: -1, home: v, cx: KX(src[1]), cy: KY(src[1]), mat: 0, mid: null, hp: 0, tr: 0, walk: null }); sent++;"],
+  ledger: ['beast-body.js', "    p._t1331Acc -= 1;\n    return _die(b, 'hunt');", "    p._t1331Acc -= 1;\n    W.st.died.hunt++; return b;"],
+  teleport: ['beast-body.js', "    _moveTo(b, bx, by, 'step'); W.st.steps++;", "    _moveTo(b, tx, ty, 'step'); W.st.steps++;"],
+  farkid: ['beast-body.js', "home: m.home, cx: m.cx, cy: m.cy, mat: 0, mid: null, hp: 0, tr: 0, walk: null });", "home: m.home, cx: KX(W.hab.get(m.home).list[h32(kid, day, 7) % W.hab.get(m.home).list.length]), cy: KY(W.hab.get(m.home).list[h32(kid, day, 7) % W.hab.get(m.home).list.length]), mat: 0, mid: null, hp: 0, tr: 0, walk: null });"],
+  keepledger: ['villages.js', "    vil._gameRich = null; vil._gameNone = 1; vil._gameScan = null;   // 장부를 버린다", "    // 장부를 버린다"],
+};
+
 
 if (MODE === 'world' || MODE === 'reload') child().catch((e) => { fs.writeFileSync(process.env.T1331_TB_OUT, JSON.stringify({ err: String(e && e.stack || e).slice(0, 1500) })); }); else parent();
 
@@ -100,8 +109,9 @@ function parent() {
       const rr = spawnSync(process.execPath, [__filename], { cwd: ROOT, env: Object.assign({}, process.env, { T1331_MUTANT: m }), encoding: 'utf8', maxBuffer: 1 << 26 });
       const fl = (rr.stdout.match(/^FAIL .*/mg) || []);
       const isRed = rr.status !== 0 && fl.length > 0;
-      if (isRed) red++;
-      console.log(`${isRed ? 'PASS' : 'FAIL'} 미끼 ${m} 빨강 — FAIL ${fl.length}건${fl.length ? ' · 첫 ' + fl[0].slice(5, 90) : ''}`);
+      const W = MUT_SWAP[m], n = require('./lib-bait').count(fs.readFileSync(path.join(ROOT, 'server', W[0]), 'utf8'), W[1]);
+      if (isRed && n === 1) red++;
+      ok(n === 1 && isRed, `미끼 ${m} 빨강`, `바꾼 자리 ${n} · FAIL ${fl.length}건${fl.length ? ' · 첫 ' + fl[0].slice(5, 90) : ''}`);
     }
     console.log(`=== 미끼 ${red}/${MUTS.length} 빨강 ===`);
     process.exit(red === MUTS.length ? 0 : 1);
@@ -118,11 +128,7 @@ function mutate() {
     if (file !== BBF && file !== VF) return old(m, file);
     let src = fs.readFileSync(file, 'utf8');
     const swap = (a, b) => { if (!src.includes(a)) throw new Error('미끼 바늘 없음 ' + MUT); src = src.replace(a, b); };
-    if (file === BBF && MUT === 'resettle') swap("      b.walk = { to: v, at: src[1] }; W.st.walkers++; sent++;", "      _put({ id: W.next++, sp: b.sp, sex: 0, born: -1, mom: -1, home: v, cx: KX(src[1]), cy: KY(src[1]), mat: 0, mid: null, hp: 0, tr: 0, walk: null }); sent++;");
-    if (file === BBF && MUT === 'ledger') swap("    p._t1331Acc -= 1;\n    return _die(b, 'hunt');", "    p._t1331Acc -= 1;\n    W.st.died.hunt++; return b;");
-    if (file === BBF && MUT === 'teleport') swap("    _moveTo(b, bx, by, 'step'); W.st.steps++;", "    _moveTo(b, tx, ty, 'step'); W.st.steps++;");
-    if (file === BBF && MUT === 'farkid') swap("home: m.home, cx: m.cx, cy: m.cy, mat: 0, mid: null, hp: 0, tr: 0, walk: null });", "home: m.home, cx: KX(W.hab.get(m.home).list[h32(kid, day, 7) % W.hab.get(m.home).list.length]), cy: KY(W.hab.get(m.home).list[h32(kid, day, 7) % W.hab.get(m.home).list.length]), mat: 0, mid: null, hp: 0, tr: 0, walk: null });");
-    if (file === VF && MUT === 'keepledger') swap("    vil._gameRich = null; vil._gameNone = 1; vil._gameScan = null;   // 장부를 버린다", "    // 장부를 버린다");
+    const W0 = MUT_SWAP[MUT]; if (W0 && file === path.join(ROOT, 'server', W0[0])) swap(W0[1], W0[2]);
     m._compile(src, file);
   };
 }

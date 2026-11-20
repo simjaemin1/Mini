@@ -48,6 +48,7 @@ const rows = (file) => { const d = new DatabaseSync(file, { readOnly: true }); c
 
 const N = 1000, EVERY = 100, TAIL = 37;
 const FA = `/tmp/vb-a-${process.pid}.db`, FB = `/tmp/vb-b-${process.pid}.db`;
+{ const LT = require('./lib-tmp'); LT.own(FA); LT.own(FB); }   // [T1400] lib-tmp — 빨강 · 던짐 · 상한에도 판 끝에 지운다 · 죽은 앞 판 몫은 머리에서
 
 // ── 종전 팔: 1타마다 한 줄 ──
 const dbA = loadDb(FA), mapA = new Map();

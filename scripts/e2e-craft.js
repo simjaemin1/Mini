@@ -24,6 +24,7 @@ fs.mkdirSync(SHOTS, { recursive: true });
 const HEADED = process.argv.includes('--headed');
 const CPORT = 3010, ZPORT = 3020;
 const CDB = `/tmp/e2e-cr-c-${process.pid}.db`, ZDB = `/tmp/e2e-cr-z-${process.pid}.db`;
+{ const LT = require('./lib-tmp'); LT.own(CDB); LT.own(ZDB); }   // [T1400] 판 끝(빨강 · 상한 SIGTERM 포함)에 지운다 · 죽은 앞 판 몫은 머리에서
 const CRAFT_MS = 4000;
 
 let pass = 0, fail = 0;

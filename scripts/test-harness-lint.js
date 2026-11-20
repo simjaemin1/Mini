@@ -1012,7 +1012,7 @@ console.log('\n⑱ 러너 표지는 러너가 찾는 이름(`test-*` · `e2e-*`)
 console.log('\n⑲ 박힌 날짜 0 · 새 하네스 미끼 표지 `@bait <n>` [T1356]');
 {
   const G = require(path.join(SCRIPTS, 'lib-harness-guard.js'));
-  const OLD_N = 493;   // ★[PM land1086] T1383 의 491 + land1085 의 둘(`test-t1338-war-tick` · `test-t1349-war-stall`) = 493 · [T1383] land1084 의 넷을 `@bait` 꼴로 옮겨 495 → 491 · ★얼린 수 — 베이스 4ab5ab2b4 의 test-* · e2e-* 파일 수 485 + ★[PM land1083] 규칙과 같은 착지에 나란히 들어온 여섯(목록 파일 끝 주석) + ★[PM land1084] 규칙 앞 main 에서 딴 가지 넷(같은 주석)(이 수를 올리면 ⑲b 를 피한다 · 내리는 것은 된다)
+  const OLD_N = 493;   // [T1383] land1084 의 넷을 `@bait` 꼴로 옮겨 497 → 493 · ★얼린 수 — 베이스 4ab5ab2b4 의 test-* · e2e-* 파일 수 485 + ★[PM land1083] 규칙과 같은 착지에 나란히 들어온 여섯(목록 파일 끝 주석) + ★[PM land1084] 규칙 앞 main 에서 딴 가지 넷(같은 주석) + ★[PM land1085] 둘(T1338 · T1349 — 같은 주석 · 마지막)(이 수를 올리면 ⑲b 를 피한다 · 내리는 것은 된다)
   const OLDF = path.join(SCRIPTS, 'harness-bait-old.txt');
   const OLD = new Set(fs.existsSync(OLDF) ? fs.readFileSync(OLDF, 'utf8').split('\n').filter((l) => l && !l.startsWith('#')) : []);
   const dateBad = (src) => G.dateLines(src).length > 0 && !G.dateOk(src);
@@ -1088,6 +1088,33 @@ console.log('\n⑳ `// @harness-only` = 제품 부름 0 [T1350]');
   const bait = { req: "require('../server/zone.js')", join: "path.join(ROOT, 'server', 'zone.js')", rel: "'./sim/economy-sim.js'", cmt: "// require('../server/zone.js')", scr: "path.join(ROOT, 'scripts', 'x.js')" };
   const ans = Object.entries(bait).map(([k, v]) => k + '=' + (PROD.test(CO(v)) ? 'hit' : 'none')).join(',');
   ok(ans === 'req=hit,join=hit,rel=hit,cmt=none,scr=none', '★⑳ 자명 통과 금지 — 제품 부름 셋은 물고 · 주석 · scripts 자리는 보낸다', ans);
+}
+
+// ── ㉑ 하네스는 제 `/tmp` 를 판 끝에 지운다 [T1400 · T1364 회부 — 전수 한 판이 `/tmp` 에 306 ~ 308개 · 3.2 ~ 3.4 GB] ──────────────
+//   자: `scripts/lib-tmp.js` `audit`(글자 짐작) — 판마다 새 이름(mkdtemp · pid · 시각 · 난수)으로 짓는 `/tmp` 자리 가운데 판 끝에 안 지워지는 자리.
+//   지워짐 = `lib-tmp` `dir` · `file` · `own` · 이름 변수를 `rmSync` · `unlinkSync` · pid 이름 `.db`(러너가 판마다 `lib-tmp.sweepDead` 로 지운다).
+//   ★얼린 수 `TMP_N` — 늘면 빨강(새 하네스는 지운다) · 줄면 이 수를 줄인다. 남은 하나는 검사 하네스(`test-bundle-blackbox` — 손 0).
+console.log('\n㉑ 하네스는 제 `/tmp` 를 판 끝에 지운다 [T1400]');
+{
+  const LT = require('./lib-tmp.js'), CO = require('./code-only.js');
+  const TMP_N = 1;
+  const all = fs.readdirSync(SCRIPTS).filter((f) => /^(test|e2e)-.*\.js$/.test(f));
+  const bad = all.map((f) => [f, LT.audit(CO(fs.readFileSync(path.join(SCRIPTS, f), 'utf8')))]).filter(([, a]) => a.length);
+  ok(all.length > 400, '㉑ [전제] 하네스를 다 읽었다', `${all.length}`);
+  ok(bad.length <= TMP_N, `★㉑ 판 끝에 제 \`/tmp\` 를 안 지우는 하네스 ≤ ${TMP_N}(얼린 수)`, bad.map(([f, a]) => `${f}(${a.join(' , ')})`).join(' · ') || '0');
+  //   미끼 — 같은 자가 안 지우는 셋은 물고 · 지우는 넷은 보낸다
+  const MK = 'mkdtemp' + 'Sync(';   // 이 파일 글자를 ㉑ 자가 셀 때 미끼 글자가 안 걸리게 잘라 둔다
+  const bait = {
+    mk: "const D = fs." + MK + "path.join(os.tmpdir(), 'x-'));",
+    anon: "run(fs." + MK + "'/tmp/y-'));",
+    pidJson: "const O = `/" + "tmp/z-${process.pid}.json`;",
+    rm: "const D = fs." + MK + "'x'); fs.rmSync(D, { recursive: true });",
+    lib: "const D = require('./lib-tmp').dir('x');",
+    pidDb: "process.env.DB_PATH = `/" + "tmp/z-${process.pid}.db`;",
+    own: "const D = fs." + MK + "'x'); require('./lib-tmp').own(D);",
+  };
+  const ans = Object.entries(bait).map(([k, v]) => k + '=' + (LT.audit(v).length ? 'hit' : 'none')).join(',');
+  ok(ans === 'mk=hit,anon=hit,pidJson=hit,rm=none,lib=none,pidDb=none,own=none', '★㉑ 자명 통과 금지 — 안 지우는 셋은 물고 · 지우는 넷은 보낸다', ans);
 }
 
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===\n`);

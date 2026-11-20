@@ -24,6 +24,7 @@
 //   node scripts/ci-class.js --measure --server --only a.js,b.js   # (다) 를 다섯 판 잰다 — 판마다 제 무리(setsid)로 돌리고 끝나면 무리를 내린다(남은 포트 0)
 //   node scripts/ci-class.js --write-yml [--shards 4] [--srv-shards 1]   # 표의 core 를 잡 몇 개로 나눠 yml 블록에 쓴다 · 서버 잡 블록(표지 있으면)도
 //   node scripts/ci-class.js --srv                          # 서버 잡 목록(줄마다 하나)
+//   node scripts/ci-class.js --long                         # ★[T1400] 긴 판 목록 — 잰 판 다 초록 · 60초 넘음(CI 잡 `long` 이 만진 것만 돈다)
 //   node scripts/ci-class.js --core                         # core 목록(줄마다 하나) — 다른 자가 부를 때
 //   node scripts/ci-class.js --table                        # 사람이 읽는 표(마크다운)
 'use strict';
@@ -126,14 +127,29 @@ function decide(row) {
   row.core = !why;
   row.why = why || 'core';
   if (!row.srv) delete row.srv;
+  //   ★[T1400 · T1383 회부 6] 긴 판 — 잰 판이 다 초록인데 가장 긴 판이 60초를 넘는 (나) · (다). core · 서버 잡(60초 문턱)엔 못 들지만
+  //     CI 잡 `long`(만진 것만 — `touched-harness` 목록과 겹치는 것)이 차례로 돈다. 문턱 새 수 0 — 잰 판이 다 초록인지만.
+  if ((cls === '나' || cls === '다') && runs.length >= 1 && runs.every((r) => r.green) && maxS > CORE_MAX_SEC) row.long = true; else delete row.long;
   return row;
 }
 
 function listTests() { return fs.readdirSync(SCRIPTS).filter((f) => /^test-.*\.js$/.test(f)).sort(); }
 
+//   ★[T1400 · T1376] `--static` 은 **이 가지가 바꾼(더한) 하네스만** 표에 쓴다 — 종전엔 디스크의 test-* 전부를 훑어, main 을 합친 가지가
+//     남의 새 하네스 줄(안 잰 줄)을 제 커밋으로 표에 더해 착지 때 두 가지가 같은 줄을 다투었다. 전부는 `--all`(PM).
+//     바꾼 것 = `git diff --name-only <갈림점>`(작업 트리까지) + 아직 안 더한 파일 · 갈림점 = `merge-base <--base 기본 origin/main> HEAD`.
+function changedTests(base) {
+  const { execFileSync } = require('child_process');
+  const g = (...a) => execFileSync('git', ['-c', 'core.quotepath=off', ...a], { cwd: path.join(SCRIPTS, '..'), encoding: 'utf8' });
+  const mb = g('merge-base', base, 'HEAD').trim();
+  const fl = g('diff', '--name-only', mb).split('\n').concat(g('ls-files', '--others', '--exclude-standard').split('\n'));
+  return [...new Set(fl.filter((p) => /^scripts\/test-[^/]*\.js$/.test(p)).map((p) => path.basename(p)))].filter((n) => fs.existsSync(path.join(SCRIPTS, n))).sort();
+}
 if (has('--static')) {
-  const T = load(); const names = listTests();
-  for (const n of Object.keys(T.rows)) if (!names.includes(n)) delete T.rows[n];
+  const T = load(); const all = listTests();
+  const names = has('--all') ? all : changedTests(arg('--base', 'origin/main'));
+  if (has('--all')) for (const n of Object.keys(T.rows)) if (!all.includes(n)) delete T.rows[n];
+  if (!has('--all')) console.log(`--static — 이 가지가 바꾼 하네스 ${names.length}종만(${names.join(' ') || '없음'}) · 전부는 --all`);
   for (const n of names) { const s = staticClass(n); const r = T.rows[n] || {}; r.cls0 = s.cls; r.why0 = s.why.join(' · '); T.rows[n] = decide(r); }
   T.at = T.at || null; save(T);
   const c = {}; for (const r of Object.values(T.rows)) c[r.cls] = (c[r.cls] || 0) + 1;
@@ -208,6 +224,7 @@ if (has('--write-yml')) {
   console.log(`yml core 블록 — ${shardsOf(T, K).map((x) => `${x.list.length}종 ${Math.round(x.secs)}초`).join(' · ')}${sa >= 0 ? ` · 서버 ${shardsOf(T, KS, 'srv').map((x) => `${x.list.length}종 ${Math.round(x.secs)}초`).join(' · ')}` : ''}`);
 }
 if (has('--srv')) { console.log(srvOf(load()).join('\n')); }
+if (has('--long')) { const T = load(); console.log(Object.keys(T.rows).filter((n) => T.rows[n].long).sort().join('\n')); }   // ★[T1400] 긴 판 목록
 if (has('--core')) { const T = load(); console.log(Object.keys(T.rows).filter((n) => T.rows[n].core).join('\n')); }
 if (has('--table')) {
   const T = load(); const c = {}, cc = {}; for (const r of Object.values(T.rows)) { c[r.cls] = (c[r.cls] || 0) + 1; if (r.core || r.srv) cc[r.cls] = (cc[r.cls] || 0) + 1; }

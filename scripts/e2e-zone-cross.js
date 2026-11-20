@@ -157,7 +157,7 @@ function valleyCorridor(nm) {
     for (const z of ZIDS) { let h = false; try { const u = new URL(zl.zones[z].wsUrl.replace(/^ws/, 'http')); h = (await fetch(`${u.origin}/health`, { signal: AbortSignal.timeout(10000) })).ok; } catch (e) {} ok(h, `ⓔ [외부] ${z} /health`); }
   } else {
     for (const port of [CPORT].concat(ZIDS.map((z) => ZONES[z].port))) if (!await portFree(port)) { ok(false, `포트 ${port} 가 비어 있다(남의 서버를 잴 수 없다)`); process.exit(1); }
-    DDIR = `/tmp/e2e-zx-${process.pid}`; fs.mkdirSync(DDIR, { recursive: true });
+    DDIR = `/tmp/e2e-zx-${process.pid}`; fs.mkdirSync(DDIR, { recursive: true }); require('./lib-tmp').own(DDIR);   // [T1400] 판 끝에 지운다
     const c = boot('central', 'central.js', { PORT: String(CPORT), DB_PATH: `${DDIR}/central.db`, PUBLIC_HOST: 'localhost', ENABLED_ZONES: ZIDS.join(',') });
     const cu = await FB.waitUp(c, /central server up on/, { name: 'central' });
     ok(cu.ok, 'ⓔ0 central 기동', cu.ok ? `${cu.ms}ms` : cu.why);
@@ -228,7 +228,10 @@ function valleyCorridor(nm) {
     const pts = []; let vmax = 0;
     for (const k of keysDown) await page.keyboard.down(k);
     const t0 = Date.now(); let pz = null;
-    while (Date.now() - t0 < maxMs) {
+    //   ★[T1400] 벽시계 상한(`maxMs`)에 닿아도 몸이 **아직 걷고 있으면**(마지막 30표본 사이 40px 넘게 옮김) 상한의 네 배까지 더 걷는다 —
+    //     -j4 판에서 rAF 가 느려 같은 30초에 덜 걸어 다리 20 가운데 16 만 넘고 빨강(T1364 판 1 · 혼자 0/5). 멈춘 몸(진짜 막힘)은 그대로 상한에서 끊긴다.
+    const moving = () => { const n = pts.length; if (n < 31) return true; const a = pts[n - 31], b = pts[n - 1]; return Math.hypot(b.x - a.x, b.y - a.y) > 40; };
+    while (Date.now() - t0 < maxMs || (moving() && Date.now() - t0 < maxMs * 4)) {
       await sleep(100);
       const a = await page.evaluate(() => { const p = window.__getMyAbs(); const d = window.__moveDbg ? window.__moveDbg() : null; return { x: p.x, y: p.y, t: performance.now(), v: d ? d.speed : 0, z: window.__getPrimaryZoneId() }; });
       pts.push(a); vmax = Math.max(vmax, a.v || 0); pz = a.z;

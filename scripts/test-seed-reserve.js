@@ -182,12 +182,14 @@ let inl = 0; try { execFileSync(process.execPath, [path.join(ROOT, 'sim', 'inlin
 ok(inl === 0, 'ⓕ 랩 두 벌 인라인 = 번들(`inline-engine --check`)');
 
 console.log('\nⓖ 미끼 — 줄을 뺀 · 되돌린 사본');
+//   ★[T1400 ㉲] 바꾼 자리 = 찾을 글자가 정본 파일에 있는 수(1 이 아니면 사본이 엉뚱한 줄을 바꾼다)
+const LBc = require('./lib-bait').count, nSet = LBc(fs.readFileSync(V1_PATH, 'utf8'), SET_LINE), nCand = LBc(fs.readFileSync(V2_PATH, 'utf8'), CAND_LINE);
 let BS = null; try { BS = child({ T692_SEED_RESERVE: '1' }, [V1_PATH, SET_LINE, '']); } catch (e) { BS = { err: String(e.message).slice(0, 160) }; }
-ok(!!BS && BS.K === true && BS.A && BS.A.rsv === null && BS.world && BS.world.init.every((x) => x.rsv === null), 'ⓖ [자명 통과 금지] 비축이 서는 줄을 뺀 v1 사본 — 켬에서도 비축 없음 ⇒ ⓑ · ⓓ 가 빨개진다', BS && BS.A ? `비축 ${BS.A.rsv}` : (BS && BS.err));
+ok(nSet === 1 && !!BS && BS.K === true && BS.A && BS.A.rsv === null && BS.world && BS.world.init.every((x) => x.rsv === null), 'ⓖ 미끼 [자명 통과 금지] 비축이 서는 줄을 뺀 v1 사본 — 켬에서도 비축 없음 ⇒ ⓑ · ⓓ 가 빨개진다', `바꾼 자리 ${nSet} · ` + (BS && BS.A ? `비축 ${BS.A.rsv}` : (BS && BS.err)));
 let BC = null; try { BC = child({ T692_SEED_RESERVE: '1' }, [V2_PATH, CAND_LINE, '        const stock = a.v.storage[r] || 0;']); } catch (e) { BC = { err: String(e.message).slice(0, 160) }; }
 const eBait = BC && BC.world ? e2e(BC.world, SUBS_W) : null;
-ok(!!BC && BC.K === true && BC.world && BC.world.breach.trade > 0 && eBait && eBait.good < eBait.n, 'ⓖ [자명 통과 금지] 발주 후보 자리를 종전 읽기로 되돌린 v2 사본 — 켬에서도 발주가 비축을 판다 ⇒ ⓓ 가 빨개진다',
-  BC && BC.world ? `발주 침범 ${BC.world.breach.trade} · 식 맞음 ${eBait.good}/${eBait.n}` : (BC && BC.err));
+ok(nCand === 1 && !!BC && BC.K === true && BC.world && BC.world.breach.trade > 0 && eBait && eBait.good < eBait.n, 'ⓖ 미끼 [자명 통과 금지] 발주 후보 자리를 종전 읽기로 되돌린 v2 사본 — 켬에서도 발주가 비축을 판다 ⇒ ⓓ 가 빨개진다',
+  `바꾼 자리 ${nCand} · ` + (BC && BC.world ? `발주 침범 ${BC.world.breach.trade} · 식 맞음 ${eBait.good}/${eBait.n}` : (BC && BC.err)));
 
 console.log(`\n=== 결과: ${pass} PASS / ${fail} FAIL ===`);
 process.exit(fail ? 1 : 0);

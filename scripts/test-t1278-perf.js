@@ -81,7 +81,9 @@ console.log('\n② 서 있는 몸 답 기억 — 기억 길 = 새로 셈');
   ok(A.bad === 0, `몸 300 × 틱 400 — 기억 길 = 새로 셈(지형 비트 굽기 · 영점 · 슬롯 바뀜 · 범위 밖 · ±0 · NaN)`, `견줌 ${A.q} · 어긋남 ${A.bad}`);
   console.log('\n③ 미끼 — 세대를 안 올린 기억');
   const B = run(make(false));
-  ok(B.bad > 0, '세대를 안 올리면 영점 뒤 옛 답이 남아 ② 의 견줌이 문다', `어긋남 ${B.bad}`);
+  //   ★[T1400 ㉲] 판 갈래 미끼의 바꾼 자리 = 그 갈래(`bump`)를 보는 하네스 글자 수(T1383 꼴 · 주석 뺌 · 바늘은 잘라 둔다 — 이 줄이 안 걸리게)
+  const nB = require('./lib-bait').count(require('./lib-bait').self(__filename), "bump ? '_wwTbGen" + "++;'");
+  ok(nB === 1 && B.bad > 0, '미끼 — 세대를 안 올리면 영점 뒤 옛 답이 남아 ② 의 견줌이 문다', `바꾼 자리 ${nB} · 어긋남 ${B.bad}`);
 }
 console.log(`\n=== T1278 성능 자리 ${pass} 통과 · ${fail} 실패 ===`);
 process.exit(fail ? 1 : 0);

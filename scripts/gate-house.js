@@ -75,6 +75,7 @@ const GAPM = path.join(__dirname, 't1299-gap-meter.js');
 if (!(DAYS > 0) || !/^\d+(,\d+)*$/.test(SEEDS)) { console.error('쓰는 법: [--days 400] [--seeds 1020,7,42] [--load N] [--keep <out.json>] [--slow [--slow-loops N] [--gap off|--gap-only] [--gap-days N]] [--phase real]'); process.exit(2); }
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'gate-house-'));
+if (process.env.SBC_TMP_OWN === '1') require('./lib-tmp').own(TMP);   // ★[T1400] 하네스가 부른 판은 끝에 지운다(사람이 돌린 판은 남긴다)
 const BAKE = KEEP ? path.resolve(KEEP) : path.join(TMP, 'house.json');
 const loops = [];
 let cur = null;   // 지금 도는 기준선 자(제 프로세스 묶음 — 아이 판까지 한 번에 멈춘다)
@@ -94,6 +95,7 @@ function sbc(args, tag, how) {
   how = how || {};
   return new Promise((resolve) => {
     const env = Object.assign({}, process.env, { TMPDIR: TMP });
+    delete env.SBC_TMP_OWN;   // ★[T1400] 판 자 아이의 판 폴더는 이 게이트의 TMP 안이다(틱 자 파일을 끝에 읽는다) — 아이는 안 지우고 이 게이트가 TMP 째 지운다
     if (how.meter) env.NODE_OPTIONS = `${process.env.NODE_OPTIONS || ''} --require ${METER}`.trim();   // ★[T1268] 굽기 판 아이 존 틱 자(읽기만)
     if (how.stall) env.T1268_TICK_STALL_MS = String(how.stall); else delete env.T1268_TICK_STALL_MS;
     if (how.meter && !PHASE_REAL) env.T1287_PHASE0 = '1'; else delete env.T1287_PHASE0;   delete env.T1299_PHASE_OFF; if (how.meter) env.T1299_PHASE_HOUR = PHASE_REAL ? '' : '0';   // ★[T1299] 부르는 쪽이 다른 시각으로 고정한 묶음(`phase-pin` · T1299_PHASE_HOUR) 안에서 불려도 굽기 판은 제 0시(공용 `lib-phase` 상수를 아이 존이 새로 정한다 · `--phase real` 이면 안 건다)   // ★[T1287] 낮밤 위상 고정(굽기 판 · 틱 자가 아이 존에서 건다)

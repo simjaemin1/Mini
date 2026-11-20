@@ -29,6 +29,7 @@
 //   ★[T1300] 옛 저장 가리기(`_t1289In` · `T1300_OLD_AX`) · 관측 칸(`_t1300Obs`) · 전쟁 몸 세 칸(`_warEnsureBody` · `_warSetupReturn` 켬 · T681 켬 갈래)은 이 게이트 지문에 안 닿는다 —
 //     판 자는 다시 뜬 판 · 캐러밴 몸이 없고 · 전쟁 몸 세 칸은 T681 켬 판에선 읽는 이가 없다(판 무변이 증인 · 단언 무변). 그 셋은 `test-t1273-clock-rest` ⑨ ⑪ ⑫ · `test-t1268-econ-clock` ⑥ · `test-t772-leg` ④′ 가 잡는다.
 'use strict';
+process.env.SBC_TMP_OWN = '1';   // ★[T1400] 판 자(`server-baseline-check` · `gate-house`)가 제 판 폴더(`/tmp/sbc-…`)를 끝에 지운다 — 전수 판마다 남던 몫
 if (require.main !== module) {   // ★프리로드 갈래 — 게이트 · 기준선 자 · 판 자 부모 · 부하 고리에도 실린다: 아무것도 안 한다(본문이 돌면 판이 판을 낳는다)
   //   벽시계 굽기 아이(아이 존 · 가상 시계 아님)만 세계를 바꾼다 — 미끼 판에서만(`T1043_BAIT=wall`)
   if (process.env.T1043_BAIT === 'wall' && process.env.T577_SEED && !process.env.T745_VCLOCK) process.env.T400_BUILD_ACT = '0';

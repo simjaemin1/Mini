@@ -220,6 +220,7 @@ async function runSet(dir, dumpDay) {
 
 (async () => {
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sbc-'));
+if (process.env.SBC_TMP_OWN === '1') require('./lib-tmp').own(tmp);   // ★[T1400] 하네스가 부른 판은 끝에 판 폴더를 지운다(사람이 돌린 판은 종전대로 남긴다 — 「판 /tmp/sbc-…」)
 console.log(`\n=== 서버 판 기준선 ${MAKE ? '만들기' : '견주기'} — ${SEEDS.map((x) => `${x}:${DAYS_OF[x]}일`).join(' · ')} · 집 행위 ${HOUSE ? '켬(--house)' : '끔'}${BODY_DAY ? ' · 운영 하루 24분(--body-day)' : ''}${WAR ? ` · 전쟁 팔(--war ${WAR} · ${JSON.stringify(WAR_COND[WAR])})` : ''}${VCLOCK ? ' · 가상 시계' : ''} · 동시 ${PAR} · 교역로 캐시 ${ROUTE_CACHE || '끔'} · 판 ${tmp} ===`);
 const R = await runSet(tmp);
 console.log(`  판 모두 ${R.sec}초`);

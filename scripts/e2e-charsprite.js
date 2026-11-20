@@ -358,14 +358,15 @@ if (require.main === module) (async () => {
       const want = tbl[kind];
       if (!want) { ok(false, `표에 ${kind} 가 없다`); continue; }
       await A.evaluate((k) => window.__sendPrimary({ type: '__e2e_give', tools: [k] }), kind);
-      await sleep(900);
-      const ts = await A.evaluate(() => window.__getTools());
-      const it = ts.filter((t) => t.type === kind).pop();
+      //   ★[T1400] 고정 900ms 뒤 한 번 읽던 것을 **바라는 값이 올 때까지**(250ms 마다 · 상한 12초)로 — -j4 판에서 지급 왕복이 900ms 를 넘어
+      //     `axe,hammer` 만 읽고 빨강(T1364 판 2 · 혼자 0/5). 제품 길 · 단언 무변 — 기다림만(아래 `waitLayer` 와 같은 꼴).
+      let ts = [], it = null; const tG = Date.now();
+      for (;;) { ts = await A.evaluate(() => window.__getTools()); it = ts.filter((t) => t.type === kind).pop(); if (it || Date.now() - tG > 12000) break; await sleep(250); }
       ok(!!it, `${kind} 인스턴스 지급`, ts.map((t) => t.type).join(','));
       if (!it) continue;
       await A.evaluate((id) => window.__sendPrimary({ type: 'equip', toolItemId: id }), it.id);
-      await sleep(900);
-      const d2 = await dbgOf(A);
+      let d2 = null; const tE = Date.now();   // ★[T1400] 같은 까닭 — 층이 바라는 값이 될 때까지(상한 12초 · 넘으면 그때 값으로 판정)
+      for (;;) { d2 = await dbgOf(A); if ((d2 && d2.layers.includes(want)) || Date.now() - tE > 12000) break; await sleep(250); }
       ok(!!d2 && d2.layers.includes(want),
          `★[T134] ${kind} → \`${want}\` (종전엔 전부 tool_axe 였다)`, d2 ? d2.layers.join(',') : '?');
       ok(!!d2 && !(want !== 'tool_axe' && d2.layers.includes('tool_axe')),

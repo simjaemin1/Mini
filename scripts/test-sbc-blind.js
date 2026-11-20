@@ -13,6 +13,7 @@
 //   ③ ★미끼 — 생활층이 있는 기준선을 `--side off` 로 견줌 → 생활층 0/10 · 종료 2
 //   ④ ★미끼 — 만들기(`--make`)도 생활층 0일 판(②b 사본)으로는 기준선을 안 쓴다(종료 2 · 파일 없음)
 'use strict';
+process.env.SBC_TMP_OWN = '1';   // ★[T1400] 판 자(`server-baseline-check` · `gate-house`)가 제 판 폴더(`/tmp/sbc-…`)를 끝에 지운다 — 전수 판마다 남던 몫
 const path = require('path');
 const fs = require('fs');
 const os = require('os');

@@ -261,6 +261,7 @@ if (MODE === '--seoul') {
   const TMP = `/tmp/test-regrow-block-${process.pid}.db`;
   const rmDb = (f) => { for (const x of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + x); } catch (e) {} } };
   rmDb(TMP); process.on('exit', () => rmDb(TMP));
+  require('./lib-tmp').own(TMP);   // [T1400] SIGTERM(러너 상한) · SIGKILL 로 죽은 앞 판 몫(pid 만 다른 같은 꼴)도 머리에서 지운다
   Object.assign(process.env, { ZONE_ID: ZID, PORT: String(require('./lib-port').port(40800)), DB_PATH: TMP,
     ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '1', E2E_GIVE: '1' });
   delete process.env.T566_REGROW_BLOCK;   // 제품 기본(켬)으로 잰다
