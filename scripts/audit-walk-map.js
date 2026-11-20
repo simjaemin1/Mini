@@ -81,6 +81,15 @@ module.exports = function walkAudit(ctx) {
   const aOut = { villages: V, anchorsMissing: vs.filter((v) => v.a < 0).map((v) => v.name), pairs: P.length, unreachAll: unreachAll.length, unreachEx: unreachAll.slice(0, 10),
     ratio: { median: q(0.5), p90: q(0.9), p99: q(0.99), max: R.length ? R[R.length - 1] : null, over2: R.filter((x) => x > 2).length, over3: R.filter((x) => x > 3).length, over5: R.filter((x) => x > 5).length }, top, ms: Date.now() - tA };
 
+  //   ★[T1406 ④ⓒ] 두 칸 사이 걸음(`--reach x1,y1:x2,y2[;…]`) — 전쟁 판 어촌3 교전 슬롯 ↔ 병사 자리처럼 지형 + 다리로만(영토 · 건물 0) 닿나 · 몇 칸
+  if (opt('reach', null)) {
+    const res = [];
+    for (const q2 of String(opt('reach')).split(';')) { const [a2, b2] = q2.split(':').map((t) => t.split(',').map(Number)); const ia = a2[1] * NX + a2[0], ib = b2[1] * NX + b2[0];
+      dij([ia], null, -1, null, null); const d = dist[ib] >= INF ? null : +(dist[ib] / 5).toFixed(1); res.push({ a: a2, b: b2, blkA: !!blk[ia], blkB: !!blk[ib], walk: d, straight: +Math.hypot(a2[0] - b2[0], a2[1] - b2[1]).toFixed(1) });
+      console.log(`[닿음] (${a2}) → (${b2}) · 막힌 칸 ${!!blk[ia]}/${!!blk[ib]} · 걸음 ${d == null ? '못 닿음' : d + '칸'} · 곧은 ${Math.hypot(a2[0] - b2[0], a2[1] - b2[1]).toFixed(1)}`); }
+    console.log(`ⓐ 다리 칸 ${BRIDGE.size} · 못 닿음 ${aOut.unreachAll} · 3배 넘음 ${aOut.ratio.over3} · 2배 넘음 ${aOut.ratio.over2} · 가장 큼 ${aOut.ratio.max}`);
+    return { zone: ZID, a: aOut, reach: res };
+  }
   //   ★[T1406 고침 ①] 다리 놓기(`--place`) — 이 판은 ⓐ 와 다리 놓기만 하고 끝난다(놓은 다리로 다시 재는 표는 `T1406_BRIDGES=1` 로 이 자를 한 번 더)
   if (argv.includes('--place')) {
     console.log(`\n[걸음 지도 감사 · 다리 놓기] ${ZID} · 마을 ${V} · 이웃 쌍 ${P.length} · 3배 넘음 ${aOut.ratio.over3} · 가장 큼 ${aOut.ratio.max}`);
