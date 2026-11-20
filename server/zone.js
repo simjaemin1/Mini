@@ -5672,6 +5672,9 @@ function _t1372SSTake() {
 //     그 몸을 커널에 넘기고(`_wwPost`) 첫 거름 표를 깨웠다(몸 세계 8날 · 4날 끊음: 다시 뜬 둘째 틱에 459 몸 전부 · 한 번에 돈 판은 0 → 다시 결정 · 어부 몸 걸음 갈림 → 100날 econ 20날 갈림).
 //   켜면 종료 저장(T742 줄 `zone.t1382TB` · deflate)에 비트를 싣고 다시 뜬 판 첫 틱 머리에 같은 길이면 그대로 덮는다(값은 지형 술어 그대로라 구운 칸 집합만 같아진다).
 let _t1382TbPend = null;
+//   ★[T1382 덧붙임 둘] 틱 번호(`_tick.n`)도 넘긴다 — 틱 주사위 씨(`_diceTick.seed(…, _tick.n)` · 몹 배회 · 탈출 · 산출)와 틱 번호로 도는 일들이 이 셈을 읽는다.
+//   종전: 다시 뜬 판은 0 부터 세서 틱마다 주사위가 한 번에 돈 판과 달랐다(몸 세계 4날 끊음: 다시 뜬 뒤 4 ~ 5분 사이 어부 몸 8 · 10분 40 갈림). T742 줄 `zone.t1382Tick` · 끔 = 종전.
+let _t1382TickPend = null;
 const _t1382TbStat = { saved: 0, restored: 0, bytes: 0 };
 function _t1382TbTake() {
   if (!_WW || !_WW.TB) return null;
@@ -10978,6 +10981,7 @@ setInterval(() => {
 }, FISH_TICK_MS);
 // ★[T1382] 어장 번짐 시계 — 다시 뜬 판은 `_fishTickAt` 이 부팅 순간이라 첫 번짐이 지난 번짐부터가 아니라 부팅부터 잰 몫이었다(몸 세계 6날 · 4날 끊음: 어부 몸 29 자리 갈림).
 //   손잡이 `T1340_RESUME_EXACT` 안 · 종료 저장에만 값(T742 줄 `zone.t1382Fish`) · 끔 = 종전 글자.
+if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.t1382Tick', () => (shuttingDown ? { n: _tick.n } : null), (v) => { if (v && Number.isFinite(v.n)) _t1382TickPend = v.n; });
 if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.t1382TB', () => (shuttingDown ? _t1382TbTake() : null), (v) => { if (v && v.z) _t1382TbPend = v; });
 if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.t1382Fish', () => (shuttingDown ? { at: _fishTickAt } : null), (v) => { if (v && Number.isFinite(v.at)) _fishTickAt = v.at; });
 
@@ -17591,6 +17595,7 @@ setInterval(() => {
   }
   // ★계측은 손잡이가 아니다 — 아무 동작도 안 바꾼다(관측자 규약 · `perfMark` 와 같은 자리).
   _tick.n++; _tick.wall += _elapsed; _tick.sim += dt; _tick.debt = _tickDebt;
+  if (_t1382TickPend != null) { _tick.n = _t1382TickPend + 1; _t1382TickPend = null; }   // ★[T1382] 다시 뜬 판 첫 틱 = 한 번에 돈 판의 저장 다음 틱 번호(틱 주사위 씨 · 거름 표 틱 · 틱 번호 주기가 그대로 이어진다)
   // ★★[T350 · 주사위 0] 틱 흐름 영점 — 이 틱 안에서 도는 **세계 자리**(몹 배회·스폰·산출)의 굴림은
   //   여기서 뿌린 씨에서 순서대로 난다. 주민 결정과 다른 점 하나를 표에 적는다:
   //   · 주민 결정 = **순수 해시**(신원·셀·날·틱) ⇒ 도는 **순서와 무관**하다 — SoA·워커가 나눠 돌려도 같다.
