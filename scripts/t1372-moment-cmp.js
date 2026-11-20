@@ -52,4 +52,11 @@ for (const g of Object.keys(T)) {
   for (const [k, p] of rows.slice(0, 40)) console.log(`  ${k.padEnd(18)} 갈림 ${p.diff}/${p.both}${p.onlyA ? ` · A 에만 ${p.onlyA}` : ''}${p.onlyB ? ` · B 에만 ${p.onlyB}` : ''}  ${p.ex.map((e) => `${e[0]}: ${e[1]} → ${e[2]}`).join(' ‖ ')}`);
 }
 if (Object.keys(MODS).length) { console.log(`\n[모듈 객체] 몹 A ${X.mods.mobN} · B ${Y.mods.mobN}`); for (const [m, R] of Object.entries(MODS)) console.log(`  ${m.padEnd(8)} 칸 ${R.keys} · 갈림 ${R.diff} · A 에만 ${R.onlyA} · B 에만 ${R.onlyB}  ${Object.entries(R.byField).sort((p, q) => q[1] - p[1]).slice(0, 12).map(([f, n]) => f + ' ' + n).join(' · ')}`); out.mods = MODS; }
+//   ★[T1382] 길 닳음 칸 — 칸 수 · 갈린 칸 · 한쪽에만 · 코스 지도 · 마지막 날
+if (X.mods && Y.mods && (X.mods.rd || Y.mods.rd)) {
+  const x = X.mods.rd || { cells: {} }, y = Y.mods.rd || { cells: {} }, R = out.rd = { nA: x.n || 0, nB: y.n || 0, diff: 0, onlyA: 0, onlyB: 0, ex: [], scal: {} };
+  for (const k of new Set([...Object.keys(x.cells), ...Object.keys(y.cells)])) { const a2 = x.cells[k], b2 = y.cells[k]; const d = a2 === undefined ? 'onlyB' : b2 === undefined ? 'onlyA' : a2 !== b2 ? 'diff' : null; if (d) { R[d]++; if (R.ex.length < EX) R.ex.push([k, a2 || '∅', b2 || '∅']); } }
+  for (const k of ['lastDay', 'coarseGen', 'coarseN', 'pavedN', 'coarse']) if (x[k] !== y[k]) R.scal[k] = [String(x[k]).slice(0, 60), String(y[k]).slice(0, 60)];
+  console.log(`\n[길 닳음 칸] A ${R.nA} · B ${R.nB} · 갈림 ${R.diff} · A 에만 ${R.onlyA} · B 에만 ${R.onlyB}${Object.keys(R.scal).length ? ' · 다른 값 ' + Object.keys(R.scal).join(',') : ''}  ${R.ex.map((e) => e.join(': ')).join(' ‖ ')}`);
+}
 if (opt('json', null)) fs.writeFileSync(opt('json'), JSON.stringify(out, null, 1));
