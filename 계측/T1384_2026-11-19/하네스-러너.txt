@@ -1,0 +1,12 @@
+# touched 하네스 · 규약 다섯 — touched-harness.js origin/main --list 차례로(판 넷이 같이 도는 상자 · 초는 그 상자에서) · harness-lint 는 미끼 줄 여섯 고친 뒤(815c67b4c) 다시 돌린 줄
+test-body-fields.js rc=0 1s :: === 14 통과 / 0 실패 ===
+test-coll-grid.js rc=0 22s :: === 결과: 20 PASS / 0 FAIL ===
+test-events.js rc=0 557s :: === 305건 중 PASS 305 · FAIL 0 ===
+test-floor-stone.js rc=0 42s :: === 10건 중 PASS 10 · FAIL 0 ===
+test-hp-src.js rc=0 3s :: === 54 통과 / 0 실패 ===
+test-lon-day.js rc=0 1s :: === 22건 중 PASS 22 · FAIL 0 ===
+test-one-target.js rc=0 43s :: === 결과: 24 PASS / 0 FAIL ===
+test-t1384-mine-food.js rc=0 8s :: 통과 55/55
+test-valuechain.js rc=0 0s :: 결과: PASS
+test-harness-lint.js rc=0 (815c67b4c 뒤 다시) :: === 99건 중 PASS 99 · FAIL 0 ===
+test-harness-lint.js 고치기 앞(f10fec1bb) :: === 99건 중 PASS 98 · FAIL 1 === — ⑲b test-t1384-mine-food.js(count 0/6)

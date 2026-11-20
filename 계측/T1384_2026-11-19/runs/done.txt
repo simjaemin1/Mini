@@ -1,0 +1,21 @@
+2026-11-19T16:27:56Z [W1] rc=0 935s :: bash /root/minirepo/계측/T1384_2026-11-19/run84.sh /root/minirepo SOFF 400 off 1020 > /root/t1384runs/SOFF-1020.out 2>&1
+2026-11-19T16:29:20Z [W1] rc=0 84s :: bash /root/wt84/계측/T1384_2026-11-19/run84.sh /root/wt84 SOFF 400 off 42 > /root/t1384runs/SOFF-42.out 2>&1
+2026-11-19T16:29:20Z [W1] 줄 빔 — 끝
+2026-11-19T16:29:44Z [W2] rc=0 1041s :: bash /root/minirepo/계측/T1384_2026-11-19/run84.sh /root/minirepo SOFF 400 off 7 > /root/t1384runs/SOFF-7.out 2>&1
+2026-11-19T16:29:44Z [W2] 줄 빔 — 끝
+2026-11-19T16:44:00Z [W1] rc=0 851s :: bash /root/wt84/계측/T1384_2026-11-19/run84.sh /root/wt84 SOFF 400 off 1020 > /root/t1384runs/SOFF-1020.out 2>&1
+2026-11-19T16:45:43Z [W2] rc=0 954s :: bash /root/wt84/계측/T1384_2026-11-19/run84.sh /root/wt84 SOFF 400 off 7 > /root/t1384runs/SOFF-7.out 2>&1
+2026-11-19T16:46:48Z [W2] rc=0 65s :: bash /root/wt84/계측/T1384_2026-11-19/lab84.sh /root/wt84 LOFF real 100 off 0
+2026-11-19T17:01:16Z [W1] rc=0 1036s :: bash /root/wt84/계측/T1384_2026-11-19/run84.sh /root/wt84 SOFF 400 off 42 > /root/t1384runs/SOFF-42.out 2>&1
+2026-11-19T17:02:03Z [W2] rc=0 915s :: bash /root/wt84/계측/T1384_2026-11-19/run84.sh /root/wt84 SOFFb 400 off 1020 > /root/t1384runs/SOFFb-1020.out 2>&1
+2026-11-19T17:20:55Z [W1] rc=0 1179s :: bash /root/wt84/계측/T1384_2026-11-19/run84.sh /root/wt84 SOFFb 400 off 7 > /root/t1384runs/SOFFb-7.out 2>&1
+2026-11-19T17:53:27Z [W1] rc=0 1952s :: bash /root/wt84b/계측/T1384_2026-11-19/run84.sh /root/wt84b SROUTE 400 route 1020 > /root/t1384runs/SROUTE-1020.out 2>&1
+2026-11-19T18:04:20Z [W3] 랩 여섯 끝
+2026-11-19T18:10:56Z [W1] rc=0 1049s :: bash /root/wt84b/계측/T1384_2026-11-19/run84.sh /root/wt84b SKEEP 400 keep 1020 > /root/t1384runs/SKEEP-1020.out 2>&1
+2026-11-19T18:23:59Z [W1] rc=0 783s :: bash /root/wt84b/계측/T1384_2026-11-19/run84.sh /root/wt84b SROUTE 400 route 7 > /root/t1384runs/SROUTE-7.out 2>&1
+2026-11-19T18:37:10Z [W1] rc=0 791s :: bash /root/wt84b/계측/T1384_2026-11-19/run84.sh /root/wt84b SKEEP 400 keep 7 > /root/t1384runs/SKEEP-7.out 2>&1
+2026-11-19T18:50:23Z [W1] rc=0 793s :: bash /root/wt84b/계측/T1384_2026-11-19/run84.sh /root/wt84b SROUTE 400 route 42 > /root/t1384runs/SROUTE-42.out 2>&1
+2026-11-19T19:03:30Z [W1] rc=0 787s :: bash /root/wt84b/계측/T1384_2026-11-19/run84.sh /root/wt84b SKEEP 400 keep 42 > /root/t1384runs/SKEEP-42.out 2>&1
+2026-11-19T19:03:30Z [W1] 줄 빔 — 끝
+2026-11-19T19:41:24Z [W2] rc=0 9561s :: bash /root/wt84/계측/T1384_2026-11-19/body84.sh /root/wt84 BOFF 100 off 1020 > /root/t1384runs/BOFF-1020.out 2>&1
+2026-11-19T19:41:24Z [W2] 줄 빔 — 끝

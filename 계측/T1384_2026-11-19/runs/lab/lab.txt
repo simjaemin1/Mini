@@ -1,0 +1,7 @@
+2026-11-19T16:46:48Z LOFF 0 rc=0 65s kind=real days=100 arm=off f3e493f92
+2026-11-19T17:58:49Z LOFF 1 rc=0 68s kind=real days=100 arm=off 2653d5fbc
+2026-11-19T17:59:54Z LKEEP 1 rc=0 65s kind=real days=100 arm=keep 2653d5fbc
+2026-11-19T18:01:01Z LROUTE 1 rc=0 67s kind=real days=100 arm=route 2653d5fbc
+2026-11-19T18:02:09Z LOFF 2 rc=0 68s kind=real days=100 arm=off 2653d5fbc
+2026-11-19T18:03:15Z LKEEP 2 rc=0 66s kind=real days=100 arm=keep 2653d5fbc
+2026-11-19T18:04:20Z LROUTE 2 rc=0 65s kind=real days=100 arm=route 2653d5fbc
