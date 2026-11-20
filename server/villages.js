@@ -2875,6 +2875,7 @@ function _t1312Pass(fromVil, toVil, day, h0) {   // 이주 문(켬) — 들은 �
   _t1312Stat.lagSum += k.lag;
   if (h0 == null || k.h == null || !(k.h > h0)) { _t1312Stat.unhappy++; return null; }
   const pk = _t1312PickedOf(fromVil, toVil, day), nk = k.n + pk, beds = k.beds == null ? Infinity : k.beds;
+  if (E1.T1405_RECV && toVil.econ && !E1.t1405RecvOk(toVil.econ, pk + 1, k.h, k.n)) { _t1405Stat.fullHeard++; return null; }   // ★[T1405 ㉠] 켬 = 들은 행복 − (들은 인구 + 무리 셈 + 이 사람의 부담 − 들은 인구의 부담) < 0.25 면 안 간다(영토 = 눈에 보이는 땅 · 끔 = 이 줄 무동작)
   if (!(beds > nk)) { _t1312Stat.beds++; return null; }
   if (_t1319KOn() && k.K != null && nk + 1 > k.K) { _t1319Stat.overK++; return null; }   // ★[T1319] 켬 = 들은 인구 + 앞서 고른 수 + 이 사람이 들은 K 를 넘으면 안 간다(들은 K 없으면 이 문은 안 선다)
   const per = E1.DAILY_FOOD_CONSUMPTION * (E1.t1319MigNeedDays || E1.t1297NeedDays)(day);
@@ -2894,6 +2895,7 @@ const T1319_RECV_K_ENV = process.env.T1319_RECV_K === '1';
 function _t1319KOn() { return T1319_RECV_K_ENV && _t1312On(); }
 const _t1319Stat = { overK: 0 };
 const _t1147Stat = { pick: 0, nearest: 0, other: 0, none: 0, rows: [] };
+const _t1405Stat = { full: 0, fullHeard: 0 };   // ★[T1405 ㉠] 받는 쪽 문이 막은 수(끔 세계 길 · 들은 줄 길) — 계측 칸(켬에서만 찬다)
 function _t1147Pick(vil) {
   const W = state.world, M = W && W._distMatrix, ev = W && W.villages, V2 = state.econV2, E1 = state.econ;
   const e0 = vil && vil.econ; if (!e0 || !V2 || !E1) return null;
@@ -2911,6 +2913,7 @@ function _t1147Pick(vil) {
     if (_t1312On()) { const hk = _t1312Pass(vil, v, W ? W.day | 0 : 0, h0); if (hk == null) continue; if (hk > bh || (hk === bh && dist < bd)) { bh = hk; bd = dist; best = v; } continue; }   // ★[T1312] 켬 = 행복 · 침상 · 곳간 모두 들은 줄 + 무리 셈(위 머리말) · 끔 = 아래 종전 줄
     const h = e.lastStats && typeof e.lastStats.happiness === 'number' ? e.lastStats.happiness : null;
     if (h0 == null || h == null || !(h > h0)) continue;
+    if (E1.T1405_RECV && !E1.t1405RecvOk(e, 1)) { _t1405Stat.full++; continue; }   // ★[T1405 ㉠] 켬 = 한 사람 받으면 제 행복이 0.25 밑으로 가는 마을은 안 받는다(econ `t1405RecvOk` · 끔 = 이 줄 무동작)
     const beds = Math.min(e.housing !== undefined ? e.housing : Infinity, e._mapBeds !== undefined ? e._mapBeds : Infinity);
     if (!(beds > e.npcs.length)) continue;
     if (_t1306On()) { if (!_t1306Pass(vil, v, W ? W.day | 0 : 0)) continue; }   // ★[T1306] 켬 = 소문으로 아는 곳간 · 출생 문 자(위 머리말) · 끔 = 아래 종전 줄
@@ -20651,7 +20654,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   T1238_TERR_V2, T1302_TERR_BODY, T1329_TERR_CREW, t1238Pick, t1238Go, t1238CellNeed, t1238Drop, t1238Clear, t1238Place, t1238Cancel, t1238PullNeed, t1238Pull, t1238Info, t1238Stat, t1238StructAt, t1238LandAt, t1238MarkUse,   // ★[T1238] 영토 v2 — 존 · 클라 · 하네스가 같은 함수를 부른다
   t1238TakeVillageCrop, t1238PeekVillageCrop, t1238RegrowBlocked, t1238VilRadius,
   _t1238Batch, _t1238DayPre, _t1238DayPost, _t1238GoOk, _t1238Use, _t1238Remove, _t1238Boot, _t1238JobToLand, _t1238JobFromLand, _t1238JobsOf, landSizeOfCells, _t1238Struct, _t1238Land, _t1238St,
-  t1167Stat, t1144Stat: () => Object.assign({ on: T1144_LIFE_EVENT, verify: T1144_VERIFY }, _t1144Stat), t1147Stat: () => _t1147Stat, _t1147Pick, t1320Stat: () => Object.assign({ on: T1320_ROCK_PATH }, _t1320St), t1320On: () => T1320_ROCK_PATH, t1327Stat: () => Object.assign({ on: T1327_ROUTE_FIX }, _t1327St), t1327On: () => T1327_ROUTE_FIX, t1306Stat: () => _t1306Stat, _t1306On, _t1306Known, _t1306Pass, _t1306Record, t1312Stat: () => _t1312Stat, _t1312On, _t1312Pass, _t1312PickedOf, _t1312Note, t1319Stat: () => _t1319Stat, _t1319KOn, t1342Stat: () => Object.assign({ on: _t1342On() }, _t1342Stat), _t1342On, _t1342Full, _t1342Home, _t1342Tell, _t1342Told, _t1342Merge, t750CastPre, t750Stat: () => _t750Stat, t719ReachPre: t719ReachPreX, t719Stat: () => _t719Stat, t731Stat: () => _t731Stat, t1013Stat: () => Object.assign({ on: T1013_BAND_DAY }, _t1013Stat), t1133Stat: () => Object.assign({ on: T1133_BAG }, _t1133Stat), t1133Sizes: _t1133Sizes, t1166Stat: () => Object.assign({ on: T1166_LOT, pend: _t1166Pend.length }, _t1166Stat), t1166Sizes: _t1166Sizes, lotsClockSet: _t1166Flush,   // ★[T1133] 몸 짐 줄 영속 셈 · 크기 자(계측 전용)   // ★[T1013] 사냥터 짓기 몫 셈(계측 전용)   // ★[T731] 현지 자정 창 증인(켬에서만 찬다)
+  t1167Stat, t1144Stat: () => Object.assign({ on: T1144_LIFE_EVENT, verify: T1144_VERIFY }, _t1144Stat), t1147Stat: () => _t1147Stat, _t1147Pick, t1405Stat: () => Object.assign({ recv: !!(state.econ && state.econ.T1405_RECV) }, _t1405Stat), t1320Stat: () => Object.assign({ on: T1320_ROCK_PATH }, _t1320St), t1320On: () => T1320_ROCK_PATH, t1327Stat: () => Object.assign({ on: T1327_ROUTE_FIX }, _t1327St), t1327On: () => T1327_ROUTE_FIX, t1306Stat: () => _t1306Stat, _t1306On, _t1306Known, _t1306Pass, _t1306Record, t1312Stat: () => _t1312Stat, _t1312On, _t1312Pass, _t1312PickedOf, _t1312Note, t1319Stat: () => _t1319Stat, _t1319KOn, t1342Stat: () => Object.assign({ on: _t1342On() }, _t1342Stat), _t1342On, _t1342Full, _t1342Home, _t1342Tell, _t1342Told, _t1342Merge, t750CastPre, t750Stat: () => _t750Stat, t719ReachPre: t719ReachPreX, t719Stat: () => _t719Stat, t731Stat: () => _t731Stat, t1013Stat: () => Object.assign({ on: T1013_BAND_DAY }, _t1013Stat), t1133Stat: () => Object.assign({ on: T1133_BAG }, _t1133Stat), t1133Sizes: _t1133Sizes, t1166Stat: () => Object.assign({ on: T1166_LOT, pend: _t1166Pend.length }, _t1166Stat), t1166Sizes: _t1166Sizes, lotsClockSet: _t1166Flush,   // ★[T1133] 몸 짐 줄 영속 셈 · 크기 자(계측 전용)   // ★[T1013] 사냥터 짓기 몫 셈(계측 전용)   // ★[T731] 현지 자정 창 증인(켬에서만 찬다)
   streamStat, fishPerf, woodPerf, foragePerf, farmPerf,   // ★[T316] `/perf` 가 내주는 어부 관측(손잡이 끔이면 null) · ★[T325] 나무꾼 · ★[T347] 채집도 같은 꼴 · ★[T368] 농부
   T856_LAND_ELEV, _t856LandElev,   // ★[T856] 마을 고도 — 하네스(`test-land-elev`)가 같은 함수를 부른다(사본 0)
   _t400BuildDay, _t400PerLoad, _t400Crew, _t400From,   // ★[T400] 집 행위 1층 — 하네스가 같은 함수를 부른다(사본 0)

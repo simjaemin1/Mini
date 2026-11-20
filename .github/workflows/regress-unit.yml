@@ -459,58 +459,59 @@ jobs:
       fail-fast: false
       matrix:
         # <ci-class srv — scripts/ci-class.js --write-yml 이 쓴다 · 손으로 고치지 않는다>
-        # 분류표 2026-11-20 · 서버 46종 · 잡 2개(합 초 353 · 354 — 가장 긴 판 · 이 상자)
+        # 분류표 2026-11-20 · 서버 47종 · 잡 2개(합 초 371 · 373 — 가장 긴 판 · 이 상자)
         include:
           - srv: '1/2'
             list: >-
               test-bridge-act.js
-              test-claim-v2.js
               test-donate.js
-              test-emptystart.js
-              test-fixture-reap.js
-              test-food-sick.js
-              test-granary-age.js
-              test-granary-item.js
-              test-hall-units.js
-              test-jungwon-boot.js
-              test-mob-hp-door.js
-              test-preserve-carry.js
-              test-preserve.js
-              test-reset-world.js
-              test-spoil2.js
-              test-t1118-rack-age.js
-              test-t1128-kcal-tidy.js
-              test-t1163-welcome-sig.js
-              test-t1186-blade-wear.js
-              test-t1238-terr-v2.js
-              test-t989-chunk-save.js
-              test-terraincache.js
-              test-zone-fauna.js
-          - srv: '2/2'
-            list: >-
               test-doors.js
-              test-drop-kg.js
-              test-fishing.js
               test-forage-act.js
               test-game-meat.js
+              test-granary-age.js
+              test-granary-item.js
               test-granary-rot.js
-              test-guest-identity.js
               test-guest-rejoin.js
-              test-member-open.js
-              test-physical-stone-cycle.js
+              test-jungwon-boot.js
+              test-mob-hp-door.js
+              test-preserve.js
               test-regrow.js
-              test-shelter.js
+              test-spoil2.js
               test-t1065-tool-gate.js
-              test-t1066-village-fire.js
               test-t1093-shelter-roof.js
               test-t1120-next-tool.js
               test-t1125-welcome.js
+              test-t1238-terr-v2.js
+              test-t1405-leave-rare.js
+              test-t989-chunk-save.js
+              test-xhost-env.js
+              test-zone-fauna.js
+          - srv: '2/2'
+            list: >-
+              test-claim-v2.js
+              test-drop-kg.js
+              test-emptystart.js
+              test-fishing.js
+              test-fixture-reap.js
+              test-food-sick.js
+              test-guest-identity.js
+              test-hall-units.js
+              test-member-open.js
+              test-physical-stone-cycle.js
+              test-preserve-carry.js
+              test-reset-world.js
+              test-shelter.js
+              test-t1066-village-fire.js
+              test-t1118-rack-age.js
               test-t1126-rock-yield.js
+              test-t1128-kcal-tidy.js
               test-t1132-hall-view.js
               test-t1146-stone-rule.js
+              test-t1163-welcome-sig.js
+              test-t1186-blade-wear.js
+              test-terraincache.js
               test-weight.js
               test-well.js
-              test-xhost-env.js
         # </ci-class srv>
     env:
       TIDE_FREEZE_MS: '372603'
