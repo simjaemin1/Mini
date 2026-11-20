@@ -10,7 +10,7 @@ const ROOT = path.resolve(__dirname, '..');
 const child = process.argv.includes('--child');
 if (child) {
   process.env.ENABLE_VILLAGES = '0';
-  process.env.DB_PATH = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 't1358-db-')), 'w.db');
+  { const _d = fs.mkdtempSync(path.join(os.tmpdir(), 't1358-db-')); require('./lib-tmp').own(_d); process.env.DB_PATH = path.join(_d, 'w.db'); }   // [PM land1087 · lint ㉑] lib-tmp — 판 끝(빨강 · 상한 포함)에 지운다
   const bait = process.env.T1358_BAIT || '';
   let changes = 0;
   if (bait) {
