@@ -103,11 +103,13 @@
     const _M = _dd ? (window.__deedsMeter || null) : null;
     const _now = _M ? _M.now + (Date.now() - _M.recvAt) : 0, _DAY = 86400000;   // [T1310 클라 시계] 받은 뒤 흐른 클라 간격만 — 축은 서버가 준 `now`(PM land1082)
     const _fd = (d) => (d >= 10 ? Math.round(d) : Math.max(0, +d.toFixed(1)));
+    // ★[T1386] 남은 때 — 이틀 밑이면 시간 · 한 시간 밑이면 분 · 그 위는 날(서버가 내다본 첫 풀림 시각 `first` 와 서버 축 `_now` 의 차)
+    const _fh = (ms) => { const h = Math.max(0, ms) / 3600000; return h < 1 ? `${Math.max(1, Math.round(h * 60))}분` : h < 48 ? `${h >= 10 ? Math.round(h) : +h.toFixed(1)}시간` : `${_fd(h / 24)}일`; };
     let _meterHtml = '';
     if (_M) {
       const rows = (_M.chunks || []).map((q) => { const m = Math.max(0, q.m - q.r * Math.max(0, _now - q.t)); return { q, m, f: q.cap > 0 ? m / q.cap : 0, left: q.r > 0 ? m / q.r / _DAY : Infinity }; }).sort((x, y) => x.left - y.left);
       const minLeft = rows.length ? rows[0].left : Infinity;
-      _meterHtml = `<div class="hint">내 땅 합 ${_M.N}칸 · 다 돌본 땅이 안 돌보면 버티는 날 ${_fd(_M.days)}일${rows.length ? ` · 지금대로면 ${_fd(minLeft)}일 뒤 첫 풀림` : ''}<br/>한 칸 더 잡으면 ${_fd(_M.days)}일 → ${_fd(_M.daysNext)}일로 줄어듭니다.</div>`
+      _meterHtml = `<div class="hint">내 땅 합 ${_M.N}칸 · 다 돌본 땅이 안 돌보면 버티는 날 ${_fd(_M.days)}일${rows.length ? (_M.first != null ? ` · 지금대로면 ${_fh(_M.first - _now)} 뒤 한 칸 · 그 뒤 하루에 ${_M.perDay}칸 꼴` : ` · 지금대로면 ${_fd(minLeft)}일 뒤 저축이 바닥납니다`) : ''}${_M.debt > 0 ? `<br/>빚 ${Math.round(_M.debt)}점 — 100점이 되면 집에서 가장 먼 칸 하나가 풀립니다. 돌보면 빚부터 갚습니다.` : ''}<br/>한 칸 더 잡으면 ${_fd(_M.days)}일 → ${_fd(_M.daysNext)}일로 줄어듭니다.</div>`
         + rows.map((x) => `<div class="sp-list-row" style="gap:6px"><span style="min-width:110px">땅덩이 (${x.q.cx},${x.q.cy}) ${x.q.n}칸</span><span style="flex:1;height:6px;border:1px solid var(--dim-2);position:relative"><span style="position:absolute;left:0;top:0;bottom:0;width:${Math.round(x.f * 100)}%;background:var(--dim-2)"></span></span><span style="min-width:64px;text-align:right">${_fd(x.left)}일</span></div>`).join('');
     }
     body.innerHTML = `
@@ -115,7 +117,7 @@
       <div class="hint" style="font-size:11px;opacity:0.7;margin-bottom:10px">
         ${_dd ? `<b>C</b>=개인 사유지 (빈 들은 누구나 · 마을 영토 안은 그 마을 구성원) · <b>T</b>=임시 (어디든)<br/>
         땅은 ${uiCfg.deeds.chunk}×${uiCfg.deeds.chunk}칸 땅덩이마다 관리도가 있습니다 — 그 땅덩이 안 어느 칸에서든 거두거나 심거나 만들거나 보관함을 쓰거나 지으면, 또는 머물면 오릅니다.<br/>
-        관리도는 실제 날짜로 줄어듭니다(접속하지 않아도) — 땅이 넓을수록 빨리 줄고, 다 줄면 그 땅덩이의 내 칸이 풀립니다<br/>` : `<b>C</b>=개인 사유지 (마을 땅 안만) · <b>T</b>=임시 (어디든) · <b>Shift+C</b>=마을 땅 (마을 사람만)<br/>`}
+        관리도는 실제 날짜로 줄어듭니다(접속하지 않아도) — 땅이 넓을수록 빨리 줍니다. 다 줄면 빚이 쌓이고, 빚 100점마다 집에서 가장 먼 칸부터 한 칸씩 풀립니다(통째로 풀리지 않습니다)<br/>` : `<b>C</b>=개인 사유지 (마을 땅 안만) · <b>T</b>=임시 (어디든) · <b>Shift+C</b>=마을 땅 (마을 사람만)<br/>`}
         땅을 내놓으면 칸은 돌아오지만 들인 것은 돌려받지 못합니다. 다른 곳에 가서 다시 정할 수 있습니다.
       </div>
       ${_meterHtml}
