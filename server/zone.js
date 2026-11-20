@@ -6555,7 +6555,7 @@ VillageView.init({ SimVillages, Membership, VillageKin, send, players, get jobKo
 Claims.init({ claims, buildings, players, db, central, broadcast, ZONE_ID, BUILDING_SIZE });
 Claims.start();
 // ★[T1305] 접속 중인 사람의 날 바뀜(자정을 넘겨 접속해 있는 사람) — 존 틱에 안 얹는다. 끔 = 타이머 0.
-if (Deeds.ON) { const _t1332D = setInterval(() => { const _n = Date.now(); for (const p of players.values()) { if (p && !p.isNpc && p.playerId) { try { _t1332Dwell(p, _n); } catch (e) {} } } }, Math.max(1000, Deeds.CFG.DWELL_MS / 4)); if (_t1332D.unref) _t1332D.unref(); }   // ★[T1332 ②] 머묾 — 연속 `DWELL_MS`(재는 간격 = 그 4분의 1 · 유도)
+if (Deeds.ON) { const _t1332D = setInterval(() => { const _n = _t1332Clock(); for (const p of players.values()) { if (p && !p.isNpc && p.playerId) { try { _t1332Dwell(p, _n); } catch (e) {} } } }, Math.max(1000, Deeds.CFG.DWELL_MS / 4)); if (_t1332D.unref) _t1332D.unref(); }   // ★[T1332 ②] 머묾 — 연속 `DWELL_MS`(재는 간격 = 그 4분의 1 · 유도)
 
 // ★[T19 2026-09-02] 이방인 받기 — **이미 있는 것만 넘긴다**(사본 금지).
 //   ⚠`holdDays` 는 T45 가 정한 "자리를 비웠다"의 선이다. 여기서 새 수를 만들지 않는다(축이 하나다).
@@ -8062,7 +8062,7 @@ async function _acceptConnection(ws, req, C) {
   //   안 가져간 것만 — 가져간 셀은 이미 주인이 바뀌어 이 순회에 안 잡히므로 **구조적으로 저절로** 그렇다.
   //   여기 두는 이유: 부재 배치는 30분에 한 번 도는데, 사람은 접속한 그 순간 자기 땅을 본다.
   try { const _rc = Claims.onPlayerActive(player); if (_rc) console.log(`[${ZONE_ID}] 🏠 ${name} 복귀 — 맡겨 둔 사유지 ${_rc}칸 반환`); } catch (e) {}
-  if (Deeds.ON) { try { _t1305Day(player, Date.now(), true); } catch (e) {} }   // ★[T1305] 오늘 처음 들어왔으면 하루를 센다 · 이 존 칸은 늘 다시 잰다(사유지 낡음)
+  if (Deeds.ON) { try { _t1305Day(player, _t1332Clock(), true); } catch (e) {} }   // ★[T1305] 오늘 처음 들어왔으면 하루를 센다 · 이 존 칸은 늘 다시 잰다(사유지 낡음)
 
   // 활성 청크 즉시 갱신 — 이 player 주변 청크의 시드 자원 spawn → welcome.resources에 포함됨
   updateActiveChunks();
@@ -8213,7 +8213,7 @@ async function _acceptConnection(ws, req, C) {
       ...(process.env.T970_CUT_NEAR !== '0' ? { cutNear: true } : {}),   // [T970 · ★T981 켬 기본 — PM 10-28] 클라 산 가르기 붙듦(`_mtCutHold` — 가르기 조각을 만든 띠)을 카메라 둘레(이번 판 산 수집 창의 청크 · 그 청크의 지금 띠)만 남긴다(11-r1-mountain `_mtCutHoldSweep` · 상한 64/48 그대로) · 되돌림 `T970_CUT_NEAR=0` 이면 칸이 없다(옛 welcome · 종전 붙듦)
       ...(process.env.T981_MT_NEAR !== '0' ? { mtNear: true } : {}),   // [T981 · ★T997 켬 기본 — PM 10-29] 클라 산 굽다 만 청크(`_mt3Jobs`)를 이번 판 산 수집 창 것만 남기고 · 가르기 붙듦이 비면 가르기 판 둘(`_mtMaskCv` · `_mtStripCv`)을 만들 때 크기로 되돌린다(11-r1-mountain `_mtNearSweep` · T970 회부 2) · 되돌림 `T981_MT_NEAR=0` 이면 칸이 없다(옛 welcome · 종전 그대로)
       ...(_streamOn() ? { streams: Streams.wireOf(ZONE_ID) ? Streams.wireOf(ZONE_ID).ver : true, streamSlow: Streams.STREAM_SLOW0 } : {}),   // [T585] 개울 — 클라가 `/streams.bin` 을 받아 그리고 걸음 예측에 쓴다(배율도 서버 정본 수)
-      ...(Deeds.ON ? { deeds: { chunk: Deeds.CFG.CHUNK, d0: Deeds.CFG.D0, n0: Deeds.CFG.N0, pt: Deeds.CFG.PT, score: Deeds.CFG.SCORE, dwellS: Math.round(Deeds.CFG.DWELL_MS / 1000) } } : {}),   // [T1305] 사유지 돌봄 — 클라 사유지 패널이 숫자 상한 대신 낡음을 보인다(끔 = 칸 없음)
+      ...(Deeds.ON ? { deeds: { chunk: Deeds.CFG.CHUNK, d0: Deeds.CFG.D0, n0: Deeds.CFG.N0, pt: Deeds.CFG.PT, score: Deeds.CFG.SCORE, dwellS: Math.round(Deeds.CFG.DWELL_MS / 1000), idle: Deeds.CFG.Q_IDLE > 0 ? 1 : 0 } } : {}),   // [T1305] 사유지 돌봄 — 클라 사유지 패널이 숫자 상한 대신 낡음을 보인다(끔 = 칸 없음)
       ...(VillageKin.ON ? { villageOnly: true } : {}),   // [T787] 길드 = 마을(켬 기본) — 클라 무리 패널이 마을 패널이 된다 · `T785_VILLAGE_ONLY=0` 이면 칸이 없다(옛 길드 패널)
       ...(process.env.T839_SITE_EXIT !== '0' ? { siteExit: true } : {}),   // [T839 · ★T850 켬 기본 — PM 10-22] 터를 놓으면 건축 모드를 끈다(다섯 터 · 클라 `30-n-net.js`) — 되돌림 `T839_SITE_EXIT=0` 이면 칸이 없다(옛 welcome · 건축 모드가 남는다)
       ...(T509_WELL ? { wellAct: true } : {}),   // [T557] 우물 터 잡기 버튼 — 기본 켬 · `T509_WELL=0` 이면 칸이 없어 버튼이 숨는다   // [T507] 첫 30분의 문법(우클릭·이름표·회색) — 기본 켬 · `T507_VERBS=0` 이면 칸이 없다(옛 화면)
@@ -12365,7 +12365,7 @@ function tryClaim(player, kind = 'personal') {
     const _S = BUILDING_SIZE, _hx = Math.floor(player.x / _S) * _S + _S / 2, _hy = Math.floor(player.y / _S) * _S + _S / 2;
     for (const _c of claims.values()) {
       if (_c.ownerPid !== player.playerId || _c.kind !== 'personal' || (_c.state || 'active') === 'free') continue;
-      if (_hx >= _c.x && _hx < _c.x + _c.w && _hy >= _c.y && _hy < _c.y + _c.h) { send(player.ws, { type: 'notice', text: '🏠 이미 내 땅입니다. 땅은 쓰거나(거두기 · 심기 · 만들기 · 보관함 · 짓기) 그 자리에 머물면 저절로 돌봐집니다.' }); return; }
+      if (_hx >= _c.x && _hx < _c.x + _c.w && _hy >= _c.y && _hy < _c.y + _c.h) { send(player.ws, { type: 'notice', text: (Deeds.CFG.Q_IDLE > 0 ? '🏠 이미 내 땅입니다. 땅은 쓰거나(거두기 · 심기 · 만들기 · 보관함 · 짓기) 그 자리에 머물면 저절로 돌봐집니다.' : '🏠 이미 내 땅입니다. 땅은 그 땅덩이에서 일하면(거두기 · 심기 · 만들기 · 보관함에 넣고 꺼내기 · 짓기) 돌봐집니다 — 가만히 서 있기만 해서는 안 오릅니다.') }); return; }   // ★[T1402 판정 12] 서 있기 0점이면 "머물면"을 걷는다
       _live++;
     }
     if (_live >= Deeds.CFG.SAFETY) { send(player.ws, { type: 'notice', text: '🏠 여기서는 더 넓힐 수 없습니다. 땅이 넓을수록 빨리 낡습니다 — 있는 땅을 먼저 돌보십시오.' }); return; }
@@ -12571,8 +12571,26 @@ function _t1305Gate(player, px, py) {
   return { ok: true, why: 'open' };
 }
 // ★[T1332 ⑦] 시각은 주입 — 운영 = 벽시계 · 하네스는 `_t1332SetClock` 으로 고정 시각을 준다(날짜를 박지 않는다).
-let _t1332Clock = () => Date.now();
-function _t1332SetClock(f) { _t1332Clock = typeof f === 'function' ? f : (() => Date.now()); }
+// ★★[T1402 · 재민 11-20 판정 13] **사유지 시계 = 서버가 켜져 있던 시간만 흐르는 시계.** 벽시계 − 이 존이 꺼져 있던 시간의 합(`_t1402Off` · 존마다 한 값).
+//   부팅 때 `지금 − 마지막 "살아 있었다" 시각` 을 더하고(`_t1402Boot`) · 도는 동안 그 시각을 주기 저장 길(`SAVE_INTERVAL_MS` · 새 타이머 0)과 종료 flush 에 얹는다.
+//   빚 · 풀림 차례 · 점수 식은 손 0 — 이 시계 하나만 바뀐다. 갑자기 죽으면 마지막 저장 뒤(최대 `SAVE_INTERVAL_MS`)는 꺼진 시간으로 잡힌다(사람에게 유리한 쪽).
+//   하네스가 시계를 넣는 길(`_t1332SetClock(f)`)은 넣은 시계를 그대로 쓴다(물림 없음 — "+15일" 판 그대로) · 인자 없이 부르면 이 시계로 돌아온다.
+let _t1402Off = 0, _t1402Stat = { off: 0, gap: 0, saves: 0, boot: 0 };
+const _t1402Uptime = () => Date.now() - _t1402Off;
+let _t1332Clock = _t1402Uptime;
+function _t1332SetClock(f) { _t1332Clock = typeof f === 'function' ? f : _t1402Uptime; }
+const _T1402_KEY = 'deedclock:' + ZONE_ID;   // world_meta 관례(행 하나 = 열쇠 하나 · 표 그대로) — 존 행(T728 `ZONE_ID`)과 열쇠가 다르다
+function _t1402Save(wall) { try { if (db.upsertWorldMeta) { db.upsertWorldMeta(_T1402_KEY, JSON.stringify({ off: _t1402Off, alive: wall }), 0); _t1402Stat.saves++; } } catch (e) {} }
+function _t1402Boot() {
+  let off = 0, alive = NaN;
+  try { const row = db.getWorldMeta ? db.getWorldMeta(_T1402_KEY) : null; const d = row ? JSON.parse(row.data || '{}') : {}; off = Math.max(0, +d.off || 0); alive = +d.alive; } catch (e) {}
+  const wall = Date.now(), gap = Number.isFinite(alive) ? Math.max(0, wall - alive) : 0;
+  _t1402Off = off + gap;   // ★부팅 물림 — 꺼져 있던 동안은 사유지 시계가 안 흐른다
+  _t1402Stat.off = _t1402Off; _t1402Stat.gap = gap; _t1402Stat.boot = wall;
+  _t1402Save(wall);
+}
+let _t1402NextAt = 0;
+function _t1402Tick(wall) { if (!Deeds.ON) return; if (wall < _t1402NextAt) return; _t1402NextAt = wall + SAVE_INTERVAL_MS; _t1402Save(wall); }
 // ★★[T1343 · 재민 11-16 확정] 돌봄 = **청크 계량기**(`deeds.js` 머리) — 존 쪽 손. 청크 줄 `deedChunks`(주인|청크 → { pid, cx, cy, m, t }) · DB `deed_chunks`.
 //   관리도 m 은 실제 시간으로 줄고(접속 무관 · 서버가 꺼진 동안도 — 마지막 셈 시각과 지금의 차) · 0 이면 그 청크의 내 칸이 풀린다.
 //   N(한 사람 칸 합) = 이 존의 내 칸 + 다른 존의 내 칸(몸 칸 `deeds.z` · 그 사람이 안 보이면 마지막으로 본 값 `deedOthers`).
@@ -12788,10 +12806,11 @@ const _t1332Sig = (p) => { try { return JSON.stringify(p.inventory || {}); } cat
 // 싣기 — DB 청크 줄 · 다른 존 칸 기억 → 메모리 · 칸 단계 · 꺼져 있던 동안의 셈(부팅 시각까지 · 풀릴 것은 그 시각에 푼다) · 예약
 if (Deeds.ON) {
   try {
+    _t1402Boot();   // ★[T1402] 꺼져 있던 시간을 먼저 물린다(아래 셈 · 예약이 다 이 시계로 돈다)
     for (const r of (db.getDeedChunks ? db.getDeedChunks() : [])) deedChunks.set(_t1332Key(String(r.owner_id), r.cx | 0, r.cy | 0), { pid: String(r.owner_id), cx: r.cx | 0, cy: r.cy | 0, m: r.m == null ? NaN : +r.m, t: r.t == null ? NaN : +r.t });
     for (const r of (db.getDeedOwners ? db.getDeedOwners() : [])) { deedOthers.set(String(r.owner_id), r.others | 0); if (r.debt != null || r.dt != null || r.lost) deedDebt.set(String(r.owner_id), { debt: +r.debt || 0, t: r.dt == null ? NaN : +r.dt, lost: r.lost | 0 }); }   // ★[T1386] 빚 줄
     const pids = new Set(); for (const c of claims.values()) if (c.kind === 'personal' && (c.state || 'active') !== 'free') pids.add(c.ownerPid);
-    const now = Date.now(); for (const pid of pids) _t1343Advance(pid, now, false, { budgetMs: _T1389_BUDGET_MS });
+    const now = _t1332Clock(); for (const pid of pids) _t1343Advance(pid, now, false, { budgetMs: _T1389_BUDGET_MS });   // ★[T1402] 사유지 시계(꺼진 시간 뺌)
     _t1343Arm();
   } catch (e) { console.warn(`[${ZONE_ID}] T1343 계량기 싣기 실패: ${e.message}`); }
 }
@@ -15325,6 +15344,7 @@ function __testBind() {
     nearestVillageWake, resolveDowned, buildings, _liveBuildRow, isTerrainBlockedLocal,
     Claims, db, tryClaim, tryUnclaim, countMyClaims, listRespawnOptions,
     findGuildClaimContaining, _claimFootprint, Onboarding, CLAIM_COST,
+    _t1402Stat: () => Object.assign({}, _t1402Stat, { off: _t1402Off }), _t1402Uptime, _t1402Save,   // ★[T1402] 사유지 시계(꺼진 시간 뺌)
     Deeds, _t1305Day, _t1305Gate, _t1332Use, _t1332Dwell, _t1332MyChunks, deedChunks, deedOthers, _t1343Stat, _t1343Advance, _t1343Arm, T1332_USE, _t1332SetClock, deedDebt, _t1386Home, _t1386Build, _t1343Send, _t1389Pending,   // ★[T1305 → T1332] 사유지 돌봄(청크) — 하네스가 정본 그대로 부른다
     CLAIM_SLOT_PERSONAL_START, CLAIM_SLOT_TEMPORARY_START, CLAIM_SLOT_GUILD_START,
     // ★[T1238] 영토 v2 존 몫 — 하네스(`test-t1238-terr-v2`)가 정본 함수를 그대로 부른다(벌점 · 갇힘 · 작물 · 칸 일)
@@ -18690,6 +18710,7 @@ setInterval(() => {
   //   (자정 DB 드레인과 같은 결 — villages.js saveQueue 선례).
   _fishPoll(now);
   { const _t0 = Date.now(); _periodicSave(now); const _d = Date.now() - _t0; if (_d >= 5) perfMark('save', _d); }
+  if (Deeds.ON) _t1402Tick(Date.now());   // ★[T1402] 사유지 시계 "살아 있었다" 시각 — 주기 저장 간격마다(벽시계)
   if (_vein) _veinTick(now);   // ★[T735] 광맥 장부 모아 쓰기(켬만 · 저장 주기마다 한 트랜잭션)
   // ★[RTT 상관 계측] 틱 전체가 예산(33ms)을 넘긴 순간도 남긴다 — 원인이 위 둘이 아닐 수도 있다.
   // ★★[T43] 쓰러짐 사슬 — 업고 걷기 · 붙들기 진행 · 창 소진 · 깨어남(내부에서 1초에 한 번만 돈다).
@@ -19178,6 +19199,7 @@ function gracefulShutdown(signal) {
   _shutdownFlush();
 }
 function _shutdownFlush() {
+  if (Deeds.ON) _t1402Save(Date.now());   // ★[T1402] 곱게 내린 판 — 꺼진 시간의 시작을 정확히
   if (_vein) { try { const n = _vein.flush('shutdown'); console.log(`[${ZONE_ID}] ⛏ [T735] 광맥 장부 종료 쓰기 — ${n} 셀 · ${_veinDigest()}`); } catch (e) { console.error(`[${ZONE_ID}] ⛏ [T735] 광맥 장부 종료 쓰기 실패:`, e.message); } }
   try {
     let mobsSaved = 0;

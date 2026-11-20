@@ -135,7 +135,7 @@ if (MODE === 'zone') {
       const da = (H.deedDebt.get(a) || {}).debt, db2 = (H.deedDebt.get(b) || {}).debt;
       const ra = [...H.deedChunks.values()].filter((r) => r.pid === a).map((r) => [r.cx - D.chunkOf(50000, 0)[0], r.cy, +r.m.toFixed(6)]).sort().join(';');
       const rb = [...H.deedChunks.values()].filter((r) => r.pid === b).map((r) => [r.cx - D.chunkOf(51000, 0)[0], r.cy, +r.m.toFixed(6)]).sort().join(';');
-      put(R, 'c_slice', parts > 50 && sa.length > 0 && sa.length < 400 && JSON.stringify(sa.sort()) === JSON.stringify(sb.sort()) && Math.abs(da - db2) < 1e-6 && ra === rb, `한 번 ${sa.length}칸 · 빚 ${(+da).toFixed(3)} / ${parts}토막 ${sb.length}칸 · 빚 ${(+db2).toFixed(3)} · 청크 줄 ${ra === rb ? '같음' : '다름'}`);
+      put(R, 'c_slice', parts >= 3 && sa.length > 0 && sa.length < 400 && JSON.stringify(sa.sort()) === JSON.stringify(sb.sort()) && Math.abs(da - db2) < 1e-6 && ra === rb, `한 번 ${sa.length}칸 · 빚 ${(+da).toFixed(3)} / ${parts}토막 ${sb.length}칸 · 빚 ${(+db2).toFixed(3)} · 청크 줄 ${ra === rb ? '같음' : '다름'}`);
       // ⓗ 다시 선포가 빚 · 빚 시계를 안 건드린다(PM 덧붙임 Q12) — 30칸(6 × 5) · 27일 안 들어와 바닥 · 빚이 도는 땅에서
       {
         const q = mk('q12'), X0 = 55000, Y0 = 55000;

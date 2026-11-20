@@ -229,7 +229,8 @@ if (T1305_SUB) {
   delete w._t1332Dw; w.x = (WX - 1) * SZ + SZ / 2;
   H._t1332Dwell(w, T); tk(F.DWELL_MS); tk(F.DWELL_MS); tk(F.DWELL_MS);
   const gotQ = rQ.m - q0;
-  put('dwell', gotQ > 0 && Math.abs(gotQ - 3 * F.DWELL_MS / 1000 * F.Q_IDLE) < 1e-3, `그냥 서 있기 ${3 * F.DWELL_MS / 1000}초 → Q +${gotQ.toFixed(3)}(초당 ${F.Q_IDLE} · 머묾 초를 넘긴 뒤 그 시간 전부)`);
+  put('dwell', (F.Q_IDLE > 0 ? gotQ > 0 : true) && Math.abs(gotQ - 3 * F.DWELL_MS / 1000 * F.Q_IDLE) < 1e-3,   // ★[T1402 판정 12] 서 있기 = 0점(Q_IDLE 0 기본 · 되돌림 손잡이면 낮은 초당 점수)
+    `그냥 서 있기 ${3 * F.DWELL_MS / 1000}초 → Q +${gotQ.toFixed(3)}(초당 ${F.Q_IDLE} · 머묾 초를 넘긴 뒤 그 시간 전부)`);
   // ⑨ 영속 — DB 청크 줄(m · t) · 몸 칸(존마다 내 칸 수)
   const dr = db.getDeedChunks().find((r) => r.owner_id === w.playerId && r.cx === D.chunkOf(WX, WY)[0] && r.cy === D.chunkOf(WX, WY)[1]) || {};
   put('persist', Math.abs(dr.m - rP.m) < 1e-6 && dr.t === rP.t, `m ${dr.m} · t ${dr.t}`);
@@ -605,7 +606,7 @@ console.log('\n⑨ ★[T1305 → T1343] 사유지 돌봄(청크 계량기 · 실
     anyCell: '⑨ ★[T1343] 청크 안 어느 칸을 돌봐도 그 청크 관리도가 오른다', neighborSame: '⑨ ★[T1343] 옆 청크는 안 오른다',
     capClamp: '⑨ ★[T1343] 넘치게 돌봐도 가득에서 멈춘다',
     useNoChange: '⑨ 헛손질(짐 안 바뀐 쓰는 사건)은 관리 아님', workTime: '⑨ ★[T1343] 쓴 일 뒤 그 청크에서 일하는 시간 = 초당 점수(점수 꼴 b)',
-    walkThrough: '⑨ 걸어 지나가기는 관리 아님', dwell: '⑨ 머묾(그냥 서 있기)은 낮은 초당 점수',
+    walkThrough: '⑨ 걸어 지나가기는 관리 아님', dwell: '⑨ 머묾(그냥 서 있기)은 0점(T1402 판정 12 · 되돌림 `T1343_Q_IDLE` 이면 그 초당 점수)',
     persist: '⑨ ★[T1343] 계량기 줄 DB 영속(`deed_chunks` m · t)', body: '⑨ ★[T1343] 몸 칸 `deeds.z`(존마다 내 칸 수) 저장 · 복원',
     offlineFlows: '⑨ ★[T1343] 나가 있던(꺼져 있던) 시간도 흐른다 — 실제 날짜로 낡음',
     crossZoneN: '⑨ ★[T1343] 다른 존의 내 칸도 N 에 든다(몸 칸) — 그만큼 빨리 준다',
