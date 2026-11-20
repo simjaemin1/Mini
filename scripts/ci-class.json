@@ -14938,15 +14938,6 @@
    "core": false,
    "why": "서버(글자) — CI 밖(야간 · 전수)"
   },
-  "test-t1382-resume-body.js": {
-   "cls0": "나",
-   "why0": "child_process",
-   "cls": "나",
-   "maxSec": null,
-   "same5": null,
-   "core": false,
-   "why": "안 잼"
-  },
   "test-t1384-mine-food.js": {
    "cls0": "나",
    "runs": [
