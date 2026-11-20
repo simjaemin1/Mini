@@ -5748,10 +5748,19 @@ function _t1382RtTake() {
   //   도랑 지문(다시 뜬 판의 환호 적재가 같은 도랑을 다시 실을 뿐이면 교역로를 안 버린다 — 아래 `distBasisRefresh`) · 교역 기록(그날 도착 = 첫 물건 셈이 읽는다)
   const ds = T1327_ROUTE_FIX ? _t1327DitchSig() : null;
   const tl = W && Array.isArray(W.tradeLog) ? JSON.parse(JSON.stringify(W.tradeLog)) : null;
-  return { at: C.at, ord: Object.keys(o), o, dm, ds, tl };
+  let sig = null; try { sig = _routeSig(); } catch (e) {}   // 길 규칙 서명(영속 교역로와 같은 문 — 다시 뜬 판 서명이 다르면 아래 되돌림은 길 칸을 안 덮는다)
+  return { at: C.at, ord: Object.keys(o), o, dm, ds, tl, sig };
 }
 function _t1382RtRestore() {
   const X = _t1382RtPend; _t1382RtPend = null; if (!X || !X.o) return;
+  //   ★길 규칙 서명이 다르면(손잡이 · 지형 · 규칙 판이 바뀐 다시 뜸) 길 · 거리 칸은 안 덮는다 — 영속 교역로가 서명 불일치로 버려지는 것과 같은 문(T578 · T896 · T910). 교역 기록만 잇는다
+  let cur = null; try { cur = _routeSig(); } catch (e) {}
+  if (X.sig != null && cur != null && X.sig !== cur) {
+    _t1382RtStat.sigSkip = (_t1382RtStat.sigSkip | 0) + 1;
+    if (Array.isArray(X.tl) && state.world && Array.isArray(state.world.tradeLog) && !state.world.tradeLog.length) { for (const e of X.tl) state.world.tradeLog.push(e); _t1382RtStat.tl = X.tl.length; }
+    console.log(`[${state.zoneId}] 🛣️ [T1382] 교역로 줄 되돌림 건넘 — 길 규칙 서명이 다르다(종전 길 · 교역 기록만 ${_t1382RtStat.tl | 0}줄)`);
+    return;
+  }
   const C = state._t1340R || (state._t1340R = _t1340Ctx(Date.now())), T = new Map();
   for (const k of X.ord) { state[k] = _t1372Dec(X.o[k], C, T); _t1382RtStat.restored++; }
   if (Array.isArray(X.dm) && state.world) state.world._distMatrix = X.dm.map((r) => r.map((n) => (typeof n === 'number' ? n : Number(n))));
