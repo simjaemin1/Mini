@@ -198,10 +198,61 @@ module.exports = function walkAudit(ctx) {
       for (const s of mine) comp[s] = 0;
     }
     const sig = split.filter((s) => s.sizes[1] >= 20);
+    //   ★[T1406 ⓑ] 한 마을만 막는 판(`--one-block`) — 마을 X 의 땅만 막힌 칸으로 놓고 X 아닌 이웃 방향 쌍(A → B 닻)이 다 이어지는가.
+    //     지형만 본 가장 짧은 길(8방)이 지나는 남의 땅을 먼저 적고(쌍마다) · X 를 지나는 쌍의 출발 마을만 X 를 막고 다시 잰다(같은 답 · 51 × 50 판 대신).
+    let one = null;
+    if (argv.includes('--one-block')) {
+      const pred = new Int32Array(N), crossed = new Map(), freeD = new Map();
+      const nb = Array.from({ length: V }, () => []); for (const p of pairs.values()) { nb[p.i].push(p.j); nb[p.j].push(p.i); }
+      for (const a of vs) {
+        dij([a.a], null, a.i, null, pred);
+        for (const j of nb[a.i]) { const b = vs[j]; if (dist[b.a] >= INF) continue; freeD.set(a.i * V + j, dist[b.a] / 5);
+          const s = new Set(); for (let k = b.a; k >= 0 && k !== a.a; k = pred[k]) { const o = T.own[k]; if (o && o !== a.i + 1 && o !== j + 1) s.add(o - 1); } crossed.set(a.i * V + j, s); }
+      }
+      const ownOne = new Int16Array(N), cellsOf = Array.from({ length: V }, () => []); for (let k = 0; k < N; k++) { const o = T.own[k]; if (o) cellsOf[o - 1].push(k); }
+      const per = [];
+      for (const X of vs) {
+        const bySrc = new Map(); for (const [key, s] of crossed) if (s.has(X.i)) { const i = (key / V) | 0, j = key % V; if (i === X.i || j === X.i) continue; (bySrc.get(i) || bySrc.set(i, []).get(i)).push(j); }
+        if (!bySrc.size) { per.push({ x: X.name, pairs: 0, cut: 0, worst: null }); continue; }
+        for (const k of cellsOf[X.i]) ownOne[k] = X.i + 1;
+        let cut = 0, worst = 0, n = 0; const ex = [];
+        for (const [i, js] of bySrc) {
+          const touch = new Float64Array(V).fill(Infinity); dij([vs[i].a], ownOne, i, touch, null);
+          for (const j of js) { n++; const f = freeD.get(i * V + j), g = dist[vs[j].a] >= INF ? Infinity : dist[vs[j].a] / 5;
+            if (!Number.isFinite(g)) { cut++; if (ex.length < 6) ex.push(`${vs[i].name}→${vs[j].name}`); } else if (f > 0 && g / f > worst) worst = g / f; }
+        }
+        for (const k of cellsOf[X.i]) ownOne[k] = 0;
+        per.push({ x: X.name, pairs: n, cut, worst: worst ? +worst.toFixed(3) : null, ex });
+      }
+      per.sort((p, q) => q.cut - p.cut || (q.worst || 0) - (p.worst || 0));
+      one = { cutTotal: per.reduce((s, p) => s + p.cut, 0), villagesCutting: per.filter((p) => p.cut > 0).length, over3: per.filter((p) => (p.worst || 0) > 3).length, list: per.slice(0, 20) };
+    }
+    //   ★[T1406 ⓐ] 모두 막는 판의 못 닿는 쌍 까닭(`--classify`) — 다리 머리(지형만 길의 다리 칸 곁 2칸 안에 남의 땅) · 물길(물을 다 건널 수 있다고 치면 닿는다 · 다리로 풀린다) · 뭍 길목(그래도 못 닿는다)
+    let cls = null;
+    if (argv.includes('--classify')) {
+      const allCut = []; for (let i = 0; i < V; i++) for (const j of near[i]) if (Number.isFinite(free[i][j]) && !Number.isFinite(fence[i][j])) allCut.push([i, j]);
+      const pred = new Int32Array(N), kinds = { head: 0, water: 0, land: 0 }, ex = { head: [], water: [], land: [] }, byOwner = new Map();
+      const rest = [];
+      for (const [i, j] of allCut) {
+        dij([vs[i].a], null, i, null, pred);
+        let head = false; const path = []; for (let k = vs[j].a; k >= 0 && k !== vs[i].a; k = pred[k]) path.push(k);
+        const bri = new Set(path.filter((k) => BRIDGE.has((k % NX) + '_' + ((k / NX) | 0))));
+        if (bri.size) for (const k of path) { const o = T.own[k]; if (!o || o === i + 1 || o === j + 1) continue; const x = k % NX, y = (k / NX) | 0;
+          for (let dy = -2; dy <= 2 && !head; dy++) for (let dx = -2; dx <= 2; dx++) if (bri.has((y + dy) * NX + x + dx)) { head = true; break; } if (head) { byOwner.set(vs[o - 1].name, (byOwner.get(vs[o - 1].name) || 0) + 1); break; } }
+        if (head) { kinds.head++; if (ex.head.length < 6) ex.head.push(`${vs[i].name}→${vs[j].name}`); } else rest.push([i, j]);
+      }
+      //   물을 다 건널 수 있다고 친 판(바위 · 환호는 그대로) — 출발 마을마다 한 번
+      const saved = Uint8Array.from(blk); for (let k = 0; k < N; k++) if (blk[k] && kind(k % NX, (k / NX) | 0) === 2) blk[k] = 0;
+      const bySrc = new Map(); for (const [i, j] of rest) (bySrc.get(i) || bySrc.set(i, []).get(i)).push(j);
+      for (const [i, js] of bySrc) { const touch = new Float64Array(V).fill(Infinity); dij([vs[i].a], T.own, i, touch, null);
+        for (const j of js) { const w = Number.isFinite(touch[j]); kinds[w ? 'water' : 'land']++; const L = ex[w ? 'water' : 'land']; if (L.length < 8) L.push(`${vs[i].name}→${vs[j].name}`); } }
+      blk.set(saved);
+      cls = { cut: allCut.length, kinds, ex, headOwners: [...byOwner].sort((a, b) => b[1] - a[1]).slice(0, 10) };
+    }
     for (const i of dSaved) blk[i] = 0;
     bOut.push({ label: T.label, cells: T.nCells, clash: T.clash, ditch: dSaved.length, cutPairs: cut.length, cutAll, longerPairs: longer.length,
       cutEx: cut.slice(0, 12).map((r) => ({ a: r.a, b: r.b, free: r.free, through: r.through })), longerTop: longer.slice(0, 15).map((r) => ({ a: r.a, b: r.b, free: r.free, fence: r.fence, x: r.x, through: r.through })),
-      chokes: [...chokes].sort((x, y) => y[1] - x[1]).slice(0, 10), routes: rc, split: { villages: split.length, real: sig.length, list: split.sort((x, y) => (y.sizes[1] || 0) - (x.sizes[1] || 0)).slice(0, 12) }, ms: Date.now() - tB });
+      chokes: [...chokes].sort((x, y) => y[1] - x[1]).slice(0, 10), routes: rc, oneBlock: one, classify: cls, split: { villages: split.length, real: sig.length, list: split.sort((x, y) => (y.sizes[1] || 0) - (x.sizes[1] || 0)).slice(0, 12) }, ms: Date.now() - tB });
   }
 
   //   다리 후보 — ⓐ 비 큰 쌍마다
@@ -272,6 +323,8 @@ module.exports = function walkAudit(ctx) {
     for (const r of b.cutEx.slice(0, 5)) console.log(`   못 닿음 ${r.a}→${r.b} (지형만 ${r.free}칸 · 지나는 남의 땅 ${(r.through || []).join(' ') || '—'})`);
     for (const r of b.longerTop.slice(0, 5)) console.log(`   더 돎 ${r.a}→${r.b} ${r.free} → ${r.fence}칸(×${r.x}) · ${(r.through || []).join(' ') || '—'}`);
     if (b.routes) console.log(`ⓒ [${b.label}] 교역로 ${b.routes.routes} 가운데 남의 땅을 지나는 길 ${b.routes.through} · 구간 ${b.routes.segs} · 칸 ${b.routes.cells}`);
+    if (b.oneBlock) { console.log(`ⓑ' [${b.label}] 한 마을만 막기 — 끊는 마을 ${b.oneBlock.villagesCutting} · 끊기는 이웃 방향 쌍 합 ${b.oneBlock.cutTotal} · 3배 넘게 더 돌게 하는 마을 ${b.oneBlock.over3}`); for (const p of b.oneBlock.list.slice(0, 8)) console.log(`   ${p.x} 막음 — 지나던 쌍 ${p.pairs} · 끊김 ${p.cut}${p.ex && p.ex.length ? ' (' + p.ex.join(' ') + ')' : ''} · 가장 더 돎 ×${p.worst}`); }
+    if (b.classify) console.log(`ⓐ' [${b.label}] 모두 막기 못 닿음 ${b.classify.cut} = 다리 머리 ${b.classify.kinds.head} · 물길 ${b.classify.kinds.water} · 뭍 길목 ${b.classify.kinds.land} · 다리 머리 주인 ${b.classify.headOwners.map(([n, k]) => n + ' ' + k).join(', ')}`);
     console.log(`ⓓ [${b.label}] 제 땅이 조각난 마을 ${b.split.villages}(둘째 조각 20칸 넘음 ${b.split.real}) ${b.split.list.slice(0, 6).map((s) => `${s.name} ${s.pieces}조각 ${s.sizes.join('/')}${Object.keys(s.outsideBig).length ? ' 밖:' + JSON.stringify(s.outsideBig) : ''}`).join(' · ')}`);
   }
   console.log(`다리 후보(물길 ${runs.length}줄 · ${SPAN}칸 안):`);
