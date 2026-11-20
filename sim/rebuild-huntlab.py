@@ -10,9 +10,9 @@
 #   (s.V = {walls:Set} 이라 늘 부른다) ReferenceError 로 죽는다. 그 함수 글자를 마을실험실에서 앵커로 떠서 블록 앞에 붙인다
 #   (사본 손질 0 · 원천이 바뀌면 다시 구울 때 같이 바뀐다 · 사냥실험실엔 집 · 회관 · 곳간이 없어 늘 false).
 import io,os,sys
-B=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..')
+B=os.environ.get('HUNTLAB_ROOT') or os.path.join(os.path.dirname(os.path.abspath(__file__)),'..')   # HUNTLAB_ROOT · HUNTLAB_OUT = 하네스 미끼(사본을 임시 자리에서 돌린다)
 SRC=os.path.join(B,'lab','마을실험실.html')
-L=os.path.join(B,'lab','사냥실험실.html')
+L=os.environ.get('HUNTLAB_OUT') or os.path.join(B,'lab','사냥실험실.html')
 SHELL=os.path.join(B,'lab','원본','사냥실험실_0707.html')
 src=io.open(SRC,encoding='utf-8').read()
 blk=src[src.index('// ═══ 야생 몹 생태계'):src.index('const L_CLEAR=')]
