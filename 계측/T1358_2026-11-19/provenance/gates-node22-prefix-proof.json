@@ -1,0 +1,15 @@
+{
+ "econPrefixSame": true,
+ "sideCompared": 10,
+ "sideDifferences": [],
+ "missingFieldsComparedAsEmpty": [
+  "_bxQ",
+  "_granPend",
+  "_otIdx",
+  "_otIdxDay",
+  "_siteRejL",
+  "_t435Sum",
+  "_t724R",
+  "pop"
+ ]
+}

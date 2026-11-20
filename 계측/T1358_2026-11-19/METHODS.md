@@ -87,6 +87,8 @@ bash scripts/pm-old-code-red.sh origin/main test-t1358-terr-stake.js
 
 몸 굶음 계수 `bodyExitStats()`의 `_bx`는 프로세스별 값이다. T577 STATE는 names/rows/fd/diag365/board만 이으며 `_bx`는 복원하지 않는다. 따라서 몸 굶음은 마디별 마지막 값을 합산하고, T1340이 복원하는 영토 완료·말뚝 계수는 마지막 누계 및 날별 차분으로 읽는다.
 
-실행 환경이 실제로 종료된 뒤 사용자의 재개 지시에 따라 세 1020 판을 복구했다. 마지막 표시 날은 OFF 246·BODY 229·A 212였으나, 코드 0으로 닫힌 체크포인트는 각각 240·220·210날이다. 중단된 다음 마디의 자료는 `/tmp/t1358/interrupted-environment`에 분리하고 정본 guard resume으로 같은 마디를 다시 돌린다. 시드 7의 세 100날 판은 모두 이미 코드 0으로 완료되어 재실행하지 않았다. `provenance/environment-resume.json`에 복구 출발점과 직전 진행 줄을 보존한다.
+환경을 다시 사용할 수 있게 된 뒤 측정 프로세스가 모두 사라진 것을 확인하고, 사용자의 재개 지시에 따라 세 1020 판을 복구했다. 마지막 표시 날은 OFF 246·BODY 229·A 212였으나, 코드 0으로 닫힌 체크포인트는 각각 240·220·210날이다. 중단된 다음 마디의 자료는 `/tmp/t1358/interrupted-environment`에 분리하고 정본 guard resume으로 같은 마디를 다시 돌린다. 시드 7의 세 100날 판은 모두 이미 코드 0으로 완료되어 재실행하지 않았다. `provenance/environment-resume-first.json`에 첫 복구 출발점과 직전 진행 줄을 보존한다.
 
 두 번째 사용 불가 이후에도 측정 프로세스가 사라진 것을 확인했다. 마지막 진행 표시는 OFF 379·BODY 360·A 340날, 완료된 체크포인트는 각각 370·360·340날이었다. 같은 guard resume으로 복구했다. 첫 복구 표식은 `environment-resume-first.json`, 두 번째는 `environment-resume.json`에 분리한다. 도구 오류는 exec-server transport disconnected였고 플랫폼의 종료 원인은 확인할 수 없다. 재접속한 현재 cgroup의 OOM 카운터는 0이지만 이것으로 이전 환경의 종료 원인을 판정하지 않는다.
+
+최종 상태: 1020 세 판은 각각 400날, 시드 7 세 판은 각각 100날을 완료했다. 총 1,500날·150마디의 실제 종료 코드와 가상 시계, 날 중복·누락, 몸 id 대응, 독립 확장 호출 누계를 검증했다. 자료 폴더와 보고 파일의 날짜는 측정 시작일(한국 시각 2026-11-19)이다. 각 마디 실제 종료 시각은 progress.json 원자료에 남아 있다.

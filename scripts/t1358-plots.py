@@ -51,9 +51,12 @@ for seed in [1020,7]:
    if day<=max((int(r['day']) for r in rows if r['case'].endswith('-'+str(seed))),default=0):ax.axvline(day,color='#94a3b8',lw=.6,ls=':')
   handles,labels=ax.get_legend_handles_labels()
   if handles:ax.legend(fontsize=8,frameon=False,loc='best')
+ axes[1].legend(fontsize=8,frameon=True,facecolor='white',framealpha=.95,loc='lower left')
  for ax in axs[-1]:ax.set_xlabel('Economy day; checkpoint cadence = 10 days')
  partial=' | PARTIAL DATA' if any(not summary.get(f'{arm}-{seed}',{}).get('done') for arm in ['OFF','BODY','A']) else ''
  fig.suptitle(f'T1358 | seed {seed} | house/farm act OFF | BODY includes existing B/C'+partial,fontsize=13)
- for ext in ['png','svg']:fig.savefig(a.results/f'curves-{seed}.{ext}',dpi=160)
+ for ext in ['png','svg']:
+  output=a.results/f'curves-{seed}.{ext}';fig.savefig(output,dpi=160)
+  if ext=='svg':output.write_text('\n'.join(line.rstrip() for line in output.read_text().splitlines())+'\n')
  plt.close(fig)
 print('Wrote PNG/SVG curves')
