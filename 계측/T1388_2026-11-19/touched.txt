@@ -1,0 +1,18 @@
+body-fields rc=0 1s === 14 통과 / 0 실패 ===
+build-act rc=0 4s   ✓ ④ [전제] 판 안에서 집이 실제로 선다(0 이면 아래가 자명 통과다)  집 3·0·6
+coll-grid rc=0 19s === 결과: 20 PASS / 0 FAIL ===
+econ-fieldyield rc=0 44s === 결과: 206 PASS / 0 FAIL ===
+farm-act rc=0 18s === 결과: 78 PASS / 0 FAIL ===
+fish-act rc=0 1s === 결과: 86 PASS / 0 FAIL ===
+harness-lint rc=0 110s === 99건 중 PASS 99 · FAIL 0 ===
+headless-parity rc=0 0s 결과: PASS
+hp-src rc=0 2s === 54 통과 / 0 실패 ===
+lon-day rc=0 1s === 22건 중 PASS 22 · FAIL 0 ===
+psite-server rc=0 33s 결과: PASS
+t1212-farm-clock rc=0 2s 16 통과 · 0 실패
+t1224-econ-farm rc=0 1s === T1224 몸 없는 농부: 통과 10 · 실패 0 ===
+t1229-field-grow rc=0 1s === T1229 밭 넓이: 통과 12 · 실패 0 ===
+t1243-farm-on rc=0 1946s 85 통과 · 0 실패 (첫 판 900초 시한 끊김 · ⑨ T1284 ④ 핀 빨강 → 고친 뒤 다시)
+t1260-food-reads rc=0 3s === T1260 식량 한 품목 읽는 문: 통과 41 · 실패 0 ===
+t1388-farm-gap rc=0 3s 7 통과 · 0 실패
+village-view rc=0 38s 결과: PASS 132 · FAIL 0

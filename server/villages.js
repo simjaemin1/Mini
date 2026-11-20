@@ -13743,6 +13743,7 @@ function _t1374Next(vil) {
 function _lifeHeadlessDay(vil) {
   _t1276Stand(vil);   // ★[T1276] 하루 한 번(라이브 · 판 자 — 몸 갈래여도 선다)
   _t1374Next(vil);   // ★[T1374 ②] 다음 거둠 날(출생 문 · 끔 = 무동작)
+  _t1388Other(vil);   // ★[T1388 ⓒ] 다른 식량 몫(끔 = 무동작)
   _lifeVL();   // lazy 로드 방어(단독 호출 경로 — 5e8d5f5 'is not defined' 클래스 재발 금지)
   const day = state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0;
   let farmerN = 0, popN = 0;
@@ -15548,12 +15549,37 @@ function _t1229Need(vil) {
 const T1294_LIFE_MEMO = process.env.T1294_LIFE_MEMO === '1';
 const _t1294NC = new WeakMap(), _t1294NCStat = { q: 0, hit: 0 };
 function _t1294NeedClear(vil, now) { _t1294NCStat.q++; const m = _t1294NC.get(vil); if (m && m.now === now) { _t1294NCStat.hit++; return m.v; } const v = _lifeNeedClear(vil); if (m) { m.now = now; m.v = v; } else _t1294NC.set(vil, { now, v }); return v; }
+// ★★[T1388 ⓐ · ⓒ 2026-11-19 · 지시 T1388 할 일 4 · T1374 회부 1] **밭 세계 개간 목표 팔 둘** — 손잡이 둘(끔 기본 · `'1'` 만 · T1284 ④ 켬 안에서만 · 판정 재료 · 켬 후보 아님).
+//   T1284 ④ 의 목표 = 사람 × 12칸(T1215 "사람당 **심는** 밭 3,000 m²" ÷ 250 m² — 그 고증은 밭 식량 몫 0.79 · 나머지 0.21 은 사냥 · 채집 · 고기잡이와 짝이다).
+//   T1374: 사냥 · 물이 적은 농촌은 그 0.21 이 없어 순 밭 마을이 한 해 필요의 58 ~ 97% 에 선다.
+//   ⓐ `T1388_FARMER_CELLS` — 목표 = max(사람 × 12, 농부 × 12 ÷ 0.75) — 농부 한 사람 칸 16(T1284 표 "농부 한 사람 밭 칸 16 = 12 ÷ 0.75" · 농부 몫 고증 0.7 ~ 0.8 가운데 0.75 · T1215).
+//      농부가 많은 마을(식량 일을 다 밭에 건 마을)은 그 일손만큼 일군다 — 개간 목표를 일손에 묶는다.
+//   ⓒ `T1388_FIELD_SHARE` — 목표 = 사람 × 12 × (1 − 다른 식량 몫) ÷ 0.79 · 다른 식량 몫 = 그 마을 econ 하루 생산(밭 작물 밖 — 고기잡이 · 사냥 · 채집 · 그 밖)의 식량 환산 ÷ 사람(한 해 평균 · `_t1388O`).
+//      0.79 = 같은 고증의 밭 식량 몫(T1215 — 12칸과 짝인 수). 다른 식량이 0 이면 12 ÷ 0.79 = 15.2칸 · 0.21 이면 12칸 · 그보다 많으면 줄어든다.
+//   새 수: 0.75 · 0.79 둘 다 이 줄기의 고증 표(T1215 · T1284)에 이미 있는 수 — 손잡이 뒤에서만.
+const T1388_FARMER_CELLS = process.env.T1388_FARMER_CELLS === '1';
+const T1388_FIELD_SHARE = process.env.T1388_FIELD_SHARE === '1';
+const T1388_FARMER_SHARE = 0.75, T1388_FIELD_FOOD = 0.79;   // T1284 표 · T1215 고증(위 머리말)
+function _t1388Other(vil) {   // 하루 한 번 — 다른 식량 몫(사람당 하루치 · 한 해 평균)
+  if (!T1388_FIELD_SHARE || !vil || !vil.econ) return;
+  const e = vil.econ, n = (e.npcs || []).length, E = _lifeEcon(); if (!(n > 0) || !E || !E.totalFoodProductionEquivalent || !e.dailyProductionBuf) return;
+  const x = Math.max(0, E.totalFoodProductionEquivalent(e.dailyProductionBuf, e) || 0) / n;
+  vil._t1388O = vil._t1388O == null ? x : vil._t1388O + (x - vil._t1388O) / 365;
+}
+function _t1388Target(vil, e) {
+  const base = e.npcs.length * _landNeed();
+  let t = base;
+  if (T1388_FIELD_SHARE) { const o = Math.min(1, Math.max(0, vil._t1388O || 0)); t = base * (1 - o) / T1388_FIELD_FOOD; }
+  if (T1388_FARMER_CELLS) { const f = (e.counts && e.counts.farmer) || 0; t = Math.max(t, f * _landNeed() / T1388_FARMER_SHARE); }
+  return t;
+}
 function _lifeNeedClear(vil) {   // 랩 needLand 동형: 보즈럽 수요 게이트 + 목표 미달
   const e = vil.econ; if (!e || !vil._potSet) return false;
   if (_lifeEcon().t1260FoodOf(e) > e.npcs.length * 120) return false;   // ★[T1260 ②] 켬 = 곳간 식량 합계(끔 = `food` 칸 · 종전 글자)
   if (T1229_FIELD_GROW) return _t1229Need(vil);   // ★[T1229] 켬 = 일손 · 덮음 문(끔 = 아래 종전 목표)
   //   ★[T1284 ④] 켬 = 목표 = 사람 × `LAND_NEED` 12칸 그대로(T1215 고증 "사람당 **심는** 밭 3,000 m²" ÷ 250 m²) — 보즈럽 몫(0.55 ÷ 비옥 · 0.6 ~ 2.5 · 출처 없음)을 안 곱한다.
   //     비옥은 이미 칸 소출(`cellKgAt` — 비옥 자리 → 500 ~ 800 kg/ha · T1221)에 들어 있다 — 몫을 또 곱하면 비옥한 마을이 사람당 7.2칸으로 줄어 두 번 센다(랩 51곳 목표 가운데 9.7칸 · 보고/T1284 §1). 끔 = 아래 줄 그대로.
+  if (_t1284On() && (T1388_FARMER_CELLS || T1388_FIELD_SHARE)) return vil._farmSet.size < _t1388Target(vil, e);   // ★[T1388 ⓐ · ⓒ] 팔 켬만(끔 = 아래 T1284 ④ 줄 글자 그대로)
   if (_t1284On()) return vil._farmSet.size < e.npcs.length * _landNeed();
   const fert = (e.land && e.land.fertility != null) ? e.land.fertility : 0.55;
   return vil._farmSet.size < Math.ceil(e.npcs.length * _lifeVL().landNeedPer(fert, _landNeed()));
@@ -20783,7 +20809,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   // Stage 4A — zone.js 소비: 농지 lazy 실물화 / welcome 영토 페이로드 / 레거시 디듀프 판정
   farmTilesInRect, clientVillages, isLegacyVillageClaimed,
   // ★[T146] 사냥 개체군 — 정본을 그대로 내준다(하네스·wildlife·zone 이 이것을 부른다 · 사본 0)
-  T1331_BEAST_BODY, t1331Stat, _t1331Probe: { w: () => _t1331W, day: (vil, day) => _t1331DaySteps(vil, day), save: () => _t1331Save(), boot: () => _t1331Boot(), reset: () => { _t1331W = null; for (const k of Object.keys(_t1331Stat)) _t1331Stat[k] = typeof _t1331Stat[k] === 'number' ? 0 : ''; } },   // ★[T1331] 짐승 몸(하네스 `test-t1331-beast-body` · 탐침 · 내보내기만)
+  T1331_BEAST_BODY, T1388_FARMER_CELLS, T1388_FIELD_SHARE, t1388Target: (vil) => _t1388Target(vil, vil.econ), t1331Stat, _t1331Probe: { w: () => _t1331W, day: (vil, day) => _t1331DaySteps(vil, day), save: () => _t1331Save(), boot: () => _t1331Boot(), reset: () => { _t1331W = null; for (const k of Object.keys(_t1331Stat)) _t1331Stat[k] = typeof _t1331Stat[k] === 'number' ? 0 : ''; } },   // ★[T1331] 짐승 몸(하네스 `test-t1331-beast-body` · 탐침 · 내보내기만)
   gameRichAt, gameRichSize, huntKillAt, huntTake, huntTakeAt, huntHunters, huntVisLeft, _t158, huntDeforest, _t1195HuntIn, t1195Stat: () => JSON.parse(JSON.stringify(_t1195Stat)), t1225Stat, t1225Keep, t1225SiteTable, _t1225Probe: { shared: _t1217Shared, rho: (vil, day) => _t1225Rho(vil, day), share: (F, cx, cy, vil) => _t1225Share(F, cx, cy, vil), get mode() { return T1225_MODE; } },   // ★[T1225] 물속 자본(계측 · 하네스)
   t1202Stat: () => JSON.parse(JSON.stringify(_t1202Stat)), _t1202Roster, _t1202ClockShort, _t1202FishBatch, t1217Stat: () => JSON.parse(JSON.stringify(Object.assign({}, _t1217Stat, { samples: _t1217Samp }))), _t1217FishDay, _t1217Day, _t1217HourFish, _t1217BodyKeep, _t1217Clock, _t1217BucketK, _t1217On, t1217SharedTable, t1266Stat, _t1266Keep, _t1271Day, _t1271OreCells, _t1277OreSlots, MINE_TEAM, t1271Stat, _t1217Choose, _t1218Kps, _t1218HourExpect, _t1218BodyWait, _t1053Deforest, _t1053Developed, t1053Stat: () => Object.assign({}, _t1053Stat), get T1053_DEFOREST_GAME() { return T1053_DEFOREST_GAME; }, L_DEFOREST_H, L_DEFOREST_GRAN, _gameKey, _cellOfPx, _bandMinCells, _bandFloorFill, _t146Band, _t146BandAll, _t146BuildMs, _huntBandBuild, _lifeGameDay,
   L_GAMEMAX, L_GAMER, L_HUNT, L_GAMEHALF, _t146,
