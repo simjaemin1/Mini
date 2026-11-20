@@ -5661,7 +5661,9 @@ const _t1372SSStat = { snap: 0, rows: 0, applied: 0, miss: 0, path: 0 };
 function _t1372SSTake() {
   const A = SS.A, n = SS.count(), rows = [], K = Object.keys(A).filter((k) => k !== 'GN');
   for (let s = 0; s < n; s++) { const p = SS.own[s]; if (!p || !(A.TK[s] || A.DS[s])) continue;
-    const r = { pid: p.pid, w: SimVillages.t1372Where ? SimVillages.t1372Where(p.pid) : null }; for (const k of K) { const v = A[k][s]; r[k] = Number.isFinite(v) ? v : String(v); } rows.push(r); }   // `w` = 마을 몸의 (마을 · 자리) — 캐러밴 몸은 null(저장 pid 그대로 되살린다)
+    const r = { pid: p.pid, w: SimVillages.t1372Where ? SimVillages.t1372Where(p.pid) : null }; for (const k of K) { const v = A[k][s]; r[k] = Number.isFinite(v) ? v : String(v); }
+    r.VTd = A.VT[s] - _tick.n;   // ★[T1382] 거른 틱 번호는 이 프로세스의 틱 셈(`_tick.n`)이다 — 다시 뜬 판은 0 부터 세니 저장 틱에서 잰 차로(아래 되살림이 새 셈에 다시 건다)
+    rows.push(r); }   // `w` = 마을 몸의 (마을 · 자리) — 캐러밴 몸은 null(저장 pid 그대로 되살린다)
   _t1372SSSnap = rows; _t1372SSStat.snap++; _t1372SSStat.rows = rows.length;
   return rows;
 }
@@ -5675,6 +5677,9 @@ function _t1372SSApply() {
     if (!p || p.pid !== pid || players.get(pid) !== p || (!r.w && !p.simCaravan)) { _t1372SSStat.miss++; continue; }
     if (+r.TK === 3 && !(Array.isArray(p.path) && p.path === p._t791P && p.path.length === +r.PN)) { _t1372SSStat.path++; continue; }   // 길이 같은 길이 아니면 표 없이(종전 길)
     for (const k of Object.keys(r)) { if (k === 'pid' || k === 'w' || !(k in A)) continue; const v = r[k]; A[k][s] = typeof v === 'number' ? v : Number(v); }
+    //   ★[T1382] 틱 번호(VT) — 종전엔 옛 프로세스 틱 번호 그대로라 둘째 틱에 모든 표가 '빠짐'(`gap`)으로 깨어 몸 칸이 한꺼번에 찍혔다(한 번에 돈 판은 계속 미룸).
+    //     저장 틱에서 잰 차(`VTd`)를 이 틱 앞 틱(`_tick.n - 1` = 한 번에 돈 판의 저장 틱)에 건다 · 차 없는 옛 저장 = 종전 그대로
+    if (r.VTd != null && Number.isFinite(+r.VTd)) A.VT[s] = (_tick.n - 1) + (+r.VTd);
     SS.WPA[s] = +r.TK === 3 ? p.path : null; _t1372SSStat.applied++;
   }
   console.log(`[${ZONE_ID}] 🦶 [T1372] 첫 거름 표 되살림 — ${_t1372SSStat.applied}/${rows.length} · 몸 없음 ${_t1372SSStat.miss} · 길 다름 ${_t1372SSStat.path}`);
