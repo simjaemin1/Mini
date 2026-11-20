@@ -14658,6 +14658,51 @@
    "core": false,
    "why": "안 잼"
   },
+  "test-t1363-famine-tools.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": 0.4,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 0.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.4,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawnSync node"
+   ]
+  },
   "test-t1373-home-cap.js": {
    "cls0": "나",
    "why0": "child_process",
