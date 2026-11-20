@@ -1,0 +1,187 @@
+# 만진 함수 → 하네스 (touched-harness · base origin/main · 갈림점 311d0773a)
+· 바뀐 코드 파일 2 · 이름 3(물린 것 3 · 흔한 이름 뺌 0) · 바뀐 하네스 1 · 규약 다섯 · **돌릴 하네스 24**(@regress 아님 2: e2e-xzone-caravan.js test-t1246-food-price.js)
+  server/beast-body.js: create
+  server/villages.js: T1359_HUNT_BODY _t1331
+· 이름 → 하네스 수: T1359_HUNT_BODY 1 · _t1331 1 · create 19
+· 바뀐 하네스: test-t1359-hunt-body.js
+· 돌릴 하네스: e2e-bgm-phrase.js e2e-guild.js e2e-onboarding.js e2e-xzone-caravan.js test-bgm-phrase.js test-body-fields.js test-chunk-gates.js test-coll-grid.js test-doors.js test-guest-identity.js test-harness-lint.js test-hp-src.js test-imsu.js test-lab-army-morale.js test-lon-day.js test-move-soa.js test-t1170-lab-clock.js test-t1192-fish-species.js test-t1246-food-price.js test-t1273-clock-rest.js test-t1331-beast-body.js test-t1359-hunt-body.js test-vein-batch.js test-village-only.js
+##### e2e-bgm-phrase.js #####
+=== PASS 12 / FAIL 0 ===
+  [소요] 19초
+  ✓ RC=0
+##### e2e-guild.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+  ✓ ⑤b ★조용히 실패하지 않는다 — 말로 알려 준다  ["지금은 부르지 못했습니다. 잠시 뒤 다시 해 보십시오."]
+  ✓ ⑥h 전제: welcome 훅을 실제로 찾았다(못 찾으면 아래가 자명 통과다)  1200
+  ✓ ⑦b 아직 아무도 마을 사람이 아니다(자명 통과 금지의 앞면)
+  ✓ ⑧e (자명 통과 방지) 네 파일을 실제로 읽었다
+=== 99건 중 PASS 99 · FAIL 0 ===
+  [소요] 112초
+  ✓ RC=0
+##### e2e-onboarding.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+  ✓ ★[T159] 아직 아무도 마을 사람이 아니다(자명 통과 금지 — 칸이 늘 1 이면 뜻이 없다)
+  ✓ [첫 사람 · 추천 원클릭] (상황) 아직 내 땅이 하나도 없다 — 아래 델타가 자명 통과가 아니다  claims=0
+=== PASS 75 / FAIL 0 ===
+  [소요] 200초
+  ✓ RC=0
+##### e2e-xzone-caravan.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+  ✗ ⓖ0 [전제] 받는 존에서 머무는(phase linger) 교차 존 상인을 실제로 봤다(0 이면 아래가 자명 통과다)  몸 0 · 표본 0
+  ✗ ⓖ1 끔 — T952 셈 칸이 안 선다(무동작 · 머묾은 종전 1게임시간)  0/0
+  ✗ ⓘ0 [전제] 받는 존에서 머무는 교차 존 상인을 봤다(0 이면 아래가 자명 통과다)  몸 0
+  ✗ ⓘ1 끔 — 장 칸이 안 선다(덤프 `mk` · `rowDay` 없음 · 종전 계약)  0/0
+  ✗ ⓖ0 [전제] 받는 존에서 머무는(phase linger) 교차 존 상인을 실제로 봤다(0 이면 아래가 자명 통과다)  몸 0 · 표본 0
+  ✗ ⓘ0 [전제] 받는 존에서 머무는 교차 존 상인을 봤다(0 이면 아래가 자명 통과다)  몸 0
+  ✓ ⓚ0 [전제] 몸 넘김을 봤다(0 이면 아래가 자명 통과다)  논리 몸 270 · 넘김 510(나감 267 · 돌아옴 243)
+  [소요] 2400초
+  ✗ RC=124 · 결과줄 44개 → **실패로 센다**
+##### test-bgm-phrase.js #####
+=== PASS 16 / FAIL 0 ===
+  [소요] 0초
+  ✓ RC=0
+##### test-body-fields.js #####
+=== 14 통과 / 0 실패 ===
+  ✓ ★자명 통과 금지 — `??=` 꼴도 문다 · 읽기(`==`)는 안 문다  zone.js:19736 npc._t673Bait2
+  ✓ ★[T1140 ③-가] 자명 통과 금지 — 값 하나(`nextDecisionAt: 1`)를 바꾸면 문다
+  ✓ ⑳ 판정 칸 쓰기 자리를 다 셌다(자명 통과 아님)  전체 454 · 걸음 문 안 256 · 문 밖 198(표 내림 73 · 까닭 125)
+=== 14 통과 / 0 실패 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-chunk-gates.js #####
+=== 결과: 35 PASS / 0 FAIL ===
+⑤ 자명 통과 금지
+  ✓ ⑧ [자명 통과 금지] 도장을 안 올리면 낡은 비트가 길을 바꾼다(위 검사가 문다)  어긋남 38/40
+=== 결과: 35 PASS / 0 FAIL ===
+  [소요] 8초
+  ✓ RC=0
+##### test-coll-grid.js #####
+=== 결과: 20 PASS / 0 FAIL ===
+  ✓ ② [전제 · 자명 통과 금지] 걸음이 **실제로 막힌다** · 옛 격자 질의의 셋에 하나 넘게에 **밭·마당이 섞였다**  막힘 10476/40000 · 밭 섞임 4525/10000
+=== 결과: 20 PASS / 0 FAIL ===
+  [소요] 14초
+  ✓ RC=0
+##### test-doors.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+=== 문 전수 하네스: 45 통과 / 0 실패 ✅ ===
+  ✓ ⓔ3 전제: `_devAsGate` 를 소스에서 그대로 떠 왔다(못 뜨면 아래가 자명 통과다)
+  ✓ ⓔ6b ★자명 통과 금지 — 두 팔이 **실제로 다른 값**을 낸다(손잡이가 부를 때 읽힌다) · /startinfo?as=%EC%9E%AC%EB%AF%BC vs /startinfo
+  ✓ ⓖ3 자명 통과 금지 — 없는 이름엔 `false` 다(늘 true 면 위가 뜻이 없다) · {"taken":false}
+=== 문 전수 하네스: 45 통과 / 0 실패 ✅ ===
+  [소요] 5초
+  ✓ RC=0
+##### test-guest-identity.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+=== 게스트 영속 신원 하네스: 117 통과 / 0 실패 ✅ ===
+  ✓ ⑨ⓒ4 ★안 문에서는 **전부 준다**(자명 통과 금지 — 투영이 늘 비어 있는 게 아니다)
+  ✓ ⑨ⓓ 전제: 사람 하나가 실제로 존에 붙어 있다(아래가 자명 통과가 아니다)
+  ✓ ⑨ⓔ2 ★자명 통과 금지 — 안 문으로 부른 것은 **실제로 바뀌었다**(소개문·길드원 2) · "존이 쓴 소개문" · 길드원 2
+=== 게스트 영속 신원 하네스: 117 통과 / 0 실패 ✅ ===
+  [소요] 17초
+  ✓ RC=0
+##### test-harness-lint.js #####
+  ✓ ★⑲b 자명 통과 금지 — 표지 · 수가 맞는 새 하네스만 보내고 · 표지 없음 · 수 어긋남 · 바꾼 자리 안 셈 · 표지 단 옛 하네스 어긋남 · 주석(보고)에만 적은 미끼는 문다  good=ok,nomark=bad,many=bad,nocount=bad,old=ok,oldmarked=bad,report=bad
+  ✓ ⑳ [전제] `@harness-only` 표지를 단 하네스가 실제로 있다(0 이면 아래가 자명 통과다)  test-ci-list.js test-notice-mark.js
+  ✓ ★⑳ 자명 통과 금지 — 제품 부름 셋은 물고 · 주석 · scripts 자리는 보낸다  req=hit,join=hit,rel=hit,cmt=none,scr=none
+=== 99건 중 PASS 99 · FAIL 0 ===
+  [소요] 68초
+  ✓ RC=0
+##### test-hp-src.js #####
+=== 54 통과 / 0 실패 ===
+  ✓ [상황] 세 파일을 실제로 읽었다(못 읽으면 아래가 자명 통과다)  zone 1193483 · net 108838 · wildlife 96104
+  ✓ ★⓪ 자명 통과 금지 — 직접 대입 한 줄을 되살리면 잡힌다
+  ✓ [상황] `server/villages.js` 를 실제로 읽었다(못 읽으면 아래가 자명 통과다)  villages 1459669
+=== 54 통과 / 0 실패 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-imsu.js #####
+=== 10 통과 / 0 실패 ===
+  ✓ ★판정식이 ✗ 를 낼 수 있는 자리가 지도에 있다(자명 통과 아님)  — (7381,88427) 민물 >2000px · 샘 1786
+=== 10 통과 / 0 실패 ===
+  [소요] 3초
+  ✓ RC=0
+##### test-lab-army-morale.js #####
+  ✓ 같은 씨 끔 판과 결과가 갈린 판 8/8(자명 통과 금지)
+=== 14건 중 PASS 14 · FAIL 0 ===
+  [소요] 15초
+  ✓ RC=0
+##### test-lon-day.js #####
+=== 22건 중 PASS 22 · FAIL 0 ===
+  [소요] 0초
+  ✓ RC=0
+##### test-move-soa.js #####
+  ✓ ② ★적중·실패 수까지 같다(메모가 같은 순서로 같은 칸을 채운다)  miss 39923/39923 = 39923/39923
+=== 결과: 287 PASS / 0 FAIL ===
+  ✓ ㉒ ① [자] 읽기만 판정이 멤버 쓰기·넣기를 문다(지역 대입은 통과)
+  ✓ ㉓ⓐ [자명 통과 금지] 차례만 뒤집은 가짜는 문다(같은 집합이어도)  길이 2
+  ✓ ㉓ⓓ [자명 통과 금지] 켬 갈래 차례를 뒤집은 사본은 문다  n2,pl,pl,n1
+=== 결과: 287 PASS / 0 FAIL ===
+  [소요] 90초
+  ✓ RC=0
+##### test-t1170-lab-clock.js #####
+=== test-t1170-lab-clock 결과: 4 통과 / 0 실패 ===
+=== test-t1170-lab-clock 결과: 4 통과 / 0 실패 ===
+  [소요] 0초
+  ✓ RC=0
+##### test-t1192-fish-species.js #####
+PASS observer mass sampling cannot create or normalize the real body ledgers
+PASS mutant mass is caught
+PASS mutant species is caught
+PASS 32 / FAIL 0
+  [소요] 1초
+  ✓ RC=0
+##### test-t1246-food-price.js #####
+  [소요] 1초
+  ✗ RC=1 · 결과줄 0개 → **실패로 센다**
+##### test-t1273-clock-rest.js #####
+  ✓ ⑨ [T1300] T1289 글자 사본은 옛 저장 → 끔 판에서 축 섞인 몸이 0 이 아니다(자명 통과 금지 · 회부 4)  2 + 0
+  ✓ ⑨ 고치기 전 사본은 축 섞인 몸이 0 이 아니다(자명 통과 금지)  9
+  ✓ ⑪ [자명 통과 금지] T1289 거리 규칙은 보통 판은 맞고 큰 판에서 틀린다(econ 값 > 저장 순간 벽시계의 반) — 새 경계가 그 판을 맞춘다  보통 0 · 큰 2
+=== PASS 104 / FAIL 0 ===
+  [소요] 60초
+  ✓ RC=0
+##### test-t1331-beast-body.js #####
+PASS 미끼 resettle 빨강 — FAIL 3건 · 첫 ③ 날마다 몸 수 = 처음 + 태어남 − 죽음 − 넘어감 + 넘어옴 − 길듦 · 어긋남 0 — 감사 56 · 어긋남 42 · 날 차이 어긋남 1
+PASS 미끼 ledger 빨강 — FAIL 2건 · 첫 ③ 날마다 몸 수 = 처음 + 태어남 − 죽음 − 넘어감 + 넘어옴 − 길듦 · 어긋남 0 — 감사 56 · 어긋남 30 · 날 차이 어긋남 3
+PASS 미끼 teleport 빨강 — FAIL 1건 · 첫 ⑤ 날마다 옮긴 거리 ≤ 30걸음 × 2칸 · 걸음 감시 0 — 옮긴 몸-날 258838 · 최대 242칸 · 뜀 129718 · 감시 267471
+PASS 미끼 farkid 빨강 — FAIL 1건 · 첫 ④ 새 몸은 다 어미 곁(체비셰프 2) · 어미 = 같은 종 암컷 — 새끼 87 · 먼 새끼 87 · 어미 틀림 0
+PASS 미끼 keepledger 빨강 — FAIL 2건 · 첫 ② 장부를 버렸다(_gameRich null · _gameNone 1) · 뒤로 다시 안 섰다 — [[false,null,55],[false,null,5
+PASS 미끼 ledger 빨강 — FAIL 2건 · 첫 ③ 날마다 몸 수 = 처음 + 태어남 − 죽음 − 넘어감 + 넘어옴 − 길듦 · 어긋남 0 — 감사 56 · 어긋남 30 · 날 차이 어긋남 3
+PASS 미끼 teleport 빨강 — FAIL 1건 · 첫 ⑤ 날마다 옮긴 거리 ≤ 30걸음 × 2칸 · 걸음 감시 0 — 옮긴 몸-날 258838 · 최대 242칸 · 뜀 129718 · 감시 267471
+PASS 미끼 farkid 빨강 — FAIL 1건 · 첫 ④ 새 몸은 다 어미 곁(체비셰프 2) · 어미 = 같은 종 암컷 — 새끼 87 · 먼 새끼 87 · 어미 틀림 0
+PASS 미끼 keepledger 빨강 — FAIL 2건 · 첫 ② 장부를 버렸다(_gameRich null · _gameNone 1) · 뒤로 다시 안 섰다 — [[false,null,55],[false,null,5
+  [소요] 41초
+  ✓ RC=0
+##### test-t1359-hunt-body.js #####
+6 통과 · 0 실패
+6 통과 · 0 실패
+  [소요] 1초
+  ✓ RC=0
+##### test-vein-batch.js #####
+⑤ 지운 셀 · 쓰기 실패
+  ✓ 쓰기가 실패하면 더러운 셀을 그대로 둔다(다음 저장에 다시)
+=== 17 통과 / 0 실패 ===
+  ✓ ★자명 통과 금지 — 행이 실제로 깎인 값이다  996.676 · 996.676 · 996.676 · 996.676 · 996.676
+  ✓ ★자명 통과 금지 — 마지막 저장 뒤에 실제로 37타를 쳤다(깎인 덩이 0.6132)
+  ✓ 부팅 지문 줄 하나 · 손잡이 선언 줄 하나를 찾았다(자명 통과 금지)  1 · 1
+=== 17 통과 / 0 실패 ===
+  [소요] 0초
+  ✓ RC=0
+##### test-village-only.js #####
+  ✗ Ⓣ2 [C1] 이방인 받기 스위치는 **촌장**만  ["마을이 하루 장부를 닫는 중입니다. 곧 처리됩니다."]
+  ✗ Ⓣ3 [C1] 촌장은 켠다(그 다음 문은 종전 그대로)  ["마을이 하루 장부를 닫는 중입니다. 곧 처리됩니다."]
+  ✗ Ⓣ4 [C1] 회관 열람 = **마을 사람**(촌장 아닌 A 도 본다)
+  ✗ Ⓣ5 [C1 · ★T1132] 남의 마을 사람도 회관 곁에선 **본다** — 읽기 전용(이방인 받기 칸 없음)  "[\"마을이 하루 장부를 닫는 중입니다. 곧 처리됩니다.\"]"
+=== 결과: 102 통과 · 4 실패 ===
+  ✓ ⑩ [상황] 두 번째 켬 부팅의 이행이 돌았다(존 로그 `[T785] 마을 칸 이행` — 아니면 ⑩b 물은 수 0 은 자명 통과)  0ms · 옮김 0 · 못 물음 0
+  ✓ ⑬a 자명 통과 금지 — 문자열 속 "길드"는 물고 주석 속은 안 문다  ["2: send(ws, { type: 'notice', text: '길드 곳간이 섰다' });"]
+=== 결과: 102 통과 · 4 실패 ===
+  [소요] 93초
+  ✗ RC=1 · 결과줄 109개 → **실패로 센다**
+
+=== 러너 요약 ===
+  통과 21: e2e-bgm-phrase.js e2e-guild.js e2e-onboarding.js test-bgm-phrase.js test-body-fields.js test-chunk-gates.js test-coll-grid.js test-doors.js test-guest-identity.js test-harness-lint.js test-hp-src.js test-imsu.js test-lab-army-morale.js test-lon-day.js test-move-soa.js test-t1170-lab-clock.js test-t1192-fish-species.js test-t1273-clock-rest.js test-t1331-beast-body.js test-t1359-hunt-body.js test-vein-batch.js
+  실패 3: e2e-xzone-caravan.js(rc=124) test-t1246-food-price.js(rc=1) test-village-only.js(rc=1)
+  걸린 시간 상위(초): e2e-xzone-caravan.js 2400 · e2e-onboarding.js 200 · e2e-guild.js 112 · test-village-only.js 93 · test-move-soa.js 90 · test-harness-lint.js 68 · test-t1273-clock-rest.js 60 · test-t1331-beast-body.js 41 · e2e-bgm-phrase.js 19 · test-guest-identity.js 17
+  걸린 시간 합: 하네스 3150초 · 러너 전체 3199초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 6번 × 8초 · 건넘 19번(앞 판이 남긴 아이 없음)

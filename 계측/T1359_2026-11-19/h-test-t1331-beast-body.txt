@@ -1,0 +1,4 @@
+PASS 미끼 teleport 빨강 — FAIL 1건 · 첫 ⑤ 날마다 옮긴 거리 ≤ 30걸음 × 2칸 · 걸음 감시 0 — 옮긴 몸-날 258838 · 최대 242칸 · 뜀 129718 · 감시 267471
+PASS 미끼 farkid 빨강 — FAIL 1건 · 첫 ④ 새 몸은 다 어미 곁(체비셰프 2) · 어미 = 같은 종 암컷 — 새끼 87 · 먼 새끼 87 · 어미 틀림 0
+PASS 미끼 keepledger 빨강 — FAIL 2건 · 첫 ② 장부를 버렸다(_gameRich null · _gameNone 1) · 뒤로 다시 안 섰다 — [[false,null,55],[false,null,5
+=== 미끼 5/5 빨강 ===
