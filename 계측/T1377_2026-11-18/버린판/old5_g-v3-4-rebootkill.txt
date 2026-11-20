@@ -1,0 +1,50 @@
+  도착 00:03:57 · 임업2(vid 3) · phase 0.1651 (낮) · 도착점과 0px · 허기 56 갈증 91 · 달력 봄 1일 · 바깥 {"cold":0.4685,"ko":"쌀쌀함","emo":"🌬","night":false,"tempC":18,"shelter":1,"cut":
+  ▣ 0.06분  칸 gather:집터 재료 모으기→
+  ◆   0.1분  물  {"thirst":"91→100","how":"edge"}
+  ◆  0.68분  첫 열매  {"how":"berry_bush","berry":2}
+  ◆  0.68분  첫 섬유  {"how":"berry_bush"}
+  ◆  0.69분  첫 밥  {"how":"berry","hunger":"54→59"}
+  ▷ 0.70분  칸 gather:tree
+  ◆   1.3분  안내 자리(나무)  {"d":0,"alt":false}
+  ▣ 1.32분  칸 tool:조잡한 돌도끼 만들기
+  ◆  1.32분  칸 다음 막힘  {"item":"조잡한 돌도끼 만들기"}
+  ▷ 1.32분  칸 tool:pebble
+  ▷ 3.69분  칸 tool:fiber
+  ▷ 4.29분  칸 tool:crude_axe
+  ◆  4.29분  조잡한 돌도끼(칸 따라 손 제작)
+  ▣ 4.29분  칸 tool:조잡한 돌도끼 손에 들기
+  ▣ 4.30분  칸 gather:집터 재료 모으기→
+  ▷ 4.30분  칸 gather:tree
+  ◆  5.82분  첫 통나무  {"how":"tree","wood":9}
+  ▷ 5.82분  칸 gather:rock
+  ◆  6.41분  안내 자리(바위)  {"d":0,"alt":false}
+  ▣ 6.43분  칸 tool:조잡한 돌괭이 만들기
+  ▷ 6.43분  칸 tool:pebble
+  ▷ 6.53분  칸 tool:fiber
+  ▷ 7.25분  칸 tool:crude_pick
+  ◆  7.25분  조잡한 돌괭이(칸 따라 손 제작)
+  ▣ 7.25분  칸 tool:조잡한 돌괭이 손에 들기
+  ▣ 7.26분  칸 gather:집터 재료 모으기→
+  ▷ 7.26분  칸 gather:rock
+  ◆   7.6분  첫 돌  {"how":"rock"}
+  ▣ 7.60분  칸 claim:집터 잡기
+  ▷ 7.60분  칸 claim:
+  ◆  7.75분  집터  {"x":36991,"y":99532,"cost":{"wood":3,"stone":2}}
+  ▣ 7.75분  칸 build:움집 짓기→
+  ▷ 7.75분  칸 goto:build
+  ◆  7.76분  안내 자리(내 터)
+  ▣ 7.76분  칸 build:움집 짓기
+  ▷ 7.76분  칸 hut:
+  ▣ 7.86분  칸 tool:바위 채굴
+  ▷ 7.86분  칸 tool:stone
+  ▣ 7.95분  칸 tool:곡괭이 만들기
+  ▷ 7.95분  칸 tool:pickaxe
+  ◆  7.96분  곡괭이(손 제작)
+  ▣ 7.96분  칸 build:움집 짓기→
+  ▷ 7.96분  칸 goto:build
+  ▣ 7.99분  칸 build:움집 짓기
+  ▷ 7.99분  칸 hut:
+  ◆  8.01분  움집터(① 굴착)
+  ▣ 8.01분  칸 rest:쉬어 가기
+  ◆  8.17분  도끼(손 제작)
+  ◆  8.38분  움집 ② 단계
