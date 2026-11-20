@@ -5678,6 +5678,15 @@ function _t1372SSTake() {
 //   켜면 종료 저장(T742 줄 `zone.t1382Bld`)에 메모리 건물 중 마을 행(`npc_`)의 모양(종 · 자리 · 층 · 주인)을 Map 차례로 싣고, 다시 뜬 첫 틱 머리에
 //     Stage4A 가 다시 적은 같은 모양 행을 같은 차례로 메모리에 올린다(`_rowToBuilding` — 청크 활성화의 그 문 · 행 번호만 새것 = ㉣).
 //   ★[T1382 덧붙임 둘] 문 그래프 표(T678 `chunk-gates`) — 다시 뜬 판은 부팅 미리 굽기로 새로 지어(벽 0 인 때 · 다른 차례) 묻기 답이 한 번에 돈 판과 달랐다. 통째로 넘긴다(deflate).
+//   ★[T1382 덧붙임 둘] players 차례 — 한 번에 돈 판은 낳은 때 차례(마을 몸 · 캐러밴 몸 · 뒤에 난 몸이 섞인다), 다시 뜬 판은 마을 몸 다 → 캐러밴 몸 차례라
+//     걸음 고리(`players.forEach(_moveOne)`) · 커널 차례(`_wwPre`)가 달라 몸이 밀리는 몫이 달랐다(다시 뜬 6분 뒤 어촌2 몸 1.4px). 저장 차례로 다시 넣는다(delete → set · 같은 객체).
+let _t1382OrdPend = null;
+function _t1382OrdApply() {
+  const L = _t1382OrdPend; _t1382OrdPend = null; if (!Array.isArray(L)) return;
+  const want = L.filter((k) => players.has(k)), seen = new Set(want), rest = [...players.keys()].filter((k) => !seen.has(k));
+  let moved = 0; for (const k of want.concat(rest)) { const v = players.get(k); players.delete(k); players.set(k, v); moved++; }
+  console.log(`[${ZONE_ID}] 🧭 [T1382] players 차례 되돌림 — ${want.length}/${L.length} · 나머지 ${rest.length}`);
+}
 let _t1382GatePend = null;
 function _t1382GateTake() { if (!_t678G || !_t678G.dump) return null; try { return { z: require('zlib').deflateSync(Buffer.from(JSON.stringify(_t678G.dump()))).toString('base64') }; } catch (e) { return null; } }
 function _t1382GateApply() {
@@ -11022,6 +11031,7 @@ setInterval(() => {
 }, FISH_TICK_MS);
 // ★[T1382] 어장 번짐 시계 — 다시 뜬 판은 `_fishTickAt` 이 부팅 순간이라 첫 번짐이 지난 번짐부터가 아니라 부팅부터 잰 몫이었다(몸 세계 6날 · 4날 끊음: 어부 몸 29 자리 갈림).
 //   손잡이 `T1340_RESUME_EXACT` 안 · 종료 저장에만 값(T742 줄 `zone.t1382Fish`) · 끔 = 종전 글자.
+if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.t1382Ord', () => (shuttingDown ? [...players.keys()] : null), (v) => { if (Array.isArray(v)) _t1382OrdPend = v; });
 if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.t1382Gate', () => (shuttingDown ? _t1382GateTake() : null), (v) => { if (v && v.z) _t1382GatePend = v; });
 if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.t1382Bld', () => (shuttingDown ? _t1382BldTake() : null), (v) => { if (v && Array.isArray(v.L)) _t1382BldPend = v; });
 if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.t1382Tick', () => (shuttingDown ? { n: _tick.n } : null), (v) => { if (v && Number.isFinite(v.n)) _t1382TickPend = v.n; });
@@ -17646,6 +17656,7 @@ setInterval(() => {
   //   그 둘을 가른 이유: 순수 해시는 자리마다 '무엇이 신원인가'를 정해야 하는데, 몹 스폰·드랍처럼
   //   **신원이 아직 없는** 자리가 많다. 거기까지 순수 해시로 가는 건 다음 카드다(보고 §4).
   _diceTick.seed(_SEED.seedOf(_ZONE_SH, 0, 0, zoneGameDay(), _tick.n));
+  if (_t1382OrdPend) _t1382OrdApply();   // ★[T1382] players 차례(걸음 고리 · 커널 차례)
   if (_t1382GatePend) _t1382GateApply();   // ★[T1382] 문 그래프 표(묻기보다 앞)
   if (_t1382BldPend) _t1382BldApply();   // ★[T1382] 메모리에 올라와 있던 마을 집 조각 — 벽 세대 되돌림보다 앞(올릴 때 세대가 바뀌어도 아래가 저장 값으로 덮는다)
   if (_t1372CgPend) _t1372CgApply();   // ★[T1372 ⓒ] 첫 틱 머리 — 벽 세대(마을 첫 틱의 T1340 다시 찍기보다 앞)
