@@ -190,10 +190,11 @@ async function serverArm(on) {
     // 간이 움집 — 집터 밖(3칸 떨어진 곳) → 거절 · 집터 가운데 → 터
     await warp(X, at(c0.x + 5, c0.y).x, at(c0.x + 5, c0.y).y);
     const h0 = await act(X, { type: 'hut_start', kind: 'small', atX: at(c0.x + 5, c0.y).x, atY: at(c0.x + 5, c0.y).y });
-    out.hutOut = { said: h0.said, sites: [...X.blds.values()].filter((b) => b.type === 'hut_site').length };
+    const mine = (b) => b.type === 'hut_site' && !(b.data && b.data.owner === 'npc');   // [PM land1087] 마을이 짓는 새 움집터(`owner: 'npc'`)가 시야에 들면 그것을 집던 흔들림(CI 긴 판 18/4) — 사람 것만 센다
+    out.hutOut = { said: h0.said, sites: [...X.blds.values()].filter(mine).length };
     await warp(X, at(c0.x, c0.y).x, at(c0.x, c0.y).y);
-    const h1 = await act(X, { type: 'hut_start', kind: 'small', atX: at(c0.x, c0.y).x, atY: at(c0.x, c0.y).y }, () => [...X.blds.values()].some((b) => b.type === 'hut_site'));
-    const st = [...X.blds.values()].find((b) => b.type === 'hut_site');
+    const h1 = await act(X, { type: 'hut_start', kind: 'small', atX: at(c0.x, c0.y).x, atY: at(c0.x, c0.y).y }, () => [...X.blds.values()].some(mine));
+    const st = [...X.blds.values()].find(mine);
     out.site = st ? { data: st.data, said: h1.said, d: h1.d } : { said: h1.said };
     // 단계 — 모자라면 거절 · 표 수만큼 정확히 든다
     if (st) {
