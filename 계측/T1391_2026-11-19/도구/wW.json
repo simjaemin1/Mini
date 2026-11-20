@@ -1,0 +1,27 @@
+[
+ {
+  "tag": "OFF_W",
+  "seed": 1020,
+  "days": 800,
+  "env": {},
+  "kind": "war"
+ },
+ {
+  "tag": "NH_W",
+  "seed": 1020,
+  "days": 800,
+  "env": {
+   "T1391_UNHAPPY_BANDIT": "nohome"
+  },
+  "kind": "war"
+ },
+ {
+  "tag": "ALL_W",
+  "seed": 1020,
+  "days": 800,
+  "env": {
+   "T1391_UNHAPPY_BANDIT": "all"
+  },
+  "kind": "war"
+ }
+]

@@ -1,0 +1,27 @@
+[
+ {
+  "tag": "OFF_B",
+  "seed": 1020,
+  "days": 100,
+  "env": {},
+  "kind": "body"
+ },
+ {
+  "tag": "NH_B",
+  "seed": 1020,
+  "days": 100,
+  "env": {
+   "T1391_UNHAPPY_BANDIT": "nohome"
+  },
+  "kind": "body"
+ },
+ {
+  "tag": "ALL_B",
+  "seed": 1020,
+  "days": 100,
+  "env": {
+   "T1391_UNHAPPY_BANDIT": "all"
+  },
+  "kind": "body"
+ }
+]

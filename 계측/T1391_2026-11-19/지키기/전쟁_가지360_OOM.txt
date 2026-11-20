@@ -1,0 +1,5 @@
+
+=== 서버 판 기준선 만들기 — 1020:360일 · 집 행위 끔 · 전쟁 팔(--war inf · {"VILLAGE_NPC_CAP":"Infinity"}) · 동시 1 · 교역로 캐시 /tmp/durango-route-cache · 판 /tmp/sbc-jTB3aQ ===
+  · 시드 1020 360일 판 820초(종료 1)
+  판 모두 820초
+  ✗ 시드 1020 판 실패

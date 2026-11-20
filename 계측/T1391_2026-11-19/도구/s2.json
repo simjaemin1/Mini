@@ -1,0 +1,116 @@
+[
+ {
+  "tag": "OFF_1020",
+  "seed": 1020,
+  "days": 730,
+  "env": {},
+  "kind": "sbc"
+ },
+ {
+  "tag": "ALL_1020",
+  "seed": 1020,
+  "days": 730,
+  "env": {
+   "T1391_UNHAPPY_BANDIT": "all"
+  },
+  "kind": "sbc"
+ },
+ {
+  "tag": "NH_1020",
+  "seed": 1020,
+  "days": 730,
+  "env": {
+   "T1391_UNHAPPY_BANDIT": "nohome"
+  },
+  "kind": "sbc"
+ },
+ {
+  "tag": "AR_1020",
+  "seed": 1020,
+  "days": 730,
+  "env": {
+   "T1391_UNHAPPY_BANDIT": "all",
+   "T1391_DEN_RICH": "1"
+  },
+  "kind": "sbc"
+ },
+ {
+  "tag": "OFF_7",
+  "seed": 7,
+  "days": 730,
+  "env": {},
+  "kind": "sbc"
+ },
+ {
+  "tag": "ALL_7",
+  "seed": 7,
+  "days": 730,
+  "env": {
+   "T1391_UNHAPPY_BANDIT": "all"
+  },
+  "kind": "sbc"
+ },
+ {
+  "tag": "NH_7",
+  "seed": 7,
+  "days": 730,
+  "env": {
+   "T1391_UNHAPPY_BANDIT": "nohome"
+  },
+  "kind": "sbc"
+ },
+ {
+  "tag": "AR_7",
+  "seed": 7,
+  "days": 730,
+  "env": {
+   "T1391_UNHAPPY_BANDIT": "all",
+   "T1391_DEN_RICH": "1"
+  },
+  "kind": "sbc"
+ },
+ {
+  "tag": "OFF_42",
+  "seed": 42,
+  "days": 730,
+  "env": {},
+  "kind": "sbc"
+ },
+ {
+  "tag": "ALL_42",
+  "seed": 42,
+  "days": 730,
+  "env": {
+   "T1391_UNHAPPY_BANDIT": "all"
+  },
+  "kind": "sbc"
+ },
+ {
+  "tag": "NH_42",
+  "seed": 42,
+  "days": 730,
+  "env": {
+   "T1391_UNHAPPY_BANDIT": "nohome"
+  },
+  "kind": "sbc"
+ },
+ {
+  "tag": "AR_42",
+  "seed": 42,
+  "days": 730,
+  "env": {
+   "T1391_UNHAPPY_BANDIT": "all",
+   "T1391_DEN_RICH": "1"
+  },
+  "kind": "sbc"
+ },
+ {
+  "tag": "R_1020",
+  "seed": 1020,
+  "days": 730,
+  "env": {
+   "T1391_DEN_RICH": "1"
+  },
+  "kind": "sbc"
+ }
+]
