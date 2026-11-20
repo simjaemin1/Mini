@@ -6,3 +6,5 @@
 #   (세션이 스스로 넣을 수 있으면 "세션 글자를 안 믿는다"는 이 단계의 뜻이 없어진다). 목록은 짧아야 한다 — 늘면 lint ⑳ 을 고칠 차례다.
 test-clock-shift.js | 하네스 시계 밀기 도구(`lib-phase`)를 잰다 — 제품은 `server/zone-config.js`(존 경도 표)를 읽기만 한다 · T1356
 test-touched-harness.js | 도구 `touched-harness.js` 를 임시 레포 픽스처로 잰다 — `server/a.js` 는 픽스처 글자(진짜 제품 아님) · T1356
+test-t1377-onb-guide.js | 봇 자(`lib-onb-guide` · 안내 칸 한 벌 → 한 수)를 잰다 — 제품 칸 글을 쥐지만 제품 0줄 카드라 옛 제품 위에서도 초록 · T1377 회부 5 · PM land1086
+test-t1401-walk-map.js | 지도 감사 자(`audit-reachability`)를 잰다 — 지형 · 다리 자료를 읽기만 한다(제품 무변 카드) · T1401 · PM land1086
