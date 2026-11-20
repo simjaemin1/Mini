@@ -1,0 +1,11 @@
+body-fields rc=0 2s === 14 통과 / 0 실패 ===
+coll-grid rc=0 26s === 결과: 20 PASS / 0 FAIL ===
+hp-src rc=0 3s === 54 통과 / 0 실패 ===
+lon-day rc=0 1s === 22건 중 PASS 22 · FAIL 0 ===
+harness-lint rc=0 140s === 102건 중 PASS 102 · FAIL 0 ===
+t1331-beast-body rc=0 69s PASS 미끼 keepledger 빨강 — 바꾼 자리 1 · FAIL 2건 · 첫 ② 장부
+t1195-hunt-real rc=0 3s PASS 17 / FAIL 0
+hunt-vis rc=0 112s === 32건 중 PASS 32 · FAIL 0 ===
+t1359-hunt-body rc=0 1s 6 통과 · 0 실패
+t1393-hunt-chase rc=0 7s 10 통과 · 0 실패
+move-soa rc=0 136s === 결과: 287 PASS / 0 FAIL ===

@@ -1,0 +1,153 @@
+{
+ "seed": 7,
+ "huntVil": [
+  "광산3",
+  "광산5",
+  "어촌2",
+  "임업1",
+  "임업2",
+  "임업3",
+  "농촌1",
+  "임업4",
+  "임업5",
+  "어촌3",
+  "임업6",
+  "농촌2",
+  "어촌4",
+  "어촌9",
+  "어촌11",
+  "어촌13",
+  "어촌14",
+  "농촌8",
+  "농촌9",
+  "농촌13",
+  "농촌15"
+ ],
+ "off": {
+  "days": 400,
+  "pop": {
+   "d100": 1394,
+   "d400": 969
+  },
+  "hunters": {
+   "d1": 56,
+   "d50": 361,
+   "d100": 232,
+   "d200": 257,
+   "d400": 238
+  },
+  "meatKgDay": 468.8,
+  "meatKgDay50": 482.6,
+  "hunt": {
+   "n": 21,
+   "pop100": 574,
+   "pop400": 556,
+   "fd400": 596,
+   "empty400": 3,
+   "hunters400": 230,
+   "got": 12611
+  },
+  "empty400": 10,
+  "fd400": 1408,
+  "body": null,
+  "chase": null,
+  "t1195": {
+   "bodies": 103543,
+   "seenN": 0,
+   "seenU": 0,
+   "reachN": 13275,
+   "refuse": 352815,
+   "noReach": 24311,
+   "sp": {
+    "deer": 6709,
+    "wild_boar": 2149,
+    "arctic_hare": 4417
+   }
+  },
+  "killsPerHunterDay": null,
+  "cpuSecDay": 3.47
+ },
+ "on": {
+  "days": 400,
+  "pop": {
+   "d100": 1624,
+   "d400": 1148
+  },
+  "hunters": {
+   "d1": 56,
+   "d50": 383,
+   "d100": 5,
+   "d200": 1,
+   "d400": 0
+  },
+  "meatKgDay": 84.2,
+  "meatKgDay50": 13.3,
+  "hunt": {
+   "n": 21,
+   "pop100": 687,
+   "pop400": 585,
+   "fd400": 0,
+   "empty400": 3,
+   "hunters400": 0,
+   "got": 1387
+  },
+  "empty400": 9,
+  "fd400": 0,
+  "body": {
+   "start": 2981,
+   "d100": 578,
+   "d400": 702,
+   "died": {
+    "hunt": 2584,
+    "starve": 0,
+    "seen": 0,
+    "old": 0,
+    "pred": 0
+   },
+   "born": 305,
+   "mismatch": 0,
+   "by": {
+    "deer": 528,
+    "wild_boar": 119,
+    "arctic_hare": 55
+   },
+   "homes": {
+    "at": 1,
+    "start": 48,
+    "end": 33,
+    "empty": 15
+   }
+  },
+  "chase": {
+   "wake": 57038,
+   "sleep": 54454,
+   "hunt": 2584,
+   "seen": 0,
+   "cap": 807680,
+   "cut": 0,
+   "lost": 0,
+   "awakeMean": 96.6,
+   "awakePeak": 1517,
+   "ownPeak": 432,
+   "fieldPeak": 48,
+   "cpuSecDay": 0.97,
+   "cpuMaxMs": 1990.2,
+   "huntMin": 19460550
+  },
+  "t1195": {
+   "bodies": 1821,
+   "seenN": 2582,
+   "seenU": 20627.27,
+   "reachN": 0,
+   "refuse": 0,
+   "noReach": 0,
+   "sp": {
+    "arctic_hare": 966,
+    "wild_boar": 420,
+    "deer": 1196
+   }
+  },
+  "killsPerHunterDay": 0.109,
+  "cpuSecDay": 3.73
+ }
+}

@@ -1,0 +1,3 @@
+{"N":1,"on":false,"bodies":2958,"awakeEnd":0,"usMean":16.2,"usP50":4,"usP99":244,"usMax":7051,"usPerAwake":null,"ticks":9000,"min":5}
+{"N":10,"on":false,"bodies":2958,"awakeEnd":0,"usMean":22.7,"usP50":6,"usP99":276,"usMax":4500,"usPerAwake":null,"ticks":9000,"min":5}
+{"N":50,"on":false,"bodies":2958,"awakeEnd":0,"usMean":18.6,"usP50":4,"usP99":235,"usMax":4729,"usPerAwake":null,"ticks":9000,"min":5}

@@ -17356,6 +17356,7 @@ function _t158() { const v = parseInt(process.env.T158_LEDGER_VIS, 10); return N
  *   @returns {number} 남은 마릿수(손잡이가 꺼져 있으면 `Infinity` = 종전 연출)
  */
 function huntVisLeft(p) {
+  if (_t1393On()) return Infinity;   // ★[T1393] 켬 = 그날 예산 문 없음(몫 = 쫓아 잡은 수)
   if (_t158() === 0) return Infinity;
   if (!p) return 0;
   return (p._huntBud || 0) - (p._huntKil || 0);
@@ -17662,6 +17663,12 @@ const T1331_BEAST_BODY = process.env.T1331_BEAST_BODY === '1';
 //   지금 코드의 다른 읽기(T158 · T1195 `_huntBud` = 랩 `huntTake` 를 **온전한 마리**로 · 고기 = 마리 × kg)를 몸에 그대로 쓰면 몫 = `huntTake(밀도)` 몸/날(÷ 환율 없음).
 //   켬 = 그 읽기 · 끔 = ÷ 환율(종전 바이트). 새 수 0 — 두 읽기 다 있는 식이다(어느 쪽이 사냥 빠르기인가는 판정 · 고증 사냥 성공률은 회부).
 const T1359_HUNT_BODY = process.env.T1359_HUNT_BODY === '1';
+// ★★[T1393 2026-11-20 · 지시 T1393 · ★재민 11-19 판정 10] **사냥꾼이 짐승 몸을 걸어가 잡는다** — 손잡이 `T1393_HUNT_CHASE`(끔 기본 · `'1'` 만 · 몸 판 `T1331_BEAST_BODY` 켬 안에서만 뜻).
+//   몸 판의 사냥은 하루 규칙(`beast-body.hunt` — `huntTake ÷ 환율`)이었다 — 쫓을 몸이 없었다(보이는 사람 곁 존 몹뿐 · 사냥꾼 두뇌 0). 켬: 일하는 사냥꾼 몸이 다가가면 몸이 깨어나
+//   랩 블록 두뇌로 서고(`wildlife.js` [C] T1393 사냥판) 사냥꾼 두뇌가 그 몸을 쫓는다. ① 사냥꾼 갈래 = 뷰 밖도 두뇌 갈래(`_huntOn`) ② 하루 규칙을 안 부른다(죽는 길 하나)
+//   ③ 그날 예산 문(`huntVisLeft`)을 안 쓴다(몫은 쫓아 잡은 수) ④ 잡은 마리는 하루 경계 `_t1195HuntIn` ① 이 읽고 비운다(하루 문이 비우면 경계보다 먼저 지워진다 — 보고 §1 ⓒ). 끔 = 종전 바이트.
+const T1393_HUNT_CHASE = process.env.T1393_HUNT_CHASE === '1';
+const _t1393On = () => T1393_HUNT_CHASE && T1331_BEAST_BODY;
 let _t1331W = null;
 const _t1331Stat = { days: 0, mig: 0, migBodies: 0, cpuUs: 0, cpuMax: 0, saves: 0, saveUs: 0, loads: 0, deforest: 0, huntKill: 0, resettle: 0, breed: 0, starve: 0, bootWhy: '' };
 function _t1331() {
@@ -17689,10 +17696,13 @@ function* _t1331DaySteps(vil, day) {
   // ⓒ 사냥 — 사냥꾼 몸마다(T523 쉼표 그대로 한 명씩)
   for (const pid of (vil.npcPids || [])) {
     const p = players && players.get(pid); if (!p || p.simJob !== 'hunter') continue;
+    if (_t1393On()) { p._huntBud = 0; if (_lifeEcon().T1195_HUNT_REAL) { p._t1195K = null; p._t1195Open = 1; p._t1195At = 0; } }   // ★[T1393] 켬 = 잡은 수 · 종은 쫓은 판이 쌓고 경계 `_t1195HuntIn` 이 비운다(여기서 안 지운다)
+    else {
     p._huntBud = 0; p._huntKil = 0;   // ★[T158] 오늘 예산 — 몸 판엔 그림자가 없다 · 예산 = 오늘 이 사람이 죽인 몸 수
     if (_lifeEcon().T1195_HUNT_REAL) { p._t1195K = null; p._t1195Open = 1; p._t1195At = 0; p._t1195Sp = null; }
+    }
     const w = p._huntWk || (p._workSite ? { cx: _cellOfPx(p._workSite.x), cy: _cellOfPx(p._workSite.y) } : { cx: vil.ccx, cy: vil.ccy });
-    const b = B.hunt(vid, p, w.cx, w.cy);
+    const b = _t1393On() ? null : B.hunt(vid, p, w.cx, w.cy);   // ★[T1393] 켬 = 하루 규칙 걷음(죽는 길 = 쫓아 잡은 것 하나)
     if (b) { p._huntBud = 1; _t1331Stat.huntKill++; p._huntWk = { cx: b.cx, cy: b.cy }; p._workSite = { x: b.cx * SZ + SZ / 2, y: b.cy * SZ + SZ / 2, day }; }
     else if (!p._huntWk) { const c = B.nearestCell(vid, w.cx, w.cy); if (c) { p._huntWk = c; p._workSite = { x: c.cx * SZ + SZ / 2, y: c.cy * SZ + SZ / 2, day }; } }   // 현장 = 짐승이 있는 곳(사냥꾼이 몸을 쫓는다)
     yield;
@@ -17787,6 +17797,7 @@ function _t1195HuntIn(vil) {
     const p = pl.get(pid); if (!p || !p._t1195Open) continue;   // 그날 몫이 열린 몸만 · 한 번만(같은 날 두 번 불려도 두 번 안 넣는다)
     const bud = p._huntBud || 0, kil = p._huntKil || 0, at = p._t1195At ? 1 : 0, sp0 = p._t1195Sp || null, k0 = p._t1195K;
     p._t1195Open = 0; p._t1195At = 0; p._t1195Sp = null; p._t1195K = null;
+    if (_t1393On()) p._huntKil = 0;   // ★[T1393] 켬 = 읽은 마리를 비운다(쫓은 판이 다음 날 몫을 새로 쌓는다)
     if (!(bud > 0) && !(kil > 0)) continue;
     _t1195Stat.bodies++;
     let got = 0;
@@ -19223,6 +19234,11 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     const ws = npc._workSite;
     // 뷰 안(활성 청크)=wildlife가 몹·핏자국·전투 전부 구동(LOD 계약): 여기는 마킹+주도권 소유만 —
     //   목표·잠행·속도는 wildlife 두뇌가 본체로 역전달(npc.targetX/_huntSpd). 스케줄(밤·요양·반일)은 위 게이트가 우선.
+    if (_t1393On()) {   // ★[T1393] 켬 = 뷰 밖도 두뇌 갈래 — 일터 900 px 안에 들면 사냥판(`wildlife` T1393)이 몸을 쥐고 걷긴다 · 그 전엔 출근
+      npc._huntOn = 1; npc._huntWk = { cx: _cellOfPx(ws.x), cy: _cellOfPx(ws.y) };
+      if (!npc._t1393Own && Math.hypot(npc.x - ws.x, npc.y - ws.y) > 900) { npc.behavior = 'wander'; npc.targetX = ws.x; npc.targetY = ws.y; npc.gatherTarget = null; }
+      return true;
+    }
     if (state.deps.isPositionActive && state.deps.isPositionActive(npc.x, npc.y)) {
       npc._huntOn = 1; npc._huntWk = { cx: _cellOfPx(ws.x), cy: _cellOfPx(ws.y) };   // ★[T146 2판] 왕복 정본 하나 — 셀 중앙 c*SZ+SZ/2 를 되읽으면 그 셀이 나온다
       if (Math.hypot(npc.x - ws.x, npc.y - ws.y) > 900 && !npc._bmOn) { npc.behavior = 'wander'; npc.targetX = ws.x; npc.targetY = ws.y; npc.gatherTarget = null; }   // 초기 출근(두뇌 목표 오기 전)
@@ -20789,7 +20805,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   // Stage 4A — zone.js 소비: 농지 lazy 실물화 / welcome 영토 페이로드 / 레거시 디듀프 판정
   farmTilesInRect, clientVillages, isLegacyVillageClaimed,
   // ★[T146] 사냥 개체군 — 정본을 그대로 내준다(하네스·wildlife·zone 이 이것을 부른다 · 사본 0)
-  T1331_BEAST_BODY, T1359_HUNT_BODY, T1388_FARMER_CELLS, T1388_FIELD_SHARE, t1388Target: (vil) => _t1388Target(vil, vil.econ), t1331Stat, _t1331Probe: { w: () => _t1331W, day: (vil, day) => _t1331DaySteps(vil, day), save: () => _t1331Save(), boot: () => _t1331Boot(), reset: () => { _t1331W = null; for (const k of Object.keys(_t1331Stat)) _t1331Stat[k] = typeof _t1331Stat[k] === 'number' ? 0 : ''; } },   // ★[T1331] 짐승 몸(하네스 `test-t1331-beast-body` · 탐침 · 내보내기만)
+  T1331_BEAST_BODY, T1359_HUNT_BODY, T1393_HUNT_CHASE, t1393On: () => _t1393On(), T1388_FARMER_CELLS, T1388_FIELD_SHARE, t1388Target: (vil) => _t1388Target(vil, vil.econ), t1331Stat, _t1331Probe: { w: () => _t1331W, day: (vil, day) => _t1331DaySteps(vil, day), save: () => _t1331Save(), boot: () => _t1331Boot(), reset: () => { _t1331W = null; for (const k of Object.keys(_t1331Stat)) _t1331Stat[k] = typeof _t1331Stat[k] === 'number' ? 0 : ''; } },   // ★[T1331] 짐승 몸(하네스 `test-t1331-beast-body` · 탐침 · 내보내기만)
   gameRichAt, gameRichSize, huntKillAt, huntTake, huntTakeAt, huntHunters, huntVisLeft, _t158, huntDeforest, _t1195HuntIn, t1195Stat: () => JSON.parse(JSON.stringify(_t1195Stat)), t1225Stat, t1225Keep, t1225SiteTable, _t1225Probe: { shared: _t1217Shared, rho: (vil, day) => _t1225Rho(vil, day), share: (F, cx, cy, vil) => _t1225Share(F, cx, cy, vil), get mode() { return T1225_MODE; } },   // ★[T1225] 물속 자본(계측 · 하네스)
   t1202Stat: () => JSON.parse(JSON.stringify(_t1202Stat)), _t1202Roster, _t1202ClockShort, _t1202FishBatch, t1217Stat: () => JSON.parse(JSON.stringify(Object.assign({}, _t1217Stat, { samples: _t1217Samp }))), _t1217FishDay, _t1217Day, _t1217HourFish, _t1217BodyKeep, _t1217Clock, _t1217BucketK, _t1217On, t1217SharedTable, t1266Stat, _t1266Keep, _t1271Day, _t1271OreCells, _t1277OreSlots, MINE_TEAM, t1271Stat, _t1217Choose, _t1218Kps, _t1218HourExpect, _t1218BodyWait, _t1053Deforest, _t1053Developed, t1053Stat: () => Object.assign({}, _t1053Stat), get T1053_DEFOREST_GAME() { return T1053_DEFOREST_GAME; }, L_DEFOREST_H, L_DEFOREST_GRAN, _gameKey, _cellOfPx, _bandMinCells, _bandFloorFill, _t146Band, _t146BandAll, _t146BuildMs, _huntBandBuild, _lifeGameDay,
   L_GAMEMAX, L_GAMER, L_HUNT, L_GAMEHALF, _t146,
