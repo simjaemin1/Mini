@@ -1,0 +1,29 @@
+{
+ "same": true,
+ "base": {
+  "enabled": false,
+  "initialCells": 1500,
+  "cells": 60,
+  "bodyDone": 60,
+  "queued": 13.464068,
+  "bodyWood": 13.464068,
+  "batchWood": 26.93676944528922,
+  "bodyPerCell": 0.2244011333333333,
+  "batchPerCell": 0.44894615742148697,
+  "ratio": 0.4998397460893231,
+  "batchDays": 1
+ },
+ "candidateOff": {
+  "enabled": false,
+  "initialCells": 1500,
+  "cells": 60,
+  "bodyDone": 60,
+  "queued": 13.464068,
+  "bodyWood": 13.464068,
+  "batchWood": 26.93676944528922,
+  "bodyPerCell": 0.2244011333333333,
+  "batchPerCell": 0.44894615742148697,
+  "ratio": 0.4998397460893231,
+  "batchDays": 1
+ }
+}

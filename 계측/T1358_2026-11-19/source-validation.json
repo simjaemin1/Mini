@@ -1,0 +1,3529 @@
+{
+ "base": "e96fb3455252ab97cd2ec4f798541e299bf8abff",
+ "implementation": "fadb3c42fc8a686322803f4ec717695881b17824",
+ "productFilesChanged": [
+  "server/villages.js",
+  "server/build-haul.js"
+ ],
+ "sourceHashesMatch": true,
+ "runs": {
+  "OFF-1020": {
+   "days": 400,
+   "segments": 40,
+   "actualRunnerExit": 0,
+   "observerErrors": 0,
+   "minBodyRatio": 0.9955696202531645,
+   "maxBodyGap": 14,
+   "maxMissingResidents": null,
+   "children": [
+    {
+     "start": 0,
+     "exit": 0,
+     "clock": {
+      "V": 1767239747703.7935,
+      "V0": 1767225600000,
+      "fired": 605874,
+      "timers": 25283,
+      "intervals": 17,
+      "started": true,
+      "startAt": 1767225600000,
+      "paused": false,
+      "yields": 1514,
+      "maxQ": 22,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 431188393,
+      "system": 12640285
+     },
+     "uptime": 604.836258466
+    },
+    {
+     "start": 10,
+     "exit": 0,
+     "clock": {
+      "V": 1767254147735.3037,
+      "V0": 1767239747503.7935,
+      "fired": 601171,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767239747503.7935,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 569876645,
+      "system": 14020213
+     },
+     "uptime": 613.145872176
+    },
+    {
+     "start": 20,
+     "exit": 0,
+     "clock": {
+      "V": 1767268547733.4807,
+      "V0": 1767254147535.3037,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767254147535.3037,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 795741324,
+      "system": 18481076
+     },
+     "uptime": 1215.011721761
+    },
+    {
+     "start": 30,
+     "exit": 0,
+     "clock": {
+      "V": 1767282947731.6577,
+      "V0": 1767268547533.4807,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767268547533.4807,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 882018550,
+      "system": 19052634
+     },
+     "uptime": 1034.377284911
+    },
+    {
+     "start": 40,
+     "exit": 0,
+     "clock": {
+      "V": 1767297347729.8347,
+      "V0": 1767282947531.6577,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767282947531.6577,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 872983270,
+      "system": 17958033
+     },
+     "uptime": 906.501533726
+    },
+    {
+     "start": 50,
+     "exit": 0,
+     "clock": {
+      "V": 1767311747728.0117,
+      "V0": 1767297347529.8347,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767297347529.8347,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 980304347,
+      "system": 17922159
+     },
+     "uptime": 1010.763472349
+    },
+    {
+     "start": 60,
+     "exit": 0,
+     "clock": {
+      "V": 1767326147726.1887,
+      "V0": 1767311747528.0117,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767311747528.0117,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1124943071,
+      "system": 21121077
+     },
+     "uptime": 1154.589128703
+    },
+    {
+     "start": 70,
+     "exit": 0,
+     "clock": {
+      "V": 1767340547724.3657,
+      "V0": 1767326147526.1887,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767326147526.1887,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1187860873,
+      "system": 23341237
+     },
+     "uptime": 1221.142959942
+    },
+    {
+     "start": 80,
+     "exit": 0,
+     "clock": {
+      "V": 1767354947722.5427,
+      "V0": 1767340547524.3657,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767340547524.3657,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1389153973,
+      "system": 24787993
+     },
+     "uptime": 1423.128330567
+    },
+    {
+     "start": 90,
+     "exit": 0,
+     "clock": {
+      "V": 1767369347720.7197,
+      "V0": 1767354947522.5427,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767354947522.5427,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1298731989,
+      "system": 25393766
+     },
+     "uptime": 1329.277440921
+    },
+    {
+     "start": 100,
+     "exit": 0,
+     "clock": {
+      "V": 1767383747718.8967,
+      "V0": 1767369347520.7197,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767369347520.7197,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1559337335,
+      "system": 26634515
+     },
+     "uptime": 1597.741696034
+    },
+    {
+     "start": 110,
+     "exit": 0,
+     "clock": {
+      "V": 1767398147717.0737,
+      "V0": 1767383747518.8967,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767383747518.8967,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1546820878,
+      "system": 28031740
+     },
+     "uptime": 1549.288182199
+    },
+    {
+     "start": 120,
+     "exit": 0,
+     "clock": {
+      "V": 1767412547715.2507,
+      "V0": 1767398147517.0737,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767398147517.0737,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1707707414,
+      "system": 31867758
+     },
+     "uptime": 1771.793019957
+    },
+    {
+     "start": 130,
+     "exit": 0,
+     "clock": {
+      "V": 1767426947713.4277,
+      "V0": 1767412547515.2507,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767412547515.2507,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1754541112,
+      "system": 31501760
+     },
+     "uptime": 1815.505013038
+    },
+    {
+     "start": 140,
+     "exit": 0,
+     "clock": {
+      "V": 1767441347711.6047,
+      "V0": 1767426947513.4277,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767426947513.4277,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1724198378,
+      "system": 32991304
+     },
+     "uptime": 1782.211630408
+    },
+    {
+     "start": 150,
+     "exit": 0,
+     "clock": {
+      "V": 1767455747709.7817,
+      "V0": 1767441347511.6047,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767441347511.6047,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1832847496,
+      "system": 34192488
+     },
+     "uptime": 1899.463587544
+    },
+    {
+     "start": 160,
+     "exit": 0,
+     "clock": {
+      "V": 1767470147707.9587,
+      "V0": 1767455747509.7817,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767455747509.7817,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1942503001,
+      "system": 33804140
+     },
+     "uptime": 2016.503544617
+    },
+    {
+     "start": 170,
+     "exit": 0,
+     "clock": {
+      "V": 1767484547706.1357,
+      "V0": 1767470147507.9587,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767470147507.9587,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1924190092,
+      "system": 34717477
+     },
+     "uptime": 1986.292712821
+    },
+    {
+     "start": 180,
+     "exit": 0,
+     "clock": {
+      "V": 1767498947704.3127,
+      "V0": 1767484547506.1357,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767484547506.1357,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2328601759,
+      "system": 36730563
+     },
+     "uptime": 2399.009229405
+    },
+    {
+     "start": 190,
+     "exit": 0,
+     "clock": {
+      "V": 1767513347735.823,
+      "V0": 1767498947504.3127,
+      "fired": 701693,
+      "timers": 110729,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767498947504.3127,
+      "paused": false,
+      "yields": 1754,
+      "maxQ": 109,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2125920536,
+      "system": 48441778
+     },
+     "uptime": 2197.564822869
+    },
+    {
+     "start": 200,
+     "exit": 0,
+     "clock": {
+      "V": 1767527747734,
+      "V0": 1767513347535.823,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767513347535.823,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2383804708,
+      "system": 37870433
+     },
+     "uptime": 2458.120512047
+    },
+    {
+     "start": 210,
+     "exit": 0,
+     "clock": {
+      "V": 1767542147732.177,
+      "V0": 1767527747534,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767527747534,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2403389957,
+      "system": 35429219
+     },
+     "uptime": 2487.560018823
+    },
+    {
+     "start": 220,
+     "exit": 0,
+     "clock": {
+      "V": 1767556547730.354,
+      "V0": 1767542147532.177,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767542147532.177,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2111208451,
+      "system": 37449745
+     },
+     "uptime": 2159.826591803
+    },
+    {
+     "start": 230,
+     "exit": 0,
+     "clock": {
+      "V": 1767570947728.531,
+      "V0": 1767556547530.354,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767556547530.354,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2601597077,
+      "system": 38441327
+     },
+     "uptime": 2578.916207052
+    },
+    {
+     "start": 240,
+     "exit": 0,
+     "clock": {
+      "V": 1767585347726.708,
+      "V0": 1767570947528.531,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767570947528.531,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3020931805,
+      "system": 40487979
+     },
+     "uptime": 2982.168412758
+    },
+    {
+     "start": 250,
+     "exit": 0,
+     "clock": {
+      "V": 1767599747724.885,
+      "V0": 1767585347526.708,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767585347526.708,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2918956494,
+      "system": 42973130
+     },
+     "uptime": 2882.05847959
+    },
+    {
+     "start": 260,
+     "exit": 0,
+     "clock": {
+      "V": 1767614147723.062,
+      "V0": 1767599747524.885,
+      "fired": 673048,
+      "timers": 82085,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767599747524.885,
+      "paused": false,
+      "yields": 1682,
+      "maxQ": 109,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2733466866,
+      "system": 49441365
+     },
+     "uptime": 2699.961489804
+    },
+    {
+     "start": 270,
+     "exit": 0,
+     "clock": {
+      "V": 1767628547721.239,
+      "V0": 1767614147523.062,
+      "fired": 701713,
+      "timers": 110750,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767614147523.062,
+      "paused": false,
+      "yields": 1754,
+      "maxQ": 113,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2996019061,
+      "system": 60969021
+     },
+     "uptime": 2966.291784815
+    },
+    {
+     "start": 280,
+     "exit": 0,
+     "clock": {
+      "V": 1767642947719.416,
+      "V0": 1767628547521.239,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767628547521.239,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2719573969,
+      "system": 46305572
+     },
+     "uptime": 2703.128484532
+    },
+    {
+     "start": 290,
+     "exit": 0,
+     "clock": {
+      "V": 1767657347717.593,
+      "V0": 1767642947519.416,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767642947519.416,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3128178549,
+      "system": 46096379
+     },
+     "uptime": 3112.062304717
+    },
+    {
+     "start": 300,
+     "exit": 0,
+     "clock": {
+      "V": 1767671747715.77,
+      "V0": 1767657347517.593,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767657347517.593,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3485938025,
+      "system": 41430671
+     },
+     "uptime": 3468.519587953
+    },
+    {
+     "start": 310,
+     "exit": 0,
+     "clock": {
+      "V": 1767686147713.947,
+      "V0": 1767671747515.77,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767671747515.77,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3637914647,
+      "system": 44610203
+     },
+     "uptime": 3622.649918122
+    },
+    {
+     "start": 320,
+     "exit": 0,
+     "clock": {
+      "V": 1767700547712.124,
+      "V0": 1767686147513.947,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767686147513.947,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3279072603,
+      "system": 44082596
+     },
+     "uptime": 3268.747679242
+    },
+    {
+     "start": 330,
+     "exit": 0,
+     "clock": {
+      "V": 1767714947710.301,
+      "V0": 1767700547512.124,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767700547512.124,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3254169270,
+      "system": 40535347
+     },
+     "uptime": 3238.212943249
+    },
+    {
+     "start": 340,
+     "exit": 0,
+     "clock": {
+      "V": 1767729347708.478,
+      "V0": 1767714947510.301,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767714947510.301,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2927957581,
+      "system": 37867860
+     },
+     "uptime": 2903.203232091
+    },
+    {
+     "start": 350,
+     "exit": 0,
+     "clock": {
+      "V": 1767743747706.655,
+      "V0": 1767729347508.478,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767729347508.478,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3219341341,
+      "system": 43092680
+     },
+     "uptime": 3189.797122575
+    },
+    {
+     "start": 360,
+     "exit": 0,
+     "clock": {
+      "V": 1767758147704.832,
+      "V0": 1767743747506.655,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767743747506.655,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3185783586,
+      "system": 42114968
+     },
+     "uptime": 3158.30485091
+    },
+    {
+     "start": 370,
+     "exit": 0,
+     "clock": {
+      "V": 1767772547703.009,
+      "V0": 1767758147504.832,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767758147504.832,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3121084414,
+      "system": 39671148
+     },
+     "uptime": 3077.371949646
+    },
+    {
+     "start": 380,
+     "exit": 0,
+     "clock": {
+      "V": 1767786947734.5193,
+      "V0": 1767772547503.009,
+      "fired": 601171,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767772547503.009,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3295734222,
+      "system": 43367524
+     },
+     "uptime": 3272.782823788
+    },
+    {
+     "start": 390,
+     "exit": 0,
+     "clock": {
+      "V": 1767801347527.6963,
+      "V0": 1767786947534.5193,
+      "fired": 601160,
+      "timers": 10206,
+      "intervals": 17,
+      "started": true,
+      "startAt": 1767786947534.5193,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3501598625,
+      "system": 39816023
+     },
+     "uptime": 3475.903652177
+    }
+   ]
+  },
+  "BODY-1020": {
+   "days": 400,
+   "segments": 40,
+   "actualRunnerExit": 0,
+   "observerErrors": 0,
+   "minBodyRatio": 1.0,
+   "maxBodyGap": 0,
+   "maxMissingResidents": 0,
+   "children": [
+    {
+     "start": 0,
+     "exit": 0,
+     "clock": {
+      "V": 1767239747703.7935,
+      "V0": 1767225600000,
+      "fired": 604262,
+      "timers": 23671,
+      "intervals": 17,
+      "started": true,
+      "startAt": 1767225600000,
+      "paused": false,
+      "yields": 1510,
+      "maxQ": 22,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 653315367,
+      "system": 16057963
+     },
+     "uptime": 925.638390715
+    },
+    {
+     "start": 10,
+     "exit": 0,
+     "clock": {
+      "V": 1767254147735.3037,
+      "V0": 1767239747503.7935,
+      "fired": 599559,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767239747503.7935,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 899185712,
+      "system": 17559690
+     },
+     "uptime": 1029.694818694
+    },
+    {
+     "start": 20,
+     "exit": 0,
+     "clock": {
+      "V": 1767268547733.4807,
+      "V0": 1767254147535.3037,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767254147535.3037,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1134503176,
+      "system": 20134548
+     },
+     "uptime": 1578.994286527
+    },
+    {
+     "start": 30,
+     "exit": 0,
+     "clock": {
+      "V": 1767282947731.6577,
+      "V0": 1767268547533.4807,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767268547533.4807,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1117921378,
+      "system": 19252410
+     },
+     "uptime": 1143.380555265
+    },
+    {
+     "start": 40,
+     "exit": 0,
+     "clock": {
+      "V": 1767297347729.8347,
+      "V0": 1767282947531.6577,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767282947531.6577,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1147485952,
+      "system": 19418804
+     },
+     "uptime": 1167.575583417
+    },
+    {
+     "start": 50,
+     "exit": 0,
+     "clock": {
+      "V": 1767311747728.0117,
+      "V0": 1767297347529.8347,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767297347529.8347,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1200002839,
+      "system": 18661558
+     },
+     "uptime": 1226.133893971
+    },
+    {
+     "start": 60,
+     "exit": 0,
+     "clock": {
+      "V": 1767326147726.1887,
+      "V0": 1767311747528.0117,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767311747528.0117,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1433678172,
+      "system": 20412953
+     },
+     "uptime": 1470.084185722
+    },
+    {
+     "start": 70,
+     "exit": 0,
+     "clock": {
+      "V": 1767340547724.3657,
+      "V0": 1767326147526.1887,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767326147526.1887,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1586692303,
+      "system": 22076408
+     },
+     "uptime": 1622.03818291
+    },
+    {
+     "start": 80,
+     "exit": 0,
+     "clock": {
+      "V": 1767354947722.5427,
+      "V0": 1767340547524.3657,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767340547524.3657,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1564399385,
+      "system": 23590026
+     },
+     "uptime": 1606.187411625
+    },
+    {
+     "start": 90,
+     "exit": 0,
+     "clock": {
+      "V": 1767369347720.7197,
+      "V0": 1767354947522.5427,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767354947522.5427,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1488575411,
+      "system": 21409623
+     },
+     "uptime": 1499.667158473
+    },
+    {
+     "start": 100,
+     "exit": 0,
+     "clock": {
+      "V": 1767383747718.8967,
+      "V0": 1767369347520.7197,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767369347520.7197,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1875077456,
+      "system": 25603895
+     },
+     "uptime": 1941.068088046
+    },
+    {
+     "start": 110,
+     "exit": 0,
+     "clock": {
+      "V": 1767398147717.0737,
+      "V0": 1767383747518.8967,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767383747518.8967,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1835658927,
+      "system": 24961624
+     },
+     "uptime": 1894.509501088
+    },
+    {
+     "start": 120,
+     "exit": 0,
+     "clock": {
+      "V": 1767412547715.2507,
+      "V0": 1767398147517.0737,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767398147517.0737,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1840640420,
+      "system": 24958977
+     },
+     "uptime": 1904.369977738
+    },
+    {
+     "start": 130,
+     "exit": 0,
+     "clock": {
+      "V": 1767426947713.4277,
+      "V0": 1767412547515.2507,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767412547515.2507,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2024554248,
+      "system": 27933494
+     },
+     "uptime": 2092.566589923
+    },
+    {
+     "start": 140,
+     "exit": 0,
+     "clock": {
+      "V": 1767441347711.6047,
+      "V0": 1767426947513.4277,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767426947513.4277,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1981748144,
+      "system": 27577306
+     },
+     "uptime": 2053.037401696
+    },
+    {
+     "start": 150,
+     "exit": 0,
+     "clock": {
+      "V": 1767455747709.7817,
+      "V0": 1767441347511.6047,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767441347511.6047,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2117896229,
+      "system": 28318174
+     },
+     "uptime": 2187.521092782
+    },
+    {
+     "start": 160,
+     "exit": 0,
+     "clock": {
+      "V": 1767470147707.9587,
+      "V0": 1767455747509.7817,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767455747509.7817,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1965502476,
+      "system": 27123747
+     },
+     "uptime": 2036.195956062
+    },
+    {
+     "start": 170,
+     "exit": 0,
+     "clock": {
+      "V": 1767484547706.1357,
+      "V0": 1767470147507.9587,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767470147507.9587,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2157285875,
+      "system": 27636306
+     },
+     "uptime": 2235.041345033
+    },
+    {
+     "start": 180,
+     "exit": 0,
+     "clock": {
+      "V": 1767498947704.3127,
+      "V0": 1767484547506.1357,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767484547506.1357,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2208766132,
+      "system": 28169944
+     },
+     "uptime": 2274.693536153
+    },
+    {
+     "start": 190,
+     "exit": 0,
+     "clock": {
+      "V": 1767513347735.823,
+      "V0": 1767498947504.3127,
+      "fired": 599559,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767498947504.3127,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2276055861,
+      "system": 30975042
+     },
+     "uptime": 2350.875493672
+    },
+    {
+     "start": 200,
+     "exit": 0,
+     "clock": {
+      "V": 1767527747734,
+      "V0": 1767513347535.823,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767513347535.823,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2364527318,
+      "system": 28768142
+     },
+     "uptime": 2419.419376724
+    },
+    {
+     "start": 210,
+     "exit": 0,
+     "clock": {
+      "V": 1767542147732.177,
+      "V0": 1767527747534,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767527747534,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2521491186,
+      "system": 30283045
+     },
+     "uptime": 2498.884272069
+    },
+    {
+     "start": 220,
+     "exit": 0,
+     "clock": {
+      "V": 1767556547730.354,
+      "V0": 1767542147532.177,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767542147532.177,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2346013378,
+      "system": 29390186
+     },
+     "uptime": 2317.930491511
+    },
+    {
+     "start": 230,
+     "exit": 0,
+     "clock": {
+      "V": 1767570947728.531,
+      "V0": 1767556547530.354,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767556547530.354,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2634149286,
+      "system": 30962225
+     },
+     "uptime": 2604.704366771
+    },
+    {
+     "start": 240,
+     "exit": 0,
+     "clock": {
+      "V": 1767585347726.708,
+      "V0": 1767570947528.531,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767570947528.531,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2787016765,
+      "system": 33297781
+     },
+     "uptime": 2741.952299529
+    },
+    {
+     "start": 250,
+     "exit": 0,
+     "clock": {
+      "V": 1767599747724.885,
+      "V0": 1767585347526.708,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767585347526.708,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3239188529,
+      "system": 39103731
+     },
+     "uptime": 3203.777681399
+    },
+    {
+     "start": 260,
+     "exit": 0,
+     "clock": {
+      "V": 1767614147723.062,
+      "V0": 1767599747524.885,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767599747524.885,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3180055680,
+      "system": 40692459
+     },
+     "uptime": 3125.710308177
+    },
+    {
+     "start": 270,
+     "exit": 0,
+     "clock": {
+      "V": 1767628547721.239,
+      "V0": 1767614147523.062,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767614147523.062,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3491840371,
+      "system": 42876465
+     },
+     "uptime": 3462.830857539
+    },
+    {
+     "start": 280,
+     "exit": 0,
+     "clock": {
+      "V": 1767642947719.416,
+      "V0": 1767628547521.239,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767628547521.239,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3338572573,
+      "system": 38306365
+     },
+     "uptime": 3305.458635752
+    },
+    {
+     "start": 290,
+     "exit": 0,
+     "clock": {
+      "V": 1767657347717.593,
+      "V0": 1767642947519.416,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767642947519.416,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3217370039,
+      "system": 38735942
+     },
+     "uptime": 3192.193734629
+    },
+    {
+     "start": 300,
+     "exit": 0,
+     "clock": {
+      "V": 1767671747715.77,
+      "V0": 1767657347517.593,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767657347517.593,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3048799551,
+      "system": 38905308
+     },
+     "uptime": 3023.429780947
+    },
+    {
+     "start": 310,
+     "exit": 0,
+     "clock": {
+      "V": 1767686147713.947,
+      "V0": 1767671747515.77,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767671747515.77,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3129248571,
+      "system": 35904805
+     },
+     "uptime": 3106.308105748
+    },
+    {
+     "start": 320,
+     "exit": 0,
+     "clock": {
+      "V": 1767700547712.124,
+      "V0": 1767686147513.947,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767686147513.947,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3192801495,
+      "system": 37999912
+     },
+     "uptime": 3170.364081473
+    },
+    {
+     "start": 330,
+     "exit": 0,
+     "clock": {
+      "V": 1767714947710.301,
+      "V0": 1767700547512.124,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767700547512.124,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3337093422,
+      "system": 39794188
+     },
+     "uptime": 3323.794780554
+    },
+    {
+     "start": 340,
+     "exit": 0,
+     "clock": {
+      "V": 1767729347708.478,
+      "V0": 1767714947510.301,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767714947510.301,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3196266493,
+      "system": 38462698
+     },
+     "uptime": 3173.215506667
+    },
+    {
+     "start": 350,
+     "exit": 0,
+     "clock": {
+      "V": 1767743747706.655,
+      "V0": 1767729347508.478,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767729347508.478,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3327206997,
+      "system": 39392931
+     },
+     "uptime": 3295.342109087
+    },
+    {
+     "start": 360,
+     "exit": 0,
+     "clock": {
+      "V": 1767758147704.832,
+      "V0": 1767743747506.655,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767743747506.655,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3127498450,
+      "system": 39042224
+     },
+     "uptime": 3109.57981329
+    },
+    {
+     "start": 370,
+     "exit": 0,
+     "clock": {
+      "V": 1767772547703.009,
+      "V0": 1767758147504.832,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767758147504.832,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3162935034,
+      "system": 37563649
+     },
+     "uptime": 3138.446119197
+    },
+    {
+     "start": 380,
+     "exit": 0,
+     "clock": {
+      "V": 1767786947734.5193,
+      "V0": 1767772547503.009,
+      "fired": 599559,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767772547503.009,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3445354562,
+      "system": 40724597
+     },
+     "uptime": 3418.446532816
+    },
+    {
+     "start": 390,
+     "exit": 0,
+     "clock": {
+      "V": 1767801347527.6963,
+      "V0": 1767786947534.5193,
+      "fired": 599548,
+      "timers": 8594,
+      "intervals": 17,
+      "started": true,
+      "startAt": 1767786947534.5193,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3206630250,
+      "system": 38284188
+     },
+     "uptime": 3141.43962209
+    }
+   ]
+  },
+  "A-1020": {
+   "days": 400,
+   "segments": 40,
+   "actualRunnerExit": 0,
+   "observerErrors": 0,
+   "minBodyRatio": 1.0,
+   "maxBodyGap": 0,
+   "maxMissingResidents": 0,
+   "children": [
+    {
+     "start": 0,
+     "exit": 0,
+     "clock": {
+      "V": 1767239747703.7935,
+      "V0": 1767225600000,
+      "fired": 604262,
+      "timers": 23671,
+      "intervals": 17,
+      "started": true,
+      "startAt": 1767225600000,
+      "paused": false,
+      "yields": 1510,
+      "maxQ": 22,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 736986575,
+      "system": 15835547
+     },
+     "uptime": 923.325084677
+    },
+    {
+     "start": 10,
+     "exit": 0,
+     "clock": {
+      "V": 1767254147735.3037,
+      "V0": 1767239747503.7935,
+      "fired": 599559,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767239747503.7935,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 945298229,
+      "system": 20846695
+     },
+     "uptime": 1320.906439222
+    },
+    {
+     "start": 20,
+     "exit": 0,
+     "clock": {
+      "V": 1767268547733.4807,
+      "V0": 1767254147535.3037,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767254147535.3037,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1116374174,
+      "system": 18162289
+     },
+     "uptime": 1141.427123223
+    },
+    {
+     "start": 30,
+     "exit": 0,
+     "clock": {
+      "V": 1767282947731.6577,
+      "V0": 1767268547533.4807,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767268547533.4807,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1181465826,
+      "system": 20031178
+     },
+     "uptime": 1212.136414465
+    },
+    {
+     "start": 40,
+     "exit": 0,
+     "clock": {
+      "V": 1767297347729.8347,
+      "V0": 1767282947531.6577,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767282947531.6577,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1150979255,
+      "system": 18162549
+     },
+     "uptime": 1177.892795966
+    },
+    {
+     "start": 50,
+     "exit": 0,
+     "clock": {
+      "V": 1767311747728.0117,
+      "V0": 1767297347529.8347,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767297347529.8347,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1333836437,
+      "system": 20507526
+     },
+     "uptime": 1362.916018263
+    },
+    {
+     "start": 60,
+     "exit": 0,
+     "clock": {
+      "V": 1767326147726.1887,
+      "V0": 1767311747528.0117,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767311747528.0117,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1404825029,
+      "system": 19531514
+     },
+     "uptime": 1437.393416176
+    },
+    {
+     "start": 70,
+     "exit": 0,
+     "clock": {
+      "V": 1767340547724.3657,
+      "V0": 1767326147526.1887,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767326147526.1887,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1495802462,
+      "system": 21888485
+     },
+     "uptime": 1526.515986427
+    },
+    {
+     "start": 80,
+     "exit": 0,
+     "clock": {
+      "V": 1767354947722.5427,
+      "V0": 1767340547524.3657,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767340547524.3657,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1551238200,
+      "system": 24721360
+     },
+     "uptime": 1604.822493123
+    },
+    {
+     "start": 90,
+     "exit": 0,
+     "clock": {
+      "V": 1767369347720.7197,
+      "V0": 1767354947522.5427,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767354947522.5427,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1811267440,
+      "system": 24994245
+     },
+     "uptime": 1873.756619713
+    },
+    {
+     "start": 100,
+     "exit": 0,
+     "clock": {
+      "V": 1767383747718.8967,
+      "V0": 1767369347520.7197,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767369347520.7197,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1747100834,
+      "system": 23808577
+     },
+     "uptime": 1800.083383695
+    },
+    {
+     "start": 110,
+     "exit": 0,
+     "clock": {
+      "V": 1767398147717.0737,
+      "V0": 1767383747518.8967,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767383747518.8967,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1808325718,
+      "system": 24868939
+     },
+     "uptime": 1872.239563202
+    },
+    {
+     "start": 120,
+     "exit": 0,
+     "clock": {
+      "V": 1767412547715.2507,
+      "V0": 1767398147517.0737,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767398147517.0737,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2043944626,
+      "system": 27796600
+     },
+     "uptime": 2110.907956442
+    },
+    {
+     "start": 130,
+     "exit": 0,
+     "clock": {
+      "V": 1767426947713.4277,
+      "V0": 1767412547515.2507,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767412547515.2507,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2085836205,
+      "system": 27019056
+     },
+     "uptime": 2160.476958277
+    },
+    {
+     "start": 140,
+     "exit": 0,
+     "clock": {
+      "V": 1767441347711.6047,
+      "V0": 1767426947513.4277,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767426947513.4277,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2040172168,
+      "system": 25594162
+     },
+     "uptime": 2101.636999217
+    },
+    {
+     "start": 150,
+     "exit": 0,
+     "clock": {
+      "V": 1767455747709.7817,
+      "V0": 1767441347511.6047,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767441347511.6047,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2169343466,
+      "system": 26612260
+     },
+     "uptime": 2242.187707325
+    },
+    {
+     "start": 160,
+     "exit": 0,
+     "clock": {
+      "V": 1767470147707.9587,
+      "V0": 1767455747509.7817,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767455747509.7817,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2102908086,
+      "system": 28731624
+     },
+     "uptime": 2179.842401932
+    },
+    {
+     "start": 170,
+     "exit": 0,
+     "clock": {
+      "V": 1767484547706.1357,
+      "V0": 1767470147507.9587,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767470147507.9587,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2099611488,
+      "system": 27949558
+     },
+     "uptime": 2182.438330958
+    },
+    {
+     "start": 180,
+     "exit": 0,
+     "clock": {
+      "V": 1767498947704.3127,
+      "V0": 1767484547506.1357,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767484547506.1357,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2055282526,
+      "system": 25812469
+     },
+     "uptime": 2128.171848059
+    },
+    {
+     "start": 190,
+     "exit": 0,
+     "clock": {
+      "V": 1767513347735.823,
+      "V0": 1767498947504.3127,
+      "fired": 599559,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767498947504.3127,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2520402281,
+      "system": 31475547
+     },
+     "uptime": 2538.939490232
+    },
+    {
+     "start": 200,
+     "exit": 0,
+     "clock": {
+      "V": 1767527747734,
+      "V0": 1767513347535.823,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767513347535.823,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2620608722,
+      "system": 32277051
+     },
+     "uptime": 2583.237898968
+    },
+    {
+     "start": 210,
+     "exit": 0,
+     "clock": {
+      "V": 1767542147732.177,
+      "V0": 1767527747534,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767527747534,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 2409061125,
+      "system": 29846973
+     },
+     "uptime": 2377.873133896
+    },
+    {
+     "start": 220,
+     "exit": 0,
+     "clock": {
+      "V": 1767556547730.354,
+      "V0": 1767542147532.177,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767542147532.177,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3162302069,
+      "system": 34597217
+     },
+     "uptime": 2909.361492311
+    },
+    {
+     "start": 230,
+     "exit": 0,
+     "clock": {
+      "V": 1767570947728.531,
+      "V0": 1767556547530.354,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767556547530.354,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3255040687,
+      "system": 36889263
+     },
+     "uptime": 3009.548556373
+    },
+    {
+     "start": 240,
+     "exit": 0,
+     "clock": {
+      "V": 1767585347726.708,
+      "V0": 1767570947528.531,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767570947528.531,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3830039048,
+      "system": 44576327
+     },
+     "uptime": 3544.267226085
+    },
+    {
+     "start": 250,
+     "exit": 0,
+     "clock": {
+      "V": 1767599747724.885,
+      "V0": 1767585347526.708,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767585347526.708,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3684691796,
+      "system": 43152276
+     },
+     "uptime": 3405.917782861
+    },
+    {
+     "start": 260,
+     "exit": 0,
+     "clock": {
+      "V": 1767614147723.062,
+      "V0": 1767599747524.885,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767599747524.885,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3938249368,
+      "system": 42479423
+     },
+     "uptime": 3612.974961895
+    },
+    {
+     "start": 270,
+     "exit": 0,
+     "clock": {
+      "V": 1767628547721.239,
+      "V0": 1767614147523.062,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767614147523.062,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3966091502,
+      "system": 41832803
+     },
+     "uptime": 3629.045955213
+    },
+    {
+     "start": 280,
+     "exit": 0,
+     "clock": {
+      "V": 1767642947719.416,
+      "V0": 1767628547521.239,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767628547521.239,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3749912413,
+      "system": 41786942
+     },
+     "uptime": 3474.052393595
+    },
+    {
+     "start": 290,
+     "exit": 0,
+     "clock": {
+      "V": 1767657347717.593,
+      "V0": 1767642947519.416,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767642947519.416,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3650399101,
+      "system": 40367624
+     },
+     "uptime": 3371.298740252
+    },
+    {
+     "start": 300,
+     "exit": 0,
+     "clock": {
+      "V": 1767671747715.77,
+      "V0": 1767657347517.593,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767657347517.593,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3792888888,
+      "system": 40971238
+     },
+     "uptime": 3506.490086321
+    },
+    {
+     "start": 310,
+     "exit": 0,
+     "clock": {
+      "V": 1767686147713.947,
+      "V0": 1767671747515.77,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767671747515.77,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3637834883,
+      "system": 39721053
+     },
+     "uptime": 3349.309742855
+    },
+    {
+     "start": 320,
+     "exit": 0,
+     "clock": {
+      "V": 1767700547712.124,
+      "V0": 1767686147513.947,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767686147513.947,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3500951747,
+      "system": 40884344
+     },
+     "uptime": 3266.477031084
+    },
+    {
+     "start": 330,
+     "exit": 0,
+     "clock": {
+      "V": 1767714947710.301,
+      "V0": 1767700547512.124,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767700547512.124,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3918703737,
+      "system": 41630686
+     },
+     "uptime": 3642.413507818
+    },
+    {
+     "start": 340,
+     "exit": 0,
+     "clock": {
+      "V": 1767729347708.478,
+      "V0": 1767714947510.301,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767714947510.301,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3684930147,
+      "system": 39132916
+     },
+     "uptime": 3404.861835617
+    },
+    {
+     "start": 350,
+     "exit": 0,
+     "clock": {
+      "V": 1767743747706.655,
+      "V0": 1767729347508.478,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767729347508.478,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3555936320,
+      "system": 38543659
+     },
+     "uptime": 3295.571377801
+    },
+    {
+     "start": 360,
+     "exit": 0,
+     "clock": {
+      "V": 1767758147704.832,
+      "V0": 1767743747506.655,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767743747506.655,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3852393378,
+      "system": 40632034
+     },
+     "uptime": 3496.97697145
+    },
+    {
+     "start": 370,
+     "exit": 0,
+     "clock": {
+      "V": 1767772547703.009,
+      "V0": 1767758147504.832,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767758147504.832,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3354744216,
+      "system": 39512125
+     },
+     "uptime": 3123.610589575
+    },
+    {
+     "start": 380,
+     "exit": 0,
+     "clock": {
+      "V": 1767786947734.5193,
+      "V0": 1767772547503.009,
+      "fired": 599559,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767772547503.009,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3410171830,
+      "system": 43643490
+     },
+     "uptime": 3079.370983634
+    },
+    {
+     "start": 390,
+     "exit": 0,
+     "clock": {
+      "V": 1767801347527.6963,
+      "V0": 1767786947534.5193,
+      "fired": 599548,
+      "timers": 8594,
+      "intervals": 17,
+      "started": true,
+      "startAt": 1767786947534.5193,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 3198134526,
+      "system": 40384302
+     },
+     "uptime": 3103.232908346
+    }
+   ]
+  },
+  "OFF-7": {
+   "days": 100,
+   "segments": 10,
+   "actualRunnerExit": 0,
+   "observerErrors": 0,
+   "minBodyRatio": 0.994398965962947,
+   "maxBodyGap": 13,
+   "maxMissingResidents": null,
+   "children": [
+    {
+     "start": 0,
+     "exit": 0,
+     "clock": {
+      "V": 1767239747703.7935,
+      "V0": 1767225600000,
+      "fired": 605874,
+      "timers": 25283,
+      "intervals": 17,
+      "started": true,
+      "startAt": 1767225600000,
+      "paused": false,
+      "yields": 1514,
+      "maxQ": 22,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 448349739,
+      "system": 11275023
+     },
+     "uptime": 467.133560041
+    },
+    {
+     "start": 10,
+     "exit": 0,
+     "clock": {
+      "V": 1767254147735.3037,
+      "V0": 1767239747503.7935,
+      "fired": 601171,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767239747503.7935,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 593294727,
+      "system": 13676063
+     },
+     "uptime": 620.825999236
+    },
+    {
+     "start": 20,
+     "exit": 0,
+     "clock": {
+      "V": 1767268547733.4807,
+      "V0": 1767254147535.3037,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767254147535.3037,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 705818473,
+      "system": 14106117
+     },
+     "uptime": 728.963884828
+    },
+    {
+     "start": 30,
+     "exit": 0,
+     "clock": {
+      "V": 1767282947731.6577,
+      "V0": 1767268547533.4807,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767268547533.4807,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 829893426,
+      "system": 16172472
+     },
+     "uptime": 862.21009036
+    },
+    {
+     "start": 40,
+     "exit": 0,
+     "clock": {
+      "V": 1767297347729.8347,
+      "V0": 1767282947531.6577,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767282947531.6577,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 901102153,
+      "system": 18979515
+     },
+     "uptime": 944.509890817
+    },
+    {
+     "start": 50,
+     "exit": 0,
+     "clock": {
+      "V": 1767311747728.0117,
+      "V0": 1767297347529.8347,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767297347529.8347,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 991115604,
+      "system": 20870256
+     },
+     "uptime": 1027.334071258
+    },
+    {
+     "start": 60,
+     "exit": 0,
+     "clock": {
+      "V": 1767326147726.1887,
+      "V0": 1767311747528.0117,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767311747528.0117,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1048371800,
+      "system": 20353002
+     },
+     "uptime": 1086.517304546
+    },
+    {
+     "start": 70,
+     "exit": 0,
+     "clock": {
+      "V": 1767340547724.3657,
+      "V0": 1767326147526.1887,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767326147526.1887,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1313048452,
+      "system": 24370937
+     },
+     "uptime": 1370.758112777
+    },
+    {
+     "start": 80,
+     "exit": 0,
+     "clock": {
+      "V": 1767354947722.5427,
+      "V0": 1767340547524.3657,
+      "fired": 601170,
+      "timers": 10207,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767340547524.3657,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1212983503,
+      "system": 22227397
+     },
+     "uptime": 1256.009220323
+    },
+    {
+     "start": 90,
+     "exit": 0,
+     "clock": {
+      "V": 1767369347515.7197,
+      "V0": 1767354947522.5427,
+      "fired": 601160,
+      "timers": 10206,
+      "intervals": 17,
+      "started": true,
+      "startAt": 1767354947522.5427,
+      "paused": false,
+      "yields": 1502,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1490145698,
+      "system": 26277553
+     },
+     "uptime": 1550.404518439
+    }
+   ]
+  },
+  "BODY-7": {
+   "days": 100,
+   "segments": 10,
+   "actualRunnerExit": 0,
+   "observerErrors": 0,
+   "minBodyRatio": 1.0,
+   "maxBodyGap": 0,
+   "maxMissingResidents": 0,
+   "children": [
+    {
+     "start": 0,
+     "exit": 0,
+     "clock": {
+      "V": 1767239747703.7935,
+      "V0": 1767225600000,
+      "fired": 604262,
+      "timers": 23671,
+      "intervals": 17,
+      "started": true,
+      "startAt": 1767225600000,
+      "paused": false,
+      "yields": 1510,
+      "maxQ": 22,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 601968851,
+      "system": 14535219
+     },
+     "uptime": 910.182989777
+    },
+    {
+     "start": 10,
+     "exit": 0,
+     "clock": {
+      "V": 1767254147735.3037,
+      "V0": 1767239747503.7935,
+      "fired": 599559,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767239747503.7935,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 877235474,
+      "system": 17509864
+     },
+     "uptime": 1019.965570086
+    },
+    {
+     "start": 20,
+     "exit": 0,
+     "clock": {
+      "V": 1767268547733.4807,
+      "V0": 1767254147535.3037,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767254147535.3037,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1134045390,
+      "system": 19585120
+     },
+     "uptime": 1546.293283341
+    },
+    {
+     "start": 30,
+     "exit": 0,
+     "clock": {
+      "V": 1767282947731.6577,
+      "V0": 1767268547533.4807,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767268547533.4807,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1093810051,
+      "system": 20725849
+     },
+     "uptime": 1116.449860703
+    },
+    {
+     "start": 40,
+     "exit": 0,
+     "clock": {
+      "V": 1767297347729.8347,
+      "V0": 1767282947531.6577,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767282947531.6577,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1146126672,
+      "system": 17712339
+     },
+     "uptime": 1172.747736353
+    },
+    {
+     "start": 50,
+     "exit": 0,
+     "clock": {
+      "V": 1767311747728.0117,
+      "V0": 1767297347529.8347,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767297347529.8347,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1197877133,
+      "system": 18073520
+     },
+     "uptime": 1220.496649189
+    },
+    {
+     "start": 60,
+     "exit": 0,
+     "clock": {
+      "V": 1767326147726.1887,
+      "V0": 1767311747528.0117,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767311747528.0117,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1377896688,
+      "system": 20902229
+     },
+     "uptime": 1410.688366252
+    },
+    {
+     "start": 70,
+     "exit": 0,
+     "clock": {
+      "V": 1767340547724.3657,
+      "V0": 1767326147526.1887,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767326147526.1887,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1345115803,
+      "system": 22031503
+     },
+     "uptime": 1370.421063086
+    },
+    {
+     "start": 80,
+     "exit": 0,
+     "clock": {
+      "V": 1767354947722.5427,
+      "V0": 1767340547524.3657,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767340547524.3657,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1541230961,
+      "system": 19891131
+     },
+     "uptime": 1578.273452654
+    },
+    {
+     "start": 90,
+     "exit": 0,
+     "clock": {
+      "V": 1767369347515.7197,
+      "V0": 1767354947522.5427,
+      "fired": 599548,
+      "timers": 8594,
+      "intervals": 17,
+      "started": true,
+      "startAt": 1767354947522.5427,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1473359474,
+      "system": 23087840
+     },
+     "uptime": 1497.880187123
+    }
+   ]
+  },
+  "A-7": {
+   "days": 100,
+   "segments": 10,
+   "actualRunnerExit": 0,
+   "observerErrors": 0,
+   "minBodyRatio": 1.0,
+   "maxBodyGap": 0,
+   "maxMissingResidents": 0,
+   "children": [
+    {
+     "start": 0,
+     "exit": 0,
+     "clock": {
+      "V": 1767239747703.7935,
+      "V0": 1767225600000,
+      "fired": 604262,
+      "timers": 23671,
+      "intervals": 17,
+      "started": true,
+      "startAt": 1767225600000,
+      "paused": false,
+      "yields": 1510,
+      "maxQ": 22,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 596397416,
+      "system": 12078853
+     },
+     "uptime": 595.153515031
+    },
+    {
+     "start": 10,
+     "exit": 0,
+     "clock": {
+      "V": 1767254147735.3037,
+      "V0": 1767239747503.7935,
+      "fired": 599559,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767239747503.7935,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 946838961,
+      "system": 17129806
+     },
+     "uptime": 983.412582755
+    },
+    {
+     "start": 20,
+     "exit": 0,
+     "clock": {
+      "V": 1767268547733.4807,
+      "V0": 1767254147535.3037,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767254147535.3037,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1299329322,
+      "system": 22837379
+     },
+     "uptime": 1350.813562732
+    },
+    {
+     "start": 30,
+     "exit": 0,
+     "clock": {
+      "V": 1767282947731.6577,
+      "V0": 1767268547533.4807,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767268547533.4807,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1298558714,
+      "system": 23303526
+     },
+     "uptime": 1342.710956567
+    },
+    {
+     "start": 40,
+     "exit": 0,
+     "clock": {
+      "V": 1767297347729.8347,
+      "V0": 1767282947531.6577,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767282947531.6577,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1308703465,
+      "system": 20363820
+     },
+     "uptime": 1345.294271976
+    },
+    {
+     "start": 50,
+     "exit": 0,
+     "clock": {
+      "V": 1767311747728.0117,
+      "V0": 1767297347529.8347,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767297347529.8347,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1408383410,
+      "system": 22724787
+     },
+     "uptime": 1454.975622343
+    },
+    {
+     "start": 60,
+     "exit": 0,
+     "clock": {
+      "V": 1767326147726.1887,
+      "V0": 1767311747528.0117,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767311747528.0117,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1439694867,
+      "system": 21645054
+     },
+     "uptime": 1486.83246372
+    },
+    {
+     "start": 70,
+     "exit": 0,
+     "clock": {
+      "V": 1767340547724.3657,
+      "V0": 1767326147526.1887,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767326147526.1887,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1492369442,
+      "system": 22863197
+     },
+     "uptime": 1535.790378479
+    },
+    {
+     "start": 80,
+     "exit": 0,
+     "clock": {
+      "V": 1767354947722.5427,
+      "V0": 1767340547524.3657,
+      "fired": 599558,
+      "timers": 8595,
+      "intervals": 18,
+      "started": true,
+      "startAt": 1767340547524.3657,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1700216037,
+      "system": 24168528
+     },
+     "uptime": 1755.355819222
+    },
+    {
+     "start": 90,
+     "exit": 0,
+     "clock": {
+      "V": 1767369347515.7197,
+      "V0": 1767354947522.5427,
+      "fired": 599548,
+      "timers": 8594,
+      "intervals": 17,
+      "started": true,
+      "startAt": 1767354947522.5427,
+      "paused": false,
+      "yields": 1498,
+      "maxQ": 23,
+      "errs": 0,
+      "q": 16
+     },
+     "cpu": {
+      "user": 1624120180,
+      "system": 22627840
+     },
+     "uptime": 1685.475527523
+    }
+   ]
+  }
+ },
+ "archivedFiles": 2462,
+ "archiveBytes": 103514244
+}

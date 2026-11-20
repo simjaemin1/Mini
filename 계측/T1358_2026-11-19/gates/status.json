@@ -1,0 +1,82 @@
+[
+ {
+  "name": "new-harness",
+  "cmd": [
+   "node",
+   "scripts/test-t1358-terr-stake.js"
+  ],
+  "exit": 0,
+  "seconds": 3.3286380170002303
+ },
+ {
+  "name": "touched",
+  "cmd": [
+   "node",
+   "scripts/touched-harness.js",
+   "origin/main",
+   "--run"
+  ],
+  "exit": 0,
+  "seconds": 208.89839953499995
+ },
+ {
+  "name": "build-haul",
+  "cmd": [
+   "bash",
+   "scripts/run-regress.sh",
+   "test-t1181-build-defaults.js"
+  ],
+  "exit": 0,
+  "seconds": 9.802284719
+ },
+ {
+  "name": "bundle",
+  "cmd": [
+   "node",
+   "sim/build-econ-bundle.js",
+   "--check"
+  ],
+  "exit": 0,
+  "seconds": 448.3464201699999
+ },
+ {
+  "name": "inline",
+  "cmd": [
+   "node",
+   "sim/inline-engine.js",
+   "--check"
+  ],
+  "exit": 0,
+  "seconds": 0.2921049820006374
+ },
+ {
+  "name": "wiring",
+  "cmd": [
+   "node",
+   "scripts/lab-wiring-check.js"
+  ],
+  "exit": 0,
+  "seconds": 5.097834626999429
+ },
+ {
+  "name": "t17",
+  "cmd": [
+   "node",
+   "scripts/t17-metrics.js",
+   "800",
+   "1020"
+  ],
+  "exit": 0,
+  "seconds": 541.4449592070005
+ },
+ {
+  "name": "ci-list",
+  "cmd": [
+   "bash",
+   "scripts/run-regress.sh",
+   "test-ci-list.js"
+  ],
+  "exit": 0,
+  "seconds": 8.36262054100007
+ }
+]

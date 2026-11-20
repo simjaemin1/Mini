@@ -1,0 +1,24 @@
+{
+ "reason": "execution environment unavailable; user requested continuation; no simulation processes remain",
+ "records": [
+  {
+   "case": "OFF-1020",
+   "checkpoint": 370,
+   "previousProgress": "2026-11-19T19:04:45.733Z · OFF-1020 · 마디 370 → 380 · econ 날 379 · 51.0분\n",
+   "source": "/tmp/t1358/base"
+  },
+  {
+   "case": "BODY-1020",
+   "checkpoint": 360,
+   "previousProgress": "2026-11-19T19:05:14.109Z · BODY-1020 · 마디 360 → 370 · econ 날 360 · 4.0분\n",
+   "source": "/tmp/t1358/base"
+  },
+  {
+   "case": "A-1020",
+   "checkpoint": 340,
+   "previousProgress": "2026-11-19T19:05:02.004Z · A-1020 · 마디 340 → 350 · econ 날 340 · 3.0분\n",
+   "source": "/tmp/t1358/candidate"
+  }
+ ],
+ "epoch": 1795137389.6192157
+}

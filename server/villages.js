@@ -7709,7 +7709,7 @@ function _t1207Queue(vil, picked) {
     }
     T.queued += picked.length;
   }
-  let need = 0; for (const j of vil._t1207Pend) need += Math.max(0, j.wood - (j.mat.wood || 0));
+  let need = 0; for (const j of vil._t1207Pend) { _t1358Requote(vil, j); need += Math.max(0, j.wood - (j.mat.wood || 0)); }
   if (vil.econ) vil.econ._t1207Need = +need.toFixed(6);
   return [];
 }
@@ -7757,7 +7757,18 @@ function _t1329Crew(vil) {
 //   ★[T1329 ④] 말뚝 기다림 — 개간 · 벌목이 끝나 말뚝만 남았고(손에 든 짐 없음) 곳간 잉여가 꺼낼 만큼 없으면(`pick` 과 같은 문 — `woodSpare` > 0 · 곳간 통나무 > 0) 그 몸을 잡아 두지 않는다.
 //     T1329 §1: 크루 둘이면 곳간 잉여가 먼저 바닥나 크루 몸 시간의 57 ~ 84% 가 곳간 ↔ 칸 헛걸음(기다림)이었다 — 그동안 그 몸의 제 일(나무꾼 · 농부 …)이 섰다.
 //     일괄(`_t1238Batch`)의 "재료가 없으면 그날은 여기부터 대기"와 같은 문 — 몸은 기다리는 동안 제 일을 한다(새 수 0).
+// Only the stake quote changes: clearing already performed and placed materials stay owned.
+// Refresh before the dry-queue filter too, so a now-free interior cell cannot wait on an old quote.
+function _t1358Requote(vil, j) {
+  if (!T1358_STAKE_REQUOTE) return;
+  if ((j.workMs || 0) < j.laborMin * _t1238JobMsPerMin()) return;
+  // Quote only after physical clearing/felling, immediately before stakes are needed.
+  // A fresh queue keeps the existing demand estimate until that cell is ready.
+  try { if (state.deps.t325TreesAtCell?.(j.cx, j.cy)?.length) return; } catch (e) { return; }
+  j.wood = +_t1207CellCost(vil, j.cx, j.cy).wood.toFixed(6);
+}
 function _t1329Short(vil, npc, j) {
+  _t1358Requote(vil, j);
   if (!(j.wood > 1e-9) || ((j.mat && j.mat.wood) || 0) + 1e-9 >= j.wood) return false;
   if ((j.workMs || 0) < j.laborMin * _tripDayMs() / 1440) return false;
   let tr = null; try { tr = state.deps.t325TreesAtCell ? state.deps.t325TreesAtCell(j.cx, j.cy) : null; } catch (e) { tr = null; }
@@ -7779,6 +7790,7 @@ function _t1329Job(vil, npc) {
   const cur = (npc._t1302Terr && npc._t1302Terr.key) || (npc._t1181Haul && npc._t1181Haul.key) || null;
   let free = null;
   for (const j of vil._t1207Pend) {
+    _t1358Requote(vil, j);
     if (j._t1329By != null) continue;
     if (dry && j.wood > 1e-9 && ((j.mat && j.mat.wood) || 0) + 1e-9 < j.wood && (j.workMs || 0) >= j.laborMin * _tripDayMs() / 1440) continue;
     if (free == null || (cur != null && 't/' + j.key === cur && 't/' + free.key !== cur)) free = j;
@@ -7808,6 +7820,10 @@ function _t1283BodyHaul(vil, npc, t) {
   return true;
 }
 function _t1207BodyDone(vil, job) {
+  if (T1358_STAKE_REQUOTE) {
+    _t1358Requote(vil, job);
+    if (((job.mat && job.mat.wood) || 0) + 1e-9 < job.wood) return 0;
+  }
   const i = vil._t1207Pend ? vil._t1207Pend.indexOf(job) : -1;
   if (i >= 0) vil._t1207Pend.splice(i, 1);
   if (!_t1207CanTake(vil, job.cx, job.cy)) { if (T1238_TERR_V2) _t1238JobToLand(job, vil.dbId); return 0; }   // 그 사이 남의 땅이 됐거나 막혔다(놓은 말뚝은 소비 장부에 이미 찍혔다 · ★[T1238] 켬 = 한 일은 땅에)
@@ -7923,6 +7939,8 @@ const T1302_TERR_BODY = T1238_TERR_V2 && process.env.T1302_TERR_BODY === '1';
 //   ③ 재기동 — 일감 줄(일한 시간 · 놓은 말뚝 · 그 칸 더미)을 마을 곁 칸(`_t740Side` · T740 문법)에 실어 다시 뜬 날 이어 간다(종전: 다음 장부 문까지 줄이 비어 재기동 날 완공 0).
 //   ④ 말뚝 기다림 — 말뚝만 남았는데 곳간 잉여가 없으면 몸을 잡아 두지 않는다(`_t1329Short` — 꺼내기와 같은 문 · 그동안 제 일).
 const T1329_TERR_CREW = T1302_TERR_BODY && process.env.T1329_TERR_CREW === '1';
+// T1358 ⓐ: queued clearing stays physical; stake price uses the territory at completion.
+const T1358_STAKE_REQUOTE = T1329_TERR_CREW && process.env.T1358_STAKE_REQUOTE === '1';
 const _tv2 = require('./terr-v2');
 const _t1238St = { growN: 0, growUs: 0, growMaxUs: 0, picks: 0, pickCells: 0, go: 0, workMs: 0, done: 0, cancels: 0, cancelCells: 0, pulls: 0, pullBack: 0, pullBroke: 0, goRefuse: 0, structCut: 0, structCells: 0,
   decayDays: 0, decayCells: 0, decayFields: 0, decayScanMs: 0, useMarks: 0, trapDays: 0, trapScanMs: 0, trapped: 0, trapFreed: 0, trapTerrain: 0, bodyCells: 0, bodyPartial: 0, steal: 0, stealUnits: 0, saveRows: 0, saveMs: 0 };
@@ -17185,7 +17203,7 @@ function _t1181Task(vil,npc,bound) {
   if(T1329_TERR_CREW) {   // ★[T1329 ①] 켬 = 여유 크루마다 제 칸 하나(한 칸 한 몸) · 끔 = 아래 종전 줄(첫 몸 하나 · 줄 머리)
     const j=vil._t1207Pend&&vil._t1207Pend.length?_t1329Job(vil,npc):null;
     if(j&&_t1329Short(vil,npc,j))return null;   // ★[T1329 ④] 말뚝만 남았는데 곳간에 꺼낼 잉여가 없다 — 몸은 제 일로(일감은 그 몸이 쥔 채 · 잉여가 서면 다시)
-    return j?{kind:'terr',key:'t/'+j.key,sourceVillageId:vil.dbId,site:j,target:{x:j.cx*SZ+SZ/2,y:j.cy*SZ+SZ/2},need:()=>(j.wood>1e-9?{wood:j.wood}:{})}:null;
+    return j?{kind:'terr',key:'t/'+j.key,sourceVillageId:vil.dbId,site:j,target:{x:j.cx*SZ+SZ/2,y:j.cy*SZ+SZ/2},need:()=>{_t1358Requote(vil,j);return j.wood>1e-9?{wood:j.wood}:{};}}:null;
   }
   // ★[T1207 ④] 관측 마을의 영토 일감 — 여유 크루의 첫 몸 하나가 말뚝을 날라 그 셀에서 개간한다(헤드리스는 `_t1207Batch`)
   if(T1207_TERR_REAL && vil._t1207Pend && vil._t1207Pend.length && _t1207Crew(vil)===npc.pid) {
@@ -17224,6 +17242,7 @@ function _t1181Step(vil,npc,now,awake) {
   return _t1181Haul.step(npc,t,{now,awake,reach:44,drawMs:G_DRAWW,storeMs:G_STOREW,maxGap:SCH_VG_STUCK,
     move:(g,label)=>{npc.behavior='wander';npc.targetX=g.x;npc.targetY=g.y;npc.gatherTarget=null;_lifeAct(npc,label);},act:label=>_lifeAct(npc,(t&&t.kind==='terr'&&label==='건축')?'개간':label),home:()=>_lifeGoHome(npc,'취침'),
     pick:()=>{for(const[item,left]of missing()){const W=_carryCfg(),kg=(T1214_STEP_FAST?_t1214Weights():require('./weights')).kgOf(item),room=kg>0?Math.max(0,Math.floor((W.CFG.CAP_KG-W.totalKg(npc))/kg)):0;const spare=item==='wood'&&(t.kind==='bridge'||t.kind==='terr')?Math.max(0,t.kind==='bridge'?E.woodSpareAfterLand(vil.econ):E.woodSpare(vil.econ)):Infinity;const n=Math.min(left,_t400PerLoad(item),room,spare);if(n>0&&(vil.econ.storage[item]||0)>0)return{item,n};}return null;},
+    ...(T1358_STAKE_REQUOTE&&t&&t.kind==='terr'?{placeLimit:(k,n)=>Math.min(n,Math.max(0,(t.need()[k]||0)-(t.site.mat[k]||0)))}:{}),
     take:(k,n)=>{const q=E.actFromGranary(vil.econ,k,n,true);if(q>0){S().took+=q;S().trips++;}return q;},
     refund:(k,n)=>{if(npc._t1181Haul&&npc._t1181Haul.t1283){_t1207LogIn(vil,n);return;}E.returnActMaterials(vil.econ,k,n);},   /* ★[T1283 (나)] 켬에서만 서는 짐(개간 통나무) — 곳간 사다리에서 일괄과 같은 줄로 부린다 · 끔 = 종전 */
     place:(k,n)=>{if(!(n>0))return;t.site.mat[k]=(t.site.mat[k]||0)+n;E.actMaterialsPlaced(vil.econ,k,n);S().placed=(S().placed||0)+n;if(t.kind==='bridge')_t527Save(t.site);},

@@ -1,0 +1,13 @@
+{
+ "clientTimezone": "Asia/Seoul",
+ "reportDate": "2026-11-19",
+ "runtimeTimezone": "UTC",
+ "node": "{\"version\":\"v22.23.0\",\"modules\":\"127\",\"arch\":\"x64\",\"platform\":\"linux\"}",
+ "python": "3.12.14",
+ "cpuQuota": "400000 100000",
+ "memoryMax": "34359738368",
+ "logicalCPUs": 5,
+ "nativeSQLiteSHA256": "775e0cf813924bf112cb5e09b1c30c7cea792fba9d3469d374dc10de45f63f49",
+ "nodeExecutableSHA256": "b587d8a062552ab52ecae2a7b0bcd079351d1dc61cf2555fd5994f558274ae58",
+ "packageLockSHA256": "e1fd2f9573239380a403797956c2bf7ef70419a4f7b8f546760bb7773c23ff25"
+}

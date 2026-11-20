@@ -19,7 +19,13 @@ function step(p, task, ctx) {
   if(ctx.now-s.at<wait)return true;
   if(s.n>0){
     const got=Math.min(s.n,Math.max(0,p.inventory?.[s.item]||0));
-    if(cancelled)ctx.refund(s.item,got);else ctx.place(s.item,got);
+    if(cancelled)ctx.refund(s.item,got);else {
+      // T1358: a moving stake quote can shrink after pickup. Keep surplus on the
+      // same body and use the existing return leg; it is never placed or teleported.
+      const placed=ctx.placeLimit?Math.max(0,Math.min(got,ctx.placeLimit(s.item,got))):got;
+      if(placed>0||!ctx.placeLimit)ctx.place(s.item,placed);
+      if(placed<got){p.inventory[s.item]=Math.max(0,(p.inventory[s.item]||0)-placed);s.n=got-placed;s.returning=true;s.at=null;return true;}
+    }
     p.inventory[s.item]=Math.max(0,(p.inventory[s.item]||0)-got);s.n=0;s.item=null;s.leg='source';s.at=null;
     if(cancelled)p._t1181Haul=undefined;   // ★[T1314] 위와 같은 까닭
     return true;

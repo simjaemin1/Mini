@@ -1,0 +1,526 @@
+{
+ "day": 10,
+ "sourceSha256": "c2b87f42aa2924e59931e837c6086b21c2e65d433af40487a73b9a31f986a938",
+ "totals": {
+  "done": 11996,
+  "completedWood": 2279.936515,
+  "placedWood": 2308.296696449725,
+  "drawnWood": 2316.426379449725,
+  "pendingPlacedWood": 28.360181449725186,
+  "remainingQuote": 326.3795355502748,
+  "pending": 1444,
+  "placedMinusCompletedAndPending": -5.3290705182007514e-14
+ },
+ "villages": [
+  {
+   "name": "광산1",
+   "done": 279,
+   "completedWood": 43.36959499999999,
+   "placedWood": 45.84070544107624,
+   "drawnWood": 45.84070544107624,
+   "pendingPlacedWood": 2.4711104410762488,
+   "remainingQuote": 9.494511558923751,
+   "pending": 21
+  },
+  {
+   "name": "광산2",
+   "done": 180,
+   "completedWood": 21.239423,
+   "placedWood": 21.239423,
+   "drawnWood": 21.239423,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 11.498104,
+   "pending": 60
+  },
+  {
+   "name": "광산3",
+   "done": 279,
+   "completedWood": 47.268129,
+   "placedWood": 47.268129,
+   "drawnWood": 47.268129,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 7.959339999999999,
+   "pending": 21
+  },
+  {
+   "name": "광산4",
+   "done": 175,
+   "completedWood": 53.807405,
+   "placedWood": 55.42296888297267,
+   "drawnWood": 55.42296888297267,
+   "pendingPlacedWood": 1.6155638829726655,
+   "remainingQuote": 24.772936117027335,
+   "pending": 5
+  },
+  {
+   "name": "어촌1",
+   "done": 177,
+   "completedWood": 40.926705,
+   "placedWood": 40.926705,
+   "drawnWood": 40.926705,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 15.406548,
+   "pending": 3
+  },
+  {
+   "name": "광산5",
+   "done": 239,
+   "completedWood": 21.373851,
+   "placedWood": 24.4637573558803,
+   "drawnWood": 24.4637573558803,
+   "pendingPlacedWood": 3.089906355880302,
+   "remainingQuote": 0.672377644119698,
+   "pending": 1
+  },
+  {
+   "name": "광산6",
+   "done": 238,
+   "completedWood": 97.988227,
+   "placedWood": 99.84147912911703,
+   "drawnWood": 99.84147912911703,
+   "pendingPlacedWood": 1.8532521291170454,
+   "remainingQuote": 6.042457870882954,
+   "pending": 2
+  },
+  {
+   "name": "광산7",
+   "done": 274,
+   "completedWood": 51.069067999999994,
+   "placedWood": 51.069067999999994,
+   "drawnWood": 51.069067999999994,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 3.989885,
+   "pending": 26
+  },
+  {
+   "name": "어촌2",
+   "done": 277,
+   "completedWood": 110.941961,
+   "placedWood": 116.142773,
+   "drawnWood": 116.142773,
+   "pendingPlacedWood": 5.200812,
+   "remainingQuote": 5.938088,
+   "pending": 23
+  },
+  {
+   "name": "임업1",
+   "done": 239,
+   "completedWood": 32.319064,
+   "placedWood": 32.319064,
+   "drawnWood": 32.319064,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 3.906504,
+   "pending": 1
+  },
+  {
+   "name": "임업2",
+   "done": 274,
+   "completedWood": 21.407935000000002,
+   "placedWood": 21.407935000000002,
+   "drawnWood": 21.407935000000002,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 11.893739,
+   "pending": 26
+  },
+  {
+   "name": "임업3",
+   "done": 282,
+   "completedWood": 47.258016999999995,
+   "placedWood": 47.258016999999995,
+   "drawnWood": 47.258016999999995,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 3.981756,
+   "pending": 18
+  },
+  {
+   "name": "농촌1",
+   "done": 239,
+   "completedWood": 24.927574999999997,
+   "placedWood": 24.927574999999997,
+   "drawnWood": 24.927574999999997,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 0,
+   "pending": 1
+  },
+  {
+   "name": "임업4",
+   "done": 284,
+   "completedWood": 46.861233999999996,
+   "placedWood": 46.861233999999996,
+   "drawnWood": 46.861233999999996,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 0,
+   "pending": 16
+  },
+  {
+   "name": "임업5",
+   "done": 240,
+   "completedWood": 112.88009,
+   "placedWood": 112.88009,
+   "drawnWood": 112.88009,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 30.520979999999998,
+   "pending": 60
+  },
+  {
+   "name": "어촌3",
+   "done": 180,
+   "completedWood": 27.268709,
+   "placedWood": 27.268709,
+   "drawnWood": 27.268709,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 17.250622,
+   "pending": 60
+  },
+  {
+   "name": "임업6",
+   "done": 284,
+   "completedWood": 39.696670999999995,
+   "placedWood": 39.696670999999995,
+   "drawnWood": 39.696670999999995,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 8.159137,
+   "pending": 16
+  },
+  {
+   "name": "농촌2",
+   "done": 279,
+   "completedWood": 164.83944300000002,
+   "placedWood": 164.83944300000002,
+   "drawnWood": 164.83944300000002,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 12.624216,
+   "pending": 21
+  },
+  {
+   "name": "농촌3",
+   "done": 180,
+   "completedWood": 20.267846,
+   "placedWood": 20.267846,
+   "drawnWood": 20.267846,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 0,
+   "pending": 60
+  },
+  {
+   "name": "어촌4",
+   "done": 179,
+   "completedWood": 60.48952,
+   "placedWood": 64.25103223205312,
+   "drawnWood": 64.25103223205312,
+   "pendingPlacedWood": 3.7615122320531214,
+   "remainingQuote": 0.3046797679468787,
+   "pending": 1
+  },
+  {
+   "name": "농촌4",
+   "done": 180,
+   "completedWood": 34.586348,
+   "placedWood": 34.586348,
+   "drawnWood": 34.586348,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 13.503528,
+   "pending": 60
+  },
+  {
+   "name": "농촌5",
+   "done": 180,
+   "completedWood": 18.011812,
+   "placedWood": 18.011812,
+   "drawnWood": 18.011812,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 0,
+   "pending": 60
+  },
+  {
+   "name": "어촌5",
+   "done": 179,
+   "completedWood": 61.83273,
+   "placedWood": 65.07352973841459,
+   "drawnWood": 65.07352973841459,
+   "pendingPlacedWood": 3.2407997384145943,
+   "remainingQuote": 1.3387752615854058,
+   "pending": 1
+  },
+  {
+   "name": "어촌6",
+   "done": 180,
+   "completedWood": 24.781268,
+   "placedWood": 24.781268,
+   "drawnWood": 24.781268,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 9.280090999999999,
+   "pending": 60
+  },
+  {
+   "name": "어촌7",
+   "done": 119,
+   "completedWood": 10.201540999999999,
+   "placedWood": 13.094969777834116,
+   "drawnWood": 13.094969777834116,
+   "pendingPlacedWood": 2.8934287778341172,
+   "remainingQuote": 0.574598222165883,
+   "pending": 1
+  },
+  {
+   "name": "어촌8",
+   "done": 180,
+   "completedWood": 32.223657,
+   "placedWood": 32.223657,
+   "drawnWood": 32.223657,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 12.034179,
+   "pending": 60
+  },
+  {
+   "name": "어촌9",
+   "done": 180,
+   "completedWood": 21.832746,
+   "placedWood": 21.832746,
+   "drawnWood": 21.832746,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 8.305721,
+   "pending": 60
+  },
+  {
+   "name": "어촌10",
+   "done": 180,
+   "completedWood": 24.080254999999998,
+   "placedWood": 24.080254999999998,
+   "drawnWood": 24.080254999999998,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 3.989691,
+   "pending": 60
+  },
+  {
+   "name": "어촌11",
+   "done": 180,
+   "completedWood": 35.191078,
+   "placedWood": 35.191078,
+   "drawnWood": 35.191078,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 3.737567,
+   "pending": 60
+  },
+  {
+   "name": "어촌12",
+   "done": 179,
+   "completedWood": 30.421049000000004,
+   "placedWood": 30.672640892377096,
+   "drawnWood": 30.672640892377096,
+   "pendingPlacedWood": 0.25159189237709256,
+   "remainingQuote": 5.151966107622908,
+   "pending": 1
+  },
+  {
+   "name": "어촌13",
+   "done": 180,
+   "completedWood": 47.472884,
+   "placedWood": 47.472884,
+   "drawnWood": 47.472884,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 15.618121,
+   "pending": 60
+  },
+  {
+   "name": "어촌14",
+   "done": 180,
+   "completedWood": 37.454021000000004,
+   "placedWood": 37.454021000000004,
+   "drawnWood": 37.454021000000004,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 12.124317999999999,
+   "pending": 60
+  },
+  {
+   "name": "어촌15",
+   "done": 180,
+   "completedWood": 29.061355,
+   "placedWood": 29.061355,
+   "drawnWood": 29.061355,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 0,
+   "pending": 60
+  },
+  {
+   "name": "농촌6",
+   "done": 288,
+   "completedWood": 43.537175000000005,
+   "placedWood": 47.51937900000001,
+   "drawnWood": 47.51937900000001,
+   "pendingPlacedWood": 3.982204,
+   "remainingQuote": 0,
+   "pending": 12
+  },
+  {
+   "name": "어촌16",
+   "done": 281,
+   "completedWood": 35.342924999999994,
+   "placedWood": 35.342924999999994,
+   "drawnWood": 35.342924999999994,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 11.932623,
+   "pending": 19
+  },
+  {
+   "name": "농촌7",
+   "done": 285,
+   "completedWood": 75.982494,
+   "placedWood": 75.982494,
+   "drawnWood": 75.982494,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 3.973573,
+   "pending": 15
+  },
+  {
+   "name": "농촌8",
+   "done": 279,
+   "completedWood": 94.18441899999999,
+   "placedWood": 94.18441899999999,
+   "drawnWood": 94.18441899999999,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 11.962617999999999,
+   "pending": 21
+  },
+  {
+   "name": "농촌9",
+   "done": 282,
+   "completedWood": 28.981996000000002,
+   "placedWood": 28.981996000000002,
+   "drawnWood": 28.981996000000002,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 7.986963,
+   "pending": 18
+  },
+  {
+   "name": "농촌10",
+   "done": 285,
+   "completedWood": 36.607745,
+   "placedWood": 36.607745,
+   "drawnWood": 36.607745,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 0,
+   "pending": 15
+  },
+  {
+   "name": "농촌11",
+   "done": 280,
+   "completedWood": 50.794366999999994,
+   "placedWood": 50.794366999999994,
+   "drawnWood": 54.75669799999999,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 3.962331,
+   "pending": 20
+  },
+  {
+   "name": "농촌12",
+   "done": 275,
+   "completedWood": 46.951071999999996,
+   "placedWood": 46.951071999999996,
+   "drawnWood": 46.951071999999996,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 0,
+   "pending": 25
+  },
+  {
+   "name": "농촌13",
+   "done": 275,
+   "completedWood": 32.447790000000005,
+   "placedWood": 32.447790000000005,
+   "drawnWood": 32.447790000000005,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 4.005395,
+   "pending": 25
+  },
+  {
+   "name": "농촌14",
+   "done": 279,
+   "completedWood": 25.260142000000002,
+   "placedWood": 25.260142000000002,
+   "drawnWood": 25.260142000000002,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 3.99156,
+   "pending": 21
+  },
+  {
+   "name": "농촌15",
+   "done": 276,
+   "completedWood": 28.647309000000003,
+   "placedWood": 28.647309000000003,
+   "drawnWood": 28.647309000000003,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 0,
+   "pending": 24
+  },
+  {
+   "name": "농촌16",
+   "done": 278,
+   "completedWood": 25.522984,
+   "placedWood": 25.522984,
+   "drawnWood": 25.522984,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 0,
+   "pending": 22
+  },
+  {
+   "name": "농촌17",
+   "done": 288,
+   "completedWood": 99.953332,
+   "placedWood": 99.953332,
+   "drawnWood": 104.120684,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 4.167352,
+   "pending": 12
+  },
+  {
+   "name": "농촌18",
+   "done": 282,
+   "completedWood": 32.573611,
+   "placedWood": 32.573611,
+   "drawnWood": 32.573611,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 0,
+   "pending": 18
+  },
+  {
+   "name": "농촌19",
+   "done": 277,
+   "completedWood": 32.362370999999996,
+   "placedWood": 32.362370999999996,
+   "drawnWood": 32.362370999999996,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 0,
+   "pending": 23
+  },
+  {
+   "name": "농촌20",
+   "done": 274,
+   "completedWood": 40.017410999999996,
+   "placedWood": 40.017410999999996,
+   "drawnWood": 40.017410999999996,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 0,
+   "pending": 26
+  },
+  {
+   "name": "농촌21",
+   "done": 277,
+   "completedWood": 36.48872000000001,
+   "placedWood": 36.48872000000001,
+   "drawnWood": 36.48872000000001,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 0,
+   "pending": 23
+  },
+  {
+   "name": "농촌22",
+   "done": 180,
+   "completedWood": 20.929440000000003,
+   "placedWood": 20.929440000000003,
+   "drawnWood": 20.929440000000003,
+   "pendingPlacedWood": 0,
+   "remainingQuote": 14.322683,
+   "pending": 60
+  }
+ ]
+}
