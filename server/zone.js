@@ -11031,6 +11031,11 @@ setInterval(() => {
 }, FISH_TICK_MS);
 // ★[T1382] 어장 번짐 시계 — 다시 뜬 판은 `_fishTickAt` 이 부팅 순간이라 첫 번짐이 지난 번짐부터가 아니라 부팅부터 잰 몫이었다(몸 세계 6날 · 4날 끊음: 어부 몸 29 자리 갈림).
 //   손잡이 `T1340_RESUME_EXACT` 안 · 종료 저장에만 값(T742 줄 `zone.t1382Fish`) · 끔 = 종전 글자.
+// ★[T1382 덧붙임 둘] 길 닳음 날 오프셋(`_t1001RoadOff` — 프로세스 첫 부름에 벽시계 날 − econ 날로 굳는다) — 다시 뜬 판은 다시 뜬 순간에 굳혀 한 날 어긋났다
+//   (econ 날이 벽시계 날보다 늦은 순간 · 길 감쇠 날이 하루 늦어 같은 칸이 6.97 : 7 → 등급 0 : 1 → 몸 빠르기 1 : 1.1 · 다시 뜬 6분 뒤 첫 몸 갈림). 끔 = 종전.
+if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.t1382RoadOff', () => (shuttingDown && Number.isFinite(_t1001RoadOff) ? { o: _t1001RoadOff } : null), (v) => { if (v && Number.isFinite(v.o)) _t1001RoadOff = v.o; });
+//   같은 꼴 — 광맥 리젠 시각 오프셋(`_t1001OreOff` — 첫 부름에 벽시계 − econ 날 × 하루로 굳는다)
+if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.t1382OreOff', () => (shuttingDown && Number.isFinite(_t1001OreOff) ? { o: _t1001OreOff } : null), (v) => { if (v && Number.isFinite(v.o)) _t1001OreOff = v.o; });
 if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.t1382Ord', () => (shuttingDown ? [...players.keys()] : null), (v) => { if (Array.isArray(v)) _t1382OrdPend = v; });
 if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.t1382Gate', () => (shuttingDown ? _t1382GateTake() : null), (v) => { if (v && v.z) _t1382GatePend = v; });
 if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.t1382Bld', () => (shuttingDown ? _t1382BldTake() : null), (v) => { if (v && Array.isArray(v.L)) _t1382BldPend = v; });
