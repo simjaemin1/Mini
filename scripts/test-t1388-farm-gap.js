@@ -58,7 +58,7 @@ ok(a0.a === false && a0.c === false && near(a0.t, 120) && aA.a === true && near(
 const src = fs.readFileSync(OBS, 'utf8');
 const NEEDLE = "if (globalThis.__t1388in) globalThis.__t1388in(v, globalThis.__t1388by ? 'farmBy' : npc.currentJob, r, amt - tax);";
 const nN = src.split(NEEDLE).length - 1;
-const D = fs.mkdtempSync(path.join(os.tmpdir(), 't1388h-')), BO = path.join(D, 't1388-observe.js');
+const D = fs.mkdtempSync(path.join(os.tmpdir(), 't1388h-')), BO = path.join(D, 't1388-observe.js'); require('./lib-tmp').own(D);   // [PM land1086 · lint ㉑] lib-tmp — 판 끝(빨강 · 상한 포함)에 지운다
 fs.writeFileSync(BO, (nN === 1 ? src.replace(NEEDLE, '') : src).replace("const ROOT = path.join(__dirname, '..');", `const ROOT = ${JSON.stringify(ROOT)};`));
 let Bt = null; try { Bt = kid({}, WORLD(BO)); } catch (e) { Bt = { err: String(e).slice(0, 200) }; }
 const BT = (Bt && Bt.tot) || {};

@@ -53,7 +53,7 @@ ok(/const L_GAMEMAX = 100, L_GAMER = 0\.002, L_HUNT = 4;/.test(VS) && /return L_
 // ── ③ 미끼 — beast-body 사본(임시 파일) · 바꾼 자리를 센다 ──
 const NEEDLE = '(opt.huntBody ? 1 : SCALE)';
 const src = fs.readFileSync(BB, 'utf8'), nN = src.split(NEEDLE).length - 1;
-const D = fs.mkdtempSync(path.join(os.tmpdir(), 't1359h-')), BAIT = path.join(D, 'beast-body.js');
+const D = fs.mkdtempSync(path.join(os.tmpdir(), 't1359h-')), BAIT = path.join(D, 'beast-body.js'); require('./lib-tmp').own(D);   // [PM land1086 · lint ㉑] lib-tmp — 판 끝(빨강 · 상한 포함)에 지운다
 fs.writeFileSync(BAIT, nN === 1 ? src.replace(NEEDLE, 'SCALE') : src);
 let Bb = null; try { Bb = sim(BAIT, true, 3); } catch (e) { Bb = { err: String(e).slice(0, 120) }; }
 ok(nN === 1 && Bb && !Bb.err && !predB(Bb) && Bb.kills === 0, '③ 미끼 — 바꾼 자리 1곳(몫 줄의 손잡이 갈래 → `SCALE`)인 사본은 ② ⓑ 의 줄이 빨강(첫날 죽음 0)', `바꾼 자리 ${nN} · ${JSON.stringify(Bb)}`);
