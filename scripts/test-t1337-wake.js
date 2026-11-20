@@ -44,7 +44,7 @@ const still = (vid, lon, w95, seg, dOff, bday, day, now) => { const fv = fvOf(no
 function world(pf, wk, src, noMeal) {
   const SS = loadSS(pf, wk), PF = SS.ON, wolves = [];
   const ctx = {
-    Math, Object, Number, Infinity, NaN, console, JSON, Set, Map, Array, SS, T1322_PF: PF, T1322_VERIFY: PF && SS.VERIFY, T1337_WAKE: PF && SS.WAKE_ON, T1337_VERIFY: PF && SS.WAKE_ON && SS.WAKE_VERIFY, T1348_LOOP: false, T1348_WALK: false, T1348_WVERIFY: false, T1348_WORK: false,   // ★[T1348] 고리 거울 · 걷는 몸 · 일터 깨움은 `test-t1348-loop`
+    Math, Object, Number, Infinity, NaN, console, JSON, Set, Map, Array, SS, T1322_PF: PF, T1322_VERIFY: PF && SS.VERIFY, T1337_WAKE: PF && SS.WAKE_ON, T1337_VERIFY: PF && SS.WAKE_ON && SS.WAKE_VERIFY, T1348_LOOP: false, T1348_WALK: false, T1348_WVERIFY: false, T1348_WORK: false, T1365_WORK: false,   // ★[T1348] 고리 거울 · 걷는 몸 · 일터 깨움은 `test-t1348-loop`
     players: new Map(), _tick: { n: 0 }, _SEED, BUILDING_SIZE: BS, NPC_FLEE_RANGE: R, mobs: new Map(), wolves,
     qtMobs: { queryCircle: (x, y, r) => wolves.filter((m) => Math.abs(m.x - x) <= r && Math.abs(m.y - y) <= r) },
     zoneGameDay: () => Math.floor(ctx.NOW / DAY), NOW: 0,
