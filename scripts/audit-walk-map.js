@@ -144,16 +144,17 @@ module.exports = function walkAudit(ctx) {
     const BR = new Uint8Array(N);
     for (const k of BRIDGE) { const [x, y] = k.split('_').map(Number); if (x < 0 || y < 0 || x >= NX || y >= NY || kind(x, y) !== 2) continue; BR[y * NX + x] |= 1;
       for (let dy = -HEAD; dy <= HEAD; dy++) for (let dx = -HEAD; dx <= HEAD; dx++) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= NX || ny >= NY) continue; if (kind(nx, ny) !== 2) BR[ny * NX + nx] |= 2; } }
-    let routeCells = 0;
-    for (const r of T.routes || []) { let pts; try { pts = JSON.parse(r.pts); } catch (e) { continue; } if (!Array.isArray(pts)) continue;
+    let routeCells = 0; const ends = new Map();   // 교역로 칸 → 그 칸을 지나는 길들의 끝 마을(영토 주인 번호) 집합
+    for (const r of T.routes || []) { let pts; try { pts = JSON.parse(r.pts); } catch (e) { continue; } if (!Array.isArray(pts) || pts.length < 2) continue;
+      const oa = (p2) => { const x = Math.floor(p2.x / SZ), y = Math.floor(p2.y / SZ); return (x >= 0 && y >= 0 && x < NX && y < NY) ? (T.own0 || T.own)[y * NX + x] : 0; }, e1 = oa(pts[0]), e2 = oa(pts[pts.length - 1]);
       for (let k = 1; k < pts.length; k++) { const a = pts[k - 1], b = pts[k], L = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / SZ));
-        for (let s2 = 0; s2 <= L; s2++) { const x = Math.floor((a.x + (b.x - a.x) * s2 / L) / SZ), y = Math.floor((a.y + (b.y - a.y) * s2 / L) / SZ); if (x < 0 || y < 0 || x >= NX || y >= NY) continue; const c2 = y * NX + x; if (!(BR[c2] & 4)) { BR[c2] |= 4; routeCells++; } } } }
-    return { BR, routeCells };
+        for (let s2 = 0; s2 <= L; s2++) { const x = Math.floor((a.x + (b.x - a.x) * s2 / L) / SZ), y = Math.floor((a.y + (b.y - a.y) * s2 / L) / SZ); if (x < 0 || y < 0 || x >= NX || y >= NY) continue; const c2 = y * NX + x; if (!(BR[c2] & 4)) { BR[c2] |= 4; routeCells++; } let E = ends.get(c2); if (!E) ends.set(c2, E = new Set()); E.add(e1); E.add(e2); } } }
+    return { BR, routeCells, ends };
   }
   const bOut = [];
   for (const T of terrSets) {
     //   ★[T1406 ㉮ 판] `--keep-paths` — 다리 칸 · 다리 머리 · 교역로 칸은 영토가 덮어도 막힌 칸으로 안 친다(㉮ 문이 켜진 세계의 가정)
-    if (argv.includes('--keep-paths')) { const { BR } = pathMask(T, +opt('head', '2')); const o2 = Int16Array.from(T.own); let freed = 0; for (let k = 0; k < N; k++) if (BR[k] && o2[k]) { o2[k] = 0; freed++; } T.own = o2; T.keepFreed = freed; }
+    if (argv.includes('--keep-paths')) { const { BR } = pathMask(T, +opt('head', '2')); const o2 = Int16Array.from(T.own); let freed = 0; for (let k = 0; k < N; k++) if (BR[k] && o2[k]) { o2[k] = 0; freed++; } T.own0 = T.own; T.own = o2; T.keepFreed = freed; }
     const tB = Date.now();
     //   환호(도랑) 칸 = 서버 걸음 막힘(`isDitchTileLocal`) — 이 판의 두 셈(지형만 · 남의 땅 막힘)에 같이 건다(영토 몫만 가르도록) · 판 끝에 되돌린다
     const dSaved = T.ditch.filter((i) => !blk[i]); for (const i of dSaved) blk[i] = 1;
@@ -279,15 +280,15 @@ module.exports = function walkAudit(ctx) {
     //   ★[T1406 ㉮] 지금 막는 자리(`--overlap`) — 마을 것(village_buildings 모든 종류 · NPC 건물 `buildings` owner npc_)이 다리 칸 · 다리 머리(다리 물 칸에서 체비쇼프 2 = 다리 폭) · 교역로가 지나는 칸에 서 있나
     let ovl = null;
     if (argv.includes('--overlap')) {
-      const HEAD = +opt('head', '2'), { BR, routeCells } = pathMask(T, HEAD);
+      const HEAD = +opt('head', '2'), { BR, routeCells, ends } = pathMask(T, HEAD);
       const { DatabaseSync } = require('node:sqlite'); const db = new DatabaseSync(T.file, { readOnly: true });
       const vname = new Map(db.prepare('SELECT id, name FROM villages').all().map((r) => [r.id, r.name]));
-      const tab = { bridge: {}, head: {}, route: {} }, byV = new Map(), terrOn = { bridge: 0, head: 0, route: 0 };
-      const hit = (who, ty, c2) => { const m = BR[c2]; if (!m) return; for (const [bit, key] of [[1, 'bridge'], [2, 'head'], [4, 'route']]) if (m & bit) { if (ty === 'terr') { terrOn[key]++; continue; } tab[key][ty] = (tab[key][ty] || 0) + 1; const o = byV.get(who) || byV.set(who, { bridge: 0, head: 0, route: 0, kinds: {} }).get(who); o[key]++; o.kinds[ty] = (o.kinds[ty] || 0) + 1; } };
+      const tab = { bridge: {}, head: {}, route: {}, route3: {} }, byV = new Map(), terrOn = { bridge: 0, head: 0, route: 0, route3: 0 };
+      const hit = (who, ty, c2) => { let m = BR[c2]; if (!m) return; if ((m & 4) && !(ends.get(c2) || new Set()).has((T.own0 || T.own)[c2])) m |= 8; for (const [bit, key] of [[1, 'bridge'], [2, 'head'], [4, 'route'], [8, 'route3']]) if (m & bit) { if (ty === 'terr') { terrOn[key]++; continue; } tab[key][ty] = (tab[key][ty] || 0) + 1; const o = byV.get(who) || byV.set(who, { bridge: 0, head: 0, route: 0, route3: 0, kinds: {} }).get(who); o[key]++; o.kinds[ty] = (o.kinds[ty] || 0) + 1; } };
       for (const r of db.prepare('SELECT village_id, type, cx, cy FROM village_buildings').iterate()) { if (r.cx < 0 || r.cy < 0 || r.cx >= NX || r.cy >= NY) continue; hit(vname.get(r.village_id) || '?', r.type, r.cy * NX + r.cx); }
       let npcB = 0; try { for (const r of db.prepare("SELECT type, owner_id, x, y FROM buildings WHERE owner_id LIKE 'npc_%'").iterate()) { npcB++; const x = Math.floor(r.x / SZ), y = Math.floor(r.y / SZ); if (x < 0 || y < 0 || x >= NX || y >= NY) continue; hit('npc:' + String(r.owner_id).split('_').slice(0, 2).join('_'), 'b:' + r.type, y * NX + x); } } catch (e) {}
       db.close();
-      ovl = { head: HEAD, routeCells, npcBuildings: npcB, terrOn, byKind: tab, villages: [...byV].map(([n, o]) => ({ name: n, ...o })).sort((a, b) => (b.bridge + b.head + b.route) - (a.bridge + a.head + a.route)).slice(0, 25) };
+      ovl = { head: HEAD, routeCells, npcBuildings: npcB, terrOn, byKind: tab, villages: [...byV].map(([n, o]) => ({ name: n, ...o })).sort((a, b) => (b.bridge + b.head + b.route3) - (a.bridge + a.head + a.route3)).slice(0, 25) };
     }
     for (const i of dSaved) blk[i] = 0;
     bOut.push({ label: T.label, keepFreed: T.keepFreed || 0, cells: T.nCells, clash: T.clash, ditch: dSaved.length, cutPairs: cut.length, cutAll, longerPairs: longer.length,
@@ -365,7 +366,7 @@ module.exports = function walkAudit(ctx) {
     if (b.routes) console.log(`ⓒ [${b.label}] 교역로 ${b.routes.routes} 가운데 남의 땅을 지나는 길 ${b.routes.through} · 구간 ${b.routes.segs} · 칸 ${b.routes.cells}`);
     if (b.oneBlock) { console.log(`ⓑ' [${b.label}] 한 마을만 막기 — 끊는 마을 ${b.oneBlock.villagesCutting} · 끊기는 이웃 방향 쌍 합 ${b.oneBlock.cutTotal} · 3배 넘게 더 돌게 하는 마을 ${b.oneBlock.over3}`); for (const p of b.oneBlock.list.slice(0, 8)) console.log(`   ${p.x} 막음 — 지나던 쌍 ${p.pairs} · 끊김 ${p.cut}${p.ex && p.ex.length ? ' (' + p.ex.join(' ') + ')' : ''} · 가장 더 돎 ×${p.worst}`); }
     if (b.classify) console.log(`ⓐ' [${b.label}] 모두 막기 못 닿음 ${b.classify.cut} = 다리 머리 ${b.classify.kinds.head} · 물길 ${b.classify.kinds.water} · 뭍 길목 ${b.classify.kinds.land} · 다리 머리 주인 ${b.classify.headOwners.map(([n, k]) => n + ' ' + k).join(', ')}`);
-    if (b.overlap) { const o = b.overlap, f = (t) => Object.entries(t).map(([k, n]) => k + ' ' + n).join(' · ') || '0'; console.log(`㉮ [${b.label}] 막는 자리 — 다리 칸: ${f(o.byKind.bridge)} | 다리 머리(${o.head}칸): ${f(o.byKind.head)} | 교역로 칸(${o.routeCells}): ${f(o.byKind.route)} | 영토가 덮음 다리 ${o.terrOn.bridge} · 머리 ${o.terrOn.head} · 교역로 ${o.terrOn.route} · 마을 ${o.villages.length}`); }
+    if (b.overlap) { const o = b.overlap, f = (t) => Object.entries(t).map(([k, n]) => k + ' ' + n).join(' · ') || '0'; console.log(`㉮ [${b.label}] 막는 자리 — 다리 칸: ${f(o.byKind.bridge)} | 다리 머리(${o.head}칸): ${f(o.byKind.head)} | 교역로 칸(${o.routeCells}): ${f(o.byKind.route)} | 그 가운데 남의 길(칸 주인이 길 끝 마을 아님): ${f(o.byKind.route3)} | 영토가 덮음 다리 ${o.terrOn.bridge} · 머리 ${o.terrOn.head} · 교역로 ${o.terrOn.route}(남의 길 ${o.terrOn.route3}) · 마을 ${o.villages.length}`); }
     console.log(`ⓓ [${b.label}] 제 땅이 조각난 마을 ${b.split.villages}(둘째 조각 20칸 넘음 ${b.split.real}) ${b.split.list.slice(0, 6).map((s) => `${s.name} ${s.pieces}조각 ${s.sizes.join('/')}${Object.keys(s.outsideBig).length ? ' 밖:' + JSON.stringify(s.outsideBig) : ''}`).join(' · ')}`);
   }
   console.log(`다리 후보(물길 ${runs.length}줄 · ${SPAN}칸 안):`);

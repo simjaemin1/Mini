@@ -60,9 +60,9 @@ if (process.argv.includes('--grow-child')) {
   const own = new Set(); for (let dy = -6; dy <= 6; dy++) for (let dx = -6; dx <= 6; dx++) { const x = lx + dx, y = ly + dy; if (!ta.isBlocked(x, y) && !g.has(x + ',' + y) && Math.max(Math.abs(dx), Math.abs(dy)) >= 4) own.add(x + ',' + y); }
   const ec = E.createVillage({ name: 'T', initialPop: 40, fertility: 0.6, water: 0.5, wood: 0.6, stone: 0.4, game: 0.4, ore: 0, size: 100 }); ec.land.size = 400; ec.housing = 600; ec.npcs = new Array(400).fill(0).map((_, i) => ec.npcs[i % ec.npcs.length]);
   const vil = { name: '시험', dbId: 1, ccx: lx, ccy: ly - 5, _terrSet: own, _potSet: new Set(), _farmSet: new Set(), _drySet: new Set(), _houseCells: [], _granList: [], _ditch: [], npcPids: [], econ: ec };
-  //   교역로 하나 — 시험 마을 곁을 동서로 지나는 길(칸 중심 점 둘)
+  //   교역로 하나 — 시험 마을(1) 곁을 동서로 지나는 **남의 길**(마을 901 ↔ 902 · 칸 중심 점 둘)
   const rY = ly - 12, route = [{ x: (lx - 40) * SZ + 16, y: rY * SZ + 16 }, { x: (lx + 40) * SZ + 16, y: rY * SZ + 16 }];
-  V.__p3Bind({ zoneId: 'hanbando', routeCache: new Map([['t|1406', route]]), world: { day: 1 } }); V.__labProbe._t569Probe.setup({ ta, villages: [vil], db: null });
+  V.__p3Bind({ zoneId: 'hanbando', routeCache: new Map([['901_902', route]]), world: { day: 1 } }); V.__labProbe._t569Probe.setup({ ta, villages: [vil], db: null });
   const n0 = own.size; let err = null; for (let i = 0; i < 60; i++) { try { V.__labProbe._t569Probe.grow(vil); } catch (e) { err = e.message; break; } }
   const head = (x, y) => { for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (g.has((x + dx) + ',' + (y + dy)) && W(x + dx, y + dy)) return true; return false; };
   let onBr = 0, onHead = 0, onRoute = 0; for (const k of own) { const [x, y] = k.split(',').map(Number); if (g.has(k)) onBr++; else if (head(x, y)) onHead++; if (y === rY && x >= lx - 40 && x <= lx + 40) onRoute++; }
