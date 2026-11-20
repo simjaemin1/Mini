@@ -19,7 +19,7 @@ const HEARTHS = [
 
 // 이 바닥 행이 그 움집의 캐리어(발자국 남동단 한 칸 — 움집당 정확히 하나)인가 — 클라 마당 소품 캐리어와 같은 규칙
 function isCarrier(b, cellSize) {
-  const h = b && b.type === 'floor' && b.data && b.data.hut;
+  const h = b && b.type === 'floor' && b.data && !b.data.small && b.data.hut;   // ★[T1392] 간이 움집(`small`)은 화덕을 안 그린다 — 화덕 자리가 6×4 앵커 상대라 3×3 밖이다(보고 T1392 ⓓ)
   if (!Array.isArray(h) || h.length < 4) return false;
   return Math.floor(b.x / cellSize) === h[2] && Math.floor(b.y / cellSize) === h[3];
 }

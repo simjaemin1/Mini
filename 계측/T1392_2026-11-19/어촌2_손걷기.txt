@@ -1,0 +1,10 @@
+START self={"x":52208,"y":12304,"homeX":30848} cell=1631,384 own={"cost":{"wood":12,"stone":8},"need":12,"recog":false,"tree":{"x":52120,"y":12558},"rock":{"x":52416,"y":11906},"reed":{"x":52208,"y":12304}}
+1: go 0 -1 2000 → cell 1631,381 blocked=[] notes=
+2: go 0 -1 6000 → cell 1631,373 blocked=[] notes=
+3: go 1 0 5000 → cell 1638,373 blocked=[] notes=
+4: go 1 0 1400 → cell 1640,373 blocked=[] notes=
+5: go 0 1 7300 → cell 1640,382 blocked=[] notes=
+6: go 0 1 5400 → cell 1640,389 blocked=[[-1,-1,"water"],[-1,0,"water"],[-1,1,"water"]] notes=
+7: go -1 0 7600 → cell 1640,389 blocked=[[-1,-1,"water"],[-1,0,"water"],[-1,1,"water"]] notes=
+8: go 0 1 3000 → cell 1640,393 blocked=[] notes=
+9: go -1 0 8000 → cell 1629,393 blocked=[] notes=

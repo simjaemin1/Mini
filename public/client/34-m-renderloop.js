@@ -887,7 +887,7 @@
           }
         }
         const _hutI = _bldSpr.hut_roof || _hutRoofC;   // ★10차: 3D 스프라이트 우선
-        const _hut = _hutI && b.data && b.data.hut;
+        const _hut = _hutI && b.data && !b.data.small && b.data.hut;   // ★[T1392] 간이 움집(3×3 · `small`)은 6×4 지붕 · 마당 소품을 안 탄다(3×3 그림이 없다 — 벽 · 바닥만 · 보고 T1392 ⓒ)
         // ★[마당 소품 — 에셋 10차] 구역 기하 정본 자리에 화덕·장독 2점. 서버 페이로드는 그대로 두고
         //   움집 태그(data.hut=[x0,y0,x1,y1])에서 유도한다(실내 화덕·침대가 이미 쓰는 방식과 동형).
         //   집 앵커 (cx,cy) = (x1, y1+2) → 화덕(cx-2,cy) · 장독(cx+2,cy-4)(cx+4,cy-3).

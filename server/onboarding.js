@@ -107,7 +107,7 @@ function _t1341Own(player) {
   const near = (k) => { try { const r = (at && H.nearRes) ? H.nearRes(k, at.x, at.y) : null; return r ? { x: Math.round(r.x), y: Math.round(r.y) } : null; } catch (e) { return null; } };
   let recog = false; try { recog = !!(player && s.start_vid != null && H.isRecognized && H.isRecognized(player, s.start_vid | 0)); } catch (e) { recog = false; }
   return { cost: (H.claimCost && { wood: H.claimCost.wood | 0, stone: H.claimCost.stone | 0 }) || null, need: (H.memberNeed | 0) || null, recog,
-    tree: near('chop'), rock: near('quarry') };
+    tree: near('chop'), rock: near('quarry'), ...(H.firstLot ? { reed: near('reed') } : {}) };   // ★[T1392] 켬 — 갈대 자리(이엉 · 결속 풀 · 끔 = 칸 없음 = 종전 바이트)
 }
 //   촌장의 말(하게체) — 첫 의뢰를 다 채웠을 때(갚음 · 밥 · 빈터 대신). 다음에 열리는 것은 인정 문턱(`MEMBER_N`)에서 센다.
 const T1341_THANKS = '고맙네. 마을이 자네 손을 받아들였네.';
@@ -1001,6 +1001,12 @@ function pushState(player) {
   try { H.send(player.ws, _t1086With({ type: 'onboarding_state', state: publicState(player.playerId) }, player)); } catch (e) { return false; }
   return true;
 }
+// ★[T1392] 첫 집터 · 간이 움집 단계가 바뀐 뒤 — 제 집 줄기 칸(다음 재료 자리)이 바로 보게 한 통(켬 `T1341` 에서만 · 존은 `T1392_FIRST_LOT` 켬에서만 부른다).
+function pushOwn(player) {
+  if (!T1341 || !ready() || !player || !H.send || !player.ws) return false;
+  try { H.send(player.ws, _t1086With({ type: 'onboarding_state', state: publicState(player.playerId) }, player)); } catch (e) { return false; }
+  return true;
+}
 // zone.js `handleMessage` 가 한 줄로 넘긴다.
 function handleMsg(player, msg) {
   if (!ready() || !player || !msg || !H.send || !player.ws) return;
@@ -1053,7 +1059,7 @@ module.exports = {
   pickFirstQuest, greetLines, sendGreet, onDeliver, onSiteGive, handleMsg, daySummary, __isPlayerVillage: _isPlayerVillage,
   noteVillage,   // ★[T19] 마을이 하나 늘었을 때 그 곳만 굽는다
   dirWord: _DIRWORD,   // ★[T56] 방위말 정본 — 쓰러짐의 외침이 촌장과 **같은 어휘**를 쓴다
-  T1086, T1086_JOIN_LINE, T1086_LOT_LINE, pushState,
+  T1086, T1086_JOIN_LINE, T1086_LOT_LINE, pushState, pushOwn,
   T1341, T1341_THANKS, _t1341Own, _t1341LeftLine,   // ★[T1341] 제 집 줄기 · 의뢰 갚음 0 — 손잡이 · 촌장 말 · 칸(하네스가 정본 그대로 부른다)   // ★[T1086] 첫 의뢰 = 빈터 + 마을 사람 권함 — 손잡이 · 촌장 말 두 줄(정본 · `membership.firstJoinChat` 이 부른다) · 칸 갱신
 
   vacantZoneOf, vacantLotAllows, publicState, stateOf,

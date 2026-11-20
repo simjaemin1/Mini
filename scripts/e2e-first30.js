@@ -966,22 +966,42 @@ async function claimStep() {
   const s = await state();
   if (!haveAll(s, cost)) return fetchMissing(cost);
   const n0 = await myClaimN();
+  //   ★[T1392] 켬 — 첫 집터는 선 자리를 가운데로 아홉 칸이다. 사람은 C 앞에 발밑 테두리(막힌 칸은 붉다)를 본다 — 막혔으면 막힌 쪽 반대로 세 칸 옮겨 다시 본다.
+  if (await firstLotOn()) {
+    let L = null; for (let i = 0; i < 6; i++) { L = await ev(() => (typeof lotPreview !== 'undefined' && lotPreview) ? { cells: lotPreview.cells, gate: lotPreview.gate } : null).catch(() => null); if (L) break; await sleep(250); }
+    if (L && (L.cells.length || L.gate)) {
+      const me = await meL(); let mx = 0, my = 0; for (const [dx, dy] of L.cells) { mx += dx; my += dy; }
+      lotMiss = (lotMiss | 0) + 1;
+      const rot = [[1, 0], [0, 1], [-1, 0], [0, -1]][lotMiss % 4];
+      const ux = L.cells.length && (mx || my) ? -Math.sign(mx) : rot[0], uy = L.cells.length && (mx || my) ? -Math.sign(my) : rot[1];
+      R.legs.push({ t: tSec(), kind: 'lot-preview-blocked', cells: L.cells.length, gate: !!L.gate });
+      if (L.gate) return claimStep0Away(me);
+      await walkTo(standAround(me.x + ux * 96, me.y + uy * 96, 32).filter((g) => !blockedCell(g.x, g.y)), 12);
+      return true;
+    }
+  }
   const k0 = await ev(() => (window.__notices || []).length).catch(() => 0);
   await press('KeyC');
   let n1 = n0; for (let i = 0; i < 12 && n1 === n0; i++) { await sleep(300); n1 = await myClaimN(); }
   if (n1 > n0) { const me = await meL(); mark('집터', { x: Math.round(me.x), y: Math.round(me.y), cost }); return true; }
   const nt = (await ev(() => (window.__notices || []).slice()).catch(() => [])).slice(Math.max(0, k0 - 2));
-  const why = nt.find((t) => /영토 안 집터는|사유지|겹칩니다|붙여서만|모서리/.test(t)) || '';
+  const why = nt.find((t) => /영토 안 집터는|사유지|겹칩니다|붙여서만|모서리|아홉 칸/.test(t)) || '';
   R.legs.push({ t: tSec(), kind: 'claim-refused', why: why.slice(0, 80) });
   if (/영토 안 집터는|겹칩니다/.test(why)) {   // 영토 안 · 남의 땅 — 가장 가까운 마을에서 멀어지는 쪽으로 열 칸
-    const me = await meL();
+    return claimStep0Away(await meL());
+  }
+  if (/아홉 칸/.test(why)) return true;   // ★[T1392] 아홉 칸이 막혔다 — 다음 판에 미리보기를 보고 옮긴다
+  skipUntil['집터'] = Date.now() + 60000;
+  return false;
+}
+let lotMiss = 0;
+async function claimStep0Away(me) {
+  {
     let v = null, bd = Infinity; for (const q of VILS) { const d = Math.hypot(me.x - q.ax, me.y - q.ay); if (d < bd) { bd = d; v = q; } }
     const ux = v ? (me.x - v.ax) / (bd || 1) : 1, uy = v ? (me.y - v.ay) / (bd || 1) : 0;
     await walkTo(standAround(me.x + ux * 320, me.y + uy * 320, 96).filter((g) => !blockedCell(g.x, g.y)), 20);
     return true;
   }
-  skipUntil['집터'] = Date.now() + 60000;
-  return false;
 }
 
 // ★[T1120] 「지금 할 일」 읽기(훅 `__t1064Next` — 칸이 마지막에 그린 것 · 읽기만)
@@ -1041,14 +1061,28 @@ async function guideStep(a) {
   if (a.do === 'tool') return followPanel(_pnLast);
   if (a.do === 'claim') return claimStep();
   if (a.do === 'hut') return hutStep();
+  if (a.do === 'small_hut') return smallHutStep();   // ★[T1392] 칸의 단추 — 간이 움집 터파기
+  if (a.do === 'hut_adv') return hutAdvStep();       // ★[T1392] 칸의 단추 — 움집 올리기
+  if (a.do === 'craft_item') {                       // ★[T1392] 칸이 말한 중간재 — 제작 창 한 번
+    const s0 = await state(), n0 = s0.inv[a.what] || 0;
+    if (!(await craft('craft_item', a.what, (q) => (q.inv[a.what] || 0) > n0))) R.notes.push(`${tSec()}s [칸] 제작 ${a.what} 안 됨`);
+    return true;
+  }
   const tl = A2L(a.target);
+  if (a.do === 'reed') {                             // ★[T1392] 칸의 화살 — 갈대 자리(풀 · 맨손 E)
+    const w = await walkTo(standAround(tl.x, tl.y, 40).filter((g) => !blockedCell(g.x, g.y)), 16);
+    if (!R.milestones['안내 자리(갈대)'] && w.ok) mark('안내 자리(갈대)');
+    if (!w.ok) R.notes.push(`${tSec()}s [칸] 갈대 자리에 못 감 ${w.reason}`);
+    return fetchOne('fiber', a.want || null);
+  }
   if (a.do === 'goto') {
     //   터 안으로 — 터 칸(개인 사유지는 한 칸일 수 있다) 그 자체를 목표로 · 작은 허용(칸 안에 서야 "터 안"이다) · 막혔으면 둘레
     const c0 = cellOf(tl);
     dyn.delete(ck(c0.x, c0.y));   // 걸려 본 칸 표가 제 터 칸을 막고 있으면 푼다(터는 서 있던 칸이다)
     let w = blockedCell(c0.x, c0.y) ? { ok: false, reason: 'blocked' } : await walkTo([c0], 6);
     if (!w.ok) w = await walkTo(standAround(tl.x, tl.y, 40).filter((g) => !blockedCell(g.x, g.y)), 20);
-    if (!R.milestones[`안내 자리(${a.why === 'build' ? '내 터' : '빈터'})`] && w.ok) mark(`안내 자리(${a.why === 'build' ? '내 터' : '빈터'})`);
+    const _wk = a.why === 'build' ? '내 터' : (a.why === 'site' ? '움집터' : '빈터');   // ★[T1392] 움집터(올리러 가는 곳)
+    if (!R.milestones[`안내 자리(${_wk})`] && w.ok) mark(`안내 자리(${_wk})`);
     if (!w.ok) R.notes.push(`${tSec()}s [칸] 화살 자리(${a.why})에 못 감 ${w.reason}`);
     else {   // 닿았는데 칸이 아직 화살을 주면(터 밖) — 그 자리 · 칸을 적는다(자 진단)
       const me = await meL(); const pn = await panelNow();
@@ -1059,7 +1093,7 @@ async function guideStep(a) {
   // gather — 화살 끝의 나무 · 바위
   const k = `${a.res}:${Math.round(tl.x)}:${Math.round(tl.y)}`, n = (guideTries.get(k) || 0) + 1; guideTries.set(k, n);
   const cost = await ev(() => (window.__onbState && window.__onbState.own && window.__onbState.own.cost) || null).catch(() => null);
-  const want = cost && cost[a.item] ? { [a.item]: cost[a.item] } : null;
+  const want = a.want || (cost && cost[a.item] ? { [a.item]: cost[a.item] } : null);   // ★[T1392] 칸이 말한 수(움집 재료)가 먼저
   if (n > 6) { R.notes.push(`${tSec()}s [칸] 화살 자리 ${a.res} 여섯 번 못 닿음 — 종전 손`); return fetchOne(a.item, want); }
   await look();
   //   화살 끝 둘레(160px)의 같은 종 개체 — 화살 끝에 가까운 차례(사람도 막힌 나무 곁 나무를 벤다) · 못 가 본 것은 뺀다
@@ -1149,7 +1183,39 @@ const toolHas = (s, t) => (s.tools || []).some((x) => x.type === t && x.d > 0);
 // ★[T1186] 곡괭이 · 도끼 재료는 서버 레시피 표(`Z.RECIPES` — 같은 손잡이 env 로 읽은 같은 정본)에서 — 손으로 적은 돌 5 · 2 를 걷었다(끔이면 그 값 그대로)
 const PICK_COST = Object.assign({}, Z.RECIPES.pickaxe.cost), AXE_COST = Object.assign({}, Z.RECIPES.axe.cost);
 const haveAll = (s, c) => Object.entries(c).every(([k, v]) => (s.inv[k] || 0) >= v);
+// ★[T1392] 켬(welcome `uiCfg.firstLot`) — 간이 움집은 칸이 차례를 정한다(이 사다리의 6×4 수를 안 쓴다)
+let FIRSTLOT = null;
+async function firstLotOn() { if (FIRSTLOT === null) FIRSTLOT = !!(await ev(() => !!(typeof uiCfg !== 'undefined' && uiCfg && uiCfg.firstLot)).catch(() => false)); return FIRSTLOT; }
+async function mySiteNow() {
+  await look();
+  const who = await ev(() => myPlayerId || myUsername).catch(() => null);
+  return BLDS.find((q) => q.type === 'hut_site' && q.owner === who) || null;
+}
+async function smallHutStep() {
+  const me = await meL();
+  await send({ type: 'hut_start', kind: 'small', atX: me.x, atY: me.y });   // ★칸 단추 · 건축 판 간이 움집 터파기가 보내는 그 한 줄(존 로컬)
+  for (let i = 0; i < 10 && !site; i++) { await sleep(300); const b = await mySiteNow(); if (b) site = { id: b.id, x: b.x, y: b.y, small: true }; }
+  if (site) mark('움집터(① 굴착)', { small: true }); else R.notes.push(`${tSec()}s 간이 움집 터파기 실패`);
+  return true;
+}
+async function hutAdvStep() {
+  if (!site) { const b = await mySiteNow(); if (b) site = { id: b.id, x: b.x, y: b.y, small: !!b.small }; }
+  if (!site) return false;
+  const b0 = BLDS.find((q) => q.id === site.id); const stage = b0 ? (b0.stage | 0) : 0;
+  await send({ type: 'hut_advance', buildingId: site.id });   // ★칸 단추 · 움집터 클릭이 보내는 그 한 줄
+  for (let i = 0; i < 10; i++) {
+    await sleep(300); await look();
+    const nb = BLDS.find((q) => q.id === site.id);
+    if (!nb) { if (BLDS.some((q) => q.type === 'hut' && Math.hypot(q.x - site.x, q.y - site.y) < 96)) { mark('움집 완공', { small: !!site.small }); site.done = true; if (!R.milestones['첫 잠자리']) mark('첫 잠자리', { how: '내 움집(완공)' }); } break; }
+    if ((nb.stage | 0) > stage) { mark(`움집 ${['', '①', '②', '③', '④'][stage + 1]} 단계`); break; }
+  }
+  return true;
+}
 async function hutStep() {
+  if (GUIDE && await firstLotOn()) {   // ★[T1392] 잠자리 일감이 여기로 떨어져도 칸이 말한 한 수를 따른다(6×4 사다리 0)
+    const a = guideAct(_pnLast || await panelNow());
+    return (a && a.do !== 'hut') ? guideStep(a) : false;
+  }
   const s = await state();
   if (!toolHas(s, 'pickaxe') && !site && !GUIDE) {   // ★[T1377] `--guide` 는 곡괭이를 미리 안 만든다(터파기 거절 → 칸)
     if (haveAll(s, PICK_COST)) { if (await craft('craft', 'pickaxe', (q) => toolHas(q, 'pickaxe'))) mark('곡괭이(손 제작)'); return true; }   // ★[T1186] 레시피 표 그대로(돌 규칙 켬 = 날 kg 을 담는 덩이 · 끔 = 종전 돌 5)

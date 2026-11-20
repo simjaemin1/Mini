@@ -402,7 +402,7 @@
       //   침대 6 = BEDO 앵커 상대 [[-4,-4],[-3,-4],[-2,-4],[-1,-4],[-4,-3],[-1,-3]](랩 정본 — 1인 1침대 고증, HOME_SLOTS와 같은 사상)
       //   화덕 = (-2,-3)(수혈주거 중앙 노지 고증). 앵커: 건물=[cx-5..cx+0]×[cy-5..cy-2] → cx=x1·cy=y1+2.
       //   시각 전용(durango-consistency: 물리 실체 침대→리스폰·NPC 취침 연동은 생활 층 이관 묶음).
-      if (building?.data?.hut && _tileHutC) {
+      if (building?.data?.hut && !building.data.small && _tileHutC) {   // ★[T1392] 간이 움집(3×3)은 6×4 실내 가구 자리를 안 탄다(침상 · 화덕 자리가 3×3 밖)
         const _h = building.data.hut;
         ctx.drawImage(_tileHutC, x - 32, y - 16);
         const _dx = Math.floor(building.x / 32) - _h[2], _dy = Math.floor(building.y / 32) - (_h[3] + 2);

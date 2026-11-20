@@ -315,7 +315,9 @@ try {
   const gate = z.indexOf('if (_T1341_ON && kind === \'personal\' && !_t1305P) {');
   const HOUSE = String.fromCodePoint(0x1F3E0);   // 문 술어 글의 머리 그림 — 판정 자리에 그림 글자를 안 둔다(하네스 린트 ②)
   const gs = gate > 0 ? z.slice(gate, gate + 400) : '';
-  ok(gate > 0 && gs.includes('const _g = _t1305Gate(player, cx + SZ / 2, cy + SZ / 2);') && gs.includes(`text: String(_g.why).replace(/^${HOUSE} /, ''), kind: 'claim' }); return; }`),
+  //   ★[T1392] 문 한 벌이 `_claimGate`(종전 `tryClaim` 안 갈래를 옮긴 것 — 선 칸 = `px, py` · 거절 = 알림 몸을 돌려준다 · `tryClaim` 이 보낸다)로 옮겨 갔다
+  const gfn = z.indexOf('function _claimGate('), cl = z.indexOf('{ const _gate = _claimGate(player, kind, cx + SZ / 2, cy + SZ / 2, _t1305P); if (_gate) { send(player.ws, Object.assign({ type: \'notice\' }, _gate)); return; } }');
+  ok(gate > 0 && gfn > 0 && gate > gfn && cl > 0 && gs.includes('const _g = _t1305Gate(player, px, py);') && gs.includes(`return { text: String(_g.why).replace(/^${HOUSE} /, ''), kind: 'claim' };`),
     '★켬 — 개인 사유지 선포 문 = T1305 문 술어 하나(영토 밖 누구나 · 영토 안 인정 구성원) · 빈터 예외도 같은 문을 지난다 · 그림 글자 머리를 뗀다');
   ok(gate > 0 && gate < z.indexOf("if (kind === 'personal' && !_onbLot && VillageKin.ON) {"), '그 문이 종전 "내 마을 땅 안에만" 갈래보다 앞(켬이면 종전 갈래를 안 탄다)');
   ok(z.indexOf('if ((player.inventory.wood || 0) < cost.wood || (player.inventory.stone || 0) < cost.stone) {') > 0 && z.indexOf('`재료가 모자랍니다(나무 ${cost.wood}, 돌 ${cost.stone}).`') > 0,

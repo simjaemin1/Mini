@@ -391,6 +391,7 @@
     drawArrowFx();      // 사냥꾼 화살 비행(서버 arrow_fx)
     drawBuildOverlay(); // 14.51: hover outline
     drawPlacementGhost(); // 14.53-i: placement 시 실루엣 미리보기
+    drawLotPreview();     // ★[T1392] 첫 집터 아홉 칸(켬 · 땅 없음만 — 끔 = 곧바로 돌아간다)
     zoomEnd(_zOn);      // ★월드 패스 끝 — 오프스크린을 화면에 통째로 늘리거나 줄여 얹는다
     updateBuildProgressEl(); // 14.51: 3초 progress bar (DOM)
     updateMinimap();

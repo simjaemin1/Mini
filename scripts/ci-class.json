@@ -14549,6 +14549,28 @@
    ],
    "dyn": "가"
   },
+  "test-t1392-first-lot.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "다",
+   "maxSec": 62.1,
+   "same5": null,
+   "core": false,
+   "why": "서버 62.1초 > 60초 — CI 밖(야간 · 전수)",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 62.1,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "다",
+   "child": [
+    "spawnSync node",
+    "spawn node"
+   ]
+  },
   "test-t721-apply.js": {
    "cls0": "나",
    "why0": "child_process",
@@ -16893,5 +16915,5 @@
    "srv": true
   }
  },
- "at": "2026-11-19"
+ "at": "2026-11-20"
 }

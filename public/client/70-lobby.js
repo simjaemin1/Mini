@@ -445,16 +445,24 @@ function onbJoinPlan(I, s, lot, inLot, K) {
 function onbOwnPlan(I, s, K) {
   const O = s && s.own;
   if (!O || !O.cost) return null;
-  if (I.myHome) return null;
+  const FL = I.firstLot || null;   // ★[T1392] 켬(welcome `uiCfg.firstLot`) — 첫 집터 아홉 칸 · 간이 움집 · 완공까지
+  if (FL) {
+    if (I.myHut) return null;                                  // ★온보딩의 끝 = 움집(간이 · 6×4) 완공 — 종전 차례(촌장 · 의뢰)가 선다
+    if (I.mySite) return onbHutPlan(I, s, K, FL, O);           // 터를 팠다 — 다음 재료 · 올리기를 한 걸음씩
+  } else if (I.myHome) return null;
   const off = I.off || { x: 0, y: 0 };
-  const mine = I.myClaim || null;
+  const mine = (FL && I.myLot9) || I.myClaim || null;
   if (mine) {
+    if (FL) return { stage: 'build', item: '간이 움집 짓기', btn: mine.inside ? 'small_hut' : undefined, target: mine.inside ? null : { x: mine.x, y: mine.y },
+      guide: ['내 집터 아홉 칸이 섰습니다. 집터 가운데에서 간이 움집 터파기 단추를 누르거나 건축 판 ', K('Shift B'), ' 에서 간이 움집 터파기를 고르십시오. 곡괭이가 있어야 합니다.'] };
     return { stage: 'build', item: '움집 짓기', target: mine.inside ? null : { x: mine.x, y: mine.y },
       guide: ['내 터가 생겼습니다. 터 안에서 건축 판 ', K('Shift B'), ' 에서 움집 터파기를 고르십시오.'] };
   }
   const inv = I.inv || {};
   const w = inv.wood | 0, st = inv.stone | 0, cw = O.cost.wood | 0, cs = O.cost.stone | 0;
   if (w >= cw && st >= cs) {
+    if (FL) return { stage: 'claim', item: '집터 잡기', btn: 'claim', target: null,
+      guide: [`재료가 다 모였습니다. 마을 영토 밖 빈 들에서 집터 잡기 단추를 누르거나 `, K('C'), ` 키로 선 자리를 가운데로 둘레 아홉 칸을 한 번에 잡으십시오. 나무 ${cw}개와 돌 ${cs}개가 듭니다. 아홉 칸 가운데 하나라도 물이나 바위나 남의 땅이면 잡히지 않습니다.`] };
     return { stage: 'claim', item: '집터 잡기', btn: 'claim', target: null,
       guide: ['재료가 다 모였습니다. 마을 영토 밖 빈 들에서 집터 잡기 단추를 누르거나 ', K('C'), ' 키로 선 자리에 터를 잡으십시오. 영토 안은 그 마을이 받아들인 사람만 잡을 수 있습니다.'] };
   }
@@ -503,8 +511,101 @@ function onbMyLot(c, off, me) {
 function onbNextPress(act) {
   if (act === 'join') sendPrimary({ type: 'chat', text: '/소속' });
   else if (act === 'claim') sendPrimary({ type: 'claim', kind: 'personal' });
+  else if (act === 'small_hut' || act === 'hut') {   // ★[T1392] 간이 움집 터파기(선 자리 = 집터 가운데) · 올리기(내 움집터) — 있는 두 메시지 그대로
+    const c = (typeof conns !== 'undefined' && typeof primaryZoneId !== 'undefined') ? conns.get(primaryZoneId) : null;
+    const off = { x: (c && c.meta && c.meta.worldOffsetX) || 0, y: (c && c.meta && c.meta.worldOffsetY) || 0 };
+    const me = (typeof myAbsPredicted !== 'undefined' && myAbsPredicted) ? myAbsPredicted : null;
+    if (act === 'small_hut') { if (!me) return false; sendPrimaryAt({ type: 'hut_start', kind: 'small', atX: me.x, atY: me.y }); }
+    else { const site = onbMySite(c, off, me); if (!site) return false; sendPrimary({ type: 'hut_advance', buildingId: site.id }); }
+  }
   else return false;
   return true;
+}
+// ══ ★★[T1392 · ★재민 11-19 "온보딩의 끝 = 간이 움집 완공"] 터를 판 뒤 — 「지금 할 일」이 기둥 → 서까래 → 이엉 → 올리기를 한 걸음씩 잇는다 ═══════
+//   단계 표 · 레시피는 서버 표(welcome `uiCfg.firstLot.stages` · `.recipes` = `hut-stages.js` 를 옮긴 꼴)에서만 읽는다(클라 상수 0 · 새 수 0).
+//   한 걸음: ⓐ 그 단계 재료가 다 있으면 → 움집터에서 올리기(단추 · 터 누르기) ⓑ 모자란 것이 중간재(기둥 · 서까래 · 이엉)면 → 도구(도끼 — 다음 막힘 사다리 `onbToolPlan` 그대로)
+//   → 원자재가 한 번 만들 만큼 있으면 제작 창 → 아니면 원자재 모으기(나무 = 나무 곁 · 풀 = 갈대 곁 — 자리는 서버 칸 `own.tree` · `own.reed`) ⓒ 원자재(결속 풀)면 곧바로 모으기.
+//   ★순수 함수(입력 → 한 칸 · DOM 0) — 하네스가 제품 글자 그대로 부른다.
+function onbHutPlan(I, s, K, FL, O) {
+  const site = I.mySite, ST = (FL.stages && (site.small ? FL.stages.small : FL.stages.big)) || null;
+  const st = ST && ST[site.stage | 0];
+  if (!st) return null;
+  const off = I.off || { x: 0, y: 0 }, bag = I.bag || {}, R = FL.recipes || {};
+  const ko = (k) => (I.itemKo ? I.itemKo(k) : String(k));
+  const jo = (w, a, b) => (typeof vvJosa === 'function' ? vvJosa(w, a, b) : a);
+  const need = st.need || {}, keys = Object.keys(need);
+  const has = (k) => Math.floor(bag[k] || 0);
+  const lst = keys.map((k) => `${ko(k)} ${has(k)}/${need[k]}`).join(' · ');
+  const where = site.near ? null : { x: site.x, y: site.y };
+  const miss = keys.find((k) => has(k) < need[k]);
+  if (!miss) {
+    return { stage: 'site', item: st.label.replace(/^[①-⑳]\s*/, ''), btn: site.near ? 'hut' : undefined, target: where,
+      guide: [`${st.label}에 쓸 재료가 다 모였습니다(${lst}). 움집터 곁에서 단추를 누르거나 움집터를 누르십시오.`] };
+  }
+  const gather = (item, want) => {
+    const tgt = item === 'wood' ? O.tree : (item === 'fiber' ? O.reed : (item === 'stone' ? O.rock : null));
+    const noun = item === 'wood' ? '나무' : (item === 'fiber' ? '갈대' : (item === 'stone' ? '바위' : ''));
+    const act = item === 'wood' ? ' 키로 나무를 베십시오.' : (item === 'fiber' ? ' 키로 풀을 뜯으십시오.' : ' 키로 돌을 캐십시오.');
+    return { stage: 'gather', item: `${ko(item)} 모으기`, noun, want: { [item]: has(item) + want }, target: tgt ? { x: tgt.x + off.x, y: tgt.y + off.y } : null,
+      guide: [`${st.label}에 ${lst}가 듭니다. ${ko(item)} ${want}개가 더 있어야 합니다(지금 ${has(item)}개). ${noun ? `${noun} 곁에서 ` : ''}`, K('E'), act] };
+  };
+  const r = R[miss];
+  if (!r) return gather(miss, need[miss] - has(miss));
+  if (r.tool && !onbToolHas(I, [r.tool], false)) {   // 도구 막힘 — 다음 막힘 사다리 그대로(도끼 → 만들기 → 재료)
+    const tp = (I.toolCfg && typeof onbToolPlan === 'function') ? onbToolPlan(Object.assign({}, I, { need: { tool: r.tool } })) : null;
+    if (tp) return tp;
+  }
+  const per = Object.values(r.to)[0] || 1, short = need[miss] - has(miss), times = Math.ceil(short / per);
+  const rawMiss = Object.keys(r.from).find((k) => has(k) < r.from[k]);
+  if (!rawMiss) {
+    const L = ko(miss);
+    return { stage: 'craft', item: `${L} 만들기`, target: null, step: { do: 'craft', what: miss },
+      guide: [`${st.label}에 ${lst}가 듭니다. ${L}${jo(L, '을', '를')} 만들 재료가 있습니다. 제작 창에서 ${L}${jo(L, '을', '를')} 만드십시오(${times}번). 제작 창은 `, K('K'), ' 키로 엽니다.'] };
+  }
+  return gather(rawMiss, r.from[rawMiss] * times - has(rawMiss));
+}
+// ★[T1392] 내 움집터(아직 안 다 지은 것) · 다 지은 움집 · 첫 집터 아홉 칸의 가운데 — 받은 건물 · 사유지를 읽기만 한다
+//   ⚠클라는 켜진 청크의 건물만 든다 — 재료를 구하러 멀리 가면 내 움집터가 목록에서 빠진다(잃은 게 아니다). 그때 칸이 "집터로" 로 되돌아가지 않게
+//     마지막으로 본 내 움집터를 기억한다(자리 · 단계 — 단계는 터 곁에서만 오르니 멀리서 낡지 않는다). 다 지은 움집을 보면 기억을 지운다(`onbMyHut`).
+let onbSiteMem = null;
+function onbMySite(c, off, me) {
+  if (!c || !c.buildings) return null;
+  const who = (typeof myPlayerId !== 'undefined' && myPlayerId) || (typeof myUsername !== 'undefined' && myUsername) || null;
+  if (!who) return null;
+  for (const b of c.buildings.values()) {
+    if (!b || b.type !== 'hut_site' || ((b.data && b.data.owner) || b.ownerId) !== who) continue;
+    const x = b.x + off.x, y = b.y + off.y;
+    onbSiteMem = { id: b.id, stage: (b.data && b.data.stage) | 0, small: !!(b.data && b.data.small), x, y, who };
+    return { id: b.id, stage: onbSiteMem.stage, small: onbSiteMem.small, x, y, near: !!me && Math.hypot(me.x - x, me.y - y) <= 100 };
+  }
+  const M = onbSiteMem;
+  if (M && M.who === who && me && Math.hypot(me.x - M.x, me.y - M.y) > 160) return { id: M.id, stage: M.stage, small: M.small, x: M.x, y: M.y, near: false };   // 멀리 있다 — 기억(곁이면 보여야 한다 · 안 보이면 없어진 것)
+  return null;
+}
+function onbMyHut(c) {
+  if (!c || !c.buildings) return false;
+  const who = (typeof myPlayerId !== 'undefined' && myPlayerId) || (typeof myUsername !== 'undefined' && myUsername) || null;
+  if (!who) return false;
+  for (const b of c.buildings.values()) if (b && b.type === 'hut' && (((b.data && b.data.owner) || b.ownerId) === who)) { onbSiteMem = null; return true; }
+  return false;
+}
+function onbMyLot9(c, off, me) {
+  if (!c || !c.claims || !me) return null;
+  const who = (typeof myPlayerId !== 'undefined' && myPlayerId) || (typeof myUsername !== 'undefined' && myUsername) || null;
+  if (!who) return null;
+  const set = new Set(), cells = [];
+  for (const cl of c.claims.values()) {
+    if (!cl || cl.ownerPid !== who || cl.kind !== 'personal' || (cl.state || 'active') === 'free') continue;
+    const k = Math.floor(cl.x / 32) + ',' + Math.floor(cl.y / 32); set.add(k); cells.push([Math.floor(cl.x / 32), Math.floor(cl.y / 32)]);
+  }
+  //   가운데 = 둘레 여덟이 다 내 칸인 칸(첫 집터의 가운데) — 없으면 null
+  for (const [x, y] of cells) {
+    let all = true; for (let dy = -1; dy <= 1 && all; dy++) for (let dx = -1; dx <= 1; dx++) if (!set.has((x + dx) + ',' + (y + dy))) { all = false; break; }
+    if (!all) continue;
+    const ax = x * 32 + 16 + off.x, ay = y * 32 + 16 + off.y;
+    return { x: ax, y: ay, cell: [x, y], inside: Math.abs(me.x - ax) <= 48 && Math.abs(me.y - ay) <= 48 };   // 집터 아홉 칸 안 어디서든(서버가 선 칸을 품는 내 3×3 을 찾는다) — 가운데 한 칸만이면 단추가 깜빡였다(봇 판 농촌1-2)
+  }
+  return null;
 }
 // ══ ★★[T1120 2026-11-03] 다음 막힘 — 서버가 도구 · 재료가 모자라 거절한 일을 「지금 할 일」이 잇는다(촌장 문 밖에서도) ═══════════
 //   ★왜 [카드 T1120 · 보고/T1093] 첫 30분 실기 막힘 셋 중 둘이 돌이었다 — 곡괭이(나무 3 · 돌 5)에 드는 바위를 도구 문(T1065)이 막는데
@@ -709,6 +810,7 @@ function onbWordsApply(I, p, s, arr, homeName, off) {
   else if (p.stage === 'lot' || p.stage === 'claim') noun = '빈터';
   else if (p.stage === 'build') noun = '내 터';
   else if (p.stage === 'gather' && p.noun) noun = p.noun;   // ★[T1341] 집터 재료 — 나무 · 바위
+  else if (p.stage === 'site') noun = '움집터';   // ★[T1392] 터를 판 뒤 — 올리러 가는 곳
   else { const n = (p.gate != null ? vname(p.gate) : '') || homeName; noun = n ? `${n} 마을` : '마을'; }
   const w = onbWordsWhere(I, noun, p.target);
   p.where = w;
@@ -740,7 +842,7 @@ function onbNextInputs() {
     itemKo: (k) => (typeof itemKo === 'function' ? itemKo(k) : String(k)),
     // ★[T1086] 가입 형편(서버) · 손잡이와 터 값(welcome) · 짐의 나무 · 돌 · 빈터 안 제 터(받은 사유지)
     join: onbJoin,
-    firstJoin: (typeof uiCfg !== 'undefined' && uiCfg && uiCfg.firstJoin) || null,
+    firstJoin: (typeof uiCfg !== 'undefined' && uiCfg && uiCfg.firstJoin) ? ((uiCfg.firstLot && uiCfg.firstLot.cost) ? Object.assign({}, uiCfg.firstJoin, { cost: uiCfg.firstLot.cost }) : uiCfg.firstJoin) : null,   // ★[T1392] 켬 — 첫 터 값 = 첫 집터 값(서버 표)
     inv: (typeof inventory !== 'undefined' && inventory) ? { wood: inventory.wood | 0, stone: inventory.stone | 0 } : null,
     myLot: onbMyLot(c, { x: (c && c.meta && c.meta.worldOffsetX) || 0, y: (c && c.meta && c.meta.worldOffsetY) || 0 },
       (typeof myAbsPredicted !== 'undefined' && myAbsPredicted) ? myAbsPredicted : null),
@@ -748,7 +850,12 @@ function onbNextInputs() {
     ...((onbState && onbState.own) ? {
       myClaim: onbMyClaim(c, { x: (c && c.meta && c.meta.worldOffsetX) || 0, y: (c && c.meta && c.meta.worldOffsetY) || 0 },
         (typeof myAbsPredicted !== 'undefined' && myAbsPredicted) ? myAbsPredicted : null),
-      myHome: onbMyHome(c) } : {}),
+      myHome: onbMyHome(c),
+      // ★[T1392] 켬(welcome `uiCfg.firstLot`) — 첫 집터 아홉 칸의 가운데 · 내 움집터 · 다 지은 움집 · 단계 표
+      ...((typeof uiCfg !== 'undefined' && uiCfg && uiCfg.firstLot) ? (() => {
+        const _off = { x: (c && c.meta && c.meta.worldOffsetX) || 0, y: (c && c.meta && c.meta.worldOffsetY) || 0 }, _me = (typeof myAbsPredicted !== 'undefined' && myAbsPredicted) ? myAbsPredicted : null;
+        return { firstLot: uiCfg.firstLot, myLot9: onbMyLot9(c, _off, _me), mySite: onbMySite(c, _off, _me), myHut: onbMyHut(c) };
+      })() : {}) } : {}),
     // ★[T1120] 다음 막힘 — 도구 문 표(welcome) · 레시피 · 짐 · 손 도구(가진 것 · 든 것) · 작업대 장비 칸 · 자연물 동사 이름(전부 이미 받은 것 · 읽기만)
     toolCfg: (typeof uiCfg !== 'undefined' && uiCfg && uiCfg.nextTool) || null,
     recipes: (typeof recipes !== 'undefined' && recipes) || null,
@@ -830,7 +937,7 @@ function onbNextRender() {
     document.getElementById('onbNextGuide').innerHTML = p.guide.map((x) => (x && x.k != null) ? `<span class="key">${onbNextEsc(x.k)}</span>` : onbNextEsc(x)).join('');
     const bt = document.getElementById('onbNextBtn');   // ★[T1086] 단추 — 명사형 이름 · 이 단계에서 누를 수 있을 때만 보인다
     if (bt) {
-      const lab = p.btn === 'join' ? '마을 가입' : (p.btn === 'claim' ? '터 잡기' : '');
+      const lab = p.btn === 'join' ? '마을 가입' : (p.btn === 'claim' ? '터 잡기' : (p.btn === 'small_hut' ? '간이 움집 터파기' : (p.btn === 'hut' ? '움집 올리기' : '')));   // ★[T1392] 두 단추(켬만 · 끔 = 이 갈래가 안 선다)
       bt.textContent = lab; bt.dataset.act = lab ? p.btn : '';
       if (lab) bt.classList.remove('hidden'); else bt.classList.add('hidden');
     }
@@ -852,6 +959,7 @@ function onbNextRender() {
     guide: p.guide.map((x) => (x && x.k != null) ? `[${x.k}]` : x).join(''),
     target: p.target ? { x: Math.round(p.target.x), y: Math.round(p.target.y) } : null, angle: ang, btn: p.btn || null,
     ...(I.words ? { where: p.where ? { text: p.where.text, dir: p.where.dir, steps: p.where.steps } : null } : {}),   // ★[T1204] 켬 — 칸이 말한 방위 · 걸음(하네스 읽기 · 끔 = 칸 없음)
+    ...(p.want ? { want: p.want } : {}),   // ★[T1392] 켬 — 움집 재료 모으기 칸이 말한 수(하네스 · 봇 읽기 · 끔 = 칸 없음)
     ...(p.step ? { step: p.step } : {}) };   // ★[T1120] 다음 막힘 칸이면 그 한 칸(무엇을 · 어느 문 — 하네스 읽기 · 끔 = 칸 없음 = 종전 꼴)
   return p;
 }
