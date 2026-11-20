@@ -1,0 +1,1 @@
+scripts/t1398-run.sh: line 31: syntax error near unexpected token `else'

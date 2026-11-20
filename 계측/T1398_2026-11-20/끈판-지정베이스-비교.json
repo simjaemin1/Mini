@@ -1,0 +1,35 @@
+{
+  "baseHead": "cfdb5fc5",
+  "actualDir": "계측/T1398_2026-11-20/기본판-원본/변경후",
+  "rows": [
+    {
+      "name": "economic-days",
+      "same": true,
+      "expectedRows": 400,
+      "actualRows": 400,
+      "first": null
+    },
+    {
+      "name": "side-keys",
+      "same": true,
+      "expectedRows": 84,
+      "actualRows": 84,
+      "first": null
+    },
+    {
+      "name": "side-days",
+      "same": true,
+      "expectedRows": 400,
+      "actualRows": 400,
+      "first": null
+    },
+    {
+      "name": "eight",
+      "same": true,
+      "expectedRows": null,
+      "actualRows": null,
+      "first": null
+    }
+  ],
+  "pass": true
+}

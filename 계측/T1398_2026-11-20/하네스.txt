@@ -1,0 +1,20 @@
+✓ auto: T1398 켬은 수출 주조도 켠다
+✓ zero: 0과 상위 0은 끔
+✓ knob: 전체 T1385 켬 안에서 1만 켬
+✓ band {"on":true,"band":true,"tin":96,"back":false,"armor":true,"hands":28,"low":true,"noBuyer":false,"noCu":false,"costlyHands":false,"richHands":272,"smallHands":1,"target":272,"made":0.17273951175506208,"liveFlat":0.138,"dead":true}
+✓ tin {"on":true,"band":true,"tin":96,"back":false,"armor":true,"hands":28,"low":true,"noBuyer":false,"noCu":false,"costlyHands":false,"richHands":272,"smallHands":1,"target":272,"made":0.17273951175506208,"liveFlat":0.138,"dead":true}
+✓ back {"on":true,"band":true,"tin":96,"back":false,"armor":true,"hands":28,"low":true,"noBuyer":false,"noCu":false,"costlyHands":false,"richHands":272,"smallHands":1,"target":272,"made":0.17273951175506208,"liveFlat":0.138,"dead":true}
+✓ hands {"on":true,"band":true,"tin":96,"back":false,"armor":true,"hands":28,"low":true,"noBuyer":false,"noCu":false,"costlyHands":false,"richHands":272,"smallHands":1,"target":272,"made":0.17273951175506208,"liveFlat":0.138,"dead":true}
+✓ dead {"on":true,"band":true,"tin":96,"back":false,"armor":true,"hands":28,"low":true,"noBuyer":false,"noCu":false,"costlyHands":false,"richHands":272,"smallHands":1,"target":272,"made":0.17273951175506208,"liveFlat":0.138,"dead":true}
+✓ off: 종전 띠 · 유보 · 되실음 {"on":false,"band":false,"tin":88,"back":true,"armor":true,"hands":0,"low":true,"noBuyer":false,"noCu":false,"costlyHands":false,"richHands":0,"smallHands":0,"target":0,"made":0,"liveFlat":0.138,"dead":true}
+✓ orphan/true: 기본 동작
+✓ liveFlat: 정량 상수는 기본 원석 나눔에서도 살아 있다 0.138
+✓ 미끼 band: band 빨강 · 바꾼 자리 1
+✓ 미끼 tin: tin 빨강 · 바꾼 자리 1
+✓ 미끼 back: back 빨강 · 바꾼 자리 1
+✓ 미끼 hands: hands 빨강 · 바꾼 자리 1
+✓ 미끼 labor: band 빨강 · 바꾼 자리 1
+✓ 미끼 copper: hands 빨강 · 바꾼 자리 1
+✓ 미끼 flat: dead 빨강 · 바꾼 자리 1
+✓ 미끼 dead: dead 빨강 · 바꾼 자리 1
+T1398 19/19 PASS · 미끼 8

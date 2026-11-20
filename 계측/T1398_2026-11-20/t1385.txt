@@ -1,0 +1,29 @@
+=== test-t1385-bronze-nocap — 청동 사슬의 명시적 상한 넷을 걷는다(T1385_BRONZE_NOCAP · 끔 기본) ===
+
+① ~ ⑩ 손잡이 · ⓐ ~ ⓓ · ㉯ · ㉱ · ㉰ · 전쟁 편성 · 끔 = 종전
+  ✓ K1 손잡이 — '1' 만 켬 · 하나가 넷 · 팔은 제 갈래만 · ㉮ → T1344 · ㉰ → T1333_WS_INPUT 를 같이 켠다  [["off",{"t1385":{"armory":false,"tingate":false,"ws":false,"poor":false},"bz":false,"frac":0.45,"t1344":false,"ws":false}],["nocap",{"t1385":{"armory":true,"tingate":true,"ws":true,"poor":true},"bz":true,"frac":1,"t1344":true,"ws":true}],["armory",{"t1385":{"armory":true,"tingate":false,"ws":false,"poor":false},"bz":true,"frac":1,"t1344":true,"ws":false}],["tingate",{"t1385":{"armory":false,"tingate":true,"ws":false,"poor":false},"bz":true,"frac":0.45,"t1344":false,"ws":false}],["ws",{"t1385":{"armory":false,"tingate":false,"ws":true,"poor":false},"bz":false,"frac":0.45,"t1344":false,"ws":true}],["poor",{"t1385":{"armory":false,"tingate":false,"ws":false,"poor":true},"bz":false,"frac":0.45,"t1344":false,"ws":false}],["k0",{"t1385":{"armory":false,"tingate":false,"ws":false,"poor":false},"bz":false,"frac":0.45,"t1344":false,"ws":false}],["ktrue",{"t1385":{"armory":false,"tingate":false,"ws":false,"poor":false},"bz":false,"frac":0.45,"t1344":false,"ws":false}]]
+  ✓ A1 ★ⓐ 돌검으로 찬 병기고(근접검 10 ≥ 7.2 · 청동 몫 0) + 구리 · 주석 — 끔 = 청동 0 · 켬 = 붓는다  {"off":{"made":0,"stoneMade":0,"cu":0,"sn":0,"dw":0.352,"secF":1,"smith":1,"mason":0,"capable":true,"q":null},"nocap":{"made":0.17274,"stoneMade":0,"cu":0.123,"sn":0.027,"dw":0.519557,"secF":1,"smith":1,"mason":0,"capable":true,"q":0.017077},"armory":{"made":0.17274,"stoneMade":0,"cu":0.123,"sn":0.027,"dw":0.519557,"secF":1,"smith":1,"mason":0,"capable":true,"q":0.017077}}
+  ✓ B1 ★ⓑ 청동 근접검 5(병기고의 69 % > 45 %) — 끔 · T1344 만 = 안 붓는다 · 켬 = 병기고 전체까지 붓는다(몫이 0.5 위로)  {"off":0,"t1344":0,"nocap":[0.17274,0.50849],"armory":0.17274}
+  ✓ S1 대장장이 자리 — 석검으로 찬 병기고: 끔 0 · 켬 선다 · 청동 몫 0.5: T1344 만 0 · 켬 선다 · 청동이 병기고를 채우면 켬도 0  {"off":{"stone0":{"t":0,"secF":1},"half":{"t":0,"secF":1},"full":{"t":0,"secF":1}},"t1344":{"stone0":{"t":1,"secF":1},"half":{"t":0,"secF":1},"full":{"t":0,"secF":1}},"nocap":{"stone0":{"t":1,"secF":1},"half":{"t":1,"secF":1},"full":{"t":0,"secF":1}}}
+  ✓ C1 ★ⓒ 주석 0(구리 5) — 어느 팔이든 청동 0(청동 배합이 안 선다 · 재료가 상한이다)  [[0,0,0],[0,0.15,0],[0,0.15,0],[0,0,0],[0,0,0]]
+  ✓ C2 ★ⓒ 석공 첫 차례 · 대장장이 있음 · 주석 0 — 켬도 석공은 비켜서지 않고 석검(청동을 부을 주석이 없다)  {"off":{"made":0,"stoneMade":0.133333,"cu":0,"sn":0,"dw":0.441333,"secF":1,"smith":1,"mason":1,"capable":true,"q":null},"nocap":{"made":0,"stoneMade":0.133333,"cu":0.15,"sn":0,"dw":0.522167,"secF":1,"smith":1,"mason":1,"capable":true,"q":0}}
+  ✓ D1 ★ⓓ 청동 근접검 10 ≥ 병기고 7.2(수요 0) — 켬도 안 붓는다  {"off":0,"nocap":[0,0],"armory":0}
+  ✓ T1 ★㉯ 자격 없는 마을(산지 아님 · 주석 1 < 13) · 대장장이 있음 — 끔 = 석공이 석검 · 켬 = 석공이 비켜서고 대장장이가 청동을 붓는다  {"off":{"made":0.17274,"stoneMade":0.133333,"cu":0.123,"sn":0.027,"dw":0.608891,"secF":1,"smith":1,"mason":1,"capable":false,"q":null},"tingate":{"made":0.17274,"stoneMade":0,"cu":0.123,"sn":0.027,"dw":0.479557,"secF":1,"smith":1,"mason":1,"capable":false,"q":0.063812},"nocap":{"made":0.17274,"stoneMade":0,"cu":0.123,"sn":0.027,"dw":0.479557,"secF":1,"smith":1,"mason":1,"capable":false,"q":0.063812}}
+  ✓ T2 ★㉯ 같은 곳간 · 대장장이 없음 — 켬도 석공이 석검(붓는 손이 없으면 비켜서지 않는다)  {"tingate":{"made":0,"stoneMade":0.133333,"cu":0,"sn":0,"dw":0.481333,"secF":1,"smith":0,"mason":1,"capable":false,"q":0},"nocap":{"made":0,"stoneMade":0.133333,"cu":0,"sn":0,"dw":0.481333,"secF":1,"smith":0,"mason":1,"capable":false,"q":0}}
+  ✓ P1 ★㉱ 굶는 마을(식량 0) · 근접검 2.5 ≥ 칼 한도 2 — 끔 · T1344 만 = 안 붓는다 · 켬 = 병기고 몫까지 붓는다  {"off":{"made":0,"stoneMade":0,"cu":0,"sn":0,"dw":0.36,"secF":0,"smith":1,"mason":0,"capable":false,"q":null},"t1344":0,"poor":0.17274,"nocap":0.17274}
+  ✓ WS1 ㉰ 세계 몫 상한 밖 — 원석 · 합금 재료만(식량 · 무기 · 숯 · 철은 그대로) · 끔 = 하나도 안  {"off":[["ore_tin",false],["ore_copper",false],["ore",false],["copper",false],["tin",false],["lead",false],["silver",false],["gold",false],["food",false],["weapon",false],["charcoal",false],["iron",false]],"ws":[["ore_tin",true],["ore_copper",true],["ore",true],["copper",true],["tin",true],["lead",true],["silver",true],["gold",true],["food",false],["weapon",false],["charcoal",false],["iron",false]]}
+  ✓ WAR1 ★㉯ 전쟁 편성 — 끔 = 자격 · 무기 질 ramp(산지 숙련 석검이 청동으로 읽힌다) · 켬 = 장부의 청동 몫(청동 근접검 5 → 전사 셋 다 · 몫 0 → 0)  {"off":{"tinPoor":{"ind":0,"agg":0,"warrior":3,"capable":false},"skilledStone":{"ind":3,"agg":3,"warrior":3,"capable":true}},"tingate":{"tinPoor":{"ind":3,"agg":3,"warrior":3,"capable":false},"skilledStone":{"ind":0,"agg":0,"warrior":3,"capable":true}}}
+  ✓ OFF1 끔 = '0' 판 = 'true' 판(한 마을 하루 · 자리 · 상한 밖 · 편성이 바이트 같다)  1353
+
+⑩ 글자 — 새 줄 자리 수 · T1344 · T1333 이 박은 줄 그대로
+  ✓ G1 새 자리 — 병기고 몫(정의 · 쓰는 곳 셋 — 석공 한도 · 대장장이 한도 · 대장장이 자리 · 내보냄) · 손(정의 · 석공 문) · 자격 1 · 장부(정의 · 주조 청동 칸 · 하루 끝 섞음 · 내보냄) · 굶는 마을(정의 · 읽기 칸 · 대장장이 한도 · 대장장이 자리) · 손잡이 접기 둘 · 전쟁 편성(정의 · 두 편성)  {"frac":5,"hands":2,"tin":1,"bz":4,"poor":4,"armoryFold":1,"wsFold":1,"war":3}
+  ✓ G2 T1344 · T1333 이 박은 줄 그대로(청동 근접검 셈 둘 · 부르는 자리 셋 · 주조 문 · 상한 밖 판정) — 걷기는 그 손잡이를 같이 켜서 그 줄로 돈다(사본 0)  {"smDef":1,"mason":1,"calls":3,"castGate":1,"wsFn":1}
+
+⑪ 미끼 — 한 자리 바꾼 사본은 정한 단언이 빨강이어야 한다(미끼 하나에 판정 줄 하나 — `@bait 5`)
+  ✓ 미끼 cap — 병기고 청동 몫 상한 줄을 되살린 사본 → B1 빨강(청동이 45 % 를 넘은 마을이 안 붓는다)  바꾼 자리 1 · 팔 nocap+armory · 단언 13 가운데 빨강 ["K1","B1","S1"] · 정한 빨강 ["B1"]
+  ✓ 미끼 nomat — 석공 재료 문에서 주석을 뺀 사본 → C2 빨강(주석이 없어도 석공이 비켜서 석검이 안 선다)  바꾼 자리 1 · 팔 nocap · 단언 13 가운데 빨강 ["C2"] · 정한 빨강 ["C2"]
+  ✓ 미끼 nohands — 손 문을 뺀 사본 → T2 빨강(대장장이가 없는데 석공이 비켜서 병기고가 빈다)  바꾼 자리 1 · 팔 tingate+nocap · 단언 13 가운데 빨강 ["T2"] · 정한 빨강 ["T2"]
+  ✓ 미끼 poorkeep — 굶는 마을 칼 한도 갈래를 되살린 사본 → P1 빨강(굶는 마을은 칼 둘에서 멈춘다)  바꾼 자리 1 · 팔 poor+nocap · 단언 13 가운데 빨강 ["P1"] · 정한 빨강 ["P1"]
+  ✓ 미끼 warq — 전쟁 편성이 장부의 청동 몫을 안 읽는 사본 → WAR1 빨강(자격 · 무기 질 ramp 로 되돌아간다)  바꾼 자리 1 · 팔 tingate · 단언 13 가운데 빨강 ["WAR1"] · 정한 빨강 ["WAR1"]
+
+=== 15/15 ✓ (미끼 5/5) ===

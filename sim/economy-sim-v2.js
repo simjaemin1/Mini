@@ -1326,7 +1326,7 @@ function _exportCandidatesV2(a, N) {   // a = 마을 칸({ v }) — 몸통 줄�
         else if (r === 'weapon') { keep = Math.max(2, (warN + huntN3) * 1.3); thresh = keep + N * 0.1; }   // ★무기: 전사+사냥꾼(활 — §9 3차) ×1.3 보유 후 잉여만
         else if (WEAPONR[r]) { keep = Math.max(2, warN * 1.3); thresh = keep + N * 0.1; }   // 갑옷: 전사 수×1.3 보유 후 잉여만
         else if (r === 'tigerhide') { keep = Math.max(1, N * TIGERHIDE_KEEP_PC); thresh = Math.max(2, N * TIGERHIDE_KEEP_PC * 1.6); }   // ★호피(§9 3차): 한계 위신 포화점(CAP/W≈0.025/인)×1.2만 쥐고 잉여=순수출재 — 일반칙(0.4N)이면 희소 위신재는 영영 수출 불가. 금·은·보석은 위신 포화(2/인)가 일반칙 위라 기존 규칙 유지
-        else if (r === 'tin') { keep = Math.max(3, N * TIN_EXPORT_KEEP_PC); thresh = keep + N * TIN_EXPORT_SURPLUS_PC; }   // ★청동 희소성: 주석=전략재. 산지 마을이 대량 비축(자체 청동 독점 + 위세) 후 얇은 잉여만 수출 → 무산지 마을은 만성 주석 기근(청동 편중 유지, 무산지는 석기)
+        else if (r === 'tin' && !v1.T1398_BRONZE_BAND) { keep = Math.max(3, N * TIN_EXPORT_KEEP_PC); thresh = keep + N * TIN_EXPORT_SURPLUS_PC; }   // ★청동 희소성: 주석=전략재. 산지 마을이 대량 비축(자체 청동 독점 + 위세) 후 얇은 잉여만 수출 → 무산지 마을은 만성 주석 기근(청동 편중 유지, 무산지는 석기)
         else { keep = target * 0.5; thresh = target * 0.8; }                // 그 외: 15일치
         if (a.t1157Release && !(FOODR[r] && _t1149Wd(a.v) > 0)) { keep = 0; thresh = 0; } // T1157 c: preserve active winter rule, seed reserve, and food/debt guards
         if (FOODR[r] && _t1149Wd(a.v) > 0) {   // ★[T1149 ⓒ] (위 if/else 사슬 뒤 — 사슬에 끼우면 식량이 `else` 갈래로 떨어져 끔에도 keep · thresh 가 바뀐다) 가을 · 겨울 — 제 겨울 몫(하루 생존량 × 겨울에 남은 날 · 곳간 식량 환산)을 넘는 몫만 판다
@@ -2196,7 +2196,7 @@ function* tickTradeV2Steps(world, day) {
         // ★무기·갑옷 자본재 목표=사용자(전사+사냥꾼)×1.3 — 일반칙(N×0.5)은 전사 적은 마을서 과대 → 청동검 과잉 귀환 허용하던 원인.
         if (r === 'weapon') aTarget = Math.max(2, (((a.v.counts && a.v.counts.warrior) || 0) + ((a.v.counts && a.v.counts.hunter) || 0)) * 1.3);
         else if (r === 'armor') aTarget = Math.max(1, ((a.v.counts && a.v.counts.warrior) || 0) * 1.3);
-        if ((a.v.storage[r] || 0) >= aTarget * WEAPON_RETURN_GLUT_MULT) continue;   // ★return-glut-cap: 무기는 사용자×1.3×배수 넘으면 안 실어옴(청동검 소량 수입). 그 외 극단 글럿 차단
+        if (!(v1.T1398_BRONZE_BAND && r === 'weapon') && (a.v.storage[r] || 0) >= aTarget * WEAPON_RETURN_GLUT_MULT) continue;   // ★return-glut-cap: 무기는 사용자×1.3×배수 넘으면 안 실어옴(청동검 소량 수입). 그 외 극단 글럿 차단
         const bStock = v1.seedReserveAvail(b.v, r);   // ★[T692] 되사 갈 수 있는 곳간 = 곳간 − 시딩 비축(끔 = 종전)
         const bSubs = (SUBSISTENCE_PER_NPC[r] || 0) * b.v.npcs.length;
         const bTarget = Math.max(bSubs * 30, b.v.npcs.length * 0.3 * _orePart(r));
@@ -2570,7 +2570,7 @@ function _returnGluttedV2(from, r) {
   // ★무기·갑옷은 자본재 — 목표=사용자(전사+사냥꾼)×1.3(활 포함). 일반칙(N×0.5)은 전사 적은 마을서 과대 → 무기 과잉비축 허용하던 원인.
   if (r === 'weapon') target = Math.max(2, ((from.counts && from.counts.warrior || 0) + (from.counts && from.counts.hunter || 0)) * 1.3);
   else if (r === 'armor') target = Math.max(1, (from.counts && from.counts.warrior || 0) * 1.3);
-  return (from.storage[r] || 0) >= target * WEAPON_RETURN_GLUT_MULT;
+  return !(v1.T1398_BRONZE_BAND && r === 'weapon') && (from.storage[r] || 0) >= target * WEAPON_RETURN_GLUT_MULT;
 }
 // ★★[T707] 매도·매수·복귀 — 종전 `_caravanArrive` 의 "평소" 몸통을 **글자 그대로** 이름만 올렸다.
 //   끔 = 도착 자리에서 부른다(종전 바이트) · 켬 = 떠날 때 `settleMarketsV2` 가 찍어 둔 값(도착 때 그림자가격)으로 부른다.
