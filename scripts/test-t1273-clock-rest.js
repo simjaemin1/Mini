@@ -500,10 +500,11 @@ const fnOf = (i) => { const j = VC.lastIndexOf('\nfunction ', i); return j < 0 ?
   //   ★[T1282] 11 → 13곳 — 고침 둘이 읽는 자리를 더했다(`startReturnLeg` 귀환 보간 t0 · `_t1282Wall` = `_xzMakeBody` 걸음 날 수의 econ 날 시계 · 보고 T1282 자리 표)
   //   ★[T1289] 13 → 17곳 — 고침이 읽는 자리 넷을 더했다(`_caravanSyncOne` T1136 바구니 머묾 끝 · `_t1289Leg` 세 칸 · `_t1289In` 되살림 축 · `_xzWalkToBorder` 경계 걷기의 '지금' · 보고 T1289 전수 표).
   //     종전 조건(이 판 여섯 · T1282 둘 · 함수마다 수)은 그대로 두고 동기만 1 → 2(같은 함수에 바구니 줄) · 새 넷을 더 묶었다(느슨하게 한 것 0).
-  ok(fns.length === 17 && cnt.spawnCaravanBody === 3 && cnt._caravanSyncOne === 2 && cnt._xzMakeBody === 1 && cnt.marketVillages === 1 && cnt.startReturnLeg === 1 && cnt._t1282Wall === 1
+  //   ★[T1365 · T1399] 17 → 18곳 — 일터 깨움 장인 판정(`_t1365Art` · 읽기만)이 장인 결정 문(`_t1196Step`)과 같은 시계를 읽는다(`T1258_ARTISAN_CLOCK ? _t1253Now() : now` — 판정이 결정 문 그 글자를 따라간다 · 보고 T1399 덧붙임).
+  ok(fns.length === 18 && cnt._t1365Art === 1 && cnt.spawnCaravanBody === 3 && cnt._caravanSyncOne === 2 && cnt._xzMakeBody === 1 && cnt.marketVillages === 1 && cnt.startReturnLeg === 1 && cnt._t1282Wall === 1
     && cnt._t1289Leg === 1 && cnt._t1289In === 1 && cnt._xzWalkToBorder === 1,
-    '⓪ [전제] `_t1253Now()` 읽는 자리 17곳 중 이 판의 여섯(몸 세우기 셋 · 도착 동기 · 이웃 존 몸 · 장마당 그림) + T1282 둘(귀환 t0 · 걸음 날 수) + T1289 넷(바구니 머묾 끝 · 세 칸 · 되살림 축 · 경계 걷기) — 나머지 다섯은 T1268 판',
-    `${fns.length}곳 · 몸 세우기 ${cnt.spawnCaravanBody} · 동기 ${cnt._caravanSyncOne} · 이웃 ${cnt._xzMakeBody} · 장마당 ${cnt.marketVillages} · 귀환 ${cnt.startReturnLeg} · 날 수 ${cnt._t1282Wall} · 세 칸 ${cnt._t1289Leg} · 되살림 ${cnt._t1289In} · 경계 ${cnt._xzWalkToBorder}`);
+    '⓪ [전제] `_t1253Now()` 읽는 자리 18곳(일터 깨움 장인 판정 하나 포함) 중 이 판의 여섯(몸 세우기 셋 · 도착 동기 · 이웃 존 몸 · 장마당 그림) + T1282 둘(귀환 t0 · 걸음 날 수) + T1289 넷(바구니 머묾 끝 · 세 칸 · 되살림 축 · 경계 걷기) — 나머지 다섯은 T1268 판',
+    `${fns.length}곳 · 몸 세우기 ${cnt.spawnCaravanBody} · 동기 ${cnt._caravanSyncOne} · 이웃 ${cnt._xzMakeBody} · 장마당 ${cnt.marketVillages} · 귀환 ${cnt.startReturnLeg} · 날 수 ${cnt._t1282Wall} · 세 칸 ${cnt._t1289Leg} · 되살림 ${cnt._t1289In} · 경계 ${cnt._xzWalkToBorder} · 장인 판정 ${cnt._t1365Art}`);
   const site = BAITS.slice(0, 6).map(([, , from]) => fnOf(VC.indexOf(from)));
   ok(site.join() === 'spawnCaravanBody,spawnCaravanBody,spawnCaravanBody,_caravanSyncOne,_xzMakeBody,marketVillages', '⓪ 미끼 여섯이 그 여섯 자리(함수)를 바꾼다', site.join(' · '));
   //   ★[T1282] 닫는 날 적기 — 운영 마감 문(`_openDayJobs` 머리 · 하루 마감 또는 창 머리)에서만 · 켬 뒤 · 하네스 mg 판은 같은 함수를 부른다
