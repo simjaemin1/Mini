@@ -143,7 +143,7 @@ console.log('\n⑥ 몸 모양 하나로');
   v8.setFlagsFromString('--allow-natives-syntax');
   const same = new Function('a', 'b', 'return %HaveSameMap(a, b)');
   const sh = fn('function _t671Shape(p) {');
-  const ctx = { _t316Econ: false, T1140_STUCK_INLINE: false, T1140_HOT_ORDER: false, T1144_LIFE_EVENT: true, T1241_DES: false, require };
+  const ctx = { _t316Econ: false, T1140_STUCK_INLINE: false, T1140_HOT_ORDER: false, T1144_LIFE_EVENT: true, T1241_DES: false, T1393_HUNT_CHASE: false, require };   // ★[land1087 · PM] T1393 이 `_t671Shape` 에 손잡이 한 줄을 더했다(끔 = 칸 안 섬 — 몸 모양 무변)
   vm.createContext(ctx); vm.runInContext(sh + 'this.f = _t671Shape;', ctx);
   const mkB = () => { const p = { pid: 'x', x: 1, y: 2 }; ctx.f(p); return p; };
   const A = mkB(), F = mkB(), C = mkB(), D = mkB(), K = mkB();
