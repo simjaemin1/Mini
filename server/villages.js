@@ -7823,7 +7823,7 @@ const T1238_TERR_V2 = T1207_TERR_REAL && process.env.T1238_TERR_V2 === '1';
 //   길 칸 = ⓐ 다리 칸(존 설정 `bridges` 띠 전부 — 양끝 뭍 착지 칸 포함) ⓑ 다리 머리(다리 물 칸에서 체비쇼프 2 안의 뭍 · 2 = 다리 폭 — 있는 수) ⓒ **남의** 교역로가 지나는 칸
 //     (`state.routeCache` 길 점을 칸으로 이은 것 · 날마다 · 줄 수가 바뀌면 다시 엮는다 · 묻는 마을 `vil` 이 그 길의 끝 마을이면 제 길이라 길 칸이 아니다 —
 //      제 회관에서 나가는 제 길까지 비우면 마을 한가운데가 비어 400날 인구가 4,110 → 2,360 으로 갈렸다(T1406 §2 첫 판) · `vil` 없이 물으면 ⓐ ⓑ 만).
-//   켜면 그 칸에: 영토 넓히기 후보 0(`_terrGrowCore`) · 시딩 영토 · 논 존닝 행 0 · 집 부지 0(`_lifeSiteFilters`) · 밭 · 논 0(`_lifeBatEligible` · `_lifeFrontier`) · NPC 밭 심기 0(zone.js) · 환호는 그 칸을 안 파고 출입구로 친다(`_ditchPlan`).
+//   켜면 그 칸에: 영토 넓히기 후보 0(`_terrGrowCore` — ⓐ ⓑ 만) · 시딩 영토 · 논 존닝 행 0 · 집 부지 0(`_lifeSiteFilters`) · 밭 · 논 0(`_lifeBatEligible` · `_lifeFrontier`) · NPC 밭 심기 0(zone.js) · 환호는 그 칸을 안 파고 출입구로 친다(`_ditchPlan`).
 //   영토가 덮어도 걸음은 열려 있다는 지금 규칙(T569)은 그대로 — 이 문은 "가짐"이 길 칸에 서지 않게 할 뿐이다. 새 수 0.
 const T1406_KEEP_PATHS = process.env.T1406_KEEP_PATHS === '1';
 let _t1406Br = null, _t1406Rt = null, _t1406RtKey = '';
@@ -8409,7 +8409,7 @@ function _terrGrowCore(vil) {
       const nx = x + dx, ny = y + dy, nk = K(nx, ny);
       if (own.has(nk) || cand.has(nk)) continue;
       if (ta.isBlocked(nx, ny)) continue;
-      if (T1406_KEEP_PATHS && _t1406PathCell(nx, ny, vil)) continue;   // ★[T1406 ㉮] 길 칸은 영토 후보가 아니다(켬만)
+      if (T1406_KEEP_PATHS && _t1406PathCell(nx, ny, null)) continue;   // ★[T1406 ㉮] 다리 칸 · 다리 머리는 영토 후보가 아니다(켬만 · 교역로 칸은 뺀다 — 길 한 줄이 4방 넓히기를 가로막아 400날 영토 −11% · 인구 −14% · T1406 §2 둘째 판 · 영토가 덮어도 걸음은 열림 T569)
       if (near && near.length && _t569OwnedBy(near, nk)) continue;
       if (T1238_TERR_V2 && !_t1238GoOk(vil, nx, ny, null, _t1238Near || (_t1238Near = _t569Near(vil)))) continue;   // ★[T1238 ⑤] 켬 = 바둑식(이 칸이 이웃 마을의 마지막 숨 자리면 후보가 아니다 · 일괄이 오늘 더하는 칸끼리는 `_t1238Batch` 가 다시 본다)
       cand.set(nk, score(nx, ny));
