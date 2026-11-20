@@ -5667,6 +5667,22 @@ function _t1372SSTake() {
   _t1372SSSnap = rows; _t1372SSStat.snap++; _t1372SSStat.rows = rows.length;
   return rows;
 }
+// ★★[T1382 덧붙임 둘] **걸음 커널 지형 비트(`_WW.TB`)도 재기동을 넘는다** — 손잡이 `T1340_RESUME_EXACT` 안(새 손잡이 0 · 끔 = 종전 글자).
+//   종전: 커널 지형 비트는 몸이 걸으며 한 칸씩 굽는 캐시라 다시 뜬 판은 0(모름)부터 — 서 있는 몸 거름(`_wwIsStill`)이 모름 칸을 '서 있지 않다'로 읽어
+//     그 몸을 커널에 넘기고(`_wwPost`) 첫 거름 표를 깨웠다(몸 세계 8날 · 4날 끊음: 다시 뜬 둘째 틱에 459 몸 전부 · 한 번에 돈 판은 0 → 다시 결정 · 어부 몸 걸음 갈림 → 100날 econ 20날 갈림).
+//   켜면 종료 저장(T742 줄 `zone.t1382TB` · deflate)에 비트를 싣고 다시 뜬 판 첫 틱 머리에 같은 길이면 그대로 덮는다(값은 지형 술어 그대로라 구운 칸 집합만 같아진다).
+let _t1382TbPend = null;
+const _t1382TbStat = { saved: 0, restored: 0, bytes: 0 };
+function _t1382TbTake() {
+  if (!_WW || !_WW.TB) return null;
+  try { const z = require('zlib').deflateSync(Buffer.from(_WW.TB.buffer, _WW.TB.byteOffset, _WW.TB.length)); _t1382TbStat.saved++; _t1382TbStat.bytes = z.length; return { n: _WW.TB.length, z: z.toString('base64') }; } catch (e) { return null; }
+}
+function _t1382TbApply() {
+  const X = _t1382TbPend; _t1382TbPend = null;
+  if (!X || !_WW || !_WW.TB || X.n !== _WW.TB.length) return;
+  try { const b = require('zlib').inflateSync(Buffer.from(X.z, 'base64')); if (b.length !== _WW.TB.length) return; _WW.TB.set(b); _wwTbGen++; _t1382TbStat.restored++; } catch (e) { return; }
+  console.log(`[${ZONE_ID}] 🦶 [T1382] 걸음 커널 지형 비트 되돌림 — ${X.n}바이트(싣기 ${_t1382TbStat.bytes || (X.z.length * 3 >> 2)})`);
+}
 function _t1372SSApply() {
   const rows = _t1372SSPend; _t1372SSPend = null; if (!Array.isArray(rows)) return;
   const A = SS.A;
@@ -10962,6 +10978,7 @@ setInterval(() => {
 }, FISH_TICK_MS);
 // ★[T1382] 어장 번짐 시계 — 다시 뜬 판은 `_fishTickAt` 이 부팅 순간이라 첫 번짐이 지난 번짐부터가 아니라 부팅부터 잰 몫이었다(몸 세계 6날 · 4날 끊음: 어부 몸 29 자리 갈림).
 //   손잡이 `T1340_RESUME_EXACT` 안 · 종료 저장에만 값(T742 줄 `zone.t1382Fish`) · 끔 = 종전 글자.
+if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.t1382TB', () => (shuttingDown ? _t1382TbTake() : null), (v) => { if (v && v.z) _t1382TbPend = v; });
 if (process.env.T1340_RESUME_EXACT !== '0') SimVillages.t742Bind('zone.t1382Fish', () => (shuttingDown ? { at: _fishTickAt } : null), (v) => { if (v && Number.isFinite(v.at)) _fishTickAt = v.at; });
 
 // 바이옴별 어종 — ★v1 의 목록을 **그대로 쓴다**(어종 확장은 이번 범위 밖 = 회부).
@@ -17582,6 +17599,7 @@ setInterval(() => {
   //   **신원이 아직 없는** 자리가 많다. 거기까지 순수 해시로 가는 건 다음 카드다(보고 §4).
   _diceTick.seed(_SEED.seedOf(_ZONE_SH, 0, 0, zoneGameDay(), _tick.n));
   if (_t1372CgPend) _t1372CgApply();   // ★[T1372 ⓒ] 첫 틱 머리 — 벽 세대(마을 첫 틱의 T1340 다시 찍기보다 앞)
+  if (_t1382TbPend) _t1382TbApply();   // ★[T1382] 걸음 커널 지형 비트(서 있는 몸 거름이 읽는다) — 첫 거름 표보다 앞 · 이 틱 `_wwPre` 앞
   if (_t1372SSPend) _t1372SSApply();   // ★[T1372 ⓑ] 다시 뜬 판의 첫 틱 머리 — 첫 거름 표 행을 그 몸 칸에(몸 · 캐러밴 몸이 다 선 뒤)
   if (_elapsed > DT_MAX) { _tick.clip++; _tick.clipped += _elapsed - DT_MAX; }
   if (_elapsed > _tick.maxGap) _tick.maxGap = _elapsed;
