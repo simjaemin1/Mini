@@ -1,0 +1,20 @@
+[
+ {
+  "tag": "R_1020",
+  "seed": 1020,
+  "days": 730,
+  "env": {
+   "T1391_DEN_RICH": "1"
+  },
+  "kind": "sbc"
+ },
+ {
+  "tag": "NH_B",
+  "seed": 1020,
+  "days": 100,
+  "env": {
+   "T1391_UNHAPPY_BANDIT": "nohome"
+  },
+  "kind": "body"
+ }
+]

@@ -1,0 +1,3 @@
+# 옛 코드 빨강 — 하네스 = d92a7cf06 · 제품(server sim public lab) = 74675b8f5 · 시한 600초
+빨강 ○ | test-t1391-unhappy-bandit.js | RC=1 · ✓ 7 · ✗ 13 |   ✗ ①d 끔 · T1391 셈 칸 · 관찰 줄 · 저장 표지(모이는 단 · 셈)가 안 선다(손잡이 값 '')  [["gang",null,{"st":false,"road":false,"la
+# 합: 빨강 1 · 크래시 0 · 초록 0 · 모름 0 · 제품 무관 0
