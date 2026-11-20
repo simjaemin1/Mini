@@ -41,7 +41,7 @@ if (process.env.T577_OUT) {
   const calls = [];
   let SR = null, lastSR = {};
   const srRef = () => { if (SR) return SR; const V = VS(); try { const p = V && typeof V.tickPerf === 'function' ? V.tickPerf().probe : null; if (p && p.siteReason) { SR = p.siteReason; lastSR = Object.assign({}, SR); } } catch (e) {} return SR; };
-  const snap = new Map();   // 마을 → { site, miss }
+  const snap = new Map();   // 마을 이름 → { site, miss }
   const today = new Map();  // 마을 이름 → { call, hit } (그날)
   let busy = false;
   const shadowOf = (vil) => {
@@ -90,11 +90,11 @@ if (process.env.T577_OUT) {
       const S = srRef(); if (!S) return;
       const ch = [];
       for (const vil of sv()) {
-        const p = snap.get(vil) || { site: null, miss: undefined };
+        const p = snap.get(vil.name) || { site: null, miss: undefined };
         const site = vil._site ? (vil._site.cx + ',' + vil._site.cy) : null, miss = vil._siteMissDay;
         if (miss != null && miss !== p.miss) ch.push([vil, 0, miss]);
         else if (site && site !== p.site && miss == null) ch.push([vil, 1, wantDay]);
-        snap.set(vil, { site, miss });
+        snap.set(vil.name, { site, miss });
       }
       if (!ch.length) return;
       const dR = {}; for (const k in S) { const d = (S[k] || 0) - (lastSR[k] || 0); if (d) dR[k] = d; } lastSR = Object.assign({}, S);
@@ -117,7 +117,7 @@ if (process.env.T577_OUT) {
   const plOf = () => { const P = VS() && VS().__labProbe && VS().__labProbe._t400Probe; try { const k = P && P.setup ? P.setup() : null; return k && k.deps ? k.deps.players : null; } catch (e) { return null; } };   // 인자 없는 setup = 읽기만
   const terrHousing = (e) => (E.T958_HOUSE_REAL && e._t958Plan !== undefined) ? e._t958Plan : (e.housing || 0);
   //   ── ③ 넓힌 칸 ──
-  const seen = new Map(), grownAt = new Map();   // 마을 이름 → Set · Map(칸 → 날)
+  const seen = new Map(), grownAt = new Map(), init = new Map();   // 마을 이름 → Set · Map(칸 → 날) · 첫 줄 영토(Set — 마디 잇기)
   const UCOLS = ['day', 'v', 'grown', 'house', 'field', 'pot', 'work', 'other', 'gone'];
   const use = [];
   const lotSet = (vil) => {
@@ -163,6 +163,29 @@ if (process.env.T577_OUT) {
     return [n, f];
   };
   let lastDay = -1;
+  //   ★마디 판(`T1380_SEG=1`) — 셈 칸(이름 차례 · 마을-날 앞 누계 · 집터 표지 · 첫 줄 영토 · 넓힌 칸 날)을 마디 끝(종료)에 판 폴더 `t1380.state.<날>.json` 에 두고
+  //     다음 마디(`seg-<그 날>.json`)가 읽는다. `vil._t1380` 셈은 재기동이 안 싣는다(0 부터) — 그 앞 누계는 0 으로 · `_t1207` 은 T1340 이 싣는다(줄면 버림).
+  const SEG = process.env.T1380_SEG === '1';
+  const segFrom = (() => { const m = /seg-(\d+)\.json$/.exec(OUT); return m ? +m[1] : 0; })();
+  const stFile = (d) => path.join(path.dirname(OUT), `t1380.state.${d}.json`);
+  if (SEG && segFrom > 0) {
+    try {
+      const S0 = JSON.parse(fs.readFileSync(stFile(segFrom), 'utf8'));
+      for (const n of S0.names) vi(n);
+      for (const [k, v] of S0.prevV) { const q = Object.assign({}, v, { _seg: 1 }); for (const kk of T1380K.concat(T1380K2, T1380K3)) q[kk] = 0; prevV.set(k, q); }
+      for (const [k, v] of S0.snap) snap.set(k, v);
+      for (const [k, v] of S0.init) init.set(k, new Set(v));
+      for (const [k, v] of S0.grown) grownAt.set(k, new Map(v));
+      lastDay = S0.day | 0; wantDay = lastDay + 1;
+    } catch (e) {}
+  }
+  const saveSeg = () => {
+    if (!SEG || lastDay < 0) return;
+    try {
+      fs.writeFileSync(stFile(lastDay), JSON.stringify({ day: lastDay, names, prevV: [...prevV], snap: [...snap], init: [...init].map(([k, v]) => [k, [...v]]), grown: [...grownAt].map(([k, v]) => [k, [...v]]) }));
+      for (const f of fs.readdirSync(path.dirname(OUT))) { const m = /^t1380\.state\.(\d+)\.json$/.exec(f); if (m && +m[1] < lastDay - 60) try { fs.unlinkSync(path.join(path.dirname(OUT), f)); } catch (e) {} }
+    } catch (e) {}
+  };
   const dayRows = (day) => {
     detect();
     for (const vil of sv()) {
@@ -170,13 +193,15 @@ if (process.env.T577_OUT) {
       const N = (e.npcs || []).length, terrN = vil._terrSet ? vil._terrSet.size : 0;
       //   넓힌 칸 표
       let s = seen.get(vil.name), g = grownAt.get(vil.name);
-      if (!s) { s = new Set(vil._terrSet || []); seen.set(vil.name, s); g = new Map(); grownAt.set(vil.name, g); }
+      if (!s && init.has(vil.name)) { s = new Set(init.get(vil.name)); if (!g) { g = new Map(); grownAt.set(vil.name, g); } for (const k of g.keys()) s.add(k); seen.set(vil.name, s); }   // 마디 잇기 — 앞 마디의 본 칸
+      if (!s) { s = new Set(vil._terrSet || []); seen.set(vil.name, s); init.set(vil.name, new Set(s)); g = new Map(); grownAt.set(vil.name, g); }
       else for (const k of vil._terrSet || []) if (!s.has(k)) { s.add(k); g.set(k, day); }
       //   넓히기 목표(읽기 — `_terrGrowCore` 의 그 식: max(econ, 집) 과 상한 중 작은 쪽)
       const capF = Math.ceil(N / 6) * 600 + 1500, lab = Math.round((1500 + Math.ceil(N / 6) * 400) * 1.5);
       let tgt = null; try { if (e.land && e.land.size) { const tt = W0.tt(e.land.size, terrHousing(e)); tgt = Math.min(tt.target, capF); } } catch (_) {}
-      const p = prevV.get(vil.name) || null;
+      let p = prevV.get(vil.name) || null;
       const T7 = vil._t1207 || {}, K = vil._t1380 || {};
+      if (p && p._seg) { p = Object.assign({}, p); delete p._seg; if (['wood', 'laborMin', 'cells', 'body'].some((k) => +(T7[k] || 0) + 1e-9 < (p[k] || 0))) for (const k of ['wood', 'laborMin', 'cells', 'body']) p[k] = 0; }   // 마디 잇기 — `_t1207` 이 다시 0 부터면(재기동이 안 실은 판) 앞 누계를 버린다
       const d = (o, k) => p ? (+(o[k] || 0) - (p[k] || 0)) : +(o[k] || 0);   // 셈 칸 날 차 — 마을의 첫 줄은 부팅(셈 0) 뒤 누계(한 번에 돈 판 · 첫 날 몫을 안 버린다)
       const grown = p ? terrN - p.terrN : null;
       const wt = vil._t1207Wait && (vil._t1207Wait.day | 0) === (day | 0) ? vil._t1207Wait.why : null;
@@ -215,5 +240,5 @@ if (process.env.T577_OUT) {
     };
     return Lg;
   };
-  process.on('exit', dump);
+  process.on('exit', () => { dump(); saveSeg(); });
 }

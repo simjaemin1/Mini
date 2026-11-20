@@ -67,6 +67,13 @@ if (process.env.T577_OUT) {
   };
   let lastDay = -1, prevSt = null;
   const prevRoster = new Map(), prev = new Map();
+  //   ★[T1380 · 마디 판] `T1345_SEG=1` 이면 날 차 셈을 마디(T1308 `seg-<시작 날>.json` — 아이 존 하나)를 넘어 잇는다: 마디 끝(종료)에 셈 칸(이름 차례 · 마을마다 앞 날 누계 · 명부)을
+  //     판 폴더 `t1345.state.<날>.json` 에 두고 · 다음 마디가 그 날에서 시작하면 읽는다(마디 첫 날의 출생 · 죽음 · 떠남 · 닿음이 null 이 되지 않게). 끔 = 종전 그대로 · 세계 0(파일만).
+  const SEG = process.env.T1345_SEG === '1';
+  const segFrom = (() => { const m = /seg-(\d+)\.json$/.exec(OUT); return m ? +m[1] : 0; })();
+  const stFile = (d) => path.join(path.dirname(OUT), `t1345.state.${d}.json`);
+  if (SEG && segFrom > 0) { try { const S0 = JSON.parse(fs.readFileSync(stFile(segFrom), 'utf8')); for (const n of S0.names) vi(n); for (const [k, v] of S0.prev) prev.set(k, v); for (const [k, v] of S0.roster) prevRoster.set(k, new Set(v)); lastDay = S0.day | 0; } catch (e) {} }
+  const saveSeg = () => { if (!SEG || lastDay < 0) return; try { fs.writeFileSync(stFile(lastDay), JSON.stringify({ day: lastDay, names, prev: [...prev], roster: [...prevRoster].map(([k, v]) => [k, [...v]]) })); } catch (e) {} };
   const dayRows = (day, world) => {
     for (const vil of sv()) {
       const e = vil && vil.econ; if (!e || e.founder) continue;
@@ -126,5 +133,5 @@ if (process.env.T577_OUT) {
     };
     return Lg;
   };
-  process.on('exit', dump);
+  process.on('exit', () => { dump(); saveSeg(); });
 }

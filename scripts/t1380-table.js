@@ -27,11 +27,39 @@ function loadJ(dir, re) {
   if (!fl.length) return null;
   try { return JSON.parse(fs.readFileSync(path.join(dir, fl[fl.length - 1]), 'utf8')); } catch (e) { return null; }
 }
+//   ★마디 판(T1308 `--every N` · 상자가 다시 서도 잇는 판) — 마디마다 `seg-<시작 날>.json.<꼴>.json` 이 선다 · 날 줄을 이어 하나로(이름 차례는 마디마다 다시 맞춘다 · 뒤 마디는 앞 마디가 쓴 날을 덮지 않는다)
+function loadSegs(dir, kind) {
+  if (!dir || !fs.existsSync(dir)) return null;
+  const re = new RegExp(`^seg-(\\d+)\\.json\\.${kind}\\.json$`);
+  const fl = fs.readdirSync(dir).map((f) => { const m = re.exec(f); return m ? { f, from: +m[1] } : null; }).filter(Boolean).sort((a, b) => a.from - b.from);
+  if (!fl.length) return loadJ(dir, new RegExp(`\\.json\\.${kind}\\.json$`));
+  const J = fl.map((x) => { try { return JSON.parse(fs.readFileSync(path.join(dir, x.f), 'utf8')); } catch (e) { return null; } }).filter(Boolean);
+  if (J.length === 1) return J[0];
+  const out = Object.assign({}, J[J.length - 1]), names = [], idx = new Map();
+  const gi = (n) => { let i = idx.get(n); if (i === undefined) { i = names.length; names.push(n); idx.set(n, i); } return i; };
+  const tabs = kind === 't1345' ? [['rows', 'cols'], ['wrows', null]] : [['calls', 'ccols'], ['vrows', 'vcols'], ['use', 'ucols']];
+  for (const [rk] of tabs) out[rk] = [];
+  if (kind === 't1345') out.probes = [];
+  const last = {};
+  for (const o of J) {
+    const map = (o.names || []).map(gi);
+    for (const [rk, ck] of tabs) {
+      const vI = ck && o[ck] ? o[ck].indexOf('v') : -1, L0 = last[rk] == null ? -Infinity : last[rk];
+      let mx = L0;
+      for (const r of (o[rk] || [])) { if (!(r[0] > L0)) continue; const q = r.slice(); if (vI >= 0 && q[vI] != null) q[vI] = map[q[vI]]; out[rk].push(q); if (r[0] > mx) mx = r[0]; }
+      last[rk] = mx;
+    }
+    if (kind === 't1345') for (const pq of (o.probes || [])) out.probes.push(pq);
+  }
+  out.names = names; out.segs = fl.map((x) => x.from);
+  if (kind === 't1380') out.lastDay = Math.max(...J.map((o) => o.lastDay || 0));
+  return out;
+}
 function seedOf(dir) { try { return +JSON.parse(fs.readFileSync(path.join(dir, 'progress.json'), 'utf8')).seed; } catch (e) { return null; } }
 const mean = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
 const capF = (N) => Math.ceil(N / 6) * 600 + 1500, labF = (N) => Math.round((1500 + Math.ceil(N / 6) * 400) * 1.5);
 function digest(R) {
-  const H = loadJ(R.dir, /^seg-\d+\.json\.t1345\.json$/) || loadJ(R.dir, /\.json\.t1345\.json$/), T = loadJ(R.dir, /^seg-\d+\.json\.t1380\.json$/);
+  const H = loadSegs(R.dir, 't1345'), T = loadSegs(R.dir, 't1380');
   const o = { k: R.k, dir: R.dir, seed: seedOf(R.dir), off: /^끔/.test(R.k), ok: !!H };
   if (!H) return o;
   const hx = Object.fromEntries(H.cols.map((c, i) => [c, i]));
@@ -163,7 +191,7 @@ function goals(o, f) {
 }
 //   끔 판의 굶어 죽음 · 죽음은 같은 끝 날까지(끔 판이 더 길 수 있다 — 730날)
 for (const o of D) if (o.off && o.ok) {
-  const H = loadJ(o.dir, /^seg-\d+\.json\.t1345\.json$/) || loadJ(o.dir, /\.json\.t1345\.json$/), hx = Object.fromEntries(H.cols.map((c, i) => [c, i]));
+  const H = loadSegs(o.dir, 't1345'), hx = Object.fromEntries(H.cols.map((c, i) => [c, i]));
   o.fdAt = (L) => H.rows.reduce((x, r) => x + (r[0] <= L ? (r[hx.fd] || 0) : 0), 0);
   o.deadAt = (L) => H.rows.reduce((x, r) => x + (r[0] <= L ? (r[hx.dead] || 0) : 0), 0);
 }
