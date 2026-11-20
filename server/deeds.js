@@ -35,7 +35,7 @@ const CFG = {
   SCORE: /^[abc]$/.test(process.env.T1343_SCORE || '') ? process.env.T1343_SCORE : 'b',
   P_USE: Math.max(0, _num('T1343_P_USE', 4)),
   Q_WORK: Math.max(0, _num('T1343_Q_WORK', 1)),
-  Q_IDLE: Math.max(0, _num('T1343_Q_IDLE', 0.25)),
+  Q_IDLE: Math.max(0, _num('T1343_Q_IDLE', 0)),   // ★[T1402 · 재민 11-20 판정 12] 서 있기만 = 0점(점수는 일한 시간뿐) · 되돌림 `T1343_Q_IDLE=0.25`(T1343 제안 값)
   // 머묾 — 연속으로 이만큼 그 청크에 있어야 "머문 것"(걸어 지나가기 0) · 일한 뒤 이만큼은 "일하는 중" — T1305 손보는 시간(20초) 재사용(새 수 0)
   DWELL_MS: Math.max(1000, _num('T1305_CARE_S', 20) * 1000),
   TICK_MS: Math.max(10 * 1000, _num('T1305_TICK_MS', 60 * 1000)),
