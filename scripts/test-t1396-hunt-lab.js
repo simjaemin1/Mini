@@ -25,7 +25,10 @@ const BAIT = {
   seed: ["  vm.runInContext(`{let _s0=(${seed | 0})*2654435761>>>0;", "  if (0) vm.runInContext(`{let _s0=(${seed | 0})*2654435761>>>0;"],
 };
 const baitCopy = (file, B, dst) => { const src = fs.readFileSync(file, 'utf8'); const n = src.split(B[0]).length - 1; fs.writeFileSync(dst, n === 1 ? src.replace(B[0], B[1]) : src); return n; };
-const hcVerdict = (r) => { const L = (r.stdout || '').split('\n'); return { rc: r.status, okN: L.filter((l) => l.startsWith('  ✅ ')).length, badN: L.filter((l) => l.startsWith('  ❌ ')).length, h1Bad: L.some((l) => l.startsWith('  ❌ H1 ')), tail: L.filter(Boolean).slice(-1)[0] || (r.stderr || '').split('\n')[0] }; };
+// hunt-check 줄 머리: 두 칸 + 표(U+2705 통과 · U+274C 실패) + 한 칸 — 판정 자리엔 코드 포인트로(lint ②)
+const PASS_CP = 0x2705, FAIL_CP = 0x274C;
+const mark = (l) => (l.slice(0, 2) === '  ' ? l.codePointAt(2) : 0);
+const hcVerdict = (r) => { const L = (r.stdout || '').split('\n'); return { rc: r.status, okN: L.filter((l) => mark(l) === PASS_CP).length, badN: L.filter((l) => mark(l) === FAIL_CP).length, h1Bad: L.some((l) => mark(l) === FAIL_CP && /^ H1 /.test(l.slice(3))), tail: L.filter(Boolean).slice(-1)[0] || (r.stderr || '').split('\n')[0] }; };
 
 try {
   console.log('① 사냥실험실 = 지금 마을실험실 동물 블록(다시 굽기 --check)');
