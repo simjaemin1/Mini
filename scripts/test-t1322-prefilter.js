@@ -31,7 +31,7 @@ const loadSS = (mode) => { const m = { exports: {} }; vm.runInThisContext('(func
 function world(mode, src) {
   const SS = loadSS(mode), PF = SS.ON;
   const ctx = {
-    Math, Object, Number, Infinity, NaN, console, SS, T1322_PF: PF, T1322_VERIFY: PF && SS.VERIFY, T1337_WAKE: false, T1348_LOOP: false, T1348_WALK: false, T1348_WVERIFY: false, T1348_WORK: false, T1365_WORK: false, players: new Map(), _tick: { n: 0 },   // ★[T1337] 잠 깨움(끔 — 그 하네스는 `test-t1337-wake`)
+    Math, Object, Number, Infinity, NaN, console, SS, T1322_PF: PF, T1322_VERIFY: PF && SS.VERIFY, T1337_WAKE: false, T1348_LOOP: false, T1348_WALK: false, T1348_WVERIFY: false, T1348_WORK: false, players: new Map(), _tick: { n: 0 },   // ★[T1337] 잠 깨움(끔 — 그 하네스는 `test-t1337-wake`)
     T738_SOA_XY: false, T670_SKIP_IDLE: true, T791_VERIFY: false, SIM_LON_ON: true, T720_LON_DAY: true, T370_PATH_REUSE: false, T1294_ARRIVED_PATH: false, T791_PATH_MIR: true,
     MOVE_SPEED: 64, NPC_WALK_MULT: 1, GATHER_RANGE: 40, WORLD: { dayPhaseRatio: RATIO }, resources: new Map(),
     worldPhase: (now) => ((now / DAY) % 1 + 1) % 1, phaseAdd: (a, b) => { const v = (a + b) % 1; return v < 0 ? v + 1 : v; },

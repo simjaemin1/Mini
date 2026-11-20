@@ -1,8 +1,0 @@
-  ✓ RC=0
-
-=== 러너 요약 ===
-  통과 51: e2e-audio-probe.js e2e-pid-collide.js test-arms-body.js test-bandit-all.js test-bandit-body.js test-bandit-camp.js test-bandit-walk.js test-body-fields.js test-cand-walk.js test-cargo-age.js test-coll-grid.js test-crop-memo.js test-deforest-game.js test-farm-act.js test-fish-act.js test-fixture-reap.js test-harness-lint.js test-hp-src.js test-lon-day.js test-mining.js test-move-soa.js test-regrow-block.js test-reset-world.js test-seam-walk.js test-server-market.js test-t1013-band-day.js test-t1065-tool-gate.js test-t1089-ret-walk.js test-t1094-carry-cap.js test-t1095-mine-demand.js test-t1126-rock-yield.js test-t1146-stone-rule.js test-t1214-step-fast.js test-t1219-step-fast.js test-t1225-fish-capital.js test-t1238-terr-v2.js test-t1243-farm-on.js test-t1260-food-reads.js test-t1292-xz-esc.js test-t1314-cols.js test-t1322-prefilter.js test-t1324-xz-migrate.js test-t1331-beast-body.js test-t1337-wake.js test-t1342-gate-home.js test-t1348-loop.js test-t772-leg.js test-valuechain.js test-war-nosnap.js test-war-world.js test-wild-door.js
-  실패 2: test-t1322-verify-night.js(rc=124) test-t1365-work.js(rc=1)
-  걸린 시간 상위(초): test-t1322-verify-night.js 3600 · test-t1243-farm-on.js 1747 · test-t1365-work.js 607 · test-t1013-band-day.js 321 · test-war-world.js 185 · e2e-audio-probe.js 131 · test-cargo-age.js 130 · test-t1348-loop.js 121 · test-move-soa.js 88 · test-t1342-gate-home.js 84
-  걸린 시간 합: 하네스 7434초 · 러너 전체 7474초(그 사이 = 배수 · 정리 기다림 · 머리)
-  배수(T1161): 쉼 5번 × 8초 · 건넘 49번(앞 판이 남긴 아이 없음)

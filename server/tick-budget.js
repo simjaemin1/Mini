@@ -41,15 +41,6 @@ function out(own, name) {
   if (rv > 0 && r > 0) { _rsvHit = true; if (name) S.rsvOut[name] = (S.rsvOut[name] || 0) + 1; }   // ★[T695] 결정 몫 때문에 쉬었다 — 다음 틱은 번갈아
   return true;
 }
-// ★[T1365 ⓒ] `out` 과 같은 판정 — 시각을 부르는 쪽이 이미 읽은 값으로(결정 문 고리가 몸마다 읽는 시계 한 번을 같이 쓴다 · 시계 읽기 하나 덜)
-function outAt(own, name, t) {
-  if (!ON || !_end || !(own > 0)) return false;
-  const rv = _rsvNow(), r = _end - t;
-  if (r - rv > 0) return false;
-  if (name) S.skipped[name] = (S.skipped[name] || 0) + 1;
-  if (rv > 0 && r > 0) { _rsvHit = true; if (name) S.rsvOut[name] = (S.rsvOut[name] || 0) + 1; }
-  return true;
-}
 // 재개형 일(A* · 넓히기)에 넘길 예산 — 0 은 "무제한 완주"라는 뜻이라 켬일 때는 1ms 아래로 내려 보내지 않는다(알갱이 한 번은 판다).
 function slice(own) {
   if (!ON || !_end || !(own > 0)) return own;
@@ -61,4 +52,4 @@ function lateBegin() { _late = true; }
 function lateEnd(spentMs, ownMs, cut) { if (!DEC_FIRST) return; if (cut) S.decCut++; _rsvNext = cut ? ownMs : Math.min(ownMs, spentMs); }
 function stats() { return ON ? { on: true, ms: _ms, ticks: S.ticks, over: S.over, skipped: Object.assign({}, S.skipped),
   decFirst: DEC_FIRST ? { rsvOut: Object.assign({}, S.rsvOut), yieldTicks: S.yieldTicks, decCut: S.decCut, rsvNext: +_rsvNext.toFixed(2) } : null } : { on: false }; }
-module.exports = { ON, DEC_FIRST, begin, end, left, out, outAt, slice, stats, lateBegin, lateEnd };
+module.exports = { ON, DEC_FIRST, begin, end, left, out, slice, stats, lateBegin, lateEnd };

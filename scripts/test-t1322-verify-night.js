@@ -7,7 +7,6 @@
 //   몸 전부 판(T1270 판 자 — `scripts/t1294/run.cjs` · 가상 시계 · 시드 1020 · 30날)을 `T1322_PREFILTER=verify` 로 한 판 돌린다.
 //   `verify` 는 거를 때마다 몸을 열어 종전 걸음 문 머리 글자로 다시 판정한다(어긋나면 그 몸은 종전 길 — 판은 늘 종전 답).
 //   ★[T1337] `T1337_WAKE=verify` 도 같이 — ④ 잠 깨움 표가 건너려던 결정을 실제로 돌려 견줌 어긋남 0.
-//   ★[T1365] `T1365_WORK=verify` 도 같이 — ⑦ 일터 깨움 나머지 견줌 어긋남 0.
 //   ★[T1348] `T1348_WALK=verify` · `T1348_WORK=verify` 도 같이 — ⑥ 일터 깨움(농부)이 건너려던 결정을 실제로 돌려 견줌 어긋남 0 · ⑤ 걷는 몸 커널이 낼 값 ↔ 진짜 걸음 어긋남 0 · 고리 거울의 'gone' 표 ↔ players 술어 어긋남 0.
 //   ① 판이 끝까지 돌았다(가상 시계 오류 0 · 30날)  ② 견줌이 탔다(자명 통과 아님)  ③ **어긋남 0** — 아니면 빨강 + 어긋난 칸 · 몸 · 시각 + 그 칸을 걸음 문 밖에서 쓰는 자리(정적 후보) 한 줄씩.
 //   판 하나 ≈ 30 ~ 35분(혼자). 짧게: `T1323_NIGHT_DAYS=2`.
@@ -37,17 +36,16 @@ const ok = (c, m, d) => { if (c) { pass++; console.log('  ✓ ' + m + (d !== und
 const out = fs.mkdtempSync(path.join(os.tmpdir(), 't1323-night-'));
 console.log(`\n=== 첫 거름 견줌 판 — 시드 ${SEED} · ${DAYS}날 · ${out} ===`);
 const t0 = Date.now();
-const runEnv = (dir, extra) => ({ ...process.env, T1278_ROOT: ROOT, T1294_SEED: SEED, T577_PORT_BASE: process.env.T577_PORT_BASE || '47900', T1322_PREFILTER: 'verify', T1337_WAKE: 'verify', T1348_WALK: 'verify', T1348_WORK: 'verify', T1365_WORK: 'verify', T1322_STAT: path.join(dir, 'st-%p.json'), ...(extra || {}) });   // ★[PM land1083] T1348 견줌 둘(S4) + T1356 `runEnv` · `stats`(S12) 합침
+const runEnv = (dir, extra) => ({ ...process.env, T1278_ROOT: ROOT, T1294_SEED: SEED, T577_PORT_BASE: process.env.T577_PORT_BASE || '47900', T1322_PREFILTER: 'verify', T1337_WAKE: 'verify', T1348_WALK: 'verify', T1348_WORK: 'verify', T1322_STAT: path.join(dir, 'st-%p.json'), ...(extra || {}) });   // ★[PM land1083] T1348 견줌 둘(S4) + T1356 `runEnv` · `stats`(S12) 합침
 const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 't1294', 'run.cjs'), path.join(out, 'run'), String(DAYS)], {
   cwd: ROOT, stdio: ['ignore', 'inherit', 'inherit'], env: runEnv(out) });
 const st = fs.existsSync(path.join(out, 'run', 'status.json')) ? JSON.parse(fs.readFileSync(path.join(out, 'run', 'status.json'), 'utf8')) : null;
 ok(r.status === 0 && st && st.valid && st.days === DAYS, `① 판이 끝까지 돌았다(${DAYS}날 · 가상 시계 오류 0)`, `rc ${r.status} · ${Math.round((Date.now() - t0) / 1000)}초`);
 function stats(dir) {
-  const S = { skip: 0, vchecks: 0, bad: 0, why: {}, ex: [], dvq: 0, dcmp: 0, dbad: 0, dwhy: {}, dex: [], wvq: 0, wcmp: 0, wbad: 0, wwhy: {}, wex: [], gnbad: 0, fvq: 0, fcmp: 0, fbad: 0, fwhy: {}, fex: [], xvq: 0, xcmp: 0, xbad: 0, xwhy: {}, xex: [] };   // ★[T1365] 일터 깨움 나머지   // ★[T1348] 걷는 몸 견줌 · gone 표   // ★[T1337] 잠 깨움 견줌(건너려던 결정을 실제로 돌려 견줌)
+  const S = { skip: 0, vchecks: 0, bad: 0, why: {}, ex: [], dvq: 0, dcmp: 0, dbad: 0, dwhy: {}, dex: [], wvq: 0, wcmp: 0, wbad: 0, wwhy: {}, wex: [], gnbad: 0, fvq: 0, fcmp: 0, fbad: 0, fwhy: {}, fex: [] };   // ★[T1348] 걷는 몸 견줌 · gone 표   // ★[T1337] 잠 깨움 견줌(건너려던 결정을 실제로 돌려 견줌)
   for (const f of fs.readdirSync(dir).filter((x) => /^st-\d+\.json$/.test(x))) {
     const j = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
     S.skip += j.skip; S.vchecks += j.vchecks; S.bad += j.bad; for (const [k, v] of Object.entries(j.why || {})) S.why[k] = (S.why[k] || 0) + v; S.ex.push(...(j.ex || []));
-    S.xvq += j.xvq || 0; S.xcmp += j.xcmp || 0; S.xbad += j.xbad || 0; for (const [k, v] of Object.entries(j.xwhy || {})) S.xwhy[k] = (S.xwhy[k] || 0) + v; S.xex.push(...(j.xex || []));
     S.fvq += j.fvq || 0; S.fcmp += j.fcmp || 0; S.fbad += j.fbad || 0; for (const [k, v] of Object.entries(j.fwhy || {})) S.fwhy[k] = (S.fwhy[k] || 0) + v; S.fex.push(...(j.fex || []));
     S.wvq += j.wvq || 0; S.wcmp += j.wcmp || 0; S.wbad += j.wbad || 0; S.gnbad += j.gnbad || 0; for (const [k, v] of Object.entries(j.wwhy || {})) S.wwhy[k] = (S.wwhy[k] || 0) + v; S.wex.push(...(j.wex || []));
     S.dvq += j.dvq || 0; S.dcmp += j.dcmp || 0; S.dbad += j.dbad || 0; for (const [k, v] of Object.entries(j.dwhy || {})) S.dwhy[k] = (S.dwhy[k] || 0) + v; S.dex.push(...(j.dex || []));
@@ -79,8 +77,6 @@ ok(S.wvq > DAYS * 1e5 && S.wcmp === S.wvq && S.wbad === 0 && S.gnbad === 0, '⑤
 if (S.wbad) for (const e of S.wex.slice(0, 8)) console.log('    · ' + e);
 ok(S.fvq > DAYS * 1e5 && S.fcmp === S.fvq && S.fbad === 0, '⑥ ★[T1348] 일터 깨움(농부 체류 · 배정 칸으로 가는 중) — 건너려던 결정을 실제로 돌려 견줌 어긋남 0(결정 시각 · 몸 칸)', `견줌 ${S.fvq} · 돌린 뒤 견줌 ${S.fcmp} · 어긋남 ${S.fbad}${Object.keys(S.fwhy).length ? ' · ' + JSON.stringify(S.fwhy) : ''}`);
 if (S.fbad) for (const e of S.fex.slice(0, 8)) console.log('    · ' + e);
-ok(S.xvq > DAYS * 5e4 && S.xcmp === S.xvq && S.xbad === 0, '⑦ ★[T1365] 일터 깨움 나머지(어부 · 사냥꾼 · 회관 · 장인 · 벌목 · 채광 · 채집) — 건너려던 결정을 실제로 돌려 견줌 어긋남 0', `견줌 ${S.xvq} · 돌린 뒤 견줌 ${S.xcmp} · 어긋남 ${S.xbad}${Object.keys(S.xwhy).length ? ' · ' + JSON.stringify(S.xwhy) : ''}`);
-if (S.xbad) for (const e of S.xex.slice(0, 8)) console.log('    · ' + e);
 if (S.dbad) for (const e of S.dex.slice(0, 8)) console.log('    · 잠 깨움 ' + e);
 if (S.bad) {
   for (const e of S.ex.slice(0, 8)) console.log('    · ' + e);
