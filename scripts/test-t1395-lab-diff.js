@@ -51,7 +51,7 @@ ok(coverage(L.SAME), '새 범위 — 마을랩·사냥랩·야생 표·기하 �
 ok(['D6-V-WAR_RAID_MIN','D6-H-MOB_WOLF_P','D6-H-MOB_TIG_P','D7-V-WAR_MARCH'].every(id => L.DIFFS.some(p => p.id === id)), '새로 찾은 네 갈림을 계속 관측');
 // ★미끼 넷째: 새 범위의 대조 줄 하나를 빼면 범위 계약이 빨강(기존 198줄만 남겨도 통과하는 자명 통과 방지).
 const omitted = L.SAME.filter(p => p.id !== 'P6-H-MOB_DEF');
-ok(L.SAME.length - omitted.length === 1 && !coverage(omitted), '★미끼 — 원본 사냥 표 대조 한 줄 제거 → 범위 계약 빨강');
+ok(L.SAME.length - omitted.length === 1 && !coverage(omitted), '★미끼 — 원본 사냥 표 대조 한 줄 제거(바꾼 자리 1) → 범위 계약 빨강');
 const R0 = L.checkSame();
 ok(L.SAME.length >= 20, `[전제] SAME 줄 ${L.SAME.length} ≥ 20(0 이면 아래가 자명 통과)`);
 const bad0 = R0.filter((r) => !r.ok);
@@ -70,7 +70,8 @@ ok(!dup, 'id 겹침 0', dup);
 {
   const p = L.SAME.find(p => p.id === 'P3-MOB_CAP'), value = R0.find(p => p.id === 'P3-MOB_CAP').lab;
   const fixture = '<script>const before=0;</script>\n<script>\n// MOB_CAP=' + (+value + 7) + ';\nconst MOB_CAP=' + value + ';\n</script>';
-  ok(typeof L.sourceCode === 'function' && L.grab(L.sourceCode(fixture, true), p.lab[1]).v === value, '★미끼 — 둘째 script 주석 값 한 곳 추가 → 실제 선언을 읽음(가짜 주석 수 무시)');
+  const n = (fixture.match(/\/\/ MOB_CAP=/g) || []).length;
+  ok(n === 1 && typeof L.sourceCode === 'function' && L.grab(L.sourceCode(fixture, true), p.lab[1]).v === value, '★미끼 — 둘째 script 주석 값 한 곳 추가(바꾼 자리 1) → 실제 선언을 읽음(가짜 주석 수 무시)');
 }
 
 console.log('\n② 미끼 — 랩 쪽 값 한 곳');
