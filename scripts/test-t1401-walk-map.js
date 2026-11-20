@@ -13,7 +13,7 @@
 //   ★[T1406] ④ 다리 놓은 지도(`T1406_BRIDGES=1` · `server/bridges-t1406.json`): 못 닿음 0 · 걸음 ÷ 곧은 거리 3배 넘는 이웃 쌍 **0**(과녁)
 //      미끼 `t1406` = 그 다리 칸을 지운 사본 → ④ 빨강(3배 넘는 쌍이 돌아온다)
 //   ★[T1406] ⑤ NPC 마을은 길을 안 막는다(`T1406_KEEP_PATHS=1`): 운영 영토 넓히기(`_terrGrowCore` — `__labProbe._t569Probe.grow`)를 다리 곁 시험 마을로 60날 —
-//      켬 = 다리 칸 · 다리 머리(물 칸에서 체비쇼프 2)를 한 칸도 안 먹는다 · 끔 = 먹는다(자명 통과 금지 전제) · 집 부지 문(`reject`)은 남의 교역로 칸을 '길 칸'으로 거른다(끔 = 안 거른다)
+//      켬 = 다리 칸 · 다리 머리(물 칸에서 체비쇼프 2)를 한 칸도 안 먹는다 · 끔 = 먹는다(자명 통과 금지 전제) · 집 부지 문(`reject`)은 남의 교역로 칸을 '길 칸'으로 거른다(`T1406_KEEP_ROUTES=1` 같이 · 끔 = 안 거른다)
 //      미끼 `claim` = 길 칸 술어가 그 다리를 모르는 사본(존 설정에서 그 다리를 지움 · 지형은 그대로 열림 = 다리 칸에 땅을 놓는다) → ⑤ 빨강
 // 실행: node scripts/test-t1401-walk-map.js   (판 셋 · 동시 둘 · 약 3 ~ 5분) · 표 다시 쓰기: node scripts/test-t1401-walk-map.js --write-table
 'use strict';
@@ -91,7 +91,7 @@ const audit = (tag, bait) => new Promise((res) => {
 });
 const grow = (env) => new Promise((res) => {
   const e2 = Object.assign({}, process.env, { ENABLE_VILLAGES: '0', DB_PATH: path.join(BASE, 'grow-' + Math.random().toString(36).slice(2) + '.db') }, env); delete e2.T1401_BAIT;
-  if (!env.T1406_KEEP_PATHS) delete e2.T1406_KEEP_PATHS; if (!env.T1406_GROW_BAIT) delete e2.T1406_GROW_BAIT;
+  if (!env.T1406_KEEP_PATHS) delete e2.T1406_KEEP_PATHS; if (!env.T1406_KEEP_ROUTES) delete e2.T1406_KEEP_ROUTES; if (!env.T1406_GROW_BAIT) delete e2.T1406_GROW_BAIT;
   const c = spawn(process.execPath, [__filename, '--grow-child'], { env: e2, stdio: ['ignore', 'pipe', 'pipe'] }); let o = '', er = '';
   c.stdout.on('data', (d) => { o += d; }); c.stderr.on('data', (d) => { er += d; });
   c.on('exit', () => { let J = null; try { J = JSON.parse(o.trim().split('\n').pop()); } catch (x) {} res({ J, bait: /바꾼 자리 (\d+)칸/.exec(er) }); });
@@ -145,7 +145,7 @@ const sameOver = (J, T) => { const a = over(J); if (!a || !T) return { ok: false
   ok(N4b.code === 0 && N4b.K && N4b.K.n > 0 && over3(N4b.J) > 0, `[미끼] 바꾼 자리 ${N4b.K ? N4b.K.n : '?'}칸 — T1406 다리 칸을 지운 사본은 ④ 빨강(3배 넘는 쌍이 돌아온다)`, `지운 칸 ${N4b.K ? N4b.K.n : '?'} · 3배 넘음 ${over3(N4b.J)}`);
 
   console.log('\n⑤ [T1406 ㉮] NPC 마을 영토 넓히기는 길 칸(다리 · 다리 머리 · 교역로)을 안 먹는다(T1406_KEEP_PATHS=1)');
-  const [G0, G1, Gb] = await Promise.all([grow({}), grow({ T1406_KEEP_PATHS: '1' }), grow({ T1406_KEEP_PATHS: '1', T1406_GROW_BAIT: '1' })]);
+  const [G0, G1, Gb] = await Promise.all([grow({}), grow({ T1406_KEEP_PATHS: '1', T1406_KEEP_ROUTES: '1' }), grow({ T1406_KEEP_PATHS: '1', T1406_KEEP_ROUTES: '1', T1406_GROW_BAIT: '1' })]);
   const gs = (G) => G && G.J ? `넓힘 ${G.J.n0}→${G.J.n} · 다리 ${G.J.onBr} · 머리 ${G.J.onHead} · 교역로 ${G.J.onRoute}${G.J.err ? ' · 오류 ' + G.J.err : ''}` : '판 없음';
   ok(!!G0.J && !G0.J.on && G0.J.n > G0.J.n0 && (G0.J.onBr + G0.J.onHead) > 0 && !/길 칸/.test(String(G0.J.lotOn)), '⑤ [전제] 끔 = 같은 마을이 다리 · 머리 칸을 먹는다 · 집 부지 문이 교역로 칸을 안 거른다(자명 통과 금지)', gs(G0) + ` · 부지(길 위) ${G0.J ? G0.J.lotOn : '?'}`);
   ok(!!G1.J && G1.J.on && G1.J.n > G1.J.n0 && G1.J.onBr === 0 && G1.J.onHead === 0 && /길 칸/.test(String(G1.J.lotOn)) && G1.J.lotOff === null, '⑤ 켬 = 영토가 다리 · 머리 칸 0 · 그래도 넓힌다 · 집 부지 문은 남의 교역로 칸을 거르고 길 밖엔 부지가 선다', gs(G1) + ` · 부지(길 위) ${G1.J ? G1.J.lotOn : '?'} · (길 밖) ${G1.J ? G1.J.lotOff : '?'}` + (G0.J && G1.J ? ` · 넓힌 칸 끔의 ${((G1.J.n - G1.J.n0) / (G0.J.n - G0.J.n0) * 100).toFixed(0)}%` : ''));

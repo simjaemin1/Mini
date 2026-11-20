@@ -7826,6 +7826,9 @@ const T1238_TERR_V2 = T1207_TERR_REAL && process.env.T1238_TERR_V2 === '1';
 //   켜면 그 칸에: 영토 넓히기 후보 0(`_terrGrowCore` — ⓐ ⓑ 만) · 시딩 영토 · 논 존닝 행 0 · 집 부지 0(`_lifeSiteFilters`) · 밭 · 논 0(`_lifeBatEligible` · `_lifeFrontier`) · NPC 밭 심기 0(zone.js) · 환호는 그 칸을 안 파고 출입구로 친다(`_ditchPlan`).
 //   영토가 덮어도 걸음은 열려 있다는 지금 규칙(T569)은 그대로 — 이 문은 "가짐"이 길 칸에 서지 않게 할 뿐이다. 새 수 0.
 const T1406_KEEP_PATHS = process.env.T1406_KEEP_PATHS === '1';
+//   ⓒ 남의 교역로 칸은 따로 손잡이(`T1406_KEEP_ROUTES=1` · 끔 기본 · `T1406_KEEP_PATHS` 와 같이 켤 때만) — 1020 400날 판: 다리만 4,216 · ⓐⓑ+ⓒ(영토까지) 3,548 · ⓐⓑ+ⓒ(집 · 밭만) 3,035(끈 판 4,110).
+//     남의 길이 마을 한가운데(마당 · 광장)를 지나므로 집 부지 원판(반경 6)에 길 칸이 걸려 집 자리가 크게 준다 — 길 폭을 얼마로 볼지는 새 수라 회부(T1406 보고 §2).
+const T1406_KEEP_ROUTES = T1406_KEEP_PATHS && process.env.T1406_KEEP_ROUTES === '1';
 let _t1406Br = null, _t1406Rt = null, _t1406RtKey = '';
 function _t1406PathCell(x, y, vil) {
   if (!T1406_KEEP_PATHS) return false;
@@ -7841,7 +7844,7 @@ function _t1406PathCell(x, y, vil) {
     }
   }
   if (_t1406Br.has(K(x, y))) return true;
-  if (!vil) return false;
+  if (!vil || !T1406_KEEP_ROUTES) return false;
   const rc = state.routeCache, key = ((state.world && state.world.day) | 0) + ':' + (rc ? rc.size : 0);
   if (key !== _t1406RtKey) {   // 칸 → 그 칸을 지나는 길들의 끝 마을 번호 [a, b, a, b, …]
     _t1406RtKey = key; _t1406Rt = new Map();
