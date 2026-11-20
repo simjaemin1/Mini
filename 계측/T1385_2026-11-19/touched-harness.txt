@@ -1,0 +1,13 @@
+# 만진 함수 → 하네스 (touched-harness · base origin/main · 갈림점 311d0773a)
+· 바뀐 코드 파일 8 · 이름 19(물린 것 13 · 흔한 이름 뺌 0) · 바뀐 하네스 1 · 규약 다섯 · **돌릴 하네스 9**
+  scripts/t1385-lab-probe.js: t1385-lab-probe
+  scripts/t1385-observe.js: t1385-observe
+  scripts/t1385-segmerge.js: t1385-segmerge
+  scripts/t1385-table.js: t1385-table
+  scripts/t1385-war.js: t1385-war
+  sim/economy-engine.browser.js: T1333_WS_INPUT T1344_BRONZE_STOCK T1385 T1385_ARMORY T1385_BRONZE_NOCAP T1385_BZ T1385_FRAC _t1385On smithTarget
+  sim/economy-sim.js: T1333_WS_INPUT T1344_BRONZE_STOCK T1385 T1385_ARMORY T1385_BRONZE_NOCAP T1385_BZ T1385_FRAC _t1385On smithTarget
+  sim/war-core.js: T1385_BRONZE_NOCAP T1385_BRONZE_NOCAP_TINGATE _T1385_TIN _t1385Q _warConscriptAggregate _warConscriptIndividual
+· 이름 → 하네스 수: T1333_WS_INPUT 4 · T1344_BRONZE_STOCK 3 · T1385 1 · T1385_ARMORY 1 · T1385_BRONZE_NOCAP 1 · T1385_BRONZE_NOCAP_TINGATE 1 · T1385_BZ 1 · T1385_FRAC 1 · _T1385_TIN 1 · _t1385Q 1 · _warConscriptAggregate 1 · _warConscriptIndividual 1 · smithTarget 3
+· 바뀐 하네스: test-t1385-bronze-nocap.js
+· 돌릴 하네스: test-body-fields.js test-coll-grid.js test-harness-lint.js test-hp-src.js test-lon-day.js test-t1333-alloy-order.js test-t1344-bronze-mix.js test-t1347-fetch.js test-t1385-bronze-nocap.js
