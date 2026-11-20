@@ -93,7 +93,7 @@ if (OUT0) {
     for (const b of arr) { if (!b) continue; const x = b.x != null ? b.x : (b.pos && b.pos[0]), y = b.y != null ? b.y : (b.pos && b.pos[1]); if (typeof x === 'number' && typeof y === 'number') { n++; sx += x; sy += y; } }
     return [n, Math.round(sx), Math.round(sy)]; };
   const days = [];
-  let last = -1, keys = null, tlLen = 0, tlFirst = true;
+  let last = -1, keys = null, tlLen = 0;
   const Ev = require(path.join(ROOT, 'server', 'events'));
   const mk = Ev.createLedger;
   Ev.createLedger = function () {
@@ -116,13 +116,10 @@ if (OUT0) {
               // ★[T661] 덧칸(끝에만 덧붙인다 — 비교기의 칸 번호 무변): 직업 수 · 어장 상한 · 어제 어획 · 잠재 어획
               v.counts ? stor(v.counts) : null, v.land ? R6(v.land.fishSustain) : null, R6(v._fishOutLast), R6(v._fishRawLast)]; });
           const wsnap = {}; for (const [q, x] of Object.entries(wr)) wsnap[q] = R6(x); for (const q of Object.keys(wr)) delete wr[q];
-          //   ★[T1382] 다시 뜬 판(`T577_RESUMED=1`)의 첫 지문 — 종료 저장이 되살린 교역 기록(앞 마디가 이미 찍은 줄 · 이 날 앞 날짜)은 건너뛴다(되살림이 없으면 건넘 0 = 종전)
-          if (tlFirst && process.env.T577_RESUMED === '1' && Array.isArray(world.tradeLog)) { const i = world.tradeLog.findIndex((t) => !(t && (t.day | 0) < d)); tlLen = i < 0 ? world.tradeLog.length : i; }
           days.push({ d, seed: Econ.__t650Seed ? Econ.__t650Seed() : null, wd: world.day, cnt: Object.assign({}, cnt), sites: JSON.parse(JSON.stringify(sites)), wr: WR ? wsnap : undefined,
             car: Array.isArray(world.caravans) ? world.caravans.length : null, vil,
             tl: Array.isArray(world.tradeLog) ? world.tradeLog.slice(Math.min(tlLen, world.tradeLog.length)).map((t) => JSON.stringify(t)) : null });
           if (Array.isArray(world.tradeLog)) tlLen = world.tradeLog.length;
-          tlFirst = false;
           for (const k of Object.keys(cnt)) { cnt[k] = 0; sites[k] = {}; }
         }
       } catch (e) { /* 관찰 실패는 세계에 아무것도 안 한다 */ }

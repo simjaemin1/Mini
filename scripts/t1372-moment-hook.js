@@ -55,10 +55,6 @@ function dump(st, tag) {
   const fl2 = (o) => { const r = {}; if (!o) return r; for (const k of Object.keys(o).sort()) { const v = o[k]; if (typeof v === 'function') continue; r[k] = norm(v, 1).slice(0, 4000); } return r; };
   M.ledger = fl2(st.ledger); M.roads = fl2(st.roads);
   M.payload = {}; for (const [i, v] of (st.clientPayload || []).entries()) for (const [k, w] of Object.entries(fl2(v))) M.payload[(v && v.name || i) + '.' + k] = w;
-  //   ★[T1382] 길 닳음 칸(길 모듈 `_S` · 읽기만 — 칸마다 등급 · 닳은 날) · 코스 지도 · 다진 길 · 마지막 날
-  const RDF = path.join(ROOT, 'server', 'roads.js'), RS = require.cache[RDF] && require.cache[RDF].exports && require.cache[RDF].exports._S;
-  if (RS && RS.cells) { const c = {}; for (const [k, r] of RS.cells) c[k] = norm(r && r.v, 1) + '|' + norm(r && r.d, 1);
-    M.rd = { n: RS.cells.size, lastDay: RS.lastDay, coarseGen: RS.coarseGen, coarseN: RS.coarse ? RS.coarse.size : 0, pavedN: RS.paved ? RS.paved.size : 0, coarse: norm(RS.coarse, 1).slice(0, 4000), cells: c }; }
   const mobs = st.deps && st.deps.mobs; M.mobs = {}; M.mobN = mobs ? mobs.size : 0;
   if (mobs) for (const [mid, m] of mobs) for (const [k, w] of Object.entries(fl2(m))) M.mobs[mid + '.' + k] = w;
   return out;

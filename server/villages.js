@@ -1670,8 +1670,7 @@ function _t1340UnpackObj(obj, o, C) {
 //   몸: 이 칸만 빼고 다 — 소켓 · 열쇠(pid) · 짐/로트 줄(T1133 · T1166 이 따로 싣는다) · 자리(T747 이 열 쓰기 길로) · 진행 일(T747 이 대상이 그대로인지 보고 잇는다)
 const _T1340_BODY_DENY = new Set(['ws', 'pid', '_bag', '_lots', 'x', 'y', '_lifeTask']);
 //   서버 마을: 재기동이 잃는다고 잰 칸(보고 T1340 §1 표 — 부팅이 DB 행에서 다시 세우는 칸은 싣지 않는다)
-const _T1340_VKEYS = ['_otIdx', '_otIdxDay',   // ★[T1382] 기타직 순번 그날 캐시(pid 열쇠 — 마을 몸 pid 가 같게 되살아난 뒤라야 뜻이 같다)
-  '_frontDay', '_gameScan', '_jobSites', '_oreCells', '_oreScan', '_t449', '_t569R', '_t569RN', '_t724CutLast', '_t719N', '_farmArr', '_frontier', '_t427R', '_t325Trees',
+const _T1340_VKEYS = ['_frontDay', '_gameScan', '_jobSites', '_oreCells', '_oreScan', '_t449', '_t569R', '_t569RN', '_t724CutLast', '_t719N', '_farmArr', '_frontier', '_t427R', '_t325Trees',
   '_ditchSet', '_claim', '_clearCrew', '_buildCrew', '_psiteCrew', '_cropClaim', '_t731Day', '_t1302Crew',
   //   몸 세계 판(T1302 켬 · 나무꾼 몸)에서 더 잰 칸 — 영토 일감 줄(진척 `workMs` · 놓인 말뚝) · 그 계측 · 나무 훑기 · 숲 재생 셈 · 땅 쓰임 기억 · 잔가지 · 짐 넘친 몫
   '_t1207', '_t1207Pend', '_t1207Sum', '_t325Dbg', '_t325PreWalked', '_t341Back', '_t341Grow', '_t341K', '_t341KAt', '_t341R', '_t341WBar', '_t398Box', '_t398C', '_t743G',
@@ -1809,12 +1808,12 @@ function _t747Pack(vil) {
     if (_G) { const bg = _G.bagDump(b); if (bg) { o._bag = bg; if (b._warPackOf != null) o._packOf = b._warPackOf; _t1133Stat.saved++; for (const res in bg) _t1133Stat.savedRecs += bg[res].length; } }   // ★[T1133] 몸 짐 줄(있을 때만 — 없으면 칸 0 · 종전 바이트)
     if (T1166_LOT) { const _L = _t732Lots(); const lt = _L ? _L.npcDump(b) : null; if (lt) { o._lots = lt; _t1166Stat.saved++; for (const k in lt) _t1166Stat.savedRecs += lt[k].length; } }   // ★[T1166] 몸 손 로트 줄(있을 때만 — 없으면 칸 0 · 종전 바이트)
     if (o._lifeTask && o._lifeTask.k === 'greet') delete o._lifeTask;   // 인사(T529)는 그 사람 · 그 순간의 일 — 싣지 않는다
-    if (T1340_EXACT && state._t1340Shut) { const C = state._t1340C || (state._t1340C = _t1340Ctx(Date.now())); o.$all = _t1340PackObj(b, Object.keys(b).filter((k) => !_T1340_BODY_DENY.has(k)), C, _t1340Stat.bodySkip); _t1340Stat.bodies++; o.$at = C.at; if (b._lifeTask === null) o.$ltn = 1; o.$p = b.pid; }   // ★[T1340 ②] 종료 저장만
+    if (T1340_EXACT && state._t1340Shut) { const C = state._t1340C || (state._t1340C = _t1340Ctx(Date.now())); o.$all = _t1340PackObj(b, Object.keys(b).filter((k) => !_T1340_BODY_DENY.has(k)), C, _t1340Stat.bodySkip); _t1340Stat.bodies++; o.$at = C.at; if (b._lifeTask === null) o.$ltn = 1; }   // ★[T1340 ②] 종료 저장만
     rows.push(o);
   }
   //   마을 클레임 그림자 — 저장 순간 그대로(하루 마감 리셋 뒤 걸어가던 몸의 클레임까지 다시 세면 저장 순간과 달라진다 — 첫 켬 판이 보였다)
   const sh = { claim: vil._claim ? [...vil._claim] : null, clearCrew: vil._clearCrew, buildCrew: vil._buildCrew, psiteCrew: vil._psiteCrew, cropClaim: vil._cropClaim ? [...vil._cropClaim] : null };
-  return (T1340_EXACT && state._t1340Shut && state.deps.t1372Pid) ? { rows, sh, np: state.deps.t1372Pid.get() } : { rows, sh };   // ★[T1382 ㉠] 종료 저장만 — 몸 번호 계수기(끔 = 종전 꼴)
+  return { rows, sh };
 }
 const _t747Stat = { restored: null };
 function _t747Restore() {
@@ -2083,40 +2082,6 @@ function _t822S0() {   // 판 씨(econ 세계 씨 · 없으면 마을 씨) — �
 //     도적 몸(`bandits.js syncBodies` — 존 `spawnNpc` · AI 켬 · 관측자 곁이면 `decideNpcBehavior` 가 `_shOf` 로 굴린다)이 여기를 부른다:
 //     열쇠 = `bandit_<단 번호>_<몸 번호>`(단 번호 `g.id` = 도적 층 결정론 연번 · 몸 번호 = `pid`). 끔이면 이 문이 null 이라 도적 쪽 줄이 안 돈다.
 function _t841Sh(key) { return _pidHash(`${_t822S0()}_${key}`); }
-// ★★[T1382 ㉠ 2026-11-19 · T1372 회부 1] **다시 뜬 판의 마을 몸 = 저장 pid · pid 차례** — 손잡이 `T1340_RESUME_EXACT` 안(새 손잡이 0 · 끔 = 종전 글자).
-//   종전: 부팅(Stage 2)이 마을마다 차례로 몸을 낳아 pid 가 p1 부터 새로 났다 — 태어남 · 죽음이 있던 판(몸 세계)은 저장 순간 pid 와 다르다(20날 판 10날: 620 중 8 만 같음).
-//     pid 로 열쇠를 쥔 칸(마을 `_otIdx` · 존 결정 차례 `npcs` · 첫 거름 표 · 미리 넓히기 주민 훑기 자리 · 전쟁 명부 …)이 다른 몸을 가리키거나 차례가 달랐다.
-//   켜면 종료 저장의 몸 줄(T747 `_t747Body`)에 몸마다 pid(`$p`)와 몸 번호 계수기(`np`)를 싣고, 부팅이 Stage 2 머리에서
-//     ① 계수기를 저장 값으로(뒤에 새로 나는 몸이 저장 pid 와 안 겹치게 · 한 번에 돈 판과 같은 번호) ② 모든 마을의 저장 몸을 **pid 차례로**(마을을 가로질러) 그 pid 로 낳는다
-//     (마을 안 자리 차례 = 저장 자리 차례 — 마을 명부는 늘 pid 오름차순이다). 그 뒤 종전 줄(`syncVillagePop`)이 짝(`_econId`)을 짓고 모자란 몸을 채운다 —
-//     짝은 T747 이 저장 값(`$all._econId`)으로 다시 덮는다. 저장 pid 가 없는 행(옛 저장 · 끔으로 쓴 저장)은 종전 길(표지 없는 옛 저장 = 종전).
-let _t1382Want = null;
-const _t1382Stat = { vils: 0, bodies: 0, pidSame: 0, skip: 0, np: null, err: null };
-function _t1382PreSpawn() {
-  const L = [];
-  let np = null;
-  for (const vil of state.villages) {
-    const e = vil.econ; if (!e || !_t862Has(e, '_t747Body')) continue;
-    const B = e._t747Body; if (!B || !Array.isArray(B.rows)) continue;
-    if (Number.isFinite(B.np)) np = Math.max(np || 0, B.np);
-    if (vil.npcPids && vil.npcPids.length) continue;   // 이미 몸이 있다(부팅 차례가 다르다) — 종전 길
-    let ok = true; const mine = [];
-    for (let i = 0; i < B.rows.length; i++) { const r = B.rows[i]; if (!r || typeof r.$p !== 'string') { ok = false; break; } mine.push({ vil, i, pid: r.$p }); }
-    if (!ok || !mine.length) continue;
-    _t1382Stat.vils++; for (const x of mine) L.push(x);
-  }
-  if (!L.length) return;
-  if (np != null && state.deps.t1372Pid) { state.deps.t1372Pid.set(np); _t1382Stat.np = np; }
-  const num = (s) => +String(s).replace(/^p/, '');
-  L.sort((a, b) => num(a.pid) - num(b.pid));
-  const cap = (vil) => Math.min(vil.econ.npcs.length, NPC_CAP_PER_VILLAGE);
-  for (const x of L) {
-    if (x.vil.npcPids.length !== x.i || x.vil.npcPids.length >= cap(x.vil)) { _t1382Stat.skip++; continue; }   // 자리 차례가 어긋났거나 목표를 넘는다 — 그 몸은 종전 줄이 낳는다
-    _t1382Want = x.pid;
-    try { const p = spawnOneNpc(x.vil); _t1382Stat.bodies++; if (p && p.pid === x.pid) _t1382Stat.pidSame++; } finally { _t1382Want = null; }
-  }
-  console.log(`[${state.zoneId}] 🏘️ [T1382] 마을 몸 저장 pid 로 — 마을 ${_t1382Stat.vils} · 몸 ${_t1382Stat.bodies}(pid 같음 ${_t1382Stat.pidSame}) · 건넘 ${_t1382Stat.skip} · 몸 번호 ${_t1382Stat.np}`);
-}
 function spawnOneNpc(vil) {
   const houses = vil.housesPx.length ? vil.housesPx : [{ x: vil.ccx * SZ + SZ / 2, y: (vil.ccy + 6) * SZ + SZ / 2 }];   // ★폴백도 큰집 벽 안(중심 셀) 금지 — 남문 앞 마당
   const home = houses[vil.npcPids.length % houses.length];
@@ -2145,7 +2110,6 @@ function spawnOneNpc(vil) {
     //   legacy 마을 생산(60s 틱 → central 길드 금고)에 합산한다. econ 마을의 생산은
     //   economy-sim(storage)이 진실이므로 이중 계상 + 기존 50마을 금고 교란을 피한다
     //   (가드레일 #1: 기존 NPC 경제 불변). econ 직업의 시각화 연결은 Stage 4에서.
-    ...(_t1382Want != null ? { pid: _t1382Want } : {}),   // ★[T1382 ㉠] 다시 뜬 판 부팅 — 저장 pid(그 밖 = 종전 글자 · 키 없음)
     skipHouse: true, // 집은 village_buildings(레이아웃)가 진실 — NPC별 5×5 자동집 금지
   });
   p.simVillageId = vil.dbId; // NPC↔마을 연결(메모리 — players 컬럼 추가보다 저침습)
@@ -4193,8 +4157,6 @@ let _t996Job = null;   // ★[T996] 바탕만 다시 세우는 일 { g, slices, 
 //   값: 바탕은 쓸 때 다시 판정되므로(T977 증서) 있든 없든 행렬은 같다 · 주입 0 · 공유 메모 무접촉(T996 과 같다). 끔 = T996 그대로.
 const T1011_BASIS_LAZY = process.env.T1011_BASIS_LAZY === '1';
 function distBasisRefresh() {
-  //   ★[T1382 ㉤] 다시 뜬 판의 첫 환호 적재가 저장 순간과 같은 도랑(지문 같음)이면 바뀐 것이 없다 — 되돌린 교역로 · 거리 바탕을 그대로 둔다(한 번에 돈 판은 그 순간 적재가 없다 · 끔 = 지문 없음 = 종전)
-  if (_t1382DsKeep != null) { const keep = _t1382DsKeep === _t1327DitchSig(); _t1382DsKeep = null; if (keep) { _t1382RtStat.dsSkip = (_t1382RtStat.dsSkip | 0) + 1; return false; } }
   if (T1327_ROUTE_FIX) _t1327DitchRedig();   // ★[T1327 ⓒ] 환호가 다시 실렸다 — 도랑 칸을 지나는 교역로만 버린다(끔 = 이 줄 무동작)
   if (!T977_DIST_SAME || !T957_DIST_SLICE || !T968_DIST_BG || T598_ROUTE_COST || _T598E) return false;
   if (!state._distBasis || !state._distCtx || !state.world) return false;
@@ -5675,11 +5637,7 @@ function _t1372Enc(x, C, T, d) {
   if (x instanceof Map) { v = []; for (const [k, w] of x) v.push(_t1372Enc(k, C, T, d + 1), _t1372Enc(w, C, T, d + 1)); return { $id: id, $M: v }; }
   if (x instanceof Set) { v = []; for (const w of x) v.push(_t1372Enc(w, C, T, d + 1)); return { $id: id, $S: v }; }
   if (ArrayBuffer.isView(x)) return { $id: id, $A: x.constructor.name, v: Array.from(x, (n) => (Number.isFinite(n) ? n : { $n: String(n) })) };
-  if (Array.isArray(x)) {
-    //   ★[T1382] 점 줄(`{x, y}` 만 든 평 객체의 배열 — 교역로 · 걷는 길) = 수 줄 하나로(점 객체는 줄마다 새것 · 줄 자체의 같음은 `$ref` 그대로)
-    if (x.length >= 2 && x.every((q) => q && Object.getPrototypeOf(q) === Object.prototype && typeof q.x === 'number' && typeof q.y === 'number' && Object.keys(q).length === 2 && !T.has(q))) { const P = new Array(x.length * 2); for (let i = 0; i < x.length; i++) { P[2 * i] = x[i].x; P[2 * i + 1] = x[i].y; } return { $id: id, $P: P }; }
-    return { $id: id, v: x.map((w) => _t1372Enc(w, C, T, d + 1)) };
-  }
+  if (Array.isArray(x)) return { $id: id, v: x.map((w) => _t1372Enc(w, C, T, d + 1)) };
   const pr = Object.getPrototypeOf(x); if (pr !== Object.prototype && pr !== null) throw new _T1340Skip(pr && pr.constructor ? pr.constructor.name : '?');
   const o = {}; for (const k of Object.keys(x)) { const w = x[k]; if (typeof w === 'function') continue; o[k] = _t1372Enc(w, C, T, d + 1); }
   return { $id: id, o };
@@ -5699,7 +5657,6 @@ function _t1372Dec(x, C, T) {
   if (x.$M) { const m = new Map(); T.set(id, m); for (let i = 0; i + 1 < x.$M.length; i += 2) m.set(_t1372Dec(x.$M[i], C, T), _t1372Dec(x.$M[i + 1], C, T)); return m; }
   if (x.$S) { const s = new Set(); T.set(id, s); for (const w of x.$S) s.add(_t1372Dec(w, C, T)); return s; }
   if (x.$A) { const K = global[x.$A]; const a = typeof K === 'function' ? K.from(x.v, (n) => (typeof n === 'number' ? n : Number(n.$n))) : x.v; T.set(id, a); return a; }
-  if (x.$P) { const a = new Array(x.$P.length / 2); for (let i = 0; i < a.length; i++) a[i] = { x: x.$P[2 * i], y: x.$P[2 * i + 1] }; T.set(id, a); return a; }
   if (x.v) { const a = []; T.set(id, a); for (const w of x.v) a.push(_t1372Dec(w, C, T)); return a; }
   const o = {}; T.set(id, o); for (const k of Object.keys(x.o || {})) o[k] = _t1372Dec(x.o[k], C, T); return o;
 }
@@ -5726,38 +5683,6 @@ function _t1372CarPack() {
   if (!ord.length) return null;
   _t1372Stat.packed++;
   return { at: C.at, ord, cars, nextPid: state.deps.t1372Pid ? state.deps.t1372Pid.get() : null };
-}
-// ★★[T1382 ㉤ 2026-11-19 · T1340 회부 2 · T1372 회부] **교역 거리 · 교역로 줄도 재기동을 넘는다** — 손잡이 `T1340_RESUME_EXACT` 안(새 손잡이 0 · 끔 = 종전 글자).
-//   종전: 다시 뜬 판의 부팅이 거리 행렬(`world._distMatrix` — BFS)을 지금 지형 · 발자국으로 **새로 쟀고**, 교역로 캐시는 DB 행에서 다른 차례로 받았으며,
-//     다시 파기 줄(`routeRedigQ` · 세대 · 날 · 밟은 쌍)과 데우기 줄 · 부팅 시각(쉼 문)은 0 부터였다 — 한 번에 돈 판은 낡은 행렬 · 다시 팔 46쌍을 쥔 채 갔다
-//     (몸 세계 30날 판 10날: 행렬 값 10796 : 10772 · 교역로 1275 : 1274쌍 · 다시 파기 줄 46 : 0 → econ 13날 갈림).
-//   켜면 종료 저장(T742 줄 `vil.t1382Rt`)에 그 칸들을 싣고(점 줄은 수 줄 하나로 · 마을 · 몸은 열쇠로) **마을 부팅 끝**(데우기 줄을 세운 뒤 · `ready` 앞)에 그대로 덮는다.
-//   발자국 걸음 칸 캐시(`_t598Edge`)는 안 싣는다 — 같은 지형 · 같은 발자국이면 같은 값을 다시 잰다(캐시 · 55만 칸).
-const _T1382_RKEYS = ['routeCache', 'routeRedigQ', '_routeRedigGen', '_routeRedigDay', '_routeUsed', '_routeFrozenOn', '_routeBootAt', '_routeWarmAt', 'routeWarmQ', 'routeWarmTotal',
-  '_routePrimed', '_routePrimedKeys', 'walkCache', '_distBasis', 'distDirty', '_distIncrFrom'];
-const _t1382RtStat = { packed: 0, keys: 0, restored: 0, skip: {}, err: null };
-let _t1382RtPend = null;
-let _t1382DsKeep = null;   // ★[T1382 ㉤] 종료 저장의 도랑 지문(다시 뜬 판 첫 환호 적재 한 번만 본다)
-function _t1382RtTake() {
-  if (!state._t1340Shut || !T1340_EXACT) return null;
-  const C = state._t1340C || (state._t1340C = _t1340Ctx(Date.now())), T = new Map(), o = {};
-  for (const k of _T1382_RKEYS) { if (!(k in state)) continue; try { o[k] = _t1372Enc(state[k], C, T, 0); _t1382RtStat.keys++; } catch (e) { _t1382RtStat.skip[k] = e.message; } }
-  const W = state.world; let dm = null;
-  if (W && Array.isArray(W._distMatrix)) dm = W._distMatrix.map((r) => Array.from(r, (n) => (Number.isFinite(n) ? n : String(n))));
-  _t1382RtStat.packed++;
-  //   도랑 지문(다시 뜬 판의 환호 적재가 같은 도랑을 다시 실을 뿐이면 교역로를 안 버린다 — 아래 `distBasisRefresh`) · 교역 기록(그날 도착 = 첫 물건 셈이 읽는다)
-  const ds = T1327_ROUTE_FIX ? _t1327DitchSig() : null;
-  const tl = W && Array.isArray(W.tradeLog) ? JSON.parse(JSON.stringify(W.tradeLog)) : null;
-  return { at: C.at, ord: Object.keys(o), o, dm, ds, tl };
-}
-function _t1382RtRestore() {
-  const X = _t1382RtPend; _t1382RtPend = null; if (!X || !X.o) return;
-  const C = state._t1340R || (state._t1340R = _t1340Ctx(Date.now())), T = new Map();
-  for (const k of X.ord) { state[k] = _t1372Dec(X.o[k], C, T); _t1382RtStat.restored++; }
-  if (Array.isArray(X.dm) && state.world) state.world._distMatrix = X.dm.map((r) => r.map((n) => (typeof n === 'number' ? n : Number(n))));
-  if (X.ds != null) _t1382DsKeep = X.ds;
-  if (Array.isArray(X.tl) && state.world && Array.isArray(state.world.tradeLog) && !state.world.tradeLog.length) { for (const e of X.tl) state.world.tradeLog.push(e); _t1382RtStat.tl = X.tl.length; }
-  console.log(`[${state.zoneId}] 🛣️ [T1382] 교역 거리 · 교역로 줄 되돌림 — 칸 ${_t1382RtStat.restored} · 교역로 ${state.routeCache ? state.routeCache.size : 0}쌍 · 다시 파기 줄 ${(state.routeRedigQ || []).length} · 행렬 ${X.dm ? X.dm.length : 0}`);
 }
 function _t1372CarRestore() {
   const X = state._t1372Car; state._t1372Car = null;
@@ -8897,7 +8822,6 @@ function init(deps) {
     }
 
     // --- Stage 2: NPC 스폰 (부팅은 목표치까지 한 번에 — 클라 접속 전) ---
-    if (T1340_EXACT) { try { _t1382PreSpawn(); } catch (e) { _t1382Stat.err = e.message; console.error(`[${ZONE_ID}] 🏘️ [T1382] 마을 몸 저장 pid 로 낳기 실패(종전 길로 계속):`, e.message); } }   // ★[T1382 ㉠]
     let npcTotal = 0;
     for (const vil of state.villages) {
       syncVillagePop(vil, Infinity);
@@ -8932,7 +8856,6 @@ function init(deps) {
     //   실패해도 존 부팅은 계속한다(경계가 닫힌 채 = 끔과 같다).
     if (econV2.T525_CROSS_ZONE && deps.xzonePost) { try { _xzInit(ZONE_ID); } catch (e) { state.xzone = null; console.error(`[${ZONE_ID}] 🌐 [T533] 경계 호스트 실패(경계 닫힌 채 계속):`, e.message); } }
     if (state._routeWarmPending) { state._routeWarmPending = false; try { _routeWarmBuild(); } catch (e) {} }   // ★[T42 ①ⓑ]
-    if (T1340_EXACT && _t1382RtPend) { try { _t1382RtRestore(); } catch (e) { _t1382RtStat.err = e.message; console.error(`[${ZONE_ID}] 🛣️ [T1382] 교역로 줄 되돌림 실패(종전대로 계속):`, e.message); } }   // ★[T1382 ㉤] 부팅 끝 — 부팅이 다시 잰 · 다시 받은 것을 덮는다
     state.ready = true;
     console.log(`[${ZONE_ID}] 🏘️ 마을 시뮬 준비: 마을 ${state.villages.length}, econ 인구 ${world.villages.reduce((s, v) => s + v.npcs.length, 0)}, 스폰 NPC ${npcTotal}, econ day ${world.day}, 게임일 ${state.dayMs / 1000}s${process.env.VILLAGE_DAY_MS ? ' (VILLAGE_DAY_MS 테스트 오버라이드)' : ''}`);
   } catch (e) {
@@ -20576,7 +20499,6 @@ function t742Bind(name, get, set) {
 }
 //   전쟁 번호 계수기 · 전쟁 셈 — econ world 칸인데 메타 행에 없었다. 다시 뜨면 번호가 1 부터 다시 서서 **묶여 남은 징발자의 번호와 겹쳤다**(T742 ③ W380).
 //   번호는 앞으로만(겹친 번호 0) · 셈은 그대로. 진행 중 전쟁 자체(`_warWars`)는 교전 몸에 묶여 싣지 않는다(회부).
-if (T1340_EXACT) t742Bind('vil.t1382Rt', () => { const X = _t1382RtTake(); return X ? JSON.stringify(X) : null; }, (v) => { try { const X = typeof v === 'string' ? JSON.parse(v) : null; if (X && X.o) _t1382RtPend = X; } catch (e) { _t1382RtStat.err = e.message; } });   // ★[T1382 ㉤] 종료 저장에만 값 · 글자째(T740 표식 `$M` 이 열쇠 표 꼴을 먼저 풀지 않게)
 if (T1340_EXACT) t742Bind('vil.t719', () => _t719Take(), (v) => { if (v && typeof v === 'object') _t719Pend = v; });   // ★[T1372 ⓓ] 종료 저장에만 값(그 밖 null)
 t742Bind('world.warSeq', () => (state.world ? state.world._warSeq : null), (v) => { if (state.world && Number.isFinite(+v)) state.world._warSeq = Math.max(state.world._warSeq || 1, +v | 0); });
 t742Bind('world.warStats', () => (state.world ? state.world._warStats : null), (v) => { if (state.world && v && typeof v === 'object') state.world._warStats = v; });

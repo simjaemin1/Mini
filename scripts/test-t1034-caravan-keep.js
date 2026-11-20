@@ -132,13 +132,11 @@ const metaOf = (db) => { try { const d = new DatabaseSync(db, { readOnly: true }
   ok(!!pick && M0 && M0._day === pick.day, '[상황] 저장된 세계 — 다음 마감에 도착할 캐러밴 하나 · 메타 행이 그 날', pick ? `#${pick.id} · 날 ${pick.day} · 메타 날 ${M0 && M0._day}` : '없음');
   if (!pick) { console.log(`\n=== T1034: 통과 ${pass} · 실패 ${fail} ===`); process.exit(1); }
   const run = async (tag, off, k) => {
-    //   ★[T1382 · land1085 덧붙임] 하루 540초(종전 180초) — 장 머묾(하루 4/24)이 90초 · 죽인 순간 남은 머묾 ~77초(종전 ~17초).
-    //     `T1327_ROUTE_FIX` 켬 기본 뒤 다시 뜨는 데 ~30초라 종전 판은 읽기 전에 머묾이 끝나 몸이 바르게 귀환이었다(읽은 때 머묾 끝 + 13초 · 제품 무변 · 장면 몫)
-    const db = copy('close-' + tag), port = base + 10 + k * 2, env = Object.assign({ VILLAGE_DAY_MS: '540000' }, off ? { T1034_CARAVAN_KEEP: '0' } : {});
+    const db = copy('close-' + tag), port = base + 10 + k * 2, env = Object.assign({ VILLAGE_DAY_MS: '180000' }, off ? { T1034_CARAVAN_KEEP: '0' } : {});
     let z = await up(db, port, env);
     //   머묾에 들었고 · 그 마감 끝 저장(메타 행 = 새 날)이 섰을 때 죽인다(같은 날 메타만 되살린다 — T728 규약)
     const K = await until(async () => { const C = await car(port); const c = C && C.cars.find((x) => x.id === pick.id); if (!(c && c.st === 'inbound' && c.body && c.body.phase === 'linger')) return null;
-      const m = metaOf(db); return m && m._day === C.day ? { C, c } : null; }, 1200000, 250);   // 하루 540초 + 부팅(마감까지)
+      const m = metaOf(db); return m && m._day === C.day ? { C, c } : null; }, 600000, 250);
     try { z.c.kill('SIGKILL'); } catch (e) {} await z.x;
     const M = metaOf(db);
     if (!K) return { tag, K: null, A: null, M };
