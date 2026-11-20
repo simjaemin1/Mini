@@ -3658,6 +3658,7 @@ const T987_MOB_RESPAWN = process.env.T987_MOB_RESPAWN !== '0';
 //   켬: 몸 표에서 선 존 몹(`m._t1331` = 몸 id · 보임 다리 wildlife `_t1331Show`)이 죽음 길 셋(NPC · 화살 · 사람 공격)으로 죽으면 **몸 표에 죽음으로 적고 다시 낳지 않는다**(생성 0).
 //   그 밖의 존 몹(DB 행 몹 · 맹수 · 길든 짐승)은 종전 그대로다(다시 낳기 15초 — 회부). 끔 = 아래 첫 줄 무동작.
 const T1331_BEAST_BODY = process.env.T1331_BEAST_BODY === '1';
+const T1393_HUNT_CHASE = T1331_BEAST_BODY && process.env.T1393_HUNT_CHASE === '1';   // ★[T1393] 사냥판(wildlife) — 판이 쥔 사냥꾼 몸(`_t1393Own`)은 이동 문이 안 옮긴다 · 자리는 판이 `t1393Put` 문으로 적는다(끔 = 칸 · 문 없음)
 function respawnMobLater(m) {
   if (T1331_BEAST_BODY && m._t1331 != null) { const B = require('./beast-body').current; if (B) B.diedAt(m._t1331, 'seen'); return false; }   // ★[T1331] 몸의 죽음 — 다시 낳기 0
   if (T1321_XZ_BEAST && !m.isWild) _t1321Stat.died++;   // ★[T1321] 두 존 합 셈 — 존 몹 죽음(세 죽음 길이 다 이 문을 부른다 · 끔 = 이 줄 무동작)
@@ -3938,6 +3939,7 @@ function _t671Shape(p) {
   p._t724Site = undefined; p._t724T = undefined;   // ★[T724] 광부 몸의 그날 셀 · 선 때(villages.js `_t724BodyStep` — 손잡이 `T724_MINE_ACT` 켬일 때만 값이 든다)
   if (T1140_STUCK_INLINE && !T1140_HOT_ORDER) { p._t1140Sx = undefined; p._t1140Sy = undefined; p._t1140Sa = undefined; }   // ★[T1140 ③-다] 막힘 칸 셋(차례 리터럴엔 이미 있다 · 끔 = 이 줄 무동작)
   p._t1302Terr = undefined;   // T1302: physical territory clearing cargo
+  if (T1393_HUNT_CHASE) p._t1393Own = undefined;   // ★[T1393] 사냥판이 쥔 몸 표지(wildlife `_t1393Tick` — 켬일 때만 서는 칸 · test-body-fields 규약)
   p.oreLedger = undefined; p._t1180FullFish = undefined; p._t1181Haul = undefined; p._t1197M1 = undefined; p._t1197M0 = undefined; p._t1195At = undefined; p._t1212N = undefined; p._t1217H = undefined; p._t1217Stop = undefined;   /* ★[PM land1052 · T1220-K3] T1212 · T1217 몸 칸 셋 */   /* ★[PM land1050 · T1208-K4 회부 2] land1049 가 연 몸 칸 셋(T1197 끼니 · T1195 사냥) */   // ★[PM land1048 · T1188 · T1180 · T1181] 가지들이 보탠 몸 칸 셋 — 스폰 꼴에 미리(test-body-fields · 숨은 클래스 한 벌)
   if (T1144_LIFE_EVENT) p._t1144Sp = undefined;   // ★[T1144 ② · T1154] 어부 던짐 종의 지난 답(villages.js `_t1144SpGet` — 손잡이 켬일 때만 서는 칸 · 끔 = 이 줄 무동작)
   if (T1241_DES) p._des = undefined;   // ★[T1252] T1241 몸 토막(`_desBegin` · `_desEnd` — 손잡이 `T1241_DES` 켬일 때만 서는 칸 · 끔 = 이 줄 무동작 · test-body-fields 규약)
@@ -5200,6 +5202,7 @@ let _t316Econ = null;
 //   걸음: 그 틱의 걸음 거리 = 그 자리 빠르기(`_desSpeed` — 배회 배율 × 길 등급 × 개울 · T1241 사건 걸음과 같은 식) × dt × s 를 그 몸의 길(`npc.path` — 존 A* · 직선 문 답)
 //     점을 차례로 따라 쓴다(점을 지나면 다음 점 · 끝에 닿으면 선다 — 넘어 가지 않는다 · 길 밖으로 안 나간다 · 순간이동 0). 속도 칸은 0(이동 문이 다시 안 옮긴다).
 function _t1295Walk(p, dt, sub) {
+  if (p._t1393Own) { p.vx = 0; p.vy = 0; return true; }   // ★[T1393] 사냥판이 쥔 사냥꾼 몸 — 걸음은 판이 걷는다(끔 = 칸이 안 선다 · 무동작)
   const s = SimVillages.t1295S ? SimVillages.t1295S(p) : 1;
   if (!(s > 1)) return false;
   if (!sub && SimVillages.t1316K) { const K = SimVillages.t1316K(p, dt); if (K > 1) dt /= K; }   // ★[T1316 ③] 이동 문 몫 = 마지막 토막(dt ÷ K) — 앞 토막은 결정 문이 걸었다
@@ -6404,6 +6407,7 @@ Wildlife.init({
   // ★[T158] 뷰 사냥꾼의 하루 예산 — 장부가 그날 실제로 뺀 수(읽기만 · 정본은 `villages.js`).
   huntBudgetOf: (p) => (SimVillages.huntVisLeft ? SimVillages.huntVisLeft(p) : Infinity),
   //   ★[T1331] 켬만 — 길든 몸(몸 표에서 나간 몸)을 길든 존 몹 행으로 적는 문(DB 행 · 주인 칸 둘 — T1321 받기 꼴) · 끔 = 칸 없음
+  ...(T1393_HUNT_CHASE ? { t1393Put: (p, x, y) => { _desPut(p, x, y); Roads.stampEntityPx(p, x, y); p.dirty = true; } } : {}),   // ★[T1393] 사냥판이 걷긴 사냥꾼 몸 자리(`_t1295Walk` 의 적기 셋 그대로 · 끔 = 칸 없음)
   ...(T1331_BEAST_BODY ? { t1331Keep: (m) => { m.dbId = db.insertMob({ type: m.type, x: m.x, y: m.y, hp: m.hp, max_hp: m.maxHp }); db.updateMobState(m.dbId, m.x, m.y, m.hp, m.tameOwner, m.tameOwnerName); } } : {}),
   // §4-4 P3: 실체 전쟁 병사 pid 위치(px)를 야생 위협원으로 주입(_buildWarThreats 서버판 — 행군/전투 병사를 몹이 인지·회피).
   warThreats: () => SimVillages.warThreats(),
