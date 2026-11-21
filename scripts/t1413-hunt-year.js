@@ -211,7 +211,7 @@ function summarize(rows) {
 
 if (argv.includes('--sum')) {
   const files = argv.slice(argv.indexOf('--sum') + 1).filter((a) => !a.startsWith('--'));
-  const rows = []; for (const fl of files) for (const l of fs.readFileSync(fl, 'utf8').split('\n')) if (l.trim()) rows.push(JSON.parse(l));
+  const rows = []; for (const fl of files) for (const l of fs.readFileSync(fl, 'utf8').split('\n')) if (l.trim()) { const r = JSON.parse(l); if (!r.skip) rows.push(r); }   // skip = 미리 채운 건너뛸 칸(판 0 · 이어 돌리기 표지)
   console.log(summarize(rows));
   process.exit(0);
 }
