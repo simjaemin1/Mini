@@ -1,0 +1,110 @@
+[
+ {
+  "tag": "OFF_1020",
+  "seed": 1020,
+  "days": 730,
+  "env": {},
+  "kind": "sbc",
+  "root": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1404/wt"
+ },
+ {
+  "tag": "ALL_1020",
+  "seed": 1020,
+  "days": 730,
+  "env": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1"
+  },
+  "kind": "sbc",
+  "root": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1404/wt"
+ },
+ {
+  "tag": "OFF_7",
+  "seed": 7,
+  "days": 730,
+  "env": {},
+  "kind": "sbc",
+  "root": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1404/wt"
+ },
+ {
+  "tag": "ALL_7",
+  "seed": 7,
+  "days": 730,
+  "env": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1"
+  },
+  "kind": "sbc",
+  "root": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1404/wt"
+ },
+ {
+  "tag": "OFF_42",
+  "seed": 42,
+  "days": 730,
+  "env": {},
+  "kind": "sbc",
+  "root": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1404/wt"
+ },
+ {
+  "tag": "ALL_42",
+  "seed": 42,
+  "days": 730,
+  "env": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1"
+  },
+  "kind": "sbc",
+  "root": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1404/wt"
+ },
+ {
+  "tag": "L_1020",
+  "seed": 1020,
+  "days": 730,
+  "env": {
+   "T1404_RAID_LURK": "1"
+  },
+  "kind": "sbc",
+  "root": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1404/wt"
+ },
+ {
+  "tag": "LR_1020",
+  "seed": 1020,
+  "days": 730,
+  "env": {
+   "T1404_RAID_LURK": "1",
+   "T1404_DEN_ROUTE": "1"
+  },
+  "kind": "sbc",
+  "root": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1404/wt"
+ },
+ {
+  "tag": "ALLT_1020",
+  "seed": 1020,
+  "days": 730,
+  "env": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "tool",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1"
+  },
+  "kind": "sbc",
+  "root": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1404/wt"
+ },
+ {
+  "tag": "FS_1020",
+  "seed": 1020,
+  "days": 730,
+  "env": {
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1"
+  },
+  "kind": "sbc",
+  "root": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1404/wt"
+ }
+]
