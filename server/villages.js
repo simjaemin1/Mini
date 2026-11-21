@@ -7344,7 +7344,7 @@ function _t724BodyStep(vil, npc, now, day) {
     const _bd = _bodyDay(npc, now), _I = vil._t1351In, _in = (_I && _I.d === _bd) ? _I.u : 0;
     left = Math.max(0, (vil.econ._oreOutLast || 0) - _in - (vil._t724HeldKg || 0) / kgU);
   }
-  if (!(left > 0)) { npc._t724T = 0; P.done++; _lifeGoHome(npc, '휴식'); return true; }
+  if (!(left > 0)) { npc._t724T = 0; P.done++; if (_t1422Side(vil, npc, now, 'quota')) return true; _lifeGoHome(npc, '휴식'); return true; }
   //   ② 짐이 찼다 — 곳간 사다리(없으면 퇴근 · 손은 해 질 녘 일괄이 넣는다)
   if (cap > 0 && hand >= cap) {
     npc._t724T = 0; P.full++;
@@ -7355,7 +7355,7 @@ function _t724BodyStep(vil, npc, now, day) {
   let s = npc._t724Site;
   if (!s || s.day !== day || s.wait) { const _p0 = process.hrtime.bigint(); s = npc._t724Site = (_t724Pick(vil, npc, day) || { none: 1, day }); npc._t724T = 0; P.nsPick += Number(process.hrtime.bigint() - _p0); P.picks++; }   // 계측 — 고르기(닿나 집합 포함) 몫
   if (s.wait) { P.wait++; return true; }                                // 닿나 아직 — 이 틱은 제자리
-  if (s.none) { P.none++; _lifeGoHome(npc, '휴식'); return true; }
+  if (s.none) { P.none++; if (_t1422Side(vil, npc, now, 'none')) return true; _lifeGoHome(npc, '휴식'); return true; }
   if (Math.hypot(npc.x - s.x, npc.y - s.y) > 44) {
     npc.behavior = 'wander'; npc.targetX = s.x; npc.targetY = s.y; npc.gatherTarget = null; npc._t724T = 0; _lifeAct(npc, '출근');
     P.walk++; const _w = P.vs[vil.name] || (P.vs[vil.name] = { walk: 0, d0: 0, d: 0, cell: null }); _w.walk++; _w.d = Math.round(Math.hypot(npc.x - s.x, npc.y - s.y)); if (!_w.d0) _w.d0 = _w.d; _w.cell = [s.cx, s.cy];   // 계측 — 현장까지 남은 거리(줄어드나)
@@ -7664,6 +7664,7 @@ function _t1207Batch(vil, picked) {
   let body = null;
   for (const pid of (vil.npcPids || [])) { const p = pl && pl.get(pid); if (p && _t561Fit(p)) { body = p; break; } }   // 그날 나설 수 있는 몸 하나(T561 문턱)
   let budget = body ? _t1207DayMin() : 0;                                  // 게임 분
+  if (_T1422_K && vil._t1422TerrMin > 0) { budget += vil._t1422TerrMin; vil._t1422TerrMin = 0; }   // ★[T1422 ⓑ'] 어제 남는 시간을 영토에 보탠 몸들의 낮(끔 = 무동작)
   if (!(budget > 0)) { T.stallBody++; vil._t1207Wait = { day: (state.world && state.world.day) || 0, why: 'body' }; e._t1207Need = 0; return out; }
   const sp = (state.deps && state.deps.moveSpeed) || 0, from = _t1207From(vil), perLoad = _t400PerLoad('wood');
   //   `plus` = 고른 차례대로 쌓인 셀(이웃 수 · 넓이를 잰다). 막힌 뒤의 셀도 "앞 셀을 치렀다 치고" 쌓는다 —
@@ -13252,6 +13253,64 @@ function _villageCropFor(vil, field, mo, par) {   // 랩 villageCropFor 동형: 
 function _lifeAct(npc, s) {   // ★[액션 라벨 가시화] 행동 라벨 세터 — 변경 시 타임스탬프(zone.js makeEntry가 변경 후 1.2s 윈도우+최초가시에만 전송: 무상태 델타)
   if (npc._lifeAct !== s) { npc._lifeAct = s; npc._lifeActAt = Date.now(); }
 }
+// ★★★[T1422 2026-11-21 · ★재민 11-21 "영토 넓히기나 집 짓기, 필요시 사냥이나 채집 등을 하는 게 맞지 않나..? 만들어"] **쉬러 가기 전 문 하나** —
+//   손잡이 `T1422_SIDE_WORK`(끔 기본 · `1` = 넷 다 · 아니면 쉼표 목록 `build,terr,food,wood` — 후보 일마다 나눠 켠다 · 끔 = 종전 바이트).
+//   종전: 그날 몫이 차면 · 반일 오후(집터 없을 때) · 농부 아침 창을 놓친 날 · 밭 일감이 없는 날(순찰)에 몸은 집 앞 '휴식'(또는 밭 순찰)뿐이다.
+//   켬 — 그 자리들이 `_lifeGoHome(npc, '휴식')` 앞에서 이 함수 하나를 묻는다(자리마다 흩지 않는다). 마을에 지금 할 일이 있으면 그 일의 몸 길을 탄다:
+//     ⓐ `build` 짓다 만 집터(반일 징발과 같은 줄 — 마을 집터 · 의뢰 집터 · `T400_BUILD_ACT` 켬이면 마을 집터는 크루가 진다)
+//     ⓑ `terr` 밭 개간(개간 크루 자리 `LIFE_CREW` · 보즈럽 수요 `_lifeNeedClear` · 가장 가까운 가장자리 칸 — 농부 개간과 같은 일감) ·
+//        영토 일괄(`_t1207Batch`)이 몸이 없어 멈춘 마을(`_t1207Wait.why === 'body'`)이면 그 몸의 남은 낮(게임 분)을 일괄 몸 시간에 보탠다(다음 일괄이 쓴다 · 몸은 가장자리로 간다)
+//     ⓒ `food` 곳간 식량이 필요한 만큼 안 될 때만(합계 < 사람 × `t1374NeedDays` — T1419 함수가 서면 그 이름) 채집(채집꾼 걸음 · 같은 갈래)
+//     ⓓ `wood` 곳간 나무 잉여(`woodSpare`) ≤ 0 일 때 나무(나무꾼 걸음 · 같은 갈래)
+//   고르는 법: 생활층 배정 차례(개간 > 건설 — 아래 "작업 배정" 줄과 같은 차례) 다음, 식량 · 땔감은 그 일의 값(`t1422SideVal` — 그 직업 1인 하루 산출 × 그림자 값 ·
+//     실현 배분이 견주는 축)이 큰 쪽 · 쉬는 값은 0(회부 — 쉼의 값). 식량 · 땔감 몸의 일한 시간은 몸-ms 로 세어(`_t1422Ms`) econ 틱 앞에 사람-날로 넘긴다
+//     (`econ._t1422Side` → econ 이 그 직업 식으로 숙련 0 사람 몫을 곳간에 낸다 · 직업 수 · 실현 값 · 잠재 · 여유노동엔 안 든다).
+//   사냥은 사냥꾼 두뇌가 직업(`simJob`)으로 잡혀 남의 몸에 못 얹는다 — 회부(식량은 채집만).
+const _T1422_K = (() => { const x = process.env.T1422_SIDE_WORK || ''; if (!x || x === '0') return null; const all = ['build', 'terr', 'food', 'wood']; const L = x === '1' ? all : x.split(',').filter((k) => all.indexOf(k) >= 0); return L.length ? new Set(L) : null; })();
+const T1422_SIDE_WORK = !!_T1422_K;
+const _t1422St = { ask: 0, rest: 0, build: 0, clear: 0, terr: 0, food: 0, wood: 0, why: {}, ms: {}, pd: {} };
+function _t1422Kind(k) { return !!(_T1422_K && _T1422_K.has(k)); }
+function _t1422Side(vil, npc, now, why) {
+  if (!_T1422_K || !vil || !vil.econ || !npc) return false;
+  const d = npc._hd;
+  if (npc._t1422J && npc._t1422J.day === d) { npc._t1422J = null; return false; }   // 오늘 남는 시간 일(식량 · 땔감)을 이미 했다 — 그 일의 몫도 찼다 → 쉰다
+  _t1422St.ask++; _t1422St.why[why] = (_t1422St.why[why] || 0) + 1;
+  const E = _lifeEcon(), e = vil.econ;
+  const go = (t, lab) => { npc._lifeTask = t; npc._workT = now; npc._t1422D = d; npc.behavior = 'wander'; npc.targetX = t.px; npc.targetY = t.py; npc.gatherTarget = null; _lifeAct(npc, lab); return true; };
+  if (_t1422Kind('terr') && vil._farmSet && vil._clearCrew < LIFE_CREW && (T1294_LIFE_MEMO ? _t1294NeedClear(vil, now) : _lifeNeedClear(vil))) {   // ⓑ 개간(농부 개간 줄과 같은 일감)
+    const fr = _lifeFrontier(vil); let best = null, bd = 1e9;
+    for (const c2 of fr) { const k = c2.cx + ',' + c2.cy; if (vil._claim.has(k) || vil._farmSet.has(k)) continue; const dx = c2.cx * SZ + 16 - npc.x, dy = c2.cy * SZ + 16 - npc.y, d2 = dx * dx + dy * dy; if (d2 < bd) { bd = d2; best = c2; } }
+    if (best) { vil._claim.add(best.cx + ',' + best.cy); vil._clearCrew++; t1399Bump(vil); _t1422St.clear++;
+      return go({ k: 'clear', cx: best.cx, cy: best.cy, f: best.f, px: best.cx * SZ + SZ / 2, py: best.cy * SZ + SZ / 2, prog: 0 }, '출근'); }
+  }
+  if (_t1422Kind('build')) {   // ⓐ 짓다 만 집터(반일 징발과 같은 줄)
+    if (vil._site && !E.T400_BUILD_ACT) { vil._buildCrew++; t1399Bump(vil); _t1422St.build++; return go({ k: 'build', px: (vil._site.cx - 2.5) * SZ, py: (vil._site.cy - 0.5) * SZ, prog: 0 }, '출근'); }
+    if (vil._psite) { vil._psiteCrew = (vil._psiteCrew || 0) + 1; t1399Bump(vil); _t1422St.build++; return go({ k: 'build', ps: 1, px: (vil._psite.cx - 2.5) * SZ, py: (vil._psite.cy - 0.5) * SZ, prog: 0 }, '출근'); }
+  }
+  if (_t1422Kind('terr') && vil._t1207Wait && vil._t1207Wait.why === 'body' && state.dayMs > 0) {   // ⓑ' 영토 일괄이 몸을 기다린다 — 남은 낮을 보탠다
+    const dayR = (state.deps && state.deps.dayPhaseRatio) || 0, fv = ((((now - state.epoch) % state.dayMs) + state.dayMs) % state.dayMs) / state.dayMs;
+    const left = Math.max(0, dayR - fv) / (dayR || 1) * _t1207DayMin();
+    if (left > 0 && npc._t1422T !== d) { npc._t1422T = d; vil._t1422TerrMin = (vil._t1422TerrMin || 0) + left; _t1422St.terr++;
+      const f = _t1207From(vil); npc._t1422D = d; npc.behavior = 'wander'; npc.targetX = f.x; npc.targetY = f.y; npc.gatherTarget = null; _lifeAct(npc, '개간'); return true; }
+  }
+  let bj = null, bv = 0;
+  const N = (e.npcs && e.npcs.length) || 1;
+  if (_t1422Kind('food') && E.totalFoodEquivalent(e) < N * E.t1374NeedDays(e, (e._world && e._world.day) | 0)) { const x = E.t1422SideVal(e, 'forager'); if (x > bv) { bv = x; bj = 'forager'; } }   // ⓒ 필요할 때만
+  if (_t1422Kind('wood') && E.woodSpare(e) <= 0) { const x = E.t1422SideVal(e, 'lumberjack'); if (x > bv) { bv = x; bj = 'lumberjack'; } }   // ⓓ
+  if (bj) { npc._t1422J = { j: bj, day: d }; npc._t1422D = d; npc._t1422At = now; _t1422St[bj === 'forager' ? 'food' : 'wood']++; npc._fOutD = d; return true; }
+  _t1422St.rest++; return false;
+}
+function _t1422In(vil) {   // econ 틱 앞 — 어제 남는 시간 식량 · 땔감 몸-ms → 사람-날(낮 하나 = 하루)
+  if (!_T1422_K || !vil || !vil.econ) return;
+  const M = vil._t1422Ms; vil._t1422Ms = null;
+  if (!M) return;
+  const dayR = (state.deps && state.deps.dayPhaseRatio) || 0, dl = (state.dayMs || 0) * dayR;
+  if (!(dl > 0)) return;
+  const S = {}; let any = false;
+  for (const j in M) { const pd = M[j] / dl; if (pd > 0) { S[j] = pd; any = true; _t1422St.pd[j] = (_t1422St.pd[j] || 0) + pd; } }
+  if (any) vil.econ._t1422Side = S;
+}
+function t1422Stat() { return JSON.parse(JSON.stringify(_t1422St)); }
 function _lifeGoHome(npc, act) {   // 자택 대기(취침·요양·휴식·대피 공통 — §19 게이트와 동일 목표 세팅)
   _t1323Touch(npc);   // ★[T1323] 생활층 밖(도적 은거지 하루 등)에서도 부른다
   npc.behavior = 'wander'; npc.gatherTarget = null;
@@ -15348,6 +15407,7 @@ function _t724DayMark(vil) {
   }
 }
 function _lifeHandsIn(vil) {
+  _t1422In(vil);   // ★[T1422] 어제 남는 시간 식량 · 땔감 몸 시간 → econ(끔 = 첫 줄에서 돌아간다)
   _t1195HuntIn(vil);   // ★[T1195] 어제 사냥꾼 몸이 잡은 짐승 → 곳간(econ 틱 바로 앞 · T720 켬이어도 · 끔 = 첫 줄에서 돌아간다)
   _t1196Seats(vil);   // ★[T1196] econ 틱 앞 — 장인 빈 몸 명부(끔 · 랩 = 첫 줄에서 돌아간다)
   //   ★★[T757] T720 켬(경계 일괄 없음 — 손은 해 질 녘 `_t720Step` 에서 든다)이어도 **그날 광부 몸이 쳤나**는 여기서 심는다 —
@@ -19310,12 +19370,13 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   }
   const dayFrac = fv / dayR;   // 낮 진행률 0~1(랩 상수의 서버 환산 축)
   // 반일 오후(랩 7991 퇴근길 징발 — 일>건축>휴식): 미완공 집터 있으면 전 직업 건축 합류(상한 없음 — 랩 동형), 없으면 자택 휴식
-  if (npc._half && dayFrac >= SCH_HALF_R) {
+  if (npc._half && dayFrac >= SCH_HALF_R && !(_T1422_K && npc._t1422D === bday)) {   // ★[T1422] 켬 = 오늘 남는 시간 일을 받은 몸은 그 일을 한다(끔 = 뒤 항 거짓)
     if (!(npc._lifeTask && npc._lifeTask.k === 'build')) {
       _lifeDropTask(vil, npc);
       if (vil._site && !_lifeEcon().T400_BUILD_ACT) { vil._buildCrew++; t1399Bump(vil); npc._lifeTask = { k: 'build', px: (vil._site.cx - 2.5) * SZ, py: (vil._site.cy - 0.5) * SZ, prog: 0 }; npc._workT = now; }   // ★[T400] 켬이면 징발 0 — 집은 크루 둘이 나르고 짓는다
       else if (vil._psite) { vil._psiteCrew = (vil._psiteCrew || 0) + 1; t1399Bump(vil); npc._lifeTask = { k: 'build', ps: 1, px: (vil._psite.cx - 2.5) * SZ, py: (vil._psite.cy - 0.5) * SZ, prog: 0 }; npc._workT = now; }   // ★[11차 T4] 마을 일감이 없을 때만 의뢰 집터로(마을 우선 — 랩 ④ 규약)
       else {
+        if (_t1422Side(vil, npc, now, 'half')) return true;   // ★[T1422] 쉬러 가기 전 문(끔 = 무동작)
         // ★[곳간②] 퇴근길: 든 짐은 곳간에 넣고, 빈손이면 재고에서 하루치를 꺼내 집으로 나른다
         if (npc._granD !== bday) {   // ★오늘 인출을 마쳤으면 곳간 용무 종료 — 저장↔인출 왕복 금지(랩 toHome 이탈 대응)
           if (_handOf(npc) > 0 && _granGo(vil, npc, false)) return true;
@@ -19350,9 +19411,10 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   }
   // ══ 작업 배정: 개간(농부) > 건설(전 직업) > 직업 실작업 ══
   // 농부 아침 출근 창(랩 7983 fv<L_DAWN+0.08): 창 밖 + 오늘 미출근(요양 해제가 낮이면 등)=오늘 휴무 — 랩 동형
-  const isFarmer = npc.simJob === 'farmer';
+  const _t1422J = (_T1422_K && npc._t1422J && npc._t1422J.day === bday) ? npc._t1422J.j : null;   // ★[T1422] 오늘 남는 시간 일(식량 · 땔감) — 그 직업 갈래를 탄다(끔 = null)
+  const isFarmer = npc.simJob === 'farmer' && !_t1422J;
   if (isFarmer) {
-    if (dayFrac > SCH_FARMW_R && npc._fOutD !== bday) { _lifeGoHome(npc, '휴식'); return true; }
+    if (dayFrac > SCH_FARMW_R && npc._fOutD !== bday) { if (_t1422Side(vil, npc, now, 'farmW')) return true; _lifeGoHome(npc, '휴식'); return true; }
     npc._fOutD = bday;   // 창 안 진입 — 오늘 출근 도장(창 지나도 계속 근무)
   }
   if (isFarmer && vil._clearCrew < LIFE_CREW && (T1294_LIFE_MEMO ? _t1294NeedClear(vil, now) : _lifeNeedClear(vil))) {   // ★[T1294 ⓑ 켬] 같은 틱(같은 `now`)의 마을 답 하나
@@ -19375,7 +19437,8 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     npc.behavior = 'wander'; npc.targetX = npc._lifeTask.px; npc.targetY = npc._lifeTask.py; npc.gatherTarget = null; _lifeAct(npc, '출근'); return true;
   }
   // ══ 직업 실작업(랩 JOBACT·work 분기 동형 — 서버는 실물 자원·실물 사냥감이 정본) ══
-  const job = npc.simJob;
+  const job = _t1422J || npc.simJob;
+  if (_t1422J) { const el = Math.min(3000, now - (npc._t1422At || now)); npc._t1422At = now; const M = vil._t1422Ms || (vil._t1422Ms = {}); M[_t1422J] = (M[_t1422J] || 0) + el; _t1422St.ms[_t1422J] = (_t1422St.ms[_t1422J] || 0) + el; }   // ★[T1422] 남는 시간 일한 몸-ms(틱 간격 캡 — 위 현장 노동 적산과 같은 3초)
   if (isFarmer && vil._farmSet.size) {   // 농부=작물 상태머신(랩 nextTask→doTask: 수확>방제>물대기>파종>김매기, 우선순위+최근접)
     if (npc._jobT && now < npc._jobT) return true;   // 체류 중(target 유지)
     if (npc._farmK) {   // 배정 셀로 이동 중/도착
@@ -19396,6 +19459,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     }
     const k2 = _lifeNextFarmCell(vil, npc, _farmDay(vil, day));   // ★[T1212 ①] 밭 날
     if (k2) { vil._cropClaim.add(k2); npc._farmK = k2; const ci = k2.indexOf(','); npc.behavior = 'wander'; npc.targetX = +k2.slice(0, ci) * SZ + SZ / 2; npc.targetY = +k2.slice(ci + 1) * SZ + SZ / 2; npc.gatherTarget = null; _lifeAct(npc, '경작'); return true; }
+    if (_t1422Side(vil, npc, now, 'farmIdle')) return true;   // ★[T1422] 밭이 일을 안 부른다 — 쉬러(순찰) 가기 전 문(끔 = 무동작)
     const arr = (vil._farmArr && vil._farmArr.length) ? vil._farmArr : (vil._farmArr = [...vil._farmSet]);   // 일감 없음(비수기·전부 생육 중) — 결정론 밭 순찰(구 ④ 유지)
     npc._jobN = ((npc._jobN || 0) + 1);
     const h = _pidHash(npc.pid);
@@ -19413,7 +19477,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   //   ⚠행위 층이 켜진 마을·그 직업만(`_t374Done` 안) — 안 켜진 마을은 수식이 내고 걸음은 그림이다(무접촉).
   //   끄면 `_t374Done` 이 첫 줄에서 false 다(비트 동일 · 손 합도 안 센다).
   if (_physicalStoneWork(vil,npc,now,fv,dayR,day,bday)) return true;
-  if (_t374Done(vil, job)) { _lifeGoHome(npc, '휴식'); return true; }
+  if (_t374Done(vil, job)) { if (_t1422Side(vil, npc, now, 'quota')) return true; _lifeGoHome(npc, '휴식'); return true; }
   // ★★★[T325 2026-09-19 · 설계_생산_실체 §1] **베는 순간 손에, 귀환하면 곳간에** — 어부(T312)와 같은 문법.
   //   손잡이가 꺼져 있으면 이 블록은 **통째로 안 돈다**(아래 종전 갈래가 그대로 · 비트 동일).
   //   ⚠현장은 `qtResources` 가 아니라 **색인**(`t325Trees` · T301)이 낸 셀이다 — 관측자와 무관하다.
@@ -19436,7 +19500,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     if (!_tr.length) return false;                                   // 숲이 없다 — 레거시 폴스루
     const h = _pidHash(npc.pid);
     //   ⓐ 어느 나무로 가나 — **가장 가까운 나무 셀**(같은 셀에 여럿이 몰리지 않게 사람마다 시작점을 흘린다)
-    if (npc._t325Site && npc._t325Site.day === day && npc._t325Site.none) { _lifeGoHome(npc, '휴식'); return true; }   // ★[T561 ②ⓐ] 그날 목록이 다 비었다(켠 팔만 서는 칸) — 그날은 끝(퇴근 · T374 의 그 한 줄)
+    if (npc._t325Site && npc._t325Site.day === day && npc._t325Site.none) { if (_t1422Side(vil, npc, now, 'none')) return true; _lifeGoHome(npc, '휴식'); return true; }   // ★[T561 ②ⓐ] 그날 목록이 다 비었다(켠 팔만 서는 칸) — 그날은 끝(퇴근 · T374 의 그 한 줄)
     if (!npc._t325Site || npc._t325Site.day !== day) {
       let best = null, bd = Infinity;
       for (let i = 0; i < _tr.length; i++) {
@@ -19534,7 +19598,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     const sites = _lifeJobSites(vil, day).fisher;
     if (!sites || !sites.length) return false;   // 내륙 마을 → 레거시 폴스루
     const h = _pidHash(npc.pid);
-    if (_t1217On() && npc._t1217Stop && npc._t1217Stop.day === day) { _lifeGoHome(npc, '휴식'); return true; }   // ★[T1217] 그날 멈췄다 — 쉰다(T374 퇴근과 같은 한 줄 · 끔 = 칸이 안 선다)
+    if (_t1217On() && npc._t1217Stop && npc._t1217Stop.day === day) { if (_t1422Side(vil, npc, now, 'quota')) return true; _lifeGoHome(npc, '휴식'); return true; }   // ★[T1217] 그날 멈췄다 — 쉰다(T374 퇴근과 같은 한 줄 · 끔 = 칸이 안 선다)
     if (!npc._workSite || npc._workSite.day !== day) { const _s = _t427On() ? _t427Site(vil, npc, sites, h, day) : { x: sites[h % sites.length].x, y: sites[h % sites.length].y, day }; if (!_s) return true; npc._workSite = _s; }   // ★[T562 ④] 아직(`null`)이면 이 틱은 제자리 — 다음 틱에 이어서   // ★[T427 ①] 켜면 닿는 물가만
     const ws = npc._workSite;
     if (Math.hypot(npc.x - ws.x, npc.y - ws.y) > 130) { npc.behavior = 'wander'; npc.targetX = ws.x; npc.targetY = ws.y; npc.gatherTarget = null; _lifeAct(npc, '출근'); return true; }
@@ -21158,7 +21222,8 @@ function __rumorProbe() {
     rumor: Object.assign({}, L.rumorStats) };
 }
 
-module.exports = { t1406PathCell: (cx, cy, vil) => _t1406PathCell(cx, cy, vil || null), T1406_KEEP_PATHS, artisanPerf,   // ★[T1196] 장인 작업장 관측
+module.exports = { T1422_SIDE_WORK, t1422Stat, _t1422Probe: { side: (vil, npc, now, why) => _t1422Side(vil, npc, now, why), handsIn: (vil) => _t1422In(vil), kinds: () => _T1422_K ? [..._T1422_K] : [] },   // ★[T1422] 남는 시간 문(하네스 · 관찰기)
+  t1406PathCell: (cx, cy, vil) => _t1406PathCell(cx, cy, vil || null), T1406_KEEP_PATHS, artisanPerf,   // ★[T1196] 장인 작업장 관측
   __t740: () => state,   // ★[T1287 · T1280 회부 1] 생활층 지문 훅(`scripts/t740-side-hook.js`)의 공식 자리 — 읽기만 · 세계 0. 종전엔 훅이 컴파일 때 이 한 줄을 덧붙여서, 관찰기가 villages 를 먼저 실으면 훅이 못 붙었다(생활층 0일)
   _t1259WoodRadius, _t1259WoodCells,
   t1243FieldClearMinAt, T1207_TERR_REAL, terrQuote, terrPlayerAdd, t1207Stat, villageById, _t1207CellCost, _t1207Batch, _t1207Queue, _t1207BodyDone, _t1283BodyHaul, _t1207LogIn, _t1207Flush, _t1207CanTake, _terrAdd, _terrGrow,   // ★[T1207] 영토 확장 실물화 — 존(우클릭)과 하네스가 같은 함수를 부른다(사본 0)
