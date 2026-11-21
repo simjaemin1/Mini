@@ -3,7 +3,7 @@
 Never sum those counters across segments. Observer-local counters (births, body exits,
 add trace, accepted emigrations) are separately accumulated and cross-checked.
 """
-import argparse,json,csv,statistics,subprocess
+import argparse,json,csv,statistics,subprocess,re
 from pathlib import Path
 p=argparse.ArgumentParser();p.add_argument('--runs',type=Path,required=True);p.add_argument('--out',type=Path,required=True);p.add_argument('--allow-live',action='store_true');p.add_argument('--cases',help='comma-separated diagnostic cases; default is the six 730-day arms');a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True)
 expected=a.cases.split(',') if a.cases else [f'{arm}-{seed}' for seed in [1020,7,42] for arm in ['OFF','ON']]
@@ -16,9 +16,12 @@ for name in expected:
   if a.allow_live:continue
   raise AssertionError('missing run '+name)
  launch=rd(a.runs/(name+'.launch.json'));is_on=launch['arm']=='ON'
- P=rd(d/'progress.json');assert a.allow_live or P.get('done'),name+' incomplete'
+ P=rd(d/'progress.json')
+ exitpath=a.runs/(name+'.exit.json');actualExit=rd(exitpath) if exitpath.exists() else None
+ failed=actualExit is not None and (actualExit['exit']!=0 or not P.get('done'))
+ assert a.allow_live or P.get('done') or failed,name+' incomplete and still running'
  starts=[s['from'] for s in P.get('segs',[])]
- if a.allow_live:
+ if a.allow_live or failed:
   starts=sorted(set(starts+[int(f.name.split('-')[1].split('.')[0]) for f in d.glob('seg-*.log')]))
  rows=[];villast={};zeroStreak={};worstZero={};zeroDays={};byvilDone={};starveBase=0;traceBase=0;batchBase=0;emigrations=[];errors=[];meta=[]
  for start in sorted(starts):
@@ -56,13 +59,13 @@ for name in expected:
   f=Path(str(base)+'.t1274-meta.json')
   if f.exists():meta.append(rd(f))
  if not rows:
-  allruns[name]=dict(done=False,days=0);continue
- assert not errors,(name,errors[:3])
- if not a.allow_live:
+  allruns[name]=dict(done=False,failed=failed,days=0,target=P['days'],actualExit=actualExit,launch=launch,checkpoint=P['ck']);continue
+ assert failed or not errors,(name,errors[:3])
+ if not a.allow_live and not failed:
   if is_on:
    assert min(r['bodies']/r['pop'] for r in rows if r['pop'])>=1,(name,'body cap')
    assert max(r['missingResidents'] for r in rows)==0,(name,'resident without linked physical body')
- if not a.allow_live:
+ if not a.allow_live and not failed:
   assert len(rows)==P['days'] and len(P['segs'])==(P['days']+P['every']-1)//P['every']
   assert all(s['code']==0 for s in P['segs'])
   assert len(meta)==len(P['segs'])
@@ -77,7 +80,7 @@ for name in expected:
    subprocess.run(['python3',str(Path(__file__).with_name('t1358-state.py')),str(snap),'--out',str(dest)],check=True,stdout=subprocess.DEVNULL)
    state=rd(dest);R['placedWood']=state['totals']['placedWood']
    assert state['day']==day and state['totals']['done']==R['completed'],(name,day,'snapshot time mismatch')
-  elif not a.allow_live and day>=100:raise AssertionError('missing exact material snapshot '+str(snap))
+  elif not a.allow_live and not failed and day>=100:raise AssertionError('missing exact material snapshot '+str(snap))
   window=[r for r in rows if day-10<r['day']<=day]
   prefix=[r for r in rows if r['day']<=day];steady=[r['cpuSeconds'] for r in prefix if r['day']!=r['segmentStart']+1]
   points[str(day)]=dict(R,placedWood=state['totals']['placedWood'] if state else None,
@@ -88,19 +91,28 @@ for name in expected:
    zeroWholeLast10=sum(not any(day-10<d0<=day and n>0 for d0,n in vv) for vv in byvilDone.values()) if byvilDone else None,
    cpuMeanAll=statistics.mean(r['cpuSeconds'] for r in prefix),cpuMeanSteady=statistics.mean(steady) if steady else None,
    cpuLast100Mean=statistics.mean(r['cpuSeconds'] for r in rows if day-100<r['day']<=day),
-   emigrated=sum(e['day']<=day for e in emigrations))
+   emigrated=None if failed and start not in [s['from'] for s in P.get('segs',[])] and not (d/f'seg-{start}.json.t1302.json').exists() else sum(e['day']<=day for e in emigrations))
  last=rows[-1]
- allruns[name]=dict(done=P.get('done'),days=last['day'],target=P['days'],pop=last['pop'],points=points,
+ failureEvidence=None
+ if failed:
+  log=d/f'seg-{max(starts)}.log';text=log.read_text(errors='replace') if log.exists() else ''
+  loggedDays=[int(x) for x in re.findall(r'econ day (\d+)',text)]
+  zone=d/f'seg-{max(starts)}.json.zone-exit.json'
+  failureEvidence=dict(lastObservedLedgerDay=last['day'],lastLoggedEconomyDay=max(loggedDays) if loggedDays else None,
+   checkpoint=P['ck'],zoneExit=rd(zone) if zone.exists() else None,lastLogLines=text.splitlines()[-20:],observerErrors=errors)
+ allruns[name]=dict(done=P.get('done'),failed=failed,days=last['day'],target=P['days'],pop=last['pop'],points=points,
   cpuMeanAll=statistics.mean(r['cpuSeconds'] for r in rows),completed=last['completed'],completedWood=last['completedWood'],
   minBodyRatio=min(r['bodies']/r['pop'] for r in rows if r['pop']),maxBodyGap=max(r['pop']-r['bodies'] for r in rows),maxMissingResidents=max(r['missingResidents'] for r in rows) if is_on else None,batchCalls=last['batchCalls'],observerErrors=len(errors),
   launch=launch,segments=P.get('segs'),clockExitMeta=meta,
-  actualExit=rd(a.runs/(name+'.exit.json')) if (a.runs/(name+'.exit.json')).exists() else None,
+  actualExit=actualExit,failureEvidence=failureEvidence,
   emptyQueuePositiveNeedVillageDays=sum(r['emptyQueueWithNeed'] or 0 for r in rows),villageWorst=sorted([dict(village=n,zeroDays=zeroDays[n],maxConsecutiveZero=worstZero[n],completed=villast[n]) for n in villast],key=lambda r:(-r['maxConsecutiveZero'],r['completed'])))
  dailyout.extend(rows)
 for name,r in allruns.items():
  for day,point in r.get('points',{}).items():
   seed=name.split('-')[-1];off=allruns.get('OFF-'+seed,{}).get('points',{}).get(day)
-  if off:point['offRatio']=point['pop']/off['pop'];point['ratioAtLeast130']=point['offRatio']>=1.30
+  if off:
+   point['offRatio']=point['pop']/off['pop'] if off['pop'] else None
+   point['ratioAtLeast130']=point['offRatio']>=1.30 if point['offRatio'] is not None else None
 (a.out/'summary.json').write_text(json.dumps(allruns,ensure_ascii=False,indent=1))
 for fname,rows in [('daily.csv',dailyout),('villages-daily.csv',vilout)]:
  if rows:
