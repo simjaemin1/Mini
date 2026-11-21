@@ -7,7 +7,7 @@
 //   ① 첫 개인 사유지는 3×3 = 9칸 한 덩이로만 · ② 첫 등록 값 = 한 칸 값의 4배 = 나무 12 · 돌 8(`CLAIM_COST.personal` 에서 유도)
 //   ③ 간이 움집 3×3(6×4 움집은 그대로 — 종류가 둘) · ④ 온보딩의 끝 = 간이 움집 완공(「지금 할 일」 칸이 완공까지 잇는다)
 // ★판 — A 정본 표(서버 · 클라 파일 원문 · 프로세스 0) · B 실제 존 켬(`T1392_FIRST_LOT=1` · `T1341_OWN_HOUSE=1` · `T1305_DEEDS=1`) · C 실제 존 끔(`T1392_FIRST_LOT` 없음 = 종전 · 나머지 같음)
-// ★미끼 셋(이 파일 안 · 바꾼 자리 정확히 1곳씩): ⓐ 간이 움집 기둥 수 4 → 6 사본 ⓑ 칸이 움집터 뒤를 잇지 않는 사본 ⓒ 끔 판(B 의 켬 전용 줄이 C 에서 빨강)
+// ★미끼 셋(이 파일 안 · 바꾼 자리 정확히 1곳씩): ⓐ 간이 움집 기둥 수 2 → 4 사본(★[T1403] 재민 11-20 판정 15 — 가운데 둘) ⓑ 칸이 움집터 뒤를 잇지 않는 사본 ⓒ 끔 판(B 의 켬 전용 줄이 C 에서 빨강)
 // ★날짜 · 벽시계 0.
 // 실행: node scripts/test-t1392-first-lot.js [--skip-server]
 'use strict';
@@ -26,24 +26,24 @@ const tmp = [];
 process.on('exit', () => { for (const f of tmp) { try { fs.rmSync(f, { recursive: true, force: true }); } catch (e) {} } });
 
 // ── A. 정본 표 ────────────────────────────────────────────────────────────────
-sec('A1 간이 움집 공정 표 — 6×4 표에서 유도(기둥 = 모서리 넷 · 서까래 = 둘레 비 · 풀 · 이엉 = 넓이 비 · 올림)');
+sec('A1 간이 움집 공정 표 — 6×4 표에서 유도(기둥 = 가운데 둘 · 서까래 = 둘레 비 · 풀 · 이엉 = 넓이 비 · 올림)');
 const HS = require(path.join(ROOT, 'server', 'hut-stages.js'));
 const needOf = (H) => (H.SMALL_STAGES || []).map((s) => s.need);   // 옛 표(간이 움집 없음)에서도 줄이 선다(빨강으로)
 const smallOk = (H) => {
   const n = needOf(H);
-  return JSON.stringify(n) === JSON.stringify([{}, { pillar: 4 }, { rafter: 5, fiber: 3 }, { thatch: 3 }]) && H.SMALL_STAGES[0].tool === 'pickaxe'
-    && typeof H.smallRaw === 'function' && JSON.stringify(H.smallRaw()) === JSON.stringify({ wood: 15, fiber: 15 });
+  return JSON.stringify(n) === JSON.stringify([{}, { pillar: 2 }, { rafter: 5, fiber: 3 }, { thatch: 3 }]) && H.SMALL_STAGES[0].tool === 'pickaxe'
+    && typeof H.smallRaw === 'function' && JSON.stringify(H.smallRaw()) === JSON.stringify({ wood: 9, fiber: 15 });
 };
-ok(smallOk(HS), '간이 움집 = 기둥 4 · 서까래 5 · 풀 3 · 이엉 3 → 원자재 나무 15 · 풀 15', JSON.stringify([needOf(HS), HS.smallRaw && HS.smallRaw()]));
+ok(smallOk(HS), '간이 움집 = 기둥 2 · 서까래 5 · 풀 3 · 이엉 3 → 원자재 나무 9 · 풀 15', JSON.stringify([needOf(HS), HS.smallRaw && HS.smallRaw()]));
 ok(JSON.stringify(HS.hutRaw()) === JSON.stringify({ wood: 22, fiber: 38 }) && HS.HUT_STAGES[1].need.pillar === 6, '6×4 움집 표 무변(통나무 22 · 풀 38 · 기둥 6)', JSON.stringify(HS.hutRaw()));
-ok(HS.SMALL_PILLARS === HS.HUT_PILLARS_ATTESTED[1], '간이 움집 기둥 4 = 고증 "구덩이 둘레 4 기둥"(T497)과 같은 수', `${HS.SMALL_PILLARS} · ${JSON.stringify(HS.HUT_PILLARS_ATTESTED)}`);
-ok((HS.SMALL_STAGES || []).map((s) => s.label).join(' / ') === '① 수혈 굴착(터파기) / ② 굴립주 기둥 세우기(기둥 4) / ③ 도리·서까래 골조(서까래 5·풀 3) / ④ 이엉 지붕 잇기(이엉 3)', '간이 움집 단계 글 = 6×4 글 꼴에 수만 갈아 끼움', (HS.SMALL_STAGES || []).map((s) => s.label).join(' / '));
+ok(HS.SMALL_PILLARS === HS.HUT_PILLARS_ATTESTED[0] && JSON.stringify(HS.SMALL_POSTS) === '[[-0.5,0],[0.5,0]]', '간이 움집 기둥 2 = 고증 첫 수(송국리형 기본꼴 가운데 2주) · 자리 = 가운데 칸 서 · 동 변', `${HS.SMALL_PILLARS} · ${JSON.stringify(HS.HUT_PILLARS_ATTESTED)}`);
+ok((HS.SMALL_STAGES || []).map((s) => s.label).join(' / ') === '① 수혈 굴착(터파기) / ② 굴립주 기둥 세우기(기둥 2) / ③ 도리·서까래 골조(서까래 5·풀 3) / ④ 이엉 지붕 잇기(이엉 3)', '간이 움집 단계 글 = 6×4 글 꼴에 수만 갈아 끼움', (HS.SMALL_STAGES || []).map((s) => s.label).join(' / '));
 {   // 미끼 ⓐ
-  const src = rd('server/hut-stages.js'), L = 'const SMALL_PILLARS = 4;';
-  const cnt = src.split(L).length - 1, bait = src.replace(L, 'const SMALL_PILLARS = 6;');
+  const src = rd('server/hut-stages.js'), L = 'const SMALL_PILLARS = HUT_PILLARS_ATTESTED[0];';
+  const cnt = src.split(L).length - 1, bait = src.replace(L, 'const SMALL_PILLARS = 4;');
   const f = path.join(ROOT, 'server', `_t1392_bait_${process.pid}.js`); fs.writeFileSync(f, bait); tmp.push(f);
   const HB = require(f);
-  ok(cnt === 1 && !smallOk(HB), '★미끼 ⓐ 바꾼 자리 1곳(간이 움집 기둥 4 → 6) — 간이 움집 표 줄이 빨강', JSON.stringify(needOf(HB)[1]));
+  ok(cnt === 1 && !smallOk(HB), '★미끼 ⓐ 바꾼 자리 1곳(간이 움집 기둥 2 → 4 — T1392 첫 후보) — 간이 움집 표 줄이 빨강', JSON.stringify(needOf(HB)[1]));
 }
 
 sec('A2 「지금 할 일」 칸 — 터를 판 뒤 기둥 → 서까래 → 이엉 → 올리기를 한 걸음씩(클라 70-lobby.js 원문)');
@@ -74,7 +74,7 @@ function chain(C) {
     lotIn: P({ myLot9: { x: 64, y: 64, inside: true } }),
     s1noWood: P({ mySite: site(1, false), tools: [{ type: 'axe', d: 10 }], bag: {} }),
     s1craft: P({ mySite: site(1, false), tools: [{ type: 'axe', d: 10 }], bag: { wood: 3 } }),
-    s1ready: P({ mySite: site(1, true), tools: [{ type: 'axe', d: 10 }], bag: { pillar: 4 } }),
+    s1ready: P({ mySite: site(1, true), tools: [{ type: 'axe', d: 10 }], bag: { pillar: 2 } }),
     s2fiber: P({ mySite: site(2, false), tools: [{ type: 'axe', d: 10 }], bag: { rafter: 5 } }),
     s3thatch: P({ mySite: site(3, false), bag: { fiber: 4 } }),
     done: P({ myHut: true, mySite: null }),
@@ -82,7 +82,7 @@ function chain(C) {
 }
 const chainOk = (r) => r.noLand && r.noLand.stage === 'claim' && /둘레 아홉 칸/.test(JSON.stringify(r.noLand.guide)) && /나무 12개와 돌 8개/.test(JSON.stringify(r.noLand.guide))
   && r.lotOut && r.lotOut.stage === 'build' && r.lotOut.target && r.lotIn && r.lotIn.btn === 'small_hut'
-  && r.s1noWood && r.s1noWood.stage === 'gather' && r.s1noWood.noun === '나무' && r.s1noWood.target && r.s1noWood.target.x === 100 && JSON.stringify(r.s1noWood.want) === '{"wood":12}'
+  && r.s1noWood && r.s1noWood.stage === 'gather' && r.s1noWood.noun === '나무' && r.s1noWood.target && r.s1noWood.target.x === 100 && JSON.stringify(r.s1noWood.want) === '{"wood":6}'
   && r.s1craft && r.s1craft.stage === 'craft' && r.s1craft.step && r.s1craft.step.what === 'pillar'
   && r.s1ready && r.s1ready.stage === 'site' && r.s1ready.btn === 'hut'
   && r.s2fiber && r.s2fiber.stage === 'gather' && r.s2fiber.noun === '갈대' && r.s2fiber.target && r.s2fiber.target.x === 300
@@ -93,7 +93,7 @@ try {
   CH = chain(loadClient());
   ok(chainOk(CH), '★칸 사다리 — 집터 아홉 칸(12 · 8) → 집터 가운데로 → 간이 움집 단추 → 나무 → 기둥 만들기 → 올리기 단추 → 갈대 → 이엉 만들기 → 완공이면 칸 끝(null)',
     JSON.stringify(Object.fromEntries(Object.entries(CH).map(([k, v]) => [k, v ? `${v.stage}:${v.item}${v.btn ? '+' + v.btn : ''}` : null]))));
-  ok(!!CH.s1ready && /기둥 4\/4/.test(JSON.stringify(CH.s1ready.guide)), '올리기 칸 글 = 서버 표의 수(기둥 4/4)', CH.s1ready && JSON.stringify(CH.s1ready.guide).slice(0, 90));
+  ok(!!CH.s1ready && /기둥 2\/2/.test(JSON.stringify(CH.s1ready.guide)), '올리기 칸 글 = 서버 표의 수(기둥 2/2)', CH.s1ready && JSON.stringify(CH.s1ready.guide).slice(0, 90));
 } catch (e) { ok(false, 'A2 예외: ' + (e && e.stack || e)); }
 {   // 끔(welcome 에 firstLot 칸 없음) — 종전 칸: 터를 팠으면 칸이 내려선다(null) · 터 값 글은 종전
   const C = loadClient();
@@ -113,7 +113,7 @@ sec('A3 봇 손(`lib-onb-guide.guideAct`) — 칸이 더 말하는 넷을 한 �
   const { guideAct } = require('./lib-onb-guide');
   const g = CH ? [guideAct(CH.lotIn), guideAct(CH.s1ready), guideAct(CH.s1craft), guideAct(CH.s2fiber), guideAct(CH.s1noWood)] : [];
   ok(g.length === 5 && g[0].do === 'small_hut' && g[1].do === 'hut_adv' && g[2].do === 'craft_item' && g[2].what === 'pillar' && g[3].do === 'reed' && g[3].item === 'fiber'
-    && g[4].do === 'gather' && g[4].res === 'tree' && JSON.stringify(g[4].want) === '{"wood":12}', '간이 움집 단추 · 올리기 단추 · 중간재 제작 · 갈대 · 나무(칸이 말한 수)', JSON.stringify(g));
+    && g[4].do === 'gather' && g[4].res === 'tree' && JSON.stringify(g[4].want) === '{"wood":6}', '간이 움집 단추 · 올리기 단추 · 중간재 제작 · 갈대 · 나무(칸이 말한 수)', JSON.stringify(g));
 }
 
 // ── B · C. 실제 존 ────────────────────────────────────────────────────────────
@@ -198,7 +198,7 @@ async function serverArm(on) {
     out.site = st ? { data: st.data, said: h1.said, d: h1.d } : { said: h1.said };
     // 단계 — 모자라면 거절 · 표 수만큼 정확히 든다
     if (st) {
-      await give(X, { pillar: 3 });
+      await give(X, { pillar: 1 });
       const a1 = await act(X, { type: 'hut_advance', buildingId: st.id });
       await give(X, { pillar: 1, rafter: 5, fiber: 3, thatch: 3 });
       const a2 = await act(X, { type: 'hut_advance', buildingId: st.id }, () => ((X.blds.get(st.id) || {}).data || {}).stage === 2);
@@ -210,7 +210,7 @@ async function serverArm(on) {
       const sw = walls.filter((b) => b.data.side === 'N' && Math.floor(b.y / S) === st.data.y1 + 1).map((b) => Math.floor(b.x / S) - st.data.x0).sort();
       const hut = [...X.blds.values()].find((b) => b.type === 'hut' && Math.abs(b.x - st.x) < 4 && Math.abs(b.y - st.y) < 4);
       const mineSet = new Set([...X.mine.values()].map((c) => `${Math.floor(c.x / S)},${Math.floor(c.y / S)}`));
-      out.hut = { walls: walls.length, floors: floors.length, south: sw, hut: !!hut, small: B.every((b) => b.data.small === 1) && !!(hut && hut.data && hut.data.small),
+      out.hut = { walls: walls.length, floors: floors.length, south: sw, hut: !!hut, posts: hut && hut.data ? hut.data.posts : null, small: B.every((b) => b.data.small === 1) && !!(hut && hut.data && hut.data.small),
         inLot: floors.every((f) => mineSet.has(`${Math.floor(f.x / S)},${Math.floor(f.y / S)}`)), rect: [st.data.x0 - c0.x, st.data.y0 - c0.y, st.data.x1 - c0.x, st.data.y1 - c0.y] };
     }
     try { X.ws.close(); Y.ws.close(); } catch (e) {}
@@ -232,11 +232,11 @@ async function serverArm(on) {
       ok(B.blocked.n === 0 && !Object.keys(B.blocked.d).length && /북서 · 서 · 남서 칸은 남의 땅/.test(B.blocked.said) && B.blocked.need && B.blocked.need.lot && B.blocked.need.lot.length === 3, '★한 칸이라도 막히면 통째로 거절 · 가방 그대로 · 막힌 쪽 한 줄 · need.lot', JSON.stringify(B.blocked));
       ok(B.second.n === 10 && B.second.d.wood === -3 && B.second.d.stone === -2, '★둘째 C = 한 칸 · 한 칸 값(3 · 2)', JSON.stringify(B.second));
       ok(B.hutOut.sites === 0 && /내 땅 아홉 칸/.test(B.hutOut.said), '간이 움집은 내 땅 밖에 안 선다', B.hutOut.said);
-      ok(B.site.data && B.site.data.small === 1 && B.site.data.x1 - B.site.data.x0 === 2 && B.site.data.y1 - B.site.data.y0 === 2 && /기둥 4/.test(B.site.said), '★간이 움집 터 = 집터 아홉 칸 그 자리(3×3) · 다음 = 기둥 4', JSON.stringify(B.site));
-      ok(B.adv && /기둥 3\/4/.test(B.adv.short) && B.adv.d2.pillar === -4 && B.adv.d3.rafter === -5 && B.adv.d3.fiber === -3 && B.adv.d4.thatch === -3 && /간이 움집이 다 지어졌습니다/.test(B.adv.done),
-        '★단계마다 표의 수만큼(기둥 4 · 서까래 5 · 풀 3 · 이엉 3) · 모자라면 거절', JSON.stringify(B.adv));
-      ok(B.hut && B.hut.walls === 11 && B.hut.floors === 9 && JSON.stringify(B.hut.south) === '[0,2]' && B.hut.hut && B.hut.small && B.hut.inLot && JSON.stringify(B.hut.rect) === '[-1,-1,1,1]',
-        '★완공 = 벽 11(남벽 문 가운데 1칸) · 바닥 9(다 내 땅) · 움집 행 · `small` 표지', JSON.stringify(B.hut));
+      ok(B.site.data && B.site.data.small === 1 && B.site.data.x1 - B.site.data.x0 === 2 && B.site.data.y1 - B.site.data.y0 === 2 && /기둥 2/.test(B.site.said), '★간이 움집 터 = 집터 아홉 칸 그 자리(3×3) · 다음 = 기둥 2', JSON.stringify(B.site));
+      ok(B.adv && /기둥 1\/2/.test(B.adv.short) && B.adv.d2.pillar === -2 && B.adv.d3.rafter === -5 && B.adv.d3.fiber === -3 && B.adv.d4.thatch === -3 && /간이 움집이 다 지어졌습니다/.test(B.adv.done),
+        '★단계마다 표의 수만큼(기둥 2 · 서까래 5 · 풀 3 · 이엉 3) · 모자라면 거절', JSON.stringify(B.adv));
+      ok(B.hut && B.hut.walls === 11 && B.hut.floors === 9 && JSON.stringify(B.hut.south) === '[0,2]' && B.hut.hut && B.hut.small && B.hut.inLot && JSON.stringify(B.hut.rect) === '[-1,-1,1,1]' && JSON.stringify(B.hut.posts) === '[[-16,0],[16,0]]',
+        '★완공 = 벽 11(남벽 문 가운데 1칸) · 바닥 9(다 내 땅) · 움집 행 · `small` 표지 · 가운데 기둥 둘 자리(T1403)', JSON.stringify(B.hut));
       if (B.err) ok(false, '켬 판 예외', B.err);
       sec('C 실제 존 끔(`T1392_FIRST_LOT` 없음) — 종전 · ★미끼 ⓒ 켬 전용 줄이 빨강');
       const C = await serverArm(false);
