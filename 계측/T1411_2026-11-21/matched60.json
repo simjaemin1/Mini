@@ -1,0 +1,30 @@
+{
+ "days": 60,
+ "worldsPerArm": 1,
+ "stats": {
+  "base-plain-1020": {
+   "mean": 85.34689333333333,
+   "blocks": {
+    "1": 54.0662622,
+    "11": 71.1882276,
+    "21": 88.4192944,
+    "31": 98.3196062,
+    "41": 99.77438670000001,
+    "51": 100.3135829
+   }
+  },
+  "ON-1020": {
+   "mean": 85.065812,
+   "blocks": {
+    "1": 51.5730737,
+    "11": 70.6408904,
+    "21": 77.3095124,
+    "31": 99.0000605,
+    "41": 113.3302635,
+    "51": 98.5410715
+   }
+  }
+ },
+ "observedReductionPercent": 0.329339853338928,
+ "note": "Extension of the same paired worlds; not independent replications. Small and varying observed effect."
+}
