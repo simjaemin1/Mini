@@ -1,0 +1,15 @@
+off-1020 0 541
+off-7 0 625
+hunt-1020 0 537
+off-42 0 638
+hunt-7 0 649
+hunt-42 0 671
+bronze-7 0 563
+bronze-1020 0 632
+firstlot-1020 0 558
+bronze-42 0 595
+firstlot-7 0 639
+firstlot-42 0 666
+work-1020 0 582
+work-7 0 656
+work-42 0 715
