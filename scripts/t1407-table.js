@@ -75,7 +75,7 @@ for (const dir of fs.readdirSync(root).sort()) {
   const run = loadRun(dir); if (!run) { console.log(`<!-- 관찰 없음 ${dir} -->`); continue; }
   runs.push(Object.assign(summarize(run), { _r: run.r }));
 }
-const ORDER = { off: 0, bundle: 1, b84: 2, ka: 3, kb: 4, kc: 5, kbc: 6 };
+const ORDER = { off: 0, bundle: 1, kb: 2, kc: 3, b84: 4, b84t: 5 };
 runs.sort((a, b) => (a.kind < b.kind ? -1 : a.kind > b.kind ? 1 : 0) || (+a.seed === 1020 ? -1 : 0) - (+b.seed === 1020 ? -1 : 0) || +a.seed - +b.seed || (ORDER[a.arm] ?? 9) - (ORDER[b.arm] ?? 9));
 function table(h, rows) { console.log('| ' + h.join(' | ') + ' |\n|' + h.map(() => '---').join('|') + '|'); for (const x of rows) console.log('| ' + x.join(' | ') + ' |'); console.log(''); }
 
