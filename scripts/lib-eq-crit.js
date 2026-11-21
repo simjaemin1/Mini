@@ -43,7 +43,10 @@ function enterDay(ser, key, th) {   // 처음 참이 되고 끝까지 참인 첫
 const TH = { c1: [0.01, 0.02, 0.05], c2: [0], c3: [0.02, 0.05, 0.1], c4: [0.01, 0.02, 0.05] };
 function table(rows, W) {
   const w = W || 365, ser = series(rows, w), out = { W: w, n: rows.length, last: ser.length ? ser[ser.length - 1] : null, enter: {} };
-  for (const [k, ths] of Object.entries(TH)) for (const th of ths) out.enter[`${k}≤${th}`] = ser.length ? enterDay(ser, k, th) : '창 모자람';
+  for (const [k, ths] of Object.entries(TH)) for (const th of ths) {
+    const d = ser.length ? enterDay(ser, k, th) : '창 모자람';
+    out.enter[`${k}≤${th}`] = (d != null && out.last && d === out.last.d && ser.length > 0) ? `${d}(끝 한 점뿐)` : d;   // 잴 수 있는 점이 끝 날 하나 → "들었다" 못 함(판을 늘려야)
+  }
   return out;
 }
 module.exports = { COL, series, enterDay, table, TH, slopeRel, mean };

@@ -29,7 +29,7 @@ const SEED = parseInt(opt('seed', ''), 10), FROM = opt('from', 'make:800'), DAYS
 const SERVER = A.includes('--server'), PAR = parseInt(opt('par', '2'), 10), EVERY = parseInt(opt('every', '50'), 10), STALE_OK = A.includes('--allow-stale');
 const ZONE = opt('zone', 'hanbando');
 if (!(SEED > 0) || !(DAYS > 0)) { console.error('쓰는 법: eq-run.js --seed <n> --from <저장본|make:<날>|new> --days <N> [--arm 이름=ENV=값 …] [--server]'); process.exit(2); }
-const ARMS = [{ name: 'off', env: {} }];
+const ARMS = A.includes('--no-off') ? [] : [{ name: 'off', env: {} }];   // --no-off = 끔 팔을 이미 돌린 폴더에 켬 팔만 더한다(표는 그 폴더의 off.obs 를 읽지 않는다 — 견줌은 부르는 쪽)
 for (let i = 0; i < A.length; i++) if (A[i] === '--arm') {
   const s = A[i + 1], k = s.indexOf('='); const name = s.slice(0, k), env = {};
   for (const kv of s.slice(k + 1).split(',')) { const j = kv.indexOf('='); env[kv.slice(0, j)] = kv.slice(j + 1); }
@@ -80,7 +80,7 @@ async function labArm(arm, file) {
 
 // ── 서버(t1308 마디 자 · 끔 세계 = 서버 판 자 조건) ───────────────────────────────────────────
 const SRV_BASE = { T400_BUILD_ACT: '0', VILLAGE_CARAVAN_MAX: '0', T745_VCLOCK: '1' };
-const srvPre = (obs) => `--require ${path.join(__dirname, 'eq-srv-obs.js')}`;
+const srvPre = () => `--max-old-space-size=${process.env.T1420_SRV_HEAP_MB || '6144'} --require ${path.join(__dirname, 'eq-srv-obs.js')}`;   // 서버 900날 판은 기본 힙에서 날 약 679 에 죽었다(T1420) — 6 GB
 async function srvMake(day) {
   const name = `srv-${ZONE}-${SEED}-d${day}`, dir = path.join(Lq.cacheDir(), name);
   if (fs.existsSync(path.join(dir, 'ck', `stop-${day}.json`))) { log(`  저장본 캐시 ${dir}`); return dir; }
