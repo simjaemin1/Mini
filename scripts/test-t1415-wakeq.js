@@ -159,7 +159,7 @@ function lane(name, port, extra) {
   const calls = (src, re) => { const r = []; let m; const g = new RegExp(re, 'g'); while ((m = g.exec(src))) r.push(encl(src, m.index)); return r; };
   const wk = calls(Z, '(?<!function )_t1322Wake\\(s\\)').filter((f) => f !== '?');
   const wkC = wk.reduce((o, f) => ((o[f] = (o[f] || 0) + 1), o), {});
-  ok(Z.includes('function _t1322Wake(s) {\n  if (T1415Q) SS.qWake(s);'), '`_t1322Wake` 머리 = 주차 몸 꺼냄(밀기 · 체력 문 · 대피 · 종료 저장 · 결정 문 · 첫 거름이 다 이 문)');
+  ok(Z.includes('function _t1322Wake(s) {\n  if (SS.WQ_ON) SS.qWake(s);'), '`_t1322Wake` 머리 = 주차 몸 꺼냄(밀기 · 체력 문 · 대피 · 종료 저장 · 결정 문 · 첫 거름이 다 이 문)');
   ok(JSON.stringify(Object.keys(wkC).sort().map((k) => k + ':' + wkC[k])) === JSON.stringify(['_t1322FlushAll:1', '_t1322Skip:2', '_t1322Touch:1', '_t1348Dec:1']),
     '`_t1322Wake` 부르는 함수 = 결정 문(일터) · 밀기 문 · 몰아 내림 · 첫 거름', JSON.stringify(wkC));
   const tz = calls(Z, '_t1322Touch\\(p\\)').length, tzv = (V.match(/state\.deps\.t1322Touch|const _t22 = state\.deps\.t1322Touch/g) || []).length;
@@ -171,7 +171,7 @@ function lane(name, port, extra) {
      /  delete\(k\) \{ const s0 = slotOf\.get\(k\); if \(WQ_ON && s0 !== undefined\) qWake\(s0\);/.test(S) && /  clear\(\) \{ if \(WQ_ON\) qAll\('clr'\); super\.clear\(\); A\.GN\.fill\(1\);/.test(S) &&
      /  delete\(pid\) \{ if \(WQ_ON && super\.has\(pid\)\) \{ const s0 = slotOf\.get\(pid\); if \(s0 !== undefined\) qWake\(s0\); \}/.test(S) && /  clear\(\) \{ if \(WQ_ON\) qAll\('clr'\); super\.clear\(\); this\.P\.length = 0;/.test(S),
      'stand-skip 쓰기 앞 꺼냄 — install(옛 칸) · PMap set · delete · clear · OrdSet delete · clear');
-  ok(Z.includes("function _t1372SSTake() {\n  if (T1415Q) SS.qAll('snap');") && (Z.match(/SS\.qBegin\(/g) || []).length === 1 && (Z.match(/SS\.qEnd\(/g) || []).length === 1 && (Z.match(/SS\.qPark\(/g) || []).length === 1,
+  ok(Z.includes("function _t1372SSTake() {\n  if (SS.WQ_ON) SS.qAll('snap');") && (Z.match(/SS\.qBegin\(/g) || []).length === 1 && (Z.match(/SS\.qEnd\(/g) || []).length === 1 && (Z.match(/SS\.qPark\(/g) || []).length === 1,
     '표 행 뜨기 앞 전부 꺼냄 · 고리 머리 · 끝 · 주차 자리 하나씩');
 
   console.log('== ⑤ 손잡이');

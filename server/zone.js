@@ -5693,7 +5693,7 @@ function _t1322Grant(npc, now, s0) {
 }
 // 미룬 도장 — 건넌 틱의 걸음 문이 썼을 값(마지막 건넌 시각 · 표를 준 자리)
 function _t1322Wake(s) {
-  if (T1415Q) SS.qWake(s);   // ★[T1415 ②] 주차 몸이면 미룬 칸(거른 틱 · 시각)부터 쓰고 고리에 되돌린다
+  if (SS.WQ_ON) SS.qWake(s);   // ★[T1415 ②] 주차 몸이면 미룬 칸(거른 틱 · 시각)부터 쓰고 고리에 되돌린다(줄 손잡이 끔 = 무동작 · 줄이 안 서도 주차 0 이라 무동작)
   const A = SS.A, t = A.SK[s];
   if (A.TK[s] === 3) {   // ★[T1348 ⓑ] 걷는 몸 — 길 번호 · 막힘 자리(마지막 셈 값) · 마지막 건넌 걸음 시각
     const p = SS.own[s]; p.pathIndex = A.PI[s]; const S = p._stuckPos; S.x = A.SPX[s]; S.y = A.SPY[s]; S.at = A.SPA[s]; if (t === t) p._t540StepAt = t;
@@ -5721,7 +5721,7 @@ function _t1322FlushAll() { const A = SS.A, n = SS.count(); for (let s = 0; s < 
 let _t1372SSSnap = null, _t1372SSPend = null;
 const _t1372SSStat = { snap: 0, rows: 0, applied: 0, miss: 0, path: 0 };
 function _t1372SSTake() {
-  if (T1415Q) SS.qAll('snap');   // ★[T1415 ②] 표 행을 뜨기 앞 — 주차 몸 칸을 다 쓴다
+  if (SS.WQ_ON) SS.qAll('snap');   // ★[T1415 ②] 표 행을 뜨기 앞 — 주차 몸 칸을 다 쓴다
   const A = SS.A, n = SS.count(), rows = [], K = Object.keys(A).filter((k) => k !== 'GN');
   for (let s = 0; s < n; s++) { const p = SS.own[s]; if (!p || !(A.TK[s] || A.DS[s])) continue;
     const r = { pid: p.pid, w: SimVillages.t1372Where ? SimVillages.t1372Where(p.pid) : null }; for (const k of K) { const v = A[k][s]; r[k] = Number.isFinite(v) ? v : String(v); }

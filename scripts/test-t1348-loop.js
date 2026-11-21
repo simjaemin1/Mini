@@ -66,6 +66,7 @@ function world(env, src, ssrc, late) {
   const SS = loadSS(ssrc, env), PF = SS.ON, wolves = [];
   const ctx = {
     Math, Object, Number, Infinity, NaN, console, JSON, Set, Map, Array, SS, T1322_PF: PF, T1322_VERIFY: PF && SS.VERIFY, T1337_WAKE: PF && SS.WAKE_ON, T1337_VERIFY: PF && SS.WAKE_ON && SS.WAKE_VERIFY,
+    T1415Q: false, T1415QS: false, T1415QV: false,   // ★[T1415 ②] 깨움 시각 줄 — 이 모형의 고리는 줄 끔 갈래(줄은 `test-t1415-wakeq` 가 잰다)
     T1348_LOOP: PF && SS.LOOP, T1348_WALK: PF && SS.WALK_ON, T1348_WVERIFY: PF && SS.WALK_ON && SS.WALK_VERIFY, T1348_WORK: PF && SS.WORK_ON, T1348_FVERIFY: PF && SS.WORK_ON && SS.WORK_VERIFY, T1365_WORK: PF && SS.WORK2_ON, T1365_VERIFY: PF && SS.WORK2_ON && SS.WORK2_VERIFY,
     T1399_TOK: false, T1399_TVERIFY: false,   // ★[T1399] 표 한 번 판정(생활층 판정 대역에 기록기가 없다 — 판 `test-t1399-tok` 이 잰다)
     _tick: { n: 0 }, _SEED, BUILDING_SIZE: BS, NPC_FLEE_RANGE: R, mobs: new Map(), wolves,
