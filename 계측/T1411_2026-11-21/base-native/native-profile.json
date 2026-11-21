@@ -11,11 +11,13 @@
     "observer_self": 4.04083,
     "pathfinding": 57.149153,
     "spatial_index": 33.569718,
+    "spatial_build": 22.3689,
     "zone_body": 34.570625,
     "roads": 30.367102,
     "hauling": 4.846243,
     "walk_prepare": 44.162402,
     "body_separation": 14.347122,
+    "body_periodic": 11.200818,
     "territory_selection": 4.913111,
     "territory_price": 4.267177
    },
@@ -25,11 +27,13 @@
     "territory_price": 6.589591,
     "pathfinding": 91.156606,
     "spatial_index": 41.350244,
+    "spatial_build": 22.457238,
     "zone_body": 138.243404,
     "hauling": 28.525726,
     "roads": 43.109367,
     "walk_prepare": 65.617507,
     "body_separation": 14.372516,
+    "body_periodic": 18.893006,
     "territory_selection": 12.925111
    }
   },
@@ -43,9 +47,11 @@
     "observer_self": 3.486487,
     "roads": 35.885265,
     "spatial_index": 58.896941,
+    "spatial_build": 38.415778,
     "zone_body": 61.831779,
     "walk_prepare": 93.943315,
     "body_separation": 26.711487,
+    "body_periodic": 20.481163,
     "pathfinding": 11.189777,
     "territory_price": 9.494397,
     "territory_selection": 7.852461,
@@ -57,9 +63,11 @@
     "observer_self": 38.785498,
     "roads": 53.871,
     "spatial_index": 73.67953,
+    "spatial_build": 39.116907,
     "zone_body": 212.866921,
     "walk_prepare": 123.295575,
     "body_separation": 26.718994,
+    "body_periodic": 34.562623,
     "territory_selection": 23.5623,
     "hauling": 31.152979,
     "territory_price": 13.485453,
@@ -77,8 +85,10 @@
     "observer_self": 2.95162,
     "roads": 45.45013,
     "spatial_index": 74.586782,
+    "spatial_build": 49.191672,
     "zone_body": 81.563069,
     "walk_prepare": 123.991679,
+    "body_periodic": 25.39511,
     "hauling": 3.541748,
     "territory_price": 11.173335,
     "pathfinding": 12.115798,
@@ -91,10 +101,12 @@
     "gc": 21.795915,
     "roads": 65.740711,
     "spatial_index": 97.083647,
+    "spatial_build": 50.734894,
     "zone_body": 274.91239,
     "territory_selection": 27.957933,
     "hauling": 31.278657,
     "walk_prepare": 162.05103,
+    "body_periodic": 46.348753,
     "territory_price": 15.91749,
     "pathfinding": 18.927355,
     "body_separation": 33.908775,
@@ -13726,13 +13738,6 @@
    "inclusiveSeconds": 0.281954
   },
   {
-   "function": "(anonymous)",
-   "source": "node:internal/main/run_main_module",
-   "line": 1,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 163.594771
-  },
-  {
    "function": "prepareExecution",
    "source": "node:internal/process/pre_execution",
    "line": 96,
@@ -13741,45 +13746,10 @@
   },
   {
    "function": "(anonymous)",
-   "source": "node:internal/streams/duplex",
+   "source": "node:internal/main/run_main_module",
    "line": 1,
    "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.007883
-  },
-  {
-   "function": "(anonymous)",
-   "source": "node:internal/streams/pipeline",
-   "line": 1,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.007883
-  },
-  {
-   "function": "(anonymous)",
-   "source": "node:internal/streams/compose",
-   "line": 1,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.007883
-  },
-  {
-   "function": "(anonymous)",
-   "source": "node:internal/modules/cjs/loader",
-   "line": 2053,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.279452
-  },
-  {
-   "function": "loadPreloadModules",
-   "source": "node:internal/process/pre_execution",
-   "line": 747,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.279452
-  },
-  {
-   "function": "(anonymous)",
-   "source": "node:internal/modules/cjs/loader",
-   "line": 1490,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 163.590701
+   "inclusiveSeconds": 163.594771
   },
   {
    "function": "setupUserModules",
@@ -13790,6 +13760,13 @@
   },
   {
    "function": "(anonymous)",
+   "source": "node:worker_threads",
+   "line": 1,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.018483
+  },
+  {
+   "function": "(anonymous)",
    "source": "file:///tmp/t1411/base/scripts/t745-vclock.js",
    "line": 1,
    "selfSeconds": 0.0,
@@ -13797,24 +13774,17 @@
   },
   {
    "function": "(anonymous)",
-   "source": "node:worker_threads",
+   "source": "node:internal/streams/duplex",
    "line": 1,
    "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.018483
-  },
-  {
-   "function": "compileForPublicLoader",
-   "source": "node:internal/bootstrap/realm",
-   "line": 332,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.044516
+   "inclusiveSeconds": 0.007883
   },
   {
    "function": "(anonymous)",
-   "source": "node:internal/worker",
-   "line": 1,
+   "source": "node:internal/modules/cjs/loader",
+   "line": 1490,
    "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.018483
+   "inclusiveSeconds": 163.590701
   },
   {
    "function": "(anonymous)",
@@ -13829,6 +13799,48 @@
    "line": 113,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.044516
+  },
+  {
+   "function": "loadPreloadModules",
+   "source": "node:internal/process/pre_execution",
+   "line": 747,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.279452
+  },
+  {
+   "function": "(anonymous)",
+   "source": "node:internal/streams/pipeline",
+   "line": 1,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.007883
+  },
+  {
+   "function": "(anonymous)",
+   "source": "node:internal/worker",
+   "line": 1,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.018483
+  },
+  {
+   "function": "compileForPublicLoader",
+   "source": "node:internal/bootstrap/realm",
+   "line": 332,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.044516
+  },
+  {
+   "function": "(anonymous)",
+   "source": "node:internal/streams/compose",
+   "line": 1,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.007883
+  },
+  {
+   "function": "(anonymous)",
+   "source": "node:internal/modules/cjs/loader",
+   "line": 2053,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.279452
   },
   {
    "function": "(anonymous)",
@@ -13896,13 +13908,6 @@
   {
    "function": "Module._extensions..js",
    "source": "file:///tmp/t1411/base/scripts/t740-side-hook.js",
-   "line": 143,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 163.509812
-  },
-  {
-   "function": "Module._extensions..js",
-   "source": "file:///tmp/t1411/base/scripts/t740-side-hook.js",
    "line": 26,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 163.509812
@@ -13911,6 +13916,13 @@
    "function": "Module._extensions..js",
    "source": "file:///tmp/t1411/base/scripts/t740-side-hook.js",
    "line": 77,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 163.509812
+  },
+  {
+   "function": "Module._extensions..js",
+   "source": "file:///tmp/t1411/base/scripts/t740-side-hook.js",
+   "line": 143,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 163.509812
   },
@@ -13999,13 +14011,6 @@
    "inclusiveSeconds": 0.010966
   },
   {
-   "function": "(anonymous)",
-   "source": "file:///tmp/t1411/base/server/zone-config.js",
-   "line": 518,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.001117
-  },
-  {
    "function": "URL",
    "source": "node:internal/url",
    "line": 802,
@@ -14013,11 +14018,11 @@
    "inclusiveSeconds": 0.001117
   },
   {
-   "function": "formatValue",
-   "source": "node:internal/util/inspect",
-   "line": 857,
+   "function": "(anonymous)",
+   "source": "file:///tmp/t1411/base/server/zone-config.js",
+   "line": 518,
    "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.000567
+   "inclusiveSeconds": 0.001117
   },
   {
    "function": "formatRaw",
@@ -14030,6 +14035,13 @@
    "function": "inspect",
    "source": "node:internal/util/inspect",
    "line": 354,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.000567
+  },
+  {
+   "function": "formatValue",
+   "source": "node:internal/util/inspect",
+   "line": 857,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.000567
   },
@@ -14070,17 +14082,17 @@
   },
   {
    "function": "(anonymous)",
-   "source": "file:///workspace/Mini/node_modules/ws/lib/stream.js",
-   "line": 1,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.030377
-  },
-  {
-   "function": "(anonymous)",
    "source": "file:///workspace/Mini/node_modules/ws/index.js",
    "line": 1,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.034712
+  },
+  {
+   "function": "(anonymous)",
+   "source": "file:///workspace/Mini/node_modules/ws/lib/stream.js",
+   "line": 1,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.030377
   },
   {
    "function": "(anonymous)",
@@ -14146,16 +14158,23 @@
    "inclusiveSeconds": 0.003306
   },
   {
-   "function": "castable",
+   "function": "castKinds",
    "source": "file:///tmp/t1411/base/server/player-items.js",
-   "line": 43,
+   "line": 44,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.004318
   },
   {
-   "function": "castKinds",
+   "function": "alloySmeltable",
+   "source": "file:///tmp/t1411/base/server/specialty.js",
+   "line": 913,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.004318
+  },
+  {
+   "function": "castable",
    "source": "file:///tmp/t1411/base/server/player-items.js",
-   "line": 44,
+   "line": 43,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.004318
   },
@@ -14165,13 +14184,6 @@
    "line": 231,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.003192
-  },
-  {
-   "function": "alloySmeltable",
-   "source": "file:///tmp/t1411/base/server/specialty.js",
-   "line": 913,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.004318
   },
   {
    "function": "(anonymous)",
@@ -14244,6 +14256,20 @@
    "inclusiveSeconds": 0.009898
   },
   {
+   "function": "hungerOf",
+   "source": "file:///tmp/t1411/base/server/kcal.js",
+   "line": 184,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.014215
+  },
+  {
+   "function": "dayHunger",
+   "source": "file:///tmp/t1411/base/server/kcal.js",
+   "line": 177,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.009898
+  },
+  {
    "function": "foodMap",
    "source": "file:///tmp/t1411/base/server/crops.js",
    "line": 612,
@@ -14252,24 +14278,10 @@
   },
   {
    "function": "hungerOf",
-   "source": "file:///tmp/t1411/base/server/kcal.js",
-   "line": 184,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.014215
-  },
-  {
-   "function": "hungerOf",
    "source": "file:///tmp/t1411/base/server/crops.js",
    "line": 120,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.010974
-  },
-  {
-   "function": "dayHunger",
-   "source": "file:///tmp/t1411/base/server/kcal.js",
-   "line": 177,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.009898
   },
   {
    "function": "huntableInBiome",
@@ -14335,16 +14347,16 @@
    "inclusiveSeconds": 0.017388
   },
   {
-   "function": "V2.createWorldV2",
-   "source": "file:///tmp/t1411/base/scripts/t577-server-hook.js",
-   "line": 23,
+   "function": "createWorldV2",
+   "source": "file:///tmp/t1411/base/sim/economy-sim-v2.js",
+   "line": 3372,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.032684
   },
   {
-   "function": "createWorldV2",
-   "source": "file:///tmp/t1411/base/sim/economy-sim-v2.js",
-   "line": 3372,
+   "function": "V2.createWorldV2",
+   "source": "file:///tmp/t1411/base/scripts/t577-server-hook.js",
+   "line": 23,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.032684
   },
@@ -14354,13 +14366,6 @@
    "line": 14,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.00438
-  },
-  {
-   "function": "Ev.createLedger",
-   "source": "file:///tmp/t1411/base/scripts/t740-side-hook.js",
-   "line": 173,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.003715
   },
   {
    "function": "Ev.createLedger",
@@ -14378,8 +14383,29 @@
   },
   {
    "function": "Ev.createLedger",
+   "source": "file:///tmp/t1411/base/scripts/t1302-observe.js",
+   "line": 58,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.003715
+  },
+  {
+   "function": "Ev.createLedger",
+   "source": "file:///tmp/t1411/base/scripts/t740-side-hook.js",
+   "line": 173,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.003715
+  },
+  {
+   "function": "Ev.createLedger",
    "source": "file:///tmp/t1411/base/scripts/t1274-observe.js",
    "line": 59,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.003715
+  },
+  {
+   "function": "createLedger",
+   "source": "file:///tmp/t1411/base/server/events.js",
+   "line": 457,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.003715
   },
@@ -14394,20 +14420,6 @@
    "function": "Ev.createLedger",
    "source": "file:///tmp/t1411/base/scripts/t577-server-hook.js",
    "line": 106,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.003715
-  },
-  {
-   "function": "createLedger",
-   "source": "file:///tmp/t1411/base/server/events.js",
-   "line": 457,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.003715
-  },
-  {
-   "function": "Ev.createLedger",
-   "source": "file:///tmp/t1411/base/scripts/t1302-observe.js",
-   "line": 58,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.003715
   },
@@ -14622,13 +14634,6 @@
    "inclusiveSeconds": 0.003594
   },
   {
-   "function": "at",
-   "source": "file:///tmp/t1411/base/server/villages.js",
-   "line": 12534,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.445452
-  },
-  {
    "function": "_t677Spot",
    "source": "file:///tmp/t1411/base/server/villages.js",
    "line": 12532,
@@ -14636,11 +14641,11 @@
    "inclusiveSeconds": 0.445452
   },
   {
-   "function": "processCallback",
-   "source": "node:zlib",
-   "line": 512,
+   "function": "at",
+   "source": "file:///tmp/t1411/base/server/villages.js",
+   "line": 12534,
    "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.003305
+   "inclusiveSeconds": 0.445452
   },
   {
    "function": "Readable.push",
@@ -14648,6 +14653,13 @@
    "line": 387,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001089
+  },
+  {
+   "function": "processCallback",
+   "source": "node:zlib",
+   "line": 512,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.003305
   },
   {
    "function": "zlibBufferOnEnd",
@@ -14664,6 +14676,13 @@
    "inclusiveSeconds": 0.00792
   },
   {
+   "function": "concat",
+   "source": "node:buffer",
+   "line": 582,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.021068
+  },
+  {
    "function": "_png",
    "source": "file:///tmp/t1411/base/server/bigmap-bake.js",
    "line": 126,
@@ -14676,13 +14695,6 @@
    "line": 115,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.003477
-  },
-  {
-   "function": "concat",
-   "source": "node:buffer",
-   "line": 582,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.021068
   },
   {
    "function": "(anonymous)",
@@ -14734,9 +14746,9 @@
    "inclusiveSeconds": 0.002218
   },
   {
-   "function": "SimVillages.init.dayRoads",
-   "source": "file:///tmp/t1411/base/server/zone.js",
-   "line": 6387,
+   "function": "dayTick",
+   "source": "file:///tmp/t1411/base/server/roads.js",
+   "line": 563,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 6.2892
   },
@@ -14748,6 +14760,13 @@
    "inclusiveSeconds": 6.287568
   },
   {
+   "function": "SimVillages.init.dayRoads",
+   "source": "file:///tmp/t1411/base/server/zone.js",
+   "line": 6387,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 6.2892
+  },
+  {
    "function": "(anonymous)",
    "source": "file:///tmp/t1411/base/server/villages.js",
    "line": 11544,
@@ -14755,11 +14774,11 @@
    "inclusiveSeconds": 6.2892
   },
   {
-   "function": "dayTick",
-   "source": "file:///tmp/t1411/base/server/roads.js",
-   "line": 563,
+   "function": "SimVillages.init.dayBandits",
+   "source": "file:///tmp/t1411/base/server/zone.js",
+   "line": 6388,
    "selfSeconds": 0.0,
-   "inclusiveSeconds": 6.2892
+   "inclusiveSeconds": 0.050309
   },
   {
    "function": "dayTick",
@@ -14772,13 +14791,6 @@
    "function": "(anonymous)",
    "source": "file:///tmp/t1411/base/server/villages.js",
    "line": 11545,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.050309
-  },
-  {
-   "function": "SimVillages.init.dayBandits",
-   "source": "file:///tmp/t1411/base/server/zone.js",
-   "line": 6388,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.050309
   },
@@ -14804,16 +14816,16 @@
    "inclusiveSeconds": 0.008532
   },
   {
-   "function": "(anonymous)",
+   "function": "_t1207LogIn",
    "source": "file:///tmp/t1411/base/server/villages.js",
-   "line": 7864,
+   "line": 7836,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.003679
   },
   {
-   "function": "_t1207LogIn",
+   "function": "(anonymous)",
    "source": "file:///tmp/t1411/base/server/villages.js",
-   "line": 7836,
+   "line": 7864,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.003679
   },
@@ -14895,16 +14907,16 @@
    "inclusiveSeconds": 0.372567
   },
   {
-   "function": "_roadPrefer",
-   "source": "file:///tmp/t1411/base/server/zone.js",
-   "line": 4607,
+   "function": "PathCore.localPath.prefer",
+   "source": "file:///tmp/t1411/base/server/pathfind.js",
+   "line": 59,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001079
   },
   {
-   "function": "PathCore.localPath.prefer",
-   "source": "file:///tmp/t1411/base/server/pathfind.js",
-   "line": 59,
+   "function": "_roadPrefer",
+   "source": "file:///tmp/t1411/base/server/zone.js",
+   "line": 4607,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001079
   },
@@ -15098,13 +15110,6 @@
    "inclusiveSeconds": 0.012128
   },
   {
-   "function": "_oppPrice",
-   "source": "file:///tmp/t1411/base/sim/economy-sim.js",
-   "line": 6264,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.127432
-  },
-  {
    "function": "_smithBeatsMason",
    "source": "file:///tmp/t1411/base/sim/economy-sim.js",
    "line": 6281,
@@ -15117,6 +15122,13 @@
    "line": 6275,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.074492
+  },
+  {
+   "function": "_oppPrice",
+   "source": "file:///tmp/t1411/base/sim/economy-sim.js",
+   "line": 6264,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.127432
   },
   {
    "function": "_masonWeaponCost",
@@ -15147,18 +15159,18 @@
    "inclusiveSeconds": 0.039325
   },
   {
-   "function": "internalStartTimer",
-   "source": "node:internal/util/debuglog",
-   "line": 404,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.002601
-  },
-  {
    "function": "_livelihood",
    "source": "file:///tmp/t1411/base/server/trees.js",
    "line": 199,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.002582
+  },
+  {
+   "function": "internalStartTimer",
+   "source": "node:internal/util/debuglog",
+   "line": 404,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.002601
   },
   {
    "function": "_weatherRollOne",
@@ -15203,18 +15215,18 @@
    "inclusiveSeconds": 4.338018
   },
   {
-   "function": "dump",
-   "source": "file:///tmp/t1411/base/server/chunk-gates.js",
-   "line": 390,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.037072
-  },
-  {
    "function": "SimVillages.t742Bind._t1382GatePend",
    "source": "file:///tmp/t1411/base/server/zone.js",
    "line": 11100,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.300502
+  },
+  {
+   "function": "dump",
+   "source": "file:///tmp/t1411/base/server/chunk-gates.js",
+   "line": 390,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.037072
   },
   {
    "function": "createFromString",
@@ -15238,16 +15250,16 @@
    "inclusiveSeconds": 0.002172
   },
   {
-   "function": "_t1382TbTake",
+   "function": "SimVillages.t742Bind._t1382TbPend",
    "source": "file:///tmp/t1411/base/server/zone.js",
-   "line": 5788,
+   "line": 11103,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.034234
   },
   {
-   "function": "SimVillages.t742Bind._t1382TbPend",
+   "function": "_t1382TbTake",
    "source": "file:///tmp/t1411/base/server/zone.js",
-   "line": 11103,
+   "line": 5788,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.034234
   },
@@ -15434,13 +15446,6 @@
    "inclusiveSeconds": 0.003228
   },
   {
-   "function": "Inflate",
-   "source": "node:zlib",
-   "line": 738,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.003241
-  },
-  {
    "function": "uz",
    "source": "file:///tmp/t1411/base/server/villages.js",
    "line": 5773,
@@ -15448,11 +15453,11 @@
    "inclusiveSeconds": 0.006494
   },
   {
-   "function": "allocate",
-   "source": "node:buffer",
-   "line": 436,
+   "function": "Inflate",
+   "source": "node:zlib",
+   "line": 738,
    "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.013544
+   "inclusiveSeconds": 0.003241
   },
   {
    "function": "allocUnsafe",
@@ -15462,16 +15467,23 @@
    "inclusiveSeconds": 0.013544
   },
   {
-   "function": "(anonymous)",
-   "source": "node:internal/perf/event_loop_delay",
-   "line": 83,
+   "function": "allocate",
+   "source": "node:buffer",
+   "line": 436,
    "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.001065
+   "inclusiveSeconds": 0.013544
   },
   {
    "function": "monitorEventLoopDelay",
    "source": "node:internal/perf/event_loop_delay",
    "line": 76,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.001065
+  },
+  {
+   "function": "(anonymous)",
+   "source": "node:internal/perf/event_loop_delay",
+   "line": 83,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001065
   },
@@ -15491,14 +15503,14 @@
   },
   {
    "function": "(anonymous)",
-   "source": "node:internal/dgram",
+   "source": "node:dgram",
    "line": 1,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001081
   },
   {
    "function": "(anonymous)",
-   "source": "node:dgram",
+   "source": "node:internal/dgram",
    "line": 1,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001081
@@ -15630,6 +15642,13 @@
    "inclusiveSeconds": 0.026666
   },
   {
+   "function": "baseAt",
+   "source": "file:///tmp/t1411/base/public/soil-base.js",
+   "line": 52,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.001084
+  },
+  {
    "function": "vnoise",
    "source": "file:///tmp/t1411/base/public/soil-base.js",
    "line": 37,
@@ -15642,13 +15661,6 @@
    "line": 111,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.007817
-  },
-  {
-   "function": "baseAt",
-   "source": "file:///tmp/t1411/base/public/soil-base.js",
-   "line": 52,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.001084
   },
   {
    "function": "matureYearsOf",
@@ -15700,16 +15712,16 @@
    "inclusiveSeconds": 0.001073
   },
   {
-   "function": "_t719Take",
+   "function": "_t719Pend",
    "source": "file:///tmp/t1411/base/server/villages.js",
-   "line": 15608,
+   "line": 20753,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001068
   },
   {
-   "function": "_t719Pend",
+   "function": "_t719Take",
    "source": "file:///tmp/t1411/base/server/villages.js",
-   "line": 20753,
+   "line": 15608,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001068
   },
@@ -15749,16 +15761,16 @@
    "inclusiveSeconds": 0.001129
   },
   {
-   "function": "(anonymous)",
-   "source": "node:internal/modules/esm/loader",
-   "line": 1,
+   "function": "TracingChannel",
+   "source": "node:diagnostics_channel",
+   "line": 284,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001129
   },
   {
-   "function": "TracingChannel",
-   "source": "node:diagnostics_channel",
-   "line": 284,
+   "function": "(anonymous)",
+   "source": "node:internal/modules/esm/loader",
+   "line": 1,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001129
   },
@@ -15847,23 +15859,16 @@
    "inclusiveSeconds": 0.001086
   },
   {
-   "function": "error",
-   "source": "node:internal/console/constructor",
-   "line": 429,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.001084
-  },
-  {
-   "function": "get",
-   "source": "node:internal/console/constructor",
-   "line": 219,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.001084
-  },
-  {
    "function": "getStderr",
    "source": "node:internal/bootstrap/switches/is_main_thread",
    "line": 173,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.001084
+  },
+  {
+   "function": "error",
+   "source": "node:internal/console/constructor",
+   "line": 429,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001084
   },
@@ -15875,6 +15880,13 @@
    "inclusiveSeconds": 0.001084
   },
   {
+   "function": "onWarning",
+   "source": "node:internal/process/warning",
+   "line": 90,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.001084
+  },
+  {
    "function": "writeOut",
    "source": "node:internal/process/warning",
    "line": 54,
@@ -15882,9 +15894,9 @@
    "inclusiveSeconds": 0.001084
   },
   {
-   "function": "onWarning",
-   "source": "node:internal/process/warning",
-   "line": 90,
+   "function": "get",
+   "source": "node:internal/console/constructor",
+   "line": 219,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001084
   },
@@ -15910,16 +15922,16 @@
    "inclusiveSeconds": 0.001098
   },
   {
-   "function": "_destroy",
+   "function": "destroy",
    "source": "node:internal/streams/destroy",
-   "line": 90,
+   "line": 49,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001098
   },
   {
-   "function": "destroy",
+   "function": "_destroy",
    "source": "node:internal/streams/destroy",
-   "line": 49,
+   "line": 90,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001098
   },
@@ -15932,15 +15944,15 @@
   },
   {
    "function": "(anonymous)",
-   "source": "node:internal/crypto/hash",
-   "line": 81,
+   "source": "node:internal/util",
+   "line": 116,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001109
   },
   {
    "function": "(anonymous)",
-   "source": "node:internal/util",
-   "line": 116,
+   "source": "node:internal/crypto/hash",
+   "line": 81,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001109
   },

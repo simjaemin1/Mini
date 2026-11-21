@@ -12,10 +12,12 @@
     "roads": 66.003504,
     "census": 0.929253,
     "spatial_index": 112.642843,
+    "spatial_build": 73.378974,
     "zone_body": 133.993172,
     "walk_prepare": 194.442913,
     "body_separation": 52.154291,
     "territory_selection": 13.186987,
+    "body_periodic": 39.263869,
     "pathfinding": 7.796206,
     "territory_price": 10.598416,
     "hauling": 5.338263,
@@ -28,11 +30,13 @@
     "territory_price": 16.364823,
     "roads": 90.547636,
     "spatial_index": 159.292527,
+    "spatial_build": 78.928873,
     "zone_body": 442.588974,
     "territory_selection": 34.300255,
     "hauling": 42.616747,
     "walk_prepare": 262.904907,
     "body_separation": 52.154291,
+    "body_periodic": 80.363654,
     "pathfinding": 11.614409,
     "fit": 0.002224
    }
@@ -8552,18 +8556,18 @@
    "inclusiveSeconds": 0.00111
   },
   {
-   "function": "_seamBox",
-   "source": "file:///tmp/t1411/base/server/terrain.js",
-   "line": 120,
-   "selfSeconds": 0.001109,
-   "inclusiveSeconds": 0.001109
-  },
-  {
    "function": "_seamRefs",
    "source": "file:///tmp/t1411/base/server/terrain.js",
    "line": 144,
    "selfSeconds": 0.001109,
    "inclusiveSeconds": 0.002218
+  },
+  {
+   "function": "_seamBox",
+   "source": "file:///tmp/t1411/base/server/terrain.js",
+   "line": 120,
+   "selfSeconds": 0.001109,
+   "inclusiveSeconds": 0.001109
   },
   {
    "function": "(anonymous)",
@@ -10253,9 +10257,23 @@
    "inclusiveSeconds": 1366.628417
   },
   {
-   "function": "prepareExecution",
+   "function": "initializeESMLoader",
    "source": "node:internal/process/pre_execution",
-   "line": 96,
+   "line": 704,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.001248
+  },
+  {
+   "function": "initializeESM",
+   "source": "node:internal/modules/esm/utils",
+   "line": 283,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.001248
+  },
+  {
+   "function": "prepareMainThreadExecution",
+   "source": "node:internal/process/pre_execution",
+   "line": 52,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.150565
   },
@@ -10267,9 +10285,9 @@
    "inclusiveSeconds": 38.724847
   },
   {
-   "function": "initializeESM",
+   "function": "initializeDefaultConditions",
    "source": "node:internal/modules/esm/utils",
-   "line": 283,
+   "line": 75,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001248
   },
@@ -10281,46 +10299,11 @@
    "inclusiveSeconds": 0.150565
   },
   {
-   "function": "prepareMainThreadExecution",
+   "function": "prepareExecution",
    "source": "node:internal/process/pre_execution",
-   "line": 52,
+   "line": 96,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.150565
-  },
-  {
-   "function": "initializeESMLoader",
-   "source": "node:internal/process/pre_execution",
-   "line": 704,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.001248
-  },
-  {
-   "function": "initializeDefaultConditions",
-   "source": "node:internal/modules/esm/utils",
-   "line": 75,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.001248
-  },
-  {
-   "function": "(anonymous)",
-   "source": "node:worker_threads",
-   "line": 1,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.00334
-  },
-  {
-   "function": "loadPreloadModules",
-   "source": "node:internal/process/pre_execution",
-   "line": 747,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.149317
-  },
-  {
-   "function": "(anonymous)",
-   "source": "node:internal/modules/cjs/loader",
-   "line": 2053,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.149317
   },
   {
    "function": "loadBuiltinWithHooks",
@@ -10337,11 +10320,25 @@
    "inclusiveSeconds": 0.013633
   },
   {
-   "function": "requireBuiltin",
-   "source": "node:internal/bootstrap/realm",
-   "line": 422,
+   "function": "(anonymous)",
+   "source": "node:internal/modules/cjs/loader",
+   "line": 2053,
    "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.015786
+   "inclusiveSeconds": 0.149317
+  },
+  {
+   "function": "loadPreloadModules",
+   "source": "node:internal/process/pre_execution",
+   "line": 747,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.149317
+  },
+  {
+   "function": "(anonymous)",
+   "source": "node:worker_threads",
+   "line": 1,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.00334
   },
   {
    "function": "loadBuiltinModule",
@@ -10359,17 +10356,24 @@
   },
   {
    "function": "(anonymous)",
-   "source": "file:///tmp/t1411/base/scripts/t745-vclock.js",
-   "line": 1,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.004607
-  },
-  {
-   "function": "(anonymous)",
    "source": "node:internal/modules/cjs/loader",
    "line": 1490,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 38.723717
+  },
+  {
+   "function": "requireBuiltin",
+   "source": "node:internal/bootstrap/realm",
+   "line": 422,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.015786
+  },
+  {
+   "function": "(anonymous)",
+   "source": "file:///tmp/t1411/base/scripts/t745-vclock.js",
+   "line": 1,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.004607
   },
   {
    "function": "(anonymous)",
@@ -10380,7 +10384,7 @@
   },
   {
    "function": "(anonymous)",
-   "source": "node:internal/streams/operators",
+   "source": "node:internal/streams/pipeline",
    "line": 1,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001112
@@ -10394,17 +10398,17 @@
   },
   {
    "function": "(anonymous)",
+   "source": "node:internal/streams/operators",
+   "line": 1,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.001112
+  },
+  {
+   "function": "(anonymous)",
    "source": "node:internal/worker",
    "line": 1,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.002233
-  },
-  {
-   "function": "(anonymous)",
-   "source": "node:internal/streams/compose",
-   "line": 1,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.001112
   },
   {
    "function": "(anonymous)",
@@ -10415,7 +10419,7 @@
   },
   {
    "function": "(anonymous)",
-   "source": "node:internal/streams/pipeline",
+   "source": "node:internal/streams/compose",
    "line": 1,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001112
@@ -10436,13 +10440,6 @@
   },
   {
    "function": "(anonymous)",
-   "source": "file:///tmp/t1411/base/scripts/t722-stop-hook.js",
-   "line": 1,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.003441
-  },
-  {
-   "function": "(anonymous)",
    "source": "node:internal/crypto/util",
    "line": 1,
    "selfSeconds": 0.0,
@@ -10450,10 +10447,10 @@
   },
   {
    "function": "(anonymous)",
-   "source": "node:internal/crypto/pbkdf2",
+   "source": "file:///tmp/t1411/base/scripts/t722-stop-hook.js",
    "line": 1,
    "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.001119
+   "inclusiveSeconds": 0.003441
   },
   {
    "function": "(anonymous)",
@@ -10461,6 +10458,13 @@
    "line": 1,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.002374
+  },
+  {
+   "function": "(anonymous)",
+   "source": "node:internal/crypto/pbkdf2",
+   "line": 1,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.001119
   },
   {
    "function": "(anonymous)",
@@ -10493,14 +10497,14 @@
   {
    "function": "Module._extensions..js",
    "source": "file:///tmp/t1411/base/scripts/t740-side-hook.js",
-   "line": 77,
+   "line": 26,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 38.713576
   },
   {
    "function": "Module._extensions..js",
    "source": "file:///tmp/t1411/base/scripts/t740-side-hook.js",
-   "line": 143,
+   "line": 77,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 38.713576
   },
@@ -10512,25 +10516,25 @@
    "inclusiveSeconds": 0.048742
   },
   {
-   "function": "loadSource",
-   "source": "node:internal/modules/cjs/loader",
-   "line": 1797,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.048742
-  },
-  {
-   "function": "Module._extensions..js",
-   "source": "file:///tmp/t1411/base/scripts/t740-side-hook.js",
-   "line": 26,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 38.713576
-  },
-  {
    "function": "(anonymous)",
    "source": "file:///tmp/t1411/base/scripts/t740-side-hook.js",
    "line": 1,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.018289
+  },
+  {
+   "function": "Module._extensions..js",
+   "source": "file:///tmp/t1411/base/scripts/t740-side-hook.js",
+   "line": 143,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 38.713576
+  },
+  {
+   "function": "loadSource",
+   "source": "node:internal/modules/cjs/loader",
+   "line": 1797,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.048742
   },
   {
    "function": "(anonymous)",
@@ -10631,18 +10635,18 @@
    "inclusiveSeconds": 0.001121
   },
   {
-   "function": "_rawKcal",
-   "source": "file:///tmp/t1411/base/server/kcal.js",
-   "line": 142,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.006944
-  },
-  {
    "function": "kcalOf",
    "source": "file:///tmp/t1411/base/server/kcal.js",
    "line": 168,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.010301
+  },
+  {
+   "function": "_rawKcal",
+   "source": "file:///tmp/t1411/base/server/kcal.js",
+   "line": 142,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.006944
   },
   {
    "function": "W",
@@ -10673,6 +10677,13 @@
    "inclusiveSeconds": 0.001122
   },
   {
+   "function": "rawKgOf",
+   "source": "file:///tmp/t1411/base/server/fish-preserve.js",
+   "line": 77,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.001177
+  },
+  {
    "function": "kgOf",
    "source": "file:///tmp/t1411/base/server/fish-preserve.js",
    "line": 84,
@@ -10680,11 +10691,11 @@
    "inclusiveSeconds": 0.001177
   },
   {
-   "function": "rawKgOf",
-   "source": "file:///tmp/t1411/base/server/fish-preserve.js",
-   "line": 77,
+   "function": "(anonymous)",
+   "source": "file:///tmp/t1411/base/scripts/t1243-observe.js",
+   "line": 1,
    "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.001177
+   "inclusiveSeconds": 0.001113
   },
   {
    "function": "Module._extensions..js",
@@ -10695,29 +10706,22 @@
   },
   {
    "function": "(anonymous)",
-   "source": "file:///tmp/t1411/base/scripts/t1243-observe.js",
-   "line": 1,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.001113
-  },
-  {
-   "function": "(anonymous)",
    "source": "file:///tmp/t1411/base/scripts/t1230-observe.js",
    "line": 1,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.015009
   },
   {
-   "function": "getStdout",
+   "function": "createWritableStdioStream",
    "source": "node:internal/bootstrap/switches/is_main_thread",
-   "line": 151,
+   "line": 50,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.002207
   },
   {
-   "function": "createWritableStdioStream",
+   "function": "getStdout",
    "source": "node:internal/bootstrap/switches/is_main_thread",
-   "line": 50,
+   "line": 151,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.002207
   },
@@ -10736,16 +10740,16 @@
    "inclusiveSeconds": 0.001094
   },
   {
-   "function": "tryExtensions",
+   "function": "tryFile",
    "source": "node:internal/modules/cjs/loader",
-   "line": 558,
+   "line": 543,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.002251
   },
   {
-   "function": "tryFile",
-   "source": "node:internal/modules/cjs/loader",
-   "line": 543,
+   "function": "realpathSync",
+   "source": "node:fs",
+   "line": 2715,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.002251
   },
@@ -10757,9 +10761,9 @@
    "inclusiveSeconds": 0.00614
   },
   {
-   "function": "realpathSync",
-   "source": "node:fs",
-   "line": 2715,
+   "function": "tryExtensions",
+   "source": "node:internal/modules/cjs/loader",
+   "line": 558,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.002251
   },
@@ -10771,16 +10775,16 @@
    "inclusiveSeconds": 0.00111
   },
   {
-   "function": "(anonymous)",
-   "source": "file:///tmp/t1411/method-v3/t1411-census.cjs",
-   "line": 1,
+   "function": "_wrapFJ",
+   "source": "file:///tmp/t1411/base/scripts/t740-side-hook.js",
+   "line": 37,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.070073
   },
   {
-   "function": "_wrapFJ",
-   "source": "file:///tmp/t1411/base/scripts/t740-side-hook.js",
-   "line": 37,
+   "function": "(anonymous)",
+   "source": "file:///tmp/t1411/method-v3/t1411-census.cjs",
+   "line": 1,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.070073
   },
@@ -10806,20 +10810,6 @@
    "inclusiveSeconds": 0.022164
   },
   {
-   "function": "(anonymous)",
-   "source": "file:///tmp/t1411/base/scripts/t577-server-hook.js",
-   "line": 1,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.001111
-  },
-  {
-   "function": "formatValue",
-   "source": "node:internal/util/inspect",
-   "line": 857,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.001111
-  },
-  {
    "function": "formatRaw",
    "source": "node:internal/util/inspect",
    "line": 935,
@@ -10834,25 +10824,25 @@
    "inclusiveSeconds": 0.001111
   },
   {
+   "function": "(anonymous)",
+   "source": "file:///tmp/t1411/base/scripts/t577-server-hook.js",
+   "line": 1,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.001111
+  },
+  {
+   "function": "formatValue",
+   "source": "node:internal/util/inspect",
+   "line": 857,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.001111
+  },
+  {
    "function": "executeUserEntryPoint",
    "source": "node:internal/modules/run_main",
    "line": 157,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 38.574282
-  },
-  {
-   "function": "resolveExports",
-   "source": "node:internal/modules/cjs/loader",
-   "line": 654,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.003372
-  },
-  {
-   "function": "read",
-   "source": "node:internal/modules/package_json_reader",
-   "line": 113,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.00226
   },
   {
    "function": "_readPackage",
@@ -10862,16 +10852,30 @@
    "inclusiveSeconds": 0.00226
   },
   {
-   "function": "resolvePackageTarget",
-   "source": "node:internal/modules/esm/resolve",
-   "line": 481,
+   "function": "read",
+   "source": "node:internal/modules/package_json_reader",
+   "line": 113,
    "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.001112
+   "inclusiveSeconds": 0.00226
+  },
+  {
+   "function": "resolveExports",
+   "source": "node:internal/modules/cjs/loader",
+   "line": 654,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.003372
   },
   {
    "function": "packageExportsResolve",
    "source": "node:internal/modules/esm/resolve",
    "line": 587,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.001112
+  },
+  {
+   "function": "resolvePackageTarget",
+   "source": "node:internal/modules/esm/resolve",
+   "line": 481,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001112
   },
@@ -10884,6 +10888,13 @@
   },
   {
    "function": "(anonymous)",
+   "source": "file:///workspace/Mini/node_modules/ws/lib/stream.js",
+   "line": 1,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.010066
+  },
+  {
+   "function": "(anonymous)",
    "source": "node:https",
    "line": 1,
    "selfSeconds": 0.0,
@@ -10892,13 +10903,6 @@
   {
    "function": "(anonymous)",
    "source": "file:///workspace/Mini/node_modules/ws/lib/websocket.js",
-   "line": 1,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.010066
-  },
-  {
-   "function": "(anonymous)",
-   "source": "file:///workspace/Mini/node_modules/ws/lib/stream.js",
    "line": 1,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.010066
@@ -10946,6 +10950,20 @@
    "inclusiveSeconds": 0.001106
   },
   {
+   "function": "alloySmeltable",
+   "source": "file:///tmp/t1411/base/server/specialty.js",
+   "line": 913,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.001138
+  },
+  {
+   "function": "castable",
+   "source": "file:///tmp/t1411/base/server/player-items.js",
+   "line": 43,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.001138
+  },
+  {
    "function": "(anonymous)",
    "source": "file:///tmp/t1411/base/server/player-items.js",
    "line": 1,
@@ -10953,9 +10971,9 @@
    "inclusiveSeconds": 0.002253
   },
   {
-   "function": "castable",
-   "source": "file:///tmp/t1411/base/server/player-items.js",
-   "line": 43,
+   "function": "(anonymous)",
+   "source": "file:///tmp/t1411/base/server/era.js",
+   "line": 232,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001138
   },
@@ -10967,23 +10985,9 @@
    "inclusiveSeconds": 0.001138
   },
   {
-   "function": "(anonymous)",
-   "source": "file:///tmp/t1411/base/server/era.js",
-   "line": 232,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.001138
-  },
-  {
    "function": "castableMetals",
    "source": "file:///tmp/t1411/base/server/era.js",
    "line": 231,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.001138
-  },
-  {
-   "function": "alloySmeltable",
-   "source": "file:///tmp/t1411/base/server/specialty.js",
-   "line": 913,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001138
   },
@@ -11079,23 +11083,9 @@
    "inclusiveSeconds": 0.001155
   },
   {
-   "function": "foodMap",
+   "function": "hungerOf",
    "source": "file:///tmp/t1411/base/server/crops.js",
-   "line": 612,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.002255
-  },
-  {
-   "function": "B",
-   "source": "file:///tmp/t1411/base/server/kcal.js",
-   "line": 38,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.002255
-  },
-  {
-   "function": "dayHunger",
-   "source": "file:///tmp/t1411/base/server/kcal.js",
-   "line": 177,
+   "line": 120,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.002255
   },
@@ -11107,9 +11097,23 @@
    "inclusiveSeconds": 0.003328
   },
   {
-   "function": "hungerOf",
+   "function": "dayHunger",
+   "source": "file:///tmp/t1411/base/server/kcal.js",
+   "line": 177,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.002255
+  },
+  {
+   "function": "B",
+   "source": "file:///tmp/t1411/base/server/kcal.js",
+   "line": 38,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.002255
+  },
+  {
+   "function": "foodMap",
    "source": "file:///tmp/t1411/base/server/crops.js",
-   "line": 120,
+   "line": 612,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.002255
   },
@@ -11164,29 +11168,8 @@
   },
   {
    "function": "Ev.createLedger",
-   "source": "file:///tmp/t1411/base/scripts/server-baseline-check.js",
-   "line": 52,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.002313
-  },
-  {
-   "function": "Ev.createLedger",
    "source": "file:///tmp/t1411/base/scripts/t577-server-hook.js",
    "line": 106,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.002313
-  },
-  {
-   "function": "Ev.createLedger",
-   "source": "file:///tmp/t1411/base/scripts/t1302-observe.js",
-   "line": 58,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.002313
-  },
-  {
-   "function": "Ev.createLedger",
-   "source": "file:///tmp/t1411/base/scripts/t1274-observe.js",
-   "line": 59,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.002313
   },
@@ -11199,8 +11182,29 @@
   },
   {
    "function": "Ev.createLedger",
+   "source": "file:///tmp/t1411/base/scripts/t1274-observe.js",
+   "line": 59,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.002313
+  },
+  {
+   "function": "Ev.createLedger",
+   "source": "file:///tmp/t1411/base/scripts/t1302-observe.js",
+   "line": 58,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.002313
+  },
+  {
+   "function": "Ev.createLedger",
    "source": "file:///tmp/t1411/base/scripts/t1329-observe.js",
    "line": 73,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.002313
+  },
+  {
+   "function": "Ev.createLedger",
+   "source": "file:///tmp/t1411/base/scripts/server-baseline-check.js",
+   "line": 52,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.002313
   },
@@ -11226,16 +11230,16 @@
    "inclusiveSeconds": 0.055371
   },
   {
-   "function": "materializeVillageStructures",
+   "function": "buildStructureRect",
    "source": "file:///tmp/t1411/base/server/villages.js",
-   "line": 3300,
+   "line": 3279,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.047299
   },
   {
-   "function": "buildStructureRect",
+   "function": "materializeVillageStructures",
    "source": "file:///tmp/t1411/base/server/villages.js",
-   "line": 3279,
+   "line": 3300,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.047299
   },
@@ -11366,18 +11370,18 @@
    "inclusiveSeconds": 0.003121
   },
   {
-   "function": "allocUnsafeSlow",
-   "source": "node:buffer",
-   "line": 421,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.00107
-  },
-  {
    "function": "from",
    "source": "node:buffer",
    "line": 301,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.030951
+  },
+  {
+   "function": "allocUnsafeSlow",
+   "source": "node:buffer",
+   "line": 421,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.00107
   },
   {
    "function": "createFromString",
@@ -11457,6 +11461,13 @@
    "inclusiveSeconds": 0.000293
   },
   {
+   "function": "baseAt",
+   "source": "file:///tmp/t1411/base/public/soil-base.js",
+   "line": 52,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.000787
+  },
+  {
    "function": "_lattice",
    "source": "file:///tmp/t1411/base/public/soil-base.js",
    "line": 31,
@@ -11471,25 +11482,11 @@
    "inclusiveSeconds": 0.000787
   },
   {
-   "function": "baseAt",
-   "source": "file:///tmp/t1411/base/public/soil-base.js",
-   "line": 52,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.000787
-  },
-  {
    "function": "setClock",
    "source": "file:///tmp/t1411/base/server/lots.js",
    "line": 122,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.135327
-  },
-  {
-   "function": "_t1166LotLoad",
-   "source": "file:///tmp/t1411/base/server/villages.js",
-   "line": 1753,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.003328
   },
   {
    "function": "_t1166Flush",
@@ -11499,11 +11496,25 @@
    "inclusiveSeconds": 0.003328
   },
   {
+   "function": "_t1166LotLoad",
+   "source": "file:///tmp/t1411/base/server/villages.js",
+   "line": 1753,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.003328
+  },
+  {
    "function": "t742Bind",
    "source": "file:///tmp/t1411/base/server/villages.js",
    "line": 20743,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.554353
+  },
+  {
+   "function": "isSpecies",
+   "source": "file:///tmp/t1411/base/server/fish-preserve.js",
+   "line": 43,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.001073
   },
   {
    "function": "kcalPerKg",
@@ -11516,13 +11527,6 @@
    "function": "kcalPerKgOf",
    "source": "file:///tmp/t1411/base/server/fish-preserve.js",
    "line": 97,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.001073
-  },
-  {
-   "function": "isSpecies",
-   "source": "file:///tmp/t1411/base/server/fish-preserve.js",
-   "line": 43,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001073
   },
@@ -11549,34 +11553,6 @@
   },
   {
    "function": "(anonymous)",
-   "source": "node:internal/dgram",
-   "line": 1,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.001091
-  },
-  {
-   "function": "(anonymous)",
-   "source": "node:child_process",
-   "line": 1,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.001091
-  },
-  {
-   "function": "(anonymous)",
-   "source": "node:dgram",
-   "line": 1,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.001091
-  },
-  {
-   "function": "(anonymous)",
-   "source": "node:cluster",
-   "line": 1,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.001091
-  },
-  {
-   "function": "(anonymous)",
    "source": "node:internal/child_process",
    "line": 1,
    "selfSeconds": 0.0,
@@ -11590,16 +11566,37 @@
    "inclusiveSeconds": 0.001091
   },
   {
+   "function": "(anonymous)",
+   "source": "node:internal/dgram",
+   "line": 1,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.001091
+  },
+  {
+   "function": "(anonymous)",
+   "source": "node:cluster",
+   "line": 1,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.001091
+  },
+  {
+   "function": "(anonymous)",
+   "source": "node:dgram",
+   "line": 1,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.001091
+  },
+  {
+   "function": "(anonymous)",
+   "source": "node:child_process",
+   "line": 1,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.001091
+  },
+  {
    "function": "debug",
    "source": "node:internal/util/debuglog",
    "line": 92,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.001061
-  },
-  {
-   "function": "setupListenHandle",
-   "source": "node:net",
-   "line": 1889,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001061
   },
@@ -11611,23 +11608,23 @@
    "inclusiveSeconds": 0.001061
   },
   {
-   "function": "doEmitWarning",
-   "source": "node:internal/process/warning",
-   "line": 84,
+   "function": "setupListenHandle",
+   "source": "node:net",
+   "line": 1889,
    "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.001069
-  },
-  {
-   "function": "onWarning",
-   "source": "node:internal/process/warning",
-   "line": 90,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.001069
+   "inclusiveSeconds": 0.001061
   },
   {
    "function": "writeOut",
    "source": "node:internal/process/warning",
    "line": 54,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.001069
+  },
+  {
+   "function": "doEmitWarning",
+   "source": "node:internal/process/warning",
+   "line": 84,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001069
   },
@@ -11639,11 +11636,18 @@
    "inclusiveSeconds": 0.63062
   },
   {
-   "function": "(anonymous)",
-   "source": "file:///tmp/t1411/base/server/zone.js",
-   "line": 19345,
+   "function": "onWarning",
+   "source": "node:internal/process/warning",
+   "line": 90,
    "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.004296
+   "inclusiveSeconds": 0.001069
+  },
+  {
+   "function": "_t678Init",
+   "source": "file:///tmp/t1411/base/server/zone.js",
+   "line": 4728,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.002141
   },
   {
    "function": "onceWrapper",
@@ -11653,18 +11657,18 @@
    "inclusiveSeconds": 0.004296
   },
   {
+   "function": "(anonymous)",
+   "source": "file:///tmp/t1411/base/server/zone.js",
+   "line": 19345,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.004296
+  },
+  {
    "function": "emitListeningNT",
    "source": "node:net",
    "line": 1981,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.004296
-  },
-  {
-   "function": "_t678Init",
-   "source": "file:///tmp/t1411/base/server/zone.js",
-   "line": 4728,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.002141
   },
   {
    "function": "enqueueWindow",
@@ -11814,18 +11818,18 @@
    "inclusiveSeconds": 0.031766
   },
   {
-   "function": "wasm-to-js",
-   "source": "",
-   "line": 0,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.003856
-  },
-  {
    "function": "wallQ",
    "source": "file:///tmp/t1411/base/server/zone.js",
    "line": 17307,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 4.075428
+  },
+  {
+   "function": "wasm-to-js",
+   "source": "",
+   "line": 0,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.003856
   },
   {
    "function": "at",
@@ -11849,9 +11853,9 @@
    "inclusiveSeconds": 0.135765
   },
   {
-   "function": "zlibBufferOnEnd",
-   "source": "node:zlib",
-   "line": 151,
+   "function": "_png",
+   "source": "file:///tmp/t1411/base/server/bigmap-bake.js",
+   "line": 126,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.002156
   },
@@ -11863,9 +11867,9 @@
    "inclusiveSeconds": 0.002156
   },
   {
-   "function": "_png",
-   "source": "file:///tmp/t1411/base/server/bigmap-bake.js",
-   "line": 126,
+   "function": "zlibBufferOnEnd",
+   "source": "node:zlib",
+   "line": 151,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.002156
   },
@@ -11912,6 +11916,20 @@
    "inclusiveSeconds": 0.004113
   },
   {
+   "function": "tempAtT",
+   "source": "file:///tmp/t1411/base/server/weather.js",
+   "line": 303,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.009895
+  },
+  {
+   "function": "T",
+   "source": "file:///tmp/t1411/base/server/weather.js",
+   "line": 117,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.000752
+  },
+  {
    "function": "_anchors",
    "source": "file:///tmp/t1411/base/server/weather.js",
    "line": 113,
@@ -11926,18 +11944,11 @@
    "inclusiveSeconds": 0.009895
   },
   {
-   "function": "T",
+   "function": "devCOf",
    "source": "file:///tmp/t1411/base/server/weather.js",
-   "line": 117,
+   "line": 167,
    "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.000752
-  },
-  {
-   "function": "tempAtT",
-   "source": "file:///tmp/t1411/base/server/weather.js",
-   "line": 303,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.009895
+   "inclusiveSeconds": 0.006098
   },
   {
    "function": "_fbm",
@@ -11947,23 +11958,16 @@
    "inclusiveSeconds": 0.006098
   },
   {
-   "function": "devCOf",
-   "source": "file:///tmp/t1411/base/server/weather.js",
-   "line": 167,
+   "function": "t325CutTreeAt",
+   "source": "file:///tmp/t1411/base/server/zone.js",
+   "line": 6441,
    "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.006098
+   "inclusiveSeconds": 0.189763
   },
   {
    "function": "_t325CutTreeAt",
    "source": "file:///tmp/t1411/base/server/zone.js",
    "line": 683,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.189763
-  },
-  {
-   "function": "t325CutTreeAt",
-   "source": "file:///tmp/t1411/base/server/zone.js",
-   "line": 6441,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.189763
   },
@@ -12038,18 +12042,18 @@
    "inclusiveSeconds": 0.064494
   },
   {
-   "function": "(anonymous)",
-   "source": "file:///tmp/t1411/base/server/villages.js",
-   "line": 11543,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.244518
-  },
-  {
    "function": "_t1182BodyReady",
    "source": "file:///tmp/t1411/base/server/villages.js",
    "line": 6159,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001759
+  },
+  {
+   "function": "(anonymous)",
+   "source": "file:///tmp/t1411/base/server/villages.js",
+   "line": 11543,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.244518
   },
   {
    "function": "mute",
@@ -12066,16 +12070,16 @@
    "inclusiveSeconds": 0.001759
   },
   {
-   "function": "_restamp",
+   "function": "_settle",
    "source": "file:///tmp/t1411/base/server/granary-lots.js",
-   "line": 112,
+   "line": 98,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.005355
   },
   {
-   "function": "_settle",
+   "function": "_restamp",
    "source": "file:///tmp/t1411/base/server/granary-lots.js",
-   "line": 98,
+   "line": 112,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.005355
   },
@@ -12115,6 +12119,13 @@
    "inclusiveSeconds": 0.02626
   },
   {
+   "function": "(anonymous)",
+   "source": "file:///tmp/t1411/base/server/villages.js",
+   "line": 11545,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.02626
+  },
+  {
    "function": "SimVillages.init.dayBandits",
    "source": "file:///tmp/t1411/base/server/zone.js",
    "line": 6388,
@@ -12122,11 +12133,11 @@
    "inclusiveSeconds": 0.02626
   },
   {
-   "function": "(anonymous)",
-   "source": "file:///tmp/t1411/base/server/villages.js",
-   "line": 11545,
+   "function": "save",
+   "source": "file:///tmp/t1411/base/server/bandits.js",
+   "line": 1038,
    "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.02626
+   "inclusiveSeconds": 0.013704
   },
   {
    "function": "_t1079Flush",
@@ -12141,13 +12152,6 @@
    "line": 2700,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.004326
-  },
-  {
-   "function": "save",
-   "source": "file:///tmp/t1411/base/server/bandits.js",
-   "line": 1038,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.013704
   },
   {
    "function": "(anonymous)",
@@ -12192,13 +12196,6 @@
    "inclusiveSeconds": 0.031459
   },
   {
-   "function": "_eraKnows",
-   "source": "file:///tmp/t1411/base/sim/economy-sim.js",
-   "line": 4138,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.041231
-  },
-  {
    "function": "_eraMetalKnown",
    "source": "file:///tmp/t1411/base/sim/economy-sim.js",
    "line": 8082,
@@ -12213,11 +12210,11 @@
    "inclusiveSeconds": 0.045587
   },
   {
-   "function": "_lifeCompleteHouse",
-   "source": "file:///tmp/t1411/base/server/villages.js",
-   "line": 16881,
+   "function": "_eraKnows",
+   "source": "file:///tmp/t1411/base/sim/economy-sim.js",
+   "line": 4138,
    "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.036637
+   "inclusiveSeconds": 0.041231
   },
   {
    "function": "_liveHut6x4",
@@ -12225,6 +12222,13 @@
    "line": 16865,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.005369
+  },
+  {
+   "function": "_lifeCompleteHouse",
+   "source": "file:///tmp/t1411/base/server/villages.js",
+   "line": 16881,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.036637
   },
   {
    "function": "_matPrice",
@@ -12255,18 +12259,18 @@
    "inclusiveSeconds": 0.003235
   },
   {
-   "function": "_smithWeaponCost",
-   "source": "file:///tmp/t1411/base/sim/economy-sim.js",
-   "line": 6275,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.043471
-  },
-  {
    "function": "_smithBeatsMason",
    "source": "file:///tmp/t1411/base/sim/economy-sim.js",
    "line": 6281,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.061939
+  },
+  {
+   "function": "_smithWeaponCost",
+   "source": "file:///tmp/t1411/base/sim/economy-sim.js",
+   "line": 6275,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.043471
   },
   {
    "function": "smithTarget",
@@ -12416,16 +12420,16 @@
    "inclusiveSeconds": 0.013829
   },
   {
-   "function": "t1238TrapVillage",
+   "function": "_t1238TrapVillage",
    "source": "file:///tmp/t1411/base/server/zone.js",
-   "line": 6458,
+   "line": 14210,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.00548
   },
   {
-   "function": "_t1238TrapVillage",
+   "function": "t1238TrapVillage",
    "source": "file:///tmp/t1411/base/server/zone.js",
-   "line": 14210,
+   "line": 6458,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.00548
   },
@@ -12528,13 +12532,6 @@
    "inclusiveSeconds": 0.003315
   },
   {
-   "function": "(anonymous)",
-   "source": "file:///tmp/t1411/base/server/villages.js",
-   "line": 11615,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.824925
-  },
-  {
    "function": "_shelterBackfill",
    "source": "file:///tmp/t1411/base/server/zone.js",
    "line": 6912,
@@ -12542,16 +12539,23 @@
    "inclusiveSeconds": 0.824925
   },
   {
-   "function": "SimVillages.init.dayShelter",
+   "function": "_t969ShelterDay",
    "source": "file:///tmp/t1411/base/server/zone.js",
-   "line": 6386,
+   "line": 6940,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.824925
   },
   {
-   "function": "_t969ShelterDay",
+   "function": "(anonymous)",
+   "source": "file:///tmp/t1411/base/server/villages.js",
+   "line": 11615,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.824925
+  },
+  {
+   "function": "SimVillages.init.dayShelter",
    "source": "file:///tmp/t1411/base/server/zone.js",
-   "line": 6940,
+   "line": 6386,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.824925
   },
@@ -12731,16 +12735,16 @@
    "inclusiveSeconds": 0.001118
   },
   {
-   "function": "(anonymous)",
+   "function": "getRouteResumable",
    "source": "file:///tmp/t1411/base/server/villages.js",
-   "line": 5640,
+   "line": 5184,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001097
   },
   {
-   "function": "getRouteResumable",
+   "function": "(anonymous)",
    "source": "file:///tmp/t1411/base/server/villages.js",
-   "line": 5184,
+   "line": 5640,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001097
   },
@@ -12759,6 +12763,13 @@
    "inclusiveSeconds": 0.001088
   },
   {
+   "function": "(anonymous)",
+   "source": "node:internal/console/constructor",
+   "line": 373,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.001092
+  },
+  {
    "function": "afterWrite",
    "source": "node:internal/streams/writable",
    "line": 699,
@@ -12769,13 +12780,6 @@
    "function": "afterWriteTick",
    "source": "node:internal/streams/writable",
    "line": 693,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.001092
-  },
-  {
-   "function": "(anonymous)",
-   "source": "node:internal/console/constructor",
-   "line": 373,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001092
   },
@@ -12794,13 +12798,6 @@
    "inclusiveSeconds": 0.001077
   },
   {
-   "function": "treeCountOf",
-   "source": "file:///tmp/t1411/base/server/trees.js",
-   "line": 216,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.004616
-  },
-  {
    "function": "annualFruitBudget",
    "source": "file:///tmp/t1411/base/server/trees.js",
    "line": 237,
@@ -12811,6 +12808,13 @@
    "function": "scatterTreesPerCell",
    "source": "file:///tmp/t1411/base/server/chunk.js",
    "line": 575,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.004616
+  },
+  {
+   "function": "treeCountOf",
+   "source": "file:///tmp/t1411/base/server/trees.js",
+   "line": 216,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.004616
   },
@@ -12829,6 +12833,13 @@
    "inclusiveSeconds": 0.003591
   },
   {
+   "function": "_mReconcile",
+   "source": "file:///tmp/t1411/base/server/lots.js",
+   "line": 182,
+   "selfSeconds": 0.0,
+   "inclusiveSeconds": 0.00057
+  },
+  {
    "function": "_mMoveOut",
    "source": "file:///tmp/t1411/base/server/lots.js",
    "line": 237,
@@ -12836,11 +12847,11 @@
    "inclusiveSeconds": 0.00067
   },
   {
-   "function": "_mSettle",
-   "source": "file:///tmp/t1411/base/server/lots.js",
-   "line": 175,
+   "function": "_takeGroundLots",
+   "source": "file:///tmp/t1411/base/server/zone.js",
+   "line": 13028,
    "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.00057
+   "inclusiveSeconds": 0.00067
   },
   {
    "function": "moveOut",
@@ -12850,18 +12861,11 @@
    "inclusiveSeconds": 0.00067
   },
   {
-   "function": "_mReconcile",
+   "function": "_mSettle",
    "source": "file:///tmp/t1411/base/server/lots.js",
-   "line": 182,
+   "line": 175,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.00057
-  },
-  {
-   "function": "_takeGroundLots",
-   "source": "file:///tmp/t1411/base/server/zone.js",
-   "line": 13028,
-   "selfSeconds": 0.0,
-   "inclusiveSeconds": 0.00067
   },
   {
    "function": "_mRec",
@@ -12892,9 +12896,9 @@
    "inclusiveSeconds": 0.001071
   },
   {
-   "function": "(anonymous)",
+   "function": "_bxGone",
    "source": "file:///tmp/t1411/base/server/villages.js",
-   "line": 11605,
+   "line": 2470,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001183
   },
@@ -12906,9 +12910,9 @@
    "inclusiveSeconds": 0.001183
   },
   {
-   "function": "_bxGone",
+   "function": "(anonymous)",
    "source": "file:///tmp/t1411/base/server/villages.js",
-   "line": 2470,
+   "line": 11605,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001183
   },
@@ -12969,16 +12973,16 @@
    "inclusiveSeconds": 0.001113
   },
   {
-   "function": "mineAssayMult",
+   "function": "_assayRaw",
    "source": "file:///tmp/t1411/base/server/specialty.js",
-   "line": 783,
+   "line": 775,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001075
   },
   {
-   "function": "_assayRaw",
+   "function": "mineAssayMult",
    "source": "file:///tmp/t1411/base/server/specialty.js",
-   "line": 775,
+   "line": 783,
    "selfSeconds": 0.0,
    "inclusiveSeconds": 0.001075
   },

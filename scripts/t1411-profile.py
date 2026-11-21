@@ -17,6 +17,9 @@ groups = {
     'zone_body': lambda n, u: n in ['_moveOne', '_decOne', 'decideNpcBehavior', 'npcStep', 'npcLifeTick'],
     'walk_prepare': lambda n, u: n in ['_wwPre', '_wwPreOne', '_wwIsStill', '_wwPost', '_wwStillPost'],
     'spatial_index': lambda n, u: n in ['rebuildSpatialIndex', '_rebuildSpatialInc', '_sweepOne'],
+    # Keep the earlier combined group, but expose its two distinct components.
+    'spatial_build': lambda n, u: n in ['rebuildSpatialIndex', '_rebuildSpatialInc'],
+    'body_periodic': lambda n, u: n == '_sweepOne',
     'body_separation': lambda n, u: n == 'sepNpcs',
     'roads': lambda n, u: u.endswith('/roads.js'),
     'observer_self': lambda n, u: '/scripts/t1' in u and ('observe' in u or 'hook' in u),
