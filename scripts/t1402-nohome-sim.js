@@ -19,7 +19,7 @@ if (process.env.__T1402N) {
   console.log = _l;
   const SZ = H.BUILDING_SIZE, out = {};
   let n = 0;
-  const mk = () => { const msgs = []; const p = { pid: 'p_n' + n, playerId: 't1402n' + n, name: 'n' + n, persistent: false, ws: { readyState: 1, send: (s) => { try { msgs.push(JSON.parse(s)); } catch (e) {} } }, msgs, x: 0, y: 0, vx: 0, vy: 0, floor: 0, hp: 100, maxHp: 100, hunger: 100, thirst: 100, inventory: { wood: 9999, stone: 9999 }, toolItems: [], equipment: [], equipSlots: {}, craftSkill: {} }; n++; H.players.set(p.pid, p); H._t1305Day(p); return p; };
+  const mk = () => { const msgs = []; const p = { pid: 'p_n' + n, playerId: 't1402n' + n, name: 'n' + n, persistent: false, lastSeen: Date.now() + 864e5, ws: { readyState: 1, send: (s) => { try { msgs.push(JSON.parse(s)); } catch (e) {} } }, msgs, x: 0, y: 0, vx: 0, vy: 0, floor: 0, hp: 100, maxHp: 100, hunger: 100, thirst: 100, inventory: { wood: 9999, stone: 9999 }, toolItems: [], equipment: [], equipSlots: {}, craftSkill: {} }; n++; H.players.set(p.pid, p); H._t1305Day(p); return p; };
   const live = (p) => [...H.claims.values()].filter((c) => c.ownerPid === p.playerId && c.kind === 'personal' && (c.state || 'active') !== 'free').length;
   const claim = (p, x, y) => { const b = live(p); p.msgs.length = 0; p.x = x * SZ + SZ / 2; p.y = y * SZ + SZ / 2; H.tryClaim(p, 'personal'); const t = p.msgs.filter((m) => m.type === 'notice').map((m) => m.text).pop() || ''; return live(p) === b + 1 ? '됨' : '거절(' + t.slice(0, 18) + '…)'; };
   let cid = 0;   // 땅을 놓는 손 — 판의 차림은 넓히기 문을 안 지나게 칸 행을 바로 놓는다(재는 것은 그 뒤의 넓히기 한 칸)

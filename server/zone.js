@@ -13080,11 +13080,12 @@ const T1332_USE = new Set([
 //   걸어 지나가기 · 열어 보기(서버 사건 0) · 거절된 손 = 서명 그대로 = 0점. 되돌림 손잡이 `T1402_WORLD_SIG=0`(종전 짐 서명만).
 const T1402_WORLD = Deeds.ON && process.env.T1402_WORLD_SIG !== '0';
 const T1402_TRACK = new Set(['dismantle_building', 'chest_put', 'chest_take', 'drop_item', 'pickup_item', 'unclaim', 'claim', 'equip', 'equip_item', 'unequip_item', 'eat', 'eat_dish', 'village_deposit', 'village_withdraw', 'village_deliver', 'village_donate']);
+// 손 닿는 자리(128px)의 건물 행 — 일 서명 · 밭 먼저 셈이 같이 쓴다(격자 묻는 자리 하나)
+function _t1402Near(p) { return qtBuildings ? qtBuildings.queryCircle(p.x, p.y, 128) : Array.from(buildings.values()).filter((b) => Math.hypot(b.x - p.x, b.y - p.y) <= 128); }
 const _t1332Sig = (p) => {
   try {
     if (!T1402_WORLD) return JSON.stringify(p.inventory || {});
-    const S = BUILDING_SIZE, near = (qtBuildings ? qtBuildings.queryCircle(p.x, p.y, 128) : Array.from(buildings.values()).filter((b) => Math.hypot(b.x - p.x, b.y - p.y) <= 128))
-      .map((b) => b.type + '@' + Math.floor(b.x / S) + ',' + Math.floor(b.y / S) + ':' + JSON.stringify(b.data || null)).sort();
+    const S = BUILDING_SIZE, near = _t1402Near(p).map((b) => b.type + '@' + Math.floor(b.x / S) + ',' + Math.floor(b.y / S) + ':' + JSON.stringify(b.data || null)).sort();
     return JSON.stringify([p.inventory || {}, p.toolItems || null, near]);
   } catch (e) { return ''; }
 };
@@ -13092,7 +13093,7 @@ const _t1332Sig = (p) => {
 //   손 앞 서명은 일이든 아니든 적는다(`T1402_TRACK`). 손잡이 끔(`T1402_WORLD_SIG=0`)이면 안 본다(종전).
 //   게으른 셈 — 손 닿는 자리의 밭은 볼 때 오늘까지 셈해 고쳐 적는다(`_cropSettle`). 손 앞에 먼저 셈해 두어야 "아무 일 없이 E 를 눌렀는데 날이 흘러 값이 바뀐 것"이 일로 안 잡힌다.
 function _t1402Settle(p) {
-  try { const today = zoneGameDay(); for (const b of (qtBuildings ? qtBuildings.queryCircle(p.x, p.y, 128) : buildings.values())) if (b && b.data && b.data.crop) _cropSettle(b, today); } catch (e) {}
+  try { const today = zoneGameDay(); for (const b of _t1402Near(p)) if (b && b.data && b.data.crop) _cropSettle(b, today); } catch (e) {}
 }
 const T1402_REV_MS = 3600000, T1402_REV_N = 32;
 function _t1402Revert(p, before, after) {

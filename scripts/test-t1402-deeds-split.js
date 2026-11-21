@@ -35,7 +35,7 @@ if (MODE) {
   const D = H.Deeds, SZ = H.BUILDING_SIZE, R = {};
   const X0 = 62000, Y0 = 62000;   // 4 의 배수 — 청크 4×4 경계에 맞춘다(복도 청크엔 복도 칸만)
   let T = +process.env.__T1402S_T0, W = T; H._t1332SetClock(() => T); H._t1402SetWall(() => W);
-  const msgs = [], p = { pid: 'p_s', playerId: 't1402s', name: 'split', persistent: false, ws: { readyState: 1, send: (s) => { try { msgs.push(JSON.parse(s)); } catch (e) {} } },
+  const msgs = [], p = { pid: 'p_s', playerId: 't1402s', name: 'split', persistent: false, lastSeen: Date.now() + 864e5, ws: { readyState: 1, send: (s) => { try { msgs.push(JSON.parse(s)); } catch (e) {} } },
     x: 0, y: 0, vx: 0, vy: 0, floor: 0, hp: 100, maxHp: 100, hunger: 100, thirst: 100, inventory: { wood: 9999, stone: 9999 }, toolItems: [], equipment: [], equipSlots: {}, craftSkill: {} };
   const notes = () => msgs.filter((m) => m.type === 'notice').map((m) => m.text);
   const last = () => notes().slice(-1)[0] || '';

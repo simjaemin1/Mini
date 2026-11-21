@@ -33,7 +33,7 @@ if (MODE) {
   let T = Date.now(); H._t1332SetClock(() => T);
   let n = 0;
   const mk = (X, Y) => {
-    const msgs = [], p = { pid: 'p_w' + n, playerId: 't1402w' + n, name: 'w' + n, persistent: false, ws: { readyState: 1, send: (s) => { try { msgs.push(JSON.parse(s)); } catch (e) {} } }, msgs,
+    const msgs = [], p = { pid: 'p_w' + n, playerId: 't1402w' + n, name: 'w' + n, persistent: false, lastSeen: Date.now() + 864e5, ws: { readyState: 1, send: (s) => { try { msgs.push(JSON.parse(s)); } catch (e) {} } }, msgs,
       x: 0, y: 0, vx: 0, vy: 0, floor: 0, hp: 100, maxHp: 100, hunger: 100, thirst: 100, inventory: { wood: 9999, stone: 9999 }, toolItems: [{ id: 'tp' + n, type: 'pickaxe', d: 100 }], equipment: [], equipSlots: {}, craftSkill: {} };
     n++; H.players.set(p.pid, p);
     for (let y = 0; y < 5; y++) for (let x = 0; x < 5; x++) { p.x = (X + x) * SZ + SZ / 2; p.y = (Y + y) * SZ + SZ / 2; H.tryClaim(p, 'personal'); }

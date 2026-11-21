@@ -94,7 +94,7 @@ if (MODE === 'cap') {
   const H = Zone.__testBind(), SZ = H.BUILDING_SIZE, R = {};
   try {
     const msgs = [], ws = { readyState: 1, send: (s) => { try { msgs.push(JSON.parse(s)); } catch (e) {} } };
-    const p = { pid: 'p_cap', playerId: 't1389_cap', name: 'cap', persistent: false, ws, x: 0, y: 0, vx: 0, vy: 0, floor: 0, hp: 100, maxHp: 100, hunger: 100, thirst: 100, inventory: { wood: 9999, stone: 9999 }, equipment: [], equipSlots: {}, craftSkill: {} };
+    const p = { pid: 'p_cap', playerId: 't1389_cap', name: 'cap', persistent: false, lastSeen: Date.now() + 864e5, ws, x: 0, y: 0, vx: 0, vy: 0, floor: 0, hp: 100, maxHp: 100, hunger: 100, thirst: 100, inventory: { wood: 9999, stone: 9999 }, equipment: [], equipSlots: {}, craftSkill: {} };
     H.players.set(p.pid, p);
     //   끔은 영토 문(내 마을 땅 · 온보딩 빈터)이 숫자 상한보다 뒤라, 이어진 9칸을 먼저 놓아 두고(종전 상한까지 찬 사람) 세 칸을 더 청한다 · 켬은 12칸 다 청한다
     const seed = H.Deeds.ON ? 0 : 9;
@@ -119,7 +119,7 @@ if (MODE === 'zone') {
   const { claims, players, BUILDING_SIZE: SZ } = H, D = H.Deeds, DM = D.CFG.DAY_MS;
   const T0 = +process.env.__T1389_T0; let T = T0; H._t1332SetClock(() => T);
   const R = {};
-  const mk = (name) => { const msgs = []; const ws = { readyState: 1, send: (s) => { try { msgs.push(JSON.parse(s)); } catch (e) {} } }; const p = { pid: 'p_' + name, playerId: 't1389_' + name, name, persistent: false, ws, msgs, x: 0, y: 0, vx: 0, vy: 0, floor: 0, hp: 100, maxHp: 100, hunger: 100, thirst: 100, inventory: { wood: 9999, stone: 9999 }, equipment: [], equipSlots: {}, craftSkill: {} }; players.set(p.pid, p); return p; };
+  const mk = (name) => { const msgs = []; const ws = { readyState: 1, send: (s) => { try { msgs.push(JSON.parse(s)); } catch (e) {} } }; const p = { pid: 'p_' + name, playerId: 't1389_' + name, name, persistent: false, lastSeen: Date.now() + 864e5, ws, msgs, x: 0, y: 0, vx: 0, vy: 0, floor: 0, hp: 100, maxHp: 100, hunger: 100, thirst: 100, inventory: { wood: 9999, stone: 9999 }, equipment: [], equipSlots: {}, craftSkill: {} }; players.set(p.pid, p); return p; };
   const claimAt = (p, cx, cy) => { p.x = cx * SZ + SZ / 2; p.y = cy * SZ + SZ / 2; H.tryClaim(p, 'personal'); };
   const live = (pid) => [...claims.values()].filter((c) => c.ownerPid === pid && c.kind === 'personal' && (c.state || 'active') !== 'free').map((c) => Math.floor(c.x / SZ) + ',' + Math.floor(c.y / SZ)).sort();
   (async () => {
@@ -170,7 +170,7 @@ if (MODE === 'zone') {
       m.msgs.length = 0; claimAt(m, 53001, 53000);
       const nowN = () => { const x = m.msgs.filter((q) => q.type === 'deeds_meter').pop(); return x ? x.N : null; };
       const n0 = nowN(), w0 = Date.now(); while (nowN() !== 2 && Date.now() - w0 < 5000) await new Promise((r) => setTimeout(r, 100)); const n1 = nowN(), waited = Date.now() - w0;   // 1초 끝 + 바쁜 판 여유(버려졌으면 끝내 안 온다)
-      put(R, 'f_trail', n1 === 2, `둘째 칸 직후 계량기 N ${n0} → ${waited} ms 뒤 ${n1}`);
+      put(R, 'f_trail', n1 === 2, `둘째 칸 직후 계량기 N ${n0} → ${waited} ms 뒤 ${n1} · ${m.msgs.filter((q) => q.type === 'notice').map((q) => q.text).join('|').slice(0, 120)}`);
     } catch (e) { R.err = String((e && e.stack) || e).slice(0, 400); }
     console.log('@@T1389 ' + JSON.stringify(R));
     for (const f of [process.env.DB_PATH, process.env.DB_PATH + '-wal', process.env.DB_PATH + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }
