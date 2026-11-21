@@ -3717,8 +3717,8 @@ function seedVillages(db, terrain, ta, ZONE) {
         {
           const _fs = new Set([...layout.farmland, ...(layout.dryfield || [])].map(c2 => c2.cx + ',' + c2.cy));
           let tn = 0, zn = 0;
-          for (const c2 of layout.territory) { db.insertVillageBuilding({ village_id: dbId, type: 'terr', cx: c2[0], cy: c2[1], floors: 0, data: null }); tn++; }
-          for (const z2 of (layout.nongZone || [])) { if (_fs.has(z2.cx + ',' + z2.cy)) continue; db.insertVillageBuilding({ village_id: dbId, type: 'nongzone', cx: z2.cx, cy: z2.cy, floors: 0, data: null }); zn++; }
+          for (const c2 of layout.territory) { if (T1406_KEEP_PATHS && _t1406PathCell(c2[0], c2[1])) continue; db.insertVillageBuilding({ village_id: dbId, type: 'terr', cx: c2[0], cy: c2[1], floors: 0, data: null }); tn++; }
+          for (const z2 of (layout.nongZone || [])) { if (_fs.has(z2.cx + ',' + z2.cy)) continue; if (T1406_KEEP_PATHS && _t1406PathCell(z2.cx, z2.cy)) continue; db.insertVillageBuilding({ village_id: dbId, type: 'nongzone', cx: z2.cx, cy: z2.cy, floors: 0, data: null }); zn++; }
           console.log(`[${state.zoneId}] 🏘️ [${hv.name}] 생활층 영속: 영토 ${tn}셀 · 미개간 논존닝 ${zn}셀`);
         }
       }
@@ -7931,6 +7931,47 @@ function t1207Stat() {
 //   ④ econ — 켬이면 금고로 땅 사기(`tryExpandTerritory`)를 걷고(`econ._t1238Land` 표지) econ 땅 크기 = `landSizeOfCells(영토 셀)`(시딩 환산 — 바닥 30 · 25 셀 = 1).
 //   ⑤ 바둑식 — 넓히기 한 칸 때문에 다른 마을 영토가 바깥 빈 땅과 하나도 안 맞닿게 되면 거부(`_t1238GoOk` · `_t1207CanTake` · `_terrGrow` 후보 · 끌어 고르기 셋 다).
 const T1238_TERR_V2 = T1207_TERR_REAL && process.env.T1238_TERR_V2 === '1';
+// ★★[T1406 ㉮ 2026-11-20 · 재민 11-20 "최초 50개 마을은 안 막도록" · 손잡이 `T1406_KEEP_PATHS=1` · **끔 기본 = 종전 바이트**] NPC 마을은 스스로 길을 막지 않는다.
+//   길 칸 = ⓐ 다리 칸(존 설정 `bridges` 띠 전부 — 양끝 뭍 착지 칸 포함) ⓑ 다리 머리(다리 물 칸에서 체비쇼프 2 안의 뭍 · 2 = 다리 폭 — 있는 수) ⓒ **남의** 교역로가 지나는 칸
+//     (`state.routeCache` 길 점을 칸으로 이은 것 · 날마다 · 줄 수가 바뀌면 다시 엮는다 · 묻는 마을 `vil` 이 그 길의 끝 마을이면 제 길이라 길 칸이 아니다 —
+//      제 회관에서 나가는 제 길까지 비우면 마을 한가운데가 비어 400날 인구가 4,110 → 2,360 으로 갈렸다(T1406 §2 첫 판) · `vil` 없이 물으면 ⓐ ⓑ 만).
+//   켜면 그 칸에: 영토 넓히기 후보 0(`_terrGrowCore` — ⓐ ⓑ 만) · 시딩 영토 · 논 존닝 행 0 · 집 부지 0(`_lifeSiteFilters`) · 밭 · 논 0(`_lifeBatEligible` · `_lifeFrontier`) · NPC 밭 심기 0(zone.js) · 환호는 그 칸을 안 파고 출입구로 친다(`_ditchPlan`).
+//   영토가 덮어도 걸음은 열려 있다는 지금 규칙(T569)은 그대로 — 이 문은 "가짐"이 길 칸에 서지 않게 할 뿐이다. 새 수 0.
+const T1406_KEEP_PATHS = process.env.T1406_KEEP_PATHS === '1';
+//   ⓒ 남의 교역로 칸은 따로 손잡이(`T1406_KEEP_ROUTES=1` · 끔 기본 · `T1406_KEEP_PATHS` 와 같이 켤 때만) — 1020 400날 판: 다리만 4,216 · ⓐⓑ+ⓒ(영토까지) 3,548 · ⓐⓑ+ⓒ(집 · 밭만) 3,035(끈 판 4,110).
+//     남의 길이 마을 한가운데(마당 · 광장)를 지나므로 집 부지 원판(반경 6)에 길 칸이 걸려 집 자리가 크게 준다 — 길 폭을 얼마로 볼지는 새 수라 회부(T1406 보고 §2).
+const T1406_KEEP_ROUTES = T1406_KEEP_PATHS && process.env.T1406_KEEP_ROUTES === '1';
+let _t1406Br = null, _t1406Rt = null, _t1406RtKey = '';
+function _t1406PathCell(x, y, vil) {
+  if (!T1406_KEEP_PATHS) return false;
+  const K = (cx, cy) => cy * 65536 + cx;
+  if (!_t1406Br) {
+    if (!state.ta || !state.ta.isWater) return false;   // 지형 어댑터 전엔 묻지 않는다(메모가 틀린 판으로 굳지 않게)
+    _t1406Br = new Set();
+    const Z = require('./zone-config').ZONES[state.zoneId] || {}, b = Z.bridges || [], wat = (cx, cy) => !!(state.ta && state.ta.isWater && state.ta.isWater(cx, cy));
+    for (let i = 0; i + 1 < b.length; i += 2) {
+      const bx = b[i], by = b[i + 1]; _t1406Br.add(K(bx, by));
+      if (!wat(bx, by)) continue;
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (!wat(bx + dx, by + dy)) _t1406Br.add(K(bx + dx, by + dy));
+    }
+  }
+  if (_t1406Br.has(K(x, y))) return true;
+  if (!vil || !T1406_KEEP_ROUTES) return false;
+  const rc = state.routeCache, key = ((state.world && state.world.day) | 0) + ':' + (rc ? rc.size : 0);
+  if (key !== _t1406RtKey) {   // 칸 → 그 칸을 지나는 길들의 끝 마을 번호 [a, b, a, b, …]
+    _t1406RtKey = key; _t1406Rt = new Map();
+    if (rc) for (const [rk, pts] of rc) {
+      if (!pts || pts.length < 2) continue;
+      const u = String(rk).indexOf('_'); if (u < 0) continue; const ea = +String(rk).slice(0, u), eb = +String(rk).slice(u + 1);
+      for (let k = 1; k < pts.length; k++) { const a = pts[k - 1], c = pts[k], L = Math.max(1, Math.ceil(Math.hypot(c.x - a.x, c.y - a.y) / SZ));
+        for (let s2 = 0; s2 <= L; s2++) { const ck = K(Math.floor((a.x + (c.x - a.x) * s2 / L) / SZ), Math.floor((a.y + (c.y - a.y) * s2 / L) / SZ)); const E = _t1406Rt.get(ck);
+          if (!E) _t1406Rt.set(ck, [ea, eb]); else if (E[E.length - 2] !== ea || E[E.length - 1] !== eb) E.push(ea, eb); } }
+    }
+  }
+  const E = _t1406Rt.get(K(x, y)); if (!E) return false;
+  const me = vil.dbId; for (let i = 0; i < E.length; i += 2) if (E[i] !== me && E[i + 1] !== me) return true;   // 남의 길이 하나라도 지나면
+  return false;
+}
 // T1302: opt in only inside territory v2; observer-free physical clearing and stakes.
 const T1302_TERR_BODY = T1238_TERR_V2 && process.env.T1302_TERR_BODY === '1';
 // ★★[T1329 2026-11-16 · T1318 중간 회부 2 · 3] 손잡이 `T1329_TERR_CREW`(끔 기본 · `'1'` 만 켬 · T1302 켬 안에서만 뜻 · 끔 = 종전 바이트) — 몸 영토 처리량.
@@ -8485,6 +8526,7 @@ function _terrGrowCore(vil) {
       const nx = x + dx, ny = y + dy, nk = K(nx, ny);
       if (own.has(nk) || cand.has(nk)) continue;
       if (ta.isBlocked(nx, ny)) continue;
+      if (T1406_KEEP_PATHS && _t1406PathCell(nx, ny, null)) continue;   // ★[T1406 ㉮] 다리 칸 · 다리 머리는 영토 후보가 아니다(켬만 · 교역로 칸은 뺀다 — 길 한 줄이 4방 넓히기를 가로막아 400날 영토 −11% · 인구 −14% · T1406 §2 둘째 판 · 영토가 덮어도 걸음은 열림 T569)
       if (near && near.length && _t569OwnedBy(near, nk)) continue;
       if (T1238_TERR_V2 && !_t1238GoOk(vil, nx, ny, null, _t1238Near || (_t1238Near = _t569Near(vil)))) continue;   // ★[T1238 ⑤] 켬 = 바둑식(이 칸이 이웃 마을의 마지막 숨 자리면 후보가 아니다 · 일괄이 오늘 더하는 칸끼리는 `_t1238Batch` 가 다시 본다)
       cand.set(nk, score(nx, ny));
@@ -13305,7 +13347,10 @@ function _ditchPlan(vil, VL) {
   if (vil._bRows && state.db && typeof state.db.eachVillageCell === 'function') state.db.eachVillageCell(vil.dbId, 'other', (cx, cy) => { block.add(cx + ',' + cy); });
   const houses = (vil._houseCells || []).map(h => ({ cx: h.cx, cy: h.cy }));
   const axis = VL.axisAt(state.ta, vil.ccx, vil.ccy);
-  const r = VL.ditchRing(vil.ccx, vil.ccy, { houses, terrain: state.ta, axis, skip: (x, y) => block.has(x + ',' + y) });
+  //   ★[T1406 ㉮] 켬 = 길 칸은 안 판다 — 그 칸은 출입구로 친다(`_ditchEncloses` 가 닫힘을 잴 때 막는 칸 · 열림을 잴 때 여는 칸)
+  const _gx = [];
+  const r = VL.ditchRing(vil.ccx, vil.ccy, { houses, terrain: state.ta, axis, skip: (x, y) => { if (block.has(x + ',' + y)) return true; if (T1406_KEEP_PATHS && _t1406PathCell(x, y, vil)) { _gx.push({ cx: x, cy: y }); return true; } return false; } });
+  if (_gx.length) { r.gates = r.gates.concat(_gx); r.skipBlock -= _gx.length; r.skipped -= _gx.length; r.pathGates = _gx.length; }
   return r;
 }
 // ★★환호가 환호인지 **실측으로 판정**한다 — 구멍 난 링은 방어선이 아니다(반쪽 구현 금지).
@@ -15824,6 +15869,7 @@ function _lifeBatEligible(vil, x, y) {   // 랩 _batEligible 동형(길 답압 �
   if (!vil._terrSet.has(x + ',' + y)) return false;
   if (_lifeVL().hallFarmBlock(vil.ccx, vil.ccy, x, y)) return false;
   if (!state.ta || state.ta.isBlocked(x, y)) return false;
+  if (T1406_KEEP_PATHS && _t1406PathCell(x, y, vil)) return false;   // ★[T1406 ㉮] 길 칸엔 밭이 안 선다(켬만)
   if (state.ta.isStream && state.ta.isStream(x, y)) return false;   // ★[T585] 개울 셀엔 밭이 안 선다(옆은 된다 · 랩 `_batEligible`)
   let n = 0; const A2 = _lifeVL().ALLEY_R * _lifeVL().ALLEY_R;
   for (const h of vil._houseCells) { const dx = h.cx - x, dy = h.cy - y; if (dx * dx + dy * dy < A2) { n++; if (n >= 2) return false; } }   // 골목 배제(집 2채 r12.5)
@@ -15836,6 +15882,7 @@ function _lifeFrontier(vil) {   // 랩 getFrontier 동형(일 캐시): 기개간
     const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1);
     if (any) { let adj = false; for (const d of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (vil._farmSet.has((x + d[0]) + ',' + (y + d[1]))) { adj = true; break; } if (!adj) continue; }
     if (_lifeFarmTooClose(vil, x, y)) continue;
+    if (T1406_KEEP_PATHS && _t1406PathCell(x, y, vil)) continue;   // ★[T1406 ㉮] 길 칸엔 논이 안 선다(켬만)
     seen.add(k); fr.push({ cx: x, cy: y, f: '논' });
   }
   const addBat = (x, y) => { const k = x + ',' + y; if (seen.has(k) || vil._potSet.has(k) || vil._farmSet.has(k)) return; if (!_lifeBatEligible(vil, x, y) || _lifeFarmTooClose(vil, x, y)) return; seen.add(k); fr.push({ cx: x, cy: y, f: '밭' }); };
@@ -15986,6 +16033,7 @@ function _lifeSiteFilters(vil, M) {   // ★[T620 ①] `M` = 한 번의 집터 �
       if (near && near.length && owned(xx, yy)) return '남의 마을';   // ★[T569 ②] 남의 영토 셀
       if (!inTerr(xx, yy)) return '마을 영토 밖';
       if (blocked(xx, yy)) return '부지 불가(물·바위)';
+      if (T1406_KEEP_PATHS && _t1406PathCell(xx, yy, vil)) return '길 칸(다리 · 다리 머리 · 남의 교역로)';   // ★[T1406 ㉮] 켬만
       if (farmAt(xx, yy, strict)) return '개간 농지 위';
     }
     for (const [dx, dy] of _lifeVL().LOT_GUARD) if (state.ta.isWater && water(x + dx, y + dy)) return '물가 완충 침범(침수)';
@@ -21110,7 +21158,7 @@ function __rumorProbe() {
     rumor: Object.assign({}, L.rumorStats) };
 }
 
-module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
+module.exports = { t1406PathCell: (cx, cy, vil) => _t1406PathCell(cx, cy, vil || null), T1406_KEEP_PATHS, artisanPerf,   // ★[T1196] 장인 작업장 관측
   __t740: () => state,   // ★[T1287 · T1280 회부 1] 생활층 지문 훅(`scripts/t740-side-hook.js`)의 공식 자리 — 읽기만 · 세계 0. 종전엔 훅이 컴파일 때 이 한 줄을 덧붙여서, 관찰기가 villages 를 먼저 실으면 훅이 못 붙었다(생활층 0일)
   _t1259WoodRadius, _t1259WoodCells,
   t1243FieldClearMinAt, T1207_TERR_REAL, terrQuote, terrPlayerAdd, t1207Stat, villageById, _t1207CellCost, _t1207Batch, _t1207Queue, _t1207BodyDone, _t1283BodyHaul, _t1207LogIn, _t1207Flush, _t1207CanTake, _terrAdd, _terrGrow,   // ★[T1207] 영토 확장 실물화 — 존(우클릭)과 하네스가 같은 함수를 부른다(사본 0)

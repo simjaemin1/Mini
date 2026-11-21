@@ -1,0 +1,333 @@
+{
+ "day": 10,
+ "pick": {
+  "day": 10,
+  "group": 4,
+  "cells": 46,
+  "land": [
+   [
+    473,
+    1762
+   ],
+   [
+    472,
+    1763
+   ],
+   [
+    493,
+    1763
+   ],
+   [
+    494,
+    1763
+   ],
+   [
+    494,
+    1762
+   ],
+   [
+    472,
+    1762
+   ]
+  ],
+  "water": 40,
+  "routes": 405,
+  "routeKeys": [
+   "1_2",
+   "1_3",
+   "1_4",
+   "1_9",
+   "1_14",
+   "1_15",
+   "1_17",
+   "1_20",
+   "1_21",
+   "1_25",
+   "1_26",
+   "1_27",
+   "1_28",
+   "1_32",
+   "1_33",
+   "1_34",
+   "1_35",
+   "1_36",
+   "1_37",
+   "1_42",
+   "1_43",
+   "1_44",
+   "1_45",
+   "2_5",
+   "2_6",
+   "2_7",
+   "2_11",
+   "2_12",
+   "2_13",
+   "2_16",
+   "2_19",
+   "2_22",
+   "2_23",
+   "2_24",
+   "2_29",
+   "2_31",
+   "2_38",
+   "2_39",
+   "2_40",
+   "2_46"
+  ],
+  "groupsOnRoutes": 28
+ },
+ "placed": [
+  {
+   "x": 473,
+   "y": 1762,
+   "tag": "끝 뭍",
+   "ok": true,
+   "err": null,
+   "wallNow": true
+  },
+  {
+   "x": 472,
+   "y": 1763,
+   "tag": "끝 뭍",
+   "ok": true,
+   "err": null,
+   "wallNow": true
+  },
+  {
+   "x": 493,
+   "y": 1763,
+   "tag": "끝 뭍",
+   "ok": true,
+   "err": null,
+   "wallNow": true
+  },
+  {
+   "x": 494,
+   "y": 1763,
+   "tag": "끝 뭍",
+   "ok": true,
+   "err": null,
+   "wallNow": true
+  },
+  {
+   "x": 494,
+   "y": 1762,
+   "tag": "끝 뭍",
+   "ok": true,
+   "err": null,
+   "wallNow": true
+  },
+  {
+   "x": 472,
+   "y": 1762,
+   "tag": "끝 뭍",
+   "ok": true,
+   "err": null,
+   "wallNow": true
+  },
+  {
+   "x": 473,
+   "y": 1763,
+   "tag": "다리 위 물",
+   "ok": true,
+   "err": null,
+   "wallNow": true
+  }
+ ],
+ "days": {
+  "10": {
+   "standing": 7,
+   "routesThrough": 0,
+   "bodies": 84,
+   "bodiesOnEndsNow": 0
+  },
+  "11": {
+   "standing": 7,
+   "routesThrough": 1,
+   "bodies": 59,
+   "bodiesOnEndsNow": 0
+  },
+  "12": {
+   "standing": 7,
+   "routesThrough": 4,
+   "bodies": 85,
+   "bodiesOnEndsNow": 0
+  },
+  "13": {
+   "standing": 7,
+   "routesThrough": 4,
+   "bodies": 60,
+   "bodiesOnEndsNow": 0
+  },
+  "14": {
+   "standing": 7,
+   "routesThrough": 6,
+   "bodies": 85,
+   "bodiesOnEndsNow": 0
+  },
+  "15": {
+   "standing": 7,
+   "routesThrough": 6,
+   "bodies": 57,
+   "bodiesOnEndsNow": 0
+  },
+  "16": {
+   "standing": 7,
+   "routesThrough": 8,
+   "bodies": 81,
+   "bodiesOnEndsNow": 0
+  },
+  "17": {
+   "standing": 7,
+   "routesThrough": 8,
+   "bodies": 60,
+   "bodiesOnEndsNow": 0
+  },
+  "18": {
+   "standing": 7,
+   "routesThrough": 9,
+   "bodies": 80,
+   "bodiesOnEndsNow": 0
+  },
+  "19": {
+   "standing": 7,
+   "routesThrough": 9,
+   "bodies": 52,
+   "bodiesOnEndsNow": 0
+  },
+  "20": {
+   "standing": 7,
+   "routesThrough": 12,
+   "bodies": 82,
+   "bodiesOnEndsNow": 0
+  },
+  "21": {
+   "standing": 7,
+   "routesThrough": 13,
+   "bodies": 56,
+   "bodiesOnEndsNow": 0
+  },
+  "22": {
+   "standing": 7,
+   "routesThrough": 14,
+   "bodies": 85,
+   "bodiesOnEndsNow": 0
+  },
+  "23": {
+   "standing": 7,
+   "routesThrough": 14,
+   "bodies": 61,
+   "bodiesOnEndsNow": 0
+  },
+  "24": {
+   "standing": 7,
+   "routesThrough": 14,
+   "bodies": 87,
+   "bodiesOnEndsNow": 0
+  },
+  "25": {
+   "standing": 7,
+   "routesThrough": 14,
+   "bodies": 62,
+   "bodiesOnEndsNow": 0
+  },
+  "26": {
+   "standing": 7,
+   "routesThrough": 15,
+   "bodies": 89,
+   "bodiesOnEndsNow": 0
+  },
+  "27": {
+   "standing": 7,
+   "routesThrough": 15,
+   "bodies": 62,
+   "bodiesOnEndsNow": 0
+  },
+  "28": {
+   "standing": 7,
+   "routesThrough": 15,
+   "bodies": 83,
+   "bodiesOnEndsNow": 0
+  },
+  "29": {
+   "standing": 7,
+   "routesThrough": 15,
+   "bodies": 61,
+   "bodiesOnEndsNow": 0
+  },
+  "30": {
+   "standing": 7,
+   "routesThrough": 15,
+   "bodies": 87,
+   "bodiesOnEndsNow": 0
+  },
+  "31": {
+   "standing": 7,
+   "routesThrough": 15,
+   "bodies": 65,
+   "bodiesOnEndsNow": 0
+  },
+  "32": {
+   "standing": 7,
+   "routesThrough": 15,
+   "bodies": 93,
+   "bodiesOnEndsNow": 0
+  },
+  "33": {
+   "standing": 7,
+   "routesThrough": 15,
+   "bodies": 60,
+   "bodiesOnEndsNow": 0
+  },
+  "34": {
+   "standing": 7,
+   "routesThrough": 16,
+   "bodies": 91,
+   "bodiesOnEndsNow": 0
+  },
+  "35": {
+   "standing": 7,
+   "routesThrough": 17,
+   "bodies": 63,
+   "bodiesOnEndsNow": 0
+  },
+  "36": {
+   "standing": 7,
+   "routesThrough": 17,
+   "bodies": 91,
+   "bodiesOnEndsNow": 0
+  },
+  "37": {
+   "standing": 7,
+   "routesThrough": 17,
+   "bodies": 61,
+   "bodiesOnEndsNow": 0
+  },
+  "38": {
+   "standing": 7,
+   "routesThrough": 18,
+   "bodies": 88,
+   "bodiesOnEndsNow": 0
+  },
+  "39": {
+   "standing": 7,
+   "routesThrough": 19,
+   "bodies": 64,
+   "bodiesOnEndsNow": 0
+  },
+  "40": {
+   "standing": 7,
+   "routesThrough": 20,
+   "bodies": 87,
+   "bodiesOnEndsNow": 0
+  }
+ },
+ "_L": [
+  "473,1762",
+  "472,1763",
+  "493,1763",
+  "494,1763",
+  "494,1762",
+  "472,1762"
+ ]
+}
