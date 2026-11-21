@@ -24271,9 +24271,15 @@ function _t1333CanExport(v, res) {
 }
 // ★[T1420] 세계에 다는 함수 칸 둘(값표 · 순수출가) — `createWorldV2` 가 늘 부르던 두 줄 그대로를 한 문으로 뗐다(칸 · 차례 · 값 같음).
 //   랩 평형 저장본(`scripts/lib-eq-lab.js`)이 되살린 세계에 같은 문으로 다시 단다(v8 은 함수를 못 싣는다 — 사본 0).
+function _attachPriceFnV2(world) {
+  world.priceFn = computeShadowPrices;
+}
+function _attachNetExportFnV2(world) {   // ★줄 글자 그대로(test-t1333-alloy-order 미끼 `oppall` 이 이 줄을 글자로 바꾼다 — 들여쓰기 · 꼴을 바꾸지 말 것)
+  world.netExportFn = (v, res) => ((v1.T1333_ALLOY_ORDER && !_t1333CanExport(v, res)) ? 0 : netExportValue(world, v, res));
+}
 function attachWorldFnsV2(world, which) {
-  if (!which || which === 'price') world.priceFn = computeShadowPrices;
-  if (!which || which === 'netExport') world.netExportFn = (v, res) => ((v1.T1333_ALLOY_ORDER && !_t1333CanExport(v, res)) ? 0 : netExportValue(world, v, res));
+  if (!which || which === 'price') _attachPriceFnV2(world);
+  if (!which || which === 'netExport') _attachNetExportFnV2(world);
   return world;
 }
 function createWorldV2(opts = {}) {
