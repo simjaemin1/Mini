@@ -15,6 +15,7 @@
 const fs = require('fs'), os = require('os'), path = require('path'), { spawnSync } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 const RUL = path.join(__dirname, 't1413-hunt-year.js'), LAB = path.join(ROOT, 'lab', '사냥실험실.html');
+const DEER = String.fromCodePoint(0x1F98C);   // 사슴 — 판정 자리엔 코드 포인트로(lint ②)
 let pass = 0, fail = 0;
 const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (x != null && x !== '' ? '  ' + x : '')); };
 const run = (file, args) => spawnSync('node', [file, '--lab', LAB, ...args], { cwd: ROOT, encoding: 'utf8', timeout: 300000, maxBuffer: 1 << 26 });
@@ -56,7 +57,7 @@ try {
   const L4 = (s4.stdout || '').split('\n');
   const head = L4.find((l) => /^\| 종 \| 환율 \| 첫 몸 K \|/.test(l)), bh = L4.find((l) => /^\| 종 \| 환율 \| 버티는 칸/.test(l));
   const cols = (l) => (l ? l.split('|').length - 2 : 0);
-  ok(s4.status === 0 && cols(head) === 10 && cols(bh) === 7 && L4.some((l) => /^\| 🦌 \| 5,000 \| 58\.451 \| 10% \| 1 \|/.test(l)),
+  ok(s4.status === 0 && cols(head) === 10 && cols(bh) === 7 && L4.some((l) => l.startsWith('| ' + DEER + ' | 5,000 | 58.451 | 10% | 1 |')),
     '④ 표 머리 열 10 · 경계 표 머리 열 7 · 칸 줄(🦌 · 5,000 · 58.451 · 10% · 1)', `열 ${cols(head)} · ${cols(bh)}`);
 
   console.log('★미끼 ⓐ — 사냥 몫을 안 읽는 자 사본');
