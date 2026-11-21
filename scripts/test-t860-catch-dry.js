@@ -77,7 +77,7 @@ console.log('\n② 표 — 잡은 칸 → 보존식 = spoil 정본 레시피 × 
   ok(JSON.stringify(E.PRESERVE_FROM) === JSON.stringify({ fish: 'dried_fish', fruit: 'dried_fruit', meat: 'smoked_meat', vegetable: 'pickled_veg' }), '② 요리사 갈무리 표(PRESERVE_FROM)는 그대로'); }
 
 console.log('\n③ 글자 — 갈무리 한 걸음 = `_preserveSurplus` 하나');
-{ const gate = (C.match(/if \(totalFoodEquivalent\(v\) > _N \* DAILY_FOOD_CONSUMPTION \* \(RESERVE_PC\.food \|\| 30\)\) \{/g) || []).length;
+{ const gate = (C.match(/if \(totalFoodEquivalent\(v\) > _N \* DAILY_FOOD_CONSUMPTION \* t1419Days\(v, null, RESERVE_PC\.food \|\| 30, 'keep'\)\) \{/g) || []).length;   // ★[T1419] 문턱은 한 함수(끔 인자 = 종전 수)
   const defs = (C.match(/function _preserveSurplus\(/g) || []).length;
   ok(gate === 1 && defs === 1, '③ 문턱 줄 하나 · 함수 정의 하나(사본 0)', `문턱 ${gate} · 정의 ${defs}`);
   ok(/if \(T17_PRESERVE\) _preserveSurplus\(v, PRESERVE_FROM, jdef\.base \* skillMul, addProduce, null, T877_ON \? _t860Unit : null\);/.test(C), '③ 요리사 = 그 함수 · 종전 손(`jdef.base × skillMul`) · 상한 없음 · 환산은 ★T877 켬일 때만(끔 = 종전 글자)');
