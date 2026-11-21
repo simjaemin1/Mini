@@ -18385,11 +18385,12 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
     const _forRawCap = Math.floor((_cf.forager || 0) * 0.5) * JOBS.forager.base * JOBS.forager.landBoost(v);
     const _forCap = (v.land.forageSustain != null && _forRawCap > 0) ? Math.min(_forRawCap, v.land.forageSustain) : _forRawCap;
     // ★[T100] 부양력(prodK)도 **같은 밑변**을 본다 — 산출은 밭인데 K 는 지력이면 인구가 밭 없이 부푼다.
-    const _capFlow = (T1276_FARM_K ? (T1421_FIELD_CAP ? Math.max(t1276FieldFlow(v), t1421FieldCap(v)) : t1276FieldFlow(v)) : farmFlowPerDay(v, _cf.farmer || 0) * _paddyMul * (v._clearedFrac != null ? v._clearedFrac : 1))   // ★[T1276] 켬 = 몸이 일군 밭의 흐름
+    const _capFlow = (T1276_FARM_K ? t1276FieldFlow(v) : farmFlowPerDay(v, _cf.farmer || 0) * _paddyMul * (v._clearedFrac != null ? v._clearedFrac : 1))   // ★[T1276] 켬 = 몸이 일군 밭의 흐름
                    + _fishCap
                    + (_cf.hunter || 0) * JOBS.hunter.base * (v.land.game || 0)
                    + _forCap * _foodShare;
     _prodKraw = (_capFlow + dailyImport) / DAILY_FOOD_CONSUMPTION;
+    if (T1421_FIELD_CAP) _prodKraw += Math.max(0, t1421FieldCap(v) - t1276FieldFlow(v)) / DAILY_FOOD_CONSUMPTION;   // ★[T1421] 밭 몫 = max(밭 흐름, 갈 수 있는 땅 용량) — 흐름 위 남는 몫만 얹는다(끔 = 무변)
     if (T1149.k) _prodKraw += totalFoodEquivalent(v) / t1149LeanDays(day) / DAILY_FOOD_CONSUMPTION;   // ★[T1149 ⓐ] + 곳간이 다음 봄까지 먹일 사람
   }
   v._prodKema = v._prodKema === undefined ? _prodKraw : 0.97 * v._prodKema + 0.03 * _prodKraw;

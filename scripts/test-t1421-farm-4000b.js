@@ -54,7 +54,7 @@ ok(yOk(Y) && /if \(T1421_BIRTH_YEAR\) \{ v\._t1421Gate = 0; if \(dP > 0 && t1421
 // ── ⑤ 밭 용량 ──
 const FC = `const E=require('./sim/economy-sim');const v={_fieldCells:100,_clearedFrac:0.5,_t1276Stand:500,_t1421StandN:50};console.log(JSON.stringify({cap:E.t1421FieldCap(v)}));`;
 let FCr = {}; try { FCr = kid({ ...FW, T1421_FIELD_CAP: '1' }, FC); } catch (e) { FCr = { err: String(e).slice(0, 200) }; }
-ok(Math.abs(FCr.cap - 200 * 10 / 365) < 1e-9 && /T1421_FIELD_CAP \? Math\.max\(t1276FieldFlow\(v\), t1421FieldCap\(v\)\) : t1276FieldFlow\(v\)/.test(ES),
+ok(Math.abs(FCr.cap - 200 * 10 / 365) < 1e-9 && /if \(T1421_FIELD_CAP\) _prodKraw \+= Math\.max\(0, t1421FieldCap\(v\) - t1276FieldFlow\(v\)\) \/ DAILY_FOOD_CONSUMPTION;/.test(ES),
   '⑤ 밭 용량 — 갈 수 있는 땅 200칸 × 칸 하나 10 ÷ 365 · 부양력 밭 몫 = max(흐름, 용량)', JSON.stringify(FCr));
 // ── ⑥ 미끼 ──
 let Ba = {}; try { Ba = kid({ ...FW, T1421_FARM_PRICE: 'crop' }, FV(BAIT('t1421FoodPrice(v, ctx.w, T1421_FARM_PRICE)', '0'))); } catch (e) { Ba = { err: String(e).slice(0, 200) }; }
