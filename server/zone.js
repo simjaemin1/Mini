@@ -5462,8 +5462,8 @@ const T1337_WAKE = T1322_PF && SS.WAKE_ON, T1337_VERIFY = T1337_WAKE && SS.WAKE_
 //   같은 답인 까닭: 거울 배열은 Set 의 차례 그대로다(새 pid = 끝 · 지웠다 다시 넣음 = 끝 · 고리 안에서 넣은 pid 도 같은 바퀴 끝에서 돈다 · 지운 pid 는 구멍 — 안 돈다).
 //     구멍 메우기는 고리 머리에서만 한다. 칸 캐시는 그 칸 몸이 비면(같은 pid 로 다시 낳음) 다시 묻는다.
 const T1348_LOOP = T1322_PF && SS.LOOP;
-// ★[T1415 ②] 깨움 시각 줄(`stand-skip` 머리 글 · 끔 기본) — 거울 고리 · verify 거름 끔 · 사건 갈래 끔일 때만(그 둘은 틱마다 몸을 연다)
-const T1415Q = T1348_LOOP && SS.WQ_ON && !T1322_VERIFY && !_T1241, T1415QV = T1415Q && SS.WQ_VERIFY, T1415QS = T1415Q && !SS.WQ_VERIFY;
+// ★[T1415 ②] 깨움 시각 줄(`stand-skip` 머리 글 · 끔 기본) — 거울 고리 · verify 거름 끔 · 사건 갈래 끔일 때만(그 둘은 틱마다 몸을 연다 · 계측 탐침 `T1241_PROBE` 는 된다 — 거른 셈을 고리 끝에 같이 더한다)
+const T1415Q = T1348_LOOP && SS.WQ_ON && !T1322_VERIFY && !T1241_DES, T1415QV = T1415Q && SS.WQ_VERIFY, T1415QS = T1415Q && !SS.WQ_VERIFY;
 // ★★[T1348 ⓑ 2026-11-17 · 손잡이 `T1348_WALK`(켬 기본 · `'0'` 끔 · `'verify'` 켬 + 커널 값을 셈한 뒤 진짜 걸음을 돌려 견줌)] **걷는 몸 열 커널** — T1337 회부 3 · §5.
 //   결정 시각 전 · 길 가운데(거울 길 · 끝 점 앞)를 걷는 몸의 걸음 문은 틱마다 막힘 판정(5px 움직였나 · 1.5초) → 길 만료 → 다음 점 쪽 속도(또는 10px 안이면 다음 점)뿐이다.
 //   켬: 진짜 걸음을 마친 그런 몸에 표 3 을 준다(`_t1348Grant`). 다음 틱 고리는 몸을 찾지 않고 칸 → 몸(`SS.own`)으로 자리만 읽어
@@ -17865,10 +17865,10 @@ setInterval(() => {
     if (T1241_DES) _desTry(npc, now);   // ★[T1241] 사건 토막을 열 수 있나
   } while (false); return _stopAt !== null; };
   if (T1415Q) {   // ★[T1415 ②] 깨움 시각 줄 — 같은 거울 고리 · 주차 몸은 건너뛴다(verify = 열되 견줌) · 거른 서 있는 몸은 다음에 볼 시각으로 주차
-    const _cpt = npcs.compact(), _P = npcs.P, _S = npcs.S, _own = SS.own, Q = SS.Q, A = SS.A, n0 = _tick.n; let _cut = -1;
+    const _cpt = npcs.compact(), _P = npcs.P, _S = npcs.S, _own = SS.own, Q = SS.Q, A = SS.A, n0 = _tick.n; let _cut = -1, _vs = 0;
     SS.qBegin(n0, now, _cpt, _P, _S);
     for (let i = 0; i < _P.length; i++) { const pid = _P[i]; if (pid === undefined) continue;
-      if (T1415QS && _curHit && Q.K[i]) continue;   // 주차 몸 — 이 틱 첫 거름은 건넌 것과 같다(칸은 꺼낼 때 `qMat`)
+      if (T1415QS && _curHit && Q.K[i]) { _vs++; continue; }   // 주차 몸 — 이 틱 첫 거름은 건넌 것과 같다(셈은 고리 끝 · 칸은 꺼낼 때 `qMat`)
       let s = _S[i]; if (s < 0 || _own[s] === null) { s = SS.slot(pid); _S[i] = s; }
       Q.at = i; const pk = T1415QV && _curHit && Q.K[i] === 1 && s >= 0 && Q.P[s] === 1;
       if (pk) { Q.st.vis++; SS.qMat(s); }   // verify — 꺼냈다면 쓸 칸 = 종전 길이 쓴 칸인가
@@ -17880,6 +17880,7 @@ setInterval(() => {
         if (now < T) SS.qPark(s, i, T, n0);
       }
     }
+    if (_vs) { SS.stat.skip += _vs; Q.st.vskip += _vs; if (T1241_PROBE) { _desStat.steps += _vs; if (_desClk) _desStat.nStep += _vs; } }   // 건넌 셈(종전 첫 거름 · 계측 탐침이 몸마다 센 그 수)
     SS.qEnd(n0, now, _curHit ? _cut : 0);
   }
   else if (T1348_LOOP) {   // ★[T1348 ⓐ] 거울 배열 고리(같은 차례 · 길이를 매번 읽는다 = 고리 안에서 넣은 pid 도 이 바퀴 · 구멍 = 지운 pid)

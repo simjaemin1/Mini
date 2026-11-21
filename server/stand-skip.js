@@ -130,7 +130,7 @@ function qMat(s) {
   const inLoop = Q.at >= 0, vis = inLoop && Q.I[s] < Q.at, n = vis ? Q.curN : Q.lastN, t = vis ? Q.curNow : Q.lastNow;
   if (!(n > Q.V[s])) return;
   if (WQ_VERIFY) { if (A.VT[s] !== n || !Object.is(A.SK[s], t)) _qBad('mat', s); return; }   // verify = 종전 길이 이미 썼다 — 같은 값인가만
-  stat.skip += n - Q.V[s]; Q.st.vskip += n - Q.V[s]; A.VT[s] = n; A.SK[s] = t;
+  A.VT[s] = n; A.SK[s] = t;   // 거른 셈은 고리가 주차 몸을 지날 때마다 이미 셌다(존 고리 끝)
 }
 function _qOff(s) { Q.P[s] = 0; const i = Q.I[s]; if (i >= 0 && i < Q.K.length) Q.K[i] = 0; Q.parked--; }
 // 밖에서 깨움(쓰기 앞) — 주차 몸이면 칸을 쓰고 고리에 되돌린다
@@ -151,7 +151,7 @@ function qPark(s, i, T, tn) {
 }
 // 고리 머리 — 빠진 틱(앞 고리가 바로 앞 틱이 아님)이면 전부 꺼냄 · 거울을 메웠으면 자리 다시 셈 · 때가 된 몸 꺼냄 · 힙 청소
 function qBegin(tn, now, cpt, P, S) {
-  Q.curN = tn; Q.curNow = now; Q.at = -1;
+  Q.st.loops = (Q.st.loops || 0) + 1; Q.curN = tn; Q.curNow = now; Q.at = -1;
   if (Q.parked && Q.lastN !== tn - 1) qAll('gap');
   if (cpt && Q.parked) { Q.st.cpt++; Q.K.fill(0); _qK(P.length); let c = 0;
     for (let i = 0; i < P.length; i++) { const s = S[i]; if (P[i] !== undefined && s >= 0 && s < Q.cap && Q.P[s] && own[s] && own[s].pid === P[i]) { Q.I[s] = i; Q.K[i] = 1; c++; } }

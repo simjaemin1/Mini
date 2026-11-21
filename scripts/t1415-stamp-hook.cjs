@@ -5,7 +5,8 @@
 //   몸 전부 판:  T1294_PRELOAD=$PWD/scripts/t1415-stamp-hook.cjs T1415_STAMP_OUT=/tmp/s-%p.json node scripts/t1294/run.cjs <out> 30
 //   끈 판:       NODE_OPTIONS="--require $PWD/scripts/t1415-stamp-hook.cjs" T1415_STAMP_OUT=/tmp/s-%p.json node scripts/server-baseline-check.js …
 //   · 도장 자리(부른 줄)마다 · 날마다 수 — 그 줄이 그 마을의 장부 날이 바뀐 틱(하루 문)에 탔나(`edge`) · 낮 가운데 탔나(`mid`)
-//   · 놓친 쓰기 — 틱마다(생활층 `onGameTick` 뒤) 마을마다 판정이 읽는 마을 문 칸의 지문을 떠, 지문이 바뀌었는데 도장이 그대로면 그 칸 이름을 센다(`miss`)
+//   · 놓친 쓰기 — 틱마다(생활층 `onGameTick` 뒤) 마을마다 판정이 읽는 마을 문 칸의 지문을 떠, 지문이 바뀌었는데 도장이 그대로면 그 칸 이름을 센다
+//     (날 칸이 바뀐 틱 `missDay` · 하루 마감 조각 중 `missJob` · 그 밖 `miss` — 부팅 도장은 `boot`)
 //   ⚠세계에 쓰지 않는다(읽기만). 바꿀 자리가 없으면 아무것도 안 끼운다(로그 한 줄).
 'use strict';
 const OUT = process.env.T1415_STAMP_OUT;
@@ -19,14 +20,14 @@ if (OUT && /zone\.js$/.test(process.argv[1] || '')) {
       content += `
 ;(function () {   // [T1415 도장 훅 · 계측기가 박았다 · 제품엔 없다]
   const fs = require('fs'), f = ${JSON.stringify(OUT)}.replace('%p', String(process.pid));
-  const R = { bump: {}, day: {}, edge: 0, mid: 0, miss: {}, missEx: [], checks: 0, changes: 0 };
-  const lastDay = new Map(), sig = new Map(), gen = new Map(), ids = new WeakMap(); let idn = 0;
+  const R = { bump: {}, bumpMid: {}, day: {}, boot: 0, edge: 0, mid: 0, miss: {}, missDay: {}, missJob: {}, missEx: [], checks: 0, changes: 0 };
+  const lastDay = new Map(), sig = new Map(), gen = new Map(), ids = new WeakMap(); let idn = 0, ticked = false, lastW = null, lastTJ = false;
   const id = (o) => { if (!o || typeof o !== 'object') return String(o); let v = ids.get(o); if (!v) { v = ++idn; ids.set(o, v); } return v; };
   globalThis.__t1415B = (vil, st) => {
     const l = ((st.split('\\n')[2] || '').match(/villages\\.js:(\\d+)/) || [])[1] || '?';
     R.bump[l] = (R.bump[l] || 0) + 1;
     const d = state.world ? state.world.day : 0; R.day[d] = (R.day[d] || 0) + 1;
-    const ld = vil && vil._t731Day; if (vil && lastDay.has(vil.dbId) && lastDay.get(vil.dbId) !== ld) R.edge++; else R.mid++;
+    const ld = vil && vil._t731Day; if (!ticked) R.boot++; else if (vil && lastDay.has(vil.dbId) && lastDay.get(vil.dbId) !== ld) R.edge++; else { R.mid++; R.bumpMid[l] = (R.bumpMid[l] || 0) + 1; }
   };
   const F = (v) => {
     const e = v.econ || {};
@@ -34,12 +35,18 @@ if (OUT && /zone\.js$/.test(process.argv[1] || '')) {
       t400: (v._t400Crew || []).join(','), ps: id(v._psite), psc: v._psiteCrew, farm: v._farmSet ? v._farmSet.size : 0, terr: v._terrSet ? v._terrSet.size : 0,
       gp: id(v._granPend), gl: v._granList ? v._granList.length : 0, pids: (v.npcPids || []).join(','), t1207: v._t1207Pend ? v._t1207Pend.length : 0, war: (e._warThreat || 0) > 0 ? 1 : 0 };
   };
+  //   놓친 쓰기 갈래: 날 칸이 바뀐 틱(세계 날 · 마을 장부 날 — 표의 날 칸이 이미 표를 내린다 = \`missDay\`) · 하루 마감 조각 중(\`state.tickJobs\` — 표 판정이 거짓 = \`missJob\`) · 그 밖 = \`miss\`
   const tick = () => {
+    ticked = true; const w = state.world ? state.world.day : 0, wch = lastW !== null && w !== lastW, tj = !!state.tickJobs || lastTJ;
     for (const v of state.villages || []) {
       const s = F(v), g = _t1399G.get(v.dbId) || 0, p = sig.get(v.dbId); R.checks++;
-      if (p) { const ch = Object.keys(s).filter((k) => s[k] !== p[k]); if (ch.length) { R.changes++; if (gen.get(v.dbId) === g) for (const k of ch) { R.miss[k] = (R.miss[k] || 0) + 1; if (R.missEx.length < 20) R.missEx.push({ v: v.dbId, k, day: state.world && state.world.day, a: String(p[k]).slice(0, 40), b: String(s[k]).slice(0, 40) }); } } }
+      const dch = wch || (lastDay.has(v.dbId) && lastDay.get(v.dbId) !== v._t731Day);
+      if (p) { const ch = Object.keys(s).filter((k) => s[k] !== p[k]); if (ch.length) { R.changes++; if (gen.get(v.dbId) === g) for (const k of ch) {
+        const B = dch ? R.missDay : tj ? R.missJob : R.miss; B[k] = (B[k] || 0) + 1;
+        if (R.missEx.length < 40 && !dch) R.missEx.push({ v: v.dbId, k, day: w, tj, a: String(p[k]).slice(0, 40), b: String(s[k]).slice(0, 40) }); } } }
       sig.set(v.dbId, s); gen.set(v.dbId, g); lastDay.set(v.dbId, v._t731Day);
     }
+    lastW = w; lastTJ = !!state.tickJobs;
   };
   const ogt = module.exports.onGameTick;
   module.exports.onGameTick = function () { const r = ogt.apply(this, arguments); try { tick(); } catch (e) {} return r; };
