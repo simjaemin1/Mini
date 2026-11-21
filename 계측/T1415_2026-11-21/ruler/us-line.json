@@ -1,0 +1,94 @@
+[
+ {
+  "arm": "main",
+  "n": 4,
+  "day": 0.3595,
+  "pre": 0.10650000000000001,
+  "win": 0.155,
+  "decDay": 0.699,
+  "decPre": 0.388,
+  "decWin": 0.7375,
+  "dayBand": [
+   0.348,
+   0.403
+  ],
+  "preBand": [
+   0.049,
+   0.136
+  ],
+  "flags": [
+   "main1 day",
+   "main2 night",
+   "main3 night",
+   "main4 day",
+   "main4 night"
+  ]
+ },
+ {
+  "arm": "mon",
+  "n": 1,
+  "day": 0.29,
+  "pre": 0.118,
+  "win": 0.176,
+  "decDay": 0.757,
+  "decPre": 0.512,
+  "decWin": 0.833,
+  "dayBand": [
+   0.29,
+   0.29
+  ],
+  "preBand": [
+   0.118,
+   0.118
+  ],
+  "flags": [
+   "mon1 night"
+  ]
+ },
+ {
+  "arm": "on",
+  "n": 4,
+  "day": 0.2935,
+  "pre": 0.127,
+  "win": 0.22899999999999998,
+  "decDay": 0.765,
+  "decPre": 0.4675,
+  "decWin": 0.94,
+  "dayBand": [
+   0.276,
+   0.307
+  ],
+  "preBand": [
+   0.112,
+   0.171
+  ],
+  "flags": [
+   "on2 day",
+   "on2 night"
+  ]
+ },
+ {
+  "arm": "q",
+  "n": 4,
+  "day": 0.2935,
+  "pre": 0.112,
+  "win": 0.209,
+  "decDay": 0.7010000000000001,
+  "decPre": 0.4095,
+  "decWin": 0.9855,
+  "dayBand": [
+   0.281,
+   0.369
+  ],
+  "preBand": [
+   0.034,
+   0.132
+  ],
+  "flags": [
+   "q1 night",
+   "q2 night",
+   "q4 day",
+   "q4 night"
+  ]
+ }
+]

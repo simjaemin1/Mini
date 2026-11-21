@@ -1,0 +1,10 @@
+
+=== 서버 판 자(T577) — 730일 · 시드 1020 · 판 L_1020 · 동시 1 · /tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1404/runs/L_1020 ===
+  조건: VILLAGE_DAY_MS=250 · T315_MAPBEDS=0 · T627_TRIP_DAY=(없음) · 집 행위 끔 · 가상 시계 켬 · T696_WAL=0 · T941_BATTLE_DAY=1 · T990_ECON_DAY=1 · T1013_BAND_DAY=1 · VILLAGE_NPC_CAP=1 · 도적 켬
+  ✓ 시드 1020 — 존이 떴다
+  ✗ 시드 1020 — **730일을 끝까지 돌았다**(판 JSON)  JSON 없음 — 로그 /tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1404/runs/L_1020/L_1020-1020.log
+
+  판 JSON · 로그: /tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1404/runs/L_1020  (표만 다시: node scripts/t577-server-run.js --table /tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1404/runs/L_1020)
+
+=== 2건 중 PASS 1 · FAIL 1 ===
+

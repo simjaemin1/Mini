@@ -143,6 +143,19 @@
         }
       }
     }
+    // ③' ★[T1402 판정 22] 켬(`uiCfg.deeds.split`) — 내 움집(다 지은 집)을 누르면 "본거지로 삼기" 한 줄(새 창 0 · 상자 · 터가 먼저 맞는다)
+    if (typeof uiCfg !== 'undefined' && uiCfg && uiCfg.deeds && uiCfg.deeds.split) {
+      const who = (typeof myPlayerId !== 'undefined' && myPlayerId) || null;
+      for (const c of conns.values()) {
+        if (!c.meta || !who) continue;
+        const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
+        for (const b of c.buildings.values()) {
+          if (b.type !== 'hut' || (((b.data && b.data.owner) || b.ownerId) !== who)) continue;
+          const absX = ox + b.x, absY = oy + b.y, rx = 24, ry = 24;   // 집 가운데 한 칸 둘레만(집 안 다른 대상 · 빈 땅 메뉴를 안 가린다)
+          if (Math.abs(absX - wx) <= rx && Math.abs(absY - wy) <= ry) return { kind: 'home', id: b.id, obj: b, absX, absY };
+        }
+      }
+    }
     // ④ ★★[T124 2026-09-06] **빈 땅** — 아무것도 안 맞으면 그 자리 자체가 대상이다.
     //   ⚠메뉴가 아무 데서나 뜨지는 않는다: `verbsFor` 가 빈 배열이면 부르는 쪽이 안 연다
     //     (`if (!verbs.length) return;` — 종전 그대로다). 그래서 여기서 대상을 내도 안전하다.
@@ -307,6 +320,12 @@
         out.push({ label: b.type === 'guild_granary' ? '열기 — 마을 곳간' : '열기 — 상자',
                    send: () => openInvWithContainer(b.id) });
       }
+    }
+    if (t.kind === 'home') {   // ★[T1402 판정 22 · 23] 본거지 — 지금 본거지면 표지 한 줄 · 아니면 삼기(뜸 · 땅 문은 서버가 본다)
+      const M = window.__deedsMeter || null;
+      if (M && M.home === t.id) out.push({ label: '본거지(지금 이 집)', send: () => showNotice('이 집이 본거지입니다. 이 집이 선 땅덩이에만 새 칸을 붙일 수 있습니다.') });
+      else out.push({ label: '본거지로 삼기', send: () => sendPrimary({ type: 'deeds_home', buildingId: t.id }) });
+      return out;
     }
     // 해체 — 건축 모드에서 좌클릭이 하던 그 일. 모드 밖에서는 안 뜬다(종전엔 길이 없었다).
     if ((t.kind === 'site' || t.kind === 'chest') && buildMode && !buildAction) {

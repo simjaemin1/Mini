@@ -65,15 +65,17 @@ function file(tag, ext) {
 function own(p) {
   if (!p) return p;
   const r = path.resolve(String(p));
-  if (!r.startsWith(os.tmpdir() + path.sep)) return p;
+  //   ★[T1410] `os.tmpdir()`(TMPDIR) 밑이나 `/tmp` 밑 — 하네스 다수가 `/tmp/…` 를 박아 쓴다(TMPDIR 를 바꾼 판에서도 맡는다)
+  const roots = [...new Set([os.tmpdir(), '/tmp'])];
+  if (!roots.some((d) => r.startsWith(d + path.sep))) return p;
   hook(); owned.add(r);
   const b = path.basename(r), pid = String(process.pid), i = b.indexOf(pid);
-  if (i >= 0 && path.dirname(r) === os.tmpdir() && !swept.has('own:' + b)) {
+  if (i >= 0 && roots.includes(path.dirname(r)) && !swept.has('own:' + b)) {
     swept.add('own:' + b);
     const esc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const re = new RegExp('^' + esc(b.slice(0, i)) + '(\\d+)' + esc(b.slice(i + pid.length)) + '(?:-wal|-shm|-journal)?$');
-    let names = []; try { names = fs.readdirSync(os.tmpdir()); } catch (e) {}
-    for (const f of names) { const m = re.exec(f); if (m && m[1] !== pid && !alive(+m[1])) rm(path.join(os.tmpdir(), f)); }
+    const dir = path.dirname(r); let names = []; try { names = fs.readdirSync(dir); } catch (e) {}
+    for (const f of names) { const m = re.exec(f); if (m && m[1] !== pid && !alive(+m[1])) rm(path.join(dir, f)); }
   }
   return p;
 }

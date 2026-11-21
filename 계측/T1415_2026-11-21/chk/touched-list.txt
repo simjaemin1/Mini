@@ -1,0 +1,9 @@
+# 만진 함수 → 하네스 (touched-harness · base 1aa63e637 · 갈림점 1aa63e637)
+· 바뀐 코드 파일 4 · 이름 35(물린 것 20 · 흔한 이름 뺌 0) · 바뀐 하네스 2 · 규약 다섯 · **돌릴 하네스 28**(@regress 아님 1: test-assets-audit.js)
+  scripts/t1415-stamp-hook.cjs: t1415-stamp-hook
+  server/stand-skip.js: QMODE T1322_STAT T1415_WAKEQ WQ_ON _hDown _hPop _hUp _qBad _qGrow _qOff install qAll qBegin qDrop qEnd qMat qPark qWake
+  server/villages.js: _hzD2 _hzOn _t1365Art _t1399Tk _t1415QSig t1365Work t1399Rec t1399Still t1399Take
+  server/zone.js: T1415Q _t1322Dusk _t1322Wake _t1348Dec _t1372SSTake _t1399Put _t1415Dusk
+· 이름 → 하네스 수: QMODE 1 · T1322_STAT 4 · T1415Q 1 · T1415_WAKEQ 1 · WQ_ON 1 · _t1322Dusk 3 · _t1322Wake 4 · _t1348Dec 2 · _t1365Art 1 · _t1372SSTake 1 · install 18 · qAll 2 · qBegin 1 · qEnd 1 · qMat 1 · qPark 1 · qWake 1 · t1365Work 3 · t1399Still 1 · t1415-stamp-hook 1
+· 바뀐 하네스: test-t1273-clock-rest.js test-t1415-wakeq.js
+· 돌릴 하네스: e2e-guest-reconnect.js e2e-metallurgy.js e2e-npc-walk.js e2e-site-exit.js e2e-streams.js e2e-village.js e2e-well.js test-assets-audit.js test-bandit-camp.js test-bandit-walk.js test-body-fields.js test-coll-grid.js test-day-deaths.js test-harness-lint.js test-hp-src.js test-lon-day.js test-t1130-hosted.js test-t1273-clock-rest.js test-t1314-cols.js test-t1322-prefilter.js test-t1322-verify-night.js test-t1337-wake.js test-t1348-loop.js test-t1365-work.js test-t1399-tok.js test-t1415-wakeq.js test-t999-trade-cap.js test-tidal.js

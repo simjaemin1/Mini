@@ -1,0 +1,18 @@
+diff --git a/server/bandits.js b/server/bandits.js
+index b52cd49b3..2d4017a5c 100644
+--- a/server/bandits.js
++++ b/server/bandits.js
+@@ -754,11 +754,13 @@ function pairSync() { // 은거지↔마을쌍 경로 인접(30셀) 매핑 — 
+ function installHooks() { // econ 계약 훅(★v2 주사위는 이미 서버 도달 — 여기서 배선만. 도적 0이면 risk 0 = 완전 무해)
+   const world = S.host.world;
+   world.banditRouteRisk = (va, vb) => {
++    if (process.env.DIAG_NOFEAR === '1') return 0;   // [T1404 진단 판만 — 제품 밖] 상인이 길목 단을 모른다(위험 0)
+     if (!S.GANGS.length) return 0;
+     const k = va.name < vb.name ? va.name + '|' + vb.name : vb.name + '|' + va.name;
+     return S.pairs.has(k) ? BDT_RT_X : 0;
+   };
+   world.banditGang = (va, vb) => {   // ★[de-abstract] 길목 실재 갱 반환 → econ v2가 per-entity 약탈 전투에 사용(주사위 대체·랩 동형)
++    if (process.env.DIAG_NOFEAR === '1') return null;   // [T1404 진단 판만 — 제품 밖] 상인이 길목 단을 모른다(호위 · 기대 손실에 단 0 — 약탈은 `banditMeet` 그대로)
+     if (!S.GANGS.length) return null;
+     const k = va.name < vb.name ? va.name + '|' + vb.name : vb.name + '|' + va.name;
+     const gs = S.pairs.get(k);

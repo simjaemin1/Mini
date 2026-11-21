@@ -1,0 +1,26 @@
+// T1403 판정 재료 — 마을마다 어귀(도착 자리)에서 걸어서 가장 가까운 "놓을 수 있는 아홉 칸" (테스트 손잡이 E2E_GIVE · __e2e_lot_scan)
+const path=require('path'),fs=require('fs'),{spawn}=require('child_process');
+const ROOT='/root/t1403'; process.chdir(ROOT);
+const WebSocket=require(ROOT+'/node_modules/ws'); const FB=require(ROOT+'/scripts/fixture-boot'); const LP=require(ROOT+'/scripts/lib-port');
+const tag=process.argv[2]||'cord', extra=JSON.parse(process.argv[3]||'{}');
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+(async()=>{
+ const base=LP.ports(4,39800),CP=base,ZP=base+2; const RUN=fs.mkdtempSync('/tmp/t1403/scan-'+tag+'-'); const procs=[];
+ const env=Object.assign({},process.env,{T1341_OWN_HOUSE:'1',T1392_FIRST_LOT:'1'},extra);
+ const boot=(f,e,db)=>{const p=spawn(process.execPath,[path.join(ROOT,'server',f)],{cwd:ROOT,env:Object.assign({},env,e,{DB_PATH:db}),stdio:['ignore','pipe','pipe']});p.stdout.on('data',()=>{});p.stderr.on('data',()=>{});procs.push(p);return p;};
+ const cen=boot('central.js',{PORT:String(CP),PUBLIC_HOST:'localhost',ENABLED_ZONES:'hanbando'},RUN+'/c.db');
+ const zon=boot('zone.js',{PORT:String(ZP),ZONE_ID:'hanbando',CENTRAL_URL:`http://localhost:${CP}`,ENABLE_VILLAGES:'1',ENABLE_BANDITS:'0',ENABLE_ROADS:'0',ENABLE_WILDLIFE:'0',VILLAGE_MAX:'4',E2E_GIVE:'1'},RUN+'/z.db');
+ const a=await FB.waitUp(cen,/central server up on/,{name:'central'}),b=await FB.waitUp(zon,/zone server up on/,{name:'zone',capMs:400000});
+ const out={tag,extra,rows:[]};
+ if(!a.ok||!b.ok){out.boot=false;}else for(const v of [1,2,3,4]){
+  const r=await new Promise((res)=>{const q=new URLSearchParams({name:'scan'+v,color:'#5a9ae0',start_vid:String(v)});const ws=new WebSocket(`ws://localhost:${ZP}/?${q}`);let W=null;const to=setTimeout(()=>{try{ws.close()}catch(e){};res({v,err:'timeout',W:!!W})},120000);
+   ws.on('message',raw=>{let m;try{m=JSON.parse(String(raw))}catch(e){return}
+    if(m.type==='welcome'){W=m;setTimeout(()=>ws.send(JSON.stringify({type:'__e2e_lot_scan'})),1500);}
+    else if(m.type==='__e2e_lot_scan'){clearTimeout(to);ws.close();res({v,self:{x:Math.round(W.self.x),y:Math.round(W.self.y)},scan:m});}});
+   ws.on('error',e=>{clearTimeout(to);res({v,err:String(e)})});});
+  out.rows.push(r); console.log(JSON.stringify(r));
+ }
+ fs.writeFileSync(`/tmp/t1403/scan-${tag}.json`,JSON.stringify(out,null,1));
+ for(const p of procs){try{p.kill('SIGTERM')}catch(e){}} await sleep(800); for(const p of procs){try{p.kill('SIGKILL')}catch(e){}}
+ fs.rmSync(RUN,{recursive:true,force:true}); process.exit(0);
+})();

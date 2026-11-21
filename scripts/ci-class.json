@@ -353,7 +353,8 @@
    "dyn": "나",
    "child": [
     "execFileSync git"
-   ]
+   ],
+   "logSec": 30
   },
   "test-audio.js": {
    "cls0": "다",
@@ -550,7 +551,7 @@
    "same5": true,
    "core": true,
    "why": "core",
-   "logSec": 3,
+   "logSec": 4,
    "runs": [
     {
      "rc": 0,
@@ -1864,7 +1865,7 @@
    "same5": true,
    "core": true,
    "why": "core",
-   "logSec": 15,
+   "logSec": 14,
    "runs": [
     {
      "rc": 0,
@@ -3376,7 +3377,7 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 17.7,
+   "maxSec": 17.2,
    "same5": null,
    "core": false,
    "why": "서버 1판만 잼",
@@ -3384,7 +3385,7 @@
    "runs": [
     {
      "rc": 0,
-     "secs": 17.7,
+     "secs": 17.2,
      "green": true,
      "fails": []
     }
@@ -4287,7 +4288,7 @@
    "same5": null,
    "core": false,
    "why": "60.9초 > 60초",
-   "logSec": 69,
+   "logSec": 114,
    "runs": [
     {
      "rc": 0,
@@ -4403,7 +4404,7 @@
    "same5": true,
    "core": true,
    "why": "core",
-   "logSec": 2,
+   "logSec": 3,
    "runs": [
     {
      "rc": 0,
@@ -8224,7 +8225,7 @@
     },
     {
      "rc": 0,
-     "secs": 0.5,
+     "secs": 0.4,
      "green": true,
      "fails": []
     },
@@ -8236,7 +8237,7 @@
     },
     {
      "rc": 0,
-     "secs": 0.5,
+     "secs": 0.4,
      "green": true,
      "fails": []
     }
@@ -10005,7 +10006,7 @@
    "same5": null,
    "core": false,
    "why": "브라우저(글자) — CI 밖(야간 · 전수)",
-   "logSec": 77
+   "logSec": 73
   },
   "test-t1132-hall-view.js": {
    "cls0": "다",
@@ -13234,7 +13235,7 @@
    "same5": true,
    "core": true,
    "why": "core",
-   "logSec": 42,
+   "logSec": 75,
    "runs": [
     {
      "rc": 0,
@@ -13500,7 +13501,7 @@
    "cls0": "가",
    "why0": "",
    "cls": "가",
-   "maxSec": 3.9,
+   "maxSec": 3.7,
    "same5": true,
    "core": true,
    "why": "core",
@@ -13508,31 +13509,31 @@
    "runs": [
     {
      "rc": 0,
-     "secs": 3.2,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 3.9,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
      "secs": 3.3,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 3.2,
+     "secs": 3.7,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 3.3,
+     "secs": 3.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 3.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.9,
      "green": true,
      "fails": []
     }
@@ -13791,7 +13792,7 @@
    "same5": true,
    "core": true,
    "why": "core",
-   "logSec": 23,
+   "logSec": 40,
    "runs": [
     {
      "rc": 0,
@@ -13834,7 +13835,7 @@
    "same5": null,
    "core": false,
    "why": "서버(글자) — CI 밖(야간 · 전수)",
-   "logSec": 2100
+   "logSec": 3337
   },
   "test-t1324-xz-migrate.js": {
    "cls0": "나",
@@ -14214,7 +14215,8 @@
      "fails": []
     }
    ],
-   "dyn": "가"
+   "dyn": "가",
+   "logSec": 57
   },
   "test-t1338-war-tick.js": {
    "cls0": "다",
@@ -14445,7 +14447,8 @@
    "maxSec": null,
    "same5": null,
    "core": false,
-   "why": "안 잼"
+   "why": "러너 한 판 131초 > 60초(안 돌림)",
+   "logSec": 131
   },
   "test-t1349-war-stall.js": {
    "cls0": "다",
@@ -14742,7 +14745,8 @@
    "child": [
     "spawn node",
     "spawnSync node"
-   ]
+   ],
+   "logSec": 584
   },
   "test-t1368-onb-newbie.js": {
    "cls0": "나",
@@ -15343,7 +15347,8 @@
    "child": [
     "spawn node",
     "spawnSync node"
-   ]
+   ],
+   "logSec": 795
   },
   "test-t1401-walk-map.js": {
    "cls0": "나",
@@ -15353,6 +15358,124 @@
    "same5": null,
    "core": false,
    "why": "안 잼"
+  },
+  "test-t1402-deeds-split.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "다",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "서버(글자) — CI 밖(야간 · 전수)"
+  },
+  "test-t1402-deeds-uptime.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "다",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "서버(글자) — CI 밖(야간 · 전수)"
+  },
+  "test-t1402-deeds-work.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "다",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "서버(글자) — CI 밖(야간 · 전수)"
+  },
+  "test-t1403-small-hut.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "다",
+   "maxSec": 100.2,
+   "same5": null,
+   "core": false,
+   "why": "서버 100.2초 > 60초 — CI 밖(야간 · 전수)",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 100.2,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "다",
+   "child": [
+    "spawnSync node",
+    "spawn node"
+   ],
+   "long": true
+  },
+  "test-t1403-walk-arrow.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "다",
+   "maxSec": 92.9,
+   "same5": null,
+   "core": false,
+   "why": "서버 92.9초 > 60초 — CI 밖(야간 · 전수)",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 92.9,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "다",
+   "child": [
+    "spawnSync node",
+    "spawn node"
+   ],
+   "long": true
+  },
+  "test-t1404-bandit-live.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": 15.8,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 14.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 13.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 15.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 15.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 15.8,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawnSync node"
+   ]
   },
   "test-t1405-leave-rare.js": {
    "cls0": "다",
@@ -15400,15 +15523,66 @@
    ],
    "srv": true
   },
+  "test-t1407-tin-world.js": {
+   "cls0": "나",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 11.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 10.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 11.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 11.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 10.4,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawnSync node"
+   ],
+   "cls": "나",
+   "maxSec": 11.5,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "why0": "child_process"
+  },
   "test-t1408-farm-4000.js": {
    "cls0": "나",
    "why0": "child_process",
    "cls": "나",
-   "maxSec": 1.5,
+   "maxSec": 1.2,
    "same5": true,
    "core": true,
    "why": "core",
    "runs": [
+    {
+     "rc": 0,
+     "secs": 1.1,
+     "green": true,
+     "fails": []
+    },
     {
      "rc": 0,
      "secs": 1.2,
@@ -15417,19 +15591,13 @@
     },
     {
      "rc": 0,
-     "secs": 1.3,
+     "secs": 1.1,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 1.4,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 1.5,
+     "secs": 1.1,
      "green": true,
      "fails": []
     },
@@ -15487,21 +15655,135 @@
    ],
    "dyn": "가"
   },
-  "test-t1422-side-work.js": {
-   "cls0": "나",
-   "why0": "child_process",
+  "test-t1414-ocr-tmpdir.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
    "cls": "나",
-   "maxSec": 2.6,
+   "maxSec": 14.2,
    "same5": true,
    "core": true,
    "why": "core",
    "runs": [
     {
      "rc": 0,
-     "secs": 2.5,
+     "secs": 14.2,
      "green": true,
      "fails": []
     },
+    {
+     "rc": 0,
+     "secs": 14.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 13.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 14.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 14.1,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawnSync git",
+    "spawn bash",
+    "spawnSync node"
+   ]
+  },
+  "test-t1415-wakeq.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "다",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "서버(글자) — CI 밖(야간 · 전수)",
+   "logSec": 431
+  },
+  "test-t1416-hunt-body2.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "안 잼"
+  },
+  "test-t1420-eq.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "안 잼"
+  },
+  "test-t1421-farm-4000b.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": 2.1,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 1.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 1.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 1.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.1,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "execFileSync node"
+   ]
+  },
+  "test-t1422-side-work.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": 2.7,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "runs": [
     {
      "rc": 0,
      "secs": 2.6,
@@ -15516,13 +15798,19 @@
     },
     {
      "rc": 0,
-     "secs": 2.3,
+     "secs": 2.5,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 2.4,
+     "secs": 2.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.7,
      "green": true,
      "fails": []
     }
@@ -16434,7 +16722,7 @@
    "same5": true,
    "core": true,
    "why": "core",
-   "logSec": 18,
+   "logSec": 22,
    "runs": [
     {
      "rc": 0,
@@ -16727,7 +17015,7 @@
    "same5": true,
    "core": true,
    "why": "core",
-   "logSec": 1,
+   "logSec": 2,
    "runs": [
     {
      "rc": 0,

@@ -1336,6 +1336,9 @@
     } else if (msg.type === 'claim_updated') {
       // Phase 4d-16-a: 영토 cell sub-type 변경 (예: NPC personal 분배)
       c.claims.set(msg.claim.id, msg.claim);
+    } else if (msg.type === 'unclaim_confirm') {
+      // ★[T1402 판정 21] 켬 — 내놓으면 땅이 갈라지는 칸 · 서버가 준 한 줄로 묻고(새 창 0 · 종전 내놓기 확인과 같은 `confirm`) 예면 갈라짐 확인을 붙여 다시 보낸다
+      if (confirm(String(msg.text || '내놓으시겠습니까?'))) sendPrimary({ type: 'unclaim', claimId: msg.claimId, split: 1 });
     } else if (msg.type === 'deeds_meter') {
       // ★[T1343] 사유지 계량기(내 청크마다 관리도 · 줄어드는 속도 · 버티는 날) — 서버가 준 그대로 · 패널이 지금으로 줄여 그린다(닫힌 식)
       window.__deedsMeter = Object.assign({ recvAt: Date.now() }, msg);   // [T1310 클라 시계] 받은 순간 — 서버가 준 `now` 에 더할 클라 간격의 시작(서버 시각과 견주지 않는다 · PM land1082)

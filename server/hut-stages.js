@@ -93,13 +93,16 @@ function stageStoneKg(i, n) {
 // ── ★★[T1392 · ★재민 11-19 판정 9 "3x3 소형 간이 움집도 만들 수 있게"] 간이 움집 3×3 — **6×4 표에서 유도한 첫 후보**(새 수 0 · 고르는 것은 재민) ──
 //   발자국 둘(셀): 6×4 = NPC 움집 정본(`_vbFootprint` · 위 머리글 "완공 실체 = NPC 움집과 동일 6×4") · 3×3 = 재민이 정한 간이 움집.
 //   유도 규칙(카드 T1392 ③ 글자 그대로):
-//     기둥 = **모서리 넷**(6×4 의 6 = 모서리 4 + 긴 변 가운데 2 — 간이 움집은 긴 변이 없다) — 위 고증 `HUT_PILLARS_ATTESTED` 의 4(구덩이 둘레 4 기둥)와 같은 수
+//     기둥 = ★[T1403 · 재민 11-20 판정 15 "나로 하자"] **가운데 둘** — 송국리형 기본꼴(가운데 타원 구덩이 양 끝 기둥 2 · 송국리형 집의 약 68% · 李宗哲 2010 · `설계/고증_2026-11_넷.md` 1-ㄴ) ·
+//       위 고증 `HUT_PILLARS_ATTESTED` 의 첫 수(2)를 부른다(새 수 0). T1392 첫 후보 "모서리 넷"은 작은 송국리형 집에 근거가 없었다(같은 문서 다섯째 줄).
 //     서까래 = 둘레 비(2 × (6 + 4) = 20 → 2 × (3 + 3) = 12) · 결속 풀 · 이엉 = 넓이 비(24 → 9) — 올림(반 개는 못 쓴다)
 //   단계 넷 · 도구 · 닳음 · 레시피는 그대로(사본 0 — 6×4 표의 행을 고쳐 쓴다).
 const HUT_FOOT = { w: 6, h: 4 };
 const SMALL_FOOT = { w: 3, h: 3 };
 const _perim = (f) => 2 * (f.w + f.h), _area = (f) => f.w * f.h;
-const SMALL_PILLARS = 4;   // 모서리 넷(직사각형의 모서리 수 — 6×4 의 6 에서 긴 변 가운데 둘을 뺀 것)
+const SMALL_PILLARS = HUT_PILLARS_ATTESTED[0];   // ★[T1403] 가운데 둘(송국리형 기본꼴) — 자리는 가운데 칸의 타원 구덩이 양 끝(`SMALL_POSTS`)
+//   기둥 자리 = 가운데 칸의 서 · 동 변 가운데(타원 구덩이 = 가운데 칸 · 양 끝 = 그 칸의 두 변 · 칸 단위) — 그림이 쓰는 자리 정본(충돌은 안 건다 · 보고 T1403)
+const SMALL_POSTS = [[-0.5, 0], [0.5, 0]];
 const _scale = { rafter: _perim(SMALL_FOOT) / _perim(HUT_FOOT), fiber: _area(SMALL_FOOT) / _area(HUT_FOOT), thatch: _area(SMALL_FOOT) / _area(HUT_FOOT) };
 function smallNeed(need) {
   const o = {};
@@ -123,4 +126,4 @@ const smallRaw = () => {
 
 module.exports = { HUT_STAGES, HUT_RECIPES, PSITE_COST, rawOfNeed, stageRaw, hutRaw, HUT_PILLARS_ATTESTED, stageRawPillars, hutRawPillars,
   HUT_PLINTH_SRC, plinthKg, stageStoneKg,
-  HUT_FOOT, SMALL_FOOT, SMALL_PILLARS, SMALL_STAGES, stagesOf, smallNeed, smallRaw };   // ★[T1392] 간이 움집 3×3
+  HUT_FOOT, SMALL_FOOT, SMALL_PILLARS, SMALL_POSTS, SMALL_STAGES, stagesOf, smallNeed, smallRaw };   // ★[T1392] 간이 움집 3×3

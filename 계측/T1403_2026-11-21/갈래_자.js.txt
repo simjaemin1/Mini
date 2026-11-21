@@ -1,0 +1,25 @@
+// T1403 — 봇 판 로그에서 첫 집터까지를 「지금 할 일」 칸이 보여 준 일(panelSeq) 갈래로 가른다 · 판정 재료(고치지 않음)
+//   재료 = 첫 칸 ~ 칸이 처음 "집터 잡기"를 보인 때(도구 칸 · 모으기 칸) · 집터 갈래 = 그때 ~ 집터 → 생존(물 · 열매 · 먹을 것 탐색 다리) / 걷기 · 자리 찾기(나머지)
+//   걷기(ⓑ) = 마지막 "영토 안" 미리보기까지 · 자리 찾기(ⓒ) = 그 뒤 · 둘 다 생존 다리를 뺀다(각 창 안 비율대로)
+const fs=require('fs');const V={1:'농촌1',2:'어촌2',3:'임업2',4:'광산4'};const dir=process.argv[2];const out=process.argv[3];const rows=[];
+const needOf=(l)=>l.kind==='drink'||(l.kind==='explore'&&/berry|water|food|meat/.test(l.need||''))||(l.kind==='gather'&&l.d&&(l.d.berry||l.d.meat||l.d.fish));
+for(let v=1;v<=4;v++)for(let k=1;k<=5;k++){const f=`${dir}/g-v${v}-${k}.json`;if(!fs.existsSync(f))continue;const R=JSON.parse(fs.readFileSync(f,'utf8'));
+ const M=R.milestones||{};const cap=(R.capMin||35)*60;const got=!!M['집터'];const end=got?M['집터'].t:cap;
+ const P=(R.panelSeq||[]).filter(p=>p.t<=end);const first=P.length?P[0].t:end;const cl=P.find(p=>/^claim:/.test(p.ps));const tMat=cl?cl.t:end;
+ let tool=0,gath=0;for(let i=0;i<P.length;i++){const p=P[i];if(p.t>=tMat)break;const t1=Math.min(i+1<P.length?P[i+1].t:end,tMat),d=t1-p.t;if(/^tool:/.test(p.ps))tool+=d;else gath+=d;}
+ // 나무 · 돌 — 모으기 시간을 guide 갈래(res) 비율로 나눈다
+ const G=(R.guide||[]).filter(g=>g.t<tMat);let tr=0,rk=0;for(let i=0;i<G.length;i++){const g=G[i];if(g.do!=='gather')continue;const t1=Math.min(i+1<G.length?G[i+1].t:tMat,tMat),d=t1-g.t;if(g.res==='tree')tr+=d;else if(g.res==='rock')rk+=d;}
+ const tree=tr+rk>0?gath*tr/(tr+rk):gath/2,rock=gath-tree;
+ const L=R.legs||[];const inW=(a,b)=>L.filter(l=>l.t>a&&l.t<=b);
+ const needSec=(a,b)=>Math.min(b-a,inW(a,b).filter(needOf).reduce((s,l)=>s+(l.sec||0),0));
+ const gate=inW(tMat-1,end).filter(l=>l.kind==='lot-preview-blocked'&&l.gate),cells=inW(tMat-1,end).filter(l=>l.kind==='lot-preview-blocked'&&!l.gate),ref=inW(tMat-1,end).filter(l=>l.kind==='claim-refused');
+ const tG=gate.length?Math.max(tMat,gate[gate.length-1].t):tMat;
+ const nB=got?needSec(tMat,tG):0,nC=got?needSec(tG,end):0;
+ const m=x=>+(x/60).toFixed(2);
+ rows.push({v:V[v],k,got,end:m(end),pre:m(first),tool:m(tool),tree:m(tree),rock:m(rock),mat:m(tMat-first),claimSeg:m(end-tMat),walk:m(got?Math.max(0,tG-tMat-nB):0),find:m(got?Math.max(0,end-tG-nC):0),need:m(nB+nC),gate:gate.length,cells:cells.length,ref:ref.length});}
+fs.writeFileSync(out,JSON.stringify(rows,null,1));
+const med=a=>{a=a.slice().sort((x,y)=>x-y);if(!a.length)return null;const q=a.length>>1;return a.length%2?a[q]:+((a[q-1]+a[q])/2).toFixed(2)};
+const mean=a=>+(a.reduce((s,x)=>s+x,0)/a.length).toFixed(2);
+const cols=['end','pre','tool','tree','rock','mat','claimSeg','walk','find','need'];
+for(const r of rows)console.log(r.v,r.k,r.got?'○':'✗',cols.map(c=>r[c]).join(' '),'g'+r.gate,'c'+r.cells,'r'+r.ref);
+for(const [n,rs] of [['all',rows],['reached',rows.filter(r=>r.got)],...Object.values(V).map(n=>[n,rows.filter(r=>r.v===n)])]){console.log('MEAN',n,rs.length,cols.map(c=>c+'='+mean(rs.map(r=>r[c]))).join(' '),'g',rs.reduce((s,r)=>s+r.gate,0),'c',rs.reduce((s,r)=>s+r.cells,0),'r',rs.reduce((s,r)=>s+r.ref,0));console.log('MED ',n,rs.length,cols.map(c=>c+'='+med(rs.map(r=>r[c]))).join(' '));}
