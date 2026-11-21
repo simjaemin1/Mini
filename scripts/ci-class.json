@@ -15754,6 +15754,16 @@
     "execFileSync node"
    ]
   },
+  "test-t1433-terr-rows.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "다",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "서버(글자) — CI 밖(야간 · 전수)",
+   "logSec": 147
+  },
   "test-t721-apply.js": {
    "cls0": "나",
    "why0": "child_process",
