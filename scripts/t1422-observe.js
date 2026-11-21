@@ -43,7 +43,14 @@ globalThis.__t1422T = (npc, now, owned) => {
     if (!owned || !npc || !npc.simJob) return;
     rec.ticks++;
     const d = dayOf();
-    if (d !== curDay) { curDay = d; rec.days++; const t = CAL.dateOf(d); curS = SEASON(t.month); VD.clear(); if (rec.days % 30 === 0) dump(); }
+    if (d !== curDay) { curDay = d; rec.days++; const t = CAL.dateOf(d); curS = SEASON(t.month); VD.clear(); if (rec.days % 30 === 0) dump();
+      //   ★그날 세계 줄(하루 첫 표본) — [날, 인구, 사는 마을, 나무꾼 0 마을(사는 마을 중), 곳간 나무 < 1 마을, 영토 칸 합, 주거 합, 행복(사람 가중 평균), 행복 마을 값들(30날마다)]
+      const VS = globalThis.__t1422VS, V = (VS && VS.state && VS.state.villages) || [];
+      let pop = 0, live = 0, lj0 = 0, w0 = 0, terr = 0, house = 0, hs = 0; const hv = [];
+      for (const v of V) { const e = v.econ; if (!e || !e.npcs) continue; const n = e.npcs.length; pop += n; terr += (v._terrSet && v._terrSet.size) || 0; house += +e.housing || 0;
+        if (n > 0) { live++; if (!((e.counts && e.counts.lumberjack) > 0)) lj0++; if (!((e.storage && e.storage.wood) >= 1)) w0++; const h = e.lastStats && e.lastStats.happiness; if (typeof h === 'number') { hs += h * n; hv.push(+h.toFixed(3)); } } }
+      (rec.w || (rec.w = [])).push([d, pop, live, lj0, w0, terr, +house.toFixed(1), pop ? +(hs / pop).toFixed(4) : 0, rec.days % 30 === 0 ? hv : null]);
+      rec.cpu = process.cpuUsage(); }
     const S = curS, j = npc.simJob, lab = npc._lifeAct || '(없음)';
     const l = LAST.get(npc); LAST.set(npc, now);
     const dt = (l != null && now > l) ? Math.min(3000, now - l) : 0;

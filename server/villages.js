@@ -13263,7 +13263,7 @@ function _lifeAct(npc, s) {   // ★[액션 라벨 가시화] 행동 라벨 세�
 //     ⓒ `food` 곳간 식량이 필요한 만큼 안 될 때만(합계 < 사람 × `t1374NeedDays` — T1419 함수가 서면 그 이름) 채집(채집꾼 걸음 · 같은 갈래)
 //     ⓓ `wood` 곳간 나무 잉여(`woodSpare`) ≤ 0 일 때 나무(나무꾼 걸음 · 같은 갈래)
 //   고르는 법: 생활층 배정 차례(개간 > 건설 — 아래 "작업 배정" 줄과 같은 차례) 다음, 식량 · 땔감은 그 일의 값(`t1422SideVal` — 그 직업 1인 하루 산출 × 그림자 값 ·
-//     실현 배분이 견주는 축)이 큰 쪽 · 쉬는 값은 0(회부 — 쉼의 값). 식량 · 땔감 몸의 일한 시간은 몸-ms 로 세어(`_t1422Ms`) econ 틱 앞에 사람-날로 넘긴다
+//     실현 배분이 견주는 축)이 큰 쪽 · 쉬는 값은 0(회부 — 쉼의 값) · 그 직업 현장(`_lifeJobSites`)이 없으면 후보 아님. 식량 · 땔감 몸이 **현장에 선** 시간만 몸-ms 로 세어(`_t1422Ms`) econ 틱 앞에 사람-날로 넘긴다
 //     (`econ._t1422Side` → econ 이 그 직업 식으로 숙련 0 사람 몫을 곳간에 낸다 · 직업 수 · 실현 값 · 잠재 · 여유노동엔 안 든다).
 //   사냥은 사냥꾼 두뇌가 직업(`simJob`)으로 잡혀 남의 몸에 못 얹는다 — 회부(식량은 채집만).
 const _T1422_K = (() => { const x = process.env.T1422_SIDE_WORK || ''; if (!x || x === '0') return null; const all = ['build', 'terr', 'food', 'wood']; const L = x === '1' ? all : x.split(',').filter((k) => all.indexOf(k) >= 0); return L.length ? new Set(L) : null; })();
@@ -13295,8 +13295,10 @@ function _t1422Side(vil, npc, now, why) {
   }
   let bj = null, bv = 0;
   const N = (e.npcs && e.npcs.length) || 1;
-  if (_t1422Kind('food') && E.totalFoodEquivalent(e) < N * E.t1374NeedDays(e, (e._world && e._world.day) | 0)) { const x = E.t1422SideVal(e, 'forager'); if (x > bv) { bv = x; bj = 'forager'; } }   // ⓒ 필요할 때만
-  if (_t1422Kind('wood') && E.woodSpare(e) <= 0) { const x = E.t1422SideVal(e, 'lumberjack'); if (x > bv) { bv = x; bj = 'lumberjack'; } }   // ⓓ
+  const _sd = state.dayMs ? (T731_ON ? _ledgerDay(vil, now) : gameDayOf(now)) : 0, _ss = (_t1422Kind('food') || _t1422Kind('wood')) ? _lifeJobSites(vil, _sd) : null;   // 현장 — 그 일의 몸 갈래가 설 자리(없으면 몸이 못 간다 → 후보 아님)
+  const _has = (j) => !!(_ss && _ss[j] && _ss[j].length);
+  if (_t1422Kind('food') && _has('forager') && E.totalFoodEquivalent(e) < N * E.t1374NeedDays(e, (e._world && e._world.day) | 0)) { const x = E.t1422SideVal(e, 'forager'); if (x > bv) { bv = x; bj = 'forager'; } }   // ⓒ 필요할 때만
+  if (_t1422Kind('wood') && _has('lumberjack') && E.woodSpare(e) <= 0) { const x = E.t1422SideVal(e, 'lumberjack'); if (x > bv) { bv = x; bj = 'lumberjack'; } }   // ⓓ
   if (bj) { npc._t1422J = { j: bj, day: d }; npc._t1422D = d; npc._t1422At = now; _t1422St[bj === 'forager' ? 'food' : 'wood']++; npc._fOutD = d; return true; }
   _t1422St.rest++; return false;
 }
@@ -19438,7 +19440,6 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   }
   // ══ 직업 실작업(랩 JOBACT·work 분기 동형 — 서버는 실물 자원·실물 사냥감이 정본) ══
   const job = _t1422J || npc.simJob;
-  if (_t1422J) { const el = Math.min(3000, now - (npc._t1422At || now)); npc._t1422At = now; const M = vil._t1422Ms || (vil._t1422Ms = {}); M[_t1422J] = (M[_t1422J] || 0) + el; _t1422St.ms[_t1422J] = (_t1422St.ms[_t1422J] || 0) + el; }   // ★[T1422] 남는 시간 일한 몸-ms(틱 간격 캡 — 위 현장 노동 적산과 같은 3초)
   if (isFarmer && vil._farmSet.size) {   // 농부=작물 상태머신(랩 nextTask→doTask: 수확>방제>물대기>파종>김매기, 우선순위+최근접)
     if (npc._jobT && now < npc._jobT) return true;   // 체류 중(target 유지)
     if (npc._farmK) {   // 배정 셀로 이동 중/도착
@@ -19561,7 +19562,8 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     const h = _pidHash(npc.pid);
     if (!npc._workSite || npc._workSite.day !== day) { const _s = _t427On() ? _t427Site(vil, npc, sites, h, day) : { x: sites[h % sites.length].x, y: sites[h % sites.length].y, day }; if (!_s) return true; npc._workSite = _s; }   // ★[T562 ④] 아직(`null`)이면 이 틱은 제자리 — 다음 틱에 이어서   // 분산 배정(랩 place %분산 동형) · ★[T427 ①] 켜면 닿는 후보만
     const ws = npc._workSite;
-    if (Math.hypot(npc.x - ws.x, npc.y - ws.y) > 240) { npc.behavior = 'wander'; npc.targetX = ws.x; npc.targetY = ws.y; npc.gatherTarget = null; _lifeAct(npc, '출근'); return true; }   // 출근
+    if (Math.hypot(npc.x - ws.x, npc.y - ws.y) > 240) { npc.behavior = 'wander'; npc.targetX = ws.x; npc.targetY = ws.y; npc.gatherTarget = null; _lifeAct(npc, '출근'); if (_t1422J) npc._t1422At = now; return true; }   // 출근
+    if (_t1422J) { const el = Math.min(3000, now - (npc._t1422At || now)); npc._t1422At = now; const M = vil._t1422Ms || (vil._t1422Ms = {}); M[_t1422J] = (M[_t1422J] || 0) + el; _t1422St.ms[_t1422J] = (_t1422St.ms[_t1422J] || 0) + el; }   // ★[T1422] 현장에 선 남는 시간 몸-ms만(걸음 · 귀가 0 · 틱 간격 캡 — 현장 노동 적산과 같은 3초)
     if (npc._jobT && now < npc._jobT) return true;   // 작업 스윙 페이싱
     const qt = state.deps.qtResources && state.deps.qtResources();
     const near = qt ? qt.queryCircle(ws.x, ws.y, 260) : [];
