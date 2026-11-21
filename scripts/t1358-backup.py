@@ -24,11 +24,16 @@ for d in sorted(a.runs.iterdir()):
    tmp.replace(target)
  mark=dst/'backed-up-day'
  old=int(mark.read_text()) if mark.exists() else -1
- if ck and old!=ck:
+ # The final segment advances progress without writing a binary checkpoint.
+ # A short diagnostic may therefore have no checkpoint/day at all. Preserve
+ # completed evidence/status and retain the previous verified recovery image.
+ marker=d/'ck/day'
+ snapshot_matches=marker.exists() and marker.read_text().strip()==str(ck)
+ if ck and old!=ck and snapshot_matches:
   tmp=dst/'checkpoint.tmp';shutil.rmtree(tmp,ignore_errors=True)
   shutil.copytree(d/'ck',tmp)
   latest=json.loads((d/'progress.json').read_text())
-  if latest.get('ck')==ck and (tmp/'day').read_text().strip()==str(ck):
+  if latest.get('ck')==ck and (tmp/'day').exists() and (tmp/'day').read_text().strip()==str(ck):
    shutil.rmtree(dst/'checkpoint',ignore_errors=True);tmp.rename(dst/'checkpoint')
    (dst/'progress.json').write_text(json.dumps(P,indent=1));mark.write_text(str(ck))
   else:shutil.rmtree(tmp,ignore_errors=True)

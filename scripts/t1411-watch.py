@@ -15,7 +15,7 @@ while not (a.out/'stop-watch').exists():
     status = []
     # Launch conditions and actual wrapper exits are part of recovery evidence,
     # including a run that dies before its next checkpoint.
-    for f in list(a.runs.glob('*.json')) + list(a.runs.parent.glob('*manifest.json')) + list(a.runs.parent.glob('*fingerprint30.json')) + [a.runs.parent/'campaign.json']:
+    for f in list(a.runs.glob('*.json')) + list(a.runs.parent.glob('*manifest.json')) + list(a.runs.parent.glob('*fingerprint*.json')) + [a.runs.parent/'campaign.json']:
         if f.is_file():
             dest = a.out/'metadata'/f.name
             dest.parent.mkdir(parents=True, exist_ok=True)
