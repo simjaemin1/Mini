@@ -107,34 +107,51 @@ table(['판', '쥔 마을 /51', '쥔 마을 병기고 청동 몫', '절반 넘�
       s.legs.weapon[0] + ' · ' + f1(s.legs.weapon[1]), (P.holderNames || []).join(' / ')];
   }));
 
-// ⓒ 굶는 마을 — 끔엔 사는데 켬 팔에선 비거나(또는 끝 사람 비 < 0.5) 된 마을의 날 줄(25날 마디)
-console.log('### ⓒ 굶는 마을이 붓는 줄 — 끔엔 사는데 켠 팔에서 비거나 반 밑으로 준 마을(25날 마디)\n');
-const cTrace = [];
+// ⓒ 굶는 마을 — 끔엔 사는데 켠 팔에서 비거나(또는 끝 사람 비 < 0.5) 된 마을: 붓는 줄(대장장이 · 주조)과 먹을 것 장부(낸 것 · 들어온 · 나간 짐)를 나란히
+console.log('### ⓒ 굶는 마을이 붓는 줄 — 끔엔 사는데 켠 팔에서 비거나 반 밑으로 준 마을\n');
+const cTrace = [], cSum = [];
+const legIdx = (r) => {   // 마을-날 먹을 것 짐(들어온 · 나간 — 식량 환산)
+  if (r._legIdx) return r._legIdx; const M = new Map();
+  for (const L of r.legs) { const [d, g, t, , , fe] = L; if (!(fe > 0)) continue;
+    const a = M.get(t + '|' + d) || [0, 0]; a[0] += fe; M.set(t + '|' + d, a);
+    const b = M.get(g + '|' + d) || [0, 0]; b[1] += fe; M.set(g + '|' + d, b); }
+  return (r._legIdx = M);
+};
 for (const s of runs) {
   if (s.arm === 'off') continue; const o = offOf(s); if (!o) continue;
   const r = s._r, ro = o._r, C = (c) => r.vcols.indexOf(c), lastS = r.day[s.dN], lastO = ro.day[o.dN];
+  const LI = legIdx(r);
   r.names.forEach((n, i) => {
-    const a = lastS[i], b = lastO[ro.names.indexOf(n)];
+    const io = ro.names.indexOf(n), a = lastS[i], b = lastO[io];
     if (!b) return; const nb = b[C('N')], na = a ? a[C('N')] : 0;
-    if (!(na === 0 || (nb >= 10 && na / nb < 0.5))) return;
-    const rows = [];
+    if (!((na === 0 && nb > 0) || (nb >= 10 && na / nb < 0.5))) return;
     const days = Object.keys(r.day).map(Number).sort((x, y) => x - y);
-    let acc = { cast: 0, castBz: 0, crisis: 0, n: 0 }, k = 0;
+    const rows = []; let acc = { cast: 0, bz: 0, crisis: 0, n: 0, prod: 0, inF: 0, outF: 0 }, accO = { prod: 0, n: 0 };
+    let smithDays = 0, castAll = 0, outHungry = 0, hungryDays = 0, peakN = 0, peakProd = 0, masonPeak = 0, lastDead = 0, minAfter = null;
     for (const d of days) {
-      const row = r.day[d][i]; if (row) { acc.cast += row[C('cast')] || 0; acc.castBz += row[C('castBz')] || 0; acc.crisis += row[C('crisis')] || 0; acc.n++; }
+      const row = r.day[d][i], ob = ro.day[d] ? ro.day[d][io] : null, lg = LI.get(n + '|' + d) || [0, 0];
+      if (row) {
+        acc.cast += row[C('cast')] || 0; acc.bz += row[C('castBz')] || 0; acc.crisis += row[C('crisis')] || 0; acc.n++; acc.prod += row[C('fdProd')] || 0; acc.inF += lg[0]; acc.outF += lg[1];
+        smithDays += row[C('smith')] || 0; castAll += row[C('cast')] || 0; if ((row[C('foodDays')] || 0) < 30) { hungryDays++; outHungry += lg[1]; }
+        if (row[C('N')] > peakN) peakN = row[C('N')]; masonPeak = Math.max(masonPeak, row[C('mason')] || 0); lastDead = row[C('fdDead')] || 0;
+      }
+      if (ob) { accO.prod += ob[C('fdProd')] || 0; accO.n++; }
       if (d % 25 === 0 || d === s.dN) {
-        const ob = ro.day[d] ? ro.day[d][ro.names.indexOf(n)] : null;
-        rows.push(row ? [d, row[C('N')], f0(row[C('foodDays')]), acc.n ? acc.crisis + '/' + acc.n : '—', f2(row[C('secF')]), row[C('foodW')], row[C('miner')], row[C('smith')], row[C('mason')], row[C('warrior')],
-          f1(row[C('cu')]), f1(row[C('tin')]), f1(row[C('weapon')]), f1(acc.cast) + ' · ' + f1(acc.castBz), f1(row[C('pFood')]), f2(row[C('pWeap')]), row[C('fdDead')], ob ? ob[C('N')] + ' · ' + f0(ob[C('foodDays')]) + ' · ' + ob[C('smith')] : '—']
-          : [d, 0, '—', '—', '—', '—', '—', '—', '—', '—', '—', '—', '—', '—', '—', '—', '—', ob ? ob[C('N')] + ' · ' + f0(ob[C('foodDays')]) + ' · ' + ob[C('smith')] : '—']);
-        acc = { cast: 0, castBz: 0, crisis: 0, n: 0 }; k++;
+        const k = Math.max(1, acc.n), perP = row && row[C('N')] ? acc.prod / k / row[C('N')] : null;
+        if (perP != null && d >= 50) { if (perP > peakProd) { peakProd = perP; minAfter = null; } else if (minAfter == null || perP < minAfter) minAfter = perP; }
+        const offCell = ob ? ob[C('N')] + ' · ' + f0(ob[C('foodDays')]) + ' · ' + f2(accO.n && ob[C('N')] ? accO.prod / accO.n / ob[C('N')] : null) : '—';
+        rows.push(row ? [d, row[C('N')], f0(row[C('foodDays')]), acc.crisis + '/' + acc.n, row[C('foodW')], row[C('mason')], row[C('smith')], f1(acc.cast) + ' · ' + f1(acc.bz), f2(perP), f1(acc.inF / k), f1(acc.outF / k), f1(row[C('pFood')]), row[C('fdDead')], offCell]
+          : [d, 0, '—', '—', '—', '—', '—', '—', '—', '—', '—', '—', '—', offCell]);
+        acc = { cast: 0, bz: 0, crisis: 0, n: 0, prod: 0, inF: 0, outF: 0 }; accO = { prod: 0, n: 0 };
       }
     }
     cTrace.push({ run: s.dir, name: n, endN: na, offN: nb, rows });
+    cSum.push([s.dir, n, na + ' (끔 ' + nb + ' · 가장 많을 때 ' + peakN + ')', smithDays + ' · ' + f1(castAll), hungryDays, f1(outHungry), f2(peakProd) + ' → ' + f2(minAfter), masonPeak + ' → ' + (a ? a[C('mason')] : 0), lastDead]);
   });
 }
+table(['판', '마을', '끝 사람', '대장장이-날 · 부은 검(판 내내)', '굶는 날(곳간 < 30날치)', '굶는 날 내보낸 먹을 것(식량 환산 합)', '사람당 낸 먹을 것/날(날 50 뒤 가장 높은 마디 → 그 뒤 가장 낮은 마디)', '석공(가장 많을 때 → 끝)', '굶어 죽음(누계)'], cSum);
 for (const t of cTrace) {
   console.log(`**${t.run} · ${t.name}** — 끝 사람 ${t.endN} (끔 ${t.offN})\n`);
-  table(['날', '사람', '곳간 날치', '굶는 날(25날)', '식량 안보', '식량 일꾼', '광부', '대장장이', '석공', '전사', '구리', '주석', '무기 곳간', '부은 검 · 청동(25날)', '식량 값', '무기 값', '굶어 죽음(누계)', '끔: 사람 · 날치 · 대장장이'], t.rows);
+  table(['날', '사람', '곳간 날치', '굶는 날(마디)', '식량 일꾼', '석공', '대장장이', '부은 검 · 청동(마디)', '사람당 낸 먹을 것/날', '들어온 먹을 것/날', '나간 먹을 것/날', '식량 값', '굶어 죽음(누계)', '끔: 사람 · 날치 · 사람당 낸 것'], t.rows);
 }
 if (jsonOut) fs.writeFileSync(jsonOut, JSON.stringify(runs.map((s) => { const o = Object.assign({}, s); delete o._r; delete o.per; return o; }), null, 1));
