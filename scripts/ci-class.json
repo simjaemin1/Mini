@@ -5944,12 +5944,25 @@
   "test-move-soa.js": {
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
-   "cls": "다",
-   "maxSec": null,
+   "cls": "나",
+   "maxSec": 72.8,
    "same5": null,
    "core": false,
-   "why": "서버(글자) — CI 밖(야간 · 전수)",
-   "logSec": 72
+   "why": "72.8초 > 60초",
+   "logSec": 72,
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 72.8,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "execFileSync node"
+   ],
+   "long": true
   },
   "test-move.js": {
    "cls0": "가",

@@ -22,7 +22,15 @@
  "methods": {
   "t1411-census.cjs": "0f58c83de0bfd0533285e9be4b69b2695929cd5d0fdfd18ab974d6563f574a3e",
   "t1411-profile-hook.cjs": "736bea70a84106d3aa54d7f32c85cb915f47704c4f0af64641f2588c9679055d",
+  "t1411-run.py": "b129faf9fbb5fd6bc203d16380b03e87a4781c815e05e1feae129c3d4270a9d6",
+  "t1411-compare.py": "318b80bc8e5c5f9d2cb0b91ddcc179917958ec7687a58ae40c8118daf78f50ea"
+ },
+ "previousMethods": {
+  "t1411-census.cjs": "0f58c83de0bfd0533285e9be4b69b2695929cd5d0fdfd18ab974d6563f574a3e",
+  "t1411-profile-hook.cjs": "736bea70a84106d3aa54d7f32c85cb915f47704c4f0af64641f2588c9679055d",
   "t1411-run.py": "5d2d1a985bf788cc8dec94ce7c7ae9e364bc1289a6bacedc3c0337586d1a21c4",
   "t1411-compare.py": "318b80bc8e5c5f9d2cb0b91ddcc179917958ec7687a58ae40c8118daf78f50ea"
- }
+ },
+ "methodsVersion": "method-v2",
+ "supervision": "new worlds: T1308_GUARD_MAX=0, preserve first failure; successful-day scheduling unchanged"
 }

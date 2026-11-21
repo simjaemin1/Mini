@@ -8,9 +8,10 @@ p.add_argument('--root', type=Path, required=True)
 p.add_argument('--repo', type=Path, required=True)
 a = p.parse_args()
 root, repo = a.root.resolve(), a.repo.resolve()
-runs, method = root/'worlds', root/'method-v1'
+runs = root/'worlds'
+method = root/json.loads((root/'candidate-manifest.json').read_text()).get('methodsVersion', 'method-v1')
 status_file = root/'campaign.json'
-status = dict(stage='waiting-for-native-profile', worlds={}, fingerprint30=None)
+status = dict(stage='waiting-for-native-profile', worlds={}, diagnostics={}, fingerprint30=None)
 
 def read(path):
     return json.loads(path.read_text())
@@ -37,7 +38,7 @@ def completed(name):
 def heartbeat():
     save()
     lines = []
-    for name in ['base-profile-1020', 'base-plain-1020'] + list(status['worlds']):
+    for name in ['base-profile-1020', 'base-plain-1020'] + list(status['worlds']) + list(status['diagnostics']):
         f = runs/name/'progress.txt'
         if f.exists():
             lines.append(f.read_text().strip())
@@ -72,7 +73,8 @@ try:
                 continue
             P = progress(name)
             # Death is an observed outcome, never an automatic retry or a completed 730-day world.
-            status['worlds'][name].update(exit=code, checkpoint=P.get('ck'), done=bool(P.get('done')),
+            entry = status['worlds'].get(name, status['diagnostics'].get(name))
+            entry.update(exit=code, checkpoint=P.get('ck'), done=bool(P.get('done')),
                                           lastStatus=(runs/name/'progress.txt').read_text() if (runs/name/'progress.txt').exists() else None)
             del active[name]
         if status['fingerprint30'] is None:
@@ -85,6 +87,13 @@ try:
             elif 'ON-1020' in status['worlds'] and 'ON-1020' not in active:
                 raise RuntimeError('candidate died before fingerprint30 validation')
         external = int(not completed('base-plain-1020'))
+        if completed('base-plain-1020') and not status['diagnostics'] and len(active) < 2:
+            name = 'late-profile-1020'
+            command = ['python3', str(repo/'scripts/t1411-late-profile.py'), '--root', str(root)]
+            with (root/(name+'.driver.log')).open('ab') as f:
+                child = subprocess.Popen(command, cwd=repo, stdout=f, stderr=subprocess.STDOUT, start_new_session=True)
+            active[name] = child
+            status['diagnostics'][name] = dict(pid=child.pid, command=command, sharedPrefixThrough=90)
         while queue and len(active) + external < 2:
             if status['worlds'] and status['fingerprint30'] is None:
                 break

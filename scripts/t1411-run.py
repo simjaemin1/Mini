@@ -23,7 +23,7 @@ env = {k: v for k, v in os.environ.items() if not
        (re.match(r'^(T\d+_|VILLAGE_|ENABLE_|WAR_|BODY_)', k) or k == 'NODE_OPTIONS')}
 env.update(VILLAGE_DAY_MS='1440000', VILLAGE_NPC_CAP='Infinity', T400_BUILD_ACT='0',
            VILLAGE_CARAVAN_MAX='0', T745_VCLOCK='1', T1244_BODY_MS='10000',
-           T1221_EVERY='10', T1259_WOOD_CAP='0', T1243_FARM_ON='0')
+           T1221_EVERY='10', T1259_WOOD_CAP='0', T1243_FARM_ON='0', T1308_GUARD_MAX='0')
 if a.arm == 'ON':
     env.update(T325_WOOD_ACT='1', T1207_TERR_REAL='1', T1238_TERR_V2='1',
                T1283_WOOD_DEMAND='1', T1297_BIRTH_FOOD='1', T1306_MIGRATE_FOOD='1',

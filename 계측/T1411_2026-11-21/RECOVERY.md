@@ -1,6 +1,6 @@
 # T1411 재시작 자료
 
-현재 실행 원본은 `/tmp/t1411/base`(main `1aa63e637`), 후보는 `/tmp/t1411/fast`(제품 두 파일만 `768d740b0`), 측정 관찰기는 `/tmp/t1411/method-v1`이다. Node 22.23.0과 같은 ABI의 SQLite를 쓴다. 이 사본들은 실행 도중 수정하지 않는다.
+현재 실행 원본은 `/tmp/t1411/base`(main `1aa63e637`), 후보는 `/tmp/t1411/fast`(제품 두 파일만 `768d740b0`)다. 최초 방법은 `/tmp/t1411/method-v1`, 새 730날 팔은 `/tmp/t1411/method-v2`다(첫 실패 자동 재시도 0). 관찰기 해시는 candidate manifest에 있다. Node 22.23.0과 같은 ABI의 SQLite를 쓴다. 이 사본들은 실행 도중 수정하지 않는다.
 
 감독 진행은 `/tmp/t1411/campaign.json`, 각 세계 진행은 `/tmp/t1411/worlds/<팔-시드>/progress.json`이다. 실제 자식 종료 코드는 `seg-*.json.zone-exit.json`, 판 감독 종료 코드는 `<팔-시드>.exit.json`이다. `done=false` 또는 목표 날 미달인 판을 730날 완료로 세지 않는다.
 
