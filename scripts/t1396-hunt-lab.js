@@ -42,6 +42,7 @@ const HB5000 = +opt('hb', 2981 / 51);   // 무리터 몸(환율 5,000) — 한�
 const WIN_USER = opt('win', null) ? Object.fromEntries(opt('win').split(',').map((s) => s.split(':').map(Number))) : {};
 const winOf = (exch) => (WIN_USER[exch] != null ? WIN_USER[exch] : (HB5000 * 5000 / exch >= 5 ? Math.round(HB5000 * 5000 / L_GAMEMAX) : 0));
 const SRC = fs.readFileSync(LAB, 'utf8');
+const DETMATH = require(path.join(__dirname, '..', 'sim', 'det-math.js')).SRC;
 
 // ── 랩 한 판 — 새 vm 맥락 · 씨 뿌린 난수 · 그리기 0 ──
 function load(seed, exch, nh, sp, win) {
@@ -56,6 +57,7 @@ function load(seed, exch, nh, sp, win) {
   C.document = { getElementById: (id) => els[id] || (els[id] = { value: { nh: String(nh), cap: '24', spd: '36', terr: '초원' }[id] || '0', textContent: '', innerHTML: '' }), querySelectorAll: () => [] };
   C.window = C; vm.createContext(C);
   vm.runInContext(`{let _s0=(${seed | 0})*2654435761>>>0;Math.random=function(){_s0=_s0+0x6D2B79F5|0;let t=Math.imul(_s0^_s0>>>15,1|_s0);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}`, C);
+  vm.runInContext(DETMATH + '(Math)', C);   // ★[T1413] 상자 무관 sin · cos · atan2 · pow · hypot(sim/det-math.js — V8 libm 끝자리가 맥 ↔ 리눅스에서 달라 같은 씨가 다른 판이 됐다)
   vm.runInContext(js + `
 ;globalThis.__api={get s(){return s;},get lifeGM(){return lifeGM;},set lifeGM(v){lifeGM=v;},resetAll,driveHunters,updateMobs,
   MOB_DEF,N,L_GAMEMAX,MOB_DENS,setSp(x){HUNT_SPECIES=x;},setCap(x){HUNT_CAP=x;},
