@@ -1,0 +1,3 @@
+[
+ {"tag": "SMK_ALLT_1020", "seed": 1020, "days": 120, "env": {"T1404_DEN_ROUTE": "1", "T1404_GANG_FORAGE": "tool", "T1404_GANG_SIZE": "1", "T1404_RAID_LURK": "1"}, "kind": "sbc", "root": "/home/claude/mini"}
+]

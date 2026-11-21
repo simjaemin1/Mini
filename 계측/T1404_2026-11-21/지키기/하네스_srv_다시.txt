@@ -1,0 +1,13 @@
+# test-guest-rejoin 혼자 다시(서버 잡 목록에서 ② 빨강 1 — KNOWN_ISSUES N.11 '같은 틱 재접속 3번에 1번') · 2026-11-21T05:40:03Z · 머리 a6087b530
+## 판 1
+  ✓ RC=0
+  통과 1: test-guest-rejoin.js
+  실패 0: 없음
+## 판 2
+  ✓ RC=0
+  통과 1: test-guest-rejoin.js
+  실패 0: 없음
+## 판 3
+  ✓ RC=0
+  통과 1: test-guest-rejoin.js
+  실패 0: 없음

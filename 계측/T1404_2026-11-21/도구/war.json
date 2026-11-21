@@ -1,0 +1,23 @@
+[
+ {
+  "tag": "OFF_W",
+  "seed": 1020,
+  "days": 360,
+  "env": {},
+  "kind": "war",
+  "root": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1404/wt"
+ },
+ {
+  "tag": "ALL_W",
+  "seed": 1020,
+  "days": 360,
+  "env": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1"
+  },
+  "kind": "war",
+  "root": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1404/wt"
+ }
+]

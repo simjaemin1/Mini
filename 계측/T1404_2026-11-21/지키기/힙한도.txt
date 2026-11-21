@@ -1,0 +1,34 @@
+# ALL_42 첫 판 — 기본 힙(≈ 2 GB) 한도에서 죽음(2026-11-21 · 상자 재시작 뒤 다시 돈 판) → 힙 4,608MB 로 다시(rest2.json)
+
+=== 서버 판 자(T577) — 730일 · 시드 42 · 판 ALL_42 · 동시 1 · /tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1404/runs/ALL_42 ===
+  조건: VILLAGE_DAY_MS=250 · T315_MAPBEDS=0 · T627_TRIP_DAY=(없음) · 집 행위 끔 · 가상 시계 켬 · T696_WAL=0 · T941_BATTLE_DAY=1 · T990_ECON_DAY=1 · T1013_BAND_DAY=1 · VILLAGE_NPC_CAP=1 · 도적 켬
+  ✓ 시드 42 — 존이 떴다
+  ✗ 시드 42 — **730일을 끝까지 돌았다**(판 JSON)  JSON 없음 — 로그 /tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1404/runs/ALL_42/ALL_42-42.log
+
+  판 JSON · 로그: /tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1404/runs/ALL_42  (표만 다시: node scripts/t577-server-run.js --table /tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1404/runs/ALL_42)
+
+=== 2건 중 PASS 1 · FAIL 1 ===
+
+
+# 로그 끝(V8 힙)
+<--- JS stacktrace --->
+
+FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 0xe48bbe node::OOMErrorHandler(char const*, v8::OOMDetails const&) [/opt/node22/bin/node]
+# 관찰기 마지막 날
+day 360 pop 3310 gangs 2 members 10
+[hanbando] 🐂 캐러밴#7907 귀환 출발: 농촌8→어촌5 herb×89 — econ d382 도착 예정
+
+# L_1020 첫 판(㉣ 만 · 기본 힙 · 옆에 하네스) — 관찰기 날 450(03:07 UTC) → 600(03:30 · RSS 2,014MB ps) = 30날에 4.6분 · 날 630(03:38) → 664(03:47) = 30날에 8분 넘게 · 03:47 UTC 에 끊었다(아이 존 프로세스 끝냄) → 힙 4,608MB 로 다시(rest2.json 끝)
+관찰기 마지막 날 664 · 인구 5475
+  ✗ 시드 1020 — **730일을 끝까지 돌았다**(판 JSON)  JSON 없음 — 로그 /tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1404/runs/L_1020/L_1020-1020.log
+
+  판 JSON · 로그: /tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1404/runs/L_1020  (표만 다시: node scripts/t577-server-run.js --table /tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1404/runs/L_1020)
+
+=== 2건 중 PASS 1 · FAIL 1 ===
+
+
+# ALL_42 둘째 판(힙 4,608MB · 옆에 하네스) — 관찰기 날 360(04:05 UTC) → 389(04:25) · 날 385 무렵 하루 2.5분(04:22:54 날 388 → 04:25:24 날 389) · 판 로그 '마을 econ day 386: 스폰 NPC 684' · '전쟁 day 385 … 활성 1 · 실체 몸 1 교전 1'(날 385 ~ 389 같은 줄) · RSS 2.6 GB(04:22) → 3.3 GB(04:27) · 04:26:56 UTC 에 끊었다(SIGTERM — 관찰기가 날 390 까지 썼다 · 프로세스가 안 끝나 04:28 SIGKILL) → 42 넷 다는 첫 해(관찰기 날 390)까지만
+# 견줌 — OFF_42(기본 힙 · 730날 1,548초)도 같은 무렵 전쟁 몸이 섰다: 판 로그 '마을 econ day 384: 스폰 NPC 905' · day 429 275 — 그 판은 끝까지 돌았다

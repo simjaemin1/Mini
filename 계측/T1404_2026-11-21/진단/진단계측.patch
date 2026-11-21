@@ -1,0 +1,70 @@
+diff --git a/server/bandits.js b/server/bandits.js
+index 2ebbcbc6b..bd99d1556 100644
+--- a/server/bandits.js
++++ b/server/bandits.js
+@@ -732,6 +732,7 @@ function pairSync() { // 은거지↔마을쌍 경로 인접(30셀) 매핑 — 
+ function installHooks() { // econ 계약 훅(★v2 주사위는 이미 서버 도달 — 여기서 배선만. 도적 0이면 risk 0 = 완전 무해)
+   const world = S.host.world;
+   world.banditRouteRisk = (va, vb) => {
++    if (process.env.DIAG_NORISK === '1') return 0;
+     if (!S.GANGS.length) return 0;
+     const k = va.name < vb.name ? va.name + '|' + vb.name : vb.name + '|' + va.name;
+     return S.pairs.has(k) ? BDT_RT_X : 0;
+@@ -1398,18 +1399,24 @@ function _t1104Walk(g, C) {   // 은거지 → 길목 장부 길(코스 A* · 
+ }
+ function _t1104Pick(g, day, byE, taken) {   // 은거지의 단 — 길목 표에서 이 단이 첫 단인 쌍의 캐러밴 중 길목에 먼저 닿을 수 있는 첫 캐러밴(`world.caravans` 차례)
+   const H = S.host, ppd = H.t1104Ppd ? H.t1104Ppd() : 0;
++  const DG = (S.stats.diag1404||(S.stats.diag1404={pickCall:0,car:0,done:0,noPair:0,notFirst:0,noLeg:0,noChoke:0,passed:0,dsBad:0,farS:0,farW:0,ok:0,meetCall:0,meetNoT:0,meetNotAt:0,meetParty:0,meetHere:0,meetNotToday:0,meetOk:0,ppd:0,partyMin:1e9,partyMax:0,gnSeen:0,lbMin:1e18,lbMax:0,dsLead:{}})); DG.pickCall++; DG.ppd = ppd;
+   if (!(ppd > 0) || !(g.n > 0)) return null;
+   for (const c of (H.world.caravans || [])) {
+-    if (c._done || taken.has(c.id)) continue;
++    DG.car++;
++    if (c._done || taken.has(c.id)) { DG.done++; continue; }
+     const gs = c.from && c.to ? S.pairs.get(_t1104Key(c.from, c.to)) : null;
+-    if (!gs || gs[0] !== g) continue;
+-    const lg = _t1104Leg(c, byE); if (!lg) continue;
+-    const C = _t1104Choke(g, lg.from, lg.to); if (!C) continue;
+-    if (_t1104Lc(C.clen, lg.D0, lg.D1, day) >= C.s) continue;   // 벌써 지났다
+-    const ds = _t1104Pass(C, lg); if (ds == null || ds <= day) continue;
+-    if (day + Math.ceil(Math.max(0, C.lb - 0.5) / ppd) > ds) { _t1104St().far++; continue; }   // 곧은 거리로도 못 닿는다(A* 를 안 판다)
++    if (!gs) { DG.noPair++; continue; } if (gs[0] !== g) { DG.notFirst++; continue; }
++    { const Q = DG.onPair || (DG.onPair = {}); const k = c.state + ':' + (c.departDay != null ? day - c.departDay : 'x'); Q[k] = (Q[k] || 0) + 1; }
++    const lg = _t1104Leg(c, byE); if (!lg) { DG.noLeg++; continue; }
++    const C = _t1104Choke(g, lg.from, lg.to); if (!C) { DG.noChoke++; continue; }
++    DG.lbMin = Math.min(DG.lbMin, C.lb); DG.lbMax = Math.max(DG.lbMax, C.lb);
++    if (_t1104Lc(C.clen, lg.D0, lg.D1, day) >= C.s) { DG.passed++; const P = DG.passInfo || (DG.passInfo = []); if (P.length < 400) P.push({ day, leg: lg.leg, D0: lg.D0, D1: lg.D1, s: Math.round(C.s), clen: Math.round(C.clen), lb: Math.round(C.lb / 32), gid: g.id, from: lg.from.name, to: lg.to.name }); continue; }   // 벌써 지났다
++    const ds = _t1104Pass(C, lg); if (ds == null || ds <= day) { DG.dsBad++; continue; }
++    { const k = String(Math.min(9, ds - day)); DG.dsLead[k] = (DG.dsLead[k] || 0) + 1; }
++    if (day + Math.ceil(Math.max(0, C.lb - 0.5) / ppd) > ds) { _t1104St().far++; DG.farS++; continue; }   // 곧은 거리로도 못 닿는다(A* 를 안 판다)
+     const W = _t1104Walk(g, C);
+-    if (day + Math.ceil(Math.max(0, W - 0.5) / ppd) > ds) { _t1104St().far++; continue; }
++    if (day + Math.ceil(Math.max(0, W - 0.5) / ppd) > ds) { _t1104St().far++; DG.farW++; continue; }
++    DG.ok++;
+     return { c, lg, C, ds, W, ppd };
+   }
+   return null;
+@@ -1501,16 +1508,20 @@ function _t1104Boot(day) {   // 다시 뜸 — 몸은 은거지에 다시 섰다
+ }
+ // econ 캐러밴 하루마다(econ 문 `world.banditMeet` → `_raidMeet`) — 이 캐러밴이 오늘 길목을 지나고 노리던 단이 그 길목에 서 있으면 그 단(그날 그 자리에서 종전 식으로 치른다)
+ function _t1104Meet(c, day) {
+-  const g = S.t1104T ? S.t1104T.get(c.id) : null; if (!g) return null;
++  const DG = (S.stats.diag1404||(S.stats.diag1404={pickCall:0,car:0,done:0,noPair:0,notFirst:0,noLeg:0,noChoke:0,passed:0,dsBad:0,farS:0,farW:0,ok:0,meetCall:0,meetNoT:0,meetNotAt:0,meetParty:0,meetHere:0,meetNotToday:0,meetOk:0,ppd:0,partyMin:1e9,partyMax:0,gnSeen:0,lbMin:1e18,lbMax:0,dsLead:{}})); DG.meetCall++;
++  const g = S.t1104T ? S.t1104T.get(c.id) : null; if (!g) { DG.meetNoT++; return null; }
+   const T = g.t1104;
+   if (!T || T.st !== 'out' || T.met != null || T.tc !== c.id || T.leg !== c.state || !(g.n > 0) || S.GANGS.indexOf(g) < 0) return null;
+-  if (!_t1104At(T, day)) return null;   // 아직 길목에 못 닿았다
++  if (!_t1104At(T, day)) { DG.meetNotAt++; return null; }   // 아직 길목에 못 닿았다
+   // [T1184] 길날만 지난 단과 몸이 없는 단은 싸우지 않는다.
+   const party = _t1104Bodies(g).filter(p => p._t1104W === g.id);
+-  if (party.length !== g.n || !party.every(p => _t1184Here(p, Math.floor(T.x / SZ), Math.floor(T.y / SZ)))) return null;
++  DG.partyMin = Math.min(DG.partyMin, party.length); DG.partyMax = Math.max(DG.partyMax, party.length); DG.gnSeen = g.n;
++  if (party.length !== g.n) { DG.meetParty++; return null; }
++  if (!party.every(p => _t1184Here(p, Math.floor(T.x / SZ), Math.floor(T.y / SZ)))) { DG.meetHere++; return null; }
+   const out = c.state === 'outbound', D0 = out ? c.departDay : c.arriveDay, D1 = out ? c.arriveDay : c.returnArriveDay;
+   const L1 = _t1104Lc(T.clen, D0, D1, day), L0 = _t1104Lc(T.clen, D0, D1, day - 1);
+-  if (!(day > D0 && L1 >= T.s && (day - 1 <= D0 || L0 < T.s))) return null;   // 오늘 길목을 지나지 않는다
++  if (!(day > D0 && L1 >= T.s && (day - 1 <= D0 || L0 < T.s))) { DG.meetNotToday++; return null; }   // 오늘 길목을 지나지 않는다
++  DG.meetOk++;
+   T.met = day; _t1104St().met++;
+   { const pids = S.bodies && S.bodies.get(g.id); if (pids) { const away = pids.filter((pid) => { const p = S.host.players.get(pid); return p && p._t1104W === g.id; }); const home = pids.filter((pid) => away.indexOf(pid) < 0); pids.length = 0; pids.push(...home, ...away); } }   // 길목의 몸을 명부 뒤로(사상 = 그 자리의 몸 · 은거지에 새로 든 몸이 대신 쓰러지지 않게)
+   queueLog(day, `도적단#${g.id} ${g.n}명이 길목(${Math.floor(T.x / SZ)},${Math.floor(T.y / SZ)})에서 캐러밴#${c.id}(${c.from.name}→${c.to.name} ${c.state === 'outbound' ? '가는 길' : '귀로'})을 만났다 [T1104]`);
