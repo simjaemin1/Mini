@@ -42,7 +42,7 @@ const HB5000 = +opt('hb', 2981 / 51);   // 무리터 몸(환율 5,000) — 한�
 const WIN_USER = opt('win', null) ? Object.fromEntries(opt('win').split(',').map((s) => s.split(':').map(Number))) : {};
 const winOf = (exch) => (WIN_USER[exch] != null ? WIN_USER[exch] : (HB5000 * 5000 / exch >= 5 ? Math.round(HB5000 * 5000 / L_GAMEMAX) : 0));
 const SRC = fs.readFileSync(LAB, 'utf8');
-const DETMATH = require(path.join(__dirname, '..', 'sim', 'det-math.js')).SRC;
+const DETMATH = require(path.join(path.dirname(LAB), '..', 'sim', 'det-math.js')).SRC;   // 랩 자리 기준(lab/ 옆 sim/) — 하네스 미끼가 자 사본을 임시 폴더에서 돌려도 찾는다
 
 // ── 랩 한 판 — 새 vm 맥락 · 씨 뿌린 난수 · 그리기 0 ──
 function load(seed, exch, nh, sp, win) {
