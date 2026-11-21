@@ -2664,6 +2664,12 @@ function t1276Note(v) {   // 하루 한 번(틱 머리) — 누적 거둔 식량
   v._t1276H = (v._t368FoodTot || 0) - H[0];
 }
 function t1276FieldFlow(v) { return Math.max(v._t1276H || 0, v._t1276Stand || 0) / T1276_YEAR; }
+// ★★[T1408 ㉡ 2026-11-20 · 지시 T1408 할 일 2 · ★재민 11-05 "직업을 박지 말고 벌이로"] **밭 일의 값 = 거둘 때 얻는 것 ÷ 그때까지 든 날** — 손잡이 `T1408_FARM_VALUE`(끔 기본 · `'1'` 만 · 밭 세계 · T1276 켬 안에서만 뜻).
+//   실현 배분(`allocRealCandidates` — 직업마다 1인당 그날 산출 EMA × 값)은 농부를 `food` 칸으로 잰다 — 밭 세계의 곡식은 작물 품목으로 한 해 두 번만 들어 `food` 칸이 0 이라
+//   농부 후보는 늘 폴백(땅 상수)이다(어부 · 사냥꾼은 실현 값). 켬 — 농부 1인 값 = 밭 흐름(`t1276FieldFlow` — 지난 한 해 거둔 식량 · 선 작물이 낼 식량 가운데 큰 쪽 ÷ 365)
+//   ÷ 농부 수 × 식량 값(`w('food')`) × 평가 창 — 거둠이 한 해 한 번이어도 한 해로 고르게 읽는다(부풀림 0 · 직업 강제 0 · 새 수 0).
+//   기근 블록(곳간이 다음 거둠까지 못 가는 날 — 식량 일 넷 가운데 땅 상수로 고른다)도 농부 칸만 같은 밭 흐름 ÷ 농부(하루 식량)로 읽는다.
+const T1408_FARM_VALUE = T1276_FARM_K && (typeof process !== 'undefined' && process.env) && process.env.T1408_FARM_VALUE === '1';
 // 종전 자리(`jdef.landBoost`) — 4판은 **손대지 않는다**(3판 모델식 폐기).
 //   부산물(밀·쌀·보리·삼·모시)이 `baseAmt` 를 타고 나오므로 여기를 건드리면 곡물·섬유 사슬이
 //   T86 에서 떨어진다. 농부의 *식량* 산출만 `addProduce(jdef.output, …)` **한 줄**에서 막는다
@@ -6740,6 +6746,7 @@ function allocRealCandidates(v, world, cands, ctx) {
   for (let i = 0; i < cands.length; i++) {
     const job = cands[i][0], gain = cands[i][1];
     const n = (ctx.counts && ctx.counts[job]) || 0;
+    if (T1408_FARM_VALUE && job === 'farmer' && n > 0) { out.push([job, t1276FieldFlow(v) / n * ctx.w('food') * ctx.period]); continue; }   // ★[T1408 ㉡] 켬 = 밭 흐름 ÷ 농부(아래 머리말 · 끔 = 이 줄 무동작)
     if (n <= 0) { _fb.push(out.length); out.push([job, gain]); continue; }           // 폴백 — 아직 그 일을 하는 사람이 없다
     let g = 0, any = false;
 
@@ -6969,6 +6976,7 @@ function pickDeficitJob_rational(v, world) {
       ['hunter',  v.land.game      * 0.7],
       ['forager', forageLandMean   * 0.25],
     ].filter(([j]) => hasSlot(v, j, cap, counts));
+    if (T1408_FARM_VALUE && (counts.farmer || 0) > 0) for (const o of foodOpts) if (o[0] === 'farmer') o[1] = t1276FieldFlow(v) / counts.farmer;   // ★[T1408 ㉡] 켬 = 농부 한 사람이 밭에서 낸 하루 식량(밭 흐름 ÷ 농부 · 어부 · 사냥꾼 · 채집꾼은 수식 하루 산출 그대로 — 같은 축)
     if (T1156_SPECIALTY_JOB && _t1156Quote) {
       for (const q of _t1156Quote(v, world)) if (hasSlot(v, q.job, cap, counts)) foodOpts.push([q.job, q.foodPerDay]);
     }
@@ -8062,7 +8070,7 @@ module.exports = {
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)
   actDemandLeft, actDemandCap, fishDemandLeft, woodDemandLeft, forageDemandLeft, T374_DEMAND_STOP,
   setLotHook,   // ★[T748] 고르게 대기 칸 로트 훅(존 서버 켬만 꽂는다 · 랩 null)
-  T368_FARM_ACT, T1221_FARM_LABOR, T1243_FARM_ON, T1374_NO_BYGRAIN, T1374_BIRTH_HARV, T1374_FAMINE_HARV, t1374NeedDays, T1284_FARM_YIELD, T1276_FARM_K, t1276FieldFlow, t1276Note, T1260_FOOD_READS, T1279_COOK, T1286_COOK_SPARE, T1286_PRODK, t1286Cook: _t1286Cook, T1298_LEDGER, T1298_HEALTH, T1309_HEALTH_EATEN, T1309_DIVERSITY_EATEN, T1309_MOVE_CONS, t1309Group: _t1309Group, t1309EatenHealth: _t1309EatenHealth, t1298Moved: _t1298Moved, t1298Hw: _t1298Hw, t1298Carry: _t1298Carry, t1260FoodOf, t1260CookStaple: _t1260CookStaple, cookTarget, t368FoodPer: _t368FoodPer, t368EvenRelease, totalFoodProductionEquivalent,   // ★[T368] 농부 행위 — 손잡이 + 품목별 고르게 푸는 자리 + 생산 환산(하네스가 옮겨 적지 않는다 · 입구는 `harvestToGranary` 그대로)   // ★[T374] 그날 수요 — 몸통 하나 + 품목별 `D` 자리 셋 + 손잡이
+  T368_FARM_ACT, T1221_FARM_LABOR, T1243_FARM_ON, T1374_NO_BYGRAIN, T1374_BIRTH_HARV, T1374_FAMINE_HARV, t1374NeedDays, T1408_FARM_VALUE, T1284_FARM_YIELD, T1276_FARM_K, t1276FieldFlow, t1276Note, T1260_FOOD_READS, T1279_COOK, T1286_COOK_SPARE, T1286_PRODK, t1286Cook: _t1286Cook, T1298_LEDGER, T1298_HEALTH, T1309_HEALTH_EATEN, T1309_DIVERSITY_EATEN, T1309_MOVE_CONS, t1309Group: _t1309Group, t1309EatenHealth: _t1309EatenHealth, t1298Moved: _t1298Moved, t1298Hw: _t1298Hw, t1298Carry: _t1298Carry, t1260FoodOf, t1260CookStaple: _t1260CookStaple, cookTarget, t368FoodPer: _t368FoodPer, t368EvenRelease, totalFoodProductionEquivalent,   // ★[T368] 농부 행위 — 손잡이 + 품목별 고르게 푸는 자리 + 생산 환산(하네스가 옮겨 적지 않는다 · 입구는 `harvestToGranary` 그대로)   // ★[T374] 그날 수요 — 몸통 하나 + 품목별 `D` 자리 셋 + 손잡이
   forageRegrowR, forageRegrowPerDay, actRegrowPerDay,   // ★[T347] 재생 — T341 과 **같은 몸통**(`_actRegrowR`), 분자만 갈린다   // ★[T325] 나무꾼 행위 · ★[T341] 예산식은 지웠다(나무는 개체다) — 남은 것은 게이트와 **재생 유도 둘**
   T100_ANCHOR_N, T100_HARVEST_PER_FARMER_YEAR, T100_K, T100_FIELD_YIELD,   // ★[T100 4판] 앵커 하나 · 실측 하나 · 유도값 하나 · 손잡이 — 생활층(`villages.js`)과 하네스가 **여기서만** 읽는다(사본 0)
   T1159_HOME_N, t1159HomeN,
