@@ -1,0 +1,1765 @@
+{
+  "base": "1aa63e63",
+  "originalCount": 34,
+  "rows": [
+    {
+      "id": "D1-FERTW",
+      "what": "처음 영토 모양 — 비옥 가중 fertW",
+      "disposition": "refer",
+      "reason": "서버 15b60d27은 셀 비옥도 눈금을 도입했다. LAB의 역할 보정/비옥도 눈금과 같다는 판정이 없어 0.35와3.5 중 하나를 고르지 않는다.",
+      "lab": {
+        "file": "lab/전쟁실험실.html",
+        "line": 24977,
+        "start": 1568472,
+        "end": 1568516,
+        "needle": "const fertW=opts.fertW!=null?opts.fertW:0.35"
+      },
+      "srv": {
+        "file": "server/village-layout.js",
+        "line": 177,
+        "start": 14195,
+        "end": 14246,
+        "needle": "const fertW = opts.fertW != null ? opts.fertW : 3.5"
+      },
+      "history": {
+        "id": "D1-FERTW",
+        "what": "처음 영토 모양 — 비옥 가중 fertW",
+        "lab": {
+          "file": "lab/전쟁실험실.html",
+          "line": 24977,
+          "needle": "const fertW=opts.fertW!=null?opts.fertW:0.35",
+          "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+        },
+        "srv": {
+          "file": "server/village-layout.js",
+          "line": 177,
+          "needle": "const fertW = opts.fertW != null ? opts.fertW : 3.5",
+          "log": "15b60d27|2026-07-29|★셀 단위 비옥도 도입 — 그리고 필드만 깔았을 땐 아무것도 안 바뀌었다(저울이 문제였다)"
+        }
+      },
+      "expectedLab": "0.35",
+      "expectedServer": "3.5"
+    },
+    {
+      "id": "D1-FARM_HOUSE_RES",
+      "what": "논 존닝 집 예약 numHousesEst×",
+      "disposition": "refer",
+      "reason": "서버 da56082c부터60, LAB 편입 c7778a49에는240이다. 집 예약의 어느 단계/층을 기준으로 바꿨는지 명시 판정이 없어 두 값을 회부한다.",
+      "lab": {
+        "file": "lab/전쟁실험실.html",
+        "line": 24992,
+        "start": 1570609,
+        "end": 1570625,
+        "needle": "numHousesEst*240"
+      },
+      "srv": {
+        "file": "server/village-layout.js",
+        "line": 209,
+        "start": 16703,
+        "end": 16720,
+        "needle": "numHousesEst * 60"
+      },
+      "history": {
+        "id": "D1-FARM_HOUSE_RES",
+        "what": "논 존닝 집 예약 numHousesEst×",
+        "lab": {
+          "file": "lab/전쟁실험실.html",
+          "line": 24992,
+          "needle": "numHousesEst*240",
+          "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+        },
+        "srv": {
+          "file": "server/village-layout.js",
+          "line": 209,
+          "needle": "numHousesEst * 60",
+          "log": "da56082c|2026-06-27|마을 레이아웃 모듈: 논/밭 stateful(농지 절대 안 줄어듦)+집 농지 회피, 집촌/산촌 토글, 산맥 지형, 유기적 영토, 회관 마당"
+        }
+      },
+      "expectedLab": "240",
+      "expectedServer": "60"
+    },
+    {
+      "id": "D1-WATER_D",
+      "what": "처음 물 접근 식(물거리 나눔수)",
+      "disposition": "flag",
+      "reason": "두 값의 실제 차이는 확인했지만 한쪽만 고친 이력과 랩 목표 원칙만으로 현재 의도/단위가 같은 대체인지 확정하지 못했다. 두 글자·두 이력을 PM 회부하고 값을 고르지 않는다.",
+      "lab": {
+        "file": "lab/전쟁실험실.html",
+        "line": 28227,
+        "start": 1887200,
+        "end": 1887209,
+        "needle": "1.25-d/22"
+      },
+      "srv": {
+        "file": "server/village-layout.js",
+        "line": 191,
+        "start": 15340,
+        "end": 15352,
+        "needle": "1 - nd / 140"
+      },
+      "history": {
+        "id": "D1-WATER_D",
+        "what": "처음 물 접근 식(물거리 나눔수)",
+        "lab": {
+          "file": "lab/전쟁실험실.html",
+          "line": 28227,
+          "needle": "1.25-d/22",
+          "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+        },
+        "srv": {
+          "file": "server/village-layout.js",
+          "line": 191,
+          "needle": "1 - nd / 140",
+          "log": "100880ae|2026-07-07|공유 village-layout 물 접근 리카도 통일: 탐색 45→140·감쇠 25→140(nd 센티널 99→999) — 25셀 절벽 제거, 서버·랩 동일 규칙"
+        }
+      },
+      "expectedLab": "22",
+      "expectedServer": "140",
+      "flag": "T1409_WATER_RULE",
+      "flagFile": "lab/전쟁실험실.html",
+      "target": "waterAccess"
+    },
+    {
+      "id": "D1-TERR_GROW_DAY",
+      "what": "영토 확장 호출 예산(관찰/빨리감기 구분)",
+      "disposition": "refer",
+      "reason": "서버6412516a의60/하루와 LAB의300/호출·관찰6시간1칸은 호출 빈도부터 다르다. 하루 단위 정본을 고르지 않고 회부한다.",
+      "lab": {
+        "file": "lab/전쟁실험실.html",
+        "line": 26489,
+        "start": 1706862,
+        "end": 1706880,
+        "needle": "arguments[1]:300);"
+      },
+      "srv": {
+        "file": "server/villages.js",
+        "line": 7384,
+        "start": 515056,
+        "end": 515083,
+        "needle": "TERR_GROW_MAX_PER_DAY = 60;"
+      },
+      "history": {
+        "id": "D1-TERR_GROW_DAY",
+        "what": "하루 영토 넓히기 상한",
+        "lab": {
+          "file": "lab/전쟁실험실.html",
+          "line": 26489,
+          "needle": "arguments[1]:300);",
+          "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+        },
+        "srv": {
+          "file": "server/villages.js",
+          "line": 7384,
+          "needle": "TERR_GROW_MAX_PER_DAY = 60;",
+          "log": "6412516a|2026-07-30|영토 확장 실동 — econ이 산 땅만큼 실제로 넓히고 바로 개간한다 [재민 지적]"
+        }
+      },
+      "expectedLab": "300",
+      "expectedServer": "60"
+    },
+    {
+      "id": "D3-HUNT_BAND0",
+      "what": "사냥터 띠 안쪽(회관에서)",
+      "disposition": "refer",
+      "reason": "LAB은MOB_AV0를 사냥 장부에도 사용하고 서버591f2245는 별도 HUNT_BAND0를 둔다. 야생 몸 띠와 일일 수입 띠를 같이 바꿀 판정이 없어 회부한다.",
+      "lab": {
+        "file": "lab/전쟁실험실.html",
+        "line": 26725,
+        "start": 1727910,
+        "end": 1727921,
+        "needle": "MOB_AV0=100"
+      },
+      "srv": {
+        "file": "server/villages.js",
+        "line": 17161,
+        "start": 1208347,
+        "end": 1208362,
+        "needle": "HUNT_BAND0 = 40"
+      },
+      "history": {
+        "id": "D3-HUNT_BAND0",
+        "what": "사냥터 띠 안쪽(회관에서)",
+        "lab": {
+          "file": "lab/전쟁실험실.html",
+          "line": 26725,
+          "needle": "MOB_AV0=100",
+          "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+        },
+        "srv": {
+          "file": "server/villages.js",
+          "line": 17161,
+          "needle": "HUNT_BAND0 = 40",
+          "log": "591f2245|2026-09-07|사냥 이식 — 서버의 짐승이 곳간과 부존을 움직인다 [승인 대기 · T146]"
+        }
+      },
+      "expectedLab": "100",
+      "expectedServer": "40"
+    },
+    {
+      "id": "D3-HUNT_BAND1",
+      "what": "사냥터 띠 바깥",
+      "disposition": "refer",
+      "reason": "LAB은MOB_WILD_R를 사냥 장부에도 사용하고 서버591f2245는 별도 HUNT_BAND1을 둔다. 야생 몸 띠와 일일 수입 띠를 같이 바꿀 판정이 없어 회부한다.",
+      "lab": {
+        "file": "lab/전쟁실험실.html",
+        "line": 26725,
+        "start": 1727876,
+        "end": 1727890,
+        "needle": "MOB_WILD_R=250"
+      },
+      "srv": {
+        "file": "server/villages.js",
+        "line": 17161,
+        "start": 1208364,
+        "end": 1208380,
+        "needle": "HUNT_BAND1 = 130"
+      },
+      "history": {
+        "id": "D3-HUNT_BAND1",
+        "what": "사냥터 띠 바깥",
+        "lab": {
+          "file": "lab/전쟁실험실.html",
+          "line": 26725,
+          "needle": "MOB_WILD_R=250",
+          "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+        },
+        "srv": {
+          "file": "server/villages.js",
+          "line": 17161,
+          "needle": "HUNT_BAND1 = 130",
+          "log": "591f2245|2026-09-07|사냥 이식 — 서버의 짐승이 곳간과 부존을 움직인다 [승인 대기 · T146]"
+        }
+      },
+      "expectedLab": "250",
+      "expectedServer": "130"
+    },
+    {
+      "id": "D3-STONE_FLOOR",
+      "what": "돌 부존 바닥",
+      "disposition": "refer",
+      "reason": "T163/cb054554·족보143은 LAB0.1과 서버96d2ee2e의0.25 차이를 이미 인지했다. 실물/추정 부존의 어느 기준을 채택할지 기록이 없어 회부한다.",
+      "lab": {
+        "file": "lab/전쟁실험실.html",
+        "line": 28153,
+        "start": 1877273,
+        "end": 1877290,
+        "needle": "L_STONE_FLOOR=0.1"
+      },
+      "srv": {
+        "file": "server/livelihood.js",
+        "line": 26,
+        "start": 1050,
+        "end": 1174,
+        "needle": "FLOOR = {\n  wood:  0.45,                                    \n  game:  0.45,                                   \n  stone: 0.25"
+      },
+      "history": {
+        "id": "D3-STONE_FLOOR",
+        "what": "돌 부존 바닥",
+        "lab": {
+          "file": "lab/전쟁실험실.html",
+          "line": 28153,
+          "needle": "L_STONE_FLOOR=0.1",
+          "log": "cb054554|2026-09-11|[재민 확정 2026-09-10 · T163] 기준선 셋째 판 · 석재 바닥 ② 랩 — 실측이 부호를 뒤집었다"
+        },
+        "srv": {
+          "file": "server/livelihood.js",
+          "line": 29,
+          "needle": "stone: 0.25,   // 돌은 흔하다",
+          "log": "96d2ee2e|2026-07-30|생업별 부존 정본 분리 + 종류마다 바닥항 [재민 확정]"
+        }
+      },
+      "expectedLab": "0.1",
+      "expectedServer": "0.25"
+    },
+    {
+      "id": "D3-STONE_GAIN",
+      "what": "돌 부존 기울기",
+      "disposition": "refer",
+      "reason": "T163/cb054554의LAB12와 서버96d2ee2e의9는 다른 부존 추정 눈금이다. 바위 비율 한 점의 산출 차이를 확인했지만 채택 판정은 없어 회부한다.",
+      "lab": {
+        "file": "lab/전쟁실험실.html",
+        "line": 28153,
+        "start": 1877292,
+        "end": 1877307,
+        "needle": "L_STONE_GAIN=12"
+      },
+      "srv": {
+        "file": "server/livelihood.js",
+        "line": 33,
+        "start": 1291,
+        "end": 1417,
+        "needle": "GAIN = {\n  wood:  2.30,                                                   \n  game:  1.80,                       \n  stone: 9.00"
+      },
+      "history": {
+        "id": "D3-STONE_GAIN",
+        "what": "돌 부존 기울기",
+        "lab": {
+          "file": "lab/전쟁실험실.html",
+          "line": 28153,
+          "needle": "L_STONE_GAIN=12",
+          "log": "cb054554|2026-09-11|[재민 확정 2026-09-10 · T163] 기준선 셋째 판 · 석재 바닥 ② 랩 — 실측이 부호를 뒤집었다"
+        },
+        "srv": {
+          "file": "server/livelihood.js",
+          "line": 36,
+          "needle": "stone: 9.00,   // 바위비율",
+          "log": "96d2ee2e|2026-07-30|생업별 부존 정본 분리 + 종류마다 바닥항 [재민 확정]"
+        }
+      },
+      "expectedLab": "12",
+      "expectedServer": "9"
+    },
+    {
+      "id": "D5-SLOT_GAP",
+      "what": "대형 옆 간격(m)",
+      "disposition": "refer",
+      "reason": "서버a9733d81 초기 이식 값과 LAB c7778a49 편입 값이 다르다. 어느 수를 채택하라는 카드/족보가 없으므로 후발 파일이라는 이유로 서버 값을 정본으로 삼지 않는다.",
+      "lab": {
+        "file": "lab/전쟁실험실.html",
+        "line": 29151,
+        "start": 1982133,
+        "end": 1982145,
+        "needle": "SLOT_GAP:0.9"
+      },
+      "srv": {
+        "file": "server/war-live.js",
+        "line": 165,
+        "start": 12600,
+        "end": 12613,
+        "needle": "SLOT_GAP: 1.5"
+      },
+      "history": {
+        "id": "D5-SLOT_GAP",
+        "what": "대형 옆 간격(m)",
+        "lab": {
+          "file": "lab/전쟁실험실.html",
+          "line": 29151,
+          "needle": "SLOT_GAP:0.9",
+          "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+        },
+        "srv": {
+          "file": "server/war-live.js",
+          "line": 165,
+          "needle": "SLOT_GAP: 1.5",
+          "log": "a9733d81|2026-07-14|식량 pull·무두질 웨이브: 위기 마을 국소 구속으로 신규 교역재 흡수"
+        }
+      },
+      "expectedLab": "0.9",
+      "expectedServer": "1.5"
+    },
+    {
+      "id": "D5-SLOT_DEPTH",
+      "what": "대형 앞뒤 간격(m)",
+      "disposition": "refer",
+      "reason": "서버a9733d81 초기 이식 값과 LAB c7778a49 편입 값이 다르다. 어느 수를 채택하라는 카드/족보가 없으므로 후발 파일이라는 이유로 서버 값을 정본으로 삼지 않는다.",
+      "lab": {
+        "file": "lab/전쟁실험실.html",
+        "line": 29152,
+        "start": 1982241,
+        "end": 1982255,
+        "needle": "SLOT_DEPTH:1.8"
+      },
+      "srv": {
+        "file": "server/war-live.js",
+        "line": 165,
+        "start": 12615,
+        "end": 12630,
+        "needle": "SLOT_DEPTH: 1.7"
+      },
+      "history": {
+        "id": "D5-SLOT_DEPTH",
+        "what": "대형 앞뒤 간격(m)",
+        "lab": {
+          "file": "lab/전쟁실험실.html",
+          "line": 29152,
+          "needle": "SLOT_DEPTH:1.8",
+          "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+        },
+        "srv": {
+          "file": "server/war-live.js",
+          "line": 165,
+          "needle": "SLOT_DEPTH: 1.7",
+          "log": "a9733d81|2026-07-14|식량 pull·무두질 웨이브: 위기 마을 국소 구속으로 신규 교역재 흡수"
+        }
+      },
+      "expectedLab": "1.8",
+      "expectedServer": "1.7"
+    },
+    {
+      "id": "D5-FOLLOW_SNAP",
+      "what": "대형 슬롯 붙음 문턱",
+      "disposition": "refer",
+      "reason": "서버a9733d81 초기 이식 값과 LAB c7778a49 편입 값이 다르다. 어느 수를 채택하라는 카드/족보가 없으므로 후발 파일이라는 이유로 서버 값을 정본으로 삼지 않는다.",
+      "lab": {
+        "file": "lab/전쟁실험실.html",
+        "line": 29153,
+        "start": 1982331,
+        "end": 1982347,
+        "needle": "FOLLOW_SNAP:0.15"
+      },
+      "srv": {
+        "file": "server/war-live.js",
+        "line": 165,
+        "start": 12632,
+        "end": 12649,
+        "needle": "FOLLOW_SNAP: 0.35"
+      },
+      "history": {
+        "id": "D5-FOLLOW_SNAP",
+        "what": "대형 슬롯 붙음 문턱",
+        "lab": {
+          "file": "lab/전쟁실험실.html",
+          "line": 29153,
+          "needle": "FOLLOW_SNAP:0.15",
+          "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+        },
+        "srv": {
+          "file": "server/war-live.js",
+          "line": 165,
+          "needle": "FOLLOW_SNAP: 0.35",
+          "log": "a9733d81|2026-07-14|식량 pull·무두질 웨이브: 위기 마을 국소 구속으로 신규 교역재 흡수"
+        }
+      },
+      "expectedLab": "0.15",
+      "expectedServer": "0.35"
+    },
+    {
+      "id": "D5-SEP_R",
+      "what": "대형 몸 떼기 반경",
+      "disposition": "refer",
+      "reason": "서버a9733d81 초기 이식 값과 LAB c7778a49 편입 값이 다르다. 어느 수를 채택하라는 카드/족보가 없으므로 후발 파일이라는 이유로 서버 값을 정본으로 삼지 않는다.",
+      "lab": {
+        "file": "lab/전쟁실험실.html",
+        "line": 29162,
+        "start": 1983320,
+        "end": 1983329,
+        "needle": "SEP_R:0.8"
+      },
+      "srv": {
+        "file": "server/war-live.js",
+        "line": 167,
+        "start": 12775,
+        "end": 12785,
+        "needle": "SEP_R: 0.9"
+      },
+      "history": {
+        "id": "D5-SEP_R",
+        "what": "대형 몸 떼기 반경",
+        "lab": {
+          "file": "lab/전쟁실험실.html",
+          "line": 29162,
+          "needle": "SEP_R:0.8",
+          "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+        },
+        "srv": {
+          "file": "server/war-live.js",
+          "line": 167,
+          "needle": "SEP_R: 0.9",
+          "log": "a9733d81|2026-07-14|식량 pull·무두질 웨이브: 위기 마을 국소 구속으로 신규 교역재 흡수"
+        }
+      },
+      "expectedLab": "0.8",
+      "expectedServer": "0.9"
+    },
+    {
+      "id": "D5-MARCH_JITTER",
+      "what": "행군 흔들림",
+      "disposition": "refer",
+      "reason": "서버a9733d81 초기 이식 값과 LAB c7778a49 편입 값이 다르다. 어느 수를 채택하라는 카드/족보가 없으므로 후발 파일이라는 이유로 서버 값을 정본으로 삼지 않는다.",
+      "lab": {
+        "file": "lab/전쟁실험실.html",
+        "line": 29164,
+        "start": 1983625,
+        "end": 1983639,
+        "needle": "MARCH_JITTER:0"
+      },
+      "srv": {
+        "file": "server/war-live.js",
+        "line": 167,
+        "start": 12801,
+        "end": 12819,
+        "needle": "MARCH_JITTER: 0.55"
+      },
+      "history": {
+        "id": "D5-MARCH_JITTER",
+        "what": "행군 흔들림",
+        "lab": {
+          "file": "lab/전쟁실험실.html",
+          "line": 29164,
+          "needle": "MARCH_JITTER:0",
+          "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+        },
+        "srv": {
+          "file": "server/war-live.js",
+          "line": 167,
+          "needle": "MARCH_JITTER: 0.55",
+          "log": "a9733d81|2026-07-14|식량 pull·무두질 웨이브: 위기 마을 국소 구속으로 신규 교역재 흡수"
+        }
+      },
+      "expectedLab": "0",
+      "expectedServer": "0.55"
+    },
+    {
+      "id": "D5-WALL_GMUL",
+      "what": "방패벽 옆 간격 배수",
+      "disposition": "refer",
+      "reason": "서버a9733d81 초기 이식 값과 LAB c7778a49 편입 값이 다르다. 어느 수를 채택하라는 카드/족보가 없으므로 후발 파일이라는 이유로 서버 값을 정본으로 삼지 않는다.",
+      "lab": {
+        "file": "lab/전쟁실험실.html",
+        "line": 29175,
+        "start": 1984664,
+        "end": 1984707,
+        "needle": "form==='wall'){ wSpear=8; wBack=8; gMul=1.0"
+      },
+      "srv": {
+        "file": "server/war-live.js",
+        "line": 187,
+        "start": 14378,
+        "end": 14431,
+        "needle": "form === 'wall') { wSpear = 8; wBack = 8; gMul = 0.85"
+      },
+      "history": {
+        "id": "D5-WALL_GMUL",
+        "what": "방패벽 옆 간격 배수",
+        "lab": {
+          "file": "lab/전쟁실험실.html",
+          "line": 29175,
+          "needle": "form==='wall'){ wSpear=8; wBack=8; gMul=1.0",
+          "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+        },
+        "srv": {
+          "file": "server/war-live.js",
+          "line": 187,
+          "needle": "form === 'wall') { wSpear = 8; wBack = 8; gMul = 0.85",
+          "log": "a9733d81|2026-07-14|식량 pull·무두질 웨이브: 위기 마을 국소 구속으로 신규 교역재 흡수"
+        }
+      },
+      "expectedLab": "1",
+      "expectedServer": "0.85"
+    },
+    {
+      "id": "D5-SIEGE_RING_PAD",
+      "what": "포위 링 덧칸(랩 +15 · 서버 0)",
+      "disposition": "refer",
+      "reason": "서버1fac6e13(T284)은 존 좌표·교전을 옮겼다. 정규화한 총 반경110/95가 다르지만 포위선 기준점까지 같은지 확정할 근거가 없어 +15를 임의로 이식하지 않는다.",
+      "lab": {
+        "file": "lab/전쟁실험실.html",
+        "line": 29904,
+        "start": 2050086,
+        "end": 2050130,
+        "needle": "WAR_SIEGE_R=WAR_DEF_STANDOFF+WAR_ENGAGE_R+15"
+      },
+      "srv": {
+        "file": "server/villages.js",
+        "line": 8882,
+        "start": 619139,
+        "end": 619243,
+        "needle": "function _warCampBackCells() { const WL = state.warLive; return WL.WAR_ENGAGE_R + WL.WAR_DEF_STANDOFF; }"
+      },
+      "history": {
+        "id": "D5-SIEGE_RING_PAD",
+        "what": "포위 링 덧칸(랩 +15 · 서버 0)",
+        "lab": {
+          "file": "lab/전쟁실험실.html",
+          "line": 29904,
+          "needle": "WAR_SIEGE_R=WAR_DEF_STANDOFF+WAR_ENGAGE_R+15",
+          "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+        },
+        "srv": {
+          "file": "server/villages.js",
+          "line": 8882,
+          "needle": "function _warCampBackCells() { const WL = state.warLive; return WL.WAR_ENGAGE_R + WL.WAR_DEF_STANDOFF; }",
+          "log": "1fac6e13|2026-09-16|[승인 대기 · T284] 전투 실체화 — 좌표계 하나 · 장애물은 존의 것 · 전투 = 연속 상태 · 세계 부하 위 성능"
+        }
+      },
+      "expectedLab": "15",
+      "expectedServer": "WL.WAR_ENGAGE_R+WL.WAR_DEF_STANDOFF"
+    },
+    {
+      "id": "D6-V-WAR_RAID_MIN",
+      "what": "마을랩 최소 출정 인원",
+      "disposition": "flag",
+      "reason": "두 값의 실제 차이는 확인했지만 한쪽만 고친 이력과 랩 목표 원칙만으로 현재 의도/단위가 같은 대체인지 확정하지 못했다. 두 글자·두 이력을 PM 회부하고 값을 고르지 않는다.",
+      "lab": {
+        "file": "lab/마을실험실.html",
+        "line": 26643,
+        "start": 1758030,
+        "end": 1758044,
+        "needle": "WAR_RAID_MIN=3"
+      },
+      "srv": {
+        "file": "sim/war-core.js",
+        "line": 71,
+        "start": 5768,
+        "end": 5784,
+        "needle": "WAR_RAID_MIN = 2"
+      },
+      "history": {
+        "id": "D6-V-WAR_RAID_MIN",
+        "what": "마을랩 최소 출정 인원",
+        "lab": {
+          "file": "lab/마을실험실.html",
+          "line": 26643,
+          "needle": "WAR_RAID_MIN=3",
+          "log": "c7778a495|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+        },
+        "srv": {
+          "file": "sim/war-core.js",
+          "line": 71,
+          "needle": "WAR_RAID_MIN = 2",
+          "log": "048d69b2|2026-07-12|본체 이식 2~4파 완주(계획서 §6~8 기록): [2파] war-core 재동기+작전층(자동 개전 폐지·상태기계·봉쇄 훅 siege 상태 이동·공성팩·방어 3택·절박 항복·무저항 함락, WAR_OPS 게이트 OFF=바이트 동일)+긴급 소집+도적 실체 최소+병사→야생 위협(블록 무수정 어댑터 16줄) [3파] 포로 전량(35%·J상한·호송·동화/탈출/몸값·재큐 보강, WAR_CAPTIVES 게이트)+벌점 karmaOf 인터페이스 예약 [4파] 움집 단층 8명(기존 다층 유지 마이그레이션 증명)+답압 길 roads.js(DB 왕복·A* 할인·클라 틴트, ENABLE_ROADS)+물가 K/d²+영토 등가반경 동기+경도 _lonOff+절대 시계 설계 상수 — _p3-war-probe 25/25·존 스모크·재부팅 왕복·실DB 무접촉"
+        }
+      },
+      "expectedLab": "3",
+      "expectedServer": "2",
+      "flag": "T1409_VIL_RAID_MIN",
+      "flagFile": "lab/마을실험실.html",
+      "target": "EconEngine.WarRuleValues"
+    },
+    {
+      "id": "D6-H-MOB_WOLF_P",
+      "what": "원본 사냥랩 맹수 자동 출현 MOB_WOLF_P",
+      "disposition": "allow",
+      "reason": "원본에 명시된 자동 출현 off 시나리오 패치를 보존한다. 원본은 읽기 전용 과녁이다.",
+      "lab": {
+        "file": "lab/원본/사냥실험실_0707.html",
+        "line": 111,
+        "start": 10984,
+        "end": 10996,
+        "needle": "MOB_WOLF_P=0"
+      },
+      "srv": {
+        "file": "server/wildlife.js",
+        "line": 68,
+        "start": 6134,
+        "end": 6151,
+        "needle": "MOB_WOLF_P=0.0012"
+      },
+      "history": {
+        "id": "D6-H-MOB_WOLF_P",
+        "what": "원본 사냥랩 맹수 자동 출현 MOB_WOLF_P",
+        "lab": {
+          "file": "lab/원본/사냥실험실_0707.html",
+          "line": 111,
+          "needle": "MOB_WOLF_P=0",
+          "log": "35258975|2026-11-19|카드 T1394~T1401(S-API 넷 · GPT 2 · S4 · S6 · S16 — 재민 11-19 배분) · 덧붙임 T1389 · T1392 · T1393 · 사냥실험실 07-07 판(lab/원본) · 족보 889 · 배분표"
+        },
+        "srv": {
+          "file": "server/wildlife.js",
+          "line": 68,
+          "needle": "MOB_WOLF_P=0.0012",
+          "log": "d85e9e39|2026-07-07|본체 동물 AI 이식(§4-4 완결): 야생 블록 49,793B 바이트 무수정 삽입 + 어댑터(지형 격자·게임분 환산·프록시 피해·shadow 몹 브리지) — dt=1/30유닛 환산 계수 1(사슴 도주 실측 12.99m/s=캐논 13), 서식 밴드 100~250m 무리 스폰, 돼지 돌진·호랑이 stalk→사체→feed 재현, 틱 0.57~6ms(33ms 예산 내), ENABLE_WILDLIFE 게이트·OFF 무해·랩 하네스 불변 15/15"
+        }
+      },
+      "expectedLab": "0",
+      "expectedServer": "0.0012"
+    },
+    {
+      "id": "D6-H-MOB_TIG_P",
+      "what": "원본 사냥랩 맹수 자동 출현 MOB_TIG_P",
+      "disposition": "allow",
+      "reason": "원본에 명시된 자동 출현 off 시나리오 패치를 보존한다. 원본은 읽기 전용 과녁이다.",
+      "lab": {
+        "file": "lab/원본/사냥실험실_0707.html",
+        "line": 111,
+        "start": 10998,
+        "end": 11009,
+        "needle": "MOB_TIG_P=0"
+      },
+      "srv": {
+        "file": "server/wildlife.js",
+        "line": 68,
+        "start": 6153,
+        "end": 6170,
+        "needle": "MOB_TIG_P=0.00018"
+      },
+      "history": {
+        "id": "D6-H-MOB_TIG_P",
+        "what": "원본 사냥랩 맹수 자동 출현 MOB_TIG_P",
+        "lab": {
+          "file": "lab/원본/사냥실험실_0707.html",
+          "line": 111,
+          "needle": "MOB_TIG_P=0",
+          "log": "35258975|2026-11-19|카드 T1394~T1401(S-API 넷 · GPT 2 · S4 · S6 · S16 — 재민 11-19 배분) · 덧붙임 T1389 · T1392 · T1393 · 사냥실험실 07-07 판(lab/원본) · 족보 889 · 배분표"
+        },
+        "srv": {
+          "file": "server/wildlife.js",
+          "line": 68,
+          "needle": "MOB_TIG_P=0.00018",
+          "log": "d85e9e39|2026-07-07|본체 동물 AI 이식(§4-4 완결): 야생 블록 49,793B 바이트 무수정 삽입 + 어댑터(지형 격자·게임분 환산·프록시 피해·shadow 몹 브리지) — dt=1/30유닛 환산 계수 1(사슴 도주 실측 12.99m/s=캐논 13), 서식 밴드 100~250m 무리 스폰, 돼지 돌진·호랑이 stalk→사체→feed 재현, 틱 0.57~6ms(33ms 예산 내), ENABLE_WILDLIFE 게이트·OFF 무해·랩 하네스 불변 15/15"
+        }
+      },
+      "expectedLab": "0",
+      "expectedServer": "0.00018"
+    },
+    {
+      "id": "D7-V-WAR_MARCH",
+      "what": "마을랩 행군 일일 거리",
+      "disposition": "flag",
+      "reason": "두 값의 실제 차이는 확인했지만 한쪽만 고친 이력과 랩 목표 원칙만으로 현재 의도/단위가 같은 대체인지 확정하지 못했다. 두 글자·두 이력을 PM 회부하고 값을 고르지 않는다.",
+      "lab": {
+        "file": "lab/마을실험실.html",
+        "line": 26643,
+        "start": 1757985,
+        "end": 1757998,
+        "needle": "WAR_MARCH=240"
+      },
+      "srv": {
+        "file": "sim/war-core.js",
+        "line": 70,
+        "start": 5584,
+        "end": 5600,
+        "needle": "WAR_MARCH = 1440"
+      },
+      "history": {
+        "id": "D7-V-WAR_MARCH",
+        "what": "마을랩 행군 일일 거리",
+        "lab": {
+          "file": "lab/마을실험실.html",
+          "line": 26643,
+          "needle": "WAR_MARCH=240",
+          "log": "c7778a495|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+        },
+        "srv": {
+          "file": "sim/war-core.js",
+          "line": 70,
+          "needle": "WAR_MARCH = 1440",
+          "log": "048d69b2|2026-07-12|본체 이식 2~4파 완주(계획서 §6~8 기록): [2파] war-core 재동기+작전층(자동 개전 폐지·상태기계·봉쇄 훅 siege 상태 이동·공성팩·방어 3택·절박 항복·무저항 함락, WAR_OPS 게이트 OFF=바이트 동일)+긴급 소집+도적 실체 최소+병사→야생 위협(블록 무수정 어댑터 16줄) [3파] 포로 전량(35%·J상한·호송·동화/탈출/몸값·재큐 보강, WAR_CAPTIVES 게이트)+벌점 karmaOf 인터페이스 예약 [4파] 움집 단층 8명(기존 다층 유지 마이그레이션 증명)+답압 길 roads.js(DB 왕복·A* 할인·클라 틴트, ENABLE_ROADS)+물가 K/d²+영토 등가반경 동기+경도 _lonOff+절대 시계 설계 상수 — _p3-war-probe 25/25·존 스모크·재부팅 왕복·실DB 무접촉"
+        }
+      },
+      "expectedLab": "240",
+      "expectedServer": "1440",
+      "flag": "T1409_VIL_MARCH",
+      "flagFile": "lab/마을실험실.html",
+      "target": "EconEngine.WarRuleValues"
+    },
+    {
+      "id": "R01",
+      "what": "프리뷰 인구와 생활 시작 인구",
+      "disposition": "allow",
+      "reason": "정적 인구 슬라이더와 생활 시작/서버 초기 인구는 다른 입력 문이다. 6명 프리뷰를 서버 NPC 초기값으로 옮기지 않는다.",
+      "lab": {
+        "file": "lab/전쟁실험실.html",
+        "line": 35,
+        "start": 2136,
+        "end": 2144
+      },
+      "srv": {
+        "file": "server/villages.js",
+        "line": 192,
+        "start": 13948,
+        "end": 13965
+      },
+      "history": {
+        "id": "R01",
+        "what": "프리뷰 인구와 생활 시작 인구",
+        "lab": {
+          "file": "lab/전쟁실험실.html",
+          "line": 35,
+          "needle": "id=\"pop\"",
+          "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+        },
+        "srv": {
+          "file": "server/villages.js",
+          "line": 192,
+          "needle": "const INITIAL_POP",
+          "log": "99386737|2026-07-07|본체 이식 §4-4 Stage1~3: NPC 마을 경제 착륙 — villages/village_buildings 테이블, hanbando 하드코딩 50→선별 10 시딩(village-layout 지형 주입·입지별 land 실산출), econ 일일 틱(게임일 경계 훅·무인 존에서도 진행)·직렬화 왕복(재부팅 연속성 day11→21 검증), NPC=기존 spawnNpc 재사용, ENABLE_VILLAGES 게이트(off=완전 무해 검증)·실DB 불가침·순수 추가 +64행+신규 470행"
+        }
+      },
+      "spans": [
+        {
+          "file": "lab/전쟁실험실.html",
+          "selector": {
+            "kind": "pattern",
+            "pattern": "<input[^>]*id=\"pop\"[^>]*>"
+          },
+          "hash": "3ccc37ad7ca559a9de52414d06209803454ca37d523246082298ca652a7b21c9",
+          "line": 35
+        },
+        {
+          "file": "server/villages.js",
+          "selector": {
+            "kind": "decl",
+            "name": "INITIAL_POP"
+          },
+          "hash": "bb8d39dc255fac1f39b8f4140e5db8fcdb8a521f364218917bcaeb87fa3df6a8",
+          "line": 192
+        }
+      ]
+    },
+    {
+      "id": "R02",
+      "what": "초기 지도와 마을 수",
+      "disposition": "allow",
+      "reason": "합성 지도/마을수는 실험의 독립 입력. 서버 고정 지도·시딩과 다른 과녁을 명시적으로 보존한다.",
+      "lab": {
+        "file": "lab/전쟁실험실.html",
+        "line": 28524,
+        "start": 1909614,
+        "end": 1909647
+      },
+      "srv": {
+        "file": "server/villages.js",
+        "line": 9,
+        "start": 492,
+        "end": 508
+      },
+      "history": {
+        "id": "R02",
+        "what": "초기 지도와 마을 수",
+        "lab": {
+          "file": "lab/전쟁실험실.html",
+          "line": 28524,
+          "needle": "const centers=pickCenters(NV,275)",
+          "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+        },
+        "srv": {
+          "file": "server/villages.js",
+          "line": 9,
+          "needle": "pickSeedVillages",
+          "log": "15af7f88|2026-10-02|[승인 대기 · T559] 광산 게이트 K 0.278025(재민 #78) · 교역 게이트 기본 켬 · 간격 존별 유도 식(기본 끔)"
+        }
+      },
+      "spans": [
+        {
+          "file": "lab/전쟁실험실.html",
+          "selector": {
+            "kind": "function",
+            "name": "lifeInit"
+          },
+          "hash": "6a7aa7510d6bd1e7b2550b7f5ff64da34d0e6b7c786b962a681ccfbdf8aab328",
+          "line": 28706
+        },
+        {
+          "file": "server/villages.js",
+          "selector": {
+            "kind": "function",
+            "name": "pickSeedVillages"
+          },
+          "hash": "03982abcbe5b701c96220938da6d4bf0f685e4b0cfbd121f1006674ec767473d",
+          "line": 1321
+        }
+      ]
+    },
+    {
+      "id": "R03",
+      "what": "초기 역할별 비옥도 덮어쓰기",
+      "disposition": "allow",
+      "reason": "역할 강제 비옥도는 lifeInit의 실험 입력. 서버 지형 추출의 보정률을 대신하는 정책으로 채택하지 않는다.",
+      "lab": {
+        "file": "lab/전쟁실험실.html",
+        "line": 28533,
+        "start": 1910829,
+        "end": 1910862
+      },
+      "srv": {
+        "file": "server/villages.js",
+        "line": 1203,
+        "start": 87942,
+        "end": 87978
+      },
+      "history": {
+        "id": "R03",
+        "what": "초기 역할별 비옥도 덮어쓰기",
+        "lab": {
+          "file": "lab/전쟁실험실.html",
+          "line": 28533,
+          "needle": "_lp.fertility = (s.role==='agri')",
+          "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+        },
+        "srv": {
+          "file": "server/villages.js",
+          "line": 1203,
+          "needle": "fertility = clamp(+((fs / tn) * 1.4)",
+          "log": "15b60d27|2026-07-29|★셀 단위 비옥도 도입 — 그리고 필드만 깔았을 땐 아무것도 안 바뀌었다(저울이 문제였다)"
+        }
+      },
+      "spans": [
+        {
+          "file": "lab/전쟁실험실.html",
+          "selector": {
+            "kind": "function",
+            "name": "lifeInit"
+          },
+          "hash": "6a7aa7510d6bd1e7b2550b7f5ff64da34d0e6b7c786b962a681ccfbdf8aab328",
+          "line": 28706
+        },
+        {
+          "file": "server/villages.js",
+          "selector": {
+            "kind": "function",
+            "name": "extractLandParamsApprox"
+          },
+          "hash": "567e6eaf71764e49fb9073a6d7d506325086b16446eabfa2d0d6a6338335af1c",
+          "line": 1169
+        }
+      ]
+    },
+    {
+      "id": "R04",
+      "what": "광산 역할 디버그 부존",
+      "disposition": "allow",
+      "reason": "광산 디버그 부존은 실험 입력. 실제 지형의 광맥을 보장값으로 바꾸지 않는다.",
+      "lab": {
+        "file": "lab/전쟁실험실.html",
+        "line": 28534,
+        "start": 1910973,
+        "end": 1910986
+      },
+      "srv": {
+        "file": "server/villages.js",
+        "line": 1169,
+        "start": 86079,
+        "end": 86111
+      },
+      "history": {
+        "id": "R04",
+        "what": "광산 역할 디버그 부존",
+        "lab": {
+          "file": "lab/전쟁실험실.html",
+          "line": 28534,
+          "needle": "_lp.ore = 1.5",
+          "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+        },
+        "srv": {
+          "file": "server/villages.js",
+          "line": 1169,
+          "needle": "function extractLandParamsApprox",
+          "log": "99386737|2026-07-07|본체 이식 §4-4 Stage1~3: NPC 마을 경제 착륙 — villages/village_buildings 테이블, hanbando 하드코딩 50→선별 10 시딩(village-layout 지형 주입·입지별 land 실산출), econ 일일 틱(게임일 경계 훅·무인 존에서도 진행)·직렬화 왕복(재부팅 연속성 day11→21 검증), NPC=기존 spawnNpc 재사용, ENABLE_VILLAGES 게이트(off=완전 무해 검증)·실DB 불가침·순수 추가 +64행+신규 470행"
+        }
+      },
+      "spans": [
+        {
+          "file": "lab/전쟁실험실.html",
+          "selector": {
+            "kind": "function",
+            "name": "lifeInit"
+          },
+          "hash": "6a7aa7510d6bd1e7b2550b7f5ff64da34d0e6b7c786b962a681ccfbdf8aab328",
+          "line": 28706
+        },
+        {
+          "file": "server/villages.js",
+          "selector": {
+            "kind": "function",
+            "name": "extractLandParamsApprox"
+          },
+          "hash": "567e6eaf71764e49fb9073a6d7d506325086b16446eabfa2d0d6a6338335af1c",
+          "line": 1169
+        }
+      ]
+    },
+    {
+      "id": "R12",
+      "what": "관찰/빨리감기의 배치 근사",
+      "disposition": "refer",
+      "reason": "T599 근사/관찰 배치와 서버 몸 고리 중 어떤 모드를 표준으로 없앨지 이력만으로 판단 불가.",
+      "lab": {
+        "file": "lab/전쟁실험실.html",
+        "line": 28844,
+        "start": 1941350,
+        "end": 1941374
+      },
+      "srv": {
+        "file": "server/villages.js",
+        "line": 11601,
+        "start": 827651,
+        "end": 827668
+      },
+      "history": {
+        "id": "R12",
+        "what": "관찰/빨리감기의 배치 근사",
+        "lab": {
+          "file": "lab/전쟁실험실.html",
+          "line": 28844,
+          "needle": "function lifeDay(doBulk)",
+          "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+        },
+        "srv": {
+          "file": "server/villages.js",
+          "line": 11601,
+          "needle": "function _lifeDay",
+          "log": "f2888d7c|2026-10-11|[승인 대기 · T690] 하루 펴기 1단계 손잡이 T690_DAY_PHASE(기본 끔 = main) — 생활층 조각을 마을마다 하루 안의 제 때(위상 k/V · k = (dbId + 게임일) mod V)에 작은 마감으로 · 다음 경계 앞 마무리 · 생활층 조각 함수 _lifeDayJobs 한 벌(경계·위상 같이) · 설계 한 장 · 관찰기 t690-obs(날마다 교역 줄)"
+        }
+      },
+      "spans": [
+        {
+          "file": "lab/전쟁실험실.html",
+          "selector": {
+            "kind": "function",
+            "name": "lifeDay"
+          },
+          "hash": "a94a4ff902607e67a0386ee4d9611c9f5152eab46718c322399e8f9bb4e8b47b",
+          "line": 29032
+        },
+        {
+          "file": "server/villages.js",
+          "selector": {
+            "kind": "function",
+            "name": "_lifeDayJobs"
+          },
+          "hash": "ea741b5492dc38e0a5f2fb44ac4265319c4955a5b3c4ca00de02c55b5a98e4eb",
+          "line": 11759
+        }
+      ]
+    },
+    {
+      "id": "R16",
+      "what": "집 크루의 몸·이동·배달",
+      "disposition": "allow",
+      "reason": "같은 houseCrewDay 계산을 쓰되 몸/비몸 크루의 운반 I/O는 호스트가 소유한다. 이동 시간을 같은 상태라고 인증하지 않는다.",
+      "lab": {
+        "file": "lab/전쟁실험실.html",
+        "line": 28860,
+        "start": 1943602,
+        "end": 1943616
+      },
+      "srv": {
+        "file": "server/villages.js",
+        "line": 16294,
+        "start": 1147702,
+        "end": 1147716
+      },
+      "history": {
+        "id": "R16",
+        "what": "집 크루의 몸·이동·배달",
+        "lab": {
+          "file": "lab/전쟁실험실.html",
+          "line": 28860,
+          "needle": "const _t1056H=",
+          "log": "223300e1|2026-11-01|[승인 대기 · T1056] 랩 HTML 둘의 집 고리 = 서버 집 규칙(econ labSiteCrewDay · t17 과 같은 함수) · psite ⑧ 새 자 · 남은 안 겹침 9 귀속 · 집터 못 세운 마을 표"
+        },
+        "srv": {
+          "file": "server/villages.js",
+          "line": 16294,
+          "needle": "function _t400",
+          "log": "07bde77b|2026-09-26|[승인 대기 · T400] 집도 행위다 1층 — 자재 정본 하나(server/hut-stages.js · 통나무 22·풀 38 · 석재 0 · zone·쉼터·econ·랩 번들이 읽는다) · 크루가 곳간에서 통나무를 손에 들고 집터에 놓는 순간 단계가 오른다(T400_BUILD_ACT 기본 끔 · 관측자 무관 · 주사위 0) · 끔 3시드 800일 JSON 동일 3/3 · test-build-act 51/51"
+        }
+      },
+      "spans": [
+        {
+          "file": "lab/전쟁실험실.html",
+          "selector": {
+            "kind": "function",
+            "name": "lifeDay"
+          },
+          "hash": "a94a4ff902607e67a0386ee4d9611c9f5152eab46718c322399e8f9bb4e8b47b",
+          "line": 29032
+        },
+        {
+          "file": "server/villages.js",
+          "selector": {
+            "kind": "function",
+            "name": "_t400Crew"
+          },
+          "hash": "d793e60c40d82a812e2298cbb9746867e28bbf3f8382b9d1b0d12ff04b4a4ae2",
+          "line": 16797
+        },
+        {
+          "file": "sim/economy-sim.js",
+          "selector": {
+            "kind": "function",
+            "name": "houseCrewDay"
+          },
+          "hash": "d55dc9c6097f768052a6895a2260fdc1b8243c36e487ab6846b59cf22f29b4fc",
+          "line": 2291
+        }
+      ]
+    },
+    {
+      "id": "R23",
+      "what": "야생 개체 활성 범위·플레이어 어댑터",
+      "disposition": "allow",
+      "reason": "읽기 전용 0707 사냥 과녁은 전맵 활성. 서버는 플레이어·존 활성 범위 어댑터다.",
+      "lab": {
+        "file": "lab/원본/사냥실험실_0707.html",
+        "line": 112,
+        "start": 11072,
+        "end": 11089
+      },
+      "srv": {
+        "file": "server/wildlife.js",
+        "line": 849,
+        "start": 84740,
+        "end": 84758
+      },
+      "history": {
+        "id": "R23",
+        "what": "야생 개체 활성 범위·플레이어 어댑터",
+        "lab": {
+          "file": "lab/원본/사냥실험실_0707.html",
+          "line": 112,
+          "needle": "function _mobView",
+          "log": "35258975|2026-11-19|카드 T1394~T1401(S-API 넷 · GPT 2 · S4 · S6 · S16 — 재민 11-19 배분) · 덧붙임 T1389 · T1392 · T1393 · 사냥실험실 07-07 판(lab/원본) · 족보 889 · 배분표"
+        },
+        "srv": {
+          "file": "server/wildlife.js",
+          "line": 849,
+          "needle": "function tick(now)",
+          "log": "d85e9e39|2026-07-07|본체 동물 AI 이식(§4-4 완결): 야생 블록 49,793B 바이트 무수정 삽입 + 어댑터(지형 격자·게임분 환산·프록시 피해·shadow 몹 브리지) — dt=1/30유닛 환산 계수 1(사슴 도주 실측 12.99m/s=캐논 13), 서식 밴드 100~250m 무리 스폰, 돼지 돌진·호랑이 stalk→사체→feed 재현, 틱 0.57~6ms(33ms 예산 내), ENABLE_WILDLIFE 게이트·OFF 무해·랩 하네스 불변 15/15"
+        }
+      },
+      "spans": [
+        {
+          "file": "lab/원본/사냥실험실_0707.html",
+          "selector": {
+            "kind": "function",
+            "name": "_mobView"
+          },
+          "hash": "286d5265065b7b336f34cd03b141def121265fb572a6bb8d96415d8a2c29c700",
+          "line": 112
+        },
+        {
+          "file": "server/wildlife.js",
+          "selector": {
+            "kind": "function",
+            "name": "tick"
+          },
+          "hash": "6d0df8fd72f74bbd31555d798455576cb39d7310b9ac8a456153b65c10aa40b3",
+          "line": 1064
+        }
+      ]
+    },
+    {
+      "id": "R24",
+      "what": "원본 사냥랩 길 시스템",
+      "disposition": "allow",
+      "reason": "읽기 전용 사냥 과녁의 직선 보행. 일반 서버 NPC의 지형 경로를 대체하는 규칙이 아니다.",
+      "lab": {
+        "file": "lab/원본/사냥실험실_0707.html",
+        "line": 87,
+        "start": 7552,
+        "end": 7566
+      },
+      "srv": {
+        "file": "server/villages.js",
+        "line": 5241,
+        "start": 364606,
+        "end": 364629
+      },
+      "history": {
+        "id": "R24",
+        "what": "원본 사냥랩 길 시스템",
+        "lab": {
+          "file": "lab/원본/사냥실험실_0707.html",
+          "line": 87,
+          "needle": "const setPath=",
+          "log": "35258975|2026-11-19|카드 T1394~T1401(S-API 넷 · GPT 2 · S4 · S6 · S16 — 재민 11-19 배분) · 덧붙임 T1389 · T1392 · T1393 · 사냥실험실 07-07 판(lab/원본) · 족보 889 · 배분표"
+        },
+        "srv": {
+          "file": "server/villages.js",
+          "line": 5241,
+          "needle": "function _walkLineClear",
+          "log": "f51501cb|2026-10-03|[승인 대기 · T578] 길이 지형을 따라 난다 · 캐러밴·호위가 걷는다 · 경계 넘김은 걸은 뒤 — 세션9 가지(batch/road-walk-1003 · 9ddb7bd7·9a7475bf·5702ec48 병합·2a9e7d7c)의 main 18a5d619 대비 순변경을 PM 이 한 판으로 얹음(T566 roads·zone 겹침은 가지의 병합 해법 그대로)"
+        }
+      },
+      "spans": [
+        {
+          "file": "lab/원본/사냥실험실_0707.html",
+          "selector": {
+            "kind": "decl",
+            "name": "setPath"
+          },
+          "hash": "dd98cffe9eb36ece91910e9d4518c5f76e81041197658eed9451085ef606ef6a",
+          "line": 87
+        },
+        {
+          "file": "server/villages.js",
+          "selector": {
+            "kind": "function",
+            "name": "_walkLineClear"
+          },
+          "hash": "b19006591057dadf33636a0542b4a9da23a19bce7a1f412304f65d8a5797209d",
+          "line": 5279
+        }
+      ]
+    },
+    {
+      "id": "R25",
+      "what": "원본 사냥랩의 빠른 현장 회복",
+      "disposition": "allow",
+      "reason": "읽기 전용 사냥 과녁의 빠른 회복 설정. 서버 NPC 일일 회복률을 변경하지 않는다.",
+      "lab": {
+        "file": "lab/원본/사냥실험실_0707.html",
+        "line": 432,
+        "start": 59742,
+        "end": 59759
+      },
+      "srv": {
+        "file": "server/villages.js",
+        "line": 18618,
+        "start": 1312028,
+        "end": 1312068
+      },
+      "history": {
+        "id": "R25",
+        "what": "원본 사냥랩의 빠른 현장 회복",
+        "lab": {
+          "file": "lab/원본/사냥실험실_0707.html",
+          "line": 432,
+          "needle": "(a.rest?0.5:0.03)",
+          "log": "35258975|2026-11-19|카드 T1394~T1401(S-API 넷 · GPT 2 · S4 · S6 · S16 — 재민 11-19 배분) · 덧붙임 T1389 · T1392 · T1393 · 사냥실험실 07-07 판(lab/원본) · 족보 889 · 배분표"
+        },
+        "srv": {
+          "file": "server/villages.js",
+          "line": 18618,
+          "needle": "const regenMul = _lifeEcon().npcRegenMul",
+          "log": "cd86feff|2026-11-06|[승인 대기 · T1197] 식사 = 몸이 꺼내 먹음 · 굶어 죽음 = 그 몸 — 손잡이 T1197_MEAL_BODY(켬 기본)"
+        }
+      },
+      "spans": [
+        {
+          "file": "lab/원본/사냥실험실_0707.html",
+          "selector": {
+            "kind": "function",
+            "name": "driveHunters"
+          },
+          "hash": "4e1dd80080d9413716d6ab3fc4850289e675ccd3ad302eb3361522952684bc28",
+          "line": 427
+        },
+        {
+          "file": "sim/economy-sim.js",
+          "selector": {
+            "kind": "function",
+            "name": "npcRegenMul"
+          },
+          "hash": "ff295cec879118c9aad2a7f5a61e8638d5722946e0020bcc9aec0a8c0f3c63a0",
+          "line": 1592
+        }
+      ]
+    },
+    {
+      "id": "R28",
+      "what": "숲·채집·광맥·어장 상태의 좌표 어댑터",
+      "disposition": "shared",
+      "reason": "광맥 재생의 같은 원식을 공유. 서버의 days<=0 guard와 각 호스트 상태/좌표는 그대로 보존한다.",
+      "lab": {
+        "file": "lab/전쟁실험실.html",
+        "line": 28688,
+        "start": 1927895,
+        "end": 1927916
+      },
+      "srv": {
+        "file": "server/sustain.js",
+        "line": 8,
+        "start": 338,
+        "end": 350
+      },
+      "history": {
+        "id": "R28",
+        "what": "숲·채집·광맥·어장 상태의 좌표 어댑터",
+        "lab": {
+          "file": "lab/전쟁실험실.html",
+          "line": 28688,
+          "needle": "function resourceTick",
+          "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+        },
+        "srv": {
+          "file": "server/sustain.js",
+          "line": 8,
+          "needle": "L_WOODREGLOG",
+          "log": "c73e7535|2026-07-30|랩 공간 자원 층의 econ 접점 이식 — MSY 상한·리카도 한계지·특수 산지 [재민 \"한 번에 다 해\"]"
+        }
+      },
+      "spans": [
+        {
+          "file": "lab/전쟁실험실.html",
+          "selector": {
+            "kind": "function",
+            "name": "oreRegen"
+          },
+          "hash": "10ded6ed1a4f7c79c309e800cc28ec0d6f109d90824cba322dcfaae1249654fb",
+          "line": 26847
+        },
+        {
+          "file": "lab/마을실험실.html",
+          "selector": {
+            "kind": "function",
+            "name": "oreRegen"
+          },
+          "hash": "10ded6ed1a4f7c79c309e800cc28ec0d6f109d90824cba322dcfaae1249654fb",
+          "line": 26207
+        },
+        {
+          "file": "server/specialty.js",
+          "selector": {
+            "kind": "function",
+            "name": "oreRegen"
+          },
+          "hash": "145951a4c43903b99ba9056365938ccbacdd77587c6a3cd9674d8ba0644caec0",
+          "line": 426
+        },
+        {
+          "file": "sim/shared-lab-rules.js",
+          "selector": {
+            "kind": "function",
+            "name": "oreRegenRaw"
+          },
+          "hash": "6c9e2752716b5dd91c399339b93499a214358bd0b44a49079c6d8e6989567537",
+          "line": 4
+        }
+      ]
+    },
+    {
+      "id": "R29",
+      "what": "마을랩 전쟁 결판",
+      "disposition": "refer",
+      "reason": "기본 마을랩의 옛 power 실험과 서버/전쟁랩 전술 모델의 역할을 가르는 명시 판정이 없음. 전체 결판 모델은 임의 교체하지 않는다.",
+      "lab": {
+        "file": "lab/마을실험실.html",
+        "line": 26673,
+        "start": 1761553,
+        "end": 1761568
+      },
+      "srv": {
+        "file": "sim/war-core.js",
+        "line": 344,
+        "start": 25011,
+        "end": 25037
+      },
+      "history": {
+        "id": "R29",
+        "what": "마을랩 전쟁 결판",
+        "lab": {
+          "file": "lab/마을실험실.html",
+          "line": 26673,
+          "needle": "const powA=aEff",
+          "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+        },
+        "srv": {
+          "file": "sim/war-core.js",
+          "line": 344,
+          "needle": "function runBattleHeadless",
+          "log": "048d69b2|2026-07-12|본체 이식 2~4파 완주(계획서 §6~8 기록): [2파] war-core 재동기+작전층(자동 개전 폐지·상태기계·봉쇄 훅 siege 상태 이동·공성팩·방어 3택·절박 항복·무저항 함락, WAR_OPS 게이트 OFF=바이트 동일)+긴급 소집+도적 실체 최소+병사→야생 위협(블록 무수정 어댑터 16줄) [3파] 포로 전량(35%·J상한·호송·동화/탈출/몸값·재큐 보강, WAR_CAPTIVES 게이트)+벌점 karmaOf 인터페이스 예약 [4파] 움집 단층 8명(기존 다층 유지 마이그레이션 증명)+답압 길 roads.js(DB 왕복·A* 할인·클라 틴트, ENABLE_ROADS)+물가 K/d²+영토 등가반경 동기+경도 _lonOff+절대 시계 설계 상수 — _p3-war-probe 25/25·존 스모크·재부팅 왕복·실DB 무접촉"
+        }
+      },
+      "spans": [
+        {
+          "file": "lab/마을실험실.html",
+          "selector": {
+            "kind": "function",
+            "name": "warResolveBattle"
+          },
+          "hash": "efecabb6f19a937c3eb0f3c653adfa7a344d186d77afffb4fe688f6616a891d2",
+          "line": 26850
+        },
+        {
+          "file": "sim/war-core.js",
+          "selector": {
+            "kind": "function",
+            "name": "runBattleHeadless"
+          },
+          "hash": "0c49f0646a6af023613d26f50193679a5bf929a7a1e7adbeff248fbcebe1b5a0",
+          "line": 350
+        }
+      ]
+    },
+    {
+      "id": "R31",
+      "what": "전투 시작 위치·장애물",
+      "disposition": "allow",
+      "reason": "독립 전투 표준 배치/실험 장애물과 존의 실제 좌표/장애물은 같은 BattleCore에 주는 다른 입력이다.",
+      "lab": {
+        "file": "lab/전투실험실.html",
+        "line": 817,
+        "start": 61113,
+        "end": 61128
+      },
+      "srv": {
+        "file": "server/war-live.js",
+        "line": 334,
+        "start": 26496,
+        "end": 26526
+      },
+      "history": {
+        "id": "R31",
+        "what": "전투 시작 위치·장애물",
+        "lab": {
+          "file": "lab/전투실험실.html",
+          "line": 817,
+          "needle": "const LAB_WORLD",
+          "log": "09de02ee|2026-11-02|[승인 대기 · T1090] 전투실험실을 지금 battle-core 인라인으로 — 7월 원본과 차는 평지 · 숲에선 몸 0.5m 하나(80/80 판 일치로 갈라짐)"
+        },
+        "srv": {
+          "file": "server/war-live.js",
+          "line": 334,
+          "needle": "const ctx = BC.createContext()",
+          "log": "1fac6e13|2026-09-16|[승인 대기 · T284] 전투 실체화 — 좌표계 하나 · 장애물은 존의 것 · 전투 = 연속 상태 · 세계 부하 위 성능"
+        }
+      },
+      "spans": [
+        {
+          "file": "lab/전투실험실.html",
+          "selector": {
+            "kind": "decl",
+            "name": "LAB_WORLD"
+          },
+          "hash": "d46627b313d5decfa6e3b0d8bcde494f9d8432ec0ea67297bf0c0dda2bd6bbb2",
+          "line": 817
+        },
+        {
+          "file": "server/war-live.js",
+          "selector": {
+            "kind": "function",
+            "name": "makeFight"
+          },
+          "hash": "685dd5b4ba26086a3b3844825e436f5ce84cb56a5b13315f324cf7eb0a050060",
+          "line": 333
+        }
+      ]
+    },
+    {
+      "id": "R32",
+      "what": "징집 명부·개체의 연결 어댑터",
+      "disposition": "shared",
+      "reason": "같은 개인편성→폴백 디스패치를 공유. 입력 명부·개체 반출/귀환의 호스트 I/O는 그대로 보존한다.",
+      "lab": {
+        "file": "lab/전쟁실험실.html",
+        "line": 27751,
+        "start": 1841115,
+        "end": 1841133
+      },
+      "srv": {
+        "file": "sim/war-core.js",
+        "line": 205,
+        "start": 13945,
+        "end": 13977
+      },
+      "history": {
+        "id": "R32",
+        "what": "징집 명부·개체의 연결 어댑터",
+        "lab": {
+          "file": "lab/전쟁실험실.html",
+          "line": 27751,
+          "needle": "function conscript",
+          "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+        },
+        "srv": {
+          "file": "sim/war-core.js",
+          "line": 205,
+          "needle": "function _warConscriptIndividual",
+          "log": "048d69b2|2026-07-12|본체 이식 2~4파 완주(계획서 §6~8 기록): [2파] war-core 재동기+작전층(자동 개전 폐지·상태기계·봉쇄 훅 siege 상태 이동·공성팩·방어 3택·절박 항복·무저항 함락, WAR_OPS 게이트 OFF=바이트 동일)+긴급 소집+도적 실체 최소+병사→야생 위협(블록 무수정 어댑터 16줄) [3파] 포로 전량(35%·J상한·호송·동화/탈출/몸값·재큐 보강, WAR_CAPTIVES 게이트)+벌점 karmaOf 인터페이스 예약 [4파] 움집 단층 8명(기존 다층 유지 마이그레이션 증명)+답압 길 roads.js(DB 왕복·A* 할인·클라 틴트, ENABLE_ROADS)+물가 K/d²+영토 등가반경 동기+경도 _lonOff+절대 시계 설계 상수 — _p3-war-probe 25/25·존 스모크·재부팅 왕복·실DB 무접촉"
+        }
+      },
+      "spans": [
+        {
+          "file": "lab/전쟁실험실.html",
+          "selector": {
+            "kind": "function",
+            "name": "conscript"
+          },
+          "hash": "fe95afaaac1556dd60216454e867406ad025d69e6a635c478a58d7ff46fd14f7",
+          "line": 27939
+        },
+        {
+          "file": "sim/war-core.js",
+          "selector": {
+            "kind": "function",
+            "name": "conscript"
+          },
+          "hash": "d74e7bd3f3b02d91218428a1942d679674f2036c9fd7c2b9f904f76760d6dd5d",
+          "line": 316
+        },
+        {
+          "file": "sim/shared-lab-rules.js",
+          "selector": {
+            "kind": "function",
+            "name": "conscriptWith"
+          },
+          "hash": "27d5851644a5472be38450578037057f60e2b701fe4f91fa9994fe4884fcaa44",
+          "line": 8
+        }
+      ]
+    },
+    {
+      "id": "R33",
+      "what": "집결·행군·대치의 좌표 작성자",
+      "disposition": "allow",
+      "reason": "좌표 작성자의 Canvas agent 대 서버 NPC I/O는 보존한다. 대형 수치 D5 차이는 별도 회부이며 포괄 허락이 아니다.",
+      "lab": {
+        "file": "lab/전쟁실험실.html",
+        "line": 30170,
+        "start": 2073938,
+        "end": 2073956
+      },
+      "srv": {
+        "file": "server/war-live.js",
+        "line": 252,
+        "start": 20204,
+        "end": 20226
+      },
+      "history": {
+        "id": "R33",
+        "what": "집결·행군·대치의 좌표 작성자",
+        "lab": {
+          "file": "lab/전쟁실험실.html",
+          "line": 30170,
+          "needle": "function tickMarch",
+          "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+        },
+        "srv": {
+          "file": "server/war-live.js",
+          "line": 252,
+          "needle": "function _muStepFollow",
+          "log": "a9733d81|2026-07-14|식량 pull·무두질 웨이브: 위기 마을 국소 구속으로 신규 교역재 흡수"
+        }
+      },
+      "spans": [
+        {
+          "file": "lab/전쟁실험실.html",
+          "selector": {
+            "kind": "function",
+            "name": "tickMarch"
+          },
+          "hash": "f0c05f403cc7c0fac57181cfcc05319536d5f573e73ee9c665f73c5917d8fc92",
+          "line": 30358
+        },
+        {
+          "file": "server/war-live.js",
+          "selector": {
+            "kind": "function",
+            "name": "_muStepFollow"
+          },
+          "hash": "b3db84739abdb525cc3891d21662b04803352972be6af1079efd41247b57d143",
+          "line": 252
+        }
+      ]
+    },
+    {
+      "id": "R34",
+      "what": "전투 갱신 예산·종료",
+      "disposition": "refer",
+      "reason": "랩 UI 프레임 예산과 게임시간 종료 상한을 서버 진행/종료 규칙에 어떻게 대응시킬지 명시 판정이 없음.",
+      "lab": {
+        "file": "lab/전쟁실험실.html",
+        "line": 30367,
+        "start": 2090215,
+        "end": 2090231
+      },
+      "srv": {
+        "file": "server/war-live.js",
+        "line": 465,
+        "start": 34785,
+        "end": 34799
+      },
+      "history": {
+        "id": "R34",
+        "what": "전투 갱신 예산·종료",
+        "lab": {
+          "file": "lab/전쟁실험실.html",
+          "line": 30367,
+          "needle": "const LB_MAXSUB=",
+          "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+        },
+        "srv": {
+          "file": "server/war-live.js",
+          "line": 465,
+          "needle": "BC._stepBattle",
+          "log": "1fac6e13|2026-09-16|[승인 대기 · T284] 전투 실체화 — 좌표계 하나 · 장애물은 존의 것 · 전투 = 연속 상태 · 세계 부하 위 성능"
+        }
+      },
+      "spans": [
+        {
+          "file": "lab/전쟁실험실.html",
+          "selector": {
+            "kind": "function",
+            "name": "tickLiveBattles"
+          },
+          "hash": "f9b62a4849e3cc5df8a3619d62885d1ad83d1eb6e4fb7e686ce6583e646c805d",
+          "line": 31412
+        },
+        {
+          "file": "server/war-live.js",
+          "selector": {
+            "kind": "function",
+            "name": "stepFight"
+          },
+          "hash": "bceeba3a0ddf3e4bcd65fe9e76c6ad1808955f7f160728bdc1b0150d3ffafb52",
+          "line": 452
+        }
+      ]
+    }
+  ],
+  "extras": [
+    {
+      "id": "R07",
+      "category": "랩만",
+      "what": "초기 프리뷰·합성 지형 조작",
+      "lab": {
+        "file": "lab/마을실험실.html",
+        "line": 24546,
+        "start": 1546954,
+        "end": 1546975
+      },
+      "srv": null,
+      "labValue": "seed·지형·크기 슬라이더; 서버 존 지도를 대신하지 않음",
+      "serverValue": "—",
+      "knob": "",
+      "pedigree": "미확인 — 다르게 두라는 승인 근거 없음",
+      "classification": "랩 화면·실험 입력·미연결 레거시",
+      "classificationReason": "seed/크기/합성지형을 직접 넣는 UI 입력. 서버 존 생성 호출을 대체하는 제품 경로가 아니다."
+    },
+    {
+      "id": "R08",
+      "category": "랩만",
+      "what": "생활 보조 상태·레거시 상수",
+      "lab": {
+        "file": "lab/마을실험실.html",
+        "line": 25830,
+        "start": 1657541,
+        "end": 1657556
+      },
+      "srv": null,
+      "labValue": "L_CONSUME/L_BIRTH/L_STARVE/L_SK*/로컬 food·UI 상태; 실제 econ 연결 경로와 폴백을 구분",
+      "serverValue": "동일 이름의 서버 상수 사본 없음; 경제 코어는 인라인 묶음으로 별도 대조",
+      "knob": "",
+      "pedigree": "미확인 — 다르게 두라는 승인 근거 없음",
+      "classification": "랩 화면·실험 입력·미연결 레거시",
+      "classificationReason": "로컬 표시/레거시 폴백이며 실제 연결 경제 규칙은 EconEngine 인라인이다. 새 서버 게임 상수로 이식하지 않는다."
+    },
+    {
+      "id": "R18",
+      "category": "서버만",
+      "what": "몸이 못 한 밭 일의 나머지 몫",
+      "lab": null,
+      "srv": {
+        "file": "server/villages.js",
+        "line": 13697,
+        "start": 970636,
+        "end": 970657
+      },
+      "labValue": "—",
+      "serverValue": "몸 수행량을 뺀 나머지만 일괄 처리. REST는 휴경이 아님",
+      "knob": "T1212_FARM_REST 기본 켬; T1224_ECON_FARM 기본 끔",
+      "pedigree": "미확인 — 다르게 두라는 승인 근거 없음",
+      "classification": "기존 손잡이 뒤 서버 몸/일괄 나머지 계산",
+      "classificationReason": "기존 T1212_FARM_REST/T1224_ECON_FARM 손잡이로 몸 수행량과 일괄 나머지를 구분하는 서버 경로. REST는 휴경이 아니다."
+    },
+    {
+      "id": "R21",
+      "category": "서버만",
+      "what": "마을랩에 없는 장마당 주민 모임",
+      "lab": null,
+      "srv": {
+        "file": "server/villages.js",
+        "line": 277,
+        "start": 22161,
+        "end": 22169
+      },
+      "labValue": "마을랩에 L_MKT_FRAC/MKT_SPOTS 연결 없음(전쟁랩에는 있음)",
+      "serverValue": "VL.MKT_FRAC·장 방문 명부; 전쟁랩 수를 정본으로 연결",
+      "knob": "",
+      "pedigree": "T707 주석에 랩 값 그대로 명시; 마을랩 누락을 허락한 근거 미확인",
+      "classification": "랩 화면·실험 입력·미연결 레거시",
+      "classificationReason": "장 방문 명부/몸 화면 연결은 전쟁랩에 있고 마을랩에는 없다. 경제 거래 코어는 공용이며 마을랩 화면에 주민을 추가하는 별도 범위다."
+    },
+    {
+      "id": "R27",
+      "category": "랩만",
+      "what": "전쟁랩의 수종별 나무 표시·실험 표",
+      "lab": {
+        "file": "lab/전쟁실험실.html",
+        "line": 26554,
+        "start": 1713536,
+        "end": 1713548
+      },
+      "srv": null,
+      "labValue": "랩 TREES·TREE_IDS·열매/목재 실험 조립",
+      "serverValue": "LAB TREES에서 생성한 server/trees.json 8종 카탈로그. 런타임 몸/존 어댑터는 별도.",
+      "knob": "",
+      "pedigree": "server/trees.json _source · scripts/build-trees.js · T1409 전8종 전필드 실제 대조",
+      "classification": "생성 카탈로그 공유(랩 TREES → server/trees.json 8종 전 값 같음)",
+      "classificationReason": "server/trees.json _source가 scripts/build-trees.js의 LAB TREES 생성을 명시. 8종 전 필드 같음을 실제 AST/JSON 대조로 확인했다."
+    },
+    {
+      "id": "R35",
+      "category": "서버만",
+      "what": "전투 뒤 영속 명부·재시작 장부",
+      "lab": null,
+      "srv": {
+        "file": "server/war-live.js",
+        "line": 18,
+        "start": 1169,
+        "end": 1183
+      },
+      "labValue": "—",
+      "serverValue": "서버 NPC/포로/무기·상태를 존 DB와 연계; 랩 재로드는 같은 이어받기가 아님",
+      "knob": "",
+      "pedigree": "미확인 — 다르게 두라는 승인 근거 없음",
+      "classification": "서버 전용 영속/I/O",
+      "classificationReason": "NPC/포로/재고와 DB의 재시작 상태를 유지하는 서버 전용 I/O."
+    },
+    {
+      "id": "R36",
+      "category": "서버만",
+      "what": "영속 지도·새 플레이어 마을·동면",
+      "lab": null,
+      "srv": {
+        "file": "server/villages.js",
+        "line": 3709,
+        "start": 263475,
+        "end": 263488
+      },
+      "labValue": "—",
+      "serverValue": "플레이어 창건 0명·기부/출입·서버 부팅/동면 경로. 8명 실험 마을과 다름",
+      "knob": "",
+      "pedigree": "미확인 — 다르게 두라는 승인 근거 없음",
+      "classification": "서버 전용 영속/I/O",
+      "classificationReason": "서버 부팅/영속지도/플레이어 창건과 동면 경로. 독립 HTML 실험의 수명과 다르다."
+    },
+    {
+      "id": "R37",
+      "category": "랩만",
+      "what": "전투 편성/품질/사기 대조 UI",
+      "lab": {
+        "file": "lab/전투실험실.html",
+        "line": 833,
+        "start": 62260,
+        "end": 62274
+      },
+      "srv": null,
+      "labValue": "진영·병종·품질·진형을 직접 넣어 반복하는 과녁",
+      "serverValue": "서버에서는 원정 편성과 실물 재고가 입력을 정함",
+      "knob": "",
+      "pedigree": "미확인 — 다르게 두라는 승인 근거 없음",
+      "classification": "랩 화면·실험 입력·미연결 레거시",
+      "classificationReason": "진영과 품질 등을 직접 넣는 전투 실험 UI."
+    },
+    {
+      "id": "R38",
+      "category": "랩만",
+      "what": "원본 사냥 시나리오·배치",
+      "lab": {
+        "file": "lab/원본/사냥실험실_0707.html",
+        "line": 421,
+        "start": 58715,
+        "end": 58732
+      },
+      "srv": null,
+      "labValue": "종/개체수/지형·숙련·위장·비/바람을 조작하는 독립 과녁",
+      "serverValue": "플레이어·경제 마을·DB를 포함한 월드 아님",
+      "knob": "",
+      "pedigree": "미확인 — 다르게 두라는 승인 근거 없음",
+      "classification": "랩 화면·실험 입력·미연결 레거시",
+      "classificationReason": "독립 원본 사냥 시나리오의 조작 입력과 화면."
+    },
+    {
+      "id": "R39",
+      "category": "랩만",
+      "what": "화면·색·그리기·관측 상태",
+      "lab": {
+        "file": "lab/전쟁실험실.html",
+        "line": 29144,
+        "start": 1981282,
+        "end": 1981299
+      },
+      "srv": null,
+      "labValue": "렌더 배율·종류 색·통계·Canvas 상태(선언목록에 모두 기록)",
+      "serverValue": "같은 이름의 서버 표시 상태를 요구하지 않음; 게임 수치의 허락된 차이 목록과 구분",
+      "knob": "",
+      "pedigree": "미확인 — 다르게 두라는 승인 근거 없음",
+      "classification": "랩 화면·실험 입력·미연결 레거시",
+      "classificationReason": "Canvas 표시/색/관측 상태. 서버 게임 값 사본을 요구하지 않는다."
+    }
+  ]
+}
