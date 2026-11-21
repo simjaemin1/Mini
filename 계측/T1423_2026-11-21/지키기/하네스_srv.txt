@@ -1,0 +1,64 @@
+##### test-doors.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+=== 문 전수 하네스: 45 통과 / 0 실패 ✅ ===
+  ✓ ⓔ3 전제: `_devAsGate` 를 소스에서 그대로 떠 왔다(못 뜨면 아래가 자명 통과다)
+  ✓ ⓔ6b ★자명 통과 금지 — 두 팔이 **실제로 다른 값**을 낸다(손잡이가 부를 때 읽힌다) · /startinfo?as=%EC%9E%AC%EB%AF%BC vs /startinfo
+  ✓ ⓖ3 자명 통과 금지 — 없는 이름엔 `false` 다(늘 true 면 위가 뜻이 없다) · {"taken":false}
+=== 문 전수 하네스: 45 통과 / 0 실패 ✅ ===
+  [소요] 4초
+  ✓ RC=0
+##### test-fixture-reap.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+=== 15건 중 PASS 15 · FAIL 0 ===
+  [소요] 2초
+  ✓ RC=0
+##### test-guest-identity.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+=== 게스트 영속 신원 하네스: 117 통과 / 0 실패 ✅ ===
+  ✓ ⑨ⓒ4 ★안 문에서는 **전부 준다**(자명 통과 금지 — 투영이 늘 비어 있는 게 아니다)
+  ✓ ⑨ⓓ 전제: 사람 하나가 실제로 존에 붙어 있다(아래가 자명 통과가 아니다)
+  ✓ ⑨ⓔ2 ★자명 통과 금지 — 안 문으로 부른 것은 **실제로 바뀌었다**(소개문·길드원 2) · "존이 쓴 소개문" · 길드원 2
+=== 게스트 영속 신원 하네스: 117 통과 / 0 실패 ✅ ===
+  [소요] 16초
+  ✓ RC=0
+##### test-guest-rejoin.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+=== 26건 중 PASS 26 · FAIL 0 ===
+  [소요] 30초
+  ✓ RC=0
+##### test-jungwon-boot.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+=== 38건 중 PASS 38 · FAIL 0 ===
+  [소요] 30초
+  ✓ RC=0
+##### test-reset-world.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+  ✓ ★[T892] `--live` 는 컨테이너 · env 손잡이 · 관측자 줄을 찍고 DB 는 안 읽는다(`--check` 는 읽는다 — 자명 통과 0)  --check DB 줄 true · --live DB 줄 false
+⑫ ★자명 통과 금지 — 값을 흘리는 미끼 사본
+=== PASS 69 / FAIL 0 ===
+  [소요] 30초
+  ✓ RC=0
+##### test-t1125-welcome.js #####
+=== 26건 중 PASS 26 · FAIL 0 ===
+  [소요] 13초
+  ✓ RC=0
+##### test-t1163-welcome-sig.js #####
+=== T1163 welcome 지형 서명: 통과 18 · 실패 0 ===
+  [소요] 7초
+  ✓ RC=0
+##### test-t1405-leave-rare.js #####
+  [소요] 35초
+  ✓ RC=0
+##### test-xhost-env.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+=== PASS 33 / FAIL 0 ===
+  [소요] 6초
+  ✓ RC=0
+
+=== 러너 요약 ===
+  통과 10: test-doors.js test-fixture-reap.js test-guest-identity.js test-guest-rejoin.js test-jungwon-boot.js test-reset-world.js test-t1125-welcome.js test-t1163-welcome-sig.js test-t1405-leave-rare.js test-xhost-env.js
+  실패 0: 없음
+  걸린 시간 상위(초): test-t1405-leave-rare.js 35 · test-guest-rejoin.js 30 · test-jungwon-boot.js 30 · test-reset-world.js 30 · test-guest-identity.js 16 · test-t1125-welcome.js 13 · test-t1163-welcome-sig.js 7 · test-xhost-env.js 6 · test-doors.js 4 · test-fixture-reap.js 2
+  걸린 시간 합: 하네스 173초 · 러너 전체 239초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 8번 × 8초 · 건넘 3번(앞 판이 남긴 아이 없음)
+RC=0

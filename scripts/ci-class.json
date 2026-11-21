@@ -15512,6 +15512,51 @@
    ],
    "dyn": "가"
   },
+  "test-t1423-block-react.js": {
+   "cls0": "다",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 5.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 7.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 7.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 5.8,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "다",
+   "child": [
+    "spawnSync node"
+   ],
+   "cls": "다",
+   "maxSec": 9,
+   "same5": true,
+   "core": false,
+   "why": "srv",
+   "srv": true
+  },
   "test-t721-apply.js": {
    "cls0": "나",
    "why0": "child_process",
