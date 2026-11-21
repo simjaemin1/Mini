@@ -8,6 +8,7 @@
 //   부팅 초 = 띄운 때 → `zone server up on` 줄 · 첫 틱 ms = `/perf` 의 `tick.ms` 가 처음 n ≥ 1 일 때 max(n 도 적는다) ·
 //   RSS 꼭대기 = 첫 틱 뒤 `/proc/<pid>/status` VmHWM(띄운 뒤 최대 상주 메모리).
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
