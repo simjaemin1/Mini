@@ -1,0 +1,9 @@
+{
+ "left": "계측/T1411_2026-11-21/base-30/base-profile-1020",
+ "right": "계측/T1411_2026-11-21/base-30/base-plain-1020",
+ "days": 30,
+ "econCompared": 30,
+ "villageCompared": 30,
+ "same": true,
+ "differences": []
+}

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Compare closed T1308 econ and complete village-field fingerprints by day."""
-import argparse, json
+import argparse, gzip, json
 from pathlib import Path
 
 p = argparse.ArgumentParser(description=__doc__)
@@ -10,13 +10,24 @@ p.add_argument('--days', type=int, default=30)
 p.add_argument('--out', type=Path, required=True)
 a = p.parse_args()
 
+def document(file):
+    if file.exists():
+        return json.loads(file.read_text())
+    with gzip.open(str(file)+'.gz', 'rt') as f:
+        return json.load(f)
+
 def read(run):
-    progress = json.loads((run / 'progress.json').read_text())
+    if (run/'progress.json').exists():
+        segments = document(run/'progress.json')['segs']
+    else:
+        segments = document(run/'closed-prefix.json')['sourceSegments']
     econ, side = {}, {}
-    for seg in progress['segs']:
+    for seg in segments:
         start = seg['from']
+        if start >= a.days:
+            continue
         for suffix, target, key in [('sbc', econ, lambda r: r[0]), ('t740', side, lambda r: r['d'])]:
-            raw = json.loads((run / f'seg-{start}.json.{suffix}.json').read_text())
+            raw = document(run / f'seg-{start}.json.{suffix}.json')
             for row in raw['days']:
                 day = key(row)
                 if day > a.days:
