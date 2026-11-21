@@ -33,7 +33,7 @@ for (const [arm] of ARMS) for (const s of SEEDS) {
   const mk = rd(path.join(R, 'runs', `${tag}.json`));
   const ob = rd(path.join(R, 'runs', `obs-${tag}.json`));
   const d = done.get(tag) || null;
-  const fp = mk && mk.seeds && mk.seeds[s] ? mk.seeds[s] : null;
+  const fp = mk && mk.byseed && mk.byseed[s] ? mk.byseed[s] : null;   // --make 출력의 시드 칸 = byseed
   runs[tag] = { arm, seed: s, rc: d ? d.rc : null, sec: d ? d.sec : null, fp, ob, full: !!(d && d.rc === 0 && fp && fp.days && fp.days.length >= 400) };
 }
 const snapAt = (r, day) => (r && r.ob && r.ob.snaps ? r.ob.snaps.find((x) => x.day === day) : null) || null;

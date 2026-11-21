@@ -8,7 +8,7 @@ const path = require('path'), fs = require('fs');
 const A1 = process.argv[1] || '';
 if (!(process.env.T577_SEED && /server[\/\\]zone\.js$/.test(A1))) return;
 const DIR = process.env.T1417_OBS; if (!DIR) return;
-const ROOT = path.resolve(__dirname, '..', '..');
+const ROOT = path.resolve(path.dirname(A1), '..');   // 존이 도는 트리(작업 트리일 수 있다 — 관찰기 자리 말고 zone.js 자리에서 잡아야 같은 econ 모듈을 감싼다)
 const OUT = path.join(DIR, `obs-${process.env.T1417_ARM || 'x'}-${process.env.T577_SEED}.json`);
 const V1 = require(path.join(ROOT, 'sim', 'economy-sim'));
 const rec = { seed: +process.env.T577_SEED, arm: process.env.T1417_ARM || '?', snaps: [], lastDay: 0, err: null };
