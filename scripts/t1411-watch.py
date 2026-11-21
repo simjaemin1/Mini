@@ -13,12 +13,32 @@ while not (a.out/'stop-watch').exists():
     r = subprocess.run(['python3', str(root/'t1358-backup.py'), '--runs', str(a.runs),
                         '--out', str(a.out/'worlds')], capture_output=True, text=True)
     status = []
+    # Launch conditions and actual wrapper exits are part of recovery evidence,
+    # including a run that dies before its next checkpoint.
+    for f in list(a.runs.glob('*.json')) + list(a.runs.parent.glob('*manifest.json')) + list(a.runs.parent.glob('*fingerprint30.json')) + [a.runs.parent/'campaign.json']:
+        if f.is_file():
+            dest = a.out/'metadata'/f.name
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            tmp = dest.with_suffix('.tmp'); shutil.copyfile(f, tmp); tmp.replace(dest)
     for d in sorted(a.runs.iterdir()):
         if not d.is_dir() or not (d/'progress.json').exists():
             continue
         progress = json.loads((d/'progress.json').read_text())
         status.append(dict(case=d.name, checkpoint=progress['ck'], done=progress['done'],
                            target=progress['days'], line=(d/'progress.txt').read_text().strip()))
+        exit_file = a.runs/(d.name+'.exit.json')
+        if exit_file.exists() and json.loads(exit_file.read_text())['exit'] != 0:
+            for f in d.glob('seg-*'):
+                if not f.is_file() or not f.name.endswith(('.log', '.json', '.jsonl')):
+                    continue
+                dest = a.out/'failed'/d.name/(f.name+'.gz')
+                if dest.exists():
+                    continue
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                tmp = dest.with_suffix('.tmp')
+                with f.open('rb') as src, gzip.open(tmp, 'wb', compresslevel=5) as dst:
+                    shutil.copyfileobj(src, dst)
+                tmp.replace(dest)
     for f in a.runs.glob('*-profiles/*.cpuprofile'):
         dest = a.out/'profiles'/f.parent.name/(f.name+'.gz')
         if dest.exists():
