@@ -21,6 +21,7 @@
 #   bash scripts/pm-old-code-red.sh <옛 ref>                      # 옛 ref 에 없던 scripts/test-*.js 전부
 #   bash scripts/pm-old-code-red.sh <옛 ref> test-a.js test-b.js  # 이것만
 #   TIMEOUT_SEC=600 OUT=/tmp/ocr.txt bash scripts/pm-old-code-red.sh origin/main
+#   TMPDIR="$HOME/tmp" bash scripts/pm-old-code-red.sh origin/main     # ★[T1414] 임시 worktree 는 TMPDIR 아래(없으면 /tmp) · 끝나도 죽어도 지운다
 set -u
 OLD="${1:?옛 ref 를 줘라(예: origin/main)}"; shift || true
 ROOT="$(git rev-parse --show-toplevel)"; cd "$ROOT" || exit 2
@@ -29,9 +30,23 @@ OUT="${OUT:-/dev/stdout}"
 PROD="${PROD:-server sim public lab}"
 if [ $# -gt 0 ]; then LIST="$*"; else LIST="$(git diff --diff-filter=A --name-only "$OLD"..HEAD -- 'scripts/test-*.js' | sed 's#^scripts/##' | tr '\n' ' ')"; fi
 [ -z "${LIST// /}" ] && { echo "새 하네스 0 — 볼 것 없음"; exit 0; }
-TMP="$(mktemp -d /tmp/ocr.XXXXXX)"
+# ★[T1414] 임시 폴더는 `${TMPDIR:-/tmp}` 아래 — 샌드박스 세션(`/tmp` 쓰기 금지 · TMPDIR 만 열림)도 같은 자로 돈다(종전 `/tmp` 박음 → S-API 가 손으로 대신했다 · T1396 회부 7).
+#   지우기는 끝나도 · 죽어도(INT · TERM · HUP — `kill` 기본 신호) 한 곳(`_ocr_clean`)에서: 돌던 하네스(와 시한 감시)를 먼저 끄고 → worktree 를 풀고 → 폴더를 지운다.
+#   하네스는 뒤에서 돌리고 `wait` 한다 — 앞에서 돌면 bash 가 그 자식이 끝날 때까지 신호 처리를 미뤄 `kill` 이 시한(600초) 뒤에야 먹는다. `kill -9` 는 못 막는다(찌꺼기는 TMPDIR 안에만 남는다).
+_TMPB="${TMPDIR:-/tmp}"; _TMPB="${_TMPB%/}"; [ -n "$_TMPB" ] || _TMPB=/tmp
+TMP="$(mktemp -d "$_TMPB/ocr.XXXXXX")" || { echo "임시 폴더를 못 만든다: $_TMPB/ocr.XXXXXX (TMPDIR 을 봐라)" >&2; exit 2; }
+_cpid=""; _wpid=""
+_ocr_clean() {
+  [ -n "$_wpid" ] && { kill -TERM "$_wpid" 2>/dev/null; wait "$_wpid" 2>/dev/null; }
+  [ -n "$_cpid" ] && { kill -TERM "$_cpid" 2>/dev/null; wait "$_cpid" 2>/dev/null; }
+  git worktree remove --force "$TMP/w" >/dev/null 2>&1
+  rm -rf "$TMP"
+  git worktree list --porcelain 2>/dev/null | grep -qF "$TMP/w" && git worktree prune >/dev/null 2>&1
+  return 0
+}
+trap _ocr_clean EXIT
+trap 'exit 130' INT; trap 'exit 143' TERM; trap 'exit 129' HUP
 git worktree add -q --detach "$TMP/w" HEAD || exit 2
-trap 'git worktree remove --force "$TMP/w" >/dev/null 2>&1; rm -rf "$TMP"' EXIT
 # shellcheck disable=SC2086
 # ★[T1383] 제품 자리를 옛 ref 그대로 — ① 옛 ref 에 없던 자리(예: 9월의 `lab`)는 통째로 지운다(종전: checkout 이 pathspec 오류로 자가 멈춰 줄이 비었다)
 #   ② 옛 ref 뒤에 **새로 생긴 제품 파일**은 지운다(종전: `checkout <옛> -- server` 는 옛 파일을 덮어쓰기만 해 새 파일이 남았다 — 새 모듈을 재는 하네스가
@@ -57,7 +72,16 @@ red=0; weak=0; green=0; unk=0; skip=0
       case "$a" in scripts/test-*|*..*|/*) echo "  (표지 경로 거절: $a)"; continue ;; esac
       if git cat-file -e "$OLD:$a" 2>/dev/null; then git -C "$TMP/w" checkout -q "$OLD" -- "$a"; else rm -f "$TMP/w/$a"; fi
     done
-    ( cd "$TMP/w" && timeout "$TIMEOUT_SEC" node "scripts/$t" >"$log" 2>&1 ); rc=$?
+    # ★[T1414] 뒤에서 돌리고 기다린다(위 `_ocr_clean` 머리) · `timeout` 이 없는 상자(맥 기본)는 같은 뜻의 감시로(시한 넘으면 TERM · RC 124 — 종전엔 RC 127 크래시 △ 로 섰다)
+    if command -v timeout >/dev/null 2>&1; then
+      ( cd "$TMP/w" && exec timeout "$TIMEOUT_SEC" node "scripts/$t" ) >"$log" 2>&1 & _cpid=$!
+    else
+      rm -f "$TMP/.timeout"
+      ( cd "$TMP/w" && exec node "scripts/$t" ) >"$log" 2>&1 & _cpid=$!
+      ( _sp=""; trap '[ -n "$_sp" ] && kill "$_sp" 2>/dev/null; exit 0' TERM; sleep "$TIMEOUT_SEC" & _sp=$!; wait "$_sp"; kill -TERM "$_cpid" 2>/dev/null && : >"$TMP/.timeout" ) & _wpid=$!
+    fi
+    wait "$_cpid"; rc=$?; _cpid=""
+    if [ -n "$_wpid" ]; then kill -TERM "$_wpid" 2>/dev/null; wait "$_wpid" 2>/dev/null; _wpid=""; [ -f "$TMP/.timeout" ] && { rc=124; rm -f "$TMP/.timeout"; }; fi
     nf=$(grep -cE '^\s*(✗|❌|FAIL)' "$log"); np=$(grep -cE '^\s*(✓|✅|PASS)' "$log")
     why="$(grep -m1 -E '^\s*(✗|❌|FAIL)' "$log" | cut -c1-160)"
     [ -z "$why" ] && why="$(grep -m1 -E 'Error|Cannot find|is not defined|not a function' "$log" | cut -c1-160)"
