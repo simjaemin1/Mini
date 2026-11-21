@@ -1,0 +1,27 @@
+test-audio.js rc=0 3s === PASS 208 / FAIL 0 ===
+test-body-fields.js rc=0 0s === 14 통과 / 0 실패 ===
+test-claim-v2.js rc=0 9s === PASS 100 / FAIL 0 ===
+test-coll-grid.js rc=0 11s === 결과: 20 PASS / 0 FAIL ===
+test-downed.js rc=0 338s === 180건 중 PASS 180 · FAIL 0 ===
+test-furnace.js rc=0 2s === 노·숯가마 E2E: 85 통과 / 0 실패 ✅ ===
+test-ghost-tree.js rc=0 4s === 결과: 9 PASS / 0 FAIL ===
+test-handoff-body.js rc=0 322s === 94 통과 / 0 실패 ===
+test-harness-lint.js rc=0 39s === 102건 중 PASS 102 · FAIL 0 ===
+test-hp-src.js rc=0 1s === 54 통과 / 0 실패 ===
+test-lon-day.js rc=0 0s === 22건 중 PASS 22 · FAIL 0 ===
+test-member-open.js rc=0 20s   ✓ [상황] 한 개를 내도 한 개 이상 받는 짝이 있다(자명 통과 금지)  {"it":"berry","res":"fruit","take":"food"}
+test-psite-server.js rc=0 20s 결과: PASS
+test-recut.js rc=0 121s === 결과: 24 PASS / 0 FAIL ===
+test-regrow-block.js rc=0 2s === 결과: 24 PASS / 0 FAIL ===
+test-regrow.js rc=0 18s === 101건 중 PASS 101 · FAIL 0 ===
+test-t1066-village-fire.js rc=0 4s === 통과 14 · 실패 0 ===
+test-t1196-artisan.js rc=0 19s === PASS 24 / FAIL 0 ===
+test-t1341-own-house.js rc=0 1s === 62건 중 PASS 62 · FAIL 0 ===
+test-t1386-deeds-debt.js rc=0 5s === T1386 사유지 빚: 14 통과 / 0 실패 ===
+test-t1389-deeds-on.js rc=0 34s === T1389 사유지 켬 준비: 13 통과 / 0 실패 ===
+test-t1392-first-lot.js rc=0 63s === 22건 중 PASS 22 · FAIL 0 ===
+test-t1402-deeds-uptime.js rc=0 36s === T1402 사유지 판정 둘: 8 통과 / 0 실패 ===
+test-t1403-walk-arrow.js rc=0 100s === 21건 중 PASS 21 · FAIL 0 ===
+test-t989-chunk-save.js rc=0 22s === 통과 9 · 실패 0 ===
+test-village-view.js rc=0 30s 결과: PASS 132 · FAIL 0
+DONE

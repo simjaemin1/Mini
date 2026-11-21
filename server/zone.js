@@ -8749,6 +8749,26 @@ function handlePlayerInput(player, raw) {
     const r = SimVillages.__e2eForceDeed ? SimVillages.__e2eForceDeed(msg.vid | 0, msg.kind) : { err: '미지원' };
     send(player.ws, { type: 'notice', text: r.ok ? `🧪 ${r.name} ${r.kind} (D${r.day}~${r.until})` : `🧪 ${r.err}` });
   }
+  else if (E2E_GIVE && msg.type === '__e2e_lot_scan') {   // ★[T1403] 판정 재료 — 선 자리에서 걸어서(4방 너비 우선 · 걸음 상한) 가장 가까운 "놓을 수 있는 아홉 칸" · 막힌 까닭 셈(테스트 손잡이 · 끔 = 이 갈래 없음)
+    const S = BUILDING_SIZE, why = {}; let first = null, free = null, tried = 0;
+    _t1403Bfs(player.x, player.y, (cx, cy, d) => {
+      tried++;
+      const K = _t1392Check(Object.assign({}, player, { x: cx * S + S / 2, y: cy * S + S / 2 }));
+      if (!K.bad.length && !free) free = { cx, cy, steps: d, gate: K.gate ? String(K.gate.text || '').replace(/^🏠 /, '').slice(0, 24) : null };   // 칸은 다 빈 첫 자리(문만 남은 자리 — 안 ㉡ 의 걸음)
+      if (!K.text) { first = { cx, cy, steps: d }; return { x: 0, y: 0 }; }
+      if (K.bad.length) for (const c of K.bad) why[c.why] = (why[c.why] | 0) + 1; else { const gk = 'gate:' + String(K.gate.text || '').replace(/^🏠 /, '').slice(0, 24); why[gk] = (why[gk] | 0) + 1; }
+      return null;
+    });
+    send(player.ws, { type: '__e2e_lot_scan', from: { cx: Math.floor(player.x / S), cy: Math.floor(player.y / S) }, first, free, tried, why });
+  }
+  else if (E2E_GIVE && msg.type === '__e2e_warm') {   // ★[T1403] 판정 재료 — 선 자리가 불 곁인가(몸 데우기 정본 `isNearCampfire` 그대로 · 테스트 손잡이)
+    send(player.ws, { type: '__e2e_warm', warm: !!isNearCampfire(player) });
+  }
+  else if (E2E_GIVE && msg.type === '__e2e_walk_steps') {   // ★[T1403] 판정 재료 — 선 자리에서 (x, y) 칸 또는 그 4방까지 걸음 수(4방 너비 우선 · 상한 = 걸음 프리셋 · 못 닿으면 null · 테스트 손잡이)
+    const S = BUILDING_SIZE, tx = Math.floor(Number(msg.x) / S), ty = Math.floor(Number(msg.y) / S);
+    const g = _t1403Bfs(player.x, player.y, (cx, cy, d) => (Math.abs(cx - tx) + Math.abs(cy - ty) <= 1) ? { d } : null);
+    send(player.ws, { type: '__e2e_walk_steps', steps: g ? g.d : null, straight: straightPathClear(player.x, player.y, Number(msg.x), Number(msg.y), 0) });
+  }
   else if (E2E_GIVE && msg.type === '__e2e_give') {
     for (const [k, q] of Object.entries(msg.items || {})) { const n = Number(q); if (isFinite(n) && n > 0) { player.inventory[k] = (player.inventory[k] || 0) + Math.floor(n); if (T732_MOMENT) Lots.note(player, k, Math.floor(n), zoneGameDay()); } }   // ★[T732] 받은 순간(근사 0)
     // 도구는 인벤 수량이 아니라 **인스턴스**다(`toolItems` = {id, type, d}) — 정본 생성 경로와 같은 모양으로 만든다
@@ -11592,7 +11612,7 @@ const _t1066Ent = new WeakMap();   // 캐리어 바닥 행 → 화덕 시설 둘
 function _t1066Hearths(carrier) {
   let es = _t1066Ent.get(carrier);
   if (es && es.hut === carrier.data.hut) return es.list;
-  const list = HutHearth.hearthsOf(carrier.data.hut, BUILDING_SIZE).map((h) => {
+  const list = HutHearth.hearthsOf(carrier.data.hut, BUILDING_SIZE, !!carrier.data.small).map((h) => {   // ★[T1403] 간이 움집 = 실내 하나
     const e = { id: `hearth_${carrier.id}_${h.key}`, type: 'campfire', hearth: h.key, carrier, x: h.x, y: h.y, floor: 0 };
     Object.defineProperty(e, 'data', { enumerable: true, get() {   // 대기열 칸 = 캐리어 data 안 제 칸(마당 · 실내 따로 — 시설은 하나씩 만든다)
       const d = carrier.data || (carrier.data = {}); const t = d.t1066 || (d.t1066 = {}); return t[h.key] || (t[h.key] = {}); }, set(v) { const d = carrier.data || (carrier.data = {}); (d.t1066 || (d.t1066 = {}))[h.key] = v; } });
@@ -11787,7 +11807,71 @@ function _t1065RockNear(x, y, rad) {
 // ★[T1341] 「지금 할 일」 제 집 줄기 — 선 자리에서 가장 가까운 살아 있는 나무(벌목 · 나무가 나오는 개체) · 바위(채석 · 돌이 나오는 개체) 하나.
 //   술어 = 자연물 동사 정본(`_t1065ResKind`) + 그 동사의 원재료 개체(나무 · 바위 — 묘목 · 광맥 · 운석은 집터 값의 나무 · 돌이 아니다) · 반경은 넓혀 가며(가까운 것부터).
 const _T1341_RAD = [480, 1200, 2400, 4800];
+// ★★[T1403 · T1392 회부 6] 안내 화살 = 곧은 답에 곧게 걸어 닿으면 그 답(종전) · 아니면 **걸어서 닿는 것 가운데 가까운 것** — 손잡이 `T1403_WALK_ARROW`('1' 만 켬 · ★기본 끔 · 끔 = 아래 종전 곧은 거리 그대로).
+//   왜: 어촌2 — 곧은 거리로 가장 가까운 나무가 **강 건너**였다(다리로 돌아가야 닿는다 · 보고 T1392 §3 손 걷기).
+//   걸음 = 선 칸에서 4방 너비 우선(술어는 걸음 정본 `straightPathClear` 가 한 걸음마다 묻는 두 문 — 지형 `isTerrainBlockedLocal` · 벽 변 `isBlockedByWall` ·
+//   다리는 지형 술어가 이미 연다) · 탐색 상한 = 걸음 프리셋 상한(`PathCore.LOCAL_MAX_NODES`) · 새 수 0. 그 안에서 못 찾으면 종전 곧은 거리(null → 아래 줄).
+//   목표 칸 = 그 개체가 선 칸과 그 4방(곁에 서서 E — 채집 곁) · 갈대 = 채집 정본이 '갈대 군락'으로 읽는 걸을 수 있는 칸.
+const T1403_WALK_ARROW = process.env.T1403_WALK_ARROW === '1';
+function _t1403Bfs(x, y, goalOf) {   // goalOf(cx, cy, d) — d = 선 칸에서 걸음 수(4방)
+  const S = BUILDING_SIZE, sx = Math.floor(x / S), sy = Math.floor(y / S), H = S / 2;
+  const seen = new Set([sx + ',' + sy]), q = [sx, sy, 0];
+  let head = 0, pops = 0;
+  while (head < q.length && pops < PathCore.LOCAL_MAX_NODES) {
+    const cx = q[head++], cy = q[head++], d = q[head++]; pops++;
+    const g = goalOf(cx, cy, d); if (g) return Object.assign({ steps: d }, g);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = cx + dx, ny = cy + dy, k = nx + ',' + ny;
+      if (seen.has(k)) continue; seen.add(k);
+      const px = nx * S + H, py = ny * S + H;
+      if (isTerrainBlockedLocal(px, py) || isBlockedByWall(px, py, cx * S + H, cy * S + H, 0)) continue;
+      q.push(nx, ny, d + 1);
+    }
+  }
+  return null;
+}
+function _t1403WalkNear(kind, x, y, straight) {
+  //   걸어서 가장 가까운 것 — 종전 곧은 거리 답(`straight`)이 그 걸음 안에 들면 그 답 그대로(동률 = 종전).
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  const S = BUILDING_SIZE;
+  const stK = new Set();
+  if (straight) { const rx = Math.floor(straight.x / S), ry = Math.floor(straight.y / S); for (const [dx, dy] of (kind === 'reed' ? [[0, 0]] : [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]])) stK.add((rx + dx) + ',' + (ry + dy)); }
+  let walk = null, isGoal;
+  if (kind === 'reed') {
+    const ctx = { forestMult: () => 1, isRock: (a, b) => isRockTileLocal(a, b), isWater: (a, b) => isWaterTileLocal(a, b), isSea: (a, b) => isSeaTileLocal(a, b), hasVessel: false };
+    isGoal = (cx, cy) => { const src = Forage.sourceAt(cx * S + S / 2, cy * S + S / 2, ctx); return (src && src.kind === 'fiber') ? { x: cx * S + S / 2, y: cy * S + S / 2 } : null; };
+  } else {
+    const want = kind === 'chop' ? 'tree' : kind === 'quarry' ? 'rock' : null;
+    if (!want) return null;
+    const R = _T1341_RAD[_T1341_RAD.length - 1], at = new Map();
+    for (const r of (qtResources ? qtResources.queryCircle(x, y, R) : resources.values())) {
+      if (!r || r.type !== want || !(r.hp > 0) || _t1065ResKind(r) !== kind || Math.hypot(r.x - x, r.y - y) > R) continue;
+      const rx = Math.floor(r.x / S), ry = Math.floor(r.y / S);
+      for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) { const k = (rx + dx) + ',' + (ry + dy); const o = at.get(k); if (!o || Math.hypot(r.x - x, r.y - y) < Math.hypot(o.x - x, o.y - y)) at.set(k, r); }
+    }
+    if (!at.size) return null;
+    isGoal = (cx, cy) => { const r = at.get(cx + ',' + cy); return r ? { x: r.x, y: r.y, id: r.id } : null; };
+  }
+  //   걸음으로 먼저 만난 것(walk · 걸음 d1)과 같은 걸음 안에 곧은 답이 있으면 곧은 답(동률은 종전) · 그 걸음을 넘으면 walk.
+  let d1 = -1;
+  const hit = _t1403Bfs(x, y, (cx, cy, d) => {
+    if (walk && d > d1) return walk;
+    if (straight && stK.has(cx + ',' + cy)) return { x: straight.x, y: straight.y, ...(straight.id != null ? { id: straight.id } : {}) };
+    if (!walk) { walk = isGoal(cx, cy); if (walk) d1 = d; }
+    return null;
+  });
+  return hit || walk;
+}
 function _t1341NearRes(kind, x, y) {
+  if (T1403_WALK_ARROW) {   // ★[T1403] 켬 — 곧은 답에 곧게 걸어 닿으면(걸음 정본 `straightPathClear`) 그대로 · 아니면 걸어서 가장 가까운 것(못 찾으면 종전 곧은 답)
+    const st = _t1341Straight(kind, x, y);
+    if (!st || straightPathClear(x, y, st.x, st.y, 0)) return st;
+    const w = _t1403WalkNear(kind, x, y, st); return w ? { x: w.x, y: w.y, ...(w.id != null ? { id: w.id } : {}) } : st;
+  }
+  return _t1341Straight(kind, x, y);
+}
+//   종전 곧은 거리 답(글자 그대로 · ★[T1403] 함수 이름만 붙였다 — 끔 = 같은 값)
+function _t1341Straight(kind, x, y) {
   if (kind === 'reed') return _t1392NearReed(x, y);   // ★[T1392] 켬만 부른다 — 갈대(풀) 자리
   const want = kind === 'chop' ? 'tree' : kind === 'quarry' ? 'rock' : null;
   if (!want || !Number.isFinite(x) || !Number.isFinite(y)) return null;
@@ -12380,6 +12464,9 @@ function _t1392Cfg() {
   const rc = {}; for (const [k, r] of Object.entries(HS.HUT_RECIPES)) rc[k] = { from: Object.assign({}, r.from), to: Object.assign({}, r.to), tool: r.requiresTool || null };
   return { side: T1392_SIDE, cost: _t1392Cost(), stages: { small: HS.SMALL_STAGES.map(row), big: HS.HUT_STAGES.map(row) }, recipes: rc };
 }
+//   ★[T1403 · 재민 11-20 판정 25] 돌봄으로 풀린 **내** 칸을 값을 내고 다시 잡는가 — 한 칸 길(`tryClaim` 승계 갈래)과 아홉 칸 길(`_t1392Cells`)이 같은 술어 하나를 쓴다(사본 0).
+//   남이 이미 이어받은 칸은 주인이 바뀌었으니 여기 안 든다(종전대로 "남의 땅").
+function _myFreeRetake(pid, c, on) { return !!on && c.ownerPid === pid && (c.state || 'active') === 'free'; }
 function _t1392IsFirst(pid) {
   for (const c of claims.values()) if (c.ownerPid === pid && c.kind === 'personal' && (c.state || 'active') !== 'free') return false;
   return true;
@@ -12392,18 +12479,21 @@ function _t1392Cells(pid, cx, cy) {
   const near = qtBuildings ? qtBuildings.queryCircle(cx * S + S / 2, cy * S + S / 2, S * 3) : Array.from(buildings.values());
   for (let dy = -h; dy <= h; dy++) for (let dx = -h; dx <= h; dx++) {
     const x = cx + dx, y = cy + dy, px = x * S + S / 2, py = y * S + S / 2;
-    let why = null;
-    for (const c of claims.values()) {
+    let why = null, retake = null;
+    for (const [cid, c] of claims) {
       if (c.kind === 'guild' || !(px >= c.x && px < c.x + c.w && py >= c.y && py < c.y + c.h)) continue;
-      if (!Claims.cellsOf(c).some(([qx, qy]) => qx === x && qy === y)) continue;   // 셀 집합이 정본
+      const cs = Claims.cellsOf(c);
+      if (!cs.some(([qx, qy]) => qx === x && qy === y)) continue;   // 셀 집합이 정본
+      //   ★[T1403 · 판정 25] 풀린 내 칸(한 칸 행)은 막지 않고 "다시 잡는 칸" — 한 칸 길과 같은 술어(`_myFreeRetake` · 돌봄 켬). 여러 칸 행은 아홉 칸 밖까지 딸려 오니 종전대로 막는다.
+      if (cs.length === 1 && _myFreeRetake(pid, c, Deeds.ON)) { retake = cid; break; }
       why = c.ownerPid === pid ? 'mine' : 'claim'; break;
     }
-    if (!why && isTerrainBlockedLocal(px, py)) why = isWaterTileLocal(px, py) ? 'water' : (isRockTileLocal(px, py) ? 'rock' : 'ditch');
-    if (!why) for (const b of near) {
+    if (!why && !retake && isTerrainBlockedLocal(px, py)) why = isWaterTileLocal(px, py) ? 'water' : (isRockTileLocal(px, py) ? 'rock' : 'ditch');
+    if (!why && !retake) for (const b of near) {   // ★[T1403] 다시 잡는 내 칸 위 건물(내 움집 등)은 막지 않는다 — 한 칸 길처럼 그 땅 그대로 이어받는다(`Claims.transfer` 가 시설도 잇는다)
       if ((b.floor || 0) !== 0) continue;
       if (Math.floor(b.x / S) === x && Math.floor(b.y / S) === y) { why = isVillageTaggedBuilding(b) ? 'village' : 'building'; break; }
     }
-    out.push({ dx, dy, x, y, why });
+    out.push(Object.assign({ dx, dy, x, y, why }, retake ? { retake } : {}));
   }
   return out;
 }
@@ -12434,8 +12524,10 @@ function _t1392FirstLot(player) {
   if (Deeds.ON) { try { _t1343Advance(player.playerId, _t1332Clock()); } catch (e) {} }   // ★[T1343] N 이 바뀌기 앞 셈
   player.inventory.wood -= cost.wood;
   player.inventory.stone -= cost.stone;
-  const made = [];
+  const made = [], again = [];
   for (const c of K.cells) {
+    //   ★[T1403 · 판정 25] 풀린 내 칸 — 새 행을 안 세우고 그 행을 다시 잡는다(한 칸 길 `Claims.transfer` 그대로 · 칸 수 아홉 · 겹침 0 · 값은 아홉 칸 한 값)
+    if (c.retake && claims.has(c.retake)) { const v = claims.get(c.retake); Claims.transfer(c.retake, v, player); if (Deeds.ON) { v.care = 'new'; broadcast({ type: 'claim_updated', claim: v }); } again.push(v); continue; }
     const id = `c${nextClaimId++}`;
     const claim = { id, ownerPid: player.playerId, ownerName: player.name, x: c.x * S, y: c.y * S, w: S, h: S, kind: 'personal',
       guildTribeId: null, guildTribeName: null, createdAt: Date.now() };
@@ -12445,11 +12537,11 @@ function _t1392FirstLot(player) {
       kind: 'personal', guild_tribe_id: null, state: 'active', held_by: null });
     made.push(claim);
   }
-  if (Deeds.ON) for (const c of made) _t1332Use(player, c.x + S / 2, c.y + S / 2, 'claim', Deeds.CFG.PT);   // 새 칸은 가득(+PT) — 칸마다(종전 한 칸 선포와 같은 셈)
+  if (Deeds.ON) for (const c of made.concat(again)) _t1332Use(player, c.x + S / 2, c.y + S / 2, 'claim', Deeds.CFG.PT);   // 새 칸은 가득(+PT) — 칸마다(종전 한 칸 선포와 같은 셈 · ★[T1403] 다시 잡은 칸도 한 칸 길처럼 가득)
   savePlayer(player);
   sendInventory(player);
-  const _N = made.length + (Deeds.ON ? _t1343Others(player.playerId) : 0), _f = (d) => (d >= 10 ? Math.round(d) : +d.toFixed(1));
-  send(player.ws, { type: 'notice', kind: 'claim', text: `개인 사유지 아홉 칸(3×3)을 두었습니다(나무 ${cost.wood} · 돌 ${cost.stone}${Deeds.ON ? ` · 내 땅 ${_N}칸 — 안 돌보면 버티는 날 ${_f(Deeds.daysOf(_N))}일` : ''}). 이제 이 터에 간이 움집을 지을 수 있습니다.` });
+  const _N = made.length + again.length + (Deeds.ON ? _t1343Others(player.playerId) : 0), _f = (d) => (d >= 10 ? Math.round(d) : +d.toFixed(1));
+  send(player.ws, { type: 'notice', kind: 'claim', text: `개인 사유지 아홉 칸(3×3)을 두었습니다(나무 ${cost.wood} · 돌 ${cost.stone}${again.length ? ` · 풀린 내 땅 ${again.length}칸을 다시 잡음` : ''}${Deeds.ON ? ` · 내 땅 ${_N}칸 — 안 돌보면 버티는 날 ${_f(Deeds.daysOf(_N))}일` : ''}). 이제 이 터에 간이 움집을 지을 수 있습니다.` });
   for (const c of made) broadcast({ type: 'claim_added', claim: c });
   try { Onboarding.pushOwn(player); } catch (e) {}
 }
@@ -12542,13 +12634,13 @@ function tryClaim(player, kind = 'personal') {
     for (const [cid, c] of claims) {
       if (c.kind === 'guild') continue;
       const st = c.state || 'active';
-      if (c.ownerPid === player.playerId && !(_t1305P && st === 'free')) continue;   // ★[T1305] 켬 — 돌봄으로 풀린 내 칸은 값을 내고 다시 잡는다
+      if (c.ownerPid === player.playerId && !_myFreeRetake(player.playerId, c, _t1305P)) continue;   // ★[T1305] 켬 — 돌봄으로 풀린 내 칸은 값을 내고 다시 잡는다(★[T1403] 술어 이름만 — 같은 식)
       if (st !== 'pref' && st !== 'free') continue;
       if (!(cx + SZ / 2 >= c.x && cx + SZ / 2 < c.x + c.w && cy + SZ / 2 >= c.y && cy + SZ / 2 < c.y + c.h)) continue;
       victim = c; vid = cid; break;
     }
     if (victim) {
-      const t = (_t1305P && victim.ownerPid === player.playerId) ? { ok: true, why: '풀린 내 땅을 다시 잡음' } : Claims.takeableBy(player, victim);
+      const t = _myFreeRetake(player.playerId, victim, _t1305P) ? { ok: true, why: '풀린 내 땅을 다시 잡음' } : Claims.takeableBy(player, victim);
       if (!t.ok) { send(player.ws, { type: 'notice', text: `🏠 ${t.why}` }); return; }
       player.inventory.wood -= cost.wood;
       player.inventory.stone -= cost.stone;
@@ -13836,7 +13928,7 @@ function tryHutAdvance(player, buildingId) {
     buildings.delete(b.id); if (chunkManager.removeBuilding) chunkManager.removeBuilding(b); db.deleteBuilding(b.dbId);
     broadcast({ type: 'building_removed', id: b.id });
     const SZg = BUILDING_SIZE, made = [];
-    const _sm = !!b.data.small;   // ★[T1392] 간이 움집 — 문 = 남벽 가운데 1칸 · 모든 행에 `small` 표지(클라 6×4 지붕 · 실내 그림 · 화덕 자리는 안 탄다 — 3×3 그림이 없다 · 보고 T1392 ⓒ)
+    const _sm = !!b.data.small;   // ★[T1392] 간이 움집 — 문 = 남벽 가운데 1칸 · 모든 행에 `small` 표지(클라 6×4 지붕 · 실내 그림은 안 탄다 — 3×3 그림이 없다 · 보고 T1392 ⓒ · ★[T1403] 화덕은 간이 표 `HEARTHS_SMALL` 로 선다)
     const doorXs = _sm ? new Set([x0 + 1]) : new Set([x0 + 2, x0 + 3]);   // 남벽 중앙 2칸(NPC 움집 문 규약 동형)
     const oid = player.playerId, onm = `${player.name}의 ${_sm ? '간이 움집' : '움집'}`;
     const _hutTag = [x0, y0, x1, y1];   // ★클라 v3 반수혈 스킨 태그(NPC 움집과 동일 외형 — 물리 불변)
@@ -13847,7 +13939,7 @@ function tryHutAdvance(player, buildingId) {
     }
     for (let y = y0; y <= y1; y++) { _liveBuildRow('wall', x1 * SZg, y * SZg, _tg({ side: 'E', floor: 0, hut: _hutTag }), oid, onm, made); _liveBuildRow('wall', (x0 - 1) * SZg, y * SZg, _tg({ side: 'E', floor: 0, hut: _hutTag }), oid, onm, made); }
     for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) _liveBuildRow('floor', x * SZg + SZg / 2, y * SZg + SZg / 2, _tg({ floor: 0, hut: _hutTag }), oid, onm, made);
-    _liveBuildRow('hut', ((x0 + x1 + 1) / 2) * SZg, ((y0 + y1 + 1) / 2) * SZg, _tg({ owner: player.playerId, floor: 0 }), oid, onm, made);
+    _liveBuildRow('hut', ((x0 + x1 + 1) / 2) * SZg, ((y0 + y1 + 1) / 2) * SZg, _tg(Object.assign({ owner: player.playerId, floor: 0 }, _sm ? { posts: HutStages.SMALL_POSTS.map(([fx, fy]) => [fx * SZg, fy * SZg]) } : {})), oid, onm, made);   // ★[T1403] 간이 움집 — 가운데 기둥 둘 자리(앵커 기준 px · `hut-stages.js` 정본 · 그림만 · 충돌 0)
     broadcast({ type: 'buildings_spawn', buildings: made });
     send(player.ws, { type: 'notice', text: _sm ? '🏠 간이 움집이 다 지어졌습니다. 구덩이를 파고 기둥 넷을 세우고 뼈대를 엮고 이엉을 덮었습니다.' : '🏠 움집이 다 지어졌습니다. 구덩이를 파고 기둥을 세우고 뼈대를 엮고 이엉을 덮었습니다.' });
     if (_sm) { try { Onboarding.pushOwn(player); } catch (e) {} }
