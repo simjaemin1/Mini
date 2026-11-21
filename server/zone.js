@@ -5463,6 +5463,8 @@ const T1337_WAKE = T1322_PF && SS.WAKE_ON, T1337_VERIFY = T1337_WAKE && SS.WAKE_
 //   같은 답인 까닭: 거울 배열은 Set 의 차례 그대로다(새 pid = 끝 · 지웠다 다시 넣음 = 끝 · 고리 안에서 넣은 pid 도 같은 바퀴 끝에서 돈다 · 지운 pid 는 구멍 — 안 돈다).
 //     구멍 메우기는 고리 머리에서만 한다. 칸 캐시는 그 칸 몸이 비면(같은 pid 로 다시 낳음) 다시 묻는다.
 const T1348_LOOP = T1322_PF && SS.LOOP;
+// ★[T1415 ②] 깨움 시각 줄(`stand-skip` 머리 글 · 끔 기본) — 거울 고리 · verify 거름 끔 · 사건 갈래 끔일 때만(그 둘은 틱마다 몸을 연다 · 계측 탐침 `T1241_PROBE` 는 된다 — 거른 셈을 고리 끝에 같이 더한다)
+const T1415Q = T1348_LOOP && SS.WQ_ON && !T1322_VERIFY && !T1241_DES, T1415QV = T1415Q && SS.WQ_VERIFY, T1415QS = T1415Q && !SS.WQ_VERIFY;
 // ★★[T1348 ⓑ 2026-11-17 · 손잡이 `T1348_WALK`(켬 기본 · `'0'` 끔 · `'verify'` 켬 + 커널 값을 셈한 뒤 진짜 걸음을 돌려 견줌)] **걷는 몸 열 커널** — T1337 회부 3 · §5.
 //   결정 시각 전 · 길 가운데(거울 길 · 끝 점 앞)를 걷는 몸의 걸음 문은 틱마다 막힘 판정(5px 움직였나 · 1.5초) → 길 만료 → 다음 점 쪽 속도(또는 10px 안이면 다음 점)뿐이다.
 //   켬: 진짜 걸음을 마친 그런 몸에 표 3 을 준다(`_t1348Grant`). 다음 틱 고리는 몸을 찾지 않고 칸 → 몸(`SS.own`)으로 자리만 읽어
@@ -5504,7 +5506,7 @@ function _t1348Dec(s, now) {
   for (const m of near) { if (m.type !== 'wolf' || m.tameOwner) continue; if (Math.hypot(m.x - x, m.y - y) < NPC_FLEE_RANGE) { SS.stat.fwolf++; return false; } }
   const farm = p.simJob === 'farmer', vq = farm ? T1348_FVERIFY : T1365_VERIFY;   // ★[T1365] 농부 = `t1348Farm` · 그 밖 일터 = `t1365Work`
   let k;
-  if (T1399_TOK && A.WK[s] && A.WGD[s] === zoneGameDay() && SimVillages.t1399Still(p, now, A.WT[s], A.WFP[s], A.WDY[s], A.WBD[s], A.WWD[s], A.WG[s], A.WSC[s], A.WPN[s], A.WPX[s], A.WPY[s], A.WPR[s], A.WPO[s], A.WVW[s], A.WQ[s], A.WQX[s], A.WQY[s])) {   // ★[T1399] 표가 산다 = 판정을 다시 해도 같은 답
+  if (T1399_TOK && A.WK[s] && A.WGD[s] === zoneGameDay() && SimVillages.t1399Still(p, now, A.WT[s], A.WFP[s], A.WDY[s], A.WBD[s], A.WWD[s], A.WG[s], A.WSC[s], A.WPN[s], A.WPX[s], A.WPY[s], A.WPR[s], A.WPO[s], A.WVW[s], A.WQ[s], A.WQX[s], A.WQY[s], A.WT2[s], SS.WQS[s])) {   // ★[T1399] 표가 산다 = 판정을 다시 해도 같은 답
     k = A.WK[s]; SS.stat.thit++; _t1399J(p)[1]++;
     if (T1399_TVERIFY) { const k2 = farm ? SimVillages.t1348Farm(p, now) : SimVillages.t1365Work(p, now); SS.stat.tvq++; if (k2 !== k) { const st = SS.stat, w = p.simJob + ':' + k + '>' + k2 + ':' + (SimVillages.t1365Why ? SimVillages.t1365Why() : ''); st.tbad++; st.twhy[w] = (st.twhy[w] || 0) + 1; if (st.tex.length < 8) st.tex.push(`${p.pid} ${w} t=${now}`); A.WK[s] = 0; } k = k2; }   // 견줌 = 행동은 판정 답
   } else {
@@ -5535,7 +5537,7 @@ function _t1399Put(s, p, now, k) {
   const T = SimVillages.t1399Take(p, now, k), A = SS.A;
   if (!T) { if (k) { const w = SimVillages.t1399Why ? SimVillages.t1399Why() || '?' : '?', N = SS.stat.tnone; N[w] = (N[w] || 0) + 1; } return; }
   A.WK[s] = k; A.WT[s] = T.T; A.WFP[s] = T.pat; A.WDY[s] = T.day; A.WBD[s] = T.bday; A.WWD[s] = T.wday; A.WGD[s] = zoneGameDay(); A.WG[s] = T.gen; A.WSC[s] = T.sc;
-  A.WPN[s] = T.pn ? 1 : 0; A.WPX[s] = T.px; A.WPY[s] = T.py; A.WPR[s] = T.pr; A.WPO[s] = T.po; A.WVW[s] = T.vw; A.WQ[s] = T.q; A.WQX[s] = T.qx; A.WQY[s] = T.qy;
+  A.WPN[s] = T.pn ? 1 : 0; A.WPX[s] = T.px; A.WPY[s] = T.py; A.WPR[s] = T.pr; A.WPO[s] = T.po; A.WVW[s] = T.vw; A.WQ[s] = T.q; A.WQX[s] = T.qx; A.WQY[s] = T.qy; A.WT2[s] = T.T2; SS.WQS[s] = T.qs;
   SS.stat.ttake++; _t1399J(p)[0]++;
 }
 // 견줌 — 결정 문을 돌린 바로 뒤(걸음 문 앞) 몸 칸 전부(도장 · 결정 칸 뺌)가 그 앞과 같고 결정 시각이 셈한 값인가(걸음 문이 쓰는 칸은 아직 안 썼다)
@@ -5692,6 +5694,7 @@ function _t1322Grant(npc, now, s0) {
 }
 // 미룬 도장 — 건넌 틱의 걸음 문이 썼을 값(마지막 건넌 시각 · 표를 준 자리)
 function _t1322Wake(s) {
+  if (SS.WQ_ON) SS.qWake(s);   // ★[T1415 ②] 주차 몸이면 미룬 칸(거른 틱 · 시각)부터 쓰고 고리에 되돌린다(줄 손잡이 끔 = 무동작 · 줄이 안 서도 주차 0 이라 무동작)
   const A = SS.A, t = A.SK[s];
   if (A.TK[s] === 3) {   // ★[T1348 ⓑ] 걷는 몸 — 길 번호 · 막힘 자리(마지막 셈 값) · 마지막 건넌 걸음 시각
     const p = SS.own[s]; p.pathIndex = A.PI[s]; const S = p._stuckPos; S.x = A.SPX[s]; S.y = A.SPY[s]; S.at = A.SPA[s]; if (t === t) p._t540StepAt = t;
@@ -5719,6 +5722,7 @@ function _t1322FlushAll() { const A = SS.A, n = SS.count(); for (let s = 0; s < 
 let _t1372SSSnap = null, _t1372SSPend = null;
 const _t1372SSStat = { snap: 0, rows: 0, applied: 0, miss: 0, path: 0 };
 function _t1372SSTake() {
+  if (SS.WQ_ON) SS.qAll('snap');   // ★[T1415 ②] 표 행을 뜨기 앞 — 주차 몸 칸을 다 쓴다
   const A = SS.A, n = SS.count(), rows = [], K = Object.keys(A).filter((k) => k !== 'GN');
   for (let s = 0; s < n; s++) { const p = SS.own[s]; if (!p || !(A.TK[s] || A.DS[s])) continue;
     const r = { pid: p.pid, w: SimVillages.t1372Where ? SimVillages.t1372Where(p.pid) : null }; for (const k of K) { const v = A[k][s]; r[k] = Number.isFinite(v) ? v : String(v); }
@@ -5822,6 +5826,14 @@ function _t1322Dusk(s, now) {
   else { if (now !== _t670PhNow) { _t670PhNow = now; _t670Ph = worldPhase(now); } ph = _t670Ph; }
   const lon = A.LON[s], fv = T720_LON_DAY ? phaseAdd(ph, lon) : (ph + lon) % 1;
   return fv > WORLD.dayPhaseRatio;
+}
+// ★[T1415 ②] 해 질 녘 아래 끝 — 표 2 몸이 `_t1322Dusk` 참이 되는 첫 시각보다 이르거나 같은 시각(해 몫은 하루 길이 `L` 로 곧게 늘고 넘김에선 내려가기만 한다 ⇒ 그 앞엔 참이 없다 · 2ms 덜)
+function _t1415Dusk(s, now) {
+  const A = SS.A, w = A.W95[s], L = w ? (SimVillages.t1295DayMs ? SimVillages.t1295DayMs() : NaN) : WORLD.dayLengthMs;
+  if (!(L > 0)) return now;
+  const ph = w ? SimVillages.t1295Ph(now) : worldPhase(now), lon = A.LON[s], fv = T720_LON_DAY ? phaseAdd(ph, lon) : (ph + lon) % 1, r = WORLD.dayPhaseRatio;
+  if (!(fv <= r)) return now;
+  return now + (r - fv) * L - 2;
 }
 // 거름 — 결정 문 고리가 몸을 열기 전(pid → 칸). 참 = 이번 틱 걸음 문을 건넌다(도장 시각만 적는다). 거짓 = 표를 내렸다(미룬 도장은 몸에) → 종전 길.
 function _t1322Skip(s, pid, now) {
@@ -18103,7 +18115,26 @@ setInterval(() => {
     if (T1322_PF) _t1322Grant(npc, now, _sL);   // ★[T1322] 서 있는 몸이면 표(다음 틱 첫 거름)
     if (T1241_DES) _desTry(npc, now);   // ★[T1241] 사건 토막을 열 수 있나
   } while (false); return _stopAt !== null; };
-  if (T1348_LOOP) {   // ★[T1348 ⓐ] 거울 배열 고리(같은 차례 · 길이를 매번 읽는다 = 고리 안에서 넣은 pid 도 이 바퀴 · 구멍 = 지운 pid)
+  if (T1415Q) {   // ★[T1415 ②] 깨움 시각 줄 — 같은 거울 고리 · 주차 몸은 건너뛴다(verify = 열되 견줌) · 거른 서 있는 몸은 다음에 볼 시각으로 주차
+    const _cpt = npcs.compact(), _P = npcs.P, _S = npcs.S, _own = SS.own, Q = SS.Q, A = SS.A, n0 = _tick.n; let _cut = -1, _vs = 0;
+    SS.qBegin(n0, now, _cpt, _P, _S);
+    for (let i = 0; i < _P.length; i++) { const pid = _P[i]; if (pid === undefined) continue;
+      if (T1415QS && _curHit && Q.K[i]) { _vs++; continue; }   // 주차 몸 — 이 틱 첫 거름은 건넌 것과 같다(셈은 고리 끝 · 칸은 꺼낼 때 `qMat`)
+      let s = _S[i]; if (s < 0 || _own[s] === null) { s = SS.slot(pid); _S[i] = s; }
+      Q.at = i; const pk = T1415QV && _curHit && Q.K[i] === 1 && s >= 0 && Q.P[s] === 1;
+      if (pk) { Q.st.vis++; SS.qMat(s); }   // verify — 꺼냈다면 쓸 칸 = 종전 길이 쓴 칸인가
+      if (_decOne(pid, s)) { _cut = i; break; }
+      if (s < 0) continue;
+      if (pk) { if (!((A.TK[s] === 1 || A.TK[s] === 2) && A.VT[s] === n0 && Q.P[s] === 1)) SS.qDrop(s, 'miss'); continue; }   // verify — 줄은 안 깨웠는데 종전 첫 거름이 깨웠다
+      if (_curHit && Q.P[s] !== 1 && (A.TK[s] === 1 || A.TK[s] === 2) && A.VT[s] === n0 && !A.GN[s] && _own[s]) {
+        let T = A.NDA[s]; if (A.TK[s] === 2) { const d = _t1415Dusk(s, now); if (d < T) T = d; }
+        if (now < T) SS.qPark(s, i, T, n0);
+      }
+    }
+    if (_vs) { SS.stat.skip += _vs; Q.st.vskip += _vs; if (T1241_PROBE) { _desStat.steps += _vs; if (_desClk) _desStat.nStep += _vs; } }   // 건넌 셈(종전 첫 거름 · 계측 탐침이 몸마다 센 그 수)
+    SS.qEnd(n0, now, _curHit ? _cut : 0);
+  }
+  else if (T1348_LOOP) {   // ★[T1348 ⓐ] 거울 배열 고리(같은 차례 · 길이를 매번 읽는다 = 고리 안에서 넣은 pid 도 이 바퀴 · 구멍 = 지운 pid)
     npcs.compact(); const _P = npcs.P, _S = npcs.S, _own = SS.own;
     for (let i = 0; i < _P.length; i++) { const pid = _P[i]; if (pid === undefined) continue; let s = _S[i]; if (s < 0 || _own[s] === null) { s = SS.slot(pid); _S[i] = s; } if (_decOne(pid, s)) break; }
   }
