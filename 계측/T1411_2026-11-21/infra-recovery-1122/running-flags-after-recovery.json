@@ -1,0 +1,19 @@
+{
+ "worlds": {
+  "OFF-1020": {
+   "T1411_TERR_FAST": null,
+   "T1302_TERR_BODY": null,
+   "T1358_STAKE_REQUOTE": null,
+   "VILLAGE_DAY_MS": "1440000",
+   "VILLAGE_NPC_CAP": null
+  },
+  "ON-1020": {
+   "T1411_TERR_FAST": "1",
+   "T1302_TERR_BODY": "1",
+   "T1358_STAKE_REQUOTE": "1",
+   "VILLAGE_DAY_MS": "1440000",
+   "VILLAGE_NPC_CAP": null
+  }
+ },
+ "unsetNpcCapMeaning": "T577 removes Infinity; product NPC_CAP_PER_VILLAGE defaults to Infinity"
+}

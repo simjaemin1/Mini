@@ -1,0 +1,84 @@
+{
+ "ON-1020": {
+  "checkpoint": 260,
+  "zoneExit": {
+   "code": 0,
+   "signal": null,
+   "pid": 12931,
+   "nativeCpuProfile": false
+  },
+  "clockExitMeta": {
+   "exitEventCode": 0,
+   "cpu": {
+    "user": 3167994350,
+    "system": 39390374
+   },
+   "uptimeSeconds": 2920.076349356,
+   "clock": {
+    "V": 1767599747724.885,
+    "V0": 1767585347526.708,
+    "fired": 599558,
+    "timers": 8595,
+    "intervals": 18,
+    "started": true,
+    "startAt": 1767585347526.708,
+    "paused": false,
+    "yields": 1498,
+    "maxQ": 23,
+    "errs": 0,
+    "q": 16
+   },
+   "requestedDays": "730",
+   "seed": "1020",
+   "npcCapEnvironment": null
+  },
+  "closedSegment": {
+   "from": 250,
+   "to": 260,
+   "sec": 2921.1,
+   "code": 0,
+   "at": "2026-11-21T18:13:32.249Z"
+  }
+ },
+ "OFF-1020": {
+  "checkpoint": 220,
+  "zoneExit": {
+   "code": 0,
+   "signal": null,
+   "pid": 12920,
+   "nativeCpuProfile": false
+  },
+  "clockExitMeta": {
+   "exitEventCode": 0,
+   "cpu": {
+    "user": 2457569552,
+    "system": 36535197
+   },
+   "uptimeSeconds": 2401.237926469,
+   "clock": {
+    "V": 1767542147732.177,
+    "V0": 1767527747534,
+    "fired": 601170,
+    "timers": 10207,
+    "intervals": 18,
+    "started": true,
+    "startAt": 1767527747534,
+    "paused": false,
+    "yields": 1502,
+    "maxQ": 23,
+    "errs": 0,
+    "q": 16
+   },
+   "requestedDays": "730",
+   "seed": "1020",
+   "npcCapEnvironment": null
+  },
+  "closedSegment": {
+   "from": 210,
+   "to": 220,
+   "sec": 2402,
+   "code": 0,
+   "at": "2026-11-21T18:04:53.179Z"
+  }
+ }
+}
