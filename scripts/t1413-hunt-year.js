@@ -12,7 +12,8 @@
 //      ⚠`MOB_CAP`(50)은 랩 블록에서 정의만 있고 부르는 곳이 없다 — 걸리는 상한은 `HUNT_CAP` 하나.
 //   ③ 사냥에 쓰는 몫 — 하루 07:12 부터 몫 × 1,440분만 사냥꾼이 숲에 있다(100% · 25% · 10%) · 닷새에 하루 = 다섯 날에 한 날 통째(1,440분).
 //      쉬는 동안 사냥꾼은 집(랩 `s.agents` 밖 — 짐승 눈에 없다) · 돌아올 땐 캠프에서 · 몸 성함(집에서 쉬었다) · 쥐던 표적 · 사체는 놓음.
-//      몫이 끝나도 잡은 몸(`_carc`)을 손질하는 사냥꾼이 있으면 끝낼 때까지 남는다(넘긴 분 = `over` · 표 덤).
+//      몫이 끝나면 사냥꾼마다: 잡은 몸(`_carc`)을 손질하는 사람만 마칠 때까지 남고 나머지는 곧장 집으로(넘긴 사냥꾼-분 = `over` · 표 덤 ·
+//      그동안 랩 '사망 보충' 문턱 = 남은 사람 수 — 빈자리를 새 사냥꾼으로 안 채운다).
 //      쉬는 동안 짐승은 8분 걸음(랩 `updateMobs` 의 dt 상한 8 그대로 — 사람 없는 숲을 빨리 감기).
 //   ④ 죽은 사냥꾼 — 랩은 죽은 몸을 배열에 남겨 "사망 보충"(driveHunters 첫 줄)이 안 돈다 → 날 경계(07:12)에 죽은 몸을 빼 랩 보충 줄이 돌게 한다.
 //   무리터 = T1396 과 같은 땅(캠프 기대 자리 둘레 숲 2,923칸만 · 바깥 숲 = 풀밭) · 밀도 손잡이 `MOB_DENS` = 100 ÷ 환율.
@@ -62,6 +63,22 @@ function load(seed, exch, nh, sp) {
     "const cv={getContext:()=>null,addEventListener:()=>{},getBoundingClientRect:()=>({left:0,top:0,width:760,height:760})};const ctx=new Proxy({},{get:()=>()=>{},set:()=>true});");
   rep('bakeBG();resetAll();requestAnimationFrame(loop);', '');
   rep('MOB_DENS=0.02,', 'MOB_DENS=' + (L_GAMEMAX / exch) + ',');
+  // 지름길(같은 답 · 빠르게) — 랩 losRk · losFT 는 선분을 1 · 2 m 마다 걸어 바위 · 숲 칸을 센다. 선분이 지나는 칸은 늘 두 끝의 상자(끝수 버림) 안이므로
+  //   그 상자에 바위(숲)가 하나도 없으면 걸음 없이 거짓(0)이 답이다 — 누적합으로 O(1)에 본다 · 있으면 랩 걸음 그대로. 초원 판은 바위 0 이라 losRk 가 늘 거짓인데
+  //   사슴 무리가 지도 끝으로 흘러가면 사냥꾼 × 몸 × 300 걸음이 틱마다 돈다(17명 판 하루 0.17초 → 4초). `T1413_NOFAST=1` = 지름길 끔(같은 표인지 견주는 판).
+  if (!process.env.T1413_NOFAST) {
+    rep('const losRk=(x1,y1,x2,y2)=>{if(!TR.rock)return false;', 'const losRk=(x1,y1,x2,y2)=>{if(!TR.rock)return false;if(__none(__PR,x1,y1,x2,y2))return false;');
+    rep('const losFT=(x1,y1,x2,y2)=>{if(!TR.forest)return 0;', 'const losFT=(x1,y1,x2,y2)=>{if(!TR.forest)return 0;if(__PF)return __ft(x1,y1,x2,y2);');
+    js = 'let __PR=null,__PF=null;const __ps=(g)=>{const M=N+1,P=new Int32Array(M*M);for(let y=0;y<N;y++){let r=0;for(let x=0;x<N;x++){r+=g[y*N+x]?1:0;P[(y+1)*M+x+1]=P[y*M+x+1]+r;}}return P;};'
+      + 'const __none=(P,x1,y1,x2,y2)=>{if(!P||!(isFinite(x1)&&isFinite(y1)&&isFinite(x2)&&isFinite(y2)))return false;const M=N+1;'
+      + 'let a=Math.max(0,Math.floor(Math.min(x1,x2))),b=Math.min(N-1,Math.floor(Math.max(x1,x2))),c=Math.max(0,Math.floor(Math.min(y1,y2))),d=Math.min(N-1,Math.floor(Math.max(y1,y2)));'
+      + 'if(a>b||c>d)return true;return P[(d+1)*M+b+1]-P[c*M+b+1]-P[(d+1)*M+a]+P[c*M+a]===0;};'
+      // losFT 같은 셈: 표본 i = 1 … n9−1 의 칸(랩 식 x1+(x2−x1)·(i/n9) 그대로) 가운데 숲 칸 수 × 2 — 표본 줄을 반씩 갈라 두 끝 상자에 숲이 없으면 그 토막 0(좌표가 i 에 단조라 토막 표본은 상자 안)
+      + 'const __ft=(x1,y1,x2,y2)=>{const d9=Math.hypot(x2-x1,y2-y1),n9=Math.ceil(d9/2);if(!(n9>1))return 0;'
+      + 'const X=(i)=>x1+(x2-x1)*(i/n9),Y=(i)=>y1+(y2-y1)*(i/n9);'
+      + 'const rec=(lo,hi)=>{if(__none(__PF,X(lo),Y(lo),X(hi),Y(hi)))return 0;if(hi-lo<12){let f=0;for(let i9=lo;i9<=hi;i9++){const t9=i9/n9,xx=Math.floor(x1+(x2-x1)*t9),yy=Math.floor(y1+(y2-y1)*t9);if(inG(xx,yy)&&TR.forest[idx(xx,yy)])f++;}return f;}'
+      + 'const m=(lo+hi)>>1;return rec(lo,m)+rec(m+1,hi);};return rec(1,n9-1)*2;};' + js;
+  }
   const els = {};
   const C = { console, performance: { now: () => 0 }, requestAnimationFrame: () => {}, addEventListener: () => {} };
   C.document = { getElementById: (id) => els[id] || (els[id] = { value: { nh: String(nh), cap: String(LAB_CAP), spd: '36', terr: '초원' }[id] || '0', textContent: '', innerHTML: '' }), querySelectorAll: () => [] };
@@ -70,25 +87,26 @@ function load(seed, exch, nh, sp) {
   vm.runInContext(DETMATH + '(Math)', C);
   vm.runInContext(js + `
 ;globalThis.__api={get s(){return s;},get lifeGM(){return lifeGM;},set lifeGM(v){lifeGM=v;},resetAll,driveHunters,updateMobs,
-  MOB_DEF,N,NPC_MAXHP,get camp(){return camp;},rnd:()=>Math.random(),setSp(x){HUNT_SPECIES=x;},setCap(x){HUNT_CAP=x;},getCap(){return HUNT_CAP;},
+  MOB_DEF,N,NPC_MAXHP,get camp(){return camp;},rnd:()=>Math.random(),setSp(x){HUNT_SPECIES=x;},setCap(x){HUNT_CAP=x;},getCap(){return HUNT_CAP;},fast(){if(typeof __ps==='function'){__PR=__ps(TR.rock);__PF=__ps(TR.forest);}},
   win(K){const cx=Math.round(N*0.18)+5,cy=Math.round(N*0.5);const L=[];for(let i=0;i<N*N;i++)if(forest0[i])L.push([Math.hypot(i%N-cx,((i/N)|0)-cy),i]);
     if(!(K>0)||K>=L.length)return {K:L.length,R:null};L.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);const keep=new Uint8Array(N*N);for(let k=0;k<K;k++)keep[L[k][1]]=1;
     for(let i=0;i<N*N;i++)if(!keep[i])forest0[i]=0;return {K,R:+L[K-1][0].toFixed(1)};}};`, C);
   const A = C.__api;
   A.setSp(sp); A.setCap(LAB_CAP);
   const w = A.win(WIN);
-  A.resetAll(); A.lifeGM = NPC_START;
-  return { A, w };
+  A.resetAll(); A.lifeGM = NPC_START; A.fast();   // 누적합은 resetAll(buildRock · 무리터 자르기) 뒤 — 사냥실험실은 그 뒤 바위 · 숲을 안 바꾼다
+  const setWant = (n) => { C.document.getElementById('nh').value = String(n); };   // 랩 driveHunters 가 읽는 사냥꾼 수(사망 보충의 문턱)
+  return { A: Object.assign(A, { setWant }), w };
 }
 
 function runOne(seed, exch, nh, sp, share, cap, r, days) {
   const { A, w } = load(seed, exch, nh, sp);
   const s = A.s, MD = A.MOB_DEF;
   const K = HB5000 * 5000 / exch;
-  const kb = []; let N = K, empty = null, over = 0, killed = 0, predKill = 0, trimmed = 0, offSaved = null;
+  const kb = []; let N = K, empty = null, over = 0, killed = 0, predKill = 0, trimmed = 0, home = [];
   const capOf = () => { const n = Math.floor(N + 1e-9); return cap === 'lab' ? Math.min(LAB_CAP, n) : n; };
   const isPrey = (m) => !MD[m.type].pred;
-  const held = () => { const H = new Set(); for (const a of (offSaved || s.agents)) { if (a._tgt) H.add(a._tgt); if (a._cm) H.add(a._cm); if (a._carc) H.add(a._carc); if (a._bm) H.add(a._bm); } return H; };
+  const held = () => { const H = new Set(); for (const a of s.agents) { if (a._tgt) H.add(a._tgt); if (a._cm) H.add(a._cm); if (a._carc) H.add(a._carc); if (a._bm) H.add(a._bm); } return H; };
   const trim = () => {   // 랩이 그린 산 먹잇감 > 장부면 넘은 만큼 뺀다(뒤에서부터 · 쥔 몸 · 굴 속 · 사체 제외)
     const c = capOf(); let live = 0; for (const m of s.mobs) if (m.st !== 'dead' && isPrey(m)) live++;
     if (live <= c) return;
@@ -97,23 +115,28 @@ function runOne(seed, exch, nh, sp, share, cap, r, days) {
   };
   const dayEnd = NPC_START + Math.round(days * 1440);
   let kA0 = 0, lastDay = -1;
-  const goOff = () => { offSaved = s.agents; for (const m of s.mobs) m.tgt = null; s.agents = []; };
-  const goOn = () => {
+  // ③ 사냥 몫 — 사냥꾼마다: 몫이 끝나면 사체를 쥐지 않은 사람은 곧장 집으로 · 손질하는 사람은 마치고 집으로(그동안 새 판을 안 연다 = 다음 틱에 사체가 없으면 간다)
+  const sendHome = (a) => { home.push(a); for (const m of s.mobs) if (m.tgt === a) m.tgt = null; };
+  const comeBack = () => {
     const camp = A.camp;
-    for (const a of offSaved) { a._tgt = null; a._cm = null; a._carc = null; a._bm = null; a._lbx = undefined; a.rest = 0; a.state = 'work'; a.action = ''; a.hp = A.NPC_MAXHP;
-      a.px = camp.cx + A.rnd() * 2 - 1; a.py = camp.cy + A.rnd() * 2 - 1; }   // 랩 맥락의 씨 뿌린 난수(바깥 Math.random 은 씨가 없다)
-    s.agents = offSaved; offSaved = null;
+    for (const a of home) { a._tgt = null; a._cm = null; a._carc = null; a._bm = null; a._lbx = undefined; a.rest = 0; a.state = 'work'; a.action = ''; a.hp = A.NPC_MAXHP;
+      a.px = camp.cx + A.rnd() * 2 - 1; a.py = camp.cy + A.rnd() * 2 - 1; s.agents.push(a); }   // 랩 맥락의 씨 뿌린 난수(바깥 Math.random 은 씨가 없다)
+    home = [];
   };
   while (A.lifeGM < dayEnd) {
     const gm = A.lifeGM, sched = shareOn(share, gm + 1);
-    const busy = !sched && !offSaved && s.agents.some((a) => !a._dead && a._carc && a._carc.rot > 0);   // 잡은 몸을 손질하는 중이면 끝낼 때까지 남는다(넘긴 분 = over)
-    const on = sched || busy; if (busy) over++;
     const dayI = Math.floor((gm + 1 - NPC_START) / 1440);
-    if (dayI !== lastDay) { lastDay = dayI; const L = offSaved || s.agents; const alive = L.filter((a) => !a._dead); if (offSaved) offSaved = alive; else s.agents = alive; }   // ④
-    if (on && offSaved) goOn();
-    if (!on && !offSaved) goOff();
+    if (dayI !== lastDay && process.env.T1413_DEBUG) { let lv = 0, dd = 0, pr = 0; for (const m of s.mobs) { if (m.st === 'dead') dd++; else if (isPrey(m)) lv++; else pr++; } console.error(`day ${dayI} ms ${Date.now() % 10000000} N ${N.toFixed(1)} 산 ${lv} 사체 ${dd} 맹수 ${pr} 사냥꾼 ${s.agents.length}+집${home.length} 피 ${(s._blood || []).length} 좌표최대 사람 ${Math.max(0, ...home.concat(s.agents).map((q) => Math.max(Math.abs(q.px), Math.abs(q.py)))).toFixed(0)} 짐승 ${Math.max(0, ...s.mobs.map((q) => Math.max(Math.abs(q.px), Math.abs(q.py)))).toFixed(0)}`); }
+    if (dayI !== lastDay) { lastDay = dayI; s.agents = s.agents.filter((a) => !a._dead); home = home.filter((a) => !a._dead); }   // ④
+    if (sched) { if (home.length) comeBack(); A.setWant(nh); }
+    else {
+      const stay = [];
+      for (const a of s.agents) { if (a._dead) continue; if (a._carc && a._carc.rot > 0) stay.push(a); else sendHome(a); }
+      s.agents = stay; over += stay.length; A.setWant(stay.length);   // 남은 손질꾼 수만큼만 — 랩 "사망 보충" 이 빈자리를 새 사냥꾼으로 채우지 않게
+    }
+    const on = s.agents.length > 0;
     let dt = 1;
-    if (!on) { dt = 1; while (dt < 8 && gm + dt + 1 <= dayEnd - 1 && !shareOn(share, gm + dt + 1)) dt++; }
+    if (!sched && !on) { while (dt < 8 && gm + dt + 1 <= dayEnd - 1 && !shareOn(share, gm + dt + 1)) dt++; }
     A.lifeGM = gm + dt; s.day = Math.floor(A.lifeGM / 1440);
     A.setCap(capOf());
     if (on) A.driveHunters(1);
