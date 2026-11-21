@@ -68,6 +68,12 @@ const run = (world, reason, opts) => {
   return { mat: world._distMatrix, ms: Date.now() - t0 };
 };
 
+// ── ★[T1410] 딸린 프로세스 — 끔 전쌍(T977 끔 · 이 판의 `T1327_ROUTE_FIX` 그대로)을 내고 끝 · ⑧ 의 켬 판이 `T1327_ROUTE_FIX=0` 으로 도니 견줄 전쌍도 같은 규칙으로 ──
+if (process.argv[2] === '--full8') {
+  const w = mkWorld(N); const r = run(w, 'full8');
+  _log('FULL8 ' + JSON.stringify(r.mat.map((row) => row.map((d) => (isFinite(d) ? d : null)))));
+  process.exit(0);
+}
 // ── [T977] 딸린 프로세스(켬 갈래 · ⑧ 이 부른다) ──────────────────────────────────
 if (process.argv[2] === '--t977-default') {   // ★[T996] 제품 기본(env 없음) — 셈 한 번 뒤 바탕이 서나
   const w = mkWorld(3); P._distProbe.setup(ta, ZONE, w, econ);
@@ -242,12 +248,21 @@ say('\n[⑧ ★[T977 · T996 · T1011] 같은 격자면 BFS 0 · 바탕 = 다시
     let D = null; try { D = JSON.parse((d.stdout || '').split('\n').filter((l) => l.startsWith('T996DEF '))[0].slice(8)); } catch (x) {}
     ok(!!D && D.env === null && D.basis === true, `★제품 기본(env 없음)이 켬 — 셈 뒤 바탕이 선다(${JSON.stringify(D)})`); }
   ok(/try \{ if \(SimVillages\.distBasisRefresh\) SimVillages\.distBasisRefresh\(\); \} catch \(e\) \{\}/.test(fs.readFileSync(path.join(__dirname, '..', 'server', 'zone.js'), 'utf8')), '[T996] 환호 적재(`refreshDitchCells`) 끝에서 바탕 다시 세움을 부른다');
-  const c = spawnSync(process.execPath, [__filename, '--t977'], { env: Object.assign({}, process.env, { T977_DIST_SAME: '1' }), encoding: 'utf8', maxBuffer: 1 << 26 });
+  //   ★[T1410 · 야간 11-20 · nightly-known] 같은 격자 문은 이웃 잇기 규칙(`_T598E` = `T598_ROUTE_EDGE || T1327_ROUTE_FIX`)이 꺼진 판에서만 선다(제품 `_distMatrixGen` 문 글자 —
+  //     `!(T598_ROUTE_COST || _T598E)`). land1084 가 `T1327_ROUTE_FIX` 를 켬 기본으로 바꾼 뒤 이 딸린 판은 그 문을 못 타 ⑧ 열 줄이 빨강(35/10 · 혼자 · 나란히 같음).
+  //     자의 판 조건이 틀어진 것이다 — 아이에게 `T1327_ROUTE_FIX=0` 을 글자로 준다(제품 기본에서 그 문이 꺼지는 것은 아래 줄이 적는다 · 회부).
+  ok(/T977_DIST_SAME && !_prev && _wantK < 0 && !\(T598_ROUTE_COST \|\| _T598E\) && _t977Same\(/.test(V) && /const _T598E = T598_ROUTE_EDGE \|\| T1327_ROUTE_FIX;/.test(V),
+    '[T1410] 같은 격자 문은 이웃 잇기(`_T598E` — T1327 켬이면 참)가 꺼진 판에서만 — 그래서 아래 딸린 판은 `T1327_ROUTE_FIX=0` 을 준다(켬 기본 운영에선 이 문이 안 선다 · 회부)');
+  const c = spawnSync(process.execPath, [__filename, '--t977'], { env: Object.assign({}, process.env, { T977_DIST_SAME: '1', T1327_ROUTE_FIX: '0' }), encoding: 'utf8', maxBuffer: 1 << 26 });
   let J = null; try { J = JSON.parse((c.stdout || '').split('\n').filter((l) => l.startsWith('T977JSON '))[0].slice(9)); } catch (e) {}
   ok(c.status === 0 && !!J, `딸린 프로세스(켬) 끝 — 종료 ${c.status}`);
   if (J) {
     const enc = (m) => m.map((r) => r.map((d) => (isFinite(d) ? d : null)));
-    const F = enc(full.mat), eq = (a, b) => { let d = 0; for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) if (a[i][j] !== b[i][j]) d++; return d; };
+    //   ★[T1410] 견줄 끔 전쌍 = 켬 판과 같은 규칙(`T1327_ROUTE_FIX=0`)의 딸린 판 셈 — 이 프로세스의 `full`(제품 기본 = 이웃 잇기 켬)과는 2칸 다르다(이 판 실측)
+    const f8 = spawnSync(process.execPath, [__filename, '--full8'], { env: Object.assign({}, process.env, { T1327_ROUTE_FIX: '0' }), encoding: 'utf8', maxBuffer: 1 << 26 });
+    let F8 = null; try { F8 = JSON.parse((f8.stdout || '').split('\n').filter((l) => l.startsWith('FULL8 '))[0].slice(6)); } catch (e) {}
+    const F = F8 || enc(full.mat), eq = (a, b) => { let d = 0; for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) if (a[i][j] !== b[i][j]) d++; return d; };
+    ok(!!F8, '[T1410] 견줄 끔 전쌍(딸린 판 · `T1327_ROUTE_FIX=0` · T977 끔)을 받았다', `종료 ${f8.status}`);
     ok(J.basis1 && eq(J.m1, F) === 0, `[켬] 처음 셈(바탕 없음)이 끔 전쌍과 같다(불일치 ${eq(J.m1, F)}칸) · 바탕을 만들었다`);
     ok(J.tag2 && J.y2 > 0, `[상황] 무효화(메모 비움) 뒤 같은 격자 — 확인만 했다(로그 '같은 격자 · BFS 0' · 양보 ${J.y2}번)`);
     ok(eq(J.m2, F) === 0, `★★같은 격자 셈 = 끔 전쌍 — 바이트 동일(불일치 ${eq(J.m2, F)}칸)`);
@@ -263,7 +278,7 @@ say('\n[⑧ ★[T977 · T996 · T1011] 같은 격자면 BFS 0 · 바탕 = 다시
     ok(!J.tag5drop && J.basis5, '[T1011] 끔(기본)이면 미룸 갈래를 안 탄다 — 바탕을 다시 세웠다');
   }
   // ── [T1011] 미룸 갈래(`T1011_BASIS_LAZY=1`) — 같은 딸린 프로세스 시나리오를 켬으로
-  const c2 = spawnSync(process.execPath, [__filename, '--t977'], { env: Object.assign({}, process.env, { T977_DIST_SAME: '1', T1011_BASIS_LAZY: '1' }), encoding: 'utf8', maxBuffer: 1 << 26 });
+  const c2 = spawnSync(process.execPath, [__filename, '--t977'], { env: Object.assign({}, process.env, { T977_DIST_SAME: '1', T1011_BASIS_LAZY: '1', T1327_ROUTE_FIX: '0' }), encoding: 'utf8', maxBuffer: 1 << 26 });   // [T1410] 위와 같은 까닭
   let K = null; try { K = JSON.parse((c2.stdout || '').split('\n').filter((l) => l.startsWith('T977JSON '))[0].slice(9)); } catch (e) {}
   ok(/const T1011_BASIS_LAZY = process\.env\.T1011_BASIS_LAZY === '1';/.test(V), '[T1011] 손잡이 — 끔 기본 · `=1` 만 켬');
   ok(c2.status === 0 && !!K, `[T1011] 딸린 프로세스(미룸) 끝 — 종료 ${c2.status}`);

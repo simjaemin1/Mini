@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @regress
 // @harness-only
-// @bait 7
+// @bait 10
 // === scripts/test-harness-bite.js — 옛 코드 빨강 자가 `scripts/` 운영 파일을 재는 하네스도 무는가 (T1375 · T1369 "여전히 초록" 셋) =====================
 //
 // ★왜: T1369 의 옛 코드 빨강 판에서 셋이 고침 앞 제품에서도 초록이었다. 둘(`test-live-lag-net` · `test-lint-harness-words`)은 재는 고침이 제품 자리
@@ -94,7 +94,7 @@ console.log('\n④ 옛 판 뒤 새로 생긴 제품 파일 · 옛 판에 없던 
   };
   const C = run2(TOOL);
   ok(/^빨강/.test(C.line) && C.rc === 0, '★★④ 옛 판 뒤 새로 생긴 제품 파일은 사본에서 지운다 — 새 모듈을 재는 하네스가 옛 판에서 빨강(옛 판에 없던 제품 자리 `gone` 이 있어도 자가 안 멈춘다)', C.line.slice(0, 100));
-  const from = /^git -C "\$TMP\/w" -c core\.quotepath=off diff --name-only --diff-filter=A[^\n]*\n/m;
+  const from = /^git -C "\$TMP\/w" diff --name-only -z --diff-filter=A[^\n]*\n/m;
   const n = (TOOL.match(new RegExp(from.source, 'gm')) || []).length;
   const B = run2(TOOL.replace(from, ''));
   ok(n === 1 && /^초록 ✗ \| test-nw\.js/.test(B.line) && B.rc === 1, '★④ [미끼] 새 파일 지우는 줄을 뺀 자 사본 — 같은 하네스가 "초록 ✗"(T1314 그 꼴)', `바꾼 자리 ${n} · ${B.line.slice(0, 60)} · RC ${B.rc}`);
@@ -116,7 +116,7 @@ console.log('\n⑤ 자의 틈 — touched-harness 한글 길 · 기본값 뒤집
   const A = of(load(TH, 'real'));
   ok(A.aNames === 'alphaOne' && A.ko, '★⑤ 한글 길(따옴표 꼴) — 그 파일 이름이 앞 파일로 새지 않고 제 파일에 선다', `a.js ${A.aNames} · 한글 파일 ${A.ko}`);
   ok(A.flips === 'K9_FLIP', '★⑤ 기본값을 뒤집은 손잡이(− `=== \'1\'` · + `!== \'0\'`)를 잡는다', A.flips || '없음');
-  const oldHead = "    if (/^diff --git /.test(raw)) {\n      m = /^diff --git \"?a\\/(.+?)\"? \"?b\\/(.+?)\"?$/.exec(raw);\n      cur = null; if (!m) continue;\n      const f = m[2];";
+  const oldHead = "    if (/^diff --git /.test(raw)) {\n      m = /^diff --git \"?a\\/(.+?)\"? \"?b\\/(.+?)\"?$/.exec(raw);\n      cur = null; if (!m && !forceFile) continue;\n      const f = forceFile || m[2];";   // [T1410] 파일 하나 몫(forceFile) 갈래가 더해졌다
   const BH = LB.swap(TH, oldHead, "    if ((m = /^diff --git a\\/(.+?) b\\/(.+)$/.exec(raw))) {\n      const f = m[2]; cur = null;");
   const Bh = of(load(BH.src, 'baith'));
   ok(BH.n === 1 && Bh.aNames !== 'alphaOne', '★⑤ 미끼 — 머리 줄을 종전 꼴로 되돌린 사본은 한글 파일의 이름이 앞 파일(a.js)로 샌다(위 ★ 가 문다)', `바꾼 자리 ${BH.n} · a.js ${Bh.aNames}`);
@@ -170,13 +170,17 @@ console.log('\n⑧ 하네스 `/tmp` 치우기 — `lib-tmp` (T1400 · T1364 전�
   const LTSRC = fs.readFileSync(path.join(SCRIPTS, 'lib-tmp.js'), 'utf8');
   const R5 = require('./lib-tmp').dir('thbite5');
   //   아이: 제 폴더(`dir`) · 맡긴 pid 이름 DB(`own`)를 짓고 SIGTERM 으로 끝난다(러너 상한 꼴) — 지워졌나 본다
-  const kid = (libFile) => { const r = spawnSync(process.execPath, ['-e',
-    `const LT=require(${JSON.stringify(libFile)}),fs=require('fs');const d=LT.dir('bitekid');fs.writeFileSync(d+'/a','x');const f='/tmp/bitekid-own-'+process.pid+'.db';fs.writeFileSync(f,'x');LT.own(f);console.log(JSON.stringify([d,f]));setTimeout(()=>process.kill(process.pid,'SIGTERM'),50);setTimeout(()=>{},5000);`],
-    { encoding: 'utf8', timeout: 20000 });
+  const kid = (libFile, env) => { const r = spawnSync(process.execPath, ['-e',
+    `const LT=require(${JSON.stringify(libFile)}),fs=require('fs');const d=LT.dir('bitekid');fs.writeFileSync(d+'/a','x');const f=require('path').join(require('os').tmpdir(),'bitekid-own-'+process.pid+'.db');fs.writeFileSync(f,'x');LT.own(f);console.log(JSON.stringify([d,f]));setTimeout(()=>process.kill(process.pid,'SIGTERM'),50);setTimeout(()=>{},5000);`],
+    { encoding: 'utf8', timeout: 20000, env: Object.assign({}, process.env, env || {}) });
     let P = []; try { P = JSON.parse((r.stdout || '').trim().split('\n')[0]); } catch (e) {}
     return { sig: r.signal, rc: r.status, left: P.filter((p) => fs.existsSync(p)), P }; };
   const A = kid(path.join(SCRIPTS, 'lib-tmp.js'));
   ok(A.P.length === 2 && A.left.length === 0, '★⑧ SIGTERM 으로 끝난 판도 제 폴더 · 맡긴 DB 를 지운다', `남음 ${A.left.length} · RC ${A.rc}`);
+  //   ★[T1410 · land1087 PM] `TMPDIR` 를 바꾼 판 — 아이가 `os.tmpdir()` 밑에 짓고 · `lib-tmp` 가 맡는다(종전 아이는 `/tmp/…` 를 박아 `남음 1`)
+  const TT = path.join(R5, 'tmpdir'); fs.mkdirSync(TT);
+  const AT = kid(path.join(SCRIPTS, 'lib-tmp.js'), { TMPDIR: TT });
+  ok(AT.P.length === 2 && AT.P.every((p) => p.startsWith(TT + path.sep)) && AT.left.length === 0, '★⑧ `TMPDIR` 를 바꾼 판도 — 아이가 그 밑에 짓고 SIGTERM 뒤 다 지운다', `남음 ${AT.left.length} · ${AT.P.map((p) => p.replace(TT, '$TMPDIR')).join(' ')}`);
   const BL = LB.swap(LTSRC, "for (const sig of ['SIGTERM', 'SIGINT']) {", 'for (const sig of []) {');
   const bf = path.join(R5, 'lib-tmp-bait.js'); fs.writeFileSync(bf, BL.src);
   const B = kid(bf);
@@ -184,12 +188,76 @@ console.log('\n⑧ 하네스 `/tmp` 치우기 — `lib-tmp` (T1400 · T1364 전�
   for (const p of B.P) { try { fs.rmSync(p, { recursive: true, force: true }); } catch (e) {} }
   //   러너 몫 — 이 판 뒤 선 `.db` 가운데 이름의 숫자 토막이 다 죽은 pid 인 것만(산 pid 이름 · 숫자 없는 이름은 남긴다)
   const t0 = Date.now() - 1000, dead = spawnSync('true').pid, live = process.pid;   // dead = 막 끝난 아이의 pid(pid 자리 안 · 죽음)
-  const ft = `/tmp/bite-sweep-${dead}-${Date.now()}.db`;   // 시각 토막(pid 자리 밖)이 든 이름 — 안 건드린다
-  const fd = `/tmp/bite-sweep-${dead}.db`, fl = `/tmp/bite-sweep-${live}.db`, fn = '/tmp/bite-sweep-seed.db';
+  const ft = path.join(os.tmpdir(), `bite-sweep-${dead}-${Date.now()}.db`);   // 시각 토막(pid 자리 밖)이 든 이름 — 안 건드린다
+  const TDIR = os.tmpdir(), fd = path.join(TDIR, `bite-sweep-${dead}.db`), fl = path.join(TDIR, `bite-sweep-${live}.db`), fn = path.join(TDIR, 'bite-sweep-seed.db');   // [T1410] TMPDIR 를 따른다
   for (const f of [fd, fd + '-wal', fl, fn, ft]) fs.writeFileSync(f, 'x');
   const S = require('./lib-tmp').sweepDead(t0);
   ok(!fs.existsSync(fd) && !fs.existsSync(fd + '-wal') && fs.existsSync(fl) && fs.existsSync(fn) && fs.existsSync(ft), '★⑧ 러너 몫 `sweepDead` — 죽은 pid 이름 DB 만 지우고 산 pid · 숫자 없는 이름 · 시각(pid 자리 밖) 토막 이름은 남긴다', `지움 ${S.n}`);
   for (const f of [fd, fd + '-wal', fl, fn, ft]) { try { fs.unlinkSync(f); } catch (e) {} }
+}
+
+console.log('\n⑨ 자의 틈 — touched-harness 가 `core.quotePath` 에 안 기댄다(`-z`) · pm-old-code-red 가 `TMPDIR` 를 따른다 (T1410 · T1358 회부 3 · T1396 회부 7)');
+//   ⓐ 가짜 레포 — 제품 파일 둘(`prod/a.js` · 한글 길 `prod/한.js`)을 바꾸고 하네스 셋(a 이름 · 한 이름 · 무관)을 둔다. git 을 `core.quotePath` 켬(종전 기본)으로 두고
+//     자에서 `-c core.quotepath=off` 를 뺀 사본으로 돈다 — `-z` 로 길을 받으니 그래도 한글 파일 이름(`hanOnly`)이 제 하네스를 끌어오고 a.js 로 안 샌다.
+//     미끼: 그 사본에서 파일마다 따로 뜨는 줄까지 종전(통째 diff 하나)으로 되돌리면 한글 파일 이름이 a.js 로 샌다(T1358 그 꼴 — 11종 → 6종).
+{
+  const R6 = require('./lib-tmp').dir('thbite6');
+  const G6 = (...a) => execFileSync('git', ['-C', R6, '-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'commit.gpgsign=false', ...a], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  const W6 = (rel, t) => { fs.mkdirSync(path.dirname(path.join(R6, rel)), { recursive: true }); fs.writeFileSync(path.join(R6, rel), t); };
+  G6('init', '-q', '-b', 'main'); G6('config', 'core.quotePath', 'true');
+  W6('prod/a.js', 'function alphaOnly() { return 1; }\n'); W6('prod/한.js', 'function hanOnly() { return 1; }\n');
+  W6('scripts/test-uses-alpha.js', '// @regress\n// alphaOnly\n'); W6('scripts/test-uses-han.js', '// @regress\n// hanOnly\n'); W6('scripts/test-other.js', '// @regress\n// nothing\n');
+  G6('add', '-A'); G6('commit', '-q', '-m', 'base');
+  W6('prod/a.js', 'function alphaOnly() { return 2; }\n'); W6('prod/한.js', 'function hanOnly() { return 2; }\n'); G6('add', '-A'); G6('commit', '-q', '-m', 'edit');
+  const TH = fs.readFileSync(path.join(SCRIPTS, 'touched-harness.js'), 'utf8');
+  const TD = require('./lib-tmp').dir('thbite6t');
+  const plan = (txt, tag) => { const f = path.join(TD, `th-${tag}.js`); fs.writeFileSync(f, txt); delete require.cache[f]; const P = require(f).plan(R6, 'HEAD~1');
+    const a = P.files.find((x) => x.file === 'prod/a.js'); return { list: P.list.join(','), aNames: a ? a.names.join(',') : '-', ko: P.files.some((x) => x.file === 'prod/한.js') }; };
+  const noQ = LB.swap(TH, "execFileSync('git', ['-c', 'core.quotepath=off', ...a]", "execFileSync('git', [...a]");
+  const A = plan(noQ.src, 'noq');
+  ok(noQ.n === 1 && A.ko && A.aNames === 'alphaOnly' && /test-uses-han\.js/.test(A.list) && !/test-other\.js/.test(A.list), '★⑨ `core.quotePath` 켬 · 자의 quotepath 끔을 뺀 사본 — 한글 파일 길이 글자 그대로(`prod/한.js`) 서고 · 제 하네스를 끌어오고 · a.js 로 안 샌다(`-z`)', `quotepath 뺀 자리 ${noQ.n} · 한글 길 ${A.ko} · a.js ${A.aNames} · ${A.list}`);
+  const one = "  const changed = git('diff', '--name-only', '-z', mb).split('\\0').filter(Boolean);";
+  const B = LB.swap(noQ.src, /  for \(const f of changed\) \{\n[\s\S]*?\n  \}\n/, "  Object.assign(D, namesFromDiff(git('diff', '-U0', '--no-color', '--no-ext-diff', mb)));\n");
+  const Bp = plan(B.src, 'bait');
+  ok(B.n === 1 && TH.includes(one) && !Bp.ko, '⑨ 미끼 — 파일마다 뜨는 줄을 통째 diff 하나로 되돌린 사본은 한글 길이 따옴표 · 8진 글자(`\\355…`)로 선다(모듈 이름으로 끌어오는 자 — 뒤집힌 손잡이 — 가 못 문다)', `바꾼 자리 ${B.n} · 한글 길 ${Bp.ko}`);
+  //   ⓑ pm-old-code-red — `TMPDIR` 를 준 판에서 자의 사본 나무(`$TMP/w`)가 그 밑에 선다(하네스가 제 자리 `__dirname` 을 적는다) · 미끼: 종전 `/tmp` 박은 줄
+  const R7 = require('./lib-tmp').dir('thbite7'), TDIR = require('./lib-tmp').dir('thbite7tmp');
+  const G7 = (...a) => execFileSync('git', ['-C', R7, '-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'commit.gpgsign=false', ...a], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  const W7 = (rel, t) => { fs.mkdirSync(path.dirname(path.join(R7, rel)), { recursive: true }); fs.writeFileSync(path.join(R7, rel), t); };
+  const TOOL = fs.readFileSync(path.join(SCRIPTS, 'pm-old-code-red.sh'), 'utf8');
+  G7('init', '-q', '-b', 'main'); W7('prod/x.js', 'module.exports = 1;\n'); W7('scripts/pm-old-code-red.sh', TOOL); G7('add', '-A'); G7('commit', '-q', '-m', 'c1'); const o7 = G7('rev-parse', 'HEAD');
+  const WHERE = path.join(R7, '.where');
+  W7('scripts/test-wh.js', `#!/usr/bin/env node\n'use strict';\nrequire('fs').writeFileSync(${JSON.stringify(WHERE)}, __dirname);\nconsole.log('  ✗ 옛 판 빨강');\nprocess.exit(1);\n`);
+  G7('add', '-A'); G7('commit', '-q', '-m', 'c2');
+  const run7 = (txt) => { W7('scripts/pm-old-code-red.sh', txt); try { fs.unlinkSync(WHERE); } catch (e) {}
+    spawnSync('bash', ['scripts/pm-old-code-red.sh', o7, 'test-wh.js'], { cwd: R7, encoding: 'utf8', env: Object.assign({}, process.env, { TMPDIR: TDIR, TIMEOUT_SEC: '60', OUT: path.join(R7, '.o'), PROD: 'prod' }) });
+    let w = ''; try { w = fs.readFileSync(WHERE, 'utf8'); } catch (e) {} return w; };
+  const wA = run7(TOOL);
+  ok(wA.startsWith(TDIR + path.sep), '★⑨ pm-old-code-red — 사본 나무가 `TMPDIR` 밑에 선다', wA.replace(TDIR, '$TMPDIR') || '(안 돎)');
+  const BT = LB.swap(TOOL, 'mktemp -d "${TMPDIR:-/tmp}/ocr.XXXXXX"', 'mktemp -d /tmp/ocr.XXXXXX');
+  const wB = run7(BT.src);
+  ok(BT.n === 1 && !wB.startsWith(TDIR + path.sep), '⑨ 미끼 — `/tmp` 를 박은 종전 줄 사본은 `TMPDIR` 밖에 선다(샌드박스에서 못 도는 꼴)', `바꾼 자리 ${BT.n} · ${wB.slice(0, 20) || '(안 돎)'}`);
+}
+
+console.log('\n⑩ 끈 판 자 — 상자 수 지문이 기준선과 다르면 "다름"이 아니라 유보 (T1410 ③ · T1396 회부 8 · T1395 ②)');
+//   맥(arm64)과 리눅스 컨테이너(x64)는 같은 Node(V8 12.4.254.21)인데 초월 함수가 1ulp 갈린다(표본 2,000 — sin 13 · cos 10 · pow 2 · atan2 2 · exp 1) — econ 은 혼돈계라
+//   수백 날 뒤 지문이 갈린다(맥 `다름 1/1` econ 날 219). 판 자가 기준선을 구운 상자의 수 지문(`<기준선>.box.json` · 새 기준선은 `box` 칸)과 지금 상자를 견줘 다르면 75(유보).
+{
+  const BXSRC = fs.readFileSync(path.join(SCRIPTS, 'lib-box.js'), 'utf8');
+  const BX = require('./lib-box');
+  const cur = BX.box(), again = BX.math();
+  const other = { arch: 'arm64', node: 'v22.23.5', math: 'e73d4ea002fc' };   // 맥 샌드박스(arm64)에서 잰 지문(T1410 계측)
+  const vA = BX.verdict(cur, other, false), vS = BX.verdict(cur, cur, false), vY = BX.verdict(cur, other, true), vN = BX.verdict(cur, null, false);
+  ok(again === cur.math && vA.rc === 75 && /유보/.test(vA.line) && vS.rc === 1 && vY.rc === 0 && vN.rc === 1, '★⑩ 수 지문은 한 상자에서 같고 · 상자가 다르고 판이 다르면 75(유보) · 같은 상자 다름 1 · 같음은 0 · 지문 없음 1(종전)', `지문 ${cur.arch} ${cur.math} · ${vA.rc}/${vS.rc}/${vY.rc}/${vN.rc}`);
+  const SBC = fs.readFileSync(path.join(SCRIPTS, 'server-baseline-check.js'), 'utf8');
+  ok(/BX\.verdict\(BX\.box\(\), baseBox, !bad\)/.test(SBC) && /process\.exit\(failed \? 2 : _bx\.rc\)/.test(SBC) && /box: BX\.box\(\)/.test(SBC), '⑩ 판 자가 끝맺음을 이 문 하나로 · 새 기준선에 `box` 를 싣는다');
+  const BOXF = path.join(ROOT, '계측', '서버기준선_2026-11-18.json.box.json');
+  let bf = null; try { bf = JSON.parse(fs.readFileSync(BOXF, 'utf8')); } catch (e) {}
+  ok(!!bf && bf.arch === 'x64' && /^[0-9a-f]{12}$/.test(bf.math), '⑩ 지금 정본 기준선(11-18)의 상자 지문 옆 파일이 있다(x64)', bf ? `${bf.arch} ${bf.math}` : '없음');
+  const load = (txt) => { const f = path.join(require('./lib-tmp').dir('thbite10'), 'lb.js'); fs.writeFileSync(f, txt); return require(f); };
+  const B = LB.swap(BXSRC, "  if (base && base.math && cur.math !== base.math) return { rc: 75,", "  if (false) return { rc: 75,");
+  const vb = load(B.src).verdict(cur, other, false);
+  ok(B.n === 1 && vb.rc === 1, '⑩ 미끼 — 상자 다름 갈래를 끈 사본은 맥 판을 다름(1)으로 낸다(T1396 · T1395 그 꼴 — 상자 탓 갈림을 제품 증거로 읽는다)', `바꾼 자리 ${B.n} · RC ${vb.rc}`);
 }
 
 fs.rmSync(R, { recursive: true, force: true });

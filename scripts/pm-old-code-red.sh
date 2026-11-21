@@ -55,7 +55,7 @@ for d in $PROD; do
   if git cat-file -e "$OLD:$d" 2>/dev/null; then git -C "$TMP/w" checkout -q "$OLD" -- "$d" || exit 2
   else rm -rf "${TMP:?}/w/$d"; fi
 done
-git -C "$TMP/w" -c core.quotepath=off diff --name-only --diff-filter=A "$OLD" HEAD -- $PROD | while IFS= read -r f; do rm -f "$TMP/w/$f"; done
+git -C "$TMP/w" diff --name-only -z --diff-filter=A "$OLD" HEAD -- $PROD | while IFS= read -r -d '' f; do rm -f "$TMP/w/$f"; done   # ★[T1410] `-z` — 길 글자 그대로(quotePath 무관)
 [ -d "$ROOT/node_modules" ] && ln -s "$ROOT/node_modules" "$TMP/w/node_modules"
 red=0; weak=0; green=0; unk=0; skip=0
 {
