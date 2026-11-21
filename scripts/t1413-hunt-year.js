@@ -12,6 +12,7 @@
 //      ⚠`MOB_CAP`(50)은 랩 블록에서 정의만 있고 부르는 곳이 없다 — 걸리는 상한은 `HUNT_CAP` 하나.
 //   ③ 사냥에 쓰는 몫 — 하루 07:12 부터 몫 × 1,440분만 사냥꾼이 숲에 있다(100% · 25% · 10%) · 닷새에 하루 = 다섯 날에 한 날 통째(1,440분).
 //      쉬는 동안 사냥꾼은 집(랩 `s.agents` 밖 — 짐승 눈에 없다) · 돌아올 땐 캠프에서 · 몸 성함(집에서 쉬었다) · 쥐던 표적 · 사체는 놓음.
+//      몫이 끝나도 잡은 몸(`_carc`)을 손질하는 사냥꾼이 있으면 끝낼 때까지 남는다(넘긴 분 = `over` · 표 덤).
 //      쉬는 동안 짐승은 8분 걸음(랩 `updateMobs` 의 dt 상한 8 그대로 — 사람 없는 숲을 빨리 감기).
 //   ④ 죽은 사냥꾼 — 랩은 죽은 몸을 배열에 남겨 "사망 보충"(driveHunters 첫 줄)이 안 돈다 → 날 경계(07:12)에 죽은 몸을 빼 랩 보충 줄이 돌게 한다.
 //   무리터 = T1396 과 같은 땅(캠프 기대 자리 둘레 숲 2,923칸만 · 바깥 숲 = 풀밭) · 밀도 손잡이 `MOB_DENS` = 100 ÷ 환율.
@@ -69,7 +70,7 @@ function load(seed, exch, nh, sp) {
   vm.runInContext(DETMATH + '(Math)', C);
   vm.runInContext(js + `
 ;globalThis.__api={get s(){return s;},get lifeGM(){return lifeGM;},set lifeGM(v){lifeGM=v;},resetAll,driveHunters,updateMobs,
-  MOB_DEF,N,NPC_MAXHP,get camp(){return camp;},setSp(x){HUNT_SPECIES=x;},setCap(x){HUNT_CAP=x;},getCap(){return HUNT_CAP;},
+  MOB_DEF,N,NPC_MAXHP,get camp(){return camp;},rnd:()=>Math.random(),setSp(x){HUNT_SPECIES=x;},setCap(x){HUNT_CAP=x;},getCap(){return HUNT_CAP;},
   win(K){const cx=Math.round(N*0.18)+5,cy=Math.round(N*0.5);const L=[];for(let i=0;i<N*N;i++)if(forest0[i])L.push([Math.hypot(i%N-cx,((i/N)|0)-cy),i]);
     if(!(K>0)||K>=L.length)return {K:L.length,R:null};L.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);const keep=new Uint8Array(N*N);for(let k=0;k<K;k++)keep[L[k][1]]=1;
     for(let i=0;i<N*N;i++)if(!keep[i])forest0[i]=0;return {K,R:+L[K-1][0].toFixed(1)};}};`, C);
@@ -84,7 +85,7 @@ function runOne(seed, exch, nh, sp, share, cap, r, days) {
   const { A, w } = load(seed, exch, nh, sp);
   const s = A.s, MD = A.MOB_DEF;
   const K = HB5000 * 5000 / exch;
-  let N = K, empty = null, killed = 0, predKill = 0, trimmed = 0, offSaved = null;
+  let N = K, empty = null, over = 0, killed = 0, predKill = 0, trimmed = 0, offSaved = null;
   const capOf = () => { const n = Math.floor(N + 1e-9); return cap === 'lab' ? Math.min(LAB_CAP, n) : n; };
   const isPrey = (m) => !MD[m.type].pred;
   const held = () => { const H = new Set(); for (const a of (offSaved || s.agents)) { if (a._tgt) H.add(a._tgt); if (a._cm) H.add(a._cm); if (a._carc) H.add(a._carc); if (a._bm) H.add(a._bm); } return H; };
@@ -100,17 +101,19 @@ function runOne(seed, exch, nh, sp, share, cap, r, days) {
   const goOn = () => {
     const camp = A.camp;
     for (const a of offSaved) { a._tgt = null; a._cm = null; a._carc = null; a._bm = null; a._lbx = undefined; a.rest = 0; a.state = 'work'; a.action = ''; a.hp = A.NPC_MAXHP;
-      a.px = camp.cx + Math.random() * 2 - 1; a.py = camp.cy + Math.random() * 2 - 1; }
+      a.px = camp.cx + A.rnd() * 2 - 1; a.py = camp.cy + A.rnd() * 2 - 1; }   // 랩 맥락의 씨 뿌린 난수(바깥 Math.random 은 씨가 없다)
     s.agents = offSaved; offSaved = null;
   };
   while (A.lifeGM < dayEnd) {
-    const gm = A.lifeGM, on = shareOn(share, gm + 1);
+    const gm = A.lifeGM, sched = shareOn(share, gm + 1);
+    const busy = !sched && !offSaved && s.agents.some((a) => !a._dead && a._carc && a._carc.rot > 0);   // 잡은 몸을 손질하는 중이면 끝낼 때까지 남는다(넘긴 분 = over)
+    const on = sched || busy; if (busy) over++;
     const dayI = Math.floor((gm + 1 - NPC_START) / 1440);
     if (dayI !== lastDay) { lastDay = dayI; const L = offSaved || s.agents; const alive = L.filter((a) => !a._dead); if (offSaved) offSaved = alive; else s.agents = alive; }   // ④
     if (on && offSaved) goOn();
     if (!on && !offSaved) goOff();
     let dt = 1;
-    if (!on) { dt = 1; while (dt < 8 && gm + dt + 1 < dayEnd && !shareOn(share, gm + dt + 1)) dt++; }
+    if (!on) { dt = 1; while (dt < 8 && gm + dt + 1 <= dayEnd - 1 && !shareOn(share, gm + dt + 1)) dt++; }
     A.lifeGM = gm + dt; s.day = Math.floor(A.lifeGM / 1440);
     A.setCap(capOf());
     if (on) A.driveHunters(1);
@@ -121,13 +124,14 @@ function runOne(seed, exch, nh, sp, share, cap, r, days) {
     const hk = Math.min(nd, dK); killed += hk; predKill += nd - hk;
     if (N < K) N += r * N * (1 - N / K) * dt / 1440;
     N -= hk;
-    if (N < 1) { empty = Math.min(days, Math.floor((A.lifeGM - NPC_START) / 1440) + 1); N = Math.max(0, N); break; }
+    if (N < 1 && empty == null) empty = Math.min(days, Math.floor((A.lifeGM - NPC_START) / 1440) + 1);   // 빈 날 — 판은 끝까지 간다(이미 죽인 몸의 손질 · 가져오기를 센다 · 장부 0 = 그 뒤 몸 0)
+    if (N < 1) N = 0;
     trim();
   }
   const harv = s._mobKills || 0;
   return { sp, exch, nh, share, seed, cap, r, days, win: w.K, K: +K.toFixed(3),
     empty: empty == null ? days : empty, emptied: empty != null, harv, kg: harv * KG[sp], kgHD: +(harv * KG[sp] / (nh * days)).toFixed(3),
-    end: +(N / K).toFixed(4), killed, predKill, trimmed, hDead: s._hDeadN || 0, inj: s._inj || 0, shots: s._shots || 0 };
+    end: +(N / K).toFixed(4), killed, predKill, trimmed, hDead: s._hDeadN || 0, inj: s._inj || 0, shots: s._shots || 0, over };
 }
 
 const labConst = () => {
