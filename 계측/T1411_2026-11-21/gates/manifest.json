@@ -1,0 +1,36 @@
+{
+ "harnesses": {
+  "test-body-fields.js": "e1ce9abec937cffad790286d38905d322893bc4e70701434d971c5250c8e402a",
+  "test-ci-list.js": "a11d9ab319df1da0dfd4c7afef39ac1f98a2974689831517c81ff9ec366b2fe7",
+  "test-coll-grid.js": "e1cda2a7e6d3cc54cfc687075c725459343b750766ca153674abb5e8136992b9",
+  "test-farm-act.js": "1c2c98740121dfc29a47cb8347a31633e3af04eb67209e98efd78fea74960c5b",
+  "test-fish-act.js": "ba8a8d5cf7341eb933e0c1f54fc868c5addcfe3255f5715b2ab86c845adf9d13",
+  "test-harness-lint.js": "5eba94ae1ba4a54abadad513e5275e1ec419ae303e6b9563a25aafcf2b4ea217",
+  "test-hp-src.js": "a0f482a350bfdc11741b9dfe4e9b6b815cb05c3f29ae33c8f09fe8a394a67da4",
+  "test-lon-day.js": "45a2e9ff3a4fe57009a56c3f43a87078bf13362a9ce1c2c5faff00650ab0396c",
+  "test-move-soa.js": "08c8ea2005923bc1b93d6c507870066b0e4dfbefc9a0a22fa8108515141f1c5d",
+  "test-t1238-terr-v2.js": "382b977b527340f45b223b99627246d7e2a7f0e075eb2ce366733f89f2182429",
+  "test-t1278-perf.js": "7c11df9025c075772678345d5b629b8eb46835ca8e4815020d7ba666874c1478",
+  "test-t1334-bundle.js": "cbdf748b7bfe23e464e95c421382d6b2f08342bfd691679821a2dfe759d18784",
+  "test-t1358-terr-stake.js": "3066161466a2cb5e0e38af4206e5f8e6a481cf698eaf302ccc2cf923104f2917",
+  "test-t1411-terr-cpu.js": "7825bb8ade71311bfcdd69acf7aa3da7cbd1b600e3ab690d29c8cc65b1ce3c6c"
+ },
+ "baselineSha256": "ef5b86261fd895981ec23579745d856fb06ebfd4fcaf6174cbb8e6b16a8a1dd3",
+ "productSource": {
+  "server/villages.js": "ce4d8c7f1f157d64297e93f3b69df3cc7773a62c16bc0e9139d1ff56a589477e",
+  "server/zone.js": "fb89408587a5d2291e9783b203e4c56bf938a8df31153c4821e186d68c523d81",
+  "server/build-haul.js": "deb39bce3f2f53287810e8a0d71f15691dbd39247063c7863853b1417287f0db",
+  "server/terr-body.js": "9c2482d018eb367fcef1534e608631ef58ca5b71705d94d18996b3acfd709188",
+  "server/terr-cost.js": "a8bc781b27c421950c3737c315bce5306bbcc516f377f6d25d813319d106294e",
+  "sim/economy-sim.js": "69d152fc17a733d9dd6de6817062f594b674883bbd66b3059f0c1f6756c8ea9c",
+  "scripts/t1308-long-run.js": "6629ff2af5659f8349f8f8a3ba8d29281a784794be1ba77bdb0cc11644662bd4"
+ },
+ "t17Population": 6198,
+ "officialOffEndLine": "=== 같음 1/1 · 경제 400/400 · 생활층 400/400 · 판 661초 ===",
+ "remoteCi": {
+  "attempted": true,
+  "status": 403,
+  "green": null
+ },
+ "notes": "First touched attempt had fixture ReferenceError. History preserved; rerun passed 10/10. Green gates reused only after measured product source hash validation."
+}

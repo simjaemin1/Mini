@@ -1,0 +1,103 @@
+{
+ "base": "origin/main",
+ "mergeBase": "1aa63e637",
+ "flips": [],
+ "files": [
+  {
+   "file": "scripts/t1411-census.cjs",
+   "names": [
+    "t1411-census"
+   ],
+   "flips": []
+  },
+  {
+   "file": "scripts/t1411-profile-hook.cjs",
+   "names": [
+    "t1411-profile-hook"
+   ],
+   "flips": []
+  },
+  {
+   "file": "server/villages.js",
+   "names": [
+    "T1411_TERR_FAST",
+    "_t1329Crew",
+    "_t1358Requote",
+    "_t1411Quotes",
+    "_t1411StakeQuote"
+   ],
+   "flips": []
+  },
+  {
+   "file": "server/zone.js",
+   "names": [
+    "T1411_TERR_FAST",
+    "_wwPre"
+   ],
+   "flips": []
+  }
+ ],
+ "names": [
+  "T1411_TERR_FAST",
+  "_t1329Crew",
+  "_t1358Requote",
+  "_t1411Quotes",
+  "_t1411StakeQuote",
+  "_wwPre",
+  "t1411-census",
+  "t1411-profile-hook"
+ ],
+ "hit": {
+  "T1411_TERR_FAST": [
+   "test-move-soa.js",
+   "test-t1411-terr-cpu.js"
+  ],
+  "_t1329Crew": [],
+  "_t1358Requote": [],
+  "_t1411Quotes": [],
+  "_t1411StakeQuote": [],
+  "_wwPre": [
+   "test-farm-act.js",
+   "test-fish-act.js",
+   "test-move-soa.js",
+   "test-t1278-perf.js"
+  ],
+  "t1411-census": [],
+  "t1411-profile-hook": []
+ },
+ "used": [
+  [
+   "T1411_TERR_FAST",
+   2
+  ],
+  [
+   "_wwPre",
+   4
+  ]
+ ],
+ "common": [],
+ "changedHarness": [
+  "test-move-soa.js",
+  "test-t1411-terr-cpu.js"
+ ],
+ "rule5": [
+  "test-body-fields.js",
+  "test-coll-grid.js",
+  "test-hp-src.js",
+  "test-lon-day.js",
+  "test-harness-lint.js"
+ ],
+ "list": [
+  "test-body-fields.js",
+  "test-coll-grid.js",
+  "test-farm-act.js",
+  "test-fish-act.js",
+  "test-harness-lint.js",
+  "test-hp-src.js",
+  "test-lon-day.js",
+  "test-move-soa.js",
+  "test-t1278-perf.js",
+  "test-t1411-terr-cpu.js"
+ ],
+ "notRegress": []
+}

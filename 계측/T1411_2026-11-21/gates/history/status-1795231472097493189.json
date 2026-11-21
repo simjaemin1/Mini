@@ -1,0 +1,98 @@
+[
+ {
+  "name": "new-harness",
+  "command": [
+   "node",
+   "scripts/test-t1411-terr-cpu.js"
+  ],
+  "exit": 0,
+  "seconds": 1.0177070760000788
+ },
+ {
+  "name": "old-code-red",
+  "command": [
+   "bash",
+   "scripts/pm-old-code-red.sh",
+   "origin/main",
+   "test-t1411-terr-cpu.js"
+  ],
+  "exit": 0,
+  "seconds": 9.526423462999901
+ },
+ {
+  "name": "touched",
+  "command": [
+   "node",
+   "scripts/touched-harness.js",
+   "origin/main",
+   "--run"
+  ],
+  "exit": 1,
+  "seconds": 133.1820844949998
+ },
+ {
+  "name": "bundle",
+  "command": [
+   "node",
+   "sim/build-econ-bundle.js",
+   "--check"
+  ],
+  "exit": 0,
+  "seconds": 166.9230645329999
+ },
+ {
+  "name": "inline",
+  "command": [
+   "node",
+   "sim/inline-engine.js",
+   "--check"
+  ],
+  "exit": 0,
+  "seconds": 0.15924722699992344
+ },
+ {
+  "name": "wiring",
+  "command": [
+   "node",
+   "scripts/lab-wiring-check.js"
+  ],
+  "exit": 0,
+  "seconds": 5.582818907000274
+ },
+ {
+  "name": "t17",
+  "command": [
+   "node",
+   "scripts/t17-metrics.js",
+   "800",
+   "1020"
+  ],
+  "exit": 0,
+  "seconds": 382.106860202
+ },
+ {
+  "name": "ci-list",
+  "command": [
+   "bash",
+   "scripts/run-regress.sh",
+   "test-ci-list.js"
+  ],
+  "exit": 0,
+  "seconds": 8.299503693999668
+ },
+ {
+  "name": "official-off",
+  "command": [
+   "node",
+   "scripts/server-baseline-check.js",
+   "계측/서버기준선_2026-11-18.json",
+   "--vclock",
+   "--plan",
+   "1020:400",
+   "--par",
+   "1"
+  ],
+  "exit": 0,
+  "seconds": 661.370754431
+ }
+]
