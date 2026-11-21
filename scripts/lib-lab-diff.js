@@ -92,7 +92,7 @@ const diff = (id, what, ref, labRe, srvFile, srvRe, knob) => DIFFS.push({ id, wh
 diff('D1-TERR_START_CAP', '처음 영토 자르기(영토 v2 켬)', '1-31', /maxCells:(MAX_CELLS)/, 'server/villages.js', /T1238_TERR_V2 \? \{ maxCells: VillageLayout\.(TERR_CORE)/, 'T1238_TERR_V2 끔 기본 · 묶음 T1334_BUNDLE');
 diff('D1-FERTW', '처음 영토 모양 — 비옥 가중 fertW', '1-20', /const fertW=opts\.fertW!=null\?opts\.fertW:([\d.]+)/, 'server/village-layout.js', /const fertW = opts\.fertW != null \? opts\.fertW : ([\d.]+)/);
 diff('D1-FARM_HOUSE_RES', '논 존닝 집 예약 numHousesEst×', '1-26', /numHousesEst\s*\*\s*(\d+)/, 'server/village-layout.js', /numHousesEst\s*\*\s*(\d+)/);
-diff('D1-WATER_D', '처음 물 접근 식(물거리 나눔수)', '1-36', /1\.25-d\/(\d+)/, 'server/village-layout.js', /1 - nd \/ (\d+)/);
+diff('D1-WATER_D', '처음 물 접근 식(물거리 나눔수)', '1-36', /1\.25-d\/(\d+)/, 'sim/shared-lab-rules.js', /1 - nd \/ (\d+)/);
 diff('D1-TERR_GROW_DAY', '영토 확장 호출 예산(관찰/빨리감기 구분)', '1-46', /arguments\[1\]:(\d+)\);/, 'server/villages.js', /TERR_GROW_MAX_PER_DAY = (\d+);/);
 diff('D3-HUNT_BAND0', '사냥터 띠 안쪽(회관에서)', '3-37', NV('MOB_AV0'), 'server/villages.js', /HUNT_BAND0 = (\d+)/);
 diff('D3-HUNT_BAND1', '사냥터 띠 바깥', '3-37', NV('MOB_WILD_R'), 'server/villages.js', /HUNT_BAND1 = (\d+)/);
@@ -148,7 +148,7 @@ function checkDiffs(srcOf = readRoot, list = DIFFS) {
 }
 function okList(text) {
   const t = text == null ? readRoot('scripts/lab-diff-ok.txt') : text; const m = new Map();
-  for (const l of String(t || '').split('\n')) { if (!l.trim() || l.startsWith('#')) continue; const c = l.split('|').map((x) => x.trim()); if (c[0]) m.set(c[0], { why: c[1] || '', jb: c[2] || '' }); }
+  for (const l of String(t || '').split('\n')) { if (!l.trim() || l.startsWith('#')) continue; const c = l.split('|').map((x) => x.trim()); if (c[0]) m.set(c[0], { why: c[1] || '', jb: c[2] || '', kind: c[3] || 'allow' }); }
   return m;
 }
 
@@ -162,7 +162,7 @@ for (const [tag, labFile] of [['V', 'lab/마을실험실.html#body'], ['W', B], 
   for (const [name, re] of [['MOB_DEF', /MOB_DEF\s*=\s*(\{[\s\S]*?\});/], ['MOB_PREY', /MOB_PREY\s*=\s*(\[[^\]]+\])/]])
     SAME.push({ id: 'P6-' + tag + '-' + name, what: '야생 표 전체 ' + name, ref: '6-야생표', lab: [labFile, re], srv: ['server/wildlife.js', re] });
 }
-DIFFS.push({ id: 'D6-V-WAR_RAID_MIN', what: '마을랩 최소 출정 인원', ref: '6-전쟁', lab: ['lab/마을실험실.html#body', NV('WAR_RAID_MIN')], srv: ['sim/war-core.js', NV('WAR_RAID_MIN')] });
+DIFFS.push({ id: 'D6-V-WAR_RAID_MIN', what: '마을랩 최소 출정 인원', ref: '6-전쟁', lab: ['lab/마을실험실.html#body', /WAR_RAID_MIN=_t1409WarValue\('[^']+',([\d.]+)/], srv: ['sim/war-core.js', NV('WAR_RAID_MIN')] });
 for (const name of ['MOB_WOLF_P', 'MOB_TIG_P']) DIFFS.push({ id: 'D6-H-' + name, what: '원본 사냥랩 맹수 자동 출현 ' + name, ref: '6-사냥', lab: ['lab/원본/사냥실험실_0707.html', NV(name)], srv: ['server/wildlife.js', NV(name)] });
 
 // AST 전수 선언 목록에서 더 찾은 같은 이름/같은 식의 손 사본. 값은 적지 않고 양쪽 식을 다시 읽는다.
@@ -177,6 +177,36 @@ SAME.push({ id:'P8-MKT_SPOTS',what:'장 좌판 표',ref:'8-장',lab:[B,/MKT_SPOT
 SAME.push({ id:'P8-MKT_HOURS',what:'장 길이 분자',ref:'8-장',lab:[B,/L_MKT_LINGER\s*=\s*Math\.round\(L_MINDAY\/\d+\*(\d+)/],srv:['server/village-layout.js',/MKT_LINGER_DAY_FRAC\s*=\s*(\d+)\s*\//] });
 SAME.push({ id:'P8-MKT_DAY',what:'장 길이 하루 분모',ref:'8-장',lab:[B,/L_MKT_LINGER\s*=\s*Math\.round\(L_MINDAY\/(\d+)\*\d+/],srv:['server/village-layout.js',/MKT_LINGER_DAY_FRAC\s*=\s*\d+\s*\/\s*(\d+)/] });
 
-DIFFS.push({ id:'D7-V-WAR_MARCH',what:'마을랩 행군 일일 거리',ref:'7-행군',lab:['lab/마을실험실.html#body', /WAR_MARCH\s*=\s*([\d.]+)/],srv:['sim/war-core.js', /WAR_MARCH\s*=\s*([\d.]+)/] });
+DIFFS.push({ id:'D7-V-WAR_MARCH',what:'마을랩 행군 일일 거리',ref:'7-행군',lab:['lab/마을실험실.html#body', /WAR_MARCH=_t1409WarValue\('[^']+',([\d.]+)/],srv:['sim/war-core.js', /WAR_MARCH\s*=\s*([\d.]+)/] });
 
-module.exports = { SAME, DIFFS, checkSame, checkDiffs, okList, grab, norm, readRoot, sourceCode, WAR, VIL };
+for (const [id,flag] of [['D1-WATER_D','T1409_WATER_RULE'],['D6-V-WAR_RAID_MIN','T1409_VIL_RAID_MIN'],['D7-V-WAR_MARCH','T1409_VIL_MARCH']]) DIFFS.find(p=>p.id===id).knob=flag+' 끔 기본 · T1409 역사 대조';
+
+// T1409: 사유 없는 차이만 빨강. refer는 값 선택 허락이 아니라 회부 중 기본 보존이며 별도 경고로 남긴다.
+function checkClosure(srcOf = readRoot, allowanceText, registry = require('./t1409-closures.json')) {
+  const S = require('./lib-t1409-source'), errors=[], ids=new Set(), facts=checkDiffs(srcOf), factMap=new Map(facts.map(r=>[r.id,r]));
+  const raw=allowanceText == null ? readRoot('scripts/lab-diff-ok.txt') : allowanceText;
+  const lines=String(raw||'').split('\n').map(l=>l.trim()).filter(l=>l&&!l.startsWith('#'));
+  const allowances=okList(raw), retained=registry.rows.filter(r=>r.disposition==='allow'||r.disposition==='refer');
+  if(registry.rows.length!==34)errors.push('원래 서른네 줄 피복 수 어긋남');
+  if(lines.length!==allowances.size)errors.push('사유 목록 id 겹침');
+  if(retained.length!==allowances.size)errors.push('손잡이 없는 다름 '+retained.length+' ≠ 사유 목록 '+allowances.size);
+  for(const r of registry.rows){
+    if(ids.has(r.id))errors.push(r.id+' 피복 id 겹침');ids.add(r.id);
+    if(!r.reason||!['shared','flag','allow','refer'].includes(r.disposition))errors.push(r.id+' 닫는 길/까닭 없음');
+    const fact=factMap.get(r.id);if(fact&&(!fact.found||fact.lab!==r.expectedLab||fact.srv!==r.expectedServer))errors.push(r.id+' 두 글자의 값이 등록한 쌍과 다름');
+    if(r.disposition==='allow'||r.disposition==='refer'){const p=allowances.get(r.id);if(!p||p.kind!==r.disposition||!p.why||!p.jb)errors.push(r.id+' 보존 사유/상태/근거 누락');}
+    if(r.disposition==='flag'){
+      const code=srcOf(r.flagFile+'#body')||'';
+      if(!fact?.knob.includes(r.flag)||!new RegExp('(?:\\.'+r.flag+'\\b|[\x27\x22]'+r.flag+'[\x27\x22])').test(code))errors.push(r.id+' 손잡이 이름/연결 어긋남');
+    }
+    for(const p of r.spans||[]){const n=S.locate(p.file,p.selector,srcOf);if(!n||n.hash!==p.hash)errors.push(r.id+' '+p.file+' 등록한 규칙 몸통이 바뀜(재진단 필요)');}
+  }
+  for(const f of facts)if(!f.knob&&!ids.has(f.id))errors.push(f.id+' 새 손잡이 없는 다름(사유 없음)');
+  for(const id of allowances.keys())if(!retained.some(r=>r.id===id))errors.push(id+' 다름 밖 사유 목록 줄');
+  const treeNode=S.locate('lab/전쟁실험실.html',{kind:'decl',name:'TREES'},srcOf);let catalogEqual=false;
+  try { const table=require('vm').runInNewContext('('+treeNode.init+')'),catalog=JSON.parse(srcOf('server/trees.json')).trees;const normalized=o=>JSON.stringify(Object.fromEntries(Object.keys(o).sort().map(k=>[k,Object.fromEntries(Object.keys(o[k]).sort().map(p=>[p,o[k][p]]))])));catalogEqual=normalized(table)===normalized(catalog); } catch (_) {}
+  if(!catalogEqual)errors.push('R27 생성 수종 카탈로그가 랩 원본과 다름');
+  return {ok:errors.length===0,errors,catalogEqual,unflagged:retained.map(r=>r.id),allowanceCount:allowances.size,allowed:registry.rows.filter(r=>r.disposition==='allow').map(r=>r.id),referred:registry.rows.filter(r=>r.disposition==='refer').map(r=>r.id),shared:registry.rows.filter(r=>r.disposition==='shared').map(r=>r.id),flagged:registry.rows.filter(r=>r.disposition==='flag').map(r=>r.id),extras:registry.extras};
+}
+
+module.exports = { SAME, DIFFS, checkSame, checkDiffs, checkClosure, okList, grab, norm, readRoot, sourceCode, WAR, VIL };

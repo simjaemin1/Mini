@@ -1,0 +1,142 @@
+# 만진 함수 → 하네스 (touched-harness · base origin/main · 갈림점 1aa63e637)
+· 바뀐 코드 파일 12 · 이름 17(물린 것 11 · 흔한 이름 뺌 0) · 바뀐 하네스 2 · 규약 다섯 · **돌릴 하네스 20**
+  scripts/lab-wiring-check.js: (이름 없음)
+  scripts/lib-lab-diff.js: checkClosure lib-lab-diff okList
+  scripts/lib-t1409-source.js: lib-t1409-source
+  scripts/t1409-browser.js: t1409-browser
+  scripts/t1409-probe.js: t1409-probe
+  server/specialty.js: oreRegen
+  server/village-layout.js: (이름 없음)
+  server/villages.js: extractLandParamsApprox
+  sim/build-econ-bundle.js: _warRules bundle sharedLabRules warRuleValues
+  sim/economy-engine.browser.js: conscriptWith oreRegen oreRegenRaw waterAccess
+  sim/shared-lab-rules.js: shared-lab-rules
+  sim/war-core.js: conscript
+· 이름 → 하네스 수: bundle 3 · checkClosure 1 · conscript 6 · conscriptWith 1 · extractLandParamsApprox 2 · lib-lab-diff 2 · lib-t1409-source 1 · oreRegen 3 · oreRegenRaw 1 · shared-lab-rules 1 · waterAccess 1
+· 바뀐 하네스: test-t1395-lab-diff.js test-t1409-shared-rules.js
+· 돌릴 하네스: test-body-fields.js test-coll-grid.js test-frontier-iron.js test-harness-lint.js test-hp-src.js test-lab-mining.js test-lon-day.js test-mining.js test-onboarding.js test-one-decay.js test-t1044-scram-walk.js test-t1060-scram-hold.js test-t1089-ret-walk.js test-t1094-arms-trip.js test-t1094-carry-cap.js test-t1325-one-rot.js test-t1334-bundle.js test-t1395-lab-diff.js test-t1409-shared-rules.js test-war-world.js
+##### test-body-fields.js #####
+=== 14 통과 / 0 실패 ===
+  ✓ ★자명 통과 금지 — `??=` 꼴도 문다 · 읽기(`==`)는 안 문다  zone.js:20234 npc._t673Bait2
+  ✓ ★[T1140 ③-가] 자명 통과 금지 — 값 하나(`nextDecisionAt: 1`)를 바꾸면 문다
+  ✓ ⑳ 판정 칸 쓰기 자리를 다 셌다(자명 통과 아님)  전체 462 · 걸음 문 안 260 · 문 밖 202(표 내림 75 · 까닭 127)
+=== 14 통과 / 0 실패 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-coll-grid.js #####
+=== 결과: 20 PASS / 0 FAIL ===
+  ✓ ② [전제 · 자명 통과 금지] 걸음이 **실제로 막힌다** · 옛 격자 질의의 셋에 하나 넘게에 **밭·마당이 섞였다**  막힘 10476/40000 · 밭 섞임 4525/10000
+=== 결과: 20 PASS / 0 FAIL ===
+  [소요] 10초
+  ✓ RC=0
+##### test-frontier-iron.js #####
+=== 프런티어 철 하네스: 11 통과 / 0 실패 ✅ ===
+  ✓ ★플레이어 층은 본다 — oreProbAt = 0.53 (검사가 자명하게 통과하지 않는다)
+  ✓   시작 시점 소비 EMA 는 0 (검사가 자명하게 통과하지 않는다)
+=== 프런티어 철 하네스: 11 통과 / 0 실패 ✅ ===
+  [소요] 1초
+  ✓ RC=0
+##### test-harness-lint.js #####
+  ✓ ⑳ [전제] `@harness-only` 표지를 단 하네스가 실제로 있다(0 이면 아래가 자명 통과다)  test-ci-changes.js test-ci-list.js test-harness-bite.js test-notice-mark.js
+  ✓ ★⑳ 자명 통과 금지 — 제품 부름 셋은 물고 · 주석 · scripts 자리는 보낸다  req=hit,join=hit,rel=hit,cmt=none,scr=none
+  ✓ ★㉑ 자명 통과 금지 — 안 지우는 셋은 물고 · 지우는 넷은 보낸다  mk=hit,anon=hit,pidJson=hit,rm=none,lib=none,pidDb=none,own=none
+=== 102건 중 PASS 102 · FAIL 0 ===
+  [소요] 29초
+  ✓ RC=0
+##### test-hp-src.js #####
+=== 54 통과 / 0 실패 ===
+  ✓ [상황] 세 파일을 실제로 읽었다(못 읽으면 아래가 자명 통과다)  zone 1236711 · net 109161 · wildlife 111078
+  ✓ ★⓪ 자명 통과 금지 — 직접 대입 한 줄을 되살리면 잡힌다
+  ✓ [상황] `server/villages.js` 를 실제로 읽었다(못 읽으면 아래가 자명 통과다)  villages 1524631
+=== 54 통과 / 0 실패 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-lab-mining.js #####
+  ✗ 광부가 광맥 셀에 배치됨
+  ✗ 광맥 재고가 실제로 줄어든다
+결과: FAIL — 2건
+  ✔ ③ⓜ 자명 통과 금지 — 한 광맥 셀에 다른 조 둘을 일부러 세운 미끼는 같은 자로 **빨강** (같은 조 셀 0/1)
+  [소요] 1341초
+  ✗ RC=1 · 결과줄 29개 → **실패로 센다**
+##### test-lon-day.js #####
+=== 22건 중 PASS 22 · FAIL 0 ===
+  [소요] 0초
+  ✓ RC=0
+##### test-mining.js #####
+결과: PASS
+  [소요] 5초
+  ✓ RC=0
+##### test-onboarding.js #####
+⑧ ★이 하네스가 실패할 줄 아는가 — 일부러 나쁜 도착 지점을 넣는다
+=== PASS 38 / FAIL 0 ===  (총 54초)
+  [소요] 54초
+  ✓ RC=0
+##### test-one-decay.js #####
+=== 17 통과 / 0 실패 ===
+=== 17 통과 / 0 실패 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-t1044-scram-walk.js #####
+=== 결과: 18 PASS / 0 FAIL ===
+  ✓ ★ⓑ 끔(`=0`) — 그 걸음에 풀린다 · 첫 10초 걸음 0 · 포진점 쪽으로 40칸도 못 온다(적이 들일로 와서 싸운다) · 먼 몸은 끝까지 한 걸음도 안 뗀다(자명 통과 금지의 증인)  {"sc":{"t":987,"fst":"advance","ctl":0,"n":17},"c":4314,"end":{"why":"rout","winner":"B"},"endT":5189,"bad":0,"u":["C:132.61:117.18:0.11:0::7.92:0:1:1",":136.47:107.73:0.12:0::25.37:0:1:1",":314.47:314.47:0:0::0:0:0:0",":136.61:108.44:0.12:0::24.15:0:1:1",":134.45:107.37:0.11:0::22.35:0:1:1",":132.53:106.38:0.1:0::24.2:0:0:1",":136.45:127.11:0.06:0::5.98:0:0:0",":134.53:107.07:0.09:0::25.7:0:0:1",":134.47:107.35:0.1:0::25:0:0:1",":132.46:106.34:0.09:0::25.1:0:0:1",":132.49:107.25:0.07:0::24.37:0:0:1",":134.61:106.39:0.09:0::26.65:0:0:1",":136.53:127.19:0.06:0::5.98:0:0:0",":132.47:106.66:0.1:0::22.62:0:1:1",":132.45:105.59:0.09:0::25.23:0:0:1",":134.46:109.54:0.06:0::22.21:0:0:0",":136.46:128.11:0.06:0::5.44:0:0:0"]}
+=== 결과: 18 PASS / 0 FAIL ===
+  [소요] 2초
+  ✓ RC=0
+##### test-t1060-scram-hold.js #####
+=== 결과: 16 PASS / 0 FAIL ===
+=== 결과: 16 PASS / 0 FAIL ===
+  [소요] 3초
+  ✓ RC=0
+##### test-t1089-ret-walk.js #####
+=== 결과: 19 PASS / 0 FAIL ===
+=== 결과: 19 PASS / 0 FAIL ===
+  [소요] 3초
+  ✓ RC=0
+##### test-t1094-arms-trip.js #####
+=== 결과: 13 PASS / 0 FAIL ===
+=== 결과: 13 PASS / 0 FAIL ===
+  [소요] 2초
+  ✓ RC=0
+##### test-t1094-carry-cap.js #####
+=== 결과: 15 PASS / 0 FAIL ===
+=== 결과: 15 PASS / 0 FAIL ===
+  [소요] 1초
+  ✓ RC=0
+##### test-t1325-one-rot.js #####
+  [소요] 1초
+  ✓ RC=0
+##### test-t1334-bundle.js #####
+  ✓ ⑤ 끔과 다름 — 끔이면 아무 갈래도 안 선다(자명 통과 아님)  {"threw":false,"T325":false,"T1213":false,"T1283":false,"T1297":false,"T1306G":false,"AUT1":false,"MIG":false,"need184":30,"mig184":30,"T1207":false,"T1238":false,"T1302":false,"m1306":false,"m1312":false,"m1319K":false,"m1342":false}
+=== T1334 묶음 손잡이: 통과 19 · 실패 0 ===
+  [소요] 139초
+  ✓ RC=0
+##### test-t1395-lab-diff.js #####
+  ✓ [전제] SAME 줄 403 ≥ 20(0 이면 아래가 자명 통과)
+=== T1395 랩↔서버 대조: 통과 20 · 실패 0 ===
+  [소요] 20초
+  ✓ RC=0
+##### test-t1409-shared-rules.js #####
+  ✓ 개인편성 실패 뒤에만 폴백1
+=== T1409 공유 계산: 통과 14 · 실패 0 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-war-world.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+  [찌꺼기] /tmp 에서 죽은 판 이름 DB 6개 지움(37 MB)
+[test] 🐂 교역로 A* 실패: 공격A↔방어B — 실체 생략(econ은 그대로 진행)
+[test] 🐂 교역로 A* 실패: 소굴#9↔공격A — 실체 생략(econ은 그대로 진행)
+[test] 🐂 교역로 A* 실패: 공격A↔소굴#9 — 실체 생략(econ은 그대로 진행)
+결과: 191 통과 / 0 실패
+  ✓ ⓑ 대조 — 옛 모양 문자열엔 같은 검사가 문다(자명 통과 아님)
+  ✓ ⓤ ★미끼① — 날을 바꾸면 자리가 바뀐다(씨가 실제로 날을 본다 · 위 칸은 자명 통과가 아니다)  날 400 hash 2902772331 · 날 451 hash 23927852
+  ✓ ⓤ ★미끼③ — 끝나기 전에 자르면 "끝났다"가 안 선다(판정이 상태를 본다 · 자명 통과 0)  300틱: 끝 undefined · 교전 0틱
+결과: 191 통과 / 0 실패
+  [소요] 159초
+  ✓ RC=0
+
+=== 러너 요약 ===
+  통과 19: test-body-fields.js test-coll-grid.js test-frontier-iron.js test-harness-lint.js test-hp-src.js test-lon-day.js test-mining.js test-onboarding.js test-one-decay.js test-t1044-scram-walk.js test-t1060-scram-hold.js test-t1089-ret-walk.js test-t1094-arms-trip.js test-t1094-carry-cap.js test-t1325-one-rot.js test-t1334-bundle.js test-t1395-lab-diff.js test-t1409-shared-rules.js test-war-world.js
+  실패 1: test-lab-mining.js(rc=1)
+  걸린 시간 상위(초): test-lab-mining.js 1341 · test-war-world.js 159 · test-t1334-bundle.js 139 · test-onboarding.js 54 · test-harness-lint.js 29 · test-t1395-lab-diff.js 20 · test-coll-grid.js 10 · test-mining.js 5 · test-t1060-scram-hold.js 3 · test-t1089-ret-walk.js 3
+  걸린 시간 합: 하네스 1774초 · 러너 전체 1790초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 2번 × 8초 · 건넘 19번(앞 판이 남긴 아이 없음)

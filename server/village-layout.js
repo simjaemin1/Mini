@@ -21,6 +21,7 @@
 // =============================================================================
 (function () {
   const HOUSE_HALF = 2;            // (레거시 호환 수출 — 서버 materialize 5×5 한옥 건물 반폭. 부지·판정은 아래 원판이 정본)
+  const _t1409WaterAccess = nd => (typeof require==='function' ? require('../sim/shared-lab-rules').waterAccess(nd) : (typeof window!=='undefined'&&window.EconEngine&&window.EconEngine.Rules ? window.EconEngine.Rules.waterAccess(nd) : Math.max(0.05,Math.min(1,1-nd/140))));
   const HOUSE_CAP_PER_FLOOR = 6;   // ★[고증 v2 재동기 — 랩 선행분 이관] 8→6: 단층 움집 6명(송국리 장방형 24~28㎡ 발굴 추정 5~6명의 상단). 신규 시딩만 영향(econ housing 무관)
   const LAND_PER_HOUSE = 400;      // ★채당 영토 배분 400셀 — 영토 공식의 유일 정본: 채당 수용이 바뀌어도 취락:영토 비율 불변
   // ★★[T100 4판 · 재민 판정 2026-09-07] **인당 기준 경작칸 8 → 12**(×1.5).
@@ -188,7 +189,7 @@
     // ── 직업 믹스 = 국소 자원에서 emergent
     const fert = opts.fert != null ? opts.fert : fertScore;
     let nd = 999, wdx = 0, wdy = 0; for (let r = 1; r < 140 && nd === 999; r++) for (let a = 0; a < 360; a += 20) { const ca = Math.cos(a * Math.PI / 180), sa = Math.sin(a * Math.PI / 180); const x = Math.round(ccx + ca * r), y = Math.round(ccy + sa * r); if (t.isWater && t.isWater(x, y)) { nd = r; wdx = ca; wdy = sa; break; } }
-    const water = opts.water != null ? opts.water : Math.max(0.05, Math.min(1, 1 - nd / 140));
+    const water = opts.water != null ? opts.water : _t1409WaterAccess(nd);
     const wFarm = fert * 0.4, wFish = water * 0.25, wOther = 0.18;
     const wSum = wFarm + wFish + wOther;
     const fShare = wFarm / wSum, hShare = wFish / wSum;

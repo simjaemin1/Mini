@@ -1189,7 +1189,7 @@ function extractLandParamsApprox(ta, ccx, ccy, layout) {
   const rockD = n ? rock / n : 0, forD = n ? forest / n : 0;
   const oreD = n ? ore / n : 0, huntD = huntN ? huntF / huntN : 0;
   const nd = ta.nearestWaterDist(ccx, ccy, 140);   // ★탐색 45→140(랩 자원권 R과 통일 — 100m 강도 어장권)
-  const water = Math.max(0.05, Math.min(1, 1 - nd / 140));   // ★리카도 선형 감쇠: 물가 1.0 → 100m 0.29 → 140m+ 바닥 — '멀리 강 있는 마을은 어부를 뽑되 적게'
+  const water = require('../sim/shared-lab-rules').waterAccess(nd);   // ★리카도 선형 감쇠: 물가 1.0 → 100m 0.29 → 140m+ 바닥 — '멀리 강 있는 마을은 어부를 뽑되 적게'
   let tw = 0;
   const tn = (layout.territory && layout.territory.length) || 0;
   if (tn) for (const c of layout.territory) if (ta.isWater(c[0], c[1])) tw++;

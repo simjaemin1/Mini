@@ -1,0 +1,5 @@
+[build] economy-engine.browser.js 생성: 1489 KB
+[inline] 마을실험실.html: 기존 엔진 블록 교체
+[inline] 완료: /workspace/Mini-T1409/lab/마을실험실.html (2521270 bytes)
+[inline] 전쟁실험실.html: 기존 엔진 블록 교체
+[inline] 완료: /workspace/Mini-T1409/lab/전쟁실험실.html (2934251 bytes)

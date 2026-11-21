@@ -7,7 +7,23 @@
   //   실제로 터졌다: rational picker 에 전사 줄을 넣자 warriorTarget(process.env.PEACE_W)이
   //   랩에서 처음 호출돼 즉사했다 — CLI 하네스는 못 잡는 브라우저 전용 지뢰라 여기서 구조적으로 막는다.
   var process=(typeof root.process!=='undefined'&&root.process)?root.process:{env:{}};
-  function req(p){ for(var k of ["freshfish","seafish","fish-goods","fish-preserve","sustain","fishing","kcal"])if(p.endsWith('/'+k))return modules[k]; if(/hanbando-minerals$/.test(p))return modules.oreKinds; if(/ore-goods$/.test(p))return modules.oreGoods; if(/move-model/.test(p))return modules.movem; if(/equilibrium/.test(p))return modules.equil; if(/(^|[/])carry$/.test(p))return modules.carry; if(/(^|[/])body$/.test(p))return modules.body; if(/(^|[/])weather$/.test(p))return modules.weather; if(/(^|[/])salt$/.test(p))return modules.salt; if(/(^|[/])tidal$/.test(p))return modules.tidal; if(/(^|[/])animals$/.test(p))return modules.animals; if(/(^|[/])game-meat$/.test(p))return modules.gmeat; if(/(^|[/])spoil$/.test(p))return modules.spoil; if(/(^|[/])lots$/.test(p))return modules.lots; if(/crops[.]json$/.test(p))return modules.cropsData; if(/crop-cal/.test(p))return modules.cropcal; if(/(^|[/])events$/.test(p))return modules.events; if(/(^|[/])crops$/.test(p))return modules.crops; if(/calendar/.test(p))return modules.cal; if(/zone-config/.test(p))return modules.zcfg; if(/weights$/.test(p))return modules.wts; if(/hut-stages/.test(p))return modules.hut; if(/stone-uses/.test(p))return modules.stoneu; if(/granary-stages/.test(p))return modules.granst; if(/smelt-uses/.test(p))return modules.smeltu; if(/village-layout/.test(p))return modules.vlayout; if(/era/.test(p))return modules.era; if(/specialty/.test(p))return modules.specialty; if(/economy-sim-v2/.test(p))return modules.v2; if(/economy-sim/.test(p))return modules.v1; return {}; }
+  function req(p){ if(/shared-lab-rules$/.test(p))return modules.sharedLabRules; for(var k of ["freshfish","seafish","fish-goods","fish-preserve","sustain","fishing","kcal"])if(p.endsWith('/'+k))return modules[k]; if(/hanbando-minerals$/.test(p))return modules.oreKinds; if(/ore-goods$/.test(p))return modules.oreGoods; if(/move-model/.test(p))return modules.movem; if(/equilibrium/.test(p))return modules.equil; if(/(^|[/])carry$/.test(p))return modules.carry; if(/(^|[/])body$/.test(p))return modules.body; if(/(^|[/])weather$/.test(p))return modules.weather; if(/(^|[/])salt$/.test(p))return modules.salt; if(/(^|[/])tidal$/.test(p))return modules.tidal; if(/(^|[/])animals$/.test(p))return modules.animals; if(/(^|[/])game-meat$/.test(p))return modules.gmeat; if(/(^|[/])spoil$/.test(p))return modules.spoil; if(/(^|[/])lots$/.test(p))return modules.lots; if(/crops[.]json$/.test(p))return modules.cropsData; if(/crop-cal/.test(p))return modules.cropcal; if(/(^|[/])events$/.test(p))return modules.events; if(/(^|[/])crops$/.test(p))return modules.crops; if(/calendar/.test(p))return modules.cal; if(/zone-config/.test(p))return modules.zcfg; if(/weights$/.test(p))return modules.wts; if(/hut-stages/.test(p))return modules.hut; if(/stone-uses/.test(p))return modules.stoneu; if(/granary-stages/.test(p))return modules.granst; if(/smelt-uses/.test(p))return modules.smeltu; if(/village-layout/.test(p))return modules.vlayout; if(/era/.test(p))return modules.era; if(/specialty/.test(p))return modules.specialty; if(/economy-sim-v2/.test(p))return modules.v2; if(/economy-sim/.test(p))return modules.v1; return {}; }
+  modules["sharedLabRules"]=(function(){var module={exports:{}};Object.defineProperty(module,"exports",{get:function(){return modules["sharedLabRules"];},set:function(v){modules["sharedLabRules"]=v;}});module.exports={};var exports=module.exports;var require=req;
+// T1409 — 랩/서버의 같은 계산. 입력·상태·호출 시점은 각 호스트가 소유한다.
+'use strict';
+function waterAccess(nd) { return Math.max(0.05, Math.min(1, 1 - nd / 140)); }
+function oreRegenRaw(R0, days, K, reg0, reg1) {
+  const A = reg0 + reg1, B = reg1 / K, asymptote = A / B;
+  return Math.min(K, asymptote - (asymptote - R0) * Math.exp(-B * days));
+}
+function conscriptWith(individual, aggregate, v, mode, opts) {
+  const ind = individual(v, mode, opts);
+  if (ind) return ind;
+  return aggregate(v, mode, opts);
+}
+module.exports = { waterAccess, oreRegenRaw, conscriptWith };
+
+;return module.exports;})();
   modules["cal"]=(function(){var module={exports:{}};Object.defineProperty(module,"exports",{get:function(){return modules["cal"];},set:function(v){modules["cal"]=v;}});module.exports={};var exports=module.exports;var require=req;var window=undefined;
 // === server/calendar.js — 달력 정본 하나: 그레고리력 (T570 · 재민 10-02) ================================
 //
@@ -2431,7 +2447,7 @@ const ORE_REG0 = 0.01, ORE_REG1 = 0.01;
 const _ORE_A = ORE_REG0 + ORE_REG1, _ORE_B = ORE_REG1 / ORE_K, _ORE_ASY = _ORE_A / _ORE_B;
 function oreRegen(R0, gameDays) {
   if (!(gameDays > 0)) return Math.min(ORE_K, R0);
-  return Math.min(ORE_K, _ORE_ASY - (_ORE_ASY - R0) * Math.exp(-_ORE_B * gameDays));
+  return require('../sim/shared-lab-rules').oreRegenRaw(R0, gameDays, ORE_K, ORE_REG0, ORE_REG1);
 }
 // 광부 1명 일일 정산량(NPC 마을 경제용) — L_MINE 동형 유도:
 //   1440 게임분 × 노동률 0.633 × 왕복효율 0.9697 ÷ 60 = 14.73 덩이/게임일
@@ -7571,6 +7587,7 @@ module.exports = {
 // =============================================================================
 (function () {
   const HOUSE_HALF = 2;            // (레거시 호환 수출 — 서버 materialize 5×5 한옥 건물 반폭. 부지·판정은 아래 원판이 정본)
+  const _t1409WaterAccess = nd => (typeof require==='function' ? require('../sim/shared-lab-rules').waterAccess(nd) : (typeof window!=='undefined'&&window.EconEngine&&window.EconEngine.Rules ? window.EconEngine.Rules.waterAccess(nd) : Math.max(0.05,Math.min(1,1-nd/140))));
   const HOUSE_CAP_PER_FLOOR = 6;   // ★[고증 v2 재동기 — 랩 선행분 이관] 8→6: 단층 움집 6명(송국리 장방형 24~28㎡ 발굴 추정 5~6명의 상단). 신규 시딩만 영향(econ housing 무관)
   const LAND_PER_HOUSE = 400;      // ★채당 영토 배분 400셀 — 영토 공식의 유일 정본: 채당 수용이 바뀌어도 취락:영토 비율 불변
   // ★★[T100 4판 · 재민 판정 2026-09-07] **인당 기준 경작칸 8 → 12**(×1.5).
@@ -7738,7 +7755,7 @@ module.exports = {
     // ── 직업 믹스 = 국소 자원에서 emergent
     const fert = opts.fert != null ? opts.fert : fertScore;
     let nd = 999, wdx = 0, wdy = 0; for (let r = 1; r < 140 && nd === 999; r++) for (let a = 0; a < 360; a += 20) { const ca = Math.cos(a * Math.PI / 180), sa = Math.sin(a * Math.PI / 180); const x = Math.round(ccx + ca * r), y = Math.round(ccy + sa * r); if (t.isWater && t.isWater(x, y)) { nd = r; wdx = ca; wdy = sa; break; } }
-    const water = opts.water != null ? opts.water : Math.max(0.05, Math.min(1, 1 - nd / 140));
+    const water = opts.water != null ? opts.water : _t1409WaterAccess(nd);
     const wFarm = fert * 0.4, wFish = water * 0.25, wOther = 0.18;
     const wSum = wFarm + wFish + wOther;
     const fShare = wFarm / wSum, hShare = wFish / wSum;
@@ -24441,5 +24458,5 @@ module.exports = {
 
 ;return module.exports;})();
 
-  root.EconEngine=Object.assign({},modules.v1,modules.v2); root.EconEngine.Era=modules.era; root.EconEngine.Calendar=modules.cal; root.EconEngine.Layout=modules.vlayout; root.EconEngine.Crops=modules.crops; root.EconEngine.ZoneCfg=modules.zcfg; root.EconEngine.LifeCrew={"crew":2,"pday":1};
+  root.EconEngine=Object.assign({},modules.v1,modules.v2); root.EconEngine.Rules=modules.sharedLabRules; root.EconEngine.WarRuleValues={"WAR_MARCH":1440,"WAR_RAID_MIN":2}; root.EconEngine.Era=modules.era; root.EconEngine.Calendar=modules.cal; root.EconEngine.Layout=modules.vlayout; root.EconEngine.Crops=modules.crops; root.EconEngine.ZoneCfg=modules.zcfg; root.EconEngine.LifeCrew={"crew":2,"pday":1};
 })(typeof window!=='undefined'?window:globalThis);
