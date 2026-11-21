@@ -1,0 +1,2 @@
+const f=process.argv.slice(2);const sets=f.map(p=>{const r=require(p);const C=r.cols,I=c=>C.indexOf(c);const last={};for(const x of r.rows)last[x[1]]=x;const ym=Math.max(...Object.values(last).map(x=>x[0]));return new Set(Object.values(last).filter(x=>x[I('pop')]===0||x[0]<ym).map(x=>x[1]));});
+const all=new Set(sets.flatMap(s=>[...s]));let both=[...all].filter(n=>sets.every(s=>s.has(n)));console.log(sets.map(s=>s.size).join(' · '),'모두 빈',both.length);

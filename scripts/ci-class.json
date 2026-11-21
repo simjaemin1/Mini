@@ -15519,11 +15519,17 @@
    "cls0": "나",
    "why0": "child_process",
    "cls": "나",
-   "maxSec": 1.5,
+   "maxSec": 1.2,
    "same5": true,
    "core": true,
    "why": "core",
    "runs": [
+    {
+     "rc": 0,
+     "secs": 1.1,
+     "green": true,
+     "fails": []
+    },
     {
      "rc": 0,
      "secs": 1.2,
@@ -15532,19 +15538,13 @@
     },
     {
      "rc": 0,
-     "secs": 1.3,
+     "secs": 1.1,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 1.4,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 1.5,
+     "secs": 1.1,
      "green": true,
      "fails": []
     },
@@ -15647,6 +15647,51 @@
     "spawnSync git",
     "spawn bash",
     "spawnSync node"
+   ]
+  },
+  "test-t1421-farm-4000b.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": 2.1,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 1.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 1.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 1.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.1,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "execFileSync node"
    ]
   },
   "test-t721-apply.js": {

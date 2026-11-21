@@ -12381,10 +12381,12 @@ const T198_BRIDGE = process.env.T198_BRIDGE === '1';
 //     `_clearedFrac = |개간| / (|개간| + |미개간 존닝|)`   — `_farmSet` · `_potSet`
 //     `_paddyShare  = (|개간| − |밭|) / |개간|`            — `_drySet` ⊂ `_farmSet` 이라 나머지가 논이다
 //   ⚠분모가 0 이면 **안 심는다**(지어낸 값 0 — econ 이 종전대로 ×1 로 받는다).
+let _t1421C = null; function _t1421Cap() { if (_t1421C === null) { const E = _lifeEcon(); if (!E) return false; _t1421C = !!E.T1421_FIELD_CAP; } return _t1421C; }
 function _fieldBridge(vil) {
   const ec = vil && vil.econ; if (!ec) return;
   const f = vil._farmSet ? vil._farmSet.size : 0;
   ec._fieldCells = f;
+  if (_t1421Cap()) ec._t1421Land = f + (vil._potSet ? vil._potSet.size : 0);   // ★[T1421 ②] 갈 수 있는 땅 = 밭 + 개간 후보 칸(끔 = 칸 없음)
   if (!T198_BRIDGE) return;   // ★되돌림 — 두 칸은 `undefined` 그대로다(비트 동일의 뿌리)
   const p = vil._potSet ? vil._potSet.size : 0;
   const d = vil._drySet ? vil._drySet.size : 0;
@@ -13933,9 +13935,16 @@ const _t1224Stat = { vilDays: 0, ghost: 0, ghostBudget: 0, body: 0, batch: 0 };
 // ★[T1276] 지금 선 작물이 낼 식량(econ 식량 단위) — 심은 칸마다 정본 `_t368Item`(비옥 · 물 · 품질) × 낱개 값(`t368FoodPer`) · econ `_t1276Stand` 에(부양력 밭 흐름이 읽는다 · 끔 = 무동작)
 function _t1276Stand(vil) {
   const E = _lifeEcon(); if (!E || !E.T1276_FARM_K || !vil || !vil.econ || !vil._crop) return 0;
-  let S = 0;
-  for (const [k, e] of vil._crop) { if (!e || !e.c) continue; const it = _t368Item(vil, k, e); if (it && it.u > 0) S += it.u * (E.t368FoodPer(vil.econ, e.c) || 0); }
+  let S = 0, nS = 0;
+  const _g = E.T1421_FARM_DIV === 'grow', _m = E.T1421_FARM_PRICE === 'mix', _C = (_g || _m) ? _Crops() : null;   // ★[T1421 ④ ⑤] 끔 = 아래 갈래 무동작
+  let _gf = 0, _gw = 0, _in = null;
+  for (const [k, e] of vil._crop) { if (!e || !e.c) continue; const it = _t368Item(vil, k, e); if (it && it.u > 0) { const _f = it.u * (E.t368FoodPer(vil.econ, e.c) || 0); S += _f; nS++;
+    if (_C) { if (_g && _f > 0) { _gf += _f; _gw += _f * (_C.growDaysOf(e.c) || 0); } if (_m && !(_f > 0)) { _in = _in || {}; _in[e.c] = (_in[e.c] || 0) + it.u; } } } }
   vil.econ._t1276Stand = S;
+  if (_g && _gf > 0) vil.econ._t1421GAvg = _gw / _gf;   // ★[T1421 ⑤ ⓑ] 선 식량으로 무게 단 자라는 날(빈 밭이면 마지막 값)
+  if (_m) vil.econ._t1421Ined = _in;   // ★[T1421 ④] 안 먹는 선 작물 낱개(없으면 null)
+  if (E.T1421_FARM_DIV === 'labor') { vil.econ._t1421DayS = _t1221DayS(); vil.econ._t1421Lab = true; }   // ★[T1421 ⑤ ⓒ] 사람 하루 낮 초
+  if (E.T1421_FIELD_CAP) vil.econ._t1421StandN = nS;   // ★[T1421 ②] 선 칸 수(칸 하나가 낼 식량 = 선 작물 식량 ÷ 이 수 · 끔 = 칸 없음)
   return S;
 }
 // ★★[T1374 ② 2026-11-18 · 지시 T1374 ㉳] **다음 거둠 날** — econ `_t1374Next`(출생 문 `T1374_BIRTH_HARV` · 기근 문 `T1374_FAMINE_HARV` 가 읽는다 · 밭 세계 · 둘 다 끔이면 무동작).
@@ -14741,6 +14750,7 @@ function lifeFarmDay(vil, day, farmerN, onDid, budget0) {
       if (onDid) { const e0 = vil._crop.get(k); if (e0) { e0c = e0.c; e0p = e0.p; } }
       if (_lifeDoTask(vil, null, k, day)) {
         budget -= _c; did++; total++;
+        if (_L && vil.econ && vil.econ._t1421Lab) vil.econ._t1421LabS = (vil.econ._t1421LabS || 0) + _c;   // ★[T1421 ⑤ ⓒ] 밭 일손 초(일괄)
         if (_L) { _t1221Stat.usedS += _c; _t1221Stat.tasks++; _t1221Stat.byKind[t] = (_t1221Stat.byKind[t] || 0) + 1; }
         if (onDid) onDid(k, t, e0c, e0p, vil._crop.get(k) || null);
       }
@@ -19433,6 +19443,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
         vil._cropClaim.delete(k); npc._farmK = null;
         npc._jobT = (_L && _ok) ? now + _c * _t1243MinMs() : now + (9000 + (_pidHash(npc.pid) % 7) * 1500) / t1295S(npc);   // ★[T1295] 켬(판 시계) = 쉼도 게임 분 축(끔 · 운영 시계 = ÷ 1)   // ★[T1221] 켬 = 일 시간만큼 그 칸에 머문다
         if (_L && _ok) _t1221Stat.bodyS += _c;
+        if (_L && _ok && vil.econ && vil.econ._t1421Lab) vil.econ._t1421LabS = (vil.econ._t1421LabS || 0) + _c;   // ★[T1421 ⑤ ⓒ] 밭 일손 초(몸)
         // ★[곳간②] 짐이 상한에 닿으면 곳간으로 운반(자리 없으면 false → 기존 흐름 그대로)
         if (_handFull(npc) && _granGo(vil, npc, false)) { npc._jobT = 0; return true; }   // ★[T316] 칸 문턱 ∨ kg 상한(먼저 걸리는 쪽)
       }
