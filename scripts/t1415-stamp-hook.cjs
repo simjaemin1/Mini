@@ -32,7 +32,7 @@ if (OUT && /zone\.js$/.test(process.argv[1] || '')) {
   const F = (v) => {
     const e = v.econ || {};
     return { q: v._t529Q ? v._t529Q.length : 0, mkt: id(v._mkt) + ':' + (v._mkt && v._mkt.at ? v._mkt.at.size : 0), cc: v._clearCrew, site: id(v._site), bc: v._buildCrew,
-      t400: (v._t400Crew || []).join(','), ps: id(v._psite), psc: v._psiteCrew, farm: v._farmSet ? v._farmSet.size : 0, terr: v._terrSet ? v._terrSet.size : 0,
+      t400: (v._t400Crew || []).join(','), ps: id(v._psite), psc: v._psiteCrew, farm: v._farmSet ? v._farmSet.size : 0, terr: v._terrSet ? v._terrSet.size : 0, terrZ: v._terrSet && v._terrSet.size ? 1 : 0,
       gp: id(v._granPend), gl: v._granList ? v._granList.length : 0, pids: (v.npcPids || []).join(','), t1207: v._t1207Pend ? v._t1207Pend.length : 0, war: (e._warThreat || 0) > 0 ? 1 : 0 };
   };
   //   놓친 쓰기 갈래: 날 칸이 바뀐 틱(세계 날 · 마을 장부 날 — 표의 날 칸이 이미 표를 내린다 = \`missDay\`) · 하루 마감 조각 중(\`state.tickJobs\` — 표 판정이 거짓 = \`missJob\`) · 그 밖 = \`miss\`
