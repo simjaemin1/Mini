@@ -5,7 +5,7 @@
 //
 // ★무엇: `server/deeds.js` 정본 `advance`(빚 · 먼 칸 · 갈라짐 — `claims` 정본 객체를 넘겨 빠른 길)를 그대로 부른다(사본 0).
 //   ㉠ 지금대로(끔 기본) — 바닥난 청크의 칸이 다 목이면 빚을 들고 기다린다(다른 청크가 바닥나는 순간 쌓인 빚만큼 한꺼번에).
-//   ㉡ `T1389_NECK_GIVE`(여기선 `opt.neckGive`) — 가장 먼 목 칸을 풀고(빚 −100) 그 칸이 떼어 낸 조각 가운데 집이 안 든 조각을 통째로 내준다.
+//   ㉡ → ★[T1402 판정 20] 셋째 안 `T1402_SPLIT_OK`(여기선 `opt.splitOk`) — 목이어도 그대로 먼 칸부터 한 칸씩(떨어진 조각은 내 땅 그대로 · ㉡ `T1389_NECK_GIVE` 는 거뒀다).
 // ★판의 조건: 집 = (0, 0)(집 덩이의 첫 칸) · 덩이 4×4 · 복도는 너비 1(y = 1 줄 · 청크 4×4 안에 복도 칸만 든 청크가 생긴다).
 //   가득에서 버티는 날 D(N) 의 절반 동안 → 떠나는 날 복도만 빼고 다 가득으로 돌봄(복도 청크는 반쯤 빔 — 길은 지나만 다닌다) → 그 뒤 한 번도 안 들어옴.
 //   "모두 가득에서 떠남" 줄도 함께(복도가 같이 바닥나면 막힘이 안 생긴다 — 두 안이 같다).
@@ -37,7 +37,7 @@ function landOf(blobs, paths) {   // 칸 차례 = 집 덩이 → 덩이 · 복�
 }
 const AWAY = [3, 7, 15, 30, 41];
 const out = { away: AWAY, rows: [] };
-console.log('=== T1389 복도 막힘 두 안 — 남는 칸(집 칸 포함) · ㉠ 기다림(지금 · 끔 기본) / ㉡ 집 쪽이 아닌 조각을 통째로 ===');
+console.log('=== 복도 막힘 — 남는 칸(집 칸 포함) · ㉠ 기다림(끔 기본) / 셋째 안 갈라져도 한 칸씩(★T1402 `T1402_SPLIT_OK`) ===');
 console.log('| 땅 꼴 | 칸 | 떠날 때 | 안 | ' + AWAY.map((d) => d + '일').join(' | ') + ' | 막힘 · 한꺼번에 가장 많이 |');
 console.log('|---|---:|---|---|' + AWAY.map(() => '---:').join('|') + '|---|');
 for (const [name, blobs, paths] of SHAPES) {
@@ -47,20 +47,20 @@ for (const [name, blobs, paths] of SHAPES) {
       const row = [], burst = [];
       for (const d of AWAY) {
         const P = landOf(blobs, paths), at = (x) => x * DAY, half = Deeds.daysOf(cells.length) / 2;   // 복도는 버티는 날의 절반 동안 못 돌봄
-        Deeds.advance(P, at(half), Claims, null, null, { neckGive: give });
+        Deeds.advance(P, at(half), Claims, null, null, { splitOk: give });
         if (pre === '복도만 반쯤 빔') { for (const c of P.chunks) if (!c.path) Deeds.addPts(P, c, 1e12); }
         else for (const c of P.chunks) Deeds.addPts(P, c, 1e12);
         let maxAt = 0; const per = new Map();
-        Deeds.advance(P, at(half + d), Claims, (cell, t) => { const k = Math.round(t); per.set(k, (per.get(k) || 0) + 1); }, null, { neckGive: give });
+        Deeds.advance(P, at(half + d), Claims, (cell, t) => { const k = Math.round(t); per.set(k, (per.get(k) || 0) + 1); }, null, { splitOk: give });
         for (const v of per.values()) maxAt = Math.max(maxAt, v);
         row.push(P.cells.length); burst.push(maxAt);
       }
       const st = Deeds._debtStat.stuck;
       out.rows.push({ shape: name, cells: cells.length, pre, give, row, burst: Math.max(...burst) });
-      console.log(`| ${name} | ${cells.length} | ${pre} | ${give ? '㉡' : '㉠'} | ${row.join(' | ')} | 한 순간 최대 ${Math.max(...burst)}칸 |`);
+      console.log(`| ${name} | ${cells.length} | ${pre} | ${give ? '셋째' : '㉠'} | ${row.join(' | ')} | 한 순간 최대 ${Math.max(...burst)}칸 |`);
     }
   }
 }
 out.stat = Object.assign({}, Deeds._debtStat);
-console.log(`\n  셈 표: 막힘 ${out.stat.stuck}번 · ㉡ 내준 번 ${out.stat.neckGive | 0}`);
+console.log(`\n  셈 표: 막힘(㉠ 기다림) ${out.stat.stuck}번`);
 if (JOUT) fs.writeFileSync(JOUT, JSON.stringify(out, null, 1));

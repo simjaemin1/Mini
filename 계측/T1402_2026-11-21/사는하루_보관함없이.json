@@ -1,0 +1,285 @@
+{
+ "PT": 20,
+ "GAME_PER_REAL": 60,
+ "need": {
+  "9": 3.0375,
+  "24": 57.599999999999994,
+  "40": 266.6666666666667,
+  "70": 1429.166666666667,
+  "100": 4166.666666666666
+ },
+ "rows": [
+  {
+   "id": "cucumber",
+   "g": 32,
+   "paddy": false,
+   "tasks": 8.26,
+   "perReal": 15.5,
+   "pts": 310
+  },
+  {
+   "id": "eggplant",
+   "g": 44,
+   "paddy": false,
+   "tasks": 8.35,
+   "perReal": 11.4,
+   "pts": 228
+  },
+  {
+   "id": "curled_mallow",
+   "g": 45,
+   "paddy": false,
+   "tasks": 8.36,
+   "perReal": 11.1,
+   "pts": 223
+  },
+  {
+   "id": "millet",
+   "g": 48,
+   "paddy": false,
+   "tasks": 8.38,
+   "perReal": 10.5,
+   "pts": 210
+  },
+  {
+   "id": "turnip",
+   "g": 50,
+   "paddy": false,
+   "tasks": 8.4,
+   "perReal": 10.1,
+   "pts": 202
+  },
+  {
+   "id": "scallion",
+   "g": 52,
+   "paddy": false,
+   "tasks": 8.42,
+   "perReal": 9.7,
+   "pts": 194
+  },
+  {
+   "id": "chive",
+   "g": 55,
+   "paddy": false,
+   "tasks": 8.44,
+   "perReal": 9.2,
+   "pts": 184
+  },
+  {
+   "id": "water_dropwort",
+   "g": 55,
+   "paddy": false,
+   "tasks": 8.44,
+   "perReal": 9.2,
+   "pts": 184
+  },
+  {
+   "id": "korean_melon",
+   "g": 56,
+   "paddy": false,
+   "tasks": 8.45,
+   "perReal": 9.1,
+   "pts": 181
+  },
+  {
+   "id": "barnyard_millet",
+   "g": 60,
+   "paddy": false,
+   "tasks": 8.48,
+   "perReal": 8.5,
+   "pts": 170
+  },
+  {
+   "id": "hemp_plant",
+   "g": 60,
+   "paddy": false,
+   "tasks": 8.48,
+   "perReal": 8.5,
+   "pts": 170
+  },
+  {
+   "id": "cabbage",
+   "g": 61,
+   "paddy": false,
+   "tasks": 8.49,
+   "perReal": 8.3,
+   "pts": 167
+  },
+  {
+   "id": "indigo_plant",
+   "g": 62,
+   "paddy": false,
+   "tasks": 8.5,
+   "perReal": 8.2,
+   "pts": 164
+  },
+  {
+   "id": "sorghum",
+   "g": 62,
+   "paddy": false,
+   "tasks": 8.5,
+   "perReal": 8.2,
+   "pts": 164
+  },
+  {
+   "id": "adlay",
+   "g": 66,
+   "paddy": false,
+   "tasks": 8.53,
+   "perReal": 7.8,
+   "pts": 155
+  },
+  {
+   "id": "radish",
+   "g": 66,
+   "paddy": false,
+   "tasks": 8.53,
+   "perReal": 7.8,
+   "pts": 155
+  },
+  {
+   "id": "gourd",
+   "g": 70,
+   "paddy": false,
+   "tasks": 8.56,
+   "perReal": 7.3,
+   "pts": 147
+  },
+  {
+   "id": "mulberry_leaf",
+   "g": 70,
+   "paddy": false,
+   "tasks": 8.56,
+   "perReal": 7.3,
+   "pts": 147
+  },
+  {
+   "id": "buckwheat",
+   "g": 71,
+   "paddy": false,
+   "tasks": 8.57,
+   "perReal": 7.2,
+   "pts": 145
+  },
+  {
+   "id": "lettuce",
+   "g": 71,
+   "paddy": false,
+   "tasks": 8.57,
+   "perReal": 7.2,
+   "pts": 145
+  },
+  {
+   "id": "taro",
+   "g": 78,
+   "paddy": false,
+   "tasks": 8.62,
+   "perReal": 6.6,
+   "pts": 133
+  },
+  {
+   "id": "tea",
+   "g": 80,
+   "paddy": false,
+   "tasks": 8.64,
+   "perReal": 6.5,
+   "pts": 130
+  },
+  {
+   "id": "yam",
+   "g": 80,
+   "paddy": false,
+   "tasks": 8.64,
+   "perReal": 6.5,
+   "pts": 130
+  },
+  {
+   "id": "mungbean",
+   "g": 86,
+   "paddy": false,
+   "tasks": 8.69,
+   "perReal": 6.1,
+   "pts": 121
+  },
+  {
+   "id": "barley",
+   "g": 91,
+   "paddy": false,
+   "tasks": 8.73,
+   "perReal": 5.8,
+   "pts": 115
+  },
+  {
+   "id": "sesame",
+   "g": 97,
+   "paddy": false,
+   "tasks": 8.78,
+   "perReal": 5.4,
+   "pts": 109
+  },
+  {
+   "id": "garlic",
+   "g": 101,
+   "paddy": false,
+   "tasks": 8.81,
+   "perReal": 5.2,
+   "pts": 105
+  },
+  {
+   "id": "perilla",
+   "g": 102,
+   "paddy": false,
+   "tasks": 8.82,
+   "perReal": 5.2,
+   "pts": 104
+  },
+  {
+   "id": "wheat",
+   "g": 104,
+   "paddy": false,
+   "tasks": 8.83,
+   "perReal": 5.1,
+   "pts": 102
+  },
+  {
+   "id": "azuki",
+   "g": 112,
+   "paddy": false,
+   "tasks": 8.9,
+   "perReal": 4.8,
+   "pts": 95
+  },
+  {
+   "id": "foxtail_millet",
+   "g": 122,
+   "paddy": false,
+   "tasks": 8.98,
+   "perReal": 4.4,
+   "pts": 88
+  },
+  {
+   "id": "soybean",
+   "g": 133,
+   "paddy": false,
+   "tasks": 9.06,
+   "perReal": 4.1,
+   "pts": 82
+  },
+  {
+   "id": "rice",
+   "g": 136,
+   "paddy": false,
+   "tasks": 9.09,
+   "perReal": 4,
+   "pts": 80
+  },
+  {
+   "id": "ginger",
+   "g": 173,
+   "paddy": false,
+   "tasks": 9.38,
+   "perReal": 3.3,
+   "pts": 65
+  }
+ ]
+}
