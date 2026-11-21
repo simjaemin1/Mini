@@ -7,7 +7,7 @@
 //   ⓐ `claims.components`(정수 열쇠) · `splitsAt`(이웃 무리 번갈아 넓히기) = 종전 글자(문자열 열쇠 · 땅 전체 두 번) — 무작위 칸 집합 수천 개
 //   ⓑ `deeds.advance` 빠른 길(정본 객체) = 종전 길(술어 함수) — 무작위 땅 40판(구멍 · 외딴 조각 · 집 없음)의 풀림 차례 · 시각이 같다
 //   ⓒ 존 셈을 틱 예산으로 잘라 이어도(예약 · 부팅 길) 한 번에 셈한 것과 같다 — 남은 칸 · 빚 · 청크 저축
-//   ⓓ 복도 막힘 — ㉠(끔 기본) 복도 청크만 바닥나면 기다린다(목 칸뿐 · 풀린 칸 0) · ㉡(`T1389_NECK_GIVE=1`) 가장 먼 목 + 집이 안 든 조각 통째로 · 집 덩이는 그대로
+//   ⓓ 복도 막힘 — ㉠(끔 기본) 복도 청크만 바닥나면 기다린다(목 칸뿐 · 풀린 칸 0) · 셋째 안(★T1402 `T1402_SPLIT_OK=1` — ㉡ 거둠) 목이어도 한 칸씩 · 떨어진 먼 덩이 · 집 덩이는 그대로
 //   ⓔ 부재 훑기(T45) — 하루 전에 나간 주인의 칸은 그대로(`active`) · 50일 전이면 `free` (종전 `last_seen | 0` 은 ms 시각을 32비트로 잘라 둘 다 `free`)
 //   ⓕ 계량기 — 1초 안 두 번째 보냄은 버리지 않고 1초 끝에 보낸다(둘째 칸을 잡은 직후 패널이 새 N)
 //   ⓗ 다시 선포(PM 덧붙임 Q12) — 빚 선 땅에서 내놓고 다시 · 풀린 내 칸 다시 선포가 다음 풀림을 한 시간 넘게 늦추지 않는다(선포 +PT 는 빚 · 바닥난 청크에 안 든다)
@@ -71,15 +71,15 @@ if (MODE === 'pure') {
       for (const [x, y] of [...blob(0), ...path, ...blob(16)]) { const [cx, cy] = D.chunkOf(x, y), key = cx + ',' + cy; if (!by.has(key)) { const c = { key, n: 0, m: 0, t: 0, path: true }; by.set(key, c); P.chunks.push(c); } const c = by.get(key); c.n++; if (!pk.has(x + ',' + y)) c.path = false; P.cells.push({ id: x + ',' + y, x, y, key }); }
       for (const c of P.chunks) c.m = D.capOf(c.n);
       const N = P.cells.length, half = D.daysOf(N) / 2;
-      D.advance(P, half * DAYMS, C, null, null, { neckGive: give });
+      D.advance(P, half * DAYMS, C, null, null, { splitOk: give });
       for (const c of P.chunks) if (!c.path) D.addPts(P, c, 1e12);
       const pathZero = half + D.daysOf(N) / 2;   // 복도 청크가 바닥나는 날(같은 N 이면)
-      const hits = []; D.advance(P, (pathZero + 3) * DAYMS, C, (cell, at) => hits.push([cell.id, at / DAYMS]), null, { neckGive: give });
+      const hits = []; D.advance(P, (pathZero + 3) * DAYMS, C, (cell, at) => hits.push([cell.id, at / DAYMS]), null, { splitOk: give });
       return { left: P.cells.length, hits, home: P.cells.some((c) => c.id === '0,0'), blobLeft: P.cells.filter((c) => c.x < 4).length, far: P.cells.filter((c) => c.x >= 16).length };
     };
     const A = corr(false), B = corr(true);
     put(R, 'd_wait', A.hits.length === 0 && A.left === 44, `㉠ 복도만 바닥난 뒤 3일 — 풀린 칸 ${A.hits.length} · 남음 ${A.left}`);
-    put(R, 'd_give', B.far === 0 && B.blobLeft === 16 && B.home && B.hits.length >= 17 && new Set(B.hits.map((h) => h[1].toFixed(6))).size <= B.hits.length - 16, `㉡ 풀린 칸 ${B.hits.length}(먼 덩이 남음 ${B.far} · 집 덩이 ${B.blobLeft}/16) · 한 순간에 ${B.hits.length - new Set(B.hits.map((h) => h[1].toFixed(6))).size + 1}칸`);
+    put(R, 'd_give', B.far === 16 && B.blobLeft === 16 && B.home && B.hits.length >= 2 && new Set(B.hits.map((h) => h[1].toFixed(6))).size === B.hits.length, `셋째 안(T1402 \`T1402_SPLIT_OK\`) 풀린 칸 ${B.hits.length}(먼 덩이 남음 ${B.far}/16 · 집 덩이 ${B.blobLeft}/16) · 한 순간에 최대 ${B.hits.length ? 1 + B.hits.length - new Set(B.hits.map((h) => h[1].toFixed(6))).size : 0}칸`);
   } catch (e) { R.err = String((e && e.stack) || e).slice(0, 400); }
   console.log('@@T1389 ' + JSON.stringify(R));
   process.exit(0);
@@ -193,7 +193,7 @@ if (MODE === 'zone') {
   show(RP, 'a_same', 'ⓐ 정수 열쇠 덩이 세기 · 이웃 무리 갈라짐 판정 = 종전 글자(무작위 집합 1,500 · 칸 빼기 판정 만 넘게)');
   show(RP, 'b_fast', 'ⓑ 셈 빠른 길(claims 정본 객체) = 종전 길(술어 함수) — 무작위 땅 40판 풀림 차례 · 시각');
   show(RP, 'd_wait', 'ⓓ ㉠(끔 기본) 복도 청크만 바닥나면 목 칸뿐이라 기다린다(풀린 칸 0)');
-  show(RP, 'd_give', 'ⓓ ㉡(`T1389_NECK_GIVE`) 가장 먼 목 + 집이 안 든 조각을 한 순간에 통째로 · 집 덩이 16칸 그대로');
+  show(RP, 'd_give', 'ⓓ 셋째 안(★T1402 판정 20 `T1402_SPLIT_OK`) — 복도 칸이 목이어도 한 칸씩 풀리고 먼 덩이 · 집 덩이 16칸 그대로(㉡ `T1389_NECK_GIVE` 는 거뒀다)');
   const RZ = run('zone');
   show(RZ, 'c_slice', 'ⓒ 존 셈을 틱 예산으로 잘라 이어도(400칸 · 30일) 한 번에 셈한 것과 같다 — 남은 칸 · 빚 · 청크 저축');
   show(RZ, 'h_reclaim', 'ⓗ 다시 선포가 빚 · 빚 시계를 안 건드린다(Q12) — 빚 선 30칸에서 내놓고 다시 · 풀린 칸 다시 → 다음 풀림이 한 시간 넘게 안 늦춰진다');
