@@ -200,13 +200,13 @@ function lane(name, port, extra) {
   console.log('== 미끼 넷');
   const bait = (name, a, b) => { const n = SS_SRC.split(a).length - 1; if (n !== 1) return { n, r: null }; return { n, r: cmpModel(SS_SRC.replace(a, b)) }; };
   const B1 = bait('wake', '  delete(k) { const s0 = slotOf.get(k); if (WQ_ON && s0 !== undefined) qWake(s0);', '  delete(k) { const s0 = slotOf.get(k);');
-  ok(B1.r && !(B1.r.same && B1.r.endBad === 0), 'ⓐ 깨움 사건 하나를 뺀 사본(players 지움) → ① 어긋남', B1.r ? `첫 갈림 #${B1.r.at} · 끝 다름 ${B1.r.endBad}` : `자리 ${B1.n}`);
+  ok(B1.n === 1 && B1.r && !(B1.r.same && B1.r.endBad === 0), '미끼 ⓐ 깨움 사건 하나를 뺀 사본(players 지움) → ① 어긋남', `바꾼 자리 ${B1.n}` + (B1.r ? ` · 첫 갈림 #${B1.r.at} · 끝 다름 ${B1.r.endBad}` : ''));
   const B2 = bait('stale', '  while (T.length && !(now < T[0])) {', '  while (T.length && !(now < T[0] + 120)) {');
-  ok(B2.r && !(B2.r.same && B2.r.endBad === 0), 'ⓑ 묵은 시각으로 꺼내는 사본(120ms 늦게) → ① 어긋남', B2.r ? `첫 갈림 #${B2.r.at} · 끝 다름 ${B2.r.endBad}` : `자리 ${B2.n}`);
+  ok(B2.n === 1 && B2.r && !(B2.r.same && B2.r.endBad === 0), '미끼 ⓑ 묵은 시각으로 꺼내는 사본(120ms 늦게) → ① 어긋남', `바꾼 자리 ${B2.n}` + (B2.r ? ` · 첫 갈림 #${B2.r.at} · 끝 다름 ${B2.r.endBad}` : ''));
   const B3 = bait('mat', '  A.VT[s] = n; A.SK[s] = t;   // 거른 셈은', '  // 거른 셈은');
-  ok(B3.r && !(B3.r.same && B3.r.endBad === 0), 'ⓒ 칸을 안 쓰는 사본(`qMat` 무동작) → ① 어긋남', B3.r ? `첫 갈림 #${B3.r.at} · 끝 다름 ${B3.r.endBad}` : `자리 ${B3.n}`);
+  ok(B3.n === 1 && B3.r && !(B3.r.same && B3.r.endBad === 0), '미끼 ⓒ 칸을 안 쓰는 사본(`qMat` 무동작) → ① 어긋남', `바꾼 자리 ${B3.n}` + (B3.r ? ` · 첫 갈림 #${B3.r.at} · 끝 다름 ${B3.r.endBad}` : ''));
   const B4 = fixture('stamp'), b4 = B4.j ? B4.j.out.find((x) => x.name === '장') : null;
-  ok(B4.bait === 1 && b4 && b4.ch && !b4.up, 'ⓓ 도장 안 찍는 사본(장 서기) → ④ 빨강(문은 바뀌었는데 도장 그대로)', `바꾼 자리 ${B4.bait} · ${JSON.stringify(b4)}`);
+  ok(B4.bait === 1 && b4 && b4.ch && !b4.up, '미끼 ⓓ 도장 안 찍는 사본(장 서기) → ④ 빨강(문은 바뀌었는데 도장 그대로)', `바꾼 자리 ${B4.bait} · ${JSON.stringify(b4)}`);
 
   try { fs.rmSync(out, { recursive: true, force: true }); } catch (e) {}
   console.log(`\n=== ${pass} 통과 · ${fail} 실패 ===`);
