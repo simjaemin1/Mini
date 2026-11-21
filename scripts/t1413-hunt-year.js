@@ -85,7 +85,7 @@ function runOne(seed, exch, nh, sp, share, cap, r, days) {
   const { A, w } = load(seed, exch, nh, sp);
   const s = A.s, MD = A.MOB_DEF;
   const K = HB5000 * 5000 / exch;
-  let N = K, empty = null, over = 0, killed = 0, predKill = 0, trimmed = 0, offSaved = null;
+  const kb = []; let N = K, empty = null, over = 0, killed = 0, predKill = 0, trimmed = 0, offSaved = null;
   const capOf = () => { const n = Math.floor(N + 1e-9); return cap === 'lab' ? Math.min(LAB_CAP, n) : n; };
   const isPrey = (m) => !MD[m.type].pred;
   const held = () => { const H = new Set(); for (const a of (offSaved || s.agents)) { if (a._tgt) H.add(a._tgt); if (a._cm) H.add(a._cm); if (a._carc) H.add(a._carc); if (a._bm) H.add(a._bm); } return H; };
@@ -122,6 +122,7 @@ function runOne(seed, exch, nh, sp, share, cap, r, days) {
     const kNow = (s._kA || 0) + (s._kM || 0), dK = kNow - kA0; kA0 = kNow;
     let nd = 0; for (const m of s.mobs) if (m.st === 'dead' && !m.__d) { m.__d = 1; if (isPrey(m)) nd++; }
     const hk = Math.min(nd, dK); killed += hk; predKill += nd - hk;
+    if (hk) { const b = Math.floor((A.lifeGM - NPC_START) / 1440 / 30); while (kb.length <= b) kb.push(0); kb[b] += hk; }   // 30날 칸별 죽인 수(멈춤 · 교착 찾기)
     if (N < K) N += r * N * (1 - N / K) * dt / 1440;
     N -= hk;
     if (N < 1 && empty == null) empty = Math.min(days, Math.floor((A.lifeGM - NPC_START) / 1440) + 1);   // 빈 날 — 판은 끝까지 간다(이미 죽인 몸의 손질 · 가져오기를 센다 · 장부 0 = 그 뒤 몸 0)
@@ -131,7 +132,7 @@ function runOne(seed, exch, nh, sp, share, cap, r, days) {
   const harv = s._mobKills || 0;
   return { sp, exch, nh, share, seed, cap, r, days, win: w.K, K: +K.toFixed(3),
     empty: empty == null ? days : empty, emptied: empty != null, harv, kg: harv * KG[sp], kgHD: +(harv * KG[sp] / (nh * days)).toFixed(3),
-    end: +(N / K).toFixed(4), killed, predKill, trimmed, hDead: s._hDeadN || 0, inj: s._inj || 0, shots: s._shots || 0, over };
+    end: +(N / K).toFixed(4), killed, predKill, trimmed, hDead: s._hDeadN || 0, inj: s._inj || 0, shots: s._shots || 0, over, kb };
 }
 
 const labConst = () => {
