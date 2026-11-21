@@ -8764,6 +8764,7 @@ function init(deps) {
       { const _k = hallData && (hallData.t593 || hallData.seedType); if (_k && _T593_WORD[_k]) state.villages[state.villages.length - 1]._kindKo = _T593_WORD[_k]; }
       if (T785) VillageKin.attach(state.villages[state.villages.length - 1], hallData, _t785Row);   // ★[T785] 켬 — 회관 행의 마을 칸을 되살린다(표지 없는 사람 마을 = 이행 대기)
       _fieldBridge({ econ: ev, _farmSet: farmSet, _potSet: potSet, _drySet: drySet });   // ★[T100] 밭 브리지 초기값(영속 행에서 — 개간 전에도 밭은 있다) · ★[T198] 두 칸도 같은 줄에서
+      if (!row.econ_state && T1408_SEED_NEXT) _t1408SeedNext(state.villages[state.villages.length - 1], row.id);   // ★[T1408 ㉠] 첫 곳간 = 첫 거둠까지(끔 = 무동작)
       if (!row.econ_state) _t1243SeedCells(state.villages[state.villages.length - 1]);   // ★[T1243 추신 14] 첫 해 씨(서버 첫 시작만 · 끔 = 무동작)
       // ★[11차 재민 확정] 마을 안엔 숲이 없다 — 영토 셀의 나무를 벤다(개간).
       //   부팅 때마다 부르지만 이미 벤 나무는 harvestedSeeds 에 있어 다시 생성되지 않는다(멱등).
@@ -13913,10 +13914,16 @@ function _t1374NextHarv(vil, day) {
   }
   return next === Infinity ? null : next;
 }
+// ★★[T1408 2026-11-20 · 지시 T1408 할 일 1 ⓑ] **다음 거둠 날의 날 축** — 손잡이 `T1408_HARV_AXIS`(끔 기본 · `'1'` 만 · T1374 ② ③ 켬 안에서만 뜻).
+//   밭 칸의 심은 날 · 익는 날(`_crop` 의 p · `readyDay`)은 밭 날 축(`_farmDay` — T1212 켬 기본 = econ 날 축)이다. 그런데 아래 줄은 생활층 날(`_ledgerDay` — 마을 정산 날이
+//   아직 없으면 `gameDayOf` = 기점부터 센 날 · 판 시계 판 약 70억)을 그대로 넣어 "그날보다 뒤에 익는 칸"을 찾는다 — 선 칸은 다 걸러지고(앞날) 빈 밭 갈래가 그 70억 날부터
+//   익는 날을 찾아 econ 에 적는다 → econ(`world.day` 축)이 읽는 다음 거둠까지 날 수가 약 70억(T1374 ② 출생 문은 늘 닫히고 ③ 기근 문은 늘 열린다 — 보고 T1408 §1 ⓑ).
+//   켬 — 밭과 같은 날(`_farmDay(vil, day)`)로 찾는다(밭 칸 · 달력 · econ 이 한 축). 끔 = 아래 종전 줄(바이트 그대로). 새 수 0.
+const T1408_HARV_AXIS = process.env.T1408_HARV_AXIS === '1';
 function _t1374Next(vil) {
   const E = _lifeEcon(); if (!E || !(E.T1374_BIRTH_HARV || E.T1374_FAMINE_HARV) || !vil || !vil.econ) return;
   const day = state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0;
-  vil.econ._t1374Next = _t1374NextHarv(vil, day);
+  vil.econ._t1374Next = _t1374NextHarv(vil, T1408_HARV_AXIS ? _farmDay(vil, day) : day);   // ★[T1408] 켬 = 밭 날 축(위 머리말)
 }
 function _lifeHeadlessDay(vil) {
   _t1276Stand(vil);   // ★[T1276] 하루 한 번(라이브 · 판 자 — 몸 갈래여도 선다)
@@ -14468,6 +14475,29 @@ const _t1243Stat = { cutDays: 0, cutAsleep: 0, seeded: 0, seedFood: 0, seedUnits
 //   낱개 = 몫 ÷ 그 작물 낱개 식량 값(econ `t368FoodPer` — 거둔 식량과 같은 값 · 사본 0). 부패는 곳간 품목 그대로. 플레이어 마을은 `initialPop: 0` 이라 0 이다.
 //   ⚠작물 0(그 자리 밭에 심을 철 작물이 없다)이면 종전 `food` 그대로 둔다(계측 `noCrop`).
 const _T1243_GRAIN_GROUPS = new Set(['곡물', '콩류']);   // ⓒ "지난해 곡식" — 작물 표 분류(오곡 = 쌀 · 보리 · 조 · 콩 · 기장)
+// ★★[T1408 ㉠ 2026-11-20 · 지시 T1408 할 일 2 · ★재민 11-19 "서버는 평형까지 돌린 뒤 연다"] **첫 곳간 = 지난 가을걷이를 마친 마을** — 손잡이 `T1408_SEED_NEXT`(끔 기본 · `'1'` 만 · 밭 세계 켬 안에서만 뜻).
+//   종전 첫 곳간(T1243 ⓒ) = 사람 × `seedFoodDays` — 작물 철 없는 옛 익음 시계(파종 → 첫 거둠 55날)다. 작물 철(T1179) 세계의 첫 거둠은 그 마을 밭에서 익는 가장 이른 작물의 날
+//   (`_t1374NextHarv` — 그 마을 밭 · 달력 정본 · 3월 1일 세운 마을이면 여름 ~ 가을)이라 첫 곳간이 그 앞에 마른다.
+//   켬 — 세계가 서는 날의 마을은 지난 가을걷이로 겨울을 난 마을이다: 첫 곳간 = 사람 × 하루치 × (첫 거둠 날 − 오늘) 이 되게 모자란 몫만 같은 곡식 품목으로 얹는다(T1243 ⓒ 갈래 그대로).
+//   새 수 0 — 날 수는 작물 정본 · 달력에서 나온다.
+const T1408_SEED_NEXT = process.env.T1408_SEED_NEXT === '1';
+const _t1408Stat = { seeded: 0, food: 0, days: [] };
+function _t1408SeedNext(vil, dbId) {
+  if (!_t1243On() || !vil || !vil.econ || !vil.econ.storage) return 0;
+  const E = _lifeEcon(), ev = vil.econ, N = (ev.npcs || []).length; if (!E || !(N > 0)) return 0;
+  const d0 = (state.world && Number.isFinite(state.world.day)) ? (state.world.day | 0) : 0;
+  const had = vil._crop; if (!had) vil._crop = new Map();
+  const nx = _t1374NextHarv(vil, d0);
+  if (!had) delete vil._crop;
+  if (!(nx > d0)) return 0;
+  const want = N * E.DAILY_FOOD_CONSUMPTION * (nx - d0), have = E.totalFoodEquivalent(ev), add = want - have;
+  _t1408Stat.days.push(nx - d0);
+  if (!(add > 0)) return 0;
+  ev.storage.food = (ev.storage.food || 0) + add;
+  _t1243Seed(ev, dbId);   // 같은 곡식 품목으로(T1243 ⓒ 갈래)
+  _t1408Stat.seeded++; _t1408Stat.food += add;
+  return add;
+}
 function _t1243SeedCells(vil) {   // 부팅 첫 시작 — 마을 칸(논 · 밭)을 센 뒤 첫 해 씨를 곳간에
   if (!_t1243On() || !vil || !vil.econ || !vil.econ._t1243Seed || vil.econ._t1243Seed.seeds) return 0;
   const C = _Crops(), st = vil.econ.storage; if (!C || !st) return 0;
@@ -21130,7 +21160,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   // Stage 4A — zone.js 소비: 농지 lazy 실물화 / welcome 영토 페이로드 / 레거시 디듀프 판정
   farmTilesInRect, clientVillages, isLegacyVillageClaimed,
   // ★[T146] 사냥 개체군 — 정본을 그대로 내준다(하네스·wildlife·zone 이 이것을 부른다 · 사본 0)
-  T1331_BEAST_BODY, T1359_HUNT_BODY, T1393_HUNT_CHASE, t1393On: () => _t1393On(), T1388_FARMER_CELLS, T1388_FIELD_SHARE, t1388Target: (vil) => _t1388Target(vil, vil.econ), t1331Stat, _t1331Probe: { w: () => _t1331W, day: (vil, day) => _t1331DaySteps(vil, day), save: () => _t1331Save(), boot: () => _t1331Boot(), reset: () => { _t1331W = null; for (const k of Object.keys(_t1331Stat)) _t1331Stat[k] = typeof _t1331Stat[k] === 'number' ? 0 : ''; } },   // ★[T1331] 짐승 몸(하네스 `test-t1331-beast-body` · 탐침 · 내보내기만)
+  T1408_HARV_AXIS, T1408_SEED_NEXT, t1408Stat: () => JSON.parse(JSON.stringify(_t1408Stat)), _t1408Probe: { next: (vil) => { _t1374Next(vil); return vil && vil.econ ? vil.econ._t1374Next : null; }, seed: (vil, id) => _t1408SeedNext(vil, id) }, T1331_BEAST_BODY, T1359_HUNT_BODY, T1393_HUNT_CHASE, t1393On: () => _t1393On(), T1388_FARMER_CELLS, T1388_FIELD_SHARE, t1388Target: (vil) => _t1388Target(vil, vil.econ), t1331Stat, _t1331Probe: { w: () => _t1331W, day: (vil, day) => _t1331DaySteps(vil, day), save: () => _t1331Save(), boot: () => _t1331Boot(), reset: () => { _t1331W = null; for (const k of Object.keys(_t1331Stat)) _t1331Stat[k] = typeof _t1331Stat[k] === 'number' ? 0 : ''; } },   // ★[T1331] 짐승 몸(하네스 `test-t1331-beast-body` · 탐침 · 내보내기만)
   gameRichAt, gameRichSize, huntKillAt, huntTake, huntTakeAt, huntHunters, huntVisLeft, _t158, huntDeforest, _t1195HuntIn, t1195Stat: () => JSON.parse(JSON.stringify(_t1195Stat)), t1225Stat, t1225Keep, t1225SiteTable, _t1225Probe: { shared: _t1217Shared, rho: (vil, day) => _t1225Rho(vil, day), share: (F, cx, cy, vil) => _t1225Share(F, cx, cy, vil), get mode() { return T1225_MODE; } },   // ★[T1225] 물속 자본(계측 · 하네스)
   t1202Stat: () => JSON.parse(JSON.stringify(_t1202Stat)), _t1202Roster, _t1202ClockShort, _t1202FishBatch, t1217Stat: () => JSON.parse(JSON.stringify(Object.assign({}, _t1217Stat, { samples: _t1217Samp }))), _t1217FishDay, _t1217Day, _t1217HourFish, _t1217BodyKeep, _t1217Clock, _t1217BucketK, _t1217On, t1217SharedTable, t1266Stat, _t1266Keep, _t1271Day, _t1271OreCells, _t1277OreSlots, MINE_TEAM, t1271Stat, _t1217Choose, _t1218Kps, _t1218HourExpect, _t1218BodyWait, _t1053Deforest, _t1053Developed, t1053Stat: () => Object.assign({}, _t1053Stat), get T1053_DEFOREST_GAME() { return T1053_DEFOREST_GAME; }, L_DEFOREST_H, L_DEFOREST_GRAN, _gameKey, _cellOfPx, _bandMinCells, _bandFloorFill, _t146Band, _t146BandAll, _t146BuildMs, _huntBandBuild, _lifeGameDay,
   L_GAMEMAX, L_GAMER, L_HUNT, L_GAMEHALF, _t146,
