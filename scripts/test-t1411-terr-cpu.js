@@ -97,11 +97,11 @@ if (process.argv.includes('--child')) {
   for (const on of ['0', '1']) {
     const r = child(on); assert.strictEqual(r.status, 0, r.text); assert(r.text.includes('T1411_CHILD_PASS'), r.text); pass++;
   }
-  for (const [bait, expected] of [['size', 'SIZE_CHANGE_REQUOTES'], ['neighbor', 'NEIGHBOR_CHANGE_REQUOTES']]) {
+  function caught(bait, expected) {
     const r = child('1', bait);
-    assert.strictEqual(r.status, 1, r.text);
-    assert(r.text.includes('MUTATION_SITES=1') && r.text.includes('AssertionError') && r.text.includes(expected), r.text);
-    pass++;
+    return r.status === 1 && r.text.includes('MUTATION_SITES=1') && r.text.includes('AssertionError') && r.text.includes(expected);
   }
+  assert(caught('size', 'SIZE_CHANGE_REQUOTES'), '미끼 ⓐ 바꾼 자리 1곳: 크기 키 제거 → SIZE_CHANGE_REQUOTES 빨강'); pass++;
+  assert(caught('neighbor', 'NEIGHBOR_CHANGE_REQUOTES'), '미끼 ⓑ 바꾼 자리 1곳: 이웃 키 제거 → NEIGHBOR_CHANGE_REQUOTES 빨강'); pass++;
   console.log(`T1411: ${pass} PASS / 0 FAIL; in-file baits 2/2`);
 }
