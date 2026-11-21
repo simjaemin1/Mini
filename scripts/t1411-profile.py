@@ -15,6 +15,10 @@ groups = {
     'hauling': lambda n, u: u.endswith(('/terr-body.js', '/build-haul.js')) or n == '_t1181Step',
     'pathfinding': lambda n, u: u.endswith('/path-core.js') or n in ['pfFindPath', '_pfGo', '_pathTo'],
     'zone_body': lambda n, u: n in ['_moveOne', '_decOne', 'decideNpcBehavior', 'npcStep', 'npcLifeTick'],
+    'walk_prepare': lambda n, u: n in ['_wwPre', '_wwPreOne', '_wwIsStill', '_wwPost', '_wwStillPost'],
+    'spatial_index': lambda n, u: n in ['rebuildSpatialIndex', '_rebuildSpatialInc', '_sweepOne'],
+    'body_separation': lambda n, u: n == 'sepNpcs',
+    'roads': lambda n, u: u.endswith('/roads.js'),
     'observer_self': lambda n, u: '/scripts/t1' in u and ('observe' in u or 'hook' in u),
     'gc': lambda n, u: n == '(garbage collector)',
 }

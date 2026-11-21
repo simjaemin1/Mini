@@ -1,0 +1,9 @@
+{
+ "left": "/tmp/t1411/worlds/base-profile-1020",
+ "right": "/tmp/t1411/worlds/base-plain-1020",
+ "days": 30,
+ "econCompared": 30,
+ "villageCompared": 30,
+ "same": true,
+ "differences": []
+}

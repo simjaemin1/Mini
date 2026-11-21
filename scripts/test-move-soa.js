@@ -1923,7 +1923,7 @@ console.log('\n⑳ T461 걸음 문 WASM 커널 — 1,000틱 뒤 전원 좌표 �
   // ★제품 글자를 뜬다: 이동 문(`movePlayerStep`) · 커널 앞문(`_wwPre`) · 뒷문(`_wwPost`) — 커널은 `server/walk-wasm.js`(제품 껍데기) 그대로.
   const MV = T1145P + body('movePlayerStep'), POST = body('_wwPost');   // ★[T1145] 열 손잡이 이름을 앞에(이동 문 · 앞문 묶음마다 한 번)
   //   ★[T689] 앞문 몸통이 `_wwPreOne` 으로 나뉘었다(손잡이 `T689_GC` · 켬 = `players.forEach`) — 둘을 같이 뜬다 · 판 손잡이는 이 프로세스 env(끔·켬 두 번 돌린다)
-  const PRE = T1145P + 'const T689_GC = ' + (process.env.T689_GC === '1') + ';\nlet _wwCut = false;\nconst T774_ACTIVE_COL = false; let _t774I = 0; const _t774Act = null;\n' + body('_wwPre') + '\n' + body('_wwPreOne');   // ★[T774] 앞문이 읽는 활성 열 손잡이 — 이 판은 끔 갈래
+  const PRE = T1145P + 'const T1411_TERR_FAST = ' + (process.env.T1411_TERR_FAST === '1') + ';\nconst T689_GC = ' + (process.env.T689_GC === '1') + ';\nlet _wwCut = false;\nconst T774_ACTIVE_COL = false; let _t774I = 0; const _t774Act = null;\n' + body('_wwPre') + '\n' + body('_wwPreOne');   // ★[T774] 앞문이 읽는 활성 열 손잡이 — 이 판은 끔 갈래 · T1411 고립 함수의 손잡이도 명시 주입
   const ISS = body('_wwIsStill'), SPOST = body('_wwStillPost');   // ★[T672] 서 있는 몸 거름 · 뒷일(앞문이 부른다 · 끔이면 안 열린다)
   const T672P = ['T672_WALK_CUT', '_wwStill', '_wwStill0', '_wwNoRes', '_wwTC', '_wwResGen', '_wwVerify'];
   const t672A = (on, gen) => [!!on, [], [], [], { src: null, rx: null, gen: -1, k: 0, hit: 0, miss: 0, treeBad: 0, still: 0, stillBad: 0 }, gen || 0, false];
@@ -2410,14 +2410,15 @@ console.log('\n㉓ T689 — 틱마다 짓던 쓰레기를 같은 값으로(빌�
     const mkPl = () => { const m = new Map(); for (const [k, v] of [['n1', { isNpc: true }], ['h', { isNpc: true, handingOff: true }], ['cv', { isNpc: true, simCaravan: true }],
       ['pl', { isNpc: false, inputQueue: [{ vx: 1, vy: 0, seq: 1 }, { vx: 0, vy: 1, seq: 2 }] }], ['w', { isNpc: true, simWar: true }], ['pl0', { isNpc: false, inputQueue: [] }], ['n2', { isNpc: true }]])
       m.set(k, Object.assign({ id: k, x: 0, y: 0, vx: 0, vy: 0 }, v)); return m; };
-    const order = (src, fnName, gc, one, call) => { const seen = []; const pl = mkPl();
-      const R = CR.run(src, Object.assign({ T689_GC: gc, players: pl, _wwList: [], _wwSeq: [], _wwCode: [], _wwStill: [], _wwStill0: [], _wwStat: {}, _wwTC: {} }, { [one]: (p) => { seen.push(p.id); } }), [fnName]);
+    const order = (src, fnName, gc, one, call, fast = false) => { const seen = []; const pl = mkPl();
+      const R = CR.run(src, Object.assign({ T689_GC: gc, T1411_TERR_FAST: fast, players: pl, _wwList: [], _wwSeq: [], _wwCode: [], _wwStill: [], _wwStill0: [], _wwStat: {}, _wwTC: {} }, { [one]: (p) => { seen.push(p.id); } }), [fnName]);
       call(R[fnName]); return seen; };
     { const fsrc = CR.cut(zf, '_fishPoll'), a = order(fsrc, '_fishPoll', false, '_fishPollOne', (f) => f(5)), b = order(fsrc, '_fishPoll', true, '_fishPollOne', (f) => f(5));
       ok(a.length === 7 && a.join() === b.join(), '㉓ⓓ 어로 — 끔 · 켬이 **같은 몸을 같은 차례로** 몸통(`_fishPollOne`)에 넘긴다(원문을 잘라 돌림)', `끔 ${a.join(',')} · 켬 ${b.join(',')}`); }
     ok(/T689_GC \? arr\.values\(\) : arr/.test(ps) && /const p = T689_GC \? _e : _e\[1\];/.test(ps), '㉓ⓓ 사람 저장 — 같은 차례(값만 · [키, 값]의 값) · 커서·조기 반환 그대로');
     { const wsrc = CR.cut(zf, '_wwPre'), a = order(wsrc, '_wwPre', false, '_wwPreOne', (f) => f(50)), b = order(wsrc, '_wwPre', true, '_wwPreOne', (f) => f(50));
-      ok(a.length === 7 && a.join() === b.join(), '㉓ⓓ 걸음 커널 앞문 — 끔 · 켬이 같은 몸을 같은 차례로 몸통(`_wwPreOne`)에(원문을 잘라 돌림)', `끔 ${a.join(',')} · 켬 ${b.join(',')}`); }
+      const c = order(wsrc, '_wwPre', false, '_wwPreOne', (f) => f(50), true);
+      ok(a.length === 7 && a.join() === b.join() && a.join() === c.join(), '㉓ⓓ 걸음 커널 앞문 — 끔 · 켬 · T1411이 같은 몸을 같은 차례로 몸통(`_wwPreOne`)에(원문을 잘라 돌림)', `끔 ${a.join(',')} · 켬 ${b.join(',')} · T1411 ${c.join(',')}`); }
     ok(/else \{ oc = \{ cx: _ocx, cy: _ocy \}; nc = \{ cx: _ncx, cy: _ncy \}; \}/.test(wall) && /oc = _t689WOC; nc = _t689WNC;/.test(wall), '㉓ⓓ 벽 술어 — 끔 새 객체 · 켬 빌린 칸(같은 네 수)');
     { const d1 = Z.slice(Z.indexOf('  const _decOne = (pid, _sL) => { do {'), Z.indexOf('  if (T1348_LOOP) {'));   // ★[T1348 ⓐ] 몸통이 거울 고리의 칸(`_sL`)을 받는다 · 순회 문 머리에 거울 갈래(같은 차례 — `test-t1348-loop` ⓐ ③)
       ok(d1.length > 500 && /\{ _stopAt = pid; break; \}/.test(d1) && /\} while \(false\); return _stopAt !== null; \};/.test(d1)
@@ -2427,14 +2428,14 @@ console.log('\n㉓ T689 — 틱마다 짓던 쓰레기를 같은 값으로(빌�
     { //   이동 문 — `_moveOne` 선언과 그 뒤 차례 문(끔 `for…of` · 켬 `forEach`)을 잘라 돌린다. 몸마다 걸음(`movePlayerStep`)이 몇 번 · 어떤 차례로 불렸나:
       //     넘기는 중 · 캐러밴 · 전쟁 몸은 건너뛰고(그 몸에서 고리가 **안 끝난다** — 다음 몸이 걷는다) · 사람은 입력 수만큼 · 입력 없는 사람 0.
       let mv = null; try { mv = CR.inner(zf, null, '_moveOne', 1); } catch (e) { mv = null; }
-      const walk = (gc, srcX) => { const seen = []; const pl = mkPl();
-        const R = CR.run('function __mv() {\n' + srcX + '\n}', { T689_GC: gc, players: pl, movePlayerStep: (p) => { seen.push(p.id); }, _t1295Walk: () => false, _wwOn: false,
+      const walk = (gc, srcX, fast = false) => { const seen = []; const pl = mkPl();
+        const R = CR.run('function __mv() {\n' + srcX + '\n}', { T689_GC: gc, T1411_TERR_FAST: fast, players: pl, movePlayerStep: (p) => { seen.push(p.id); }, _t1295Walk: () => false, _wwOn: false,
           _t316WalkAlways: () => true, isPositionActive: () => true, Body: { canSprint: () => false }, MoveModel: { stepMove: (v) => ({ vx: v.vx, vy: v.vy }) }, moveMultOf: () => 1,
           _streamWalkMul: () => 1, moveDt: 50, MOVE_PARAMS: { model: 'legacy' }, T1241_DES: false }, ['__mv']);
         R.__mv(); return seen; };
-      const a = mv ? walk(false, mv) : [], b = mv ? walk(true, mv) : [];
-      ok(!!mv && a.join() === 'n1,pl,pl,n2' && a.join() === b.join(),
-         '㉓ⓓ 이동 문 — 끔 · 켬이 같은 몸을 같은 차례 · 같은 수로 걷게 한다(건너뛴 몸에서 고리가 안 끝난다 · 사람은 입력 수만큼 — 원문을 잘라 돌림)', `끔 ${a.join(',')} · 켬 ${b.join(',')}`);
+      const a = mv ? walk(false, mv) : [], b = mv ? walk(true, mv) : [], c = mv ? walk(false, mv, true) : [];
+      ok(!!mv && a.join() === 'n1,pl,pl,n2' && a.join() === b.join() && a.join() === c.join(),
+         '㉓ⓓ 이동 문 — 끔 · 켬 · T1411이 같은 몸을 같은 차례 · 같은 수로 걷게 한다(건너뛴 몸에서 고리가 안 끝난다 · 사람은 입력 수만큼 — 원문을 잘라 돌림)', `끔 ${a.join(',')} · 켬 ${b.join(',')} · T1411 ${c.join(',')}`);
       //   자명 통과 금지 — 켬 갈래가 차례를 뒤집으면(같은 몸 · 다른 차례) 문다
       const bad = mv ? walk(true, mv.replace('if (T689_GC) players.forEach(_moveOne);', 'if (T689_GC) [...players.values()].reverse().forEach(_moveOne);')) : [];
       ok(!!mv && bad.join() !== a.join(), '㉓ⓓ [자명 통과 금지] 켬 갈래 차례를 뒤집은 사본은 문다', bad.join(',')); }

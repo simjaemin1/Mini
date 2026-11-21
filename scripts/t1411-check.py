@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Run the T1411 focused gates sequentially, preserving every actual return code."""
-import argparse, json, os, subprocess, time
+import argparse, hashlib, json, os, shutil, subprocess, time
 from pathlib import Path
 
 p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('--out', type=Path, required=True)
+p.add_argument('--resume-with-manifest', type=Path, help='reuse green gates only after verifying the unchanged measured product source')
 a = p.parse_args()
 a.out.mkdir(parents=True, exist_ok=True)
 root = Path(__file__).resolve().parent.parent
@@ -12,6 +13,7 @@ commands = [
     ('new-harness', ['node', 'scripts/test-t1411-terr-cpu.js']),
     ('old-code-red', ['bash', 'scripts/pm-old-code-red.sh', 'origin/main', 'test-t1411-terr-cpu.js']),
     ('touched', ['node', 'scripts/touched-harness.js', 'origin/main', '--run']),
+    ('territory', ['bash', 'scripts/run-regress.sh', 'test-t1238-terr-v2.js', 'test-t1334-bundle.js', 'test-t1358-terr-stake.js']),
     ('bundle', ['node', 'sim/build-econ-bundle.js', '--check']),
     ('inline', ['node', 'sim/inline-engine.js', '--check']),
     ('wiring', ['node', 'scripts/lab-wiring-check.js']),
@@ -21,7 +23,26 @@ commands = [
                       '계측/서버기준선_2026-11-18.json', '--vclock', '--plan', '1020:400', '--par', '1']),
 ]
 results = []
+if a.resume_with_manifest:
+    manifest = json.loads(a.resume_with_manifest.read_text())
+    for name, expected in manifest['featureSource'].items():
+        assert hashlib.sha256((root/name).read_bytes()).hexdigest() == expected, 'product changed: ' + name
+    previous = a.out/'status.json'
+    results = json.loads(previous.read_text())
+    history = a.out/'history'; history.mkdir(exist_ok=True)
+    stamp = time.time_ns()
+    shutil.copy2(previous, history/f'status-{stamp}.json')
+    for result in results:
+        if result['exit']:
+            old_log = a.out/(result['name']+'.log')
+            if old_log.exists():
+                shutil.copy2(old_log, history/(result['name']+f'-{stamp}.log'))
 for name, command in commands:
+    prior = next((r for r in results if r['name'] == name), None)
+    if prior and prior['exit'] == 0 and name != 'ci-list':
+        print(name, 'reuse verified green', flush=True)
+        continue
+    results = [r for r in results if r['name'] != name]
     env = dict(os.environ)
     if name == 'old-code-red':
         env['OUT'] = str((a.out/'old-code-red-result.log').resolve())

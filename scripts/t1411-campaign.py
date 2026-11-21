@@ -55,8 +55,10 @@ try:
              str(runs/'base-plain-1020'), '--days', '30', '--out', str(root/'profile-fingerprint30.json')],
             root/'profile-compare.log')
     status['stage'] = 'focused-gates'; heartbeat()
-    checked(['python3', str(repo/'scripts/t1411-check.py'), '--out', str(root/'gates/final')],
-            root/'gate-driver.log')
+    gate_command = ['python3', str(repo/'scripts/t1411-check.py'), '--out', str(root/'gates/final')]
+    if (root/'gates/final/status.json').exists():
+        gate_command += ['--resume-with-manifest', str(root/'candidate-manifest.json')]
+    checked(gate_command, root/'gate-driver.log')
     manifest = read(root/'candidate-manifest.json')
     for name, expected in manifest['featureSource'].items():
         assert hashlib.sha256((root/'fast'/name).read_bytes()).hexdigest() == expected, name
