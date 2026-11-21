@@ -1,0 +1,142 @@
+# touched 하네스 · 규약 다섯 — `touched-harness.js origin/main --run -j 1`(판 둘이 같이 도는 상자 · 초는 그 상자에서) · 그 판은 `b43e0b4d3` 트리
+# 첫 판 115/116 — test-t1398-bronze-band 18/19(미끼 labor 의 자리 글자를 ㉢ 줄이 바꿨다) → `f3100128f` 에서 그 글자를 되돌리고(손 값은 return 안) `_t1333ExportCast` 를 무는 다섯을 다시 돌림(아래 끝 다섯 줄)
+
+=== 러너 요약 ===
+  통과 115: test-armor-cap.js test-body-exit.js test-body-fields.js test-cargo-age.js test-coll-grid.js test-day-deaths.js test-donate.js test-draft-famine.js test-econ-fieldyield.js test-events.js test-farm-act.js test-floor-stone.js test-food-floor.js test-food-hunger.js test-food-keep.js test-forage-act.js test-frontier-iron.js test-granary-age.js test-granary-item.js test-granary-rot.js test-hall-units.js test-happy-converge.js test-harness-lint.js test-hp-src.js test-lab-diverge-ctl.js test-lab-happywork.js test-lab-stone.js test-local-clocks.js test-local-midnight.js test-lon-day.js test-member-open.js test-membership.js test-moment-lot.js test-no-shield.js test-onboarding.js test-one-target.js test-physical-forage-plan.js test-seed-reserve.js test-server-market.js test-smelt-return.js test-stone-consumption-flow.js test-stone-independent-budget.js test-stone-planning.js test-stone-real.js test-t1046-wood-share.js test-t1054-decay-wood.js test-t1074-food-debt.js test-t1075-happy-eq.js test-t1113-low-happy.js test-t1128-kcal-tidy.js test-t1132-hall-view.js test-t1136-basket.js test-t1149-winter.js test-t1152-market.js test-t1156-specialty-job.js test-t1157-pay-power.js test-t1159-home-n.js test-t1161-two-prices.js test-t1179-crop-season.js test-t1180-produce-defaults.js test-t1182-caravan-body.js test-t1188-ore-split.js test-t1195-hunt-real.js test-t1196-artisan.js test-t1197-meal-body.js test-t1198-birth-body.js test-t1202-produce-live.js test-t1205-happy.js test-t1206-natural-death.js test-t1217-margin.js test-t1218-fish-canon.js test-t1226-job-flex.js test-t1238-terr-v2.js test-t1249-ore-fix.js test-t1266-ore-body.js test-t1268-econ-clock.js test-t1273-clock-rest.js test-t1278-perf.js test-t1292-t952-axis.js test-t1292-xz-esc.js test-t1292-xz-hide.js test-t1321-xz-keep.js test-t1324-xz-migrate.js test-t1325-one-rot.js test-t1328-ore-zero.js test-t1333-alloy-order.js test-t1336-crop-eq.js test-t1344-bronze-mix.js test-t1346-birth-flow.js test-t1347-fetch.js test-t1352-xz-news.js test-t1353-onb-on-prep.js test-t1368-onb-newbie.js test-t1373-home-cap.js test-t1376-xz-market.js test-t1384-mine-food.js test-t1385-bronze-nocap.js test-t1388-farm-gap.js test-t1393-hunt-chase.js test-t1407-tin-world.js test-t807-quote-exec.js test-t835-quote-weight.js test-t860-catch-dry.js test-t877-dry-fix.js test-t924-debt-cap.js test-t931-slotk-ema.js test-t958-house-real.js test-t965-want-start.js test-t976-want-capped.js test-t988-trade-words.js test-t999-trade-cap.js test-valuechain.js test-village-found.js test-war-world.js test-winter.js
+  실패 1: test-t1398-bronze-band.js(rc=1)
+  걸린 시간 상위(초): test-lab-diverge-ctl.js 1698 · test-lab-stone.js 443 · test-events.js 377 · test-war-world.js 283 · test-cargo-age.js 219 · test-moment-lot.js 157 · test-onboarding.js 120 · test-harness-lint.js 119 · test-t988-trade-words.js 105 · test-t1347-fetch.js 103
+  걸린 시간 합: 하네스 5352초 · 러너 전체 5384초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 3번 × 8초 · 건넘 114번(앞 판이 남긴 아이 없음)
+rc=1
+
+# 다시(f3100128f):
+test-t1333-alloy-order.js :: === 69/69 ✓ (미끼 8/8) ===
+test-t1344-bronze-mix.js :: === 37/37 ✓ (미끼 7/7) ===
+test-t1385-bronze-nocap.js :: === 15/15 ✓ (미끼 5/5) ===
+test-t1398-bronze-band.js :: T1398 19/19 PASS · 미끼 8
+test-t1407-tin-world.js :: 결과: 59 통과 · 0 실패
+
+# 규약 다섯(위 러너 안):
+test-body-fields.js :: === 14 통과 / 0 실패 ===
+test-coll-grid.js :: === 결과: 20 PASS / 0 FAIL ===
+test-hp-src.js :: === 54 통과 / 0 실패 ===
+test-lon-day.js :: === 22건 중 PASS 22 · FAIL 0 ===
+test-harness-lint.js :: === 102건 중 PASS 102 · FAIL 0 ===
+
+# 하네스마다(RC):
+test-armor-cap.js RC=0
+test-body-exit.js RC=0
+test-body-fields.js RC=0
+test-cargo-age.js RC=0
+test-coll-grid.js RC=0
+test-day-deaths.js RC=0
+test-donate.js RC=0
+test-draft-famine.js RC=0
+test-econ-fieldyield.js RC=0
+test-events.js RC=0
+test-farm-act.js RC=0
+test-floor-stone.js RC=0
+test-food-floor.js RC=0
+test-food-hunger.js RC=0
+test-food-keep.js RC=0
+test-forage-act.js RC=0
+test-frontier-iron.js RC=0
+test-granary-age.js RC=0
+test-granary-item.js RC=0
+test-granary-rot.js RC=0
+test-hall-units.js RC=0
+test-happy-converge.js RC=0
+test-harness-lint.js RC=0
+test-hp-src.js RC=0
+test-lab-diverge-ctl.js RC=0
+test-lab-happywork.js RC=0
+test-lab-stone.js RC=0
+test-local-clocks.js RC=0
+test-local-midnight.js RC=0
+test-lon-day.js RC=0
+test-member-open.js RC=0
+test-membership.js RC=0
+test-moment-lot.js RC=0
+test-no-shield.js RC=0
+test-onboarding.js RC=0
+test-one-target.js RC=0
+test-physical-forage-plan.js RC=0
+test-seed-reserve.js RC=0
+test-server-market.js RC=0
+test-smelt-return.js RC=0
+test-stone-consumption-flow.js RC=0
+test-stone-independent-budget.js RC=0
+test-stone-planning.js RC=0
+test-stone-real.js RC=0
+test-t1046-wood-share.js RC=0
+test-t1054-decay-wood.js RC=0
+test-t1074-food-debt.js RC=0
+test-t1075-happy-eq.js RC=0
+test-t1113-low-happy.js RC=0
+test-t1128-kcal-tidy.js RC=0
+test-t1132-hall-view.js RC=0
+test-t1136-basket.js RC=0
+test-t1149-winter.js RC=0
+test-t1152-market.js RC=0
+test-t1156-specialty-job.js RC=0
+test-t1157-pay-power.js RC=0
+test-t1159-home-n.js RC=0
+test-t1161-two-prices.js RC=0
+test-t1179-crop-season.js RC=0
+test-t1180-produce-defaults.js RC=0
+test-t1182-caravan-body.js RC=0
+test-t1188-ore-split.js RC=0
+test-t1195-hunt-real.js RC=0
+test-t1196-artisan.js RC=0
+test-t1197-meal-body.js RC=0
+test-t1198-birth-body.js RC=0
+test-t1202-produce-live.js RC=0
+test-t1205-happy.js RC=0
+test-t1206-natural-death.js RC=0
+test-t1217-margin.js RC=0
+test-t1218-fish-canon.js RC=0
+test-t1226-job-flex.js RC=0
+test-t1238-terr-v2.js RC=0
+test-t1249-ore-fix.js RC=0
+test-t1266-ore-body.js RC=0
+test-t1268-econ-clock.js RC=0
+test-t1273-clock-rest.js RC=0
+test-t1278-perf.js RC=0
+test-t1292-t952-axis.js RC=0
+test-t1292-xz-esc.js RC=0
+test-t1292-xz-hide.js RC=0
+test-t1321-xz-keep.js RC=0
+test-t1324-xz-migrate.js RC=0
+test-t1325-one-rot.js RC=0
+test-t1328-ore-zero.js RC=0
+test-t1333-alloy-order.js RC=0
+test-t1336-crop-eq.js RC=0
+test-t1344-bronze-mix.js RC=0
+test-t1346-birth-flow.js RC=0
+test-t1347-fetch.js RC=0
+test-t1352-xz-news.js RC=0
+test-t1353-onb-on-prep.js RC=0
+test-t1368-onb-newbie.js RC=0
+test-t1373-home-cap.js RC=0
+test-t1376-xz-market.js RC=0
+test-t1384-mine-food.js RC=0
+test-t1385-bronze-nocap.js RC=0
+test-t1388-farm-gap.js RC=0
+test-t1393-hunt-chase.js RC=0
+test-t1398-bronze-band.js 센다**
+test-t1407-tin-world.js RC=0
+test-t807-quote-exec.js RC=0
+test-t835-quote-weight.js RC=0
+test-t860-catch-dry.js RC=0
+test-t877-dry-fix.js RC=0
+test-t924-debt-cap.js RC=0
+test-t931-slotk-ema.js RC=0
+test-t958-house-real.js RC=0
+test-t965-want-start.js RC=0
+test-t976-want-capped.js RC=0
+test-t988-trade-words.js RC=0
+test-t999-trade-cap.js RC=0
+test-valuechain.js RC=0
+test-village-found.js RC=0
+test-war-world.js RC=0
+test-winter.js RC=0
