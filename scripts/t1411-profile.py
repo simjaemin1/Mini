@@ -20,6 +20,7 @@ groups = {
     'body_separation': lambda n, u: n == 'sepNpcs',
     'roads': lambda n, u: u.endswith('/roads.js'),
     'observer_self': lambda n, u: '/scripts/t1' in u and ('observe' in u or 'hook' in u),
+    'census': lambda n, u: u.endswith('/t1411-census.cjs'),
     'gc': lambda n, u: n == '(garbage collector)',
 }
 all_self, all_incl = collections.defaultdict(float), collections.defaultdict(float)
