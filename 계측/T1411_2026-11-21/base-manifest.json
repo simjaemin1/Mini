@@ -1,0 +1,12 @@
+{
+ "base": "1aa63e637f24c0cdde4e6b7988f7c013a23301a8",
+ "files": {
+  "server/villages.js": "943ffd07acb11fcba66f3b0ae205e6964e0836d9c6b19ee6882cc28facbad1b5",
+  "server/zone.js": "65a00705e2278d674f0facc1dff212dd9e389755b20b12cc16370fe664cea822",
+  "server/build-haul.js": "deb39bce3f2f53287810e8a0d71f15691dbd39247063c7863853b1417287f0db",
+  "server/terr-body.js": "9c2482d018eb367fcef1534e608631ef58ca5b71705d94d18996b3acfd709188",
+  "server/terr-cost.js": "a8bc781b27c421950c3737c315bce5306bbcc516f377f6d25d813319d106294e",
+  "scripts/t1411-run.py": "bd58bb4f4f03f5d39f046c12069eb44250aae70b9a3dafc3d56d9bedbc924341",
+  "scripts/t1411-profile-hook.cjs": "736bea70a84106d3aa54d7f32c85cb915f47704c4f0af64641f2588c9679055d"
+ }
+}
