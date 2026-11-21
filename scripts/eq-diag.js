@@ -18,7 +18,9 @@ const L = ['| 시드 | 날 | 인구 | 해 평균 인구(앞 365날) | 앞 해 �
 for (const r of runs) {
   const ser = Cr.series(r.rows, W), at = new Map(ser.map((s) => [s.d, s]));
   const pops = r.rows.map((x) => x[C.pop]), m365 = roll(pops, W);
-  const marks = [365, 730, 1095, 1460, r.rows[r.rows.length - 1][C.d]];
+  const endD = r.rows[r.rows.length - 1][C.d], marks = [];
+  for (let d = 365; d < endD; d += 365) marks.push(d);
+  marks.push(endD);   // 해마다 한 줄 + 끝 날
   const tab = [];
   for (const d of marks) {
     const i = r.rows.findIndex((x) => x[C.d] === d); if (i < 0) continue;
