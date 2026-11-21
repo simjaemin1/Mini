@@ -15470,51 +15470,6 @@
     "execFileSync node"
    ]
   },
-  "test-t1421-farm-4000b.js": {
-   "cls0": "나",
-   "why0": "child_process",
-   "cls": "나",
-   "maxSec": 1,
-   "same5": true,
-   "core": true,
-   "why": "core",
-   "runs": [
-    {
-     "rc": 0,
-     "secs": 1,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 0.9,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 0.9,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 1,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 0.8,
-     "green": true,
-     "fails": []
-    }
-   ],
-   "dyn": "나",
-   "child": [
-    "execFileSync node"
-   ]
-  },
   "test-t1409-shared-rules.js": {
    "cls0": "가",
    "why0": "",
@@ -15556,6 +15511,51 @@
     }
    ],
    "dyn": "가"
+  },
+  "test-t1421-farm-4000b.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": 2.1,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 1.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 1.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 1.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.1,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "execFileSync node"
+   ]
   },
   "test-t721-apply.js": {
    "cls0": "나",
