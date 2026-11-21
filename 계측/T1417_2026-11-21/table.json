@@ -1,0 +1,968 @@
+{
+ "runs": {
+  "off-1020": {
+   "rc": 0,
+   "sec": 541,
+   "full": true,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 2488,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 28.04,
+     "emig": 2,
+     "dead": 5,
+     "bronze": 12.19,
+     "cpuPerDay": 2.039
+    },
+    {
+     "day": 200,
+     "pop": 3300,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 12.65,
+     "emig": 363,
+     "dead": 256,
+     "bronze": 15.04,
+     "cpuPerDay": 1.378
+    },
+    {
+     "day": 300,
+     "pop": 3365,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 29.52,
+     "emig": 667,
+     "dead": 820,
+     "bronze": 15.04,
+     "cpuPerDay": 1.166
+    },
+    {
+     "day": 400,
+     "pop": 3345,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 31.95,
+     "emig": 729,
+     "dead": 1136,
+     "bronze": 17.37,
+     "cpuPerDay": 1.335
+    }
+   ]
+  },
+  "off-7": {
+   "rc": 0,
+   "sec": 625,
+   "full": true,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 2612,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 25.76,
+     "emig": 8,
+     "dead": 6,
+     "bronze": 10.66,
+     "cpuPerDay": 2.01
+    },
+    {
+     "day": 200,
+     "pop": 3414,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 13.52,
+     "emig": 264,
+     "dead": 147,
+     "bronze": 11.24,
+     "cpuPerDay": 1.374
+    },
+    {
+     "day": 300,
+     "pop": 3568,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 24.54,
+     "emig": 605,
+     "dead": 757,
+     "bronze": 11.66,
+     "cpuPerDay": 1.326
+    },
+    {
+     "day": 400,
+     "pop": 3582,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 26.73,
+     "emig": 771,
+     "dead": 1349,
+     "bronze": 11.66,
+     "cpuPerDay": 2.197
+    }
+   ]
+  },
+  "off-42": {
+   "rc": 0,
+   "sec": 638,
+   "full": true,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 2537,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 27.15,
+     "emig": 0,
+     "dead": 6,
+     "bronze": 9.25,
+     "cpuPerDay": 2.026
+    },
+    {
+     "day": 200,
+     "pop": 3660,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 14.28,
+     "emig": 607,
+     "dead": 156,
+     "bronze": 13.57,
+     "cpuPerDay": 1.623
+    },
+    {
+     "day": 300,
+     "pop": 3650,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 31.67,
+     "emig": 744,
+     "dead": 585,
+     "bronze": 13.77,
+     "cpuPerDay": 1.322
+    },
+    {
+     "day": 400,
+     "pop": 3884,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 38.37,
+     "emig": 749,
+     "dead": 841,
+     "bronze": 17.04,
+     "cpuPerDay": 1.956
+    }
+   ]
+  },
+  "hunt-1020": {
+   "rc": 0,
+   "sec": 537,
+   "full": true,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 2488,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 28.04,
+     "emig": 2,
+     "dead": 5,
+     "bronze": 12.19,
+     "cpuPerDay": 2.055
+    },
+    {
+     "day": 200,
+     "pop": 3300,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 12.65,
+     "emig": 363,
+     "dead": 256,
+     "bronze": 15.04,
+     "cpuPerDay": 1.409
+    },
+    {
+     "day": 300,
+     "pop": 3365,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 29.52,
+     "emig": 667,
+     "dead": 820,
+     "bronze": 15.04,
+     "cpuPerDay": 1.087
+    },
+    {
+     "day": 400,
+     "pop": 3345,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 31.95,
+     "emig": 729,
+     "dead": 1136,
+     "bronze": 17.37,
+     "cpuPerDay": 1.341
+    }
+   ]
+  },
+  "hunt-7": {
+   "rc": 0,
+   "sec": 649,
+   "full": true,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 2612,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 25.76,
+     "emig": 8,
+     "dead": 6,
+     "bronze": 10.66,
+     "cpuPerDay": 2.011
+    },
+    {
+     "day": 200,
+     "pop": 3414,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 13.52,
+     "emig": 264,
+     "dead": 147,
+     "bronze": 11.24,
+     "cpuPerDay": 1.457
+    },
+    {
+     "day": 300,
+     "pop": 3568,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 24.54,
+     "emig": 605,
+     "dead": 757,
+     "bronze": 11.66,
+     "cpuPerDay": 1.339
+    },
+    {
+     "day": 400,
+     "pop": 3582,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 26.73,
+     "emig": 771,
+     "dead": 1349,
+     "bronze": 11.66,
+     "cpuPerDay": 2.367
+    }
+   ]
+  },
+  "hunt-42": {
+   "rc": 0,
+   "sec": 671,
+   "full": true,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 2537,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 27.15,
+     "emig": 0,
+     "dead": 6,
+     "bronze": 9.25,
+     "cpuPerDay": 2.083
+    },
+    {
+     "day": 200,
+     "pop": 3660,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 14.28,
+     "emig": 607,
+     "dead": 156,
+     "bronze": 13.57,
+     "cpuPerDay": 1.621
+    },
+    {
+     "day": 300,
+     "pop": 3650,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 31.67,
+     "emig": 744,
+     "dead": 585,
+     "bronze": 13.77,
+     "cpuPerDay": 1.404
+    },
+    {
+     "day": 400,
+     "pop": 3884,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 38.37,
+     "emig": 749,
+     "dead": 841,
+     "bronze": 17.04,
+     "cpuPerDay": 2.175
+    }
+   ]
+  },
+  "bronze-1020": {
+   "rc": 0,
+   "sec": 632,
+   "full": true,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 2548,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 26.47,
+     "emig": 0,
+     "dead": 5,
+     "bronze": 19.58,
+     "cpuPerDay": 1.966
+    },
+    {
+     "day": 200,
+     "pop": 3443,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 14.13,
+     "emig": 374,
+     "dead": 422,
+     "bronze": 19.58,
+     "cpuPerDay": 1.544
+    },
+    {
+     "day": 300,
+     "pop": 3483,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 29.09,
+     "emig": 590,
+     "dead": 931,
+     "bronze": 19.58,
+     "cpuPerDay": 1.297
+    },
+    {
+     "day": 400,
+     "pop": 3422,
+     "vills": 51,
+     "empty": 2,
+     "foodDays": 36.29,
+     "emig": 745,
+     "dead": 1527,
+     "bronze": 19.58,
+     "cpuPerDay": 2.083
+    }
+   ]
+  },
+  "bronze-7": {
+   "rc": 0,
+   "sec": 563,
+   "full": true,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 2621,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 25.45,
+     "emig": 7,
+     "dead": 6,
+     "bronze": 17.35,
+     "cpuPerDay": 1.958
+    },
+    {
+     "day": 200,
+     "pop": 3157,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 15.35,
+     "emig": 539,
+     "dead": 237,
+     "bronze": 17.35,
+     "cpuPerDay": 1.326
+    },
+    {
+     "day": 300,
+     "pop": 3429,
+     "vills": 51,
+     "empty": 1,
+     "foodDays": 35.42,
+     "emig": 656,
+     "dead": 556,
+     "bronze": 17.35,
+     "cpuPerDay": 1.334
+    },
+    {
+     "day": 400,
+     "pop": 3538,
+     "vills": 51,
+     "empty": 1,
+     "foodDays": 38.46,
+     "emig": 656,
+     "dead": 817,
+     "bronze": 19.42,
+     "cpuPerDay": 1.544
+    }
+   ]
+  },
+  "bronze-42": {
+   "rc": 0,
+   "sec": 595,
+   "full": true,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 2662,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 25.21,
+     "emig": 8,
+     "dead": 7,
+     "bronze": 18.62,
+     "cpuPerDay": 2.123
+    },
+    {
+     "day": 200,
+     "pop": 3644,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 11.91,
+     "emig": 709,
+     "dead": 276,
+     "bronze": 18.62,
+     "cpuPerDay": 1.568
+    },
+    {
+     "day": 300,
+     "pop": 3555,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 27.49,
+     "emig": 1088,
+     "dead": 1024,
+     "bronze": 18.62,
+     "cpuPerDay": 1.51
+    },
+    {
+     "day": 400,
+     "pop": 3652,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 30.53,
+     "emig": 1094,
+     "dead": 1329,
+     "bronze": 18.62,
+     "cpuPerDay": 1.267
+    }
+   ]
+  },
+  "firstlot-1020": {
+   "rc": 0,
+   "sec": 558,
+   "full": true,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 2488,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 28.04,
+     "emig": 2,
+     "dead": 5,
+     "bronze": 12.19,
+     "cpuPerDay": 2.026
+    },
+    {
+     "day": 200,
+     "pop": 3300,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 12.65,
+     "emig": 363,
+     "dead": 256,
+     "bronze": 15.04,
+     "cpuPerDay": 1.453
+    },
+    {
+     "day": 300,
+     "pop": 3365,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 29.52,
+     "emig": 667,
+     "dead": 820,
+     "bronze": 15.04,
+     "cpuPerDay": 1.233
+    },
+    {
+     "day": 400,
+     "pop": 3345,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 31.95,
+     "emig": 729,
+     "dead": 1136,
+     "bronze": 17.37,
+     "cpuPerDay": 1.386
+    }
+   ]
+  },
+  "firstlot-7": {
+   "rc": 0,
+   "sec": 639,
+   "full": true,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 2612,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 25.76,
+     "emig": 8,
+     "dead": 6,
+     "bronze": 10.66,
+     "cpuPerDay": 1.952
+    },
+    {
+     "day": 200,
+     "pop": 3414,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 13.52,
+     "emig": 264,
+     "dead": 147,
+     "bronze": 11.24,
+     "cpuPerDay": 1.505
+    },
+    {
+     "day": 300,
+     "pop": 3568,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 24.54,
+     "emig": 605,
+     "dead": 757,
+     "bronze": 11.66,
+     "cpuPerDay": 1.355
+    },
+    {
+     "day": 400,
+     "pop": 3582,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 26.73,
+     "emig": 771,
+     "dead": 1349,
+     "bronze": 11.66,
+     "cpuPerDay": 2.168
+    }
+   ]
+  },
+  "firstlot-42": {
+   "rc": 0,
+   "sec": 666,
+   "full": true,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 2537,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 27.15,
+     "emig": 0,
+     "dead": 6,
+     "bronze": 9.25,
+     "cpuPerDay": 2.011
+    },
+    {
+     "day": 200,
+     "pop": 3660,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 14.28,
+     "emig": 607,
+     "dead": 156,
+     "bronze": 13.57,
+     "cpuPerDay": 1.647
+    },
+    {
+     "day": 300,
+     "pop": 3650,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 31.67,
+     "emig": 744,
+     "dead": 585,
+     "bronze": 13.77,
+     "cpuPerDay": 1.423
+    },
+    {
+     "day": 400,
+     "pop": 3884,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 38.37,
+     "emig": 749,
+     "dead": 841,
+     "bronze": 17.04,
+     "cpuPerDay": 2.104
+    }
+   ]
+  },
+  "work-1020": {
+   "rc": 0,
+   "sec": 582,
+   "full": true,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 2488,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 28.04,
+     "emig": 2,
+     "dead": 5,
+     "bronze": 12.19,
+     "cpuPerDay": 2.117
+    },
+    {
+     "day": 200,
+     "pop": 3300,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 12.65,
+     "emig": 363,
+     "dead": 256,
+     "bronze": 15.04,
+     "cpuPerDay": 1.537
+    },
+    {
+     "day": 300,
+     "pop": 3365,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 29.52,
+     "emig": 667,
+     "dead": 820,
+     "bronze": 15.04,
+     "cpuPerDay": 1.268
+    },
+    {
+     "day": 400,
+     "pop": 3345,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 31.95,
+     "emig": 729,
+     "dead": 1136,
+     "bronze": 17.37,
+     "cpuPerDay": 1.475
+    }
+   ]
+  },
+  "work-7": {
+   "rc": 0,
+   "sec": 656,
+   "full": true,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 2612,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 25.76,
+     "emig": 8,
+     "dead": 6,
+     "bronze": 10.66,
+     "cpuPerDay": 2.036
+    },
+    {
+     "day": 200,
+     "pop": 3414,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 13.52,
+     "emig": 264,
+     "dead": 147,
+     "bronze": 11.24,
+     "cpuPerDay": 1.512
+    },
+    {
+     "day": 300,
+     "pop": 3568,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 24.54,
+     "emig": 605,
+     "dead": 757,
+     "bronze": 11.66,
+     "cpuPerDay": 1.432
+    },
+    {
+     "day": 400,
+     "pop": 3582,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 26.73,
+     "emig": 771,
+     "dead": 1349,
+     "bronze": 11.66,
+     "cpuPerDay": 2.274
+    }
+   ]
+  },
+  "work-42": {
+   "rc": 0,
+   "sec": 715,
+   "full": true,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 2537,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 27.15,
+     "emig": 0,
+     "dead": 6,
+     "bronze": 9.25,
+     "cpuPerDay": 2.163
+    },
+    {
+     "day": 200,
+     "pop": 3660,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 14.28,
+     "emig": 607,
+     "dead": 156,
+     "bronze": 13.57,
+     "cpuPerDay": 1.843
+    },
+    {
+     "day": 300,
+     "pop": 3650,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 31.67,
+     "emig": 744,
+     "dead": 585,
+     "bronze": 13.77,
+     "cpuPerDay": 1.547
+    },
+    {
+     "day": 400,
+     "pop": 3884,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 38.37,
+     "emig": 749,
+     "dead": 841,
+     "bronze": 17.04,
+     "cpuPerDay": 2.312
+    }
+   ]
+  }
+ },
+ "ratio": {
+  "off": [
+   1,
+   1,
+   1
+  ],
+  "hunt": [
+   1,
+   1,
+   1
+  ],
+  "bronze": [
+   1.023019431988042,
+   0.9877163595756561,
+   0.9402677651905252
+  ],
+  "firstlot": [
+   1,
+   1,
+   1
+  ],
+  "work": [
+   1,
+   1,
+   1
+  ]
+ },
+ "same": {
+  "hunt": [
+   {
+    "econ": {
+     "eq": 400,
+     "n": 400,
+     "first": null
+    },
+    "side": {
+     "eq": 400,
+     "n": 400,
+     "first": null
+    }
+   },
+   {
+    "econ": {
+     "eq": 400,
+     "n": 400,
+     "first": null
+    },
+    "side": {
+     "eq": 400,
+     "n": 400,
+     "first": null
+    }
+   },
+   {
+    "econ": {
+     "eq": 400,
+     "n": 400,
+     "first": null
+    },
+    "side": {
+     "eq": 400,
+     "n": 400,
+     "first": null
+    }
+   }
+  ],
+  "bronze": [
+   {
+    "econ": {
+     "eq": 6,
+     "n": 400,
+     "first": 7
+    },
+    "side": {
+     "eq": 19,
+     "n": 400,
+     "first": 20
+    }
+   },
+   {
+    "econ": {
+     "eq": 6,
+     "n": 400,
+     "first": 7
+    },
+    "side": {
+     "eq": 0,
+     "n": 400,
+     "first": 1
+    }
+   },
+   {
+    "econ": {
+     "eq": 6,
+     "n": 400,
+     "first": 7
+    },
+    "side": {
+     "eq": 28,
+     "n": 400,
+     "first": 29
+    }
+   }
+  ],
+  "firstlot": [
+   {
+    "econ": {
+     "eq": 400,
+     "n": 400,
+     "first": null
+    },
+    "side": {
+     "eq": 400,
+     "n": 400,
+     "first": null
+    }
+   },
+   {
+    "econ": {
+     "eq": 400,
+     "n": 400,
+     "first": null
+    },
+    "side": {
+     "eq": 400,
+     "n": 400,
+     "first": null
+    }
+   },
+   {
+    "econ": {
+     "eq": 400,
+     "n": 400,
+     "first": null
+    },
+    "side": {
+     "eq": 400,
+     "n": 400,
+     "first": null
+    }
+   }
+  ],
+  "work": [
+   {
+    "econ": {
+     "eq": 400,
+     "n": 400,
+     "first": null
+    },
+    "side": {
+     "eq": 400,
+     "n": 400,
+     "first": null
+    }
+   },
+   {
+    "econ": {
+     "eq": 400,
+     "n": 400,
+     "first": null
+    },
+    "side": {
+     "eq": 400,
+     "n": 400,
+     "first": null
+    }
+   },
+   {
+    "econ": {
+     "eq": 400,
+     "n": 400,
+     "first": null
+    },
+    "side": {
+     "eq": 400,
+     "n": 400,
+     "first": null
+    }
+   }
+  ]
+ },
+ "nFull": 15,
+ "nRuns": 15,
+ "totSec": 9267
+}
