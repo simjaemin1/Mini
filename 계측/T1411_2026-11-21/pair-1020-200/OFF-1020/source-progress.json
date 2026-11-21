@@ -1,0 +1,171 @@
+{
+ "v": 1,
+ "tag": "OFF",
+ "seed": 1020,
+ "days": 730,
+ "every": 10,
+ "dir": "/tmp/t1411/worlds/OFF-1020",
+ "ck": 200,
+ "segs": [
+  {
+   "from": 0,
+   "to": 10,
+   "sec": 397.9,
+   "code": 0,
+   "at": "2026-11-21T06:20:21.581Z"
+  },
+  {
+   "from": 10,
+   "to": 20,
+   "sec": 519.4,
+   "code": 0,
+   "at": "2026-11-21T06:29:01.827Z"
+  },
+  {
+   "from": 20,
+   "to": 30,
+   "sec": 570.2,
+   "code": 0,
+   "at": "2026-11-21T06:38:33.186Z"
+  },
+  {
+   "from": 30,
+   "to": 40,
+   "sec": 648,
+   "code": 0,
+   "at": "2026-11-21T06:49:22.164Z"
+  },
+  {
+   "from": 40,
+   "to": 50,
+   "sec": 787.7,
+   "code": 0,
+   "at": "2026-11-21T07:02:30.746Z"
+  },
+  {
+   "from": 50,
+   "to": 60,
+   "sec": 972.3,
+   "code": 0,
+   "at": "2026-11-21T07:18:44.047Z"
+  },
+  {
+   "from": 60,
+   "to": 70,
+   "sec": 872,
+   "code": 0,
+   "at": "2026-11-21T07:33:17.606Z"
+  },
+  {
+   "from": 70,
+   "to": 80,
+   "sec": 1006.6,
+   "code": 0,
+   "at": "2026-11-21T07:50:05.464Z"
+  },
+  {
+   "from": 80,
+   "to": 90,
+   "sec": 1213.7,
+   "code": 0,
+   "at": "2026-11-21T08:10:20.902Z"
+  },
+  {
+   "from": 90,
+   "to": 100,
+   "sec": 1179.8,
+   "code": 0,
+   "at": "2026-11-21T08:30:02.981Z"
+  },
+  {
+   "from": 100,
+   "to": 110,
+   "sec": 1228.7,
+   "code": 0,
+   "at": "2026-11-21T08:50:33.189Z"
+  },
+  {
+   "from": 110,
+   "to": 120,
+   "sec": 1340.6,
+   "code": 0,
+   "at": "2026-11-21T09:12:55.676Z"
+  },
+  {
+   "from": 120,
+   "to": 130,
+   "sec": 1282.9,
+   "code": 0,
+   "at": "2026-11-21T09:34:20.814Z"
+  },
+  {
+   "from": 130,
+   "to": 140,
+   "sec": 1456,
+   "code": 0,
+   "at": "2026-11-21T09:58:39.006Z"
+  },
+  {
+   "from": 140,
+   "to": 150,
+   "sec": 1415.4,
+   "code": 0,
+   "at": "2026-11-21T10:22:17.089Z"
+  },
+  {
+   "from": 150,
+   "to": 160,
+   "sec": 1795.1,
+   "code": 0,
+   "at": "2026-11-21T10:52:13.988Z"
+  },
+  {
+   "from": 160,
+   "to": 170,
+   "sec": 1834.6,
+   "code": 0,
+   "at": "2026-11-21T11:22:50.601Z"
+  },
+  {
+   "from": 170,
+   "to": 180,
+   "sec": 1941.6,
+   "code": 0,
+   "at": "2026-11-21T11:55:14.282Z"
+  },
+  {
+   "from": 180,
+   "to": 190,
+   "sec": 1805.4,
+   "code": 0,
+   "at": "2026-11-21T12:25:21.718Z"
+  },
+  {
+   "from": 190,
+   "to": 200,
+   "sec": 2357.9,
+   "code": 0,
+   "at": "2026-11-21T13:04:41.976Z"
+  }
+ ],
+ "done": false,
+ "env": {
+  "VILLAGE_NPC_CAP": "Infinity",
+  "NODE_OPTIONS": "-r /tmp/t1411/method-v2/t1411-profile-hook.cjs -r /tmp/t1411/fast/scripts/t1274-baseline-hook.js -r /tmp/t1411/fast/scripts/t1302-observe.js -r /tmp/t1411/fast/scripts/t1243-observe.js -r /tmp/t1411/fast/scripts/t1221-observe.js -r /tmp/t1411/fast/scripts/t1230-observe.js -r /tmp/t1411/fast/scripts/t1251-observe.js -r /tmp/t1411/fast/scripts/t1274-observe.js -r /tmp/t1411/fast/scripts/t1329-observe.js -r /tmp/t1411/method-v2/t1411-census.cjs",
+  "T745_VCLOCK": "1",
+  "T1244_BODY_MS": "10000",
+  "T740_DUMP_DAYS": "100,200,300,365,400,500,600,700,730",
+  "T1411_CPU_PROF": "0",
+  "VILLAGE_CARAVAN_MAX": "0",
+  "T1308_GUARD_MAX": "0",
+  "T1411_PROFILE_DIR": "/tmp/t1411/worlds/OFF-1020-profiles",
+  "T400_BUILD_ACT": "0",
+  "T1243_FARM_ON": "0",
+  "T1221_EVERY": "10",
+  "T1259_WOOD_CAP": "0",
+  "VILLAGE_DAY_MS": "1440000",
+  "T1411_ROOT": "/tmp/t1411/fast"
+ },
+ "started": "2026-11-21T06:13:43.353Z",
+ "tries": 1
+}

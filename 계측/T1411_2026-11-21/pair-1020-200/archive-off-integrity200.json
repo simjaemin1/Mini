@@ -1,0 +1,9 @@
+{
+ "left": "/tmp/t1411/worlds/OFF-1020",
+ "right": "계측/T1411_2026-11-21/pair-1020-200/OFF-1020",
+ "days": 200,
+ "econCompared": 200,
+ "villageCompared": 200,
+ "same": true,
+ "differences": []
+}
