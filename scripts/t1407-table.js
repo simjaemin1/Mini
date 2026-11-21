@@ -1,0 +1,140 @@
+#!/usr/bin/env node
+'use strict';
+// (@regress 없음 — 러너 밖 · T1407 표 · 계측 JSON 만 읽는다 · 판을 돌리거나 수를 제품에 되먹이지 않는다)
+// === scripts/t1407-table.js — 주석의 한 해 · 구리 : 주석 · 굶는 마을이 붓는 줄 · 팔마다 판 ==========
+//   쓰는 법: node scripts/t1407-table.js <판 뿌리> [--json <요약.json>]
+//     판 뿌리 = `<꼴>-<팔>-<시드>/` 자리들(`계측/T1407_2026-11-21/run07.sh` 이 만든다) — 판마다 t1407 관찰기(주석 장부) · t1385 관찰기(청동 몫 · 날 50/100 꾸러미).
+//   kg = `server/weights.js` 정본(`kgOf` — 주석 3 · 구리 3.5 · 원석 5 · 무기 1.5) · 녹임 수율 = econ `SMELT_YIELD`(0.33) — 수를 이 파일에 적지 않는다(사본 0).
+//   쥔 마을 · 절반 넘는 마을 · 세계 청동 % = T1385 · T1398 표의 그 정의(청동 근접검 ≥ 1 · 청동 > 근접검 ÷ 2 · Σ 청동 ÷ Σ 근접검 — `t1398-table.js` 와 같은 칸).
+const fs = require('fs'), path = require('path');
+const ROOT = path.join(__dirname, '..');
+const W = require(path.join(ROOT, 'server', 'weights.js'));
+const E = require(path.join(ROOT, 'sim', 'economy-sim.js'));
+const KG = { tin: W.kgOf('tin'), cu: W.kgOf('copper'), ore: W.kgOf('ore_tin'), weapon: W.kgOf('weapon') };
+const SY = E.SMELT_YIELD != null ? E.SMELT_YIELD : (E._SMELT_YIELD != null ? E._SMELT_YIELD : null);
+if (!(SY > 0)) throw Error('SMELT_YIELD 을 econ 에서 못 읽음');
+const args = process.argv.slice(2);
+const root = args[0]; if (!root) throw Error('판 뿌리 필요');
+const jsonOut = args.includes('--json') ? args[args.indexOf('--json') + 1] : null;
+const read = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));
+const f2 = (x, d = 2) => (x == null || !isFinite(x) ? '—' : (+x).toFixed(d));
+const f1 = (x) => f2(x, 1), f0 = (x) => f2(x, 0);
+const pct = (a, b) => (b > 0 ? (100 * a / b).toFixed(1) + ' %' : '—');
+
+function loadRun(dir) {
+  const base = path.join(root, dir), files = fs.readdirSync(base);
+  const f07 = files.find((f) => /(^|\.)t1407\.json$/.test(f)), fp = files.find((f) => f === 'probe.json' || /\.t1385\.json$/.test(f));
+  if (!f07) return null;
+  const r = read(path.join(base, f07)); if (r.err) throw Error(dir + ': ' + r.err);
+  const p = fp ? read(path.join(base, fp)) : null;
+  const [kind, arm, seed] = dir.split('-');
+  return { dir, kind, arm, seed, r, p };
+}
+function summarize(run) {
+  const { r, p } = run, C = (c) => r.vcols.indexOf(c);
+  const days = Object.keys(r.day).map(Number).sort((a, b) => a - b), d0 = days[0], dN = days[days.length - 1];
+  const span = dN - d0 + 1, yr = 365 / span;
+  const tot = {}, per = {}, lastCast = {};
+  for (const d of days) r.day[d].forEach((row, i) => {
+    if (!row) return; const n = r.names[i], P = per[n] || (per[n] = {});
+    for (const c of ['minedTin', 'minedCu', 'smeltTin', 'smeltCu', 'castTin', 'castCu', 'cast', 'castBz', 'crisis']) { const x = row[C(c)] || 0; tot[c] = (tot[c] || 0) + x; P[c] = (P[c] || 0) + x; }
+    P.days = (P.days || 0) + 1;
+    if ((row[C('castBz')] || 0) > 0) lastCast[n] = d;
+  });
+  const end = r.day[dN], start = r.day[d0];
+  let tinEnd = 0, oreTinEnd = 0, cuEnd = 0, pop = 0, alive = 0, stale = 0, dead = 0, pop0 = 0;
+  const emptyNames = [];
+  end.forEach((row, i) => {
+    if (!row) { emptyNames.push(r.names[i]); return; }
+    const t = row[C('tin')] || 0; tinEnd += t; oreTinEnd += row[C('oreTin')] || 0; cuEnd += row[C('cu')] || 0; pop += row[C('N')]; alive++; dead += row[C('fdDead')] || 0;
+    if (!(lastCast[r.names[i]] > dN - 30)) stale += t;   // 지난 30날 청동을 안 부은 마을이 쥔 주석(T1385 "묵은" 정의)
+  });
+  let tin0 = 0, oreTin0 = 0; start.forEach((row) => { if (!row) return; tin0 += row[C('tin')] || 0; oreTin0 += row[C('oreTin')] || 0; pop0 += row[C('N')]; });
+  const legs = { tin: [0, 0], ore_tin: [0, 0], weapon: [0, 0] };
+  for (const L of r.legs) { const [, , , sr, sa] = L; if (sr && legs[sr]) { legs[sr][0]++; legs[sr][1] += sa || 0; } }
+  const tinV = (r.deposits || []).filter((d) => d[3] && d[3].tin > 0);
+  let probe = null;
+  if (p && p.snaps) {
+    const sd = Object.keys(p.snaps).map(Number).sort((a, b) => a - b), last = sd[sd.length - 1], s = p.snaps[last] || [];
+    const H = s.filter((v) => v[3] >= 1), sumB = s.reduce((a, v) => a + v[3], 0), sumM = s.reduce((a, v) => a + v[2], 0);
+    const hB = H.reduce((a, v) => a + v[3], 0), hM = H.reduce((a, v) => a + v[2], 0);
+    const col = Object.fromEntries(p.dcols.map((k, i) => [k, i]));
+    const stoneMade = (p.days || []).reduce((a, v) => a + (v[col.stoneToday] || 0), 0), bzMade = (p.days || []).reduce((a, v) => a + (v[col.bzToday] || 0), 0);
+    probe = { day: last, alive: s.length, holders: H.length, holderNames: H.map((v) => v[0] + ' ' + f1(v[3]) + '/' + f1(v[2])), half: s.filter((v) => v[3] > v[2] / 2).length,
+      worldBz: sumM > 0 ? sumB / sumM : null, holdBz: hM > 0 ? hB / hM : null, melee: sumM, bronze: sumB, stoneMade, bzMade };
+  }
+  return { dir: run.dir, kind: run.kind, arm: run.arm, seed: run.seed, d0, dN, span, yr, tot, per, tinEnd, oreTinEnd, cuEnd, pop, pop0, alive, stale, dead, emptyNames,
+    tin0, oreTin0, legs, tinV, probe };
+}
+const runs = [];
+//   끝난 판만 — 뿌리의 `done.txt`(러너가 판마다 한 줄 `<꼴>-<팔>-<시드> rc=0`)가 있으면 그 줄이 있는 판만 읽는다(돌고 있는 판의 반쪽 JSON 을 안 섞는다).
+const doneTxt = fs.existsSync(path.join(root, 'done.txt')) ? fs.readFileSync(path.join(root, 'done.txt'), 'utf8') : null;
+for (const dir of fs.readdirSync(root).sort()) {
+  if (!/^(server|lab)-[a-z0-9]+-\d+$/.test(dir) || !fs.statSync(path.join(root, dir)).isDirectory()) continue;
+  if (doneTxt != null && !new RegExp(' ' + dir + ' rc=0 ').test(doneTxt)) { console.log(`<!-- 안 끝남 ${dir} -->`); continue; }
+  const run = loadRun(dir); if (!run) { console.log(`<!-- 관찰 없음 ${dir} -->`); continue; }
+  runs.push(Object.assign(summarize(run), { _r: run.r }));
+}
+const ORDER = { off: 0, bundle: 1, b84: 2, ka: 3, kb: 4, kc: 5, kbc: 6 };
+runs.sort((a, b) => (a.kind < b.kind ? -1 : a.kind > b.kind ? 1 : 0) || (+a.seed === 1020 ? -1 : 0) - (+b.seed === 1020 ? -1 : 0) || +a.seed - +b.seed || (ORDER[a.arm] ?? 9) - (ORDER[b.arm] ?? 9));
+function table(h, rows) { console.log('| ' + h.join(' | ') + ' |\n|' + h.map(() => '---').join('|') + '|'); for (const x of rows) console.log('| ' + x.join(' | ') + ' |'); console.log(''); }
+
+console.log(`<!-- t1407-table · kg: 주석 ${KG.tin} · 구리 ${KG.cu} · 원석 ${KG.ore} · 무기 ${KG.weapon} · 녹임 수율 ${SY} -->\n`);
+console.log('### ⓐ 주석의 한 해 — 묻힌 양 → 캔 원석 → 녹임 → 부음 → 남은 곳간 (한 해 = 판 날 수로 나눈 365날 몫)\n');
+table(['판', '주석 광맥 마을(조성 몫 · 땅 주석)', '씨앗 주석 원석 · 주석(날 ' + (runs[0] ? runs[0].d0 : 2) + ')', '캔 주석 원석 / 해(kg)', '녹인 주석 / 해(kg)', '부은 주석 / 해(kg)', '청동 검 / 해', '남은 주석(끝 · kg)', '묵은 주석 몫(끝)', '주석 짐(줄 · kg) · 원석 짐'],
+  runs.map((s) => [s.dir, s.tinV.map((d) => d[0] + ' ' + f2(d[3].tin) + '·' + f2(d[2])).join(' / ') || '—', f1(s.oreTin0 * KG.ore) + ' · ' + f1(s.tin0 * KG.tin) + ' kg',
+    f1(s.tot.minedTin * s.yr * KG.ore), f1(s.tot.smeltTin * s.yr * KG.tin), f1(s.tot.castTin * s.yr * KG.tin), f1(s.tot.castBz * s.yr), f1(s.tinEnd * KG.tin), pct(s.stale, s.tinEnd),
+    s.legs.tin[0] + ' · ' + f1(s.legs.tin[1] * KG.tin) + ' / ' + s.legs.ore_tin[0] + ' · ' + f1(s.legs.ore_tin[1] * KG.ore)]));
+
+console.log('### ⓑ 구리 : 주석 — 청동 검 한 자루의 주석 · 세계가 한 해 캐는 주석으로 만들 수 있는 동검\n');
+table(['판', '검 한 자루 주석 kg · 구리 kg(부은 것 ÷ 청동 검)', '한 해 캔 주석(금속 kg — 원석 × 수율)', '그 주석으로 동검 / 해', '마을당(/51) · 100 사람당', '한 해 녹인 주석(씨앗 포함)으로 동검 / 해', '한 해 실제 부은 청동 검 · 석검(관찰기)', '석검 : 동검(부은 것)'],
+  runs.map((s) => {
+    const tinPer = s.tot.castBz > 0 ? s.tot.castTin * KG.tin / s.tot.castBz : null, cuPer = s.tot.castBz > 0 ? s.tot.castCu * KG.cu / s.tot.castBz : null;
+    const minedMetalKg = s.tot.minedTin * SY * KG.tin * s.yr, can = tinPer ? minedMetalKg / tinPer : null, canS = tinPer ? s.tot.smeltTin * KG.tin * s.yr / tinPer : null;
+    const st = s.probe ? s.probe.stoneMade * s.yr : null, bz = s.probe ? s.probe.bzMade * s.yr : null;
+    return [s.dir, f2(tinPer, 3) + ' · ' + f2(cuPer, 3), f1(minedMetalKg), f1(can), f2(can != null ? can / 51 : null) + ' · ' + f2(can != null && s.pop > 0 ? can / (s.pop / 100) : null),
+      f1(canS), f1(bz) + ' · ' + f1(st), bz > 0 ? f1(st / bz) + ' : 1' : '—'];
+  }));
+
+console.log('### 판 — 쥔 마을 · 청동 몫 · 빈 마을 · 인구 · 수출 줄\n');
+const offOf = (s) => runs.find((o) => o.kind === s.kind && o.seed === s.seed && o.arm === 'off');
+table(['판', '쥔 마을 /51', '쥔 마을 병기고 청동 몫', '절반 넘는 마을', '세계 병기고 청동 %', '청동 누계(관찰기)', '주석 곳간(끝 · kg)', '빈 마을(끔엔 사는데 빈 · 이름)', '인구(끔비)', '굶어 죽음', '무기 짐(줄 · 자루)', '쥔 마을(청동 / 근접검)'],
+  runs.map((s) => {
+    const o = offOf(s), newly = o ? s.emptyNames.filter((n) => !o.emptyNames.includes(n)) : [];
+    const P = s.probe || {};
+    return [s.dir, P.holders ?? '—', P.holdBz != null ? pct(P.holdBz, 1) : '—', P.half ?? '—', P.worldBz != null ? pct(P.worldBz, 1) : '—', f1(s.tot.castBz), f1(s.tinEnd * KG.tin),
+      s.emptyNames.length + (o && s !== o ? ' (' + newly.length + (newly.length ? ' · ' + newly.join(' · ') : '') + ')' : ''), s.pop + (o && s !== o ? ' (' + f2(s.pop / o.pop, 3) + ')' : ''), s.dead,
+      s.legs.weapon[0] + ' · ' + f1(s.legs.weapon[1]), (P.holderNames || []).join(' / ')];
+  }));
+
+// ⓒ 굶는 마을 — 끔엔 사는데 켬 팔에선 비거나(또는 끝 사람 비 < 0.5) 된 마을의 날 줄(25날 마디)
+console.log('### ⓒ 굶는 마을이 붓는 줄 — 끔엔 사는데 켠 팔에서 비거나 반 밑으로 준 마을(25날 마디)\n');
+const cTrace = [];
+for (const s of runs) {
+  if (s.arm === 'off') continue; const o = offOf(s); if (!o) continue;
+  const r = s._r, ro = o._r, C = (c) => r.vcols.indexOf(c), lastS = r.day[s.dN], lastO = ro.day[o.dN];
+  r.names.forEach((n, i) => {
+    const a = lastS[i], b = lastO[ro.names.indexOf(n)];
+    if (!b) return; const nb = b[C('N')], na = a ? a[C('N')] : 0;
+    if (!(na === 0 || (nb >= 10 && na / nb < 0.5))) return;
+    const rows = [];
+    const days = Object.keys(r.day).map(Number).sort((x, y) => x - y);
+    let acc = { cast: 0, castBz: 0, crisis: 0, n: 0 }, k = 0;
+    for (const d of days) {
+      const row = r.day[d][i]; if (row) { acc.cast += row[C('cast')] || 0; acc.castBz += row[C('castBz')] || 0; acc.crisis += row[C('crisis')] || 0; acc.n++; }
+      if (d % 25 === 0 || d === s.dN) {
+        const ob = ro.day[d] ? ro.day[d][ro.names.indexOf(n)] : null;
+        rows.push(row ? [d, row[C('N')], f0(row[C('foodDays')]), acc.n ? acc.crisis + '/' + acc.n : '—', f2(row[C('secF')]), row[C('foodW')], row[C('miner')], row[C('smith')], row[C('mason')], row[C('warrior')],
+          f1(row[C('cu')]), f1(row[C('tin')]), f1(row[C('weapon')]), f1(acc.cast) + ' · ' + f1(acc.castBz), f1(row[C('pFood')]), f2(row[C('pWeap')]), row[C('fdDead')], ob ? ob[C('N')] + ' · ' + f0(ob[C('foodDays')]) + ' · ' + ob[C('smith')] : '—']
+          : [d, 0, '—', '—', '—', '—', '—', '—', '—', '—', '—', '—', '—', '—', '—', '—', '—', ob ? ob[C('N')] + ' · ' + f0(ob[C('foodDays')]) + ' · ' + ob[C('smith')] : '—']);
+        acc = { cast: 0, castBz: 0, crisis: 0, n: 0 }; k++;
+      }
+    }
+    cTrace.push({ run: s.dir, name: n, endN: na, offN: nb, rows });
+  });
+}
+for (const t of cTrace) {
+  console.log(`**${t.run} · ${t.name}** — 끝 사람 ${t.endN} (끔 ${t.offN})\n`);
+  table(['날', '사람', '곳간 날치', '굶는 날(25날)', '식량 안보', '식량 일꾼', '광부', '대장장이', '석공', '전사', '구리', '주석', '무기 곳간', '부은 검 · 청동(25날)', '식량 값', '무기 값', '굶어 죽음(누계)', '끔: 사람 · 날치 · 대장장이'], t.rows);
+}
+if (jsonOut) fs.writeFileSync(jsonOut, JSON.stringify(runs.map((s) => { const o = Object.assign({}, s); delete o._r; delete o.per; return o; }), null, 1));

@@ -1,6 +1,6 @@
 #!/bin/bash
 # T1407 판 하나 — 인자: 뿌리(작업 트리) 꼴(server · lab) 팔 시드 날   (T1398 t1398-run.sh 꼴 · 판 자리 /root/t1407runs/<꼴>-<팔>-<시드>/)
-#   팔: off(청동 묶음 끔 = main 기본) · bundle(묶음 켬 = T1385_BRONZE_NOCAP · T1398_BRONZE_BAND(수출 주조 포함)) · 그 위 고침 팔 ka · kb · kc(T1407_* 손잡이 · 끔 기본)
+#   팔: off(청동 묶음 끔 = main 기본) · bundle(묶음 켬 = T1385_BRONZE_NOCAP · T1398_BRONZE_BAND(수출 주조 포함)) · 그 위 고침 팔 ka · kb · kc(T1407_* 손잡이 · 끔 기본) · b84(묶음 + T1384 고침 둘)
 #   관찰기: t1407(주석 장부) · t1398(주조 문 · 무기 줄) · t1385(드묾 · 청동 몫 곁 장부) — t1407 은 맨 뒤에 싣는다(주조 훅 사슬 — 관찰기 머리말)
 R=$1; KIND=$2; ARM=$3; SEED=$4; DAYS=$5
 D=/root/t1407runs/$KIND-$ARM-$SEED; mkdir -p $D/tmp
@@ -14,6 +14,7 @@ case "$ARM" in
   kb) export T1385_BRONZE_NOCAP=1 T1398_BRONZE_BAND=1 T1407_TIN_VALUE=1 ;;
   kc) export T1385_BRONZE_NOCAP=1 T1398_BRONZE_BAND=1 T1407_FOOD_FIRST=1 ;;
   kbc) export T1385_BRONZE_NOCAP=1 T1398_BRONZE_BAND=1 T1407_TIN_VALUE=1 T1407_FOOD_FIRST=1 ;;
+  b84) export T1385_BRONZE_NOCAP=1 T1398_BRONZE_BAND=1 T1384_MINE_FOOD=1 ;;   # ⓒ T1384 고침 둘(붙든다 · 길 위를 센다)을 얹은 묶음
   *) echo "팔 모름 $ARM"; exit 2 ;;
 esac
 export TMPDIR=$D/tmp T699_ROUTE_CACHE=/tmp/durango-route-cache
