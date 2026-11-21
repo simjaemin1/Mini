@@ -16964,7 +16964,7 @@ function _t720Ct(vil) { return vil._t720C || (vil._t720C = { go: 0, done: 0, giv
 function _t720Logger(vil, npc) { return npc.simJob === 'lumberjack' && !(vil._t400Crew && vil._t400Crew.indexOf(npc.pid) >= 0); }
 function _t720Held(vil, npc) {
   if (!vil.econ) return 0;
-  const stone = _stoneHandInOn(vil) ? _stoneHeld(npc) : 0;
+  const stone = (_stoneHandInOn(vil) ? _stoneHeld(npc) : 0) + (T1416_CARRY_HOME && npc._t1416H ? npc._t1416H.kg || 0 : 0);   // ★[T1416 ④] 사냥꾼 손(kg — 있나만 본다 · 끔 = 0 더함 · 같은 값)
   if (T737_HELD_CACHE) return _t737Held(vil, npc) + stone;   // ★[T737 ②] 같은 합 · 빈 손 절은 문(손잡이 술어)을 안 묻는다
   const E = _lifeEcon(), inv = npc.inventory || {};
   let u = 0;
@@ -17026,6 +17026,7 @@ function _t743Gap(vil, npc, now) {
 }
 function _t720Settle(vil, npc, now, S) {
   const E = _lifeEcon();
+  if (T1416_CARRY_HOME && npc._t1416H) _t1416Deliver(vil, npc);   // ★[T1416 ④] 사냥꾼 손 → 곳간(끔 = 이 줄 안 선다)
   if (E.T724_MINE_ACT && npc.inventory && npc.inventory.ore_chunk > 0) _t724Deliver(vil, npc, 'dusk', now);   // ★[T757] 원석 손 → 곳간(T724 곳간 입구 그대로 · 곳간이 안 받은 몫은 손에 남는다)
   if (E.fishActOn(vil.econ) && (npc._t312U || 0) > 0) _t312Deliver(vil, npc);
   if (_t368ItemsOn() && npc._t368H) _t368Deliver(vil, npc, 'gran');
@@ -17991,6 +17992,48 @@ const T1359_HUNT_BODY = process.env.T1359_HUNT_BODY === '1';
 //   ③ 그날 예산 문(`huntVisLeft`)을 안 쓴다(몫은 쫓아 잡은 수) ④ 잡은 마리는 하루 경계 `_t1195HuntIn` ① 이 읽고 비운다(하루 문이 비우면 경계보다 먼저 지워진다 — 보고 §1 ⓒ). 끔 = 종전 바이트.
 const T1393_HUNT_CHASE = process.env.T1393_HUNT_CHASE === '1';
 const _t1393On = () => T1393_HUNT_CHASE && T1331_BEAST_BODY;
+// ★★[T1416 2026-11-21 · S15 · T1393 회부 4] **잡은 마리를 걸어 나른다** — 손잡이 `T1416_CARRY_HOME`(끔 기본 · `'1'` 만 · 사냥판 `T1393` 켬 안에서만 뜻 · 끔 = 종전 바이트).
+//   사냥판(`wildlife.js` T1416 ④)이 도살 끝난 마리의 정본 드롭을 사냥꾼 손(`_t1416H` — kg · 낱개)에 싣고 손이 차면(못 실은 몫이 남으면) 몸을 놓는다(`_t1416Go`).
+//   생활층은 그 몸을 해 질 녘 곳간 길(T720 `_t720Step` — 곳간 사다리 · 없으면 회관 · '운반' → '저장')로 걷기고 도착해 머문 뒤 넣는다(`_t1416Deliver` —
+//   `_t1195Put` 과 같은 입구: 열량 칸은 econ `meat` 열량으로 · 나머지는 낱개 그대로 · econ `huntToGranary`). 해 질 녘엔 든 손을 같은 길로(어부 · 나무꾼 · 광부 손과 같은 정산).
+//   하루 경계 `_t1195HuntIn` ① 은 켬에서 잡은 수가 0 이라 안 넣는다(두 길 0). 새 수 0 — 손 상한은 짐 정본(`carry.CFG.CAP_KG`)을 사냥판이 읽는다.
+const T1416_CARRY_HOME = T1393_HUNT_CHASE && T1331_BEAST_BODY && process.env.T1416_CARRY_HOME === '1';
+const _t1416Stat = { trips: 0, kg: 0, units: 0, items: {}, sp: {} };
+function _t1416Deliver(vil, npc) {
+  const Hh = npc._t1416H; if (!Hh || !(Hh.kg > 0)) return 0;
+  const E = _lifeEcon(), K = _kcal(); if (!K || !vil.econ) return 0;
+  let u = 0;
+  for (const it in Hh.it) {
+    const q = Hh.it[it]; if (!(q > 0)) continue;
+    const mu = +K.econUnitsOf(it, q) || 0;
+    if (mu > 0) u += E.huntToGranary(vil.econ, 'meat', mu);   // 고기 — 열량으로(`_t1195Put` 그 줄)
+    else E.huntToGranary(vil.econ, it, q);                     // 가죽 · 뿔 · 뼈 · 모피 — 낱개 그대로
+    _t1416Stat.items[it] = (_t1416Stat.items[it] || 0) + q;
+  }
+  _t1416Stat.trips++; _t1416Stat.kg = +(_t1416Stat.kg + Hh.kg).toFixed(3); _t1416Stat.units += u;
+  if (npc._t1416Sp) { for (const sp in npc._t1416Sp) _t1416Stat.sp[sp] = (_t1416Stat.sp[sp] || 0) + npc._t1416Sp[sp]; npc._t1416Sp = null; }
+  vil._t1416Kg = +((vil._t1416Kg || 0) + Hh.kg).toFixed(3);   // 계측 전용 — 이 마을 곳간에 든 kg 누계
+  npc._t1416H = null; npc._t1416Go = 0;
+  return u;
+}
+// ★★[T1416 ③ · T1396 회부 3] 짐승 걸음을 막는 집채 발자국 칸 — 마을마다 큰집 · 움집 · 의뢰 집 · 쉼터 · 곳간의 `_vbFootprint`(실체화 · 전쟁 콜라이더 · T598 이 같이 쓰는 한 곳)
+//   = 랩 `_insideBldgV`(집채 bbox · 회관 · 다 지은 곳간)와 같은 칸. 칸 열쇠 = y × 65536 + x. 집 · 곳간 수 · 날이 바뀌면 다시 짓는다(읽기만 · 값 무관).
+let _t1416Foot = null, _t1416FootSig = '';
+function t1416Foot() {
+  let sig = (state.world && state.world.day) + ':';
+  for (const v of state.villages || []) sig += (v._houseCells ? v._houseCells.length : 0) + '.' + (v._granList ? v._granList.length : 0) + '.' + (v._pHouses ? v._pHouses.length : 0) + '.' + (v._shelter ? 1 : 0) + ',';
+  if (_t1416Foot && sig === _t1416FootSig) return _t1416Foot;
+  const F = new Set(), add = (R) => { if (!R) return; for (let y = R[1]; y <= R[3]; y++) for (let x = R[0]; x <= R[2]; x++) F.add(y * 65536 + x); };
+  for (const v of state.villages || []) {
+    add(_vbFootprint('hall', v.ccx, v.ccy));
+    for (const h of (v._houseCells || [])) add(_vbFootprint('house', h.cx, h.cy));
+    for (const h of (v._pHouses || [])) if (h && h.cx != null) add(_vbFootprint('phouse', h.cx, h.cy));
+    if (v._shelter && v._shelter.cx != null) add(_vbFootprint('shelter', v._shelter.cx, v._shelter.cy));
+    for (const g of (v._granList || [])) add(_vbFootprint('granary', g.cx, g.cy));
+  }
+  _t1416Foot = F; _t1416FootSig = sig;
+  return F;
+}
 let _t1331W = null;
 const _t1331Stat = { days: 0, mig: 0, migBodies: 0, cpuUs: 0, cpuMax: 0, saves: 0, saveUs: 0, loads: 0, deforest: 0, huntKill: 0, resettle: 0, breed: 0, starve: 0, bootWhy: '' };
 function _t1331() {
@@ -19205,6 +19248,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   }
   if (_t1181Step(vil,npc,now,fv<dayR&&fv>=(npc._dOff||0))) return true;
   const _fishCap = _lifeEcon().T312_FISH_ACT && (npc._t312Kg||0)>0 ? _carryCfg()?.CFG?.CAP_KG : 0;
+  if (T1416_CARRY_HOME && T720_LON_DAY && npc._t1416Go && _t720Step(vil, npc, now, fv, dayR, bday, true)) return true;   // ★[T1416 ④] 손이 찬 사냥꾼 — 만재 어부와 같은 곳간 길(아래 줄 · 끔 = 이 줄 안 선다)
   if (T720_LON_DAY && _t720Step(vil, npc, now, fv, dayR, bday, _fishCap>0 && (npc._t312Kg>=_fishCap || npc._t1180FullFish))) return true;   // T1180: 만재 어부도 실제 도착 뒤 정산
   // 기상 시차(랩 a._dOff): 개인 결정론 오프셋 0~하루 3%(43분) — 마을 일괄 기상의 프레임 스파이크 분산 + 유기적 출근 풍경
   if (npc._dOff === undefined) npc._dOff = ((_pidHash(npc.pid) % 997) / 997) * SCH_DOFF;
@@ -21128,7 +21172,8 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   farmTilesInRect, clientVillages, isLegacyVillageClaimed,
   // ★[T146] 사냥 개체군 — 정본을 그대로 내준다(하네스·wildlife·zone 이 이것을 부른다 · 사본 0)
   T1331_BEAST_BODY, T1359_HUNT_BODY, T1393_HUNT_CHASE, t1393On: () => _t1393On(), T1388_FARMER_CELLS, T1388_FIELD_SHARE, t1388Target: (vil) => _t1388Target(vil, vil.econ), t1331Stat, _t1331Probe: { w: () => _t1331W, day: (vil, day) => _t1331DaySteps(vil, day), save: () => _t1331Save(), boot: () => _t1331Boot(), reset: () => { _t1331W = null; for (const k of Object.keys(_t1331Stat)) _t1331Stat[k] = typeof _t1331Stat[k] === 'number' ? 0 : ''; } },   // ★[T1331] 짐승 몸(하네스 `test-t1331-beast-body` · 탐침 · 내보내기만)
-  gameRichAt, gameRichSize, huntKillAt, huntTake, huntTakeAt, huntHunters, huntVisLeft, _t158, huntDeforest, _t1195HuntIn, t1195Stat: () => JSON.parse(JSON.stringify(_t1195Stat)), t1225Stat, t1225Keep, t1225SiteTable, _t1225Probe: { shared: _t1217Shared, rho: (vil, day) => _t1225Rho(vil, day), share: (F, cx, cy, vil) => _t1225Share(F, cx, cy, vil), get mode() { return T1225_MODE; } },   // ★[T1225] 물속 자본(계측 · 하네스)
+  gameRichAt, gameRichSize, huntKillAt, huntTake, huntTakeAt, huntHunters, huntVisLeft, _t158, huntDeforest, _t1195HuntIn, t1195Stat: () => JSON.parse(JSON.stringify(_t1195Stat)), t1416Foot, _t1416Deliver, T1416_CARRY_HOME, t1416Stat: () => JSON.parse(JSON.stringify(Object.assign({ on: T1416_CARRY_HOME }, _t1416Stat))),   // ★[T1416] 짐승 걸음 막는 집채 칸 · 사냥꾼 손 넣기 · 셈
+  t1225Stat, t1225Keep, t1225SiteTable, _t1225Probe: { shared: _t1217Shared, rho: (vil, day) => _t1225Rho(vil, day), share: (F, cx, cy, vil) => _t1225Share(F, cx, cy, vil), get mode() { return T1225_MODE; } },   // ★[T1225] 물속 자본(계측 · 하네스)
   t1202Stat: () => JSON.parse(JSON.stringify(_t1202Stat)), _t1202Roster, _t1202ClockShort, _t1202FishBatch, t1217Stat: () => JSON.parse(JSON.stringify(Object.assign({}, _t1217Stat, { samples: _t1217Samp }))), _t1217FishDay, _t1217Day, _t1217HourFish, _t1217BodyKeep, _t1217Clock, _t1217BucketK, _t1217On, t1217SharedTable, t1266Stat, _t1266Keep, _t1271Day, _t1271OreCells, _t1277OreSlots, MINE_TEAM, t1271Stat, _t1217Choose, _t1218Kps, _t1218HourExpect, _t1218BodyWait, _t1053Deforest, _t1053Developed, t1053Stat: () => Object.assign({}, _t1053Stat), get T1053_DEFOREST_GAME() { return T1053_DEFOREST_GAME; }, L_DEFOREST_H, L_DEFOREST_GRAN, _gameKey, _cellOfPx, _bandMinCells, _bandFloorFill, _t146Band, _t146BandAll, _t146BuildMs, _huntBandBuild, _lifeGameDay,
   L_GAMEMAX, L_GAMER, L_HUNT, L_GAMEHALF, _t146,
   // ★[T119] 구조 사건 접점 — `zone.js` 가 살아난 그 순간에 한 줄 남긴다(완공 `noteVillageBuilt` 와 같은 자리)
