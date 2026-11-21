@@ -2,8 +2,10 @@
 'use strict';
 // Observe the unchanged checklist, including its preceding cases/RNG history.
 const fs=require('fs'),path=require('path'),vm=require('vm'),crypto=require('crypto');
+const zlib=require('zlib');
+const readTrace=file=>JSON.parse(file.endsWith('.gz')?zlib.gunzipSync(fs.readFileSync(file)):fs.readFileSync(file,'utf8'));
 if(process.argv[2]==='--compare'){
-  const a=JSON.parse(fs.readFileSync(process.argv[3])),b=JSON.parse(fs.readFileSync(process.argv[4]));
+  const a=readTrace(process.argv[3]),b=readTrace(process.argv[4]);
   const signature=r=>r&&[r.scenario,r.tick,r.randomCalls,r.hash];
   const index=Array.from({length:Math.max(a.rows.length,b.rows.length)},(_,i)=>i).find(i=>JSON.stringify(signature(a.rows[i]))!==JSON.stringify(signature(b.rows[i])));
   const firstField=(x,y,p='state')=>{if(Object.is(x,y))return null;if(!x||!y||typeof x!=='object'||typeof y!=='object')return {path:p,left:x,right:y};for(const k of [...new Set([...Object.keys(x),...Object.keys(y)])].sort()){const d=firstField(x[k],y[k],p+'.'+k);if(d)return d;}return null;};
