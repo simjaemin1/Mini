@@ -14,7 +14,7 @@ text+='34행은 계수와 호스트 경계를 섞은 기존 조사 단위다. �
 text+='|행 · 내용|현재 LAB / 서버 글자(파일:줄)|실제 입력|LAB → 서버 결과|이력(양쪽)|처리 · 까닭|\n|---|---|---|---|---|---|\n';
 for(const r of rows){const h=r.history||{},history=['lab','srv'].map(k=>k+': '+(h[k]?.log||'검색 결과 원문 참조')).join('<br>');const f=facts.get(r.id);text+='|'+[r.id+' '+r.what,sources(r),brief(r.input),(!r.comparable?'계약/프로필 경계: ':'')+(r.equal?'부분 결과 같음: ':'다름: ')+brief(r.lab)+' → '+brief(r.server)+'<br>'+r.note,history,status[r.disposition]+'<br>'+r.reason+(f?.knob?'<br>'+f.knob:'')].map(esc).join('|')+'|\n';}
 text+='\nR28은 광맥 수학식만 공유하고 숲/어장/좌표 상태의 호스트 어댑터는 유지한다. 서버 0일 guard도 유지한다. R32는 개인 명부 편성 → 집계 폴백의 디스패치만 공유한다. R16·R31·R33의 부분 결과 같음은 몸 이동/존 입력/막힌 지형까지 같다는 인증이 아니다. R12는 수정한 초기 스냅샷 계측기로 같은 초기 상태와 첫날 결과를 확인했지만 서버의 스케줄러 모드 선택까지 결론내리지 않는다.\n\n';
-text+='## 랩만6 · 서버만4\n\n|행|기존 구분 · 자리|분류|근거 · 처리|\n|---|---|---|---|\n';
+text+='## 랩만6 · 서버만4\n\n이 열 행의 자리 표시는 T1395 원조사 베이스 1aa63e63 기준이다. 분류/생성 카탈로그 대조는 현재 소스로 확인했다.\n\n|행|기존 구분 · 자리|분류|근거 · 처리|\n|---|---|---|---|\n';
 for(const r of policy.extras)text+='|'+[r.id+' '+r.what,r.category+' '+[r.lab,r.srv].filter(Boolean).map(s=>s.file+':'+s.line).join(' / '),r.classification,r.classificationReason+(r.knob?' / '+r.knob:'')].map(esc).join('|')+'|\n';
 text+='\n화면/실험 입력/레거시6 · 서버 I/O2 · 기존 손잡이 뒤 서버 몸/일괄 계산1 · 이미 생성 공유된 수종 표1. 새로 확인된 규칙 이식 빠짐0. 특히 R27은 T1395의 미확인을 정정한다. `server/trees.json`의 `_source`와 생성기, 실제 8종 전 필드 일치가 근거다. 나무 몸 생태 전체의 일치를 뜻하지 않는다.\n';
 fs.writeFileSync(path.join(out,'서른네줄.md'),text);
