@@ -1,7 +1,19 @@
 // @@split:32-m-render — M — 건축 배치 판정·고스트·진행바 (T51 2차 분할 ① · 파일명은 분할 전 슬롯 이름 그대로)
+  // ★[T1423 ⓐ] 못 놓는 칸(절대 칸) — 서버 `_t1423NoBuild` 와 같은 답: 다리 칸(`isBridgeAtAbs` — 걸음 예측 미러) · 물(`isWaterAtAbs` — 같은 미러) · 다리 머리(서버가 준 ㉮ 칸 줄)
+  function _t1423NoAt(ax, ay) {
+    if (!_t1423NoAbs.on) return false;
+    const wx = ax * 32 + 16, wy = ay * 32 + 16;
+    return isBridgeAtAbs(wx, wy) || isWaterAtAbs(wx, wy) || _t1423NoAbs.has(ax + ',' + ay);
+  }
   // 14.54-d: 배치 사전 체크 — 빨간 ghost 표시용
   function isPlacementBlocked(itemType, cx, cy, dir) {
     const floorN = myFloor || 0;
+    if (_t1423NoAbs.on) {   // ★[T1423 ⓐ] 칸 건물 = 그 칸 · 벽 · 문 = 변을 낀 두 칸(서버 `_tryBuildAt` 그 자리)
+      if (itemType === 'item_wall' || itemType === 'item_door') {
+        const ux = dir === 'W' ? cx - 1 : cx, uy = dir === 'S' ? cy + 1 : cy, side = (dir === 'E' || dir === 'W') ? 'E' : 'N';
+        if (_t1423NoAt(ux, uy) || (side === 'N' ? _t1423NoAt(ux, uy - 1) : _t1423NoAt(ux + 1, uy))) return true;
+      } else if (_t1423NoAt(cx, cy)) return true;
+    }
     // 1) 다른 사람 사유지 안인지
     const cellWx = cx * 32 + 16, cellWy = cy * 32 + 16;
     for (const c of conns.values()) {
@@ -124,7 +136,8 @@
       const p1 = pt(fx0, fy0), p2 = pt(fx1 + 1, fy0), p3 = pt(fx1 + 1, fy1 + 1), p4 = pt(fx0, fy1 + 1);
       ctx.save();
       ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.lineTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y); ctx.closePath();
-      ctx.fillStyle = hut ? 'rgba(154,122,74,0.25)' : 'rgba(165,129,63,0.25)'; ctx.fill();
+      let _t1423B = false; if (_t1423NoAbs.on) for (let y = fy0; y <= fy1 && !_t1423B; y++) for (let x = fx0; x <= fx1; x++) if (_t1423NoAt(x, y)) { _t1423B = true; break; }   // ★[T1423 ⓐ] 발자국에 물 · 다리 · 다리 머리 — 붉게(서버가 거절하는 그 칸)
+      ctx.fillStyle = _t1423B ? 'rgba(220,80,80,0.35)' : (hut ? 'rgba(154,122,74,0.25)' : 'rgba(165,129,63,0.25)'); ctx.fill();
       ctx.setLineDash([5, 4]); ctx.strokeStyle = hut ? '#c9b28a' : '#e0b060'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]);
       ctx.font = 'bold 11px sans-serif'; ctx.fillStyle = '#ffe9b0'; ctx.textAlign = 'center';
       ctx.fillText(kiln ? '숯가마 2×2 — 사유지 안' : (furn ? `${placementMode.kind === 'bloomery' ? '괴련로' : '노(爐)'} 2×2 — 사유지 안` : (psite ? '마을에 집 의뢰 6×4 (재료 선납)' : (hut ? (smallHut ? '간이 움집터 3×3 (내 집터 위)' : '움집터 6×4 (수혈 굴착)') : '마을 곳간 5×3 (밀폐)'))), (p1.x + p3.x) / 2, p1.y - 8);

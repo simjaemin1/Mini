@@ -38,7 +38,8 @@ const http = require('http');
 const { ZONES, WORLD, isNight, worldPhase, darknessLevel, findZoneAt, worldDistance, worldDeltaX, HANDOFF_COMMIT, T720_LON_DAY, SUNRISE_FRAC, phaseAdd, localPhase, T761_CLOCKS } = require('./zone-config');   // ★[T720] 경도 하루 1단계 손잡이 · 시각 한 식   // ★[T604 추신3] HANDOFF_COMMIT 정본 = zone-config(해안 지킴과 한 자리)
 const db = require('./zone-local-db'); // 로컬 zone DB — players 없음
 const SimVillages = require('./villages'); // §4-4 NPC 마을 시뮬 — top-level은 상수뿐(실작업은 아래 init 호출, ENABLE_VILLAGES=0이면 완전 no-op)
-const T1238_ON = !!SimVillages.T1238_TERR_V2;   // ★[T1238] 영토 v2 손잡이(villages.js 가 정한다 — T1207 켬 위에서만) · 맨 위에 둔다(부팅 중 콜라이더 술어가 읽어도 TDZ 0)
+const T1238_ON = !!SimVillages.T1238_TERR_V2;
+const T1423_BLOCK_REACT = !!SimVillages.T1423_BLOCK_REACT;   // ★[T1423 ⓑ] 길을 막으면 세계가 치운다(villages.js 가 정한다 · '1' 만 켬 · 끔 기본) · 맨 위에 둔다(지을 때 표를 고치는 줄이 읽는다)   // ★[T1238] 영토 v2 손잡이(villages.js 가 정한다 — T1207 켬 위에서만) · 맨 위에 둔다(부팅 중 콜라이더 술어가 읽어도 TDZ 0)
 const T1197_BODY = process.env.T1074_FOOD_DEBT !== '0' && process.env.T1197_MEAL_BODY === '1'; // ★[PM land1049] 끔 기본(`=1` 켬) — 켬 판 서버 1020 400날 인구 3,617 → 1,848 · 빈 마을 1 → 15(사냥 · 식사 몸 같이 · 가상 시계) · 켤 날 T1209 ·   // ★[T1197] econ `T1197_MEAL_BODY` 와 같은 글자(켬 기본 · `=0` 끔 · T1074 끔이면 안 선다) — 마을 몸 허기 면제 자리(`_gaugeStep`)
 // ★[T484 ②③] 존 기후 — 이 존의 평년값(`server/climate-normals.js` · `apply` 인 존만)과 청동기 Δ(`T484_PALEO` 켬만)를 econ `CLIMATE` 에 얹는다.
 //   표에 없는 존 · 한반도(`apply: false`) · 손잡이 끔이면 아무것도 안 바꾼다(비트 동일). econ 이 기온을 읽기 전(기동)에 한 번.
@@ -6456,6 +6457,7 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   t495PickAt: (cx, cy, order, want, worth) => _t495PickAt(cx, cy, order, want, worth),
   t495RestOf: (r) => _t495RestOf(r),
   t1238TrapVillage: (vil) => _t1238TrapVillage(vil), t1238BuiltCells: (vil) => _t1238BuiltCells(vil),   // ★[T1238] NPC 마을 갇힘(하루 한 번) · 묵힘의 건물 칸(켬에서만 불린다)
+  t1423Has: () => _t1423Has(), t1423StepHit: (ox, oy, nx, ny, out) => _t1423StepHit(ox, oy, nx, ny, out), t1423Info: (id) => _t1423Info(id), t1423Break: (id, by) => _t1423Break(id, by), t1423Hostile: (o, n, v) => _t1423Hostile(o, n, v),   // ★[T1423 ⓑ] 막는 물건 표 · 걸음 · 부수기 · 적대감(켬에서만 불린다)
   t347LootOf: (r) => lootOfResource(r, { day: zoneGameDay() }) });   // ★[생활 층 100% ②③] 일과 스케줄(하루 위상)·직업 실작업(자원·사냥감 현장) 소스
 // ★[11차 T3 환호] 도랑 콜라이더 적재 — SimVillages.init이 시범 마을 도랑을 실체화한 **직후**여야 한다.
 //   (이 줄이 없으면 도랑 행은 DB에 있는데 통행 판정은 열려 있는 '유령 도랑'이 된다.)
@@ -7717,6 +7719,7 @@ async function _acceptConnection(ws, req, C) {
       roads: Roads.clientRoads(), // §16 답압 길: 등급 셀 flat [cx,cy,lv,...] — 이후 road_cells가 변경분 방송
     soil: Soil.clientSoil(),    // [배치 20 B] 타일 상태: 기준선에서 벗어난 셀 flat [cx,cy,qv,geo,ore,...] — 이후 tile_state가 변경분 방송
       bridges: bridgePayload(), // ★[T527] 지은 다리 포함(0 이면 종전 그대로) · ★[다리 층] 통나무 널다리 셀 flat [cx,cy,...] — 정적(맵 사물)이라 welcome 1회
+      ...(T1423_NO_BUILD ? { t1423NoBuild: SimVillages.t1406BridgeCells() } : {}),   // ★[T1423 ⓐ] 못 놓는 다리 칸 · 다리 머리 flat [cx,cy,…](㉮ 정본 칸 줄 · 켬에서만 칸이 선다)
       ditches: ditchPayload(),         // ★[11차 T3 환호] 도랑 셀 flat [cx,cy,...] — 마을 소유 사물(부팅 후 불변)이라 welcome 1회
       buildings: activeChunkBuildings(),
       rooms: Rooms.allRooms().map(Rooms.wireRoom),   // ★[배치 18 ①] 방은 서버가 판정한다 — 클라는 받아 쓰기만(사본 방지)
@@ -8118,6 +8121,7 @@ async function _acceptConnection(ws, req, C) {
     _arrivedAt: Date.now(), // Phase 5-K: 핸드오프 직후 재핸드오프 쿨다운 기준
 
   };
+  if (T1423_BLOCK_REACT && _t1423Owe.size) _t1423Collect(player);   // ★[T1423 ⓑ] 자리를 비운 사이 쌓인 적대감(그 마을 사람들이 치우러 나섰다)
   // ★[T732] 하네스 초기 인벤(`ZONE_TEST_INV` · 운영 0)의 로트 품목 — 받은 순간에 적는다(쓸개의 근사 0). 끄면 이 줄 무동작.
   if (T732_MOMENT) for (const k of Object.keys(_testInv)) if (Lots.isLot(k)) { const need = Math.floor(+inventory[k] || 0) - Math.floor(Lots.sum(player, k) + 1e-6); if (need > 0) Lots.note(player, k, need, zoneGameDay()); }
   // ★★[2026-08-25 재민 확정 · B-6] 살아 있던 몸을 그대로 이어받는다.
@@ -8253,6 +8257,7 @@ async function _acceptConnection(ws, req, C) {
     roads: Roads.clientRoads(), // §16 답압 길: 등급 셀 flat [cx,cy,lv,...] — 이후 road_cells가 변경분 방송
     soil: Soil.clientSoil(),    // [배치 20 B] 타일 상태: 기준선에서 벗어난 셀 flat [cx,cy,qv,geo,ore,...] — 이후 tile_state가 변경분 방송
     bridges: bridgePayload(), // ★[T527] 지은 다리 포함(0 이면 종전 그대로) · ★[다리 층] 통나무 널다리 셀 flat [cx,cy,...] — 정적(맵 사물)이라 welcome 1회
+    ...(T1423_NO_BUILD ? { t1423NoBuild: SimVillages.t1406BridgeCells() } : {}),   // ★[T1423 ⓐ] 못 놓는 다리 칸 · 다리 머리 flat [cx,cy,…](㉮ 정본 칸 줄 · 켬에서만 칸이 선다)
     ditches: ditchPayload(),         // ★[11차 T3 환호] 도랑 셀 flat [cx,cy,...] — 마을 소유 사물(부팅 후 불변)이라 welcome 1회
     buildings: activeChunkBuildings(),
     rooms: Rooms.allRooms().map(Rooms.wireRoom),   // ★[배치 18 ①] 방은 서버가 판정한다 — 클라는 받아 쓰기만(사본 방지)
@@ -10054,6 +10059,7 @@ function doDismantleBuilding(player, buildingId) {
   buildings.delete(buildingId);
   if (chunkManager && chunkManager.removeBuilding) chunkManager.removeBuilding(b);
   if (b.dbId) db.deleteBuilding(b.dbId);
+  if (T1423_BLOCK_REACT) _t1423IdxDel(b);   // ★[T1423 ⓑ] 막는 물건 표
   broadcast({ type: 'building_removed', id: buildingId });
   roomsTouchBuilding(b);   // ★[배치 18 ①] 이미 buildings 에서 뺀 뒤라 재판정이 '없어진 상태'를 본다
   // §4-4 Stage 4B(§5.5b): 통행 차단형(wall/fence) 철거 = 개통 → 교역 거리행렬·캐러밴 경로 무효화
@@ -12385,7 +12391,7 @@ function _t1392IsFirst(pid) {
   return true;
 }
 const _T1392_DIR = [['북서', '북', '북동'], ['서', '가운데', '동'], ['남서', '남', '남동']];
-const _T1392_WHY = { claim: '남의 땅', mine: '풀린 내 땅', water: '물', rock: '바위', ditch: '도랑', village: '마을 시설', building: '건물' };
+const _T1392_WHY = { claim: '남의 땅', mine: '풀린 내 땅', water: '물', rock: '바위', ditch: '도랑', village: '마을 시설', building: '건물', bridge: '다리', head: '다리 끝' };   // ★[T1423 ⓐ] 다리 · 다리 끝(켬에서만 선다)
 //   선 칸(cx, cy)을 가운데로 한 아홉 칸 — 칸마다 막힌 까닭(없으면 null). 문(영토 · 인정)은 따로(`_t1392Check`).
 function _t1392Cells(pid, cx, cy) {
   const S = BUILDING_SIZE, h = (T1392_SIDE - 1) / 2, out = [];
@@ -12399,6 +12405,7 @@ function _t1392Cells(pid, cx, cy) {
       why = c.ownerPid === pid ? 'mine' : 'claim'; break;
     }
     if (!why && isTerrainBlockedLocal(px, py)) why = isWaterTileLocal(px, py) ? 'water' : (isRockTileLocal(px, py) ? 'rock' : 'ditch');
+    if (!why && T1423_NO_BUILD) why = _t1423NoBuild(x, y);   // ★[T1423 ⓐ] 다리 칸 · 다리 머리(물은 위 줄이 이미 — 다리 칸은 걸음이 열려 위 줄을 지난다)
     if (!why) for (const b of near) {
       if ((b.floor || 0) !== 0) continue;
       if (Math.floor(b.x / S) === x && Math.floor(b.y / S) === y) { why = isVillageTaggedBuilding(b) ? 'village' : 'building'; break; }
@@ -12531,6 +12538,7 @@ function tryClaim(player, kind = 'personal') {
   const SZ = BUILDING_SIZE;
   const cx = Math.floor(player.x / SZ) * SZ;
   const cy = Math.floor(player.y / SZ) * SZ;
+  if (T1423_NO_BUILD) { const _w = _t1423NoBuild(Math.floor(cx / SZ), Math.floor(cy / SZ)); if (_w) { _t1423Say(player, _w, '땅을 잡을 수'); return; } }   // ★[T1423 ⓐ] 사유지 한 칸(이어받기 포함 — 승계도 등록이다)
 
 
   // ★★[T45 2026-09-02] **승계 — 이 칸이 이미 남의 것인데 `pref`/`free` 면 새로 세우지 않고 이어받는다.**
@@ -13449,6 +13457,169 @@ function _buildCostPay(player, cost, sign) {
   if (cost.seed)  inv[cost.seed] = (inv[cost.seed] || 0) + sign;
   if (cost.fiber) inv.fiber = (inv.fiber || 0) + sign * cost.fiber;
 }
+// ═══ ★★[T1423 ⓐ 2026-11-21 · ★재민 11-21 판정 31] 못 놓는 자리 — 물 칸 · 다리 칸 · 다리 머리 · 손잡이 `T1423_NO_BUILD`('1' 만 켬 · ★끔 기본 · 끔 = 아무도 안 부른다 = 종전 바이트) ═══
+//   건물 놓기(`_tryBuildAt` — 칸 건물은 그 칸 · 벽 · 문은 변을 낀 두 칸) · 움집터(6×4 `tryHutStart` · 간이 3×3 `_t1392HutStart`) · 시설 터(`_siteStart` 2×2 — 노 · 숯가마 · 우물 · 쉼터 · 마을)
+//   · 쉼터 지붕 6×4 · 마을 곳간 5×3 · 집 의뢰 6×4 · 사유지(한 칸 `tryClaim` · 첫 집터 3×3 `_t1392Cells`)가 이 술어를 지난다 — 거절 + 알림 한 줄.
+//   술어는 있는 정본 셋(새 술어 0): 다리 칸 = `isBridgeTileLocal`(존 설정 + 마을이 지은 다리 — 걸음 술어의 그 집합) · 물 = `isWaterTileLocal`(걸음 술어 `_terrBlocked0` 의 그 물) ·
+//   다리 머리 = T1406 ㉮ 정본 `SimVillages.t1406BridgeCell`(존 설정 다리의 물 칸에서 체비쇼프 2 = 다리 폭 — T1406 이 NPC 마을에서 비운 바로 그 칸).
+//   클라 미리보기: welcome 의 `t1423NoBuild`(그 ㉮ 칸 줄 그대로) + 클라 물 · 다리 미러(`isWaterAtAbs` · `_bridgeAbs` — 걸음 예측이 쓰는 그 미러) → 같은 답.
+//   이미 서 있는 것(세이브)은 건드리지 않는다(표만 · 치울지는 회부).
+const T1423_NO_BUILD = process.env.T1423_NO_BUILD === '1';
+const _T1423_WHERE = { water: '물 위', bridge: '다리 위', head: '다리 끝(다리 머리)' };
+function _t1423NoBuild(cx, cy) {
+  const S = BUILDING_SIZE, px = cx * S + S / 2, py = cy * S + S / 2;
+  if (isBridgeTileLocal(px, py)) return 'bridge';
+  if (isWaterTileLocal(px, py)) return 'water';
+  if (SimVillages.t1406BridgeCell && SimVillages.t1406BridgeCell(cx, cy)) return 'head';
+  return null;
+}
+function _t1423NoBuildRect(x0, y0, x1, y1) { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const w = _t1423NoBuild(x, y); if (w) return w; } return null; }
+function _t1423Say(player, why, what) {
+  _t1423A.refuse[why] = (_t1423A.refuse[why] || 0) + 1;
+  send(player.ws, { type: 'notice', text: `${_T1423_WHERE[why]}에는 ${what || '지을 수'} 없습니다.${why === 'water' ? '' : ' 다리와 그 끝은 길이라 비워 둡니다.'}` });
+}
+const _t1423A = { refuse: {} };   // 거절 셈(관측 · 하네스)
+// ═══ ★★[T1423 ⓑ 2026-11-21 · ★재민 11-20 판정 17 · 11-21 판정 31] 길을 막으면 세계가 치운다 — 존 쪽 문(손잡이 `T1423_BLOCK_REACT` · villages.js 가 정한다 · 끔 = 아래가 하나도 안 닿는다) ═══
+//   ① 막는 물건 표(`_t1423Idx`) — **플레이어가 지은** 울타리(칸) · 벽 · 문(변) · 땅 층만. NPC · 마을 · 도적 · 공용 것 0(최초 50개 마을은 길을 안 막는다 — T1406 ㉮) ·
+//      마을 땅(길드 사유지) 안 0(전쟁 성벽 · 방책은 이 규칙 밖 — 공성 정본). 존이 처음 물을 때 DB 에서 한 번 읽고 · 지을 때 · 허물 때 고친다.
+//      잠든 청크(메모리에서 내려간 건물 — `deactivateChunk`)도 DB 정본으로 서 있다 — 보는 사람 없는 청크를 지나는 캐러밴 몸이 그 칸에서 만난다(villages.js `_t1182Walk` · `_t661Day`).
+//      지금도 막고 있나 = 깨어 있으면 메모리 몸(콜라이더가 보는 그것 · 부서짐 · 열린 문) · 잠들었으면 그 DB 행(없어졌으면 표에서 뺀다).
+//   ② 걸음 한 칸이 표의 물건을 지나나(`_t1423StepHit` — `isBlockedByWall` 의 칸 걷기 그대로 · 대각 = 두 L 길이 다 막혀야 · 들어선 칸 울타리) — 지난 물건을 줄에 담는다.
+//   ③ 부수기(`_t1423Break`) — 그 자리에 선 몸이 친다: 친 횟수 = 남은 내구 ÷ 사람 공격(`PLAYER_ATTACK_DAMAGE` — 사람이 건물을 치는 정본 수) · 내구 0 이면 분해와 같은 길로 없앤다
+//      (메모리 · 청크 · DB · 방 · 교역 거리 무효화) · 재료(`BUILDING_TYPE_TO_ITEM` — 분해가 돌려주는 그 물건)는 그 자리 바닥에(`_spawnGroundItems` — 낙하 정본) · 땅(사유지)은 그대로.
+//   ④ 막은 사람 — 그 마을의 적대감 = 벌점 축(`player.vp` += `VP_BREAK_FENCE` — T1238 의 울타리 벌점 값 · 새 축 0 · 새 수 0) · 접속해 있으면 알림 한 줄.
+//      접속 안 했으면 존 메모리에 쌓아 두고(`_t1423Owe`) 들어오는 순간 준다(재기동을 넘기는 것은 회부).
+const _t1423Idx = { cell: new Map(), edge: new Map(), byId: new Map(), n: 0, booted: false };
+const _t1423Owe = new Map();   // 접속 안 한 막은 사람 → { vp, from: [마을 이름] }
+const _t1423Z = { idxBoot: 0, idxAdd: 0, idxDel: 0, idxStale: 0, hitQ: 0, hits: 0, breaks: 0, breakHits: 0, drops: 0, vpOnline: 0, vpOffline: 0, vpCollect: 0, notices: 0 };
+function _t1423Mine(b) {   // 플레이어가 지은 막는 물건인가(땅 층)
+  if (!b || !BLOCKING_BUILDINGS.has(b.type)) return false;
+  if (((b.floor != null ? b.floor : (b.data && b.data.floor)) || 0) !== 0) return false;
+  const o = String(b.ownerId || '');
+  if (!o || o.startsWith('npc_') || o === 'public' || o.startsWith('bandit') || o.startsWith('simvil')) return false;
+  if (isVillageTaggedBuilding(b)) return false;
+  for (const c of claims.values()) if (c.kind === 'guild' && b.x >= c.x && b.x < c.x + c.w && b.y >= c.y && b.y < c.y + c.h) return false;   // 마을 땅(길드 사유지) 안 — 공성 정본
+  return true;
+}
+function _t1423Ent(b) {
+  const S = BUILDING_SIZE, cx = Math.floor(b.x / S), cy = Math.floor(b.y / S), side = (b.data && b.data.side) || null;
+  const e = { id: b.id, dbId: b.dbId, type: b.type, ownerId: b.ownerId, ownerName: b.ownerName, cx, cy, side: b.type === 'fence' ? null : (side === 'E' ? 'E' : 'N'), b };
+  if (b.type === 'fence') { e.px = cx * S + S / 2; e.py = cy * S + S / 2; }
+  else if (e.side === 'E') { e.px = (cx + 1) * S; e.py = cy * S + S / 2; } else { e.px = cx * S + S / 2; e.py = cy * S; }   // 변 가운데(벽 · 문은 칸 왼위 모서리에 산다)
+  return e;
+}
+const _t1423K = (cx, cy) => cx * 65536 + cy;
+function _t1423IdxAdd(b) {
+  if (!T1423_BLOCK_REACT || !_t1423Mine(b) || _t1423Idx.byId.has(b.id)) return false;
+  const e = _t1423Ent(b), M = e.type === 'fence' ? _t1423Idx.cell : _t1423Idx.edge, k = e.type === 'fence' ? _t1423K(e.cx, e.cy) : _t1423K(e.cx, e.cy) * 2 + (e.side === 'E' ? 1 : 0);
+  e.k = k; (M.get(k) || M.set(k, []).get(k)).push(e); _t1423Idx.byId.set(e.id, e); _t1423Idx.n++; _t1423Z.idxAdd++;
+  return true;
+}
+function _t1423IdxDel(b) {
+  const e = b && _t1423Idx.byId.get(b.id); if (!e) return false;
+  const M = e.type === 'fence' ? _t1423Idx.cell : _t1423Idx.edge, L = M.get(e.k);
+  if (L) { const i = L.indexOf(e); if (i >= 0) L.splice(i, 1); if (!L.length) M.delete(e.k); }
+  _t1423Idx.byId.delete(e.id); _t1423Idx.n--; _t1423Z.idxDel++;
+  return true;
+}
+let _t1423RowQ = null;
+function _t1423IdxBoot() {   // 존이 처음 물을 때 한 번 — DB 의 플레이어 막는 물건(잠든 청크 것까지)
+  if (_t1423Idx.booted) return; _t1423Idx.booted = true;
+  try {
+    for (const r of db.db.prepare("SELECT id, type, owner_id, owner_name, x, y, data FROM buildings WHERE type IN ('wall','fence','door') AND owner_id NOT LIKE 'npc_%'").iterate()) {
+      let data = {}; try { data = JSON.parse(r.data || '{}') || {}; } catch (e) {}
+      const id = `b${r.id}`, b = buildings.get(id) || { id, dbId: r.id, type: r.type, ownerId: r.owner_id, ownerName: r.owner_name, x: r.x, y: r.y, data, floor: data.floor || 0 };
+      if (_t1423IdxAdd(b)) _t1423Z.idxBoot++;
+    }
+  } catch (e) {}
+}
+function _t1423Has() { if (!T1423_BLOCK_REACT) return false; if (!_t1423Idx.booted) _t1423IdxBoot(); return _t1423Idx.n > 0; }
+//   지금도 막고 있나 — 깨어 있으면 메모리 몸 · 잠들었으면 DB 행(없어졌으면 표에서 뺀다 · 부서짐 · 열린 문은 행의 data)
+function _t1423Live(e) {
+  let b = buildings.get(e.id);
+  if (!b) {
+    try { if (!_t1423RowQ) _t1423RowQ = db.db.prepare('SELECT data FROM buildings WHERE id = ?'); const r = _t1423RowQ.get(e.dbId);
+      if (!r) { _t1423IdxDel(e); _t1423Z.idxStale++; return false; }
+      let d = {}; try { d = JSON.parse(r.data || '{}') || {}; } catch (x) {} e.b.data = d; } catch (x) {}
+    b = e.b;
+  } else e.b = b;
+  const d = (b && b.data) || {};
+  if (e.type === 'fence') return !(T1238_ON && d.damaged);   // 콜라이더 그 술어(`findCellFence` — T1238 켬이면 부서진 울타리는 통과)
+  if (d.damaged) return false;
+  if (e.type === 'door' && d.open) return false;
+  return true;
+}
+function _t1423Fence(cx, cy) { const L = _t1423Idx.cell.get(_t1423K(cx, cy)); if (!L) return null; for (const e of L.slice()) if (_t1423Live(e)) return e; return null; }
+function _t1423Edge(cx, cy, side) { const L = _t1423Idx.edge.get(_t1423K(cx, cy) * 2 + (side === 'E' ? 1 : 0)); if (!L) return null; for (const e of L.slice()) if (_t1423Live(e)) return e; return null; }
+function _t1423EdgeStep(cx, cy, sx, sy) {   // `edgeBlockedStep` 그 네 갈래
+  if (sx === 1) return _t1423Edge(cx, cy, 'E');
+  if (sx === -1) return _t1423Edge(cx - 1, cy, 'E');
+  if (sy === 1) return _t1423Edge(cx, cy + 1, 'N');
+  if (sy === -1) return _t1423Edge(cx, cy, 'N');
+  return null;
+}
+function _t1423StepHit(ox, oy, nx, ny, out) {
+  if (!_t1423Idx.n) return false;
+  _t1423Z.hitQ++;
+  const S = BUILDING_SIZE;
+  let cx = Math.floor(ox / S), cy = Math.floor(oy / S);
+  const tx = Math.floor(nx / S), ty = Math.floor(ny / S);
+  if (cx === tx && cy === ty) return false;
+  let steps = 0;
+  while (cx !== tx || cy !== ty) {
+    if (++steps > 64) return false;
+    const sx = Math.sign(tx - cx), sy = Math.sign(ty - cy);
+    if (sx && sy) {
+      const a1 = _t1423EdgeStep(cx, cy, sx, 0) || _t1423EdgeStep(cx + sx, cy, 0, sy);
+      const a2 = _t1423EdgeStep(cx, cy, 0, sy) || _t1423EdgeStep(cx, cy + sy, sx, 0);
+      if (a1 && a2) { if (out) { out.add(a1); out.add(a2); } _t1423Z.hits++; return true; }
+      cx += sx; cy += sy;
+    } else if (sx) { const e = _t1423EdgeStep(cx, cy, sx, 0); if (e) { if (out) out.add(e); _t1423Z.hits++; return true; } cx += sx; }
+    else { const e = _t1423EdgeStep(cx, cy, 0, sy); if (e) { if (out) out.add(e); _t1423Z.hits++; return true; } cy += sy; }
+    const f = _t1423Fence(cx, cy); if (f) { if (out) out.add(f); _t1423Z.hits++; return true; }
+  }
+  return false;
+}
+//   표 항목의 지금 꼴(villages.js 가 일 표에 싣는 것 — 몸 · 주인 · 자리) · 없어졌으면 null
+function _t1423Info(id) { const e = _t1423Idx.byId.get(id); if (!e || !_t1423Live(e)) return null; return { id: e.id, type: e.type, ownerId: e.ownerId, ownerName: e.ownerName, cx: e.cx, cy: e.cy, side: e.side, px: e.px, py: e.py }; }
+//   부수기 — 몸(by — 그 자리에 선 몸)이 친다. 반환 { hits, hp0, item, gi } · 이미 없거나 안 막으면 { gone: true }
+function _t1423Break(id, by) {
+  const e = _t1423Idx.byId.get(id);
+  if (!e || !_t1423Live(e)) return { gone: true };
+  const b = buildings.get(e.id) || e.b;
+  const maxHp = BUILDING_MAX_HP[b.type] || 50, hp0 = (b.data && typeof b.data.hp === 'number') ? b.data.hp : maxHp;
+  const hits = Math.max(1, Math.ceil(hp0 / PLAYER_ATTACK_DAMAGE));   // 사람이 건물을 치는 정본 수 — 내구가 0 이 될 때까지
+  buildings.delete(b.id);
+  if (chunkManager && chunkManager.removeBuilding) chunkManager.removeBuilding(b);
+  if (b.dbId) { try { db.deleteBuilding(b.dbId); } catch (x) {} }
+  try { broadcast({ type: 'building_removed', id: b.id }); } catch (x) {}
+  try { roomsTouchBuilding(b); } catch (x) {}
+  try { SimVillages.invalidateTradeDistances(e.cx, e.cy); } catch (x) {}   // 분해 · 부서짐과 같은 줄 — 길이 열렸다
+  _t1423IdxDel(e);
+  const item = BUILDING_TYPE_TO_ITEM[b.type] || null; let gi = null;
+  if (item) { const at = { x: e.px, y: e.py, floor: 0 }; const L = _spawnGroundItems(at, item, [{ n: 1, kg: +Weights.kgOfOrDefault(item) || 0 }]); gi = (L && L[0]) ? L[0].id : null; if (gi) _t1423Z.drops++; }
+  _t1423Z.breaks++; _t1423Z.breakHits += hits;
+  return { hits, hp0, item, gi, by: by ? { x: by.x, y: by.y } : null };
+}
+//   그 마을의 적대감 — 벌점 축 · 접속 중이면 알림 한 줄
+function _t1423Owner(ownerId) { for (const p of players.values()) if (p && p.ws && p.playerId === ownerId && !npcs.has(p.pid)) return p; return null; }
+function _t1423Hostile(ownerId, ownerName, vilName) {
+  const add = VP_BREAK_FENCE, p = _t1423Owner(ownerId);
+  if (p) {
+    p.vp = Math.min(VP_MAX, (p.vp ?? 0) + add); _t1423Z.vpOnline += add; _t1423Z.notices++;
+    send(p.ws, { type: 'notice', text: `길을 막고 있습니다 — ${vilName} 사람들이 치우려 합니다.` });
+    send(p.ws, { type: 'gauges', hunger: Math.round(p.hunger), thirst: Math.round(p.thirst), vp: Math.round(p.vp) });
+    return 'online';
+  }
+  const o = _t1423Owe.get(ownerId) || { vp: 0, from: [], name: ownerName }; o.vp += add; o.from.push(vilName); _t1423Owe.set(ownerId, o); _t1423Z.vpOffline += add;
+  return 'offline';
+}
+function _t1423Collect(player) {   // 들어오는 순간 — 쌓아 둔 적대감 · 알림 한 줄
+  const o = player && _t1423Owe.get(player.playerId); if (!o) return;
+  _t1423Owe.delete(player.playerId);
+  player.vp = Math.min(VP_MAX, (player.vp ?? 0) + o.vp); _t1423Z.vpCollect += o.vp; _t1423Z.notices++;
+  send(player.ws, { type: 'notice', text: `자리를 비운 사이 길을 막고 있었습니다 — ${[...new Set(o.from)].join(' · ')} 사람들이 치우러 나섰습니다.` });
+}
 function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = null) {
   // 14.51: opts.skipCost = 인벤 차감 없이 빌드만 (place_building에서 사용). atX/atY = 위치 override.
   const skipCost = !!(opts && opts.skipCost);
@@ -13493,6 +13664,7 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = nu
     else if (side === 'S') { useCx = cx; useCy = cy + 1; useSide = 'N'; }
     else if (side === 'E') { useCx = cx; useCy = cy; useSide = 'E'; }
     else if (side === 'W') { useCx = cx - 1; useCy = cy; useSide = 'E'; }
+    if (T1423_NO_BUILD) { const _w = _t1423NoBuild(useCx, useCy) || (useSide === 'N' ? _t1423NoBuild(useCx, useCy - 1) : _t1423NoBuild(useCx + 1, useCy)); if (_w) { _t1423Say(player, _w); return false; } }   // ★[T1423 ⓐ] 변을 낀 두 칸
     // 중복 wall/door 체크 (같은 edge에 wall 또는 door 있나)
     if (findEdgeWall(useCx, useCy, useSide, floor)) {
       send(player.ws, { type: 'notice', text: '이미 벽/문이 있습니다' }); return false;
@@ -13520,6 +13692,7 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = nu
     const building = { id, dbId, type, ownerId: player.playerId, ownerName: player.name, x: wx, y: wy, data: initData, floor };
     buildings.set(id, building);
     chunkManager.insertBuilding(building);
+    if (T1423_BLOCK_REACT) _t1423IdxAdd(building);   // ★[T1423 ⓑ] 막는 물건 표
     sendInventory(player);
     savePlayer(player);
     broadcast({ type: 'building_added', building });
@@ -13550,6 +13723,7 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = nu
   // 격자에 스냅 (32 단위)
   const gx = Math.floor(player.x / BUILDING_SIZE) * BUILDING_SIZE + BUILDING_SIZE / 2;
   const gy = Math.floor(player.y / BUILDING_SIZE) * BUILDING_SIZE + BUILDING_SIZE / 2;
+  if (T1423_NO_BUILD) { const _w = _t1423NoBuild(Math.floor(gx / BUILDING_SIZE), Math.floor(gy / BUILDING_SIZE)); if (_w) { _t1423Say(player, _w); return false; } }   // ★[T1423 ⓐ] 그 칸
 
   // 14.54-d: 다른 사람 claim 안에서만 차단. 자기 claim/빈 땅 다 OK.
   let inOtherClaim = false;
@@ -13611,6 +13785,7 @@ function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = nu
   const building = { id, dbId, type, ownerId: player.playerId, ownerName: player.name, x: gx, y: gy, data: dataWithFloor, floor };
   buildings.set(id, building);
   chunkManager.insertBuilding(building);
+  if (T1423_BLOCK_REACT) _t1423IdxAdd(building);   // ★[T1423 ⓑ] 막는 물건 표(울타리만 든다 — 술어가 거른다)
   if (type === 'stair') stairCellDirty = true; // 14.49-e3-perf
 
   // 14.54-a/c2: stair dir 검증 — N(남→북) 또는 W(동→서)만 허용
@@ -13715,6 +13890,7 @@ function tryHutStart(player, atX, atY, kind) {
   const st = HUT_STAGES[0];
   if (!hasTool(player, st.tool)) { send(player.ws, { type: 'notice', text: `${st.label}에는 곡괭이가 있어야 합니다.`, ..._t1120N({ tool: st.tool }) }); return; }   // ★[T1120] 가질 도구(켬만)
   if (T1392_FIRST_LOT && kind === 'small') return _t1392HutStart(player, atX, atY);   // ★[T1392] 켬 — 간이 움집 3×3(내 땅 아홉 칸 위에만 · 거리 · 곡괭이 문은 위 두 줄 그대로 — 간이 표 ① 도 곡괭이 · 같은 글)
+  if (T1423_NO_BUILD) { const _w = _t1423NoBuildRect(x0, y0, x1, y1); if (_w) { _t1423Say(player, _w, '움집터를 팔 수'); return; } }   // ★[T1423 ⓐ] 발자국 6×4
   for (let x = x0 - 1; x <= x1 + 1; x++) for (let y = y0 - 1; y <= y1 + 1; y++) {
     const px = x * SZg + SZg / 2, py = y * SZg + SZg / 2;
     if (isTerrainBlockedLocal(px, py)) { send(player.ws, { type: 'notice', text: '물·바위를 피해서 파야 합니다' }); return; }
@@ -13761,6 +13937,7 @@ function _t1392HutStart(player, atX, atY) {
   for (const [dx, dy] of [[0, 0], [0, -1], [0, 1], [-1, 0], [1, 0], [-1, -1], [1, -1], [-1, 1], [1, 1]]) if (all(ccx + dx, ccy + dy)) { ctr = [ccx + dx, ccy + dy]; break; }
   if (!ctr) { send(player.ws, { type: 'notice', text: '간이 움집은 내 땅 아홉 칸(3×3) 위에만 지을 수 있습니다. 내 집터 가운데를 고르십시오.' }); return; }
   const x0 = ctr[0] - h, y0 = ctr[1] - h, x1 = ctr[0] + h, y1 = ctr[1] + h, doorX = x0 + h;
+  if (T1423_NO_BUILD) { const _w = _t1423NoBuildRect(x0, y0, x1, y1); if (_w) { _t1423Say(player, _w, '움집터를 팔 수'); return; } }   // ★[T1423 ⓐ] 발자국 3×3(이미 선 내 땅이 다리 끝이어도)
   for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) {
     if (isTerrainBlockedLocal(x * S + S / 2, y * S + S / 2)) { send(player.ws, { type: 'notice', text: '물·바위를 피해서 파야 합니다' }); return; }
   }
@@ -13796,6 +13973,7 @@ function tryRequestVillageHouse(player, atX, atY) {
   const lack = [];
   for (const [it, amt] of Object.entries(PSITE_COST)) if ((player.inventory[it] || 0) < amt) lack.push(`${ITEM_LABEL_SERVER[it] || it} ${player.inventory[it] || 0}/${amt}`);
   if (lack.length) { send(player.ws, { type: 'notice', text: `먼저 낼 재료가 모자랍니다: ${lack.join(' · ')}.` }); return; }
+  if (T1423_NO_BUILD) { const _w = _t1423NoBuildRect(cx - 5, cy - 5, cx, cy - 2); if (_w) { _t1423Say(player, _w, '집을 맡길 수'); return; } }   // ★[T1423 ⓐ] 의뢰 집 발자국 6×4(마을 정본 자리 — 클라 고스트 · `lifeRequestPlayerSite` 그 칸)
   const r = SimVillages.lifeRequestPlayerSite(vil, cx, cy, player.playerId, `${player.name}의 의뢰 움집`);
   if (!r || r.err) { send(player.ws, { type: 'notice', text: `맡길 수 없습니다(${(r && r.err) || '까닭을 모릅니다'}).` }); return; }
   for (const [it, amt] of Object.entries(PSITE_COST)) consumeItem(player, it, amt);   // ★자리 확정 뒤 차감(실패 시 재료가 사라지지 않게) · [원장 승격]
@@ -14394,6 +14572,7 @@ function _siteStart(player, atX, atY, spec) {
   for (const [it, amt] of Object.entries(st.need)) {
     if ((player.inventory[it] || 0) < amt) { send(player.ws, { type: 'notice', text: `${st.label}에 쓸 재료가 모자랍니다: ${ITEM_LABEL_SERVER[it] || it} ${player.inventory[it] || 0}/${amt}.` }); return; }
   }
+  if (T1423_NO_BUILD) { const _w = _t1423NoBuildRect(x0, y0, x1, y1); if (_w) { _t1423Say(player, _w, `${spec.ko} 터를 잡을 수`); return; } }   // ★[T1423 ⓐ] 발자국 2×2
   for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) {
     const px = x * SZg + SZg / 2, py = y * SZg + SZg / 2;
     if (isTerrainBlockedLocal(px, py)) { send(player.ws, { type: 'notice', text: '물이나 바위를 피해서 지어야 합니다.' }); return; }
@@ -14647,6 +14826,7 @@ function tryShelterStart(player, atX, atY) {
   if (SimVillages.hasShelter && SimVillages.hasShelter(vil.dbId)) { send(player.ws, { type: 'notice', text: `🛖 ${vil.name}에는 이미 쉼터가 있습니다. 마을에 하나면 됩니다.` }); return; }
   // 완공 실체는 6×4 다 — **그 발자국 전체**를 지금 본다(2×2 만 보면 지붕이 물 위에 앉는다).
   const cx = x0 + 3, cy = y0 + 2;
+  if (T1423_NO_BUILD) { const _w = _t1423NoBuildRect(cx - 5, cy - 5, cx, cy - 2); if (_w) { _t1423Say(player, _w, '🛖 쉼터를 세울 수'); return; } }   // ★[T1423 ⓐ] 지붕 6×4
   for (let x = cx - 5; x <= cx + 0; x++) for (let y = cy - 5; y <= cy - 2; y++) {
     const px = x * SZg + SZg / 2, py = y * SZg + SZg / 2;
     if (isTerrainBlockedLocal(px, py)) { send(player.ws, { type: 'notice', text: '🛖 지붕이 앉을 자리가 물이나 바위입니다. 조금 물러서 지으십시오.' }); return; }
@@ -15498,6 +15678,9 @@ function __testBind() {
     T1238_ON, VP_STEAL_CROP, VP_BREAK_FENCE, VP_TRESPASS_GATHER, VP_ATTACK_PLAYER, VP_THRESHOLD, VP_MAX,
     _t1238StealCheck, _t1238StealApply, _t1238Trap, _t1238TrapWaiver, _t1238FenceCost, _t1238FenceApply, _t1238TrapVillage, _t1238BuiltCells, _t1238VilOf, _t1238Work,
     tryT1238Pick, tryT1238Cancel, tryT1238Pull, tryT1238Info, tryHarvest, t1238ZoneStat, findCellFence,
+    // ★[T1423] 못 놓는 자리(ⓐ) · 막는 물건 표 · 걸음 · 부수기 · 적대감(ⓑ) — 하네스가 정본 함수를 그대로 부른다
+    T1423_NO_BUILD, T1423_BLOCK_REACT, _t1423NoBuild, _t1423NoBuildRect, _t1423A, _tryBuildAt, tryHutStart, _siteStart, tryShelterStart, tryRequestVillageHouse, _t1392Cells, _t1392Check,
+    _t1423Idx, _t1423Z, _t1423Owe, _t1423IdxAdd, _t1423IdxDel, _t1423Has, _t1423StepHit, _t1423Info, _t1423Break, _t1423Hostile, _t1423Collect, _t1423Mine, isBlockedByWall, groundItems, isWaterTileLocal, isBridgeTileLocal, claims, players, npcs,
   };
 }
 module.exports = { __testBind, __furnaceBind: __testBind };
@@ -15538,6 +15721,7 @@ async function tryBuildGuildGranary(player, atX, atY) {
   for (const [ex, ey] of [[gx - 2, gy - 1], [gx + 2, gy - 1], [gx - 2, gy + 1], [gx + 2, gy + 1]]) {
     if (!inMyGuildClaim(ex * SZg + SZg / 2, ey * SZg + SZg / 2)) { send(player.ws, { type: 'notice', text: '마을 땅(Shift+C) 안에서만 지을 수 있습니다' }); return; }
   }
+  if (T1423_NO_BUILD) { const _w = _t1423NoBuildRect(gx - 2, gy - 1, gx + 2, gy + 1); if (_w) { _t1423Say(player, _w, '곳간을 지을 수'); return; } }   // ★[T1423 ⓐ] 발자국 5×3
   // 부지 무결: 발자국+테두리 1칸 — 지형(물·바위)·기존 건물 없음
   for (let dx = -3; dx <= 3; dx++) for (let dy = -2; dy <= 2; dy++) {
     const px = (gx + dx) * SZg + SZg / 2, py = (gy + dy) * SZg + SZg / 2;

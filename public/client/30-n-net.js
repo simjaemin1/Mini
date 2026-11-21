@@ -1001,6 +1001,10 @@
           c.bridges.add(k);
           _bridgeAbs.add(((msg.zone.worldOffsetX / CL_BUILDING_SIZE) + msg.bridges[i]) + ',' + (((msg.zone.worldOffsetY || 0) / CL_BUILDING_SIZE) + msg.bridges[i + 1]));
         }
+        if (msg.t1423NoBuild) {   // ★[T1423 ⓐ] 못 놓는 다리 칸 · 다리 머리(서버 ㉮ 칸 줄 — 다리 미러와 같은 셈으로 절대 칸에) · 켬인 존만 보낸다
+          _t1423NoAbs.on = true;
+          for (let i = 0; i + 1 < msg.t1423NoBuild.length; i += 2) _t1423NoAbs.add(((msg.zone.worldOffsetX / CL_BUILDING_SIZE) + msg.t1423NoBuild[i]) + ',' + (((msg.zone.worldOffsetY || 0) / CL_BUILDING_SIZE) + msg.t1423NoBuild[i + 1]));
+        }
         // ★[11차 T3 환호] 도랑 셀 flat [cx,cy,…] — 서버 콜라이더 미러 + 타일 렌더 원천(마을 소유 사물, welcome 1회)
         c.ditches = new Set();
         if (msg.ditches) for (let i = 0; i + 1 < msg.ditches.length; i += 2) {
