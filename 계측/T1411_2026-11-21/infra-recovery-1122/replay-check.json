@@ -1,0 +1,86 @@
+{
+ "kind": "daily-observation-replay-check",
+ "complete": true,
+ "scope": "All retained daily observation fields except the three named CPU/uptime fields; not a full-state fingerprint or an independent world.",
+ "cases": {
+  "OFF-1020/t1274-days": {
+   "expectedDays": [
+    211,
+    212,
+    213,
+    214,
+    215,
+    216,
+    217,
+    218
+   ],
+   "matchedDays": [
+    211,
+    212,
+    213,
+    214,
+    215,
+    216,
+    217,
+    218
+   ],
+   "excludedTimingFields": [
+    "cpuSeconds",
+    "processCPUSeconds",
+    "uptimeSeconds"
+   ],
+   "differences": [],
+   "archivedFileSha256": "ce8f29c84b9b5f4a1bfd01e1c9f89e7e2bae1aaf87b3ec07cf4cb2cc67e218ce"
+  },
+  "OFF-1020/t1302-days": {
+   "expectedDays": [
+    211,
+    212,
+    213,
+    214,
+    215,
+    216,
+    217,
+    218
+   ],
+   "matchedDays": [
+    211,
+    212,
+    213,
+    214,
+    215,
+    216,
+    217,
+    218
+   ],
+   "excludedTimingFields": [],
+   "differences": [],
+   "archivedFileSha256": "dc2eb697a125df766d61e1156801451cfb241bd531da995d0bfcf5a478fdc701"
+  },
+  "OFF-1020/t1411-census": {
+   "expectedDays": [
+    211,
+    212,
+    213,
+    214,
+    215,
+    216,
+    217,
+    218
+   ],
+   "matchedDays": [
+    211,
+    212,
+    213,
+    214,
+    215,
+    216,
+    217,
+    218
+   ],
+   "excludedTimingFields": [],
+   "differences": [],
+   "archivedFileSha256": "629ec724f5cc5ee9b71f485bd28ff3bf70627cda3f643dd53d7af1934f422c66"
+  }
+ }
+}
