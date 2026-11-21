@@ -15409,9 +15409,9 @@ function _t724DayMark(vil) {
   }
 }
 function _lifeHandsIn(vil) {
-  _t1422In(vil);   // ★[T1422] 어제 남는 시간 식량 · 땔감 몸 시간 → econ(끔 = 첫 줄에서 돌아간다)
   _t1195HuntIn(vil);   // ★[T1195] 어제 사냥꾼 몸이 잡은 짐승 → 곳간(econ 틱 바로 앞 · T720 켬이어도 · 끔 = 첫 줄에서 돌아간다)
   _t1196Seats(vil);   // ★[T1196] econ 틱 앞 — 장인 빈 몸 명부(끔 · 랩 = 첫 줄에서 돌아간다)
+  _t1422In(vil);   // ★[T1422] 어제 남는 시간 식량 · 땔감 몸 시간 → econ(끔 = 첫 줄에서 돌아간다 · econ 틱 앞)
   //   ★★[T757] T720 켬(경계 일괄 없음 — 손은 해 질 녘 `_t720Step` 에서 든다)이어도 **그날 광부 몸이 쳤나**는 여기서 심는다 —
   //     표식(`_t724Walk`)은 손이 아니라 **타수**의 뜻이고, 읽는 둘(econ 원석 게이트 `mineActOn` · `_oreMineDaily` 셀 깎기 문)이 바로 뒤 econ · 채굴 조각이다.
   //     종전(T720 · T724 를 10-14 같이 켬): 이 함수 첫 줄에서 돌아가 표식이 한 번도 안 섰다 ⇒ 몸이 친 마을에서도 econ 수식 원석 + 일괄 셀 깎기가 돌았다(몸 XOR 일괄 위반 · 보고/T757).
@@ -19478,7 +19478,8 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   //   ⚠행위 층이 켜진 마을·그 직업만(`_t374Done` 안) — 안 켜진 마을은 수식이 내고 걸음은 그림이다(무접촉).
   //   끄면 `_t374Done` 이 첫 줄에서 false 다(비트 동일 · 손 합도 안 센다).
   if (_physicalStoneWork(vil,npc,now,fv,dayR,day,bday)) return true;
-  if (_t374Done(vil, job)) { if (_t1422Side(vil, npc, now, 'quota')) return true; _lifeGoHome(npc, '휴식'); return true; }
+  if (_T1422_K && _t374Done(vil, job) && _t1422Side(vil, npc, now, 'quota')) return true;   // ★[T1422] 쉬러 가기 전 문(끔 = 첫 항 거짓 · 아래 퇴근 줄 글자 그대로)
+  if (_t374Done(vil, job)) { _lifeGoHome(npc, '휴식'); return true; }
   // ★★★[T325 2026-09-19 · 설계_생산_실체 §1] **베는 순간 손에, 귀환하면 곳간에** — 어부(T312)와 같은 문법.
   //   손잡이가 꺼져 있으면 이 블록은 **통째로 안 돈다**(아래 종전 갈래가 그대로 · 비트 동일).
   //   ⚠현장은 `qtResources` 가 아니라 **색인**(`t325Trees` · T301)이 낸 셀이다 — 관측자와 무관하다.
