@@ -3940,6 +3940,7 @@ function _t671Shape(p) {
   if (T1140_STUCK_INLINE && !T1140_HOT_ORDER) { p._t1140Sx = undefined; p._t1140Sy = undefined; p._t1140Sa = undefined; }   // ★[T1140 ③-다] 막힘 칸 셋(차례 리터럴엔 이미 있다 · 끔 = 이 줄 무동작)
   p._t1302Terr = undefined;   // T1302: physical territory clearing cargo
   if (T1393_HUNT_CHASE) p._t1393Own = undefined;   // ★[T1393] 사냥판이 쥔 몸 표지(wildlife `_t1393Tick` — 켬일 때만 서는 칸 · test-body-fields 규약)
+  if (T1393_HUNT_CHASE && process.env.T1416_CARRY_HOME === '1') { p._t1416H = undefined; p._t1416Go = undefined; p._t1416C = undefined; p._t1416Sp = undefined; }   // ★[T1416 ④] 사냥꾼 손 · 곳간 길 표지 · 둔 몫 · 실은 종(켬일 때만 서는 칸 · test-body-fields 규약)
   p.oreLedger = undefined; p._t1180FullFish = undefined; p._t1181Haul = undefined; p._t1197M1 = undefined; p._t1197M0 = undefined; p._t1195At = undefined; p._t1212N = undefined; p._t1217H = undefined; p._t1217Stop = undefined;   /* ★[PM land1052 · T1220-K3] T1212 · T1217 몸 칸 셋 */   /* ★[PM land1050 · T1208-K4 회부 2] land1049 가 연 몸 칸 셋(T1197 끼니 · T1195 사냥) */   // ★[PM land1048 · T1188 · T1180 · T1181] 가지들이 보탠 몸 칸 셋 — 스폰 꼴에 미리(test-body-fields · 숨은 클래스 한 벌)
   if (T1144_LIFE_EVENT) p._t1144Sp = undefined;   // ★[T1144 ② · T1154] 어부 던짐 종의 지난 답(villages.js `_t1144SpGet` — 손잡이 켬일 때만 서는 칸 · 끔 = 이 줄 무동작)
   if (T1241_DES) p._des = undefined;   // ★[T1252] T1241 몸 토막(`_desBegin` · `_desEnd` — 손잡이 `T1241_DES` 켬일 때만 서는 칸 · 끔 = 이 줄 무동작 · test-body-fields 규약)
@@ -6538,6 +6539,10 @@ Wildlife.init({
   huntBudgetOf: (p) => (SimVillages.huntVisLeft ? SimVillages.huntVisLeft(p) : Infinity),
   //   ★[T1331] 켬만 — 길든 몸(몸 표에서 나간 몸)을 길든 존 몹 행으로 적는 문(DB 행 · 주인 칸 둘 — T1321 받기 꼴) · 끔 = 칸 없음
   ...(T1393_HUNT_CHASE ? { t1393Put: (p, x, y) => { _desPut(p, x, y); Roads.stampEntityPx(p, x, y); p.dirty = true; } } : {}),   // ★[T1393] 사냥판이 걷긴 사냥꾼 몸 자리(`_t1295Walk` 의 적기 셋 그대로 · 끔 = 칸 없음)
+  //   ★[T1416 ③] 켬만 — 짐승 걸음을 막는 것(틱에 한 번 받아 간다): ⓐ 칸 = 마을 집채 발자국(`villages.t1416Foot` — 랩 `_insideBldgV` 칸)
+  //     ⓑ 변 = 존 벽 콜라이더 정본(`edgeBlockedStep` — 벽 · 닫힌 문 · 울 칸 진입 `findCellFence` · 켜진 청크에 실린 것) — 사냥판이 걸음이 지나는 칸을 따라가며 넘는 변마다 묻는다 · 끔 = 칸 없음
+  ...(T1393_HUNT_CHASE && process.env.T1416_BEAST_WALL === '1' ? { t1416Bldg: () => { const V = SimVillages.t1416Foot ? SimVillages.t1416Foot() : null; return V ? (x, y) => V.has(y * 65536 + x) : null; },
+    t1416Edge: (cx, cy, sx, sy) => edgeBlockedStep(cx, cy, sx, sy, 0) || findCellFence(cx + sx, cy + sy, 0) } : {}),
   ...(T1331_BEAST_BODY ? { t1331Keep: (m) => { m.dbId = db.insertMob({ type: m.type, x: m.x, y: m.y, hp: m.hp, max_hp: m.maxHp }); db.updateMobState(m.dbId, m.x, m.y, m.hp, m.tameOwner, m.tameOwnerName); } } : {}),
   // §4-4 P3: 실체 전쟁 병사 pid 위치(px)를 야생 위협원으로 주입(_buildWarThreats 서버판 — 행군/전투 병사를 몹이 인지·회피).
   warThreats: () => SimVillages.warThreats(),
