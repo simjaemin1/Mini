@@ -62,7 +62,7 @@ for (const r of runs) {
     const fdPrev = prev ? sum(prev.fd) : 0, deadPrev = prev ? sum(prev.dead) : 0;
     let worst = 0, wn = '—';
     e.names.forEach((nm, i) => { const p = prev ? (prev.fd[prev.names.indexOf(nm)] || 0) : 0, v = (e.fd[i] || 0) - p; if (v > worst) { worst = v; wn = nm; } });
-    out.push(`| ${r.tag} | ${y}${cut ? '*' : ''}(${lo}~${e.d}) | ${fmt(sum(e.pop))} | ${fmt(sum(e.fd) - fdPrev)} | ${fmt(sum(e.dead) - deadPrev)} | ${e.pop.filter((x) => !x).length} | ${worst ? `${worst} · ${wn}` : '0 · —'} |`);
+    out.push(`| ${r.tag} | ${y}${cut ? '*' : ''}(${lo}~${e.d}${hi - lo + 1 < 365 ? ` · 판 끝 ${hi - lo + 1}날 해` : ''}) | ${fmt(sum(e.pop))} | ${fmt(sum(e.fd) - fdPrev)} | ${fmt(sum(e.dead) - deadPrev)} | ${e.pop.filter((x) => !x).length} | ${worst ? `${worst} · ${wn}` : '0 · —'} |`);
     prev = e;
   }
 }
