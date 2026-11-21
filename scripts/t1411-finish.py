@@ -74,6 +74,11 @@ def main():
                 archive(f, dst/(f.name+'.gz'))
     shutil.copyfile(root/'campaign.json', out/'campaign.json')
     failed = [n for n in names if summary[n]['failed']]
+    campaign = read(root/'campaign.json')
+    recoveries = {n: e.get('infrastructureResumes', []) for n, e in campaign['worlds'].items() if e.get('infrastructureResumes')}
+    recovery_count = sum(len(entries) for entries in recoveries.values())
+    if recoveries:
+        (out/'infrastructure-resumes.json').write_text(json.dumps(recoveries, ensure_ascii=False, indent=1))
     text = ['\n### 3시드 양팔 최종 결과\n',
             '집계 시각: '+datetime.now(timezone(timedelta(hours=9))).isoformat(timespec='seconds')+'. '
             '양팔 모두 몸 상한 없음·하루 24분이다. 완료와 실제 중단을 구분했다.\n',
@@ -83,6 +88,11 @@ def main():
     for name in names:
         r = summary[name]
         text.append('| '+' | '.join(map(str, [name, r['days'], r['done'], r['failed'], fmt(r.get('pop')), fmt(r.get('cpuMeanAll'))]))+' |')
+    if recovery_count:
+        text += ['\n환경 중단 뒤의 체크포인트 복구 이력은 팔별 '+str(recovery_count)+'건이다. '
+                 '실제 종료 코드를 관측한 세계 실패와 구분해 `infrastructure-resumes.json`에 보존했다. '
+                 '미완성 마디는 복구 전에 별도로 보존했고 최종 일일 평균에는 복구 후 채택한 마디를 한 번씩 넣었다. '
+                 '환경 중단 전 미완성 마디에서 이미 쓴 CPU는 복구 기록의 별도 관측값이다.\n']
     text += ['\n끔비 = 같은 시드·같은 날의 켬 인구 / 끔 인구. 한쪽이 그 날에 닿지 못했으면 비를 만들지 않는다. '
              'CPU는 기동·10날마다 재기동을 포함한 누적 평균이다. `daily.csv`와 `summary.json`에는 100날 창 평균도 있다. '
              '완공 0은 몸 완공의 당일 증가가 없는 마을 수이며, 몸 영토 끔 팔에는 해당하지 않는다.\n',
@@ -107,7 +117,7 @@ def main():
     lines = body.splitlines()
     lines[0] = ('CPU 동일100날 99.012→100.488초/날(관측 +1.5%·30초 목표 미달·전체 개선 확인 못 함) · '
                 '잔여 꼭대기 메인 몸/걸음 준비/공간 색인 · 두 해 3시드 실제 결과 §5 · '
-                f'판 중단 {len(failed)}/6 · 완공 0·끔비 원표 §5 · 지문 100/100 · '
+                f'종료 실패 {len(failed)}/6 · 환경 복구 이력 {recovery_count}건(팔별) · 완공 0·끔비 원표 §5 · 지문 100/100 · '
                 '끈 판 1/1(경제·생활층 400/400) · 하네스 14종 초록 · 미끼 2/2 · 회부 0 · 기본 켬 채택 요청 0')
     body = '\n'.join(lines)+'\n'
     body = body.replace('## 0. 진행 상태', '## 0. 결과 상태')
