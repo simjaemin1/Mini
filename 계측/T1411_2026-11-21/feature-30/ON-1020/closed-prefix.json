@@ -1,0 +1,28 @@
+{
+ "target": 730,
+ "through": 30,
+ "independent30DayWorld": false,
+ "sourceSegments": [
+  {
+   "from": 0,
+   "to": 10,
+   "sec": 494.2,
+   "code": 0,
+   "at": "2026-11-21T03:38:47.325Z"
+  },
+  {
+   "from": 10,
+   "to": 20,
+   "sec": 683.3,
+   "code": 0,
+   "at": "2026-11-21T03:50:11.490Z"
+  },
+  {
+   "from": 20,
+   "to": 30,
+   "sec": 749,
+   "code": 0,
+   "at": "2026-11-21T04:02:41.951Z"
+  }
+ ]
+}

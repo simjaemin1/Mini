@@ -1,0 +1,33 @@
+{
+ "days": 30,
+ "worldsPerArm": 1,
+ "independentDayReplicates": false,
+ "profile": false,
+ "stats": {
+  "base-plain-1020": {
+   "mean": 71.22459473333333,
+   "meanWithoutSegmentFirstDay": 66.21175874074073,
+   "blocks": {
+    "1-10": 54.0662622,
+    "11-20": 71.1882276,
+    "21-30": 88.4192944
+   }
+  },
+  "ON-1020": {
+   "mean": 66.5078255,
+   "meanWithoutSegmentFirstDay": 61.59837674074074,
+   "blocks": {
+    "1-10": 51.5730737,
+    "11-20": 70.6408904,
+    "21-30": 77.3095124
+   }
+  }
+ },
+ "observedReductionPercent": 6.622388307006921,
+ "candidateRatio": 0.9337761169299308,
+ "targetCpuSecondsPerDay": 30,
+ "targetReached": false,
+ "extraCandidateObserver": "ledger-only v2 census; included in candidate CPU",
+ "sourceManifest": "candidate-manifest.json",
+ "cpuDefinition": "t1274 daily process.cpuUsage deltas: startup included; per-segment first days are not removed in the main mean"
+}
