@@ -120,6 +120,17 @@ function connect(username, token) {
 }
 const snd = (C, o) => { try { C.ws.send(JSON.stringify(o)); } catch (e) {} };
 const chat = (C, text) => snd(C, { type: 'chat', text });
+//   ★[T1410 · 야간 11-20 Ⓣ2] 마을 장부 메시지(존 `VILLAGE_BOOK_MSG` — 인출 · 넣기 · 받기 스위치 · 곳간 보기) — 고정 잠은 종전 그대로 두고, 그 사이
+//     "마을이 하루 장부를 닫는 중"(문이 아니라 **차례** — 줄 선 요청은 마감 뒤에 돈다)이 왔으면 그 뒤 답(다른 알림 · 메시지)이 올 때까지 더 기다린다(상한 5초 = `sayWait` 기본).
+//     야간 판에서 받기 스위치 답이 900ms 안에 안 와 "장부 닫는 중" 한 줄만 보고 빨강(창 실측 — 이 판 조건(하루 2초 · 마을 1) p90 132ms · 최대 265ms · 부하 판은 더 길다 · `계측/T1410_2026-11-21/장부창.js`).
+async function bookSend(C, o, ms) {
+  const n0 = C.notices.length; snd(C, o); await sleep(ms);
+  const i = C.notices.slice(n0).findIndex((t) => /장부를 닫는 중/.test(t));
+  if (i < 0) return false;
+  const after = n0 + i + 1, m0 = C.msgs.length, t0 = Date.now();
+  while (Date.now() - t0 < 5000) { if (C.notices.length > after || C.msgs.length > m0) return true; await sleep(100); }
+  return true;
+}
 //   ★[T1033] 닫힘 핸드셰이크가 끝날 때까지(소켓 'close' — 존이 그 닫힘을 받았다) · 종전 0.3초 잠 · 상한 = `sayWait` 기본과 같은 5초(그물)
 const close = async (C) => { try { clearInterval(C.beat); C.ws.close(); } catch (e) {} await waitFor(async () => C.closed || null, 5000); };
 const lastN = (C, n) => JSON.stringify(C.notices.slice(-(n || 1)));
@@ -317,14 +328,14 @@ async function found(C, base, centers) {
   const hx = F.hall ? Math.round(F.hall.x) : 0, hy = F.hall ? Math.round(F.hall.y) : 0;
   snd(A, { type: 'teleport_debug', x: hx + 40, y: hy + 40 }); snd(B, { type: 'teleport_debug', x: hx + 40, y: hy + 40 }); await sleep(800);
   snd(A, { type: '__e2e_give', items: { food: 300 } }); await sleep(500);
-  snd(A, { type: 'village_deposit', buildingId: F.hall && F.hall.id, want: { food: 300 } }); await sleep(1200);
+  await bookSend(A, { type: 'village_deposit', buildingId: F.hall && F.hall.id, want: { food: 300 } }, 1200);
   B.notices.length = 0;
-  snd(B, { type: 'village_withdraw', vid: VID, res: 'food', qty: 1 }); await sleep(1200);
+  await bookSend(B, { type: 'village_withdraw', vid: VID, res: 'food', qty: 1 }, 1200);
   //   ★[T809 · T779] 꺼내기 = 촌장 한 사람(곳간 잠금 문은 걷었다) — 마을 사람(촌장 아님)은 막히고 촌장은 꺼낸다(촌장 = 마을 칸 · T786 ②).
   ok(B.notices.some((t) => /곳간은 촌장만 열 수 있습니다/.test(t)), '④ ★꺼내기 = 촌장 — 마을 사람(촌장 아님)은 못 꺼낸다', lastN(B, 2));
   ok(await sayWait(A, '/곳간 열기', /곳간은 촌장만 열 수 있습니다/), '④a `/곳간 열기` 는 한 줄 안내(잠금 문 없음 · central 무접촉)', lastN(A));
   A.notices.length = 0;
-  snd(A, { type: 'village_withdraw', vid: VID, res: 'food', qty: 1 }); await sleep(1200);
+  await bookSend(A, { type: 'village_withdraw', vid: VID, res: 'food', qty: 1 }, 1200);
   ok(A.notices.length > 0 && !A.notices.some((t) => /촌장만/.test(t)), '④b 촌장(마을 칸)은 꺼낸다 — 촌장 문은 비킨다(다음 막음이 답한다)', lastN(A, 2));
   // 촌장
   ok(await sayWait(A, '/촌장', /촌장 — kinA/), '⑤ `/촌장` — 지금 촌장', lastN(A));
@@ -337,7 +348,7 @@ async function found(C, base, centers) {
   ok(!!K5 && K5.chief === B.playerId, '⑤e ★마을 칸의 촌장 = B', K5 && K5.chief);
   ok(await sayWait(A, '/곳간 잠금', /촌장만/), '⑤f 넘긴 사람은 이제 곳간 문을 못 만진다', lastN(A));
   B.notices.length = 0;
-  snd(B, { type: 'village_withdraw', vid: VID, res: 'food', qty: 1 }); await sleep(1200);
+  await bookSend(B, { type: 'village_withdraw', vid: VID, res: 'food', qty: 1 }, 1200);
   ok(B.notices.length > 0 && !B.notices.some((t) => /촌장만/.test(t)), '⑤g 새 촌장이 꺼낸다(넘겨받은 촌장 = 마을 칸)', lastN(B, 2));
   ok(await sayWait(B, '/탈퇴', /먼저 자리를 넘겨야/), '⑤h ★촌장 자리는 비우지 않는다(넘기고 떠난다)', lastN(B));
   ok(await sayWait(A, '/추방 kinB', /촌장은 내보낼 수 없습니다/), '⑤i 촌장은 내보내지 못한다', lastN(A));
@@ -405,15 +416,15 @@ async function found(C, base, centers) {
   //   지금 A = VID 마을 사람(촌장 아님) · B = VID 촌장 · C = VIDC 촌장(VID 엔 남). 자리 번호 = T777 C 표(보고 T786 §1).
   ok(await sayWait(A, '/추방 kinC', /촌장만/), 'Ⓣ1 [C5] 내보내기는 **촌장**만(마을 사람이어도 촌장이 아니면 못 한다)', lastN(A));
   const hid = F.hall && F.hall.id;
-  A.notices.length = 0; snd(A, { type: 'village_welcome', buildingId: hid, on: true }); await sleep(900);
+  A.notices.length = 0; await bookSend(A, { type: 'village_welcome', buildingId: hid, on: true }, 900);
   ok(A.notices.some((t) => /촌장만/.test(t)), 'Ⓣ2 [C1] 이방인 받기 스위치는 **촌장**만', lastN(A));
-  B.notices.length = 0; snd(B, { type: 'village_welcome', buildingId: hid, on: true }); await sleep(900);
+  B.notices.length = 0; await bookSend(B, { type: 'village_welcome', buildingId: hid, on: true }, 900);
   ok(B.notices.some((t) => /이방인을 받/.test(t)), 'Ⓣ3 [C1] 촌장은 켠다(그 다음 문은 종전 그대로)', lastN(B));
-  snd(B, { type: 'village_welcome', buildingId: hid, on: false }); await sleep(600);
-  A.msgs.length = 0; snd(A, { type: 'village_inventory', buildingId: hid }); await sleep(900);
+  await bookSend(B, { type: 'village_welcome', buildingId: hid, on: false }, 600);
+  A.msgs.length = 0; await bookSend(A, { type: 'village_inventory', buildingId: hid }, 900);
   ok(A.msgs.some((m) => m.type === 'village_inventory'), 'Ⓣ4 [C1] 회관 열람 = **마을 사람**(촌장 아닌 A 도 본다)');
   snd(Cc, { type: 'teleport_debug', x: hx + 40, y: hy + 40 }); await sleep(800);
-  Cc.notices.length = 0; Cc.msgs.length = 0; snd(Cc, { type: 'village_inventory', buildingId: hid }); await sleep(900);
+  Cc.notices.length = 0; Cc.msgs.length = 0; await bookSend(Cc, { type: 'village_inventory', buildingId: hid }, 900);
   if (process.env.T1132_HALL_VIEW === '0') ok(!Cc.msgs.some((m) => m.type === 'village_inventory') && Cc.notices.some((t) => /볼 수 없습니다/.test(t)), 'Ⓣ5 [C1] 남의 마을 사람은 못 본다(T1132 끔 · 종전)', lastN(Cc));
   else { const iv = Cc.msgs.filter((m) => m.type === 'village_inventory').pop();   // ★[T1132] 켬(기본) — 보기는 가까이 온 누구나 · 읽기 전용(이방인 받기 칸 없음)
     ok(!!iv && iv.inv.viewOnly === true && iv.inv.welcome == null, 'Ⓣ5 [C1 · ★T1132] 남의 마을 사람도 회관 곁에선 **본다** — 읽기 전용(이방인 받기 칸 없음)', JSON.stringify(iv ? { viewOnly: iv.inv.viewOnly, welcome: iv.inv.welcome != null } : lastN(Cc))); }

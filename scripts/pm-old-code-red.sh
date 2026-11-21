@@ -29,7 +29,7 @@ OUT="${OUT:-/dev/stdout}"
 PROD="${PROD:-server sim public lab}"
 if [ $# -gt 0 ]; then LIST="$*"; else LIST="$(git diff --diff-filter=A --name-only "$OLD"..HEAD -- 'scripts/test-*.js' | sed 's#^scripts/##' | tr '\n' ' ')"; fi
 [ -z "${LIST// /}" ] && { echo "새 하네스 0 — 볼 것 없음"; exit 0; }
-TMP="$(mktemp -d /tmp/ocr.XXXXXX)"
+TMP="$(mktemp -d "${TMPDIR:-/tmp}/ocr.XXXXXX")"   # ★[T1410 · T1396 회부 7] `TMPDIR` 를 따른다(샌드박스는 /tmp 를 못 쓴다)
 git worktree add -q --detach "$TMP/w" HEAD || exit 2
 trap 'git worktree remove --force "$TMP/w" >/dev/null 2>&1; rm -rf "$TMP"' EXIT
 # shellcheck disable=SC2086
@@ -40,7 +40,7 @@ for d in $PROD; do
   if git cat-file -e "$OLD:$d" 2>/dev/null; then git -C "$TMP/w" checkout -q "$OLD" -- "$d" || exit 2
   else rm -rf "${TMP:?}/w/$d"; fi
 done
-git -C "$TMP/w" -c core.quotepath=off diff --name-only --diff-filter=A "$OLD" HEAD -- $PROD | while IFS= read -r f; do rm -f "$TMP/w/$f"; done
+git -C "$TMP/w" diff --name-only -z --diff-filter=A "$OLD" HEAD -- $PROD | while IFS= read -r -d '' f; do rm -f "$TMP/w/$f"; done   # ★[T1410] `-z` — 길 글자 그대로(quotePath 무관)
 [ -d "$ROOT/node_modules" ] && ln -s "$ROOT/node_modules" "$TMP/w/node_modules"
 red=0; weak=0; green=0; unk=0; skip=0
 {
