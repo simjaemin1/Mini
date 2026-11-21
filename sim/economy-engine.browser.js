@@ -13004,8 +13004,17 @@ if(T1188_ORE_SPLIT)delete RESERVE_PC.ore;
 function oreSourceMix(v) { const m=v?.land?.oreMix;return m&&Object.keys(m).length?m:m?SMELT_PLACER:OreGoods.POOL; }
 function oreTotal(v) { return T1188_ORE_SPLIT?OreGoods.total(v?.storage):(v?.storage?.ore||0); }
 function oreReserveTotal() { return T1188_ORE_SPLIT?OreGoods.ids.reduce((n,k)=>n+(RESERVE_PC[k]||0),0):(RESERVE_PC.ore||0); }
-function oreValue(v,w) { let n=0;for(const[k,f]of Object.entries(OreGoods.shares(oreSourceMix(v))))n+=f*(w(OreGoods.idOf(k))||0);return n; }
+function oreValue(v,w) { const W07=T1407_ORE_WORTH&&v&&v._world&&typeof v._world.oreWorthFn==='function'?v._world.oreWorthFn:null,u07=W07?((JOBS.miner&&JOBS.miner.base)||0)*((v.land&&v.land.ore)||0):0;let n=0;for(const[k,f]of Object.entries(OreGoods.shares(oreSourceMix(v)))){const id=OreGoods.idOf(k),p=w(id)||0;n+=f*(W07?W07(v,id,u07*f,p):p);}return n; }   // ★[T1407 ㉡] 켬 = 품목 값이 쓸 곳 + 팔 곳(광부 하루 몫 · 아래 `T1407_ORE_WORTH` 머리) · 끔 = 종전 글자 그대로의 셈
 function oreWeights(v,w) { return T1188_ORE_SPLIT?(r=>r==='ore'?oreValue(v,w):w(r)):w; }
+// ★★[T1407 ㉡ 2026-11-21 · 재민 11-20 판정 18 · T1385 회부 1] 손잡이 `T1407_ORE_WORTH`('1' 만 켬 · 끔 기본 = 아래 두 자리가 한 줄도 안 선다 = 종전 바이트) —
+//   **광부가 원석을 캐는 까닭은 값이다: 쓸 곳 · 팔 곳이 없으면 안 캔다.**
+//   진단(보고 T1407 ⓐ): 청동 묶음 켬 두 해 랩에서 캔 주석 원석의 절반 남짓이 녹지 않고 곳간에서 삭는다. 광부 산출 포만(`satMul` — 원석은 늘 포만 몫 `SAT_ALWAYS`)은
+//     그 마을 원석 그림자 값 ÷ 기준가가 0.04 밑이어야 0 이 된다 — 값은 기준가 × (목표 ÷ 곳간)^탄력이라 곳간이 녹임 목표를 몇 배 넘어도 캔다.
+//   켬: 원석 품목 한 단위의 값 = 녹임 목표까지 빈자리에 드는 몫 × 그 마을 그림자 값 + 넘는 몫 × 빈자리 있는 이웃이 쳐 줄 값(순수출가 빈자리 갈래) —
+//     몸 세계 광부 한 시간 값(v2 `t1266OreValue`)의 T1293 · T1313 두 줄 그대로다(v2 가 `world.oreWorthFn` 으로 준다 · 사본 0 · 새 수 0).
+//     두 자리가 같은 값을 읽는다: 산출 포만(오늘 캔 그 덩이 — units = 그 품목 오늘 몫) · 광부 값(`oreValue` — 피커 · 기회비용 · units = 광부 하루 몫 `JOBS.miner.base × land.ore × 몫`).
+//   목표 수를 새로 두지 않는다 — 빈자리는 값표가 읽는 그 목표(`_targetV2` — 녹임 흐름 × 30날)이고 넘는 몫의 값은 이웃 값표다.
+const T1407_ORE_WORTH = (typeof process !== 'undefined' && process.env && process.env.T1407_ORE_WORTH === '1');
 function migrateOre(v) { if(!v)return;if(!T1188_ORE_SPLIT){for(const st of[v.storage,v.treasury]){const n=OreGoods.total(st);if(!(n>0))continue;if(st===v.storage)foldOreMix(v,st.ore||0,n,OreGoods.heldMix(st));st.ore=(st.ore||0)+n;for(const k of OreGoods.ids)if(k in st)st[k]=0;}return;}for(const st of[v.storage,v.treasury])if(st?.ore>0){const n=st.ore;OreGoods.add(st,n,Object.keys(OreGoods.shares(v._oreMixEff||{})).length?v._oreMixEff:oreSourceMix(v));st.ore=0;} }
 function takeOre(v,n) { const out=OreGoods.take(v.storage,n);for(const[k,q]of Object.entries(out))_cons(v,k,q);return Object.values(out).reduce((a,b)=>a+b,0); }
 const JOB_NAMES = Object.keys(JOBS);
@@ -17274,9 +17283,10 @@ function tickVillage(v, day) {
   const _obsGlut = Math.max(0, Math.min(0.9, (_obPC - 3) / 4));
   const _jaPC = (v.storage.jade || 0) / (v.npcs.length || 1);
   const _jadeGlut = Math.max(0, Math.min(0.9, (_jaPC - 2) / 3));   // 옥=위세품, 국내 소비 더 적음(낮은 버퍼)
+  const _w07 = (T1407_ORE_WORTH && T1188_ORE_SPLIT && v._world && typeof v._world.oreWorthFn === 'function') ? v._world.oreWorthFn : null;   // ★[T1407 ㉡] 켬 = 원석 덩이 값(쓸 곳 + 팔 곳 · `oreWeights` 아래 머리) · 끔 = null
   const satMul = (_satP && _satB)
-    ? (r => {
-        const adj = (_satP[r] || 1) / (_satB[r] || 1);
+    ? ((r, amt) => {
+        const adj = (_w07 && OreGoods.isOre(r) ? _w07(v, r, amt, _satP[r] || 0) : (_satP[r] || 1)) / (_satB[r] || 1);
         const raw = Math.max(0, Math.min(1, (adj - 0.04) / 0.21));   // 글럿이면 0(감산)
         const sec = SAT_ALWAYS[r] ? 1 : _secF;                        // 무용재는 항상, 가치재는 식량안보 비례
         let m = 1 - sec * (1 - raw);                                  // sec=0→풀생산, sec=1→raw(포만)
@@ -17423,7 +17433,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
       if(T1192_FISH_SPECIES&&exactPreserve){if(!(amt>0))return;v.storage[r]=(v.storage[r]||0)+amt;dailyProduction[r]=(dailyProduction[r]||0)+amt;dailyProductionPotential[r]=(dailyProductionPotential[r]||0)+amt;return;}
       if (productionFormulaOff(v, npc.currentJob)) return;   // T1180: 부산물·현장 0 폴백도 수식 생산이다
       if(T1188_ORE_SPLIT&&r==='ore'){for(const[k,q]of Object.entries(OreGoods.split(amt,oreSourceMix(v))))addProduce(k,q);return;}
-      const sm = satMul(r);
+      const sm = satMul(r, amt);
       _potA += amt; _actA += amt * sm;   // 여유노동 측정: 잠재(감산 전) vs 실제(감산 후)
       dailyProductionPotential[r] = (dailyProductionPotential[r] || 0) + amt;   // 잠재 생산(건강·포만 적용 전) — prodK용
       amt *= _hpm * _hwm * _prodMul * sm * (v._laborMul || 1) * _capM;
@@ -18939,10 +18949,25 @@ function _t1333ExportCast(v) {
     // 손 값도 같은 기회비용 자로 잰다. 다른 일에서 옮겨 올 가장 싼 손의 하루 값.
     const costs = (v.npcs || []).filter(n => n.currentJob !== 'smith' && !(n._tradingUntil > (v._world.day || 0)))
       .map(n => opportunityCost(n, v, p)).filter(Number.isFinite);
-    const labor = costs.length ? Math.min(...costs) : 0;
+    let labor = costs.length ? Math.min(...costs) : 0;
+    if (T1407_FOOD_FIRST && _t1085Hungry(v)) labor = Math.max(labor, _t1407FoodHand(v, p));   // ★[T1407 ㉢] 켬 · 굶는 날 = 옮겨 올 손은 식량 일로 간다(아래 머리)
     return !!(best && best.score > labor);
   }
   return !!(best && best.score > 0);
+}
+// ★★[T1407 ㉢ 2026-11-21 · T1385 회부 2 · T1398] 손잡이 `T1407_FOOD_FIRST`('1' 만 켬 · 끔 기본 = 위 한 줄이 안 선다 = 종전 바이트) — **굶는 마을은 식량 쪽에서 막는다(무기 상한이 아니라).**
+//   묶음(T1398 띠 걷음) 수출 주조 문은 "한 번 주조 몫 > 다른 일에서 옮겨 올 가장 싼 손의 하루 값"이다. 굶는 날 그 가장 싼 손은 글럿 장인(0.005) · 쉬는 손이라
+//     곳간이 비어도 문이 열린다 — 대장장이 자리(`_t1398ExportSmiths`)가 서고 그 대장장이는 기회비용 50(자리 안)이라 기근 전환에서도 남는다(굶는 마을이 남의 칼을 붓는다).
+//   켬: 굶는 날(피커 기근 문 — 곳간 식량 환산 < 사람 × 30일치 · `_t1085Hungry` 그 식)엔 피커 차례가 식량 일을 대장장이 줄보다 앞에 둔다 — 옮겨 올 손의 값 =
+//     식량 일 한 사람의 하루 값(기회비용 `opportunityCost` 그 식 · 자리 있는 식량 일 넷(`_T1085_FOOD` — 피커 `foodOpts` 넷) 가운데 큰 것)과 종전 값 가운데 큰 쪽.
+//     값이 그 손 값을 넘는 수출 주조만 선다(이웃 값이 식량보다 크면 붓고 판 값으로 먹을 것을 산다). 병기고(제 마을 근접 무기 실수요) 주조 · 무기 수 · 문턱은 안 건드린다.
+//   굶지 않는 날 · 묶음 밖(띠 끔) · 끔 = 종전 그대로. 새 수 0.
+const T1407_FOOD_FIRST = (typeof process !== 'undefined' && process.env && process.env.T1407_FOOD_FIRST === '1');
+function _t1407FoodHand(v, p) {   // 식량 일 한 사람의 하루 값(숙련 0 · 기회비용 그 식) — 자리 있는 식량 일 넷 가운데 큰 것
+  const cap = jobCapacity(v), counts = jobCounts(v);
+  let best = 0;
+  for (const j in _T1085_FOOD) { if (!hasSlot(v, j, cap, counts)) continue; const c = opportunityCost({ currentJob: j, skills: {} }, v, p); if (c > best) best = c; }
+  return best;
 }
 function _t1398ExportSmiths(v) {
   if (!_t1333ExportCast(v)) return 0;
@@ -20677,6 +20702,7 @@ module.exports = {
   T1333_WS_INPUT, t1333WsFree,   // ★[T1333 ④] 생산 투입재 인구 몫 상한 밖(실험 · 끔 기본) — v2 상한 줄이 부른다
   T1344_BRONZE_STOCK, _t1344BronzeStock, _t1344Mix, _foodSecF, _meltSearch, _oppPrice,   // ★[T1344] 청동 몫 곳간(끔 기본) · 하네스 · 관찰기가 정본 함수를 직접 부른다(읽기 · ⑥ 은 뺀 배합)
   T1398_BRONZE_BAND, _t1398ExportSmiths,
+  T1407_ORE_WORTH, T1407_FOOD_FIRST, _t1407FoodHand,   // ★[T1407] ㉡ 원석 값 = 쓸 곳 + 팔 곳 · ㉢ 굶는 날 수출 주조 손 값 = 식량 일(끔 기본 둘 — v2 · 하네스 · 관찰기가 읽는다)
   T1385, T1385_BZ, T1385_FRAC, _weaponThin,   // ★[T1385] 청동 사슬 상한 걷기 팔(끔 기본 — 읽기 · 관찰기 · 하네스)
   // ★[2026-08-03a ⑰] 국고 현금 배선 — 하네스가 **산술을 직접 재게** 노출한다(상수 복제 금지).
   //   `_treasuryTopUp` 은 실제 함수 그대로여야 검사가 그 코드를 밟는다(모형을 검사하면 의미가 없다).
@@ -21839,6 +21865,13 @@ function _t1293Fill(v, id, ctx, f, units) {
 //     이웃이 쳐 줄 값(`_t1313Over` — 순수출가 `netExportValue` 의 빈자리 갈래: 그 원석을 더 녹일 빈자리가 있는 이웃만 · 정보 거리 안 · 다 차면 0).
 //     목표 밑 몫은 그대로 그 마을 그림자 값이다(T1277 (가)는 목표 밑 몫에서 그대로 산다). 끔 = 넘는 몫 값 0(T1293 그대로).
 function _t1313Over(v, id) { return v && v._world ? netExportValue(v._world, v, id, true) : 0; }
+//   ★★[T1407 ㉡] 원석 품목 한 단위의 값(쓸 곳 + 팔 곳) — 위 두 줄(`_t1293Fill` 빈자리 몫 × 그 칸 그림자 값 + 넘는 몫 × `_t1313Over`)을 수식 세계 광부가 부른다
+//     (v1 손잡이 `T1407_ORE_WORTH` 켬일 때만 `world.oreWorthFn` 이 선다 — 산출 포만 · `oreValue`). p = 부르는 쪽이 이미 든 그 칸 값(값표 · 원석 상한 뒤). units = 그 덩이(0 이면 첫 한 단위).
+function t1407OreWorth(v, id, units, p) {
+  if (!v || !v._world) return p;
+  const g = _t1293Fill(v, id, _targetCtxV2(v), 1, units);
+  return g * p + (g < 1 ? (1 - g) * _t1313Over(v, id) : 0);
+}
 function t1266OreValue(v, H, key, mix, units) {
   if (!v || !v.npcs) return null;
   const N = Math.max(1, v.npcs.length), px = t1217PricesOf(v, key) || computeShadowPrices(v);
@@ -24113,6 +24146,7 @@ function createWorldV2(opts = {}) {
   //     발주가 이웃 값을 올리면 그 값이 쥔 마을의 주조 기회비용(v1 `_oppPrice`)을 올려 대장장이가 석공에 밀린다 — 문턱 밑 곳간은 실제로 나가지도 않는다
   //     (랩 날 30: 쥔 마을 셋 대장장이 주조비 0.05 ~ 0.38 → 1.9 ~ 2.8 · 석공 0.3 ~ 0.8). 끔 = 앞 항 거짓 = 종전 함수 그대로.
   world.netExportFn = (v, res) => ((v1.T1333_ALLOY_ORDER && !_t1333CanExport(v, res)) ? 0 : netExportValue(world, v, res));
+  if (v1.T1407_ORE_WORTH) world.oreWorthFn = t1407OreWorth;   // ★[T1407 ㉡] 켬만 — 수식 세계 광부의 원석 값(쓸 곳 + 팔 곳 · 위 `t1407OreWorth`) · 끔 = 칸 없음(종전)
   // 직업 전환 빈도 21일 — 변동 줄여 안정성 ↑. (30일로 늘리니 반응 느려 기근↑→crisis-mode↑ 역효과 확인, 21 유지)
   world.autoSwitchInterval = 21;
   return world;
@@ -24341,7 +24375,7 @@ module.exports = {
   createWorldV2,
   tickWorldV2, tickWorldV2Parts,   // ★[T513] 하루 틱 조각(서버 하루 마감이 여러 프레임에 흘린다 · 정본 한 벌)
   computeShadowPrices,
-  t1217PricesOf, t1217Value, t1266OreValue, t1217RestValue, t1217Hour, t1217PxStat: () => Object.assign({}, _t1217PxStat),   // ★[T1217] 시세 하루 안 갱신 · 어부 한 시간 값(서버 · 하네스가 같은 함수를 읽는다)
+  t1217PricesOf, t1217Value, t1266OreValue, t1407OreWorth, t1217RestValue, t1217Hour, t1217PxStat: () => Object.assign({}, _t1217PxStat),   // ★[T1217] 시세 하루 안 갱신 · 어부 한 시간 값(서버 · 하네스가 같은 함수를 읽는다)
   shadowPricesOf,   // ★[T1161 · K13] 값표의 몇 칸만(전 표의 그 칸과 같은 값) — 거래소 견적 · 실행이 부른다
   netExportValue, FORWARD_PRICE_MARGIN_NEV,   // ★배합↔교역 통합(2026-08-02c) — 하네스가 산술을 직접 재게 노출
   haulMul, HORSE_HAUL_MUL, TRANSPORT_COST_PER_1000,   // ★말 사역(2026-08-02e ⑥) — 시대 전/후 비트 동일 검증용
