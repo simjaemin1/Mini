@@ -7771,12 +7771,12 @@ function _t1411StakeQuote(vil, j) {
   const own = vil._terrSet, x = j.cx, y = j.cy;
   let nb = 0;
   for (const [dx, dy] of _T1207_N4) if (own.has((x + dx) + ',' + (y + dy))) nb++;
-  const s0 = _t1207S0(), area = _terrCost.cellM2(), unit = _terrCost.woodPerPost();
+  const s0 = _t1207S0(), area = _terrCost.cellM2(), unit = _terrCost.woodPerPost(), spacing = _terrCost.POST_SRC.spacingM;
   const m = _t1411Quotes.get(j);
   // Checking local neighbours also catches a same-size delete/add of territory.
-  if (m && m.own === own && m.size === own.size && m.nb === nb && m.x === x && m.y === y && m.ccx === vil.ccx && m.ccy === vil.ccy && m.s0 === s0 && m.area === area && m.unit === unit) return m.wood;
+  if (m && m.own === own && m.size === own.size && m.nb === nb && m.x === x && m.y === y && m.ccx === vil.ccx && m.ccy === vil.ccy && m.s0 === s0 && m.area === area && m.unit === unit && m.spacing === spacing) return m.wood;
   const wood = +_t1207CellCost(vil, x, y).wood.toFixed(6);
-  _t1411Quotes.set(j, { own, size: own.size, nb, x, y, ccx: vil.ccx, ccy: vil.ccy, s0, area, unit, wood });
+  _t1411Quotes.set(j, { own, size: own.size, nb, x, y, ccx: vil.ccx, ccy: vil.ccy, s0, area, unit, spacing, wood });
   return wood;
 }
 function _t1358Requote(vil, j) {

@@ -77,6 +77,10 @@ if (process.argv.includes('--child')) {
   const oldWood = recipes.pillar.from.wood;
   try { recipes.pillar.from.wood *= 2; assert(need(F) > initial, 'recipe input refreshes the quote'); }
   finally { recipes.pillar.from.wood = oldWood; }
+  F = fixture(); initial = need(F);
+  const oldSpacing = C.POST_SRC.spacingM;
+  try { C.POST_SRC.spacingM *= 2; assert(need(F) < initial, 'post spacing refreshes the quote'); }
+  finally { C.POST_SRC.spacingM = oldSpacing; }
   F = fixture(true);
   assert.strictEqual(P._t1181Probe.task(F.v, F.players.get('three')), null, 'third body is outside crew');
   F.players.delete('one');
