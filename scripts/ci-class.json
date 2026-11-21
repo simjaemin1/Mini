@@ -15379,6 +15379,50 @@
    "core": false,
    "why": "안 잼"
   },
+  "test-t1407-tin-world.js": {
+   "cls0": "나",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 11.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 10.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 11.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 11.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 10.4,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawnSync node"
+   ],
+   "cls": "나",
+   "maxSec": 11.5,
+   "same5": true,
+   "core": true,
+   "why": "core"
+  },
   "test-t721-apply.js": {
    "cls0": "나",
    "why0": "child_process",
@@ -17687,5 +17731,5 @@
    "srv": true
   }
  },
- "at": "2026-11-20"
+ "at": "2026-11-21"
 }
