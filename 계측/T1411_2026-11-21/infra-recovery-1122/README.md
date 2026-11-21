@@ -7,7 +7,9 @@
 재현 명령:
 
 ```sh
-python3 scripts/t1411-recovery-check.py --evidence 계측/T1411_2026-11-21/infra-recovery-1122 --runs /tmp/t1411/worlds --out /tmp/t1411/recovery-check.json
+python3 scripts/t1411-recovery-check.py --evidence 계측/T1411_2026-11-21/infra-recovery-1122 --runs 계측/T1411_2026-11-21/infra-recovery-1122/replayed --out /tmp/t1411/recovery-check.json
 ```
 
 진행 중 읽기에는 `--allow-incomplete`를 줄 수 있다. 결과의 complete와 matchedDays를 함께 읽는다. 일일 인구를 1 바꾼 오프라인 사본은 실제 비교에서 실패했고 CPU 시간만 바꾼 사본은 허용됐다. 실제 세계나 보존 원자료는 그 검사에서 수정하지 않았다. 환경 중단 직전의 미완성 기동 CPU와 마지막 미완성 날의 CPU는 측정되지 않아 정확한 총 복구 소모를 만들지 않는다.
+
+복구 뒤 원자료도 `replayed/OFF-1020`에 원래 JSONL 줄 그대로 보존했다. 위 재현 명령은 실행 중인 서버 없이 저장소의 보존 전/후 자료만 읽는다.
