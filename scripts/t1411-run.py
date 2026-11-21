@@ -12,6 +12,7 @@ p.add_argument('--seed', type=int, default=1020)
 p.add_argument('--days', type=int, default=730)
 p.add_argument('--every', type=int, default=10)
 p.add_argument('--profile', action='store_true')
+p.add_argument('--census', action='store_true')
 p.add_argument('--set', action='append', default=[])
 a = p.parse_args()
 root, out = a.tree.resolve(), a.out.resolve()
@@ -37,14 +38,17 @@ hooks = ['t1274-baseline-hook', 't1302-observe', 't1243-observe', 't1221-observe
 profile_hook = Path(__file__).with_name('t1411-profile-hook.cjs').resolve()
 env['NODE_OPTIONS'] = '-r ' + str(profile_hook) + ' ' + ' '.join(
     '-r ' + str(root / 'scripts' / (h + '.js')) for h in hooks)
+if a.census:
+    env['T1411_ROOT'] = str(root)
+    env['NODE_OPTIONS'] += ' -r ' + str(Path(__file__).with_name('t1411-census.cjs').resolve())
 env.update(T1411_CPU_PROF='1' if a.profile else '0',
            T1411_PROFILE_DIR=str(out / (name + '-profiles')),
            T740_DUMP_DAYS='100,200,300,365,400,500,600,700,730')
 source_files = ['server/villages.js', 'server/zone.js', 'server/build-haul.js',
-                'server/terr-body.js', 'sim/terr-cost.js', 'scripts/t1308-long-run.js']
+                'server/terr-body.js', 'server/terr-cost.js', 'scripts/t1308-long-run.js']
 sha = lambda f: hashlib.sha256(f.read_bytes()).hexdigest()
 meta = dict(root=str(root), arm=a.arm, days=a.days, seed=a.seed, every=a.every,
-            profile=a.profile, profileHookSha256=sha(profile_hook),
+            profile=a.profile, census=a.census, profileHookSha256=sha(profile_hook),
             source={f: sha(root / f) for f in source_files if (root / f).is_file()},
             env={k: v for k, v in env.items() if re.match(r'^(T\d+_|VILLAGE_)', k) or k == 'NODE_OPTIONS'})
 (out / (name + '.launch.json')).write_text(json.dumps(meta, indent=1))

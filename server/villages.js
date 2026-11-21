@@ -77,6 +77,8 @@
 // ★[T1214 µs 줄기] 손잡이 상수(머리 주석 = `_physicalStoneWork` 앞 ★★[T1214] 절) — 싣는 도중에 부르는 함수가 있어도 서도록 파일 머리에 둔다.
 const T1214_STEP_FAST = process.env.T1214_STEP_FAST !== '0';   // ★[PM land1051] 켬 기본(값 0 · 기준선 11-07b 같음 3/3 — T1214 보고 · `=0` 끔 · `=verify` 두 길 견줌)
 const T1214_VERIFY = process.env.T1214_STEP_FAST === 'verify';
+// T1411: private, non-serialized memo tables; the switch is beside T1358 below.
+const _t1411Quotes = new WeakMap(), _t1411CrewMarks = new WeakMap();
 // ★[T1219 µs 줄기] 손잡이 `T1219_STEP_FAST`(끔 기본 · `'1'` 켬 · `'verify'` = 두 길 견줌 · 답은 종전 길 · 어장 칸 읽기는 `fishing.js` 머리 주석 · 해 질 녘 머리는 `_t720Step` 앞).
 const T1219_STEP_FAST = process.env.T1219_STEP_FAST !== '0';   // ★[PM land1052] 켬 기본(값 0 — T1219 보고)
 const T1219_VERIFY = process.env.T1219_STEP_FAST === 'verify';
@@ -7735,8 +7737,13 @@ function _t1329Room(p) {
   return kg > 0 ? Math.max(0, Math.floor((W.CFG.CAP_KG - W.totalKg(p)) / kg)) : 0;
 }
 function _t1329Crew(vil) {
-  const day = state.world && state.world.day, mark = [day, vil.npcPids.length, !!vil._site, !!vil._granPend].join('/');
+  const day = state.world && state.world.day;
   let c = vil._t1329Crew;
+  if (T1411_TERR_FAST) {
+    const m = _t1411CrewMarks.get(vil);
+    if (m && m.crew === c && m.day === day && m.count === vil.npcPids.length && m.site === !!vil._site && m.gran === !!vil._granPend && m.players === state.deps.players && !c.pids.some(pid => !state.deps.players.has(pid))) return c.pids;
+  }
+  const mark = [day, vil.npcPids.length, !!vil._site, !!vil._granPend].join('/');
   if (!c || c.mark !== mark || c.pids.some((pid) => !state.deps.players.has(pid))) {
     const E = _lifeEcon(), pl = state.deps.players, pids = [];
     const bridge = E.T527_BRIDGE_ACT && (_t527Sites() || []).some((s) => !s.done && (s.v.indexOf(vil.name) >= 0 || (vil._seedName && s.v.indexOf(vil._seedName) >= 0)));
@@ -7751,6 +7758,7 @@ function _t1329Crew(vil) {
     vil._t1329Crew = c = { mark, pids };
     for (const j of (vil._t1207Pend || [])) if (j._t1329By != null && c.pids.indexOf(j._t1329By) < 0) j._t1329By = null;
   }
+  if (T1411_TERR_FAST) _t1411CrewMarks.set(vil, { crew: c, day, count: vil.npcPids.length, site: !!vil._site, gran: !!vil._granPend, players: state.deps.players });
   return c.pids;
 }
 //   그 몸의 일감 — 맡은 칸이 있으면 그 칸 · 없으면 아무도 안 맡은 칸(그 몸이 이미 짐을 들고 있던 칸이 먼저 — 재기동 뒤 · 크루가 바뀐 뒤 · 없으면 줄 차례) · 다 맡겼으면 없음
@@ -7759,12 +7767,25 @@ function _t1329Crew(vil) {
 //     일괄(`_t1238Batch`)의 "재료가 없으면 그날은 여기부터 대기"와 같은 문 — 몸은 기다리는 동안 제 일을 한다(새 수 0).
 // Only the stake quote changes: clearing already performed and placed materials stay owned.
 // Refresh before the dry-queue filter too, so a now-free interior cell cannot wait on an old quote.
+function _t1411StakeQuote(vil, j) {
+  const own = vil._terrSet, x = j.cx, y = j.cy;
+  let nb = 0;
+  for (const [dx, dy] of _T1207_N4) if (own.has((x + dx) + ',' + (y + dy))) nb++;
+  const s0 = _t1207S0(), area = _terrCost.cellM2(), unit = _terrCost.woodPerPost();
+  const m = _t1411Quotes.get(j);
+  // Checking local neighbours also catches a same-size delete/add of territory.
+  if (m && m.own === own && m.size === own.size && m.nb === nb && m.x === x && m.y === y && m.ccx === vil.ccx && m.ccy === vil.ccy && m.s0 === s0 && m.area === area && m.unit === unit) return m.wood;
+  const wood = +_t1207CellCost(vil, x, y).wood.toFixed(6);
+  _t1411Quotes.set(j, { own, size: own.size, nb, x, y, ccx: vil.ccx, ccy: vil.ccy, s0, area, unit, wood });
+  return wood;
+}
 function _t1358Requote(vil, j) {
   if (!T1358_STAKE_REQUOTE) return;
   if ((j.workMs || 0) < j.laborMin * _t1238JobMsPerMin()) return;
   // Quote only after physical clearing/felling, immediately before stakes are needed.
   // A fresh queue keeps the existing demand estimate until that cell is ready.
   try { if (state.deps.t325TreesAtCell?.(j.cx, j.cy)?.length) return; } catch (e) { return; }
+  if (T1411_TERR_FAST) { j.wood = _t1411StakeQuote(vil, j); return; }
   j.wood = +_t1207CellCost(vil, j.cx, j.cy).wood.toFixed(6);
 }
 function _t1329Short(vil, npc, j) {
@@ -7942,6 +7963,7 @@ const T1302_TERR_BODY = T1238_TERR_V2 && process.env.T1302_TERR_BODY === '1';
 const T1329_TERR_CREW = T1302_TERR_BODY && process.env.T1329_TERR_CREW === '1';
 // T1358 ⓐ: queued clearing stays physical; stake price uses the territory at completion.
 const T1358_STAKE_REQUOTE = T1329_TERR_CREW && process.env.T1358_STAKE_REQUOTE === '1';
+const T1411_TERR_FAST = T1358_STAKE_REQUOTE && process.env.T1411_TERR_FAST === '1';
 const _tv2 = require('./terr-v2');
 const _t1238St = { growN: 0, growUs: 0, growMaxUs: 0, picks: 0, pickCells: 0, go: 0, workMs: 0, done: 0, cancels: 0, cancelCells: 0, pulls: 0, pullBack: 0, pullBroke: 0, goRefuse: 0, structCut: 0, structCells: 0,
   decayDays: 0, decayCells: 0, decayFields: 0, decayScanMs: 0, useMarks: 0, trapDays: 0, trapScanMs: 0, trapped: 0, trapFreed: 0, trapTerrain: 0, bodyCells: 0, bodyPartial: 0, steal: 0, stealUnits: 0, saveRows: 0, saveMs: 0 };
@@ -21106,7 +21128,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   t1372PidAt: (v, i) => { const vil = state.byDbId && state.byDbId.get(v); return vil && vil.npcPids ? (vil.npcPids[i] ?? null) : null; },   // ★[T1372 ⓒ] 존이 벽 세대를 저장 값으로 되돌렸다 — 닿음 기억 도장은 저장 그대로(T1340 ③′ 다시 찍기 안 함)
   t742Bind, t742On: () => T742_ZONE, t742Stat: () => _t742Stat,   // ★[T742] 존 · 모듈 메모리 영속(손잡이 · 거는 문 · 계측)   // ★[T740] 메모리 전용 마을 칸 영속(손잡이 · 계측)
   T1241_SCH: { SCH_HALF_R, SCH_FARMW_R },   // ★[T1241] 사건 시뮬이 걸음 토막 끝을 일과 문턱에 맞춘다(읽기만 · 사본 0)
-  init, onGameTick, deferLate, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT, T871_ONE_CLOCK, t1295S, t1295Wp, t1295Ph, t1337Sleep, t1337Still, t1348Farm, t1365Work, t1365Why, t1365Want, t1399Bump, t1399Rec, t1399Take, t1399Still, t1399Why, SCH_REST_IN, _t1295Stat, T1295_FARM_CLOCK, T1295_GOURD, T1316_BODY_CLOCK, T1316_SUBSTEP, t1316K, T1326_HUNT_CLOCK, T1351_MINE_CLOCK, t1351MineOn: (vil) => _t1351MineOn(vil),   // ★[T871] 시계 하나 손잡이(하네스 `test-one-clock` 이 읽는다)
+  init, onGameTick, deferLate, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT, T1411_TERR_FAST, T871_ONE_CLOCK, t1295S, t1295Wp, t1295Ph, t1337Sleep, t1337Still, t1348Farm, t1365Work, t1365Why, t1365Want, t1399Bump, t1399Rec, t1399Take, t1399Still, t1399Why, SCH_REST_IN, _t1295Stat, T1295_FARM_CLOCK, T1295_GOURD, T1316_BODY_CLOCK, T1316_SUBSTEP, t1316K, T1326_HUNT_CLOCK, T1351_MINE_CLOCK, t1351MineOn: (vil) => _t1351MineOn(vil),   // ★[T871] 시계 하나 손잡이(하네스 `test-one-clock` 이 읽는다)
  
   chiefOf, chiefGreetAsk, chiefGreetHas, chiefWalking, kinWrite,   // ★[T785] 마을 칸 쓰기(회관 행)
   bedSlotOf,   // ★[T540] 관측 — 침대 슬롯·집(`/walkdbg`)   // ★[T529] 촌장이 온다(손잡이 `T529_CHIEF_WALKS` · 읽는 곳 하나)

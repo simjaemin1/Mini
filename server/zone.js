@@ -38,6 +38,7 @@ const http = require('http');
 const { ZONES, WORLD, isNight, worldPhase, darknessLevel, findZoneAt, worldDistance, worldDeltaX, HANDOFF_COMMIT, T720_LON_DAY, SUNRISE_FRAC, phaseAdd, localPhase, T761_CLOCKS } = require('./zone-config');   // ★[T720] 경도 하루 1단계 손잡이 · 시각 한 식   // ★[T604 추신3] HANDOFF_COMMIT 정본 = zone-config(해안 지킴과 한 자리)
 const db = require('./zone-local-db'); // 로컬 zone DB — players 없음
 const SimVillages = require('./villages'); // §4-4 NPC 마을 시뮬 — top-level은 상수뿐(실작업은 아래 init 호출, ENABLE_VILLAGES=0이면 완전 no-op)
+const T1411_TERR_FAST = SimVillages.T1411_TERR_FAST;
 const T1238_ON = !!SimVillages.T1238_TERR_V2;   // ★[T1238] 영토 v2 손잡이(villages.js 가 정한다 — T1207 켬 위에서만) · 맨 위에 둔다(부팅 중 콜라이더 술어가 읽어도 TDZ 0)
 const T1197_BODY = process.env.T1074_FOOD_DEBT !== '0' && process.env.T1197_MEAL_BODY === '1'; // ★[PM land1049] 끔 기본(`=1` 켬) — 켬 판 서버 1020 400날 인구 3,617 → 1,848 · 빈 마을 1 → 15(사냥 · 식사 몸 같이 · 가상 시계) · 켤 날 T1209 ·   // ★[T1197] econ `T1197_MEAL_BODY` 와 같은 글자(켬 기본 · `=0` 끔 · T1074 끔이면 안 선다) — 마을 몸 허기 면제 자리(`_gaugeStep`)
 // ★[T484 ②③] 존 기후 — 이 존의 평년값(`server/climate-normals.js` · `apply` 인 존만)과 청동기 Δ(`T484_PALEO` 켬만)를 econ `CLIMATE` 에 얹는다.
@@ -17330,7 +17331,8 @@ function _wwPre(moveDt) {
   const cut = T672_WALK_CUT && Number.isFinite(moveDt);                                    // ★[T672 ⓑ] 서 있는 몸 거름(끔이면 안 열린다)
   _wwCut = cut;
   _wwStill.length = 0; _wwStill0.length = 0;
-  if (T689_GC) { _wwCut = cut; players.forEach(_wwPreOne); }   // ★[T689] 같은 차례 · 같은 몸통(아래) — 반복 결과 객체 0
+  if (T1411_TERR_FAST) players.forEach(_wwPreOne);   // Same live Map order and callback; no iterator-result objects.
+  else if (T689_GC) { _wwCut = cut; players.forEach(_wwPreOne); }   // ★[T689] 같은 차례 · 같은 몸통(아래) — 반복 결과 객체 0
   else for (const p of players.values()) _wwPreOne(p);
   const n = _wwList.length, S = cut ? _wwStill.length : 0;
   _wwStat.ticks++; _wwStat.steps += n + S;
@@ -18156,7 +18158,8 @@ setInterval(() => {
       if (consumed === 0 && MOVE_PARAMS.model !== 'accel') { p.vx = 0; p.vy = 0; }
     }
   } while (false); };
-  if (T689_GC) players.forEach(_moveOne);
+  if (T1411_TERR_FAST) players.forEach(_moveOne);
+  else if (T689_GC) players.forEach(_moveOne);
   else for (const p of players.values()) _moveOne(p);
   if (_wwVerify && _WW) _wwCheck(_walk.steps - _wwSteps0);   // ★[T461] 견줌 — JS 정본이 옮긴 몸을 커널 답과 비트로(분리 전 · 같은 자리)
   if (_desClk) { _desStat.nsMove += Number(_desClk() - _desM0); _desStat.nMoveTicks++; }
