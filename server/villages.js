@@ -14117,8 +14117,11 @@ function t1399Bump(vil) { if (vil && vil.dbId != null) _t1399G.set(vil.dbId, (_t
 let _hzOn = false, _hzWalk = false, _hzT = Infinity, _hzT2 = Infinity, _hzQS = null, _hzNo = 0, _hzPN = 0, _hzPX = 0, _hzPY = 0, _hzPR = 0, _hzPO = 0, _hzVw = 0, _hzQ = 0, _hzQX = 0, _hzQY = 0, _hzWhy = '';
 function _hzD(t) { if (_hzOn && t < _hzT) _hzT = t; }   // 시각 문턱(그 시각 앞까지 산다)
 function _hzD2(t) { if (_hzOn && t < _hzT2) _hzT2 = t; }   // ★[T1415 ③] 장인 시계(T1258 — `_t1253Now()`) 축 시각 문턱
-// ★[T1415 ③] 장인 일감 줄 지문 — 판정(`_t1365Art`)이 읽는 칸(작업표 차례 · id · 단계 · 쥔 몸 · 직업) 그대로의 글자. 줄을 쓰는 자리(econ 셋 · 생활층 둘)가 무엇을 바꿔도 지문이 바뀐다
-function _t1415QSig(Q) { if (!Q || !Q.length) return ''; let s = ''; for (const x of Q) s += x.id + ':' + x.st + ':' + (x.pid == null ? '' : x.pid) + ':' + x.job + '|'; return s; }
+// ★[T1415 ③] 장인 일감 줄 사본 — 판정(`_t1365Art`)이 읽는 칸(작업표 차례 · id · 단계 · 쥔 몸 · 직업) 그대로. 줄을 쓰는 자리(econ 셋 · 생활층 둘)가 무엇을 바꿔도 사본과 달라진다
+//   줄 사본 = [길이, (id · 상태 · 몸 · 일감) × 길이] — 표를 적을 때 한 번 뜨고(`_t1415QSnap`), 표가 사는가는 글자를 만들지 않고 칸마다 견준다(`_t1415QSame` · 다르면 그 자리에서 끝).
+//     ★[T1415 자] 처음엔 줄 글자 지문(항목마다 이은 글자)이었는데 같은 자 결정 순회가 main 보다 무거웠다 — 저녁 줄(그날 일 다 · 수십 ~ 백여 항목)을 볼 때마다 글자를 지었다(항목당 ~90ns → 견줌 ~6ns).
+function _t1415QSnap(Q) { const n = Q ? Q.length : 0, a = new Array(1 + 4 * n); a[0] = n; for (let i = 0; i < n; i++) { const x = Q[i], j = 1 + 4 * i; a[j] = x.id; a[j + 1] = x.st; a[j + 2] = x.pid; a[j + 3] = x.job; } return a; }
+function _t1415QSame(Q, a) { const n = Q ? Q.length : 0; if (n !== a[0]) return false; for (let i = 0; i < n; i++) { const x = Q[i], j = 1 + 4 * i; if (x.id !== a[j] || x.st !== a[j + 1] || x.pid !== a[j + 2] || x.job !== a[j + 3]) return false; } return true; }
 function _hzP(x, y, r, out) { if (!_hzOn || !_hzWalk) return; if (_hzPN++ && !(_hzPX === x && _hzPY === y && _hzPR === r && _hzPO === out)) _hzX('p2'); _hzPX = x; _hzPY = y; _hzPR = r; _hzPO = out ? 1 : 0; }   // 자리 문턱 하나(`Math.hypot(몸 − 점) > r` 이 그 쪽) — 걷는 몸 표(첫 거름 3)만 적는다(서 있는 몸 표 1 · 2 는 자리가 안 바뀐다 — 움직이면 표를 내린다)
 function _hzX(w) { if (_hzOn && !_hzNo) { _hzNo = 1; _hzWhy = w; } }   // 표 없음(결정 사이에 다른 몸이 바꾸는 값을 읽었다)
 const _t1399Tk = { T: Infinity, T2: Infinity, qs: null, px: 0, py: 0, pr: 0, po: 0, pn: 0, vw: 0, q: 0, qx: 0, qy: 0, pat: 0, day: 0, bday: 0, wday: 0, gen: 0, sc: 1, why: '' };
@@ -14161,7 +14164,7 @@ function t1399Still(npc, now, T, pat, day, bday, wday, gen, sc, pn, px, py, pr, 
   if (vw && state.deps.isPositionActive && state.deps.isPositionActive(npc.x, npc.y)) return false;
   if (q && state.deps.isWaterTileLocal && !state.deps.isWaterTileLocal(qx, qy)) return false;   // ⓒ 드리운 칸이 아직 물인가(밀물 · 썰물)
   if (T2 !== undefined && T2 !== Infinity && !(_t1253Now() < T2)) return false;   // ★[T1415 ③] 장인 시계 문턱
-  if (qs != null && _t1415QSig(vil.econ && vil.econ._t1196Q) !== qs) return false;   // ★[T1415 ③] 장인 일감 줄 지문
+  if (qs != null && !_t1415QSame(vil.econ && vil.econ._t1196Q, qs)) return false;   // ★[T1415 ③] 장인 일감 줄 사본
   return true;
 }
 function t1399Why() { return _t1399Tk.why; }
@@ -14399,7 +14402,7 @@ function t1365Work(npc, now) {
     return (npc._jobT && now < npc._jobT) ? 1 : _z('W63');   // 수색 머묾
   }
   if (!LIFE_FIELD_JOBS.has(jb)) {   // 회관 일(주민 · 장인)
-    if (T1196_KIND[jb]) { if (_hzOn && _t1196On(vil)) _hzQS = _t1415QSig(vil.econ._t1196Q); const r = _t1365Art(vil, npc, now, jb); if (r !== null) return r; }   // ★[T1399] 장인 일감 줄은 다른 몸이 쥔다(표 없음)
+    if (T1196_KIND[jb]) { if (_hzOn && _t1196On(vil)) _hzQS = _t1415QSnap(vil.econ._t1196Q); const r = _t1365Art(vil, npc, now, jb); if (r !== null) return r; }   // ★[T1399] 장인 일감 줄은 다른 몸이 쥔다(표 없음)
     const idx = _lifeOtherIndex(vil, npc);
     const wx = (vil.ccx + ((idx % 6) - 3)) * SZ + SZ / 2, wy = (vil.ccy + ((((idx / 6) | 0) % 6) - 3)) * SZ + SZ / 2;
     if (Math.hypot(npc.x - wx, npc.y - wy) > 44) return _z('W48');   // 출근(정체 가드 칸을 쓴다)
