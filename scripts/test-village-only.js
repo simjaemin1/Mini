@@ -60,7 +60,9 @@ function boot(name, file, env) {
 }
 function stop(p) {
   return new Promise((res) => {
-    if (!p || p.exitCode != null) return res(true);
+    //   ★[T1410] 신호로 죽은 판(앞 `stop` 의 SIGKILL — 부하 판에서 15초 넘게 저장)은 `exitCode` 가 null · `signalCode` 만 선다 — 종전 줄은 이미 지난 'exit' 를
+    //     기다려 끝 정리에서 영영 멎었다(부하 판 `vo4.load1` — 결과 줄 뒤 10분 멈춤).
+    if (!p || p.exitCode != null || p.signalCode != null) return res(true);
     const to = setTimeout(() => { try { p.kill('SIGKILL'); } catch (e) {} }, 15000);
     p.once('exit', () => { clearTimeout(to); res(true); });
     try { p.kill('SIGTERM'); } catch (e) { clearTimeout(to); res(false); }
@@ -121,14 +123,22 @@ function connect(username, token) {
 const snd = (C, o) => { try { C.ws.send(JSON.stringify(o)); } catch (e) {} };
 const chat = (C, text) => snd(C, { type: 'chat', text });
 //   ★[T1410 · 야간 11-20 Ⓣ2] 마을 장부 메시지(존 `VILLAGE_BOOK_MSG` — 인출 · 넣기 · 받기 스위치 · 곳간 보기) — 고정 잠은 종전 그대로 두고, 그 사이
-//     "마을이 하루 장부를 닫는 중"(문이 아니라 **차례** — 줄 선 요청은 마감 뒤에 돈다)이 왔으면 그 뒤 답(다른 알림 · 메시지)이 올 때까지 더 기다린다(상한 5초 = `sayWait` 기본).
+//     "마을이 하루 장부를 닫는 중"(문이 아니라 **차례** — 줄 선 요청은 마감 뒤에 돈다)이 왔으면 그 뒤 답(다른 알림 · 메시지)이 올 때까지 더 기다린다(상한 `SAVE_MS` — 아래).
 //     야간 판에서 받기 스위치 답이 900ms 안에 안 와 "장부 닫는 중" 한 줄만 보고 빨강(창 실측 — 이 판 조건(하루 2초 · 마을 1) p90 132ms · 최대 265ms · 부하 판은 더 길다 · `계측/T1410_2026-11-21/장부창.js`).
 async function bookSend(C, o, ms) {
   const n0 = C.notices.length; snd(C, o); await sleep(ms);
   const i = C.notices.slice(n0).findIndex((t) => /장부를 닫는 중/.test(t));
   if (i < 0) return false;
-  const after = n0 + i + 1, m0 = C.msgs.length, t0 = Date.now();
-  while (Date.now() - t0 < 5000) { if (C.notices.length > after || C.msgs.length > m0) return true; await sleep(100); }
+  //   줄 선 요청이 마감 뒤 다시 돌 때 다음 마감에 또 걸리면 "장부 닫는 중"이 또 온다(차례가 또 밀림) — 그 알림은 답이 아니다: 마지막 그 알림부터 다시 센다(touched -j2 판 Ⓣ3 실측).
+  //   상한 = `SAVE_MS`(30초 · 이 파일 저장 기다림) — 줄은 마감 끝(저장 포함 · `_drainVillageWaitQ`)에 풀린다. 부하 판 창은 5초를 넘는다(하루 0.5초 판 최대 10.9초 · `vo3.load1` Ⓣ2).
+  //   답 = "장부 닫는 중" 아닌 알림 · 또는 마을 메시지(`village_*` — 곳간 보기 등). ★`C.msgs` 길이로 세면 안 된다 — 2초마다 치는 `ping` 의 답 ·
+  //     그 알림 자신도 `msgs` 에 들어 답이 오기 전에 끝난다(부하 판 Ⓣ3 · Ⓣ5 — 알림 한 줄만 보고 빨강 · `vo.load1`).
+  let after = n0 + i + 1, m0 = C.msgs.length, t0 = Date.now();
+  while (Date.now() - t0 < SAVE_MS) {
+    for (; m0 < C.msgs.length; m0++) if (/^village_/.test(String(C.msgs[m0] && C.msgs[m0].type))) return true;
+    for (; after < C.notices.length; after++) { if (!/장부를 닫는 중/.test(C.notices[after])) return true; t0 = Date.now(); }
+    await sleep(100);
+  }
   return true;
 }
 //   ★[T1033] 닫힘 핸드셰이크가 끝날 때까지(소켓 'close' — 존이 그 닫힘을 받았다) · 종전 0.3초 잠 · 상한 = `sayWait` 기본과 같은 5초(그물)
