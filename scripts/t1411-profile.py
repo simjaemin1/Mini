@@ -9,7 +9,7 @@ p.add_argument('--out', type=Path, required=True)
 a = p.parse_args()
 a.out.mkdir(parents=True, exist_ok=True)
 groups = {
-    'territory_price': lambda n, u: n in ['_t1207CellCost', '_t1358Requote'] or u.endswith('/terr-cost.js'),
+    'territory_price': lambda n, u: n in ['_t1207CellCost', '_t1358Requote', '_t1411StakeQuote'] or u.endswith('/terr-cost.js'),
     'territory_selection': lambda n, u: n in ['_t1329Crew', '_t1329Job', '_t1329Short', '_t1207CanTake', '_terrGrow', '_t1238Batch'],
     'fit': lambda n, u: n == '_t561Fit',
     'hauling': lambda n, u: u.endswith(('/terr-body.js', '/build-haul.js')) or n == '_t1181Step',
