@@ -36,8 +36,8 @@ const BAITS = {
   noover: [V2F, '  return g * p + (g < 1 ? (1 - g) * _t1313Over(v, id) : 0);', '  return g * p;', ['b'], ['O3']],
   nosat: [V1F, 'const adj = (_w07 && OreGoods.isOre(r) ? _w07(v, r, amt, _satP[r] || 0) : (_satP[r] || 1)) / (_satB[r] || 1);', 'const adj = (_satP[r] || 1) / (_satB[r] || 1);', ['b'], ['P1']],
   noval: [V1F, 'n+=f*(W07?W07(v,id,u07*f,p):p);', 'n+=f*p;', ['b'], ['P2']],
-  allday: [V1F, 'if (T1407_FOOD_FIRST && _t1085Hungry(v)) labor = Math.max(labor, _t1407FoodHand(v, p));', 'if (T1407_FOOD_FIRST) labor = Math.max(labor, _t1407FoodHand(v, p));', ['c'], ['F2']],
-  nohand: [V1F, 'if (T1407_FOOD_FIRST && _t1085Hungry(v)) labor = Math.max(labor, _t1407FoodHand(v, p));', 'if (T1407_FOOD_FIRST && _t1085Hungry(v)) labor = Math.max(labor, 0);', ['c'], ['F1']],
+  allday: [V1F, 'best.score > ((T1407_FOOD_FIRST && _t1085Hungry(v)) ? Math.max(', 'best.score > ((T1407_FOOD_FIRST) ? Math.max(', ['c'], ['F2']],
+  nohand: [V1F, '? Math.max(labor, _t1407FoodHand(v, p)) : labor));', '? Math.max(labor, 0) : labor));', ['c'], ['F1']],
 };
 const FOOD_JOBS = ['farmer', 'fisher', 'hunter', 'forager'];
 

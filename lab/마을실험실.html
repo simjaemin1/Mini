@@ -19053,9 +19053,8 @@ function _t1333ExportCast(v) {
     // 손 값도 같은 기회비용 자로 잰다. 다른 일에서 옮겨 올 가장 싼 손의 하루 값.
     const costs = (v.npcs || []).filter(n => n.currentJob !== 'smith' && !(n._tradingUntil > (v._world.day || 0)))
       .map(n => opportunityCost(n, v, p)).filter(Number.isFinite);
-    let labor = costs.length ? Math.min(...costs) : 0;
-    if (T1407_FOOD_FIRST && _t1085Hungry(v)) labor = Math.max(labor, _t1407FoodHand(v, p));   // ★[T1407 ㉢] 켬 · 굶는 날 = 옮겨 올 손은 식량 일로 간다(아래 머리)
-    return !!(best && best.score > labor);
+    const labor = costs.length ? Math.min(...costs) : 0;
+    return !!(best && best.score > ((T1407_FOOD_FIRST && _t1085Hungry(v)) ? Math.max(labor, _t1407FoodHand(v, p)) : labor));   // ★[T1407 ㉢] 켬 · 굶는 날 = 옮겨 올 손은 식량 일로 간다(아래 머리) · 끔 = `score > labor` 그대로
   }
   return !!(best && best.score > 0);
 }

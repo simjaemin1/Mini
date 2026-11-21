@@ -16,14 +16,14 @@ if (!(SY > 0)) throw Error('SMELT_YIELD 을 econ 에서 못 읽음');
 const args = process.argv.slice(2);
 const root = args[0]; if (!root) throw Error('판 뿌리 필요');
 const jsonOut = args.includes('--json') ? args[args.indexOf('--json') + 1] : null;
-const read = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));
+const read = (p) => { const b = fs.readFileSync(p); return JSON.parse(p.endsWith('.gz') ? require('zlib').gunzipSync(b).toString('utf8') : b.toString('utf8')); };   // 계측 폴더엔 .gz 로 둔다
 const f2 = (x, d = 2) => (x == null || !isFinite(x) ? '—' : (+x).toFixed(d));
 const f1 = (x) => f2(x, 1), f0 = (x) => f2(x, 0);
 const pct = (a, b) => (b > 0 ? (100 * a / b).toFixed(1) + ' %' : '—');
 
 function loadRun(dir) {
   const base = path.join(root, dir), files = fs.readdirSync(base);
-  const f07 = files.find((f) => /(^|\.)t1407\.json$/.test(f)), fp = files.find((f) => f === 'probe.json' || /\.t1385\.json$/.test(f));
+  const f07 = files.find((f) => /(^|\.)t1407\.json(\.gz)?$/.test(f)), fp = files.find((f) => /^probe\.json(\.gz)?$/.test(f) || /\.t1385\.json(\.gz)?$/.test(f));
   if (!f07) return null;
   const r = read(path.join(base, f07)); if (r.err) throw Error(dir + ': ' + r.err);
   const p = fp ? read(path.join(base, fp)) : null;
@@ -153,5 +153,24 @@ table(['판', '마을', '끝 사람', '대장장이-날 · 부은 검(판 내내
 for (const t of cTrace) {
   console.log(`**${t.run} · ${t.name}** — 끝 사람 ${t.endN} (끔 ${t.offN})\n`);
   table(['날', '사람', '곳간 날치', '굶는 날(마디)', '식량 일꾼', '석공', '대장장이', '부은 검 · 청동(마디)', '사람당 낸 먹을 것/날', '들어온 먹을 것/날', '나간 먹을 것/날', '식량 값', '굶어 죽음(누계)', '끔: 사람 · 날치 · 사람당 낸 것'], t.rows);
+}
+// 팔 묶음 — 시드 셋을 한 칸에(1020 · 7 · 42 차례 · 없는 판 —) · 재민 표와 보고 첫 줄이 읽는다
+console.log('### 팔 묶음 — 시드 1020 · 7 · 42 를 한 칸에\n');
+const SEEDS = ['1020', '7', '42'];
+const pick = (kind, arm, f) => SEEDS.map((sd) => { const x = runs.find((q) => q.kind === kind && q.arm === arm && q.seed === sd); return x ? f(x) : '—'; }).join(' · ');
+const med = (a) => { const b = a.filter((x) => isFinite(x)).sort((x, y) => x - y); return b.length ? (b.length % 2 ? b[(b.length - 1) / 2] : (b[b.length / 2 - 1] + b[b.length / 2]) / 2) : null; };
+const holdMed = (x) => { const P = x.probe; if (!P || !P.holderNames) return null; return med(P.holderNames.map((t) => { const m = t.match(/ ([\d.]+)\/([\d.]+)$/); return m && +m[2] > 0 ? +m[1] / +m[2] : NaN; })); };
+const ARMS = Object.keys(ORDER).filter((a) => runs.some((q) => q.arm === a));
+for (const kind of ['lab', 'server']) {
+  if (!runs.some((q) => q.kind === kind)) continue;
+  console.log(`**${kind === 'lab' ? '두 해 랩(800날)' : '서버 자(400날)'}**\n`);
+  table(['팔', '캔 주석 원석 kg/해', '녹인 주석 kg/해', '부은 주석 kg/해', '청동 검/해', '석검 : 동검(부은 것)', '쥔 마을 /51', '쥔 마을 청동 몫(모아 · 가운데)', '절반 넘는 마을', '세계 병기고 청동 %', '주석 곳간 끝 kg', '빈 마을(끔엔 사는데)', '인구(끔비)', '굶어 죽음', '무기 짐 줄'],
+    ARMS.filter((a) => runs.some((q) => q.kind === kind && q.arm === a)).map((a) => [a,
+      pick(kind, a, (x) => f0(x.tot.minedTin * x.yr * KG.ore)), pick(kind, a, (x) => f0(x.tot.smeltTin * x.yr * KG.tin)), pick(kind, a, (x) => f0(x.tot.castTin * x.yr * KG.tin)),
+      pick(kind, a, (x) => f0(x.tot.castBz * x.yr)), pick(kind, a, (x) => (x.probe && x.probe.bzMade > 0 ? f1(x.probe.stoneMade / x.probe.bzMade) : '—')),
+      pick(kind, a, (x) => (x.probe ? x.probe.holders : '—')), pick(kind, a, (x) => (x.probe && x.probe.holdBz != null ? f0(100 * x.probe.holdBz) + '/' + f0(100 * holdMed(x)) + '%' : '—')),
+      pick(kind, a, (x) => (x.probe ? x.probe.half : '—')), pick(kind, a, (x) => (x.probe && x.probe.worldBz != null ? f1(100 * x.probe.worldBz) : '—')),
+      pick(kind, a, (x) => f0(x.tinEnd * KG.tin)), pick(kind, a, (x) => { const o = offOf(x); return o && o !== x ? String(x.emptyNames.filter((n) => !o.emptyNames.includes(n)).length) : String(x.emptyNames.length); }),
+      pick(kind, a, (x) => { const o = offOf(x); return o && o !== x ? f2(x.pop / o.pop) : String(x.pop); }), pick(kind, a, (x) => x.dead), pick(kind, a, (x) => x.legs.weapon[0])]));
 }
 if (jsonOut) fs.writeFileSync(jsonOut, JSON.stringify(runs.map((s) => { const o = Object.assign({}, s); delete o._r; delete o.per; return o; }), null, 1));
