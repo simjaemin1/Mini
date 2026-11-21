@@ -1107,6 +1107,13 @@ function _t1293Fill(v, id, ctx, f, units) {
 //     이웃이 쳐 줄 값(`_t1313Over` — 순수출가 `netExportValue` 의 빈자리 갈래: 그 원석을 더 녹일 빈자리가 있는 이웃만 · 정보 거리 안 · 다 차면 0).
 //     목표 밑 몫은 그대로 그 마을 그림자 값이다(T1277 (가)는 목표 밑 몫에서 그대로 산다). 끔 = 넘는 몫 값 0(T1293 그대로).
 function _t1313Over(v, id) { return v && v._world ? netExportValue(v._world, v, id, true) : 0; }
+//   ★★[T1407 ㉡] 원석 품목 한 단위의 값(쓸 곳 + 팔 곳) — 위 두 줄(`_t1293Fill` 빈자리 몫 × 그 칸 그림자 값 + 넘는 몫 × `_t1313Over`)을 수식 세계 광부가 부른다
+//     (v1 손잡이 `T1407_ORE_WORTH` 켬일 때만 `world.oreWorthFn` 이 선다 — 산출 포만 · `oreValue`). p = 부르는 쪽이 이미 든 그 칸 값(값표 · 원석 상한 뒤). units = 그 덩이(0 이면 첫 한 단위).
+function t1407OreWorth(v, id, units, p) {
+  if (!v || !v._world) return p;
+  const g = _t1293Fill(v, id, _targetCtxV2(v), 1, units);
+  return g * p + (g < 1 ? (1 - g) * _t1313Over(v, id) : 0);
+}
 function t1266OreValue(v, H, key, mix, units) {
   if (!v || !v.npcs) return null;
   const N = Math.max(1, v.npcs.length), px = t1217PricesOf(v, key) || computeShadowPrices(v);
@@ -3381,6 +3388,7 @@ function createWorldV2(opts = {}) {
   //     발주가 이웃 값을 올리면 그 값이 쥔 마을의 주조 기회비용(v1 `_oppPrice`)을 올려 대장장이가 석공에 밀린다 — 문턱 밑 곳간은 실제로 나가지도 않는다
   //     (랩 날 30: 쥔 마을 셋 대장장이 주조비 0.05 ~ 0.38 → 1.9 ~ 2.8 · 석공 0.3 ~ 0.8). 끔 = 앞 항 거짓 = 종전 함수 그대로.
   world.netExportFn = (v, res) => ((v1.T1333_ALLOY_ORDER && !_t1333CanExport(v, res)) ? 0 : netExportValue(world, v, res));
+  if (v1.T1407_ORE_WORTH) world.oreWorthFn = t1407OreWorth;   // ★[T1407 ㉡] 켬만 — 수식 세계 광부의 원석 값(쓸 곳 + 팔 곳 · 위 `t1407OreWorth`) · 끔 = 칸 없음(종전)
   // 직업 전환 빈도 21일 — 변동 줄여 안정성 ↑. (30일로 늘리니 반응 느려 기근↑→crisis-mode↑ 역효과 확인, 21 유지)
   world.autoSwitchInterval = 21;
   return world;
