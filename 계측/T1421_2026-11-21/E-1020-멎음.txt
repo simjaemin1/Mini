@@ -1,0 +1,13 @@
+[hanbando] 🌱 토양치 day 7068903784: 셀 15(산터 0) · 저장 1행 · 클라 변경 0셀
+[hanbando] 🛤️ 답압 길 day 7068903784: 셀 445006(등급 71350) · 저장 16860행 · 클라 변경 29셀 · 오늘 스탬프 56300 · 묶음 9
+[hanbando] ✗✗ uncaughtException: Cannot read properties of undefined (reading 'y0')
+TypeError: Cannot read properties of undefined (reading 'y0')
+    at Object.route (/tmp/t1421wt/server/chunk-gates.js:201:27)
+    at _t678Route (/tmp/t1421wt/server/zone.js:4799:15)
+    at computeNpcPath (/tmp/t1421wt/server/zone.js:4916:39)
+    at npcStep (/tmp/t1421wt/server/zone.js:5977:15)
+    at _decOne (/tmp/t1421wt/server/zone.js:17848:59)
+    at /tmp/t1421wt/server/zone.js:17860:36
+    at Immediate.pump [as _onImmediate] (/tmp/t1421wt/scripts/t745-vclock.js:110:17)
+    at process.processImmediate (node:internal/timers:484:21)
+[t745] 끝 — V 1767225946199.1548 (+346.2s) · 콜백 24572 · 양보 61 · 줄 최대 21 · 오류 1

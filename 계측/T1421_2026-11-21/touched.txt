@@ -1,0 +1,18 @@
+test-body-fields.js rc=0 1s :: === 14 통과 / 0 실패 ===
+test-coll-grid.js rc=0 12s ::   ✓ ② [전제 · 자명 통과 금지] 걸음이 **실제로 막힌다** · 옛 격자 질의의 셋에 하나 넘게에 **밭·마당이 섞였다**  막힘 10476/40000 · 밭 섞임 4525/10000
+test-econ-fieldyield.js rc=1 42s ::   ✓ ㉑ [자명 통과 금지] 이 입력은 종전이라면 **실제로 버렸을** 입력이다  버림 145.0
+test-harness-lint.js rc=0 88s ::   ✓ ★㉑ 자명 통과 금지 — 안 지우는 셋은 물고 · 지우는 넷은 보낸다  mk=hit,anon=hit,pidJson=hit,rm=none,lib=none,pidDb=none,own=none
+test-hp-src.js rc=0 1s :: === 54 통과 / 0 실패 ===
+test-lab-alloc.js rc=0 102s ::   ✓ ★★[자명 통과 금지] 두 팔이 **실제로 다른 세계**다  켬 180명 · 끔 168명
+test-lon-day.js rc=0 1s :: 
+test-picker-tables.js rc=0 0s :: 
+test-t1046-wood-share.js rc=0 1s :: 
+test-t1198-birth-body.js rc=0 3s :: === T1198 결과: 47 통과 · 0 실패 ===
+test-t1226-job-flex.js rc=0 3s :: 결과: 59 통과 / 0 실패
+test-econ-fieldyield.js rc=0 65s ::   ✓ ㉑ [자명 통과 금지] 이 입력은 종전이라면 **실제로 버렸을** 입력이다  버림 145.0 ✗=0
+test-t1243-farm-on.js rc=124 1500s :: 84 통과 · 1 실패 ✗=1
+test-t1325-one-rot.js rc=0 2s ::  ✗=0
+test-t1374-farm-winter.js rc=0 562s :: 5 통과 · 0 실패 ✗=0
+test-t1408-farm-4000.js rc=0 2s :: 6 통과 · 0 실패 ✗=0
+test-t1421-farm-4000b.js rc=0 1s :: 8 통과 · 0 실패 ✗=0
+test-wood-step1.js rc=0 1s ::  ✗=0

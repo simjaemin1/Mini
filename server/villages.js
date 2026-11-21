@@ -13936,8 +13936,14 @@ const _t1224Stat = { vilDays: 0, ghost: 0, ghostBudget: 0, body: 0, batch: 0 };
 function _t1276Stand(vil) {
   const E = _lifeEcon(); if (!E || !E.T1276_FARM_K || !vil || !vil.econ || !vil._crop) return 0;
   let S = 0, nS = 0;
-  for (const [k, e] of vil._crop) { if (!e || !e.c) continue; const it = _t368Item(vil, k, e); if (it && it.u > 0) { S += it.u * (E.t368FoodPer(vil.econ, e.c) || 0); nS++; } }
+  const _g = E.T1421_FARM_DIV === 'grow', _m = E.T1421_FARM_PRICE === 'mix', _C = (_g || _m) ? _Crops() : null;   // ★[T1421 ④ ⑤] 끔 = 아래 갈래 무동작
+  let _gf = 0, _gw = 0, _in = null;
+  for (const [k, e] of vil._crop) { if (!e || !e.c) continue; const it = _t368Item(vil, k, e); if (it && it.u > 0) { const _f = it.u * (E.t368FoodPer(vil.econ, e.c) || 0); S += _f; nS++;
+    if (_C) { if (_g && _f > 0) { _gf += _f; _gw += _f * (_C.growDaysOf(e.c) || 0); } if (_m && !(_f > 0)) { _in = _in || {}; _in[e.c] = (_in[e.c] || 0) + it.u; } } } }
   vil.econ._t1276Stand = S;
+  if (_g && _gf > 0) vil.econ._t1421GAvg = _gw / _gf;   // ★[T1421 ⑤ ⓑ] 선 식량으로 무게 단 자라는 날(빈 밭이면 마지막 값)
+  if (_m) vil.econ._t1421Ined = _in;   // ★[T1421 ④] 안 먹는 선 작물 낱개(없으면 null)
+  if (E.T1421_FARM_DIV === 'labor') { vil.econ._t1421DayS = _t1221DayS(); vil.econ._t1421Lab = true; }   // ★[T1421 ⑤ ⓒ] 사람 하루 낮 초
   if (E.T1421_FIELD_CAP) vil.econ._t1421StandN = nS;   // ★[T1421 ②] 선 칸 수(칸 하나가 낼 식량 = 선 작물 식량 ÷ 이 수 · 끔 = 칸 없음)
   return S;
 }
@@ -14744,6 +14750,7 @@ function lifeFarmDay(vil, day, farmerN, onDid, budget0) {
       if (onDid) { const e0 = vil._crop.get(k); if (e0) { e0c = e0.c; e0p = e0.p; } }
       if (_lifeDoTask(vil, null, k, day)) {
         budget -= _c; did++; total++;
+        if (_L && vil.econ && vil.econ._t1421Lab) vil.econ._t1421LabS = (vil.econ._t1421LabS || 0) + _c;   // ★[T1421 ⑤ ⓒ] 밭 일손 초(일괄)
         if (_L) { _t1221Stat.usedS += _c; _t1221Stat.tasks++; _t1221Stat.byKind[t] = (_t1221Stat.byKind[t] || 0) + 1; }
         if (onDid) onDid(k, t, e0c, e0p, vil._crop.get(k) || null);
       }
@@ -19392,6 +19399,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
         vil._cropClaim.delete(k); npc._farmK = null;
         npc._jobT = (_L && _ok) ? now + _c * _t1243MinMs() : now + (9000 + (_pidHash(npc.pid) % 7) * 1500) / t1295S(npc);   // ★[T1295] 켬(판 시계) = 쉼도 게임 분 축(끔 · 운영 시계 = ÷ 1)   // ★[T1221] 켬 = 일 시간만큼 그 칸에 머문다
         if (_L && _ok) _t1221Stat.bodyS += _c;
+        if (_L && _ok && vil.econ && vil.econ._t1421Lab) vil.econ._t1421LabS = (vil.econ._t1421LabS || 0) + _c;   // ★[T1421 ⑤ ⓒ] 밭 일손 초(몸)
         // ★[곳간②] 짐이 상한에 닿으면 곳간으로 운반(자리 없으면 false → 기존 흐름 그대로)
         if (_handFull(npc) && _granGo(vil, npc, false)) { npc._jobT = 0; return true; }   // ★[T316] 칸 문턱 ∨ kg 상한(먼저 걸리는 쪽)
       }

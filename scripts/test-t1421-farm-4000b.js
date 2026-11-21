@@ -9,6 +9,8 @@
 //   ③ 두 팔이 같은 밭에 다른 값을 낸다 — ㉮ 작물 시세(곳간 조 · 값 5) ↔ ㉯ 다른 식량 일 열량 값(생선 · 고기 · 나물 값 1 · 2 · 1)
 //   ④ 한 해를 내다보는 문 — 다음 거둠까지는 버티는 곳간(60일치)이어도 한 해 하루 식량(곳간 ÷ 365 + 밭 흐름 + 다른 흐름)이 사람 + 1 밑이면 닫힌다 · 넉넉하면 열린다 · 출생 줄 글자
 //   ⑤ 밭 용량 — 갈 수 있는 땅(밭 칸 ÷ 갈린 몫) × 칸 하나가 한 해 낼 식량 ÷ 365 · 부양력 밭 몫 = max(밭 흐름, 용량) 줄 글자
+//   ⑦ [덧붙임 둘] `mix` — 안 먹는 선 작물이 없으면 ㉯ 와 같은 값 · 있으면 그 낱개 × 그 품목 값 ÷ (365 × 농부)만큼 더 · 이 세계 청동기 묶음 12종은 다 식량 몫 > 0
+//   ⑧ [덧붙임] 나눗수 `T1421_FARM_DIV`(`grow` | `labor` 만 · 끔 = ÷ 365 · 실현 배분 · 기근 블록 농부 칸 둘 다) — ⓑ = 한 해 밭 식량 × 값 ÷ (자라는 날 × 농부) · ⓒ = ÷ 지난 한 해 밭 일손 날(`t1276Note` 가 일손 초 누적을 한 해 창으로 · 1 밑이면 1)
 //   ⑥ 미끼(이 파일 안 · 셋) — ⓐ 농부 값 줄의 하루치 값 → 0 → ② 빨강 · ⓑ 값 함수 갈래(`mode === 'crop'`) → 늘 참 → ③ 빨강 · ⓒ 한 해 식량 함수의 다른 흐름 항 뺌 → ④ 빨강
 //   날짜 · 벽시계를 쓰지 않는다.
 'use strict';
@@ -18,7 +20,7 @@ const ROOT = path.join(__dirname, '..');
 let pass = 0, fail = 0;
 const ok = (c, m, d) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (d !== undefined && d !== '' ? `  ${d}` : '')); return !!c; };
 console.log('\n=== T1421 — 밭 세계를 사천 명으로 둘째(밭 일의 값 · 밭 용량 · 한 해 출생 문) ===');
-const KN = ['T1421_FARM_PRICE', 'T1421_FIELD_CAP', 'T1421_BIRTH_YEAR', 'T1408_FARM_VALUE', 'T1243_FARM_ON', 'T1276_FARM_K', 'NODE_OPTIONS'];
+const KN = ['T1421_FARM_DIV', 'T1421_FARM_PRICE', 'T1421_FIELD_CAP', 'T1421_BIRTH_YEAR', 'T1408_FARM_VALUE', 'T1243_FARM_ON', 'T1276_FARM_K', 'NODE_OPTIONS'];
 const kid = (env, code) => { const e = Object.assign({}, process.env); for (const k of KN) delete e[k]; Object.assign(e, env);
   const out = execFileSync(process.execPath, ['-e', code], { cwd: ROOT, env: e, encoding: 'utf8', maxBuffer: 16 << 20 });
   return JSON.parse(out.trim().split('\n').filter((l) => l.startsWith('{')).pop()); };
@@ -56,6 +58,27 @@ const FC = `const E=require('./sim/economy-sim');const v={_fieldCells:100,_clear
 let FCr = {}; try { FCr = kid({ ...FW, T1421_FIELD_CAP: '1' }, FC); } catch (e) { FCr = { err: String(e).slice(0, 200) }; }
 ok(Math.abs(FCr.cap - 200 * 10 / 365) < 1e-9 && /if \(T1421_FIELD_CAP\) _prodKraw \+= Math\.max\(0, t1421FieldCap\(v\) - t1276FieldFlow\(v\)\) \/ DAILY_FOOD_CONSUMPTION;/.test(ES),
   '⑤ 밭 용량 — 갈 수 있는 땅 200칸 × 칸 하나 10 ÷ 365 · 부양력 밭 몫 = max(흐름, 용량)', JSON.stringify(FCr));
+// ── ⑦ mix ──
+const MX = (stand) => `const E=require('./sim/economy-sim');
+const v={_t1276H:0,_t1276Stand:365*4,_t1421Ined:${stand},storage:{},dailyProductionBuf:{fish:3},_allocDay:0,counts:{farmer:4,fisher:2}};
+const W={foxtail_millet:5,hemp:7,fish:1,meat:2,vegetable:1,food:0.1};const ctx={period:100,counts:{farmer:4,fisher:2},w:(r)=>W[r]!=null?W[r]:1};
+const r=E.allocRealCandidates(v,{day:7},[['farmer',11],['fisher',22]],ctx);const f=r&&r.find(c=>c[0]==='farmer');console.log(JSON.stringify({farmer:f?f[1]:null,p:E.T1421_FARM_PRICE}));`;
+let M0 = {}, M1 = {}, Mk = {}, Med = {};
+try { M0 = kid({ ...FW, T1421_FARM_PRICE: 'mix' }, MX('null')); M1 = kid({ ...FW, T1421_FARM_PRICE: 'mix' }, MX('{hemp:365}')); Mk = kid({ ...FW, T1421_FARM_PRICE: 'kcal' }, MX('{hemp:365}'));
+  Med = kid({}, `const C=require('./server/crops'),K=require('./server/kcal');const z=[...C.T1201_BRONZE_SET].filter(id=>!(K.econUnitsOf(id,1)>0));console.log(JSON.stringify({n:C.T1201_BRONZE_SET.size,ined:z}));`); } catch (e) { M0 = { err: String(e).slice(0, 200) }; }
+ok(M0.p === 'mix' && Math.abs(M0.farmer - Mk.farmer) < 1e-9 && Math.abs(M1.farmer - (Mk.farmer + 365 * 7 / (365 * 4) * 100)) < 1e-6 && Med.n === 12 && Med.ined.length === 0,
+  '⑦ mix — 안 먹는 칸 0 = ㉯ 값 · 삼 365낱 × 값 7 ÷ (365 × 농부 4) × 창 100 = +175 · 청동기 묶음 12종에 안 먹는 작물 0', JSON.stringify({ M0: M0.farmer, M1: M1.farmer, kcal: Mk.farmer, Med }));
+// ── ⑧ 나눗수 ──
+const DV = `const E=require('./sim/economy-sim');
+const mk=()=>({_t1276H:365*6,_t1276Stand:0,_t1421GAvg:120,storage:{},dailyProductionBuf:{fish:3},_allocDay:0,counts:{farmer:4,fisher:2}});
+const W={fish:1,meat:2,vegetable:1};const ctx={period:1,counts:{farmer:4,fisher:2},w:(r)=>W[r]!=null?W[r]:1};
+const v=mk();if(E.T1421_FARM_DIV==='labor'){v._t1421DayS=100;for(let d=0;d<400;d++){v._t1421LabS=(v._t1421LabS||0)+200;v._t368FoodTot=0;E.t1276Note(v);}v._t1276H=365*6;}
+const r=E.allocRealCandidates(v,{day:7},[['farmer',11],['fisher',22]],ctx);const f=r&&r.find(c=>c[0]==='farmer');console.log(JSON.stringify({farmer:f?f[1]:null,d:E.T1421_FARM_DIV,labD:v._t1421LabD}));`;
+let D0 = {}, Dg = {}, Dl = {}, Dx = {};
+try { D0 = kid({ ...FW, T1421_FARM_PRICE: 'kcal' }, DV); Dg = kid({ ...FW, T1421_FARM_PRICE: 'kcal', T1421_FARM_DIV: 'grow' }, DV); Dl = kid({ ...FW, T1421_FARM_PRICE: 'kcal', T1421_FARM_DIV: 'labor' }, DV); Dx = kid({ ...FW, T1421_FARM_PRICE: 'kcal', T1421_FARM_DIV: 'yes' }, DV); } catch (e) { D0 = { err: String(e).slice(0, 200) }; }
+ok(D0.farmer > 0 && Math.abs(Dg.farmer / D0.farmer - 365 / 120) < 1e-9 && Math.abs(Dl.labD - 365 * 200 / 100) < 1e-9 && Math.abs(Dl.farmer / D0.farmer - (365 * 4) / (365 * 200 / 100)) < 1e-9 && Dx.d === '' && Math.abs(Dx.farmer - D0.farmer) < 1e-12
+    && /if \(T1421_FARM_DIV && T1408_FARM_VALUE && \(counts\.farmer \|\| 0\) > 0\) for \(const o of foodOpts\) if \(o\[0\] === 'farmer'\) o\[1\] = Math\.max\(v\._t1276H \|\| 0, v\._t1276Stand \|\| 0\) \/ t1421FarmDays\(v, counts\.farmer\);/.test(ES),
+  '⑧ 나눗수 — ⓑ = ⓐ × 365 ÷ 자라는 날 120 · ⓒ = ⓐ × (365 × 농부 4) ÷ 지난 한 해 일손 날 730 · `grow`·`labor` 만 · 기근 블록 농부 칸도 같은 나눗수(글자)', JSON.stringify({ a: D0.farmer, b: Dg.farmer, c: Dl.farmer, labD: Dl.labD, x: Dx.d }));
 // ── ⑥ 미끼 ──
 let Ba = {}; try { Ba = kid({ ...FW, T1421_FARM_PRICE: 'crop' }, FV(BAIT('t1421FoodPrice(v, ctx.w, T1421_FARM_PRICE)', '0'))); } catch (e) { Ba = { err: String(e).slice(0, 200) }; }
 ok(Ba.baitN === 1 && !Ba.err && !notFb(Ba), '⑥ 미끼 ⓐ — 바꾼 자리 1곳(농부 값 줄의 하루치 값 → 0)인 사본은 ② 빨강', JSON.stringify(Ba));
