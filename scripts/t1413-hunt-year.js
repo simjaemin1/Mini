@@ -87,7 +87,7 @@ function load(seed, exch, nh, sp) {
   vm.runInContext(DETMATH + '(Math)', C);
   vm.runInContext(js + `
 ;globalThis.__api={get s(){return s;},get lifeGM(){return lifeGM;},set lifeGM(v){lifeGM=v;},resetAll,driveHunters,updateMobs,
-  MOB_DEF,N,NPC_MAXHP,get camp(){return camp;},rnd:()=>Math.random(),setSp(x){HUNT_SPECIES=x;},setCap(x){HUNT_CAP=x;},getCap(){return HUNT_CAP;},fast(){if(typeof __ps==='function'){__PR=__ps(TR.rock);__PF=__ps(TR.forest);}},
+  MOB_DEF,N,NPC_MAXHP,get camp(){return camp;},rnd:()=>Math.random(),setSp(x){HUNT_SPECIES=x;},setCap(x){HUNT_CAP=x;},getCap(){return HUNT_CAP;},inForest(x,y){const X=Math.floor(x),Y=Math.floor(y);return X>=0&&Y>=0&&X<N&&Y<N&&!!forest[Y*N+X];},fast(){if(typeof __ps==='function'){__PR=__ps(TR.rock);__PF=__ps(TR.forest);}},
   win(K){const cx=Math.round(N*0.18)+5,cy=Math.round(N*0.5);const L=[];for(let i=0;i<N*N;i++)if(forest0[i])L.push([Math.hypot(i%N-cx,((i/N)|0)-cy),i]);
     if(!(K>0)||K>=L.length)return {K:L.length,R:null};L.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);const keep=new Uint8Array(N*N);for(let k=0;k<K;k++)keep[L[k][1]]=1;
     for(let i=0;i<N*N;i++)if(!keep[i])forest0[i]=0;return {K,R:+L[K-1][0].toFixed(1)};}};`, C);
@@ -126,7 +126,7 @@ function runOne(seed, exch, nh, sp, share, cap, r, days) {
   while (A.lifeGM < dayEnd) {
     const gm = A.lifeGM, sched = shareOn(share, gm + 1);
     const dayI = Math.floor((gm + 1 - NPC_START) / 1440);
-    if (dayI !== lastDay && process.env.T1413_DEBUG) { let lv = 0, dd = 0, pr = 0; for (const m of s.mobs) { if (m.st === 'dead') dd++; else if (isPrey(m)) lv++; else pr++; } console.error(`day ${dayI} ms ${Date.now() % 10000000} N ${N.toFixed(1)} 산 ${lv} 사체 ${dd} 맹수 ${pr} 사냥꾼 ${s.agents.length}+집${home.length} 피 ${(s._blood || []).length} 좌표최대 사람 ${Math.max(0, ...home.concat(s.agents).map((q) => Math.max(Math.abs(q.px), Math.abs(q.py)))).toFixed(0)} 짐승 ${Math.max(0, ...s.mobs.map((q) => Math.max(Math.abs(q.px), Math.abs(q.py)))).toFixed(0)}`); }
+    if (dayI !== lastDay && process.env.T1413_DEBUG) { let lv = 0, dd = 0, pr = 0; for (const m of s.mobs) { if (m.st === 'dead') dd++; else if (isPrey(m)) lv++; else pr++; } const cp = A.camp, LP = s.mobs.filter((q) => q.st !== 'dead' && isPrey(q)), dm = LP.length ? LP.reduce((p, q) => p + Math.hypot(q.px - cp.cx, q.py - cp.cy), 0) / LP.length : 0, inF = LP.filter((q) => A.inForest(q.px, q.py)).length; console.error(`day ${dayI} 캠프거리 ${dm.toFixed(0)} 숲안 ${inF}/${LP.length} N ${N.toFixed(1)} 산 ${lv} 사체 ${dd} 맹수 ${pr} 사냥꾼 ${s.agents.length}+집${home.length} 피 ${(s._blood || []).length} 좌표최대 사람 ${Math.max(0, ...home.concat(s.agents).map((q) => Math.max(Math.abs(q.px), Math.abs(q.py)))).toFixed(0)} 짐승 ${Math.max(0, ...s.mobs.map((q) => Math.max(Math.abs(q.px), Math.abs(q.py)))).toFixed(0)}`); }
     if (dayI !== lastDay) { lastDay = dayI; s.agents = s.agents.filter((a) => !a._dead); home = home.filter((a) => !a._dead); }   // ④
     if (sched) { if (home.length) comeBack(); A.setWant(nh); }
     else {
