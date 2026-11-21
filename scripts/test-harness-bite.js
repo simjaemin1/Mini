@@ -234,7 +234,7 @@ console.log('\n⑨ 자의 틈 — touched-harness 가 `core.quotePath` 에 안 �
     let w = ''; try { w = fs.readFileSync(WHERE, 'utf8'); } catch (e) {} return w; };
   const wA = run7(TOOL);
   ok(wA.startsWith(TDIR + path.sep), '★⑨ pm-old-code-red — 사본 나무가 `TMPDIR` 밑에 선다', wA.replace(TDIR, '$TMPDIR') || '(안 돎)');
-  const BT = LB.swap(TOOL, 'mktemp -d "${TMPDIR:-/tmp}/ocr.XXXXXX"', 'mktemp -d /tmp/ocr.XXXXXX');
+  const BT = LB.swap(TOOL, 'mktemp -d "$_TMPB/ocr.XXXXXX"', 'mktemp -d /tmp/ocr.XXXXXX');   // ★[land1089 · PM] 자의 줄이 T1414 꼴(`_TMPB` — 끝 빗금 · 빈 값까지 본다)로 합쳐졌다 — 미끼가 바꿀 글자도 그 줄로
   const wB = run7(BT.src);
   ok(BT.n === 1 && !wB.startsWith(TDIR + path.sep), '⑨ 미끼 — `/tmp` 를 박은 종전 줄 사본은 `TMPDIR` 밖에 선다(샌드박스에서 못 도는 꼴)', `바꾼 자리 ${BT.n} · ${wB.slice(0, 20) || '(안 돎)'}`);
 }
