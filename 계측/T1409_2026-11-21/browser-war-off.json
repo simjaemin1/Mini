@@ -1,0 +1,1089 @@
+{
+  "series": [
+    "07ca2d076525d81fe189bb1d63b7075fb23f482f0e2ecb2cd7023979240c036d",
+    "bac05c65886924bc995555a22d380c2e4e6e0b5cbc779095ba5c51e15c4b15b4",
+    "1ff6055199aec941fd34e560b0c6548150bb61e9cfbcbb2e65537e2e425f9a69",
+    "abeaa7c7a12f78402e4ccc594eabfabb37600761f603f40f037346a31a59bf49",
+    "e829623fa8d5d35f33c4f52f8f54833deb6d079dadce1d40194ccc9927010765",
+    "83f5d31c9790f1b926fb366e8881a4a1da9e58e8f96ce1496b6158ee139e768d",
+    "e74d083abdf72c93566a2137ffc323c732772be73fd50cbda8ed1599b3a6cf48",
+    "743a4e69f21e8f3d86933191b2b7bec22c7d61c090938aed4d7408f121736562",
+    "8f97ee4edad8f137828a223df2ee5e70f14f0aabaa81d3413339b7e9f19b8c5d",
+    "03ac515aa3b9ad6bf6d7eb0dfd527cd7a72855cf0e8cfe6f6cf4cbdb7a36a80c",
+    "231df311bded80f23d71dd166aea0d4c69383bafe17df9dff688d7623bb3e74b",
+    "93c86d5c515090ec9ed2350264198815e0fa111e102069fc5f5df54bb3dc02d7",
+    "935b2e2ed4cf58453012957e01d6401aeb6168c112f46b9710ed0cc599bdeec0",
+    "c2bdcd01aff610a7368245a337f61d6a0929c1aa1c9739ffc85281ecccb81e45",
+    "d490217843fb453bfb58718bdbe7d7c15ad132d85047be9efcb0bc3d9898a719",
+    "15a8099df7c1515131d1142ec4f788512752c2cfbd7e88c320f1b2ddec0fea55",
+    "1ca36913f19e51cd747caefe50e27215aea5e56089b4868eb246bd91778aabeb",
+    "13f836ec3fd5424ad9ee09f0ba0356b00186929df91aef5fcd26c2936e7ad0a3",
+    "400a02fab18de04d26812c7e416573785a3da53bb5f2fca730b37aba308a7d46",
+    "382b1942b333e0806ce2e6975ef187828a16edb07d7206ed1a7227c237c04c87",
+    "8fc1fcc961bf5bc403b7b4a3f4bdef682fab328269fc4e943b33ff7951d92945",
+    "37cecc9e44ebbdd055f319dfbff6aba9724d209ae0d5d309e0f4c714ad5311b4",
+    "ba1cc621a8fd57dc0fb847984715e05e1f4d6f4eaf7b554b080f1ac63366c68b",
+    "ac0910c34235c434e6990dca2e7d22a060580cf232e03681beb66235de7c7619",
+    "01177fee71d54d0675b5a8c5acbfe214eb9a90be5a556326179f13f05b4fd066",
+    "7f11617a9ba3b0921b06fc95c607f7fcd267573760144fc1dc4108387042f3ce",
+    "ba1e3082789c7aecf9a5618124cdaeb12eae4cc7bb5f195dc9780efdaf3b1a88",
+    "0072ddbafc8d0cc5489ac2be87fa95fed31b605a04c23b0c7aa00b4b2cef379f",
+    "f6cf48be1f5b5ae45434f8b40287357aa0962ef36dc2b516da373e94274737d2",
+    "e888dbcc084756202035e103b3a065244dfe955c827f8eee9f8dadc296fa2b1c",
+    "a0f5a7442b62d5e6904f8b7be630bae2703d7eca59e627365d88b9f307ffb1d4",
+    "245d9b9fbccbd15c67c996cbe54433eb142471113c1aac27a7320276992402ec",
+    "b4968d3552e2980433e910f38552df85af6e58ae23db3f9813ccbef225554e87",
+    "50d3551f410912c4fdd0e10e5393943f1189b9cf88e5d5f70fef0dd3fafd4d71",
+    "0a84ecbb8b442bb69be80abedb07e147f6817cd27b94ff47572241af39b9fffa",
+    "3865a508e26f9571ed6eac75c1af419b6ff5ed7bc726479a1a50dda8d8d0007f",
+    "d2200ce16de8f82cd03a15c0365fb9f0fc15354c0a75495cce4bf435d5f1be44",
+    "2c1f22d456f7013615286fafe0712aaa9c524ffaf61c5b005a37a10429c01501",
+    "c77228fc02d4ffd36567bfbadbd233cc4347b59b2360095f4036d253316c502e",
+    "7476cfd73cb1be0aa1a5668275df50827c5cdd5dd5dab5fae331cc140722b809",
+    "c0361388ab4e604e7a5dc82426786005b758c382987d86ab955870548abe9775",
+    "cb95f272bbdf76aeed654150152649063490a70d36c5005d04824bcb03a07bab",
+    "1ee04ec2f0ccab99748144724705cd700f28d8726a07ec368490329a65b60190",
+    "79f90b309f595af766120bfde337401ec61594488eec477f78a68eb14b272119",
+    "6bec945d98f3daa64c37cd624ec32b972e6d2339ce8e05352d8321c6b33bb57c",
+    "3786d11efd89ca684b293910eb003e1ad11896431765746acab5577dc0813b3d",
+    "20d28128804658e765b326c043d3d04971bcd9ca9443708128a36e6d9ebe588b",
+    "8c34ec862c920abc08841f29c80010bd43beb76df4f7aefb4a7f67f4c4e48ffb",
+    "c2ff42bc4065867de5595ae52cf4ec56967d2f979c2f6b35efe152266362ebaf",
+    "9f8232298259092a9002982e226b104618aa480eb9de0bd30b52acd0aa1d5e3a",
+    "4033fd1813ccfd7fb60ecc3019ac18c203d6178e87059143d99e7c94f8c13502",
+    "9fd20d846306632674fd8d34b7c98f18e76462f8856124c812827c63f1b8bf88",
+    "1efbee8948280bf9fb9b4dc652adb27f8e8e426bb1e0acb6c3024dd5f8c5d38f",
+    "3b0f30e28ad43dcafa06c3e37385798d0fdd0030bde32b9dda11dd05b0810716",
+    "7d6a529c71f4ce6744b6c7f87589a88c74cffe6eaff483d4bd1e4810d8261208",
+    "c8f0db9656431b0e81ba0c6f860b58e60fea51e86f8c83c9f7ec4f9c43171b89",
+    "8e58e06270c6a1fd22b19bf0c1fc8eeaf37b1df7233e7022f0e17ef543474a68",
+    "745b79a280560e3a84045a7d7736a5214dbfc25b3d7e906d3f8d9955fbce5e6e",
+    "698af436037852fccdd0458155f858a9d5e2433f85feed96cc6598d1865c7668",
+    "47d64e90fce9fd1d009fae6c4b918dc88ac14d2803868bc991a6997437be73c6",
+    "8fb849030ee508a9ef74276761f8c9852024d003a2d364841239187d0c5b05e4",
+    "28f56f522e50898d84145fd3ead1d8124133b73b4d26060637bf92560ab239b9",
+    "37f0900a2652ceb0a3746ee8a9216dfeb3e031e9ca880d33e8f2f4d21a64f411",
+    "82545eb15e969062e1f219c35cbc5e06b65e19e3a94f7e2d4074885607378c12",
+    "f2a065920a72dae3a541dccf81d73964f2895518df84afe2982f1d958bc73a5e",
+    "69cd9aedaeddf3504cdc367d7fab5cb20a64034c1f2fbface3ebdd93f7a56bd2",
+    "a93e156adc0ef4fe47bc4313ac7e1278a73d94f068fb39e924fdf122ad3b91e1",
+    "089252f6d8dddfa315a542c87d1daaa1b136e4b43a3ff52a96ed2ebdbec3529d",
+    "d4dc2de089fa44a90108364ae20d3cd0f62a745ad0574809e6606753c6f4d9a5",
+    "18d47850a91c5c4d0a5882f66aae5de6d2b309ba4a51700222dbb2a30d1d9196",
+    "b69f766c9f688cd5e25698cd11389021ad5a91c63e4462e61a75a962addf1449",
+    "904187d01e21778968f12e4e9cc62b8bfb7b7b05da24ff8e5d08f0362188c3ab",
+    "03620e51c13b4882dcc3d73f7af4a6d09fdc76d3302826dd4cf14bc2e519a7f3",
+    "2e9448e5ab20e00c628da43b53563a006c8fadab5b85a6658f67a7430e36c42c",
+    "7012181e4e01232a9b350736c426ae169cd54467d9e4ef7fe887164ffaf83fdc",
+    "8bd765891667ad8f36b25578f8811795cc29f3e039455ca799abe4945df0a5ba",
+    "2b90fe9e335aa4fab97a24efb5fc56875000c10218baca08754c6e59dd8bef77",
+    "502e62503d4d3ee2251c4273fa92cd8161b6b9e5b5f559a7639819c2affd0bef",
+    "9fcf2b8190d1025e73629e7ddd574fa106cd2bf6b5a8986e998bcc42af77a939",
+    "857e29879316a628e8d95f1049fa3185855e025fe9092a01cecf996cb3b28b84",
+    "d6d7d572f0aa011ec85f8a4c30c53533f59b4898a02f9e68cfc42dd2de07ffc2",
+    "3a158d567c89fadd5e26effad42fe9ccdfab814c025db4182a2c14cad2af8bbf",
+    "e1de71cdf770f04bc11e5691b0c3afea40f838c1e5d71f3c224fda7b692384e8",
+    "f7ced0d5aeade8a19c5d0facb4fb2e2d8a07ba96c47f33fad6e228076df7cfc9",
+    "235d0752eca2dbd887c8a0fbdbc5698b98f9627e7c7ef242bd6ec3237fe15e37",
+    "2e03f050eafc9fbb66811e75fb5c604fcf9c9195eb16d2e14564692ec65e4f3d",
+    "620e4c6da00b714bb45a6a564fe145882c53f7ca21f06b014e3444908492c241",
+    "c4880e04f7fcb38a1e5bd884600a75d56dd6be7005d4e03e50febb153916dca9",
+    "f8ea886025994d6412efdacc825168931999c00d5275bb2667d21421f8ec7ab8",
+    "84949da27073053c8dfffe25be31f51ec3f2c649cba54a091f32a0e60af57b30",
+    "1129ee7c4c15874d8b58f4ef0771bbc700ca42fde0e69cb33078dad652353874",
+    "df1a98b95e8e11adc806e1c8eff4e1da83c3799c527aaebd9f5f9f577bab9ce0",
+    "ea4b61755baab8e3e84d999ce9e10d45e6f4c8ab42f303d8a58d7219890b8800",
+    "94fd61d4426b2809b78f9728cc31609c02f37787624a60dbadf32b01a4b4696e",
+    "7a1a4d7dd2ada9b3738876aa205bd036e28cd8e972f893d8a74e2db93e093d46",
+    "84c3a8bca8a129ed86f7bf8971d35ac36778c45424dbe8eabf40c77298599ae0",
+    "6f34bb423f530a7d195f90bd39f84a8e7da2c579c9fe25cf16da97d0127a419a",
+    "66aef111043008445d2adcc980a441216fd3f89a71dac4b64f021543f526b8b7",
+    "692816fa001e38a77681023d1aa9b14e3c6f5a640fc64927e67b84cb72dace9e",
+    "802a4173345367f50690678b9a128059147ccab7cc83b2dd86914ff556c1d715"
+  ],
+  "final": [
+    {
+      "name": "마을1",
+      "pop": 72,
+      "food": 2823.2693707895537,
+      "empty": false
+    },
+    {
+      "name": "마을2",
+      "pop": 30,
+      "food": 707.60616625277,
+      "empty": false
+    },
+    {
+      "name": "마을3",
+      "pop": 10,
+      "food": 0,
+      "empty": false
+    },
+    {
+      "name": "마을4",
+      "pop": 66,
+      "food": 1453.5084171441958,
+      "empty": false
+    },
+    {
+      "name": "마을5",
+      "pop": 72,
+      "food": 1459.2331009636835,
+      "empty": false
+    },
+    {
+      "name": "마을6",
+      "pop": 38,
+      "food": 676.60651915525,
+      "empty": false
+    },
+    {
+      "name": "마을7",
+      "pop": 48,
+      "food": 629.410616859953,
+      "empty": false
+    },
+    {
+      "name": "마을8",
+      "pop": 44,
+      "food": 751.8621624424619,
+      "empty": false
+    }
+  ],
+  "fixtures": [
+    {
+      "input": {
+        "name": "같은 입력",
+        "npcs": [
+          {
+            "id": 0,
+            "age": 20,
+            "currentJob": "warrior",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          },
+          {
+            "id": 1,
+            "age": 20,
+            "currentJob": "warrior",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          },
+          {
+            "id": 2,
+            "age": 20,
+            "currentJob": "hunter",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          },
+          {
+            "id": 3,
+            "age": 20,
+            "currentJob": "farmer",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          },
+          {
+            "id": 4,
+            "age": 20,
+            "currentJob": "miner",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          },
+          {
+            "id": 5,
+            "age": 20,
+            "currentJob": "lumberjack",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          },
+          {
+            "id": 6,
+            "age": 20,
+            "currentJob": "fisher",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          },
+          {
+            "id": 7,
+            "age": 20,
+            "currentJob": "forager",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          }
+        ],
+        "counts": {
+          "warrior": 2,
+          "hunter": 1,
+          "farmer": 1,
+          "miner": 1,
+          "lumberjack": 1,
+          "fisher": 1,
+          "forager": 1
+        },
+        "storage": {
+          "weapon": 30,
+          "armor": 3,
+          "stone": 20,
+          "copper": 3,
+          "tin": 2
+        },
+        "land": {
+          "tin": 1
+        },
+        "_weapQ": 0.3,
+        "_swordFrac": 0.5
+      },
+      "mode": "raid",
+      "opts": {},
+      "value": {
+        "composition": {
+          "champion": 0,
+          "dagger": 2,
+          "spear": 0,
+          "pike": 0,
+          "archer": 1,
+          "slinger": 0,
+          "greataxe": 0,
+          "militia": 0
+        },
+        "force": 3,
+        "warriors": 2,
+        "hunters": 1,
+        "archer": 1,
+        "melee": 2,
+        "champion": 0,
+        "arrows": 20,
+        "stones": 0,
+        "armed": 30,
+        "weapQ": 0.35,
+        "skillMean": 1,
+        "mode": "raid",
+        "veteranRoster": [
+          {
+            "npc": {
+              "id": 0,
+              "age": 20,
+              "currentJob": "warrior",
+              "skills": {
+                "combat": 1,
+                "archery": 1
+              },
+              "_wsSword": 1,
+              "_wsBow": 1,
+              "_wsSpear": 1,
+              "_wsSling": 0.5,
+              "_wsInit": 1,
+              "_veteranWType": "sword"
+            },
+            "wtype": "sword"
+          },
+          {
+            "npc": {
+              "id": 1,
+              "age": 20,
+              "currentJob": "warrior",
+              "skills": {
+                "combat": 1,
+                "archery": 1
+              },
+              "_wsSword": 1,
+              "_wsBow": 1,
+              "_wsSpear": 1,
+              "_wsSling": 0.5,
+              "_wsInit": 1,
+              "_veteranWType": "sword"
+            },
+            "wtype": "sword"
+          },
+          {
+            "npc": {
+              "id": 2,
+              "age": 20,
+              "currentJob": "hunter",
+              "skills": {
+                "combat": 1,
+                "archery": 1
+              },
+              "_wsSword": 1,
+              "_wsBow": 1,
+              "_wsSpear": 1,
+              "_wsSling": 1.2,
+              "_wsInit": 1,
+              "_veteranWType": "bow"
+            },
+            "wtype": "bow"
+          }
+        ],
+        "_individual": 1
+      }
+    },
+    {
+      "input": {
+        "name": "같은 입력",
+        "npcs": [
+          {
+            "id": 0,
+            "age": 20,
+            "currentJob": "warrior",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          },
+          {
+            "id": 1,
+            "age": 20,
+            "currentJob": "warrior",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          },
+          {
+            "id": 2,
+            "age": 20,
+            "currentJob": "hunter",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          },
+          {
+            "id": 3,
+            "age": 20,
+            "currentJob": "farmer",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          },
+          {
+            "id": 4,
+            "age": 20,
+            "currentJob": "miner",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          },
+          {
+            "id": 5,
+            "age": 20,
+            "currentJob": "lumberjack",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          },
+          {
+            "id": 6,
+            "age": 20,
+            "currentJob": "fisher",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          },
+          {
+            "id": 7,
+            "age": 20,
+            "currentJob": "forager",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          }
+        ],
+        "counts": {
+          "warrior": 2,
+          "hunter": 1,
+          "farmer": 1,
+          "miner": 1,
+          "lumberjack": 1,
+          "fisher": 1,
+          "forager": 1
+        },
+        "storage": {
+          "weapon": 30,
+          "armor": 3,
+          "stone": 20,
+          "copper": 3,
+          "tin": 2
+        },
+        "land": {
+          "tin": 1
+        },
+        "_weapQ": 0.3,
+        "_swordFrac": 0.5
+      },
+      "mode": "raid",
+      "opts": {
+        "defense": true
+      },
+      "value": {
+        "composition": {
+          "champion": 0,
+          "dagger": 2,
+          "spear": 2,
+          "pike": 0,
+          "archer": 1,
+          "slinger": 1,
+          "greataxe": 1,
+          "militia": 0
+        },
+        "force": 7,
+        "warriors": 2,
+        "hunters": 1,
+        "archer": 1,
+        "melee": 5,
+        "champion": 0,
+        "arrows": 20,
+        "stones": 15,
+        "armed": 30,
+        "weapQ": 0.35428571428571426,
+        "skillMean": 1.09,
+        "mode": "raid",
+        "veteranRoster": [
+          {
+            "npc": {
+              "id": 0,
+              "age": 20,
+              "currentJob": "warrior",
+              "skills": {
+                "combat": 1,
+                "archery": 1
+              },
+              "_wsSword": 1,
+              "_wsBow": 1,
+              "_wsSpear": 1,
+              "_wsSling": 0.5,
+              "_wsInit": 1,
+              "_veteranWType": "sword"
+            },
+            "wtype": "sword"
+          },
+          {
+            "npc": {
+              "id": 1,
+              "age": 20,
+              "currentJob": "warrior",
+              "skills": {
+                "combat": 1,
+                "archery": 1
+              },
+              "_wsSword": 1,
+              "_wsBow": 1,
+              "_wsSpear": 1,
+              "_wsSling": 0.5,
+              "_wsInit": 1,
+              "_veteranWType": "sword"
+            },
+            "wtype": "sword"
+          },
+          {
+            "npc": {
+              "id": 2,
+              "age": 20,
+              "currentJob": "hunter",
+              "skills": {
+                "combat": 1,
+                "archery": 1
+              },
+              "_wsSword": 1,
+              "_wsBow": 1,
+              "_wsSpear": 1,
+              "_wsSling": 1.2,
+              "_wsInit": 1,
+              "_veteranWType": "bow"
+            },
+            "wtype": "bow"
+          },
+          {
+            "npc": {
+              "id": 6,
+              "age": 20,
+              "currentJob": "fisher",
+              "skills": {
+                "combat": 1,
+                "archery": 1
+              },
+              "_wsSword": 1,
+              "_wsBow": 1,
+              "_wsSpear": 1,
+              "_wsSling": 0.5,
+              "_wsInit": 1,
+              "_veteranWType": "spear"
+            },
+            "wtype": "spear"
+          },
+          {
+            "npc": {
+              "id": 4,
+              "age": 20,
+              "currentJob": "miner",
+              "skills": {
+                "combat": 1,
+                "archery": 1
+              },
+              "_wsSword": 1,
+              "_wsBow": 1,
+              "_wsSpear": 1,
+              "_wsSling": 0.6,
+              "_wsInit": 1,
+              "_veteranWType": "spear"
+            },
+            "wtype": "spear"
+          },
+          {
+            "npc": {
+              "id": 5,
+              "age": 20,
+              "currentJob": "lumberjack",
+              "skills": {
+                "combat": 1,
+                "archery": 1
+              },
+              "_wsSword": 1,
+              "_wsBow": 1,
+              "_wsSpear": 1,
+              "_wsSling": 0.4,
+              "_wsInit": 1,
+              "_veteranWType": "sword"
+            },
+            "wtype": "sword"
+          },
+          {
+            "npc": {
+              "id": 7,
+              "age": 20,
+              "currentJob": "forager",
+              "skills": {
+                "combat": 1,
+                "archery": 1
+              },
+              "_wsSword": 1,
+              "_wsBow": 1,
+              "_wsSpear": 1,
+              "_wsSling": 2.6,
+              "_wsInit": 1,
+              "_veteranWType": "sling"
+            },
+            "wtype": "sling"
+          }
+        ],
+        "_individual": 1
+      }
+    },
+    {
+      "input": {
+        "name": "같은 입력",
+        "npcs": [
+          {
+            "id": 0,
+            "age": 20,
+            "currentJob": "warrior",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          },
+          {
+            "id": 1,
+            "age": 20,
+            "currentJob": "warrior",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          },
+          {
+            "id": 2,
+            "age": 20,
+            "currentJob": "hunter",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          },
+          {
+            "id": 3,
+            "age": 20,
+            "currentJob": "farmer",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          },
+          {
+            "id": 4,
+            "age": 20,
+            "currentJob": "miner",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          },
+          {
+            "id": 5,
+            "age": 20,
+            "currentJob": "lumberjack",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          },
+          {
+            "id": 6,
+            "age": 20,
+            "currentJob": "fisher",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          },
+          {
+            "id": 7,
+            "age": 20,
+            "currentJob": "forager",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          }
+        ],
+        "counts": {
+          "warrior": 2,
+          "hunter": 1,
+          "farmer": 1,
+          "miner": 1,
+          "lumberjack": 1,
+          "fisher": 1,
+          "forager": 1
+        },
+        "storage": {
+          "weapon": 30,
+          "armor": 3,
+          "stone": 20,
+          "copper": 3,
+          "tin": 2
+        },
+        "land": {
+          "tin": 1
+        },
+        "_weapQ": 0.3,
+        "_swordFrac": 0.5
+      },
+      "mode": "raid",
+      "opts": {
+        "forceCount": 3
+      },
+      "value": {
+        "composition": {
+          "champion": 0,
+          "dagger": 2,
+          "spear": 0,
+          "pike": 0,
+          "archer": 1,
+          "slinger": 0,
+          "greataxe": 0,
+          "militia": 0
+        },
+        "force": 3,
+        "warriors": 2,
+        "hunters": 1,
+        "archer": 1,
+        "melee": 2,
+        "champion": 0,
+        "arrows": 20,
+        "stones": 0,
+        "armed": 30,
+        "weapQ": 0.35,
+        "skillMean": 1,
+        "mode": "raid",
+        "veteranRoster": [
+          {
+            "npc": {
+              "id": 0,
+              "age": 20,
+              "currentJob": "warrior",
+              "skills": {
+                "combat": 1,
+                "archery": 1
+              },
+              "_wsSword": 1,
+              "_wsBow": 1,
+              "_wsSpear": 1,
+              "_wsSling": 0.5,
+              "_wsInit": 1,
+              "_veteranWType": "sword"
+            },
+            "wtype": "sword"
+          },
+          {
+            "npc": {
+              "id": 1,
+              "age": 20,
+              "currentJob": "warrior",
+              "skills": {
+                "combat": 1,
+                "archery": 1
+              },
+              "_wsSword": 1,
+              "_wsBow": 1,
+              "_wsSpear": 1,
+              "_wsSling": 0.5,
+              "_wsInit": 1,
+              "_veteranWType": "sword"
+            },
+            "wtype": "sword"
+          },
+          {
+            "npc": {
+              "id": 2,
+              "age": 20,
+              "currentJob": "hunter",
+              "skills": {
+                "combat": 1,
+                "archery": 1
+              },
+              "_wsSword": 1,
+              "_wsBow": 1,
+              "_wsSpear": 1,
+              "_wsSling": 1.2,
+              "_wsInit": 1,
+              "_veteranWType": "bow"
+            },
+            "wtype": "bow"
+          }
+        ],
+        "_individual": 1
+      }
+    },
+    {
+      "input": {
+        "name": "같은 입력",
+        "npcs": [
+          {
+            "id": 0,
+            "age": 20,
+            "currentJob": "warrior",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          },
+          {
+            "id": 1,
+            "age": 20,
+            "currentJob": "warrior",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          },
+          {
+            "id": 2,
+            "age": 20,
+            "currentJob": "hunter",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          },
+          {
+            "id": 3,
+            "age": 20,
+            "currentJob": "farmer",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          },
+          {
+            "id": 4,
+            "age": 20,
+            "currentJob": "miner",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          },
+          {
+            "id": 5,
+            "age": 20,
+            "currentJob": "lumberjack",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          },
+          {
+            "id": 6,
+            "age": 20,
+            "currentJob": "fisher",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          },
+          {
+            "id": 7,
+            "age": 20,
+            "currentJob": "forager",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1
+          }
+        ],
+        "counts": {
+          "warrior": 2,
+          "hunter": 1,
+          "farmer": 1,
+          "miner": 1,
+          "lumberjack": 1,
+          "fisher": 1,
+          "forager": 1
+        },
+        "storage": {
+          "weapon": 30,
+          "armor": 3,
+          "stone": 20,
+          "copper": 3,
+          "tin": 2
+        },
+        "land": {
+          "tin": 1
+        },
+        "_weapQ": 0.3,
+        "_swordFrac": 0.5
+      },
+      "mode": "raid",
+      "opts": {
+        "mobFrac": 0.5
+      },
+      "value": {
+        "composition": {
+          "champion": 0,
+          "dagger": 2,
+          "spear": 1,
+          "pike": 0,
+          "archer": 1,
+          "slinger": 0,
+          "greataxe": 0,
+          "militia": 0
+        },
+        "force": 4,
+        "warriors": 2,
+        "hunters": 1,
+        "archer": 1,
+        "melee": 3,
+        "champion": 0,
+        "arrows": 20,
+        "stones": 0,
+        "armed": 30,
+        "weapQ": 0.35,
+        "skillMean": 1,
+        "mode": "raid",
+        "veteranRoster": [
+          {
+            "npc": {
+              "id": 0,
+              "age": 20,
+              "currentJob": "warrior",
+              "skills": {
+                "combat": 1,
+                "archery": 1
+              },
+              "_wsSword": 1,
+              "_wsBow": 1,
+              "_wsSpear": 1,
+              "_wsSling": 0.5,
+              "_wsInit": 1,
+              "_veteranWType": "sword"
+            },
+            "wtype": "sword"
+          },
+          {
+            "npc": {
+              "id": 1,
+              "age": 20,
+              "currentJob": "warrior",
+              "skills": {
+                "combat": 1,
+                "archery": 1
+              },
+              "_wsSword": 1,
+              "_wsBow": 1,
+              "_wsSpear": 1,
+              "_wsSling": 0.5,
+              "_wsInit": 1,
+              "_veteranWType": "sword"
+            },
+            "wtype": "sword"
+          },
+          {
+            "npc": {
+              "id": 2,
+              "age": 20,
+              "currentJob": "hunter",
+              "skills": {
+                "combat": 1,
+                "archery": 1
+              },
+              "_wsSword": 1,
+              "_wsBow": 1,
+              "_wsSpear": 1,
+              "_wsSling": 1.2,
+              "_wsInit": 1,
+              "_veteranWType": "bow"
+            },
+            "wtype": "bow"
+          },
+          {
+            "npc": {
+              "id": 6,
+              "age": 20,
+              "currentJob": "fisher",
+              "skills": {
+                "combat": 1,
+                "archery": 1
+              },
+              "_wsSword": 1,
+              "_wsBow": 1,
+              "_wsSpear": 1,
+              "_wsSling": 0.5,
+              "_wsInit": 1,
+              "_veteranWType": "spear"
+            },
+            "wtype": "spear"
+          }
+        ],
+        "_individual": 1
+      }
+    }
+  ],
+  "knob": "0",
+  "meta": {
+    "lab": "war",
+    "arm": "off",
+    "days": 100,
+    "seed": 1020,
+    "sourceSha256": "e9c204094fca9b908bd42e4403a383066be0a30d0393e9f8f74672f96352c5c7",
+    "initialCaptureOmitted": "초기 스냅샷의 참조 복사 결함으로 initial은 증거에서 제외. 날별 직렬화 SHA와 final은 유효. 초기 동일성은 수정 계측기의 war-fast1/slow 별도 판으로 확인."
+  }
+}

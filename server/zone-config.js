@@ -507,6 +507,13 @@ for (const [id, z] of Object.entries(ZONES_BASE)) {
     host: hostFromEnv(id, 'localhost'),
   };
 }
+// ★[T1406 고침 ① 2026-11-20 · 손잡이 `T1406_BRIDGES=1` · 끔 기본 = 한 글자도 안 바뀐다] 누가 길을 막아도 돌아갈 길 — 걸음 ÷ 곧은 거리 3배 넘는 이웃 쌍을 푸는 다리.
+//   자료 = `server/bridges-t1406.json`({존: flat [cx,cy,…]} · `scripts/audit-walk-place.js` 가 `plan-bridges-v2` 규약(축 4방 · 폭 2 · 두 끝 뭍)으로 뽑았다) — 후보 가지에만 · 채택은 재민.
+//   켜면 그 칸을 `bridges` 끝에 붙인다(읽는 자리 = 서버 막힘 · welcome · 계획기 · 감사 자 모두 이 한 줄을 본다).
+if (process.env.T1406_BRIDGES === '1') {
+  let add = null; try { add = require('./bridges-t1406.json'); } catch (e) { console.warn('[zone-config] T1406_BRIDGES=1 인데 bridges-t1406.json 이 없다 — 다리 없이 간다'); }
+  for (const [id, flat] of Object.entries(add || {})) if (ZONES[id] && Array.isArray(flat) && flat.length) ZONES[id] = { ...ZONES[id], bridges: (ZONES[id].bridges || []).concat(flat) };
+}
 
 // ★★[T214 2026-09-12 · 재민 확정] `CENTRAL_URL` 을 **읽는 쪽에 이었다** — 정본은 여기 하나다.
 //   §0-ⓒ 실측: 스크립트 **90개**가 존에 `CENTRAL_URL` 을 넘기는데 `server/` 에서 읽는 자리가 **0**이었다

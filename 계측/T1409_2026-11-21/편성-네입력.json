@@ -1,0 +1,856 @@
+[
+  {
+    "mode": "raid",
+    "opts": {},
+    "equal": true,
+    "lab": {
+      "composition": {
+        "champion": 0,
+        "dagger": 2,
+        "spear": 0,
+        "pike": 0,
+        "archer": 1,
+        "slinger": 0,
+        "greataxe": 0,
+        "militia": 0
+      },
+      "force": 3,
+      "warriors": 2,
+      "hunters": 1,
+      "archer": 1,
+      "melee": 2,
+      "champion": 0,
+      "arrows": 20,
+      "stones": 0,
+      "armed": 30,
+      "weapQ": 0.35,
+      "skillMean": 1,
+      "mode": "raid",
+      "veteranRoster": [
+        {
+          "npc": {
+            "id": 0,
+            "age": 20,
+            "currentJob": "warrior",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 0.5,
+            "_wsInit": 1,
+            "_veteranWType": "sword"
+          },
+          "wtype": "sword"
+        },
+        {
+          "npc": {
+            "id": 1,
+            "age": 20,
+            "currentJob": "warrior",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 0.5,
+            "_wsInit": 1,
+            "_veteranWType": "sword"
+          },
+          "wtype": "sword"
+        },
+        {
+          "npc": {
+            "id": 2,
+            "age": 20,
+            "currentJob": "hunter",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 1.2,
+            "_wsInit": 1,
+            "_veteranWType": "bow"
+          },
+          "wtype": "bow"
+        }
+      ],
+      "_individual": 1
+    },
+    "server": {
+      "composition": {
+        "champion": 0,
+        "dagger": 2,
+        "spear": 0,
+        "pike": 0,
+        "archer": 1,
+        "slinger": 0,
+        "greataxe": 0,
+        "militia": 0
+      },
+      "force": 3,
+      "warriors": 2,
+      "hunters": 1,
+      "archer": 1,
+      "melee": 2,
+      "champion": 0,
+      "arrows": 20,
+      "stones": 0,
+      "armed": 30,
+      "weapQ": 0.35,
+      "skillMean": 1,
+      "mode": "raid",
+      "veteranRoster": [
+        {
+          "npc": {
+            "id": 0,
+            "age": 20,
+            "currentJob": "warrior",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 0.5,
+            "_wsInit": 1,
+            "_veteranWType": "sword"
+          },
+          "wtype": "sword"
+        },
+        {
+          "npc": {
+            "id": 1,
+            "age": 20,
+            "currentJob": "warrior",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 0.5,
+            "_wsInit": 1,
+            "_veteranWType": "sword"
+          },
+          "wtype": "sword"
+        },
+        {
+          "npc": {
+            "id": 2,
+            "age": 20,
+            "currentJob": "hunter",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 1.2,
+            "_wsInit": 1,
+            "_veteranWType": "bow"
+          },
+          "wtype": "bow"
+        }
+      ],
+      "_individual": 1
+    }
+  },
+  {
+    "mode": "raid",
+    "opts": {
+      "defense": true
+    },
+    "equal": true,
+    "lab": {
+      "composition": {
+        "champion": 0,
+        "dagger": 2,
+        "spear": 2,
+        "pike": 0,
+        "archer": 1,
+        "slinger": 1,
+        "greataxe": 1,
+        "militia": 0
+      },
+      "force": 7,
+      "warriors": 2,
+      "hunters": 1,
+      "archer": 1,
+      "melee": 5,
+      "champion": 0,
+      "arrows": 20,
+      "stones": 15,
+      "armed": 30,
+      "weapQ": 0.35428571428571426,
+      "skillMean": 1.09,
+      "mode": "raid",
+      "veteranRoster": [
+        {
+          "npc": {
+            "id": 0,
+            "age": 20,
+            "currentJob": "warrior",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 0.5,
+            "_wsInit": 1,
+            "_veteranWType": "sword"
+          },
+          "wtype": "sword"
+        },
+        {
+          "npc": {
+            "id": 1,
+            "age": 20,
+            "currentJob": "warrior",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 0.5,
+            "_wsInit": 1,
+            "_veteranWType": "sword"
+          },
+          "wtype": "sword"
+        },
+        {
+          "npc": {
+            "id": 2,
+            "age": 20,
+            "currentJob": "hunter",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 1.2,
+            "_wsInit": 1,
+            "_veteranWType": "bow"
+          },
+          "wtype": "bow"
+        },
+        {
+          "npc": {
+            "id": 6,
+            "age": 20,
+            "currentJob": "fisher",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 0.5,
+            "_wsInit": 1,
+            "_veteranWType": "spear"
+          },
+          "wtype": "spear"
+        },
+        {
+          "npc": {
+            "id": 4,
+            "age": 20,
+            "currentJob": "miner",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 0.6,
+            "_wsInit": 1,
+            "_veteranWType": "spear"
+          },
+          "wtype": "spear"
+        },
+        {
+          "npc": {
+            "id": 5,
+            "age": 20,
+            "currentJob": "lumberjack",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 0.4,
+            "_wsInit": 1,
+            "_veteranWType": "sword"
+          },
+          "wtype": "sword"
+        },
+        {
+          "npc": {
+            "id": 7,
+            "age": 20,
+            "currentJob": "forager",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 2.6,
+            "_wsInit": 1,
+            "_veteranWType": "sling"
+          },
+          "wtype": "sling"
+        }
+      ],
+      "_individual": 1
+    },
+    "server": {
+      "composition": {
+        "champion": 0,
+        "dagger": 2,
+        "spear": 2,
+        "pike": 0,
+        "archer": 1,
+        "slinger": 1,
+        "greataxe": 1,
+        "militia": 0
+      },
+      "force": 7,
+      "warriors": 2,
+      "hunters": 1,
+      "archer": 1,
+      "melee": 5,
+      "champion": 0,
+      "arrows": 20,
+      "stones": 15,
+      "armed": 30,
+      "weapQ": 0.35428571428571426,
+      "skillMean": 1.09,
+      "mode": "raid",
+      "veteranRoster": [
+        {
+          "npc": {
+            "id": 0,
+            "age": 20,
+            "currentJob": "warrior",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 0.5,
+            "_wsInit": 1,
+            "_veteranWType": "sword"
+          },
+          "wtype": "sword"
+        },
+        {
+          "npc": {
+            "id": 1,
+            "age": 20,
+            "currentJob": "warrior",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 0.5,
+            "_wsInit": 1,
+            "_veteranWType": "sword"
+          },
+          "wtype": "sword"
+        },
+        {
+          "npc": {
+            "id": 2,
+            "age": 20,
+            "currentJob": "hunter",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 1.2,
+            "_wsInit": 1,
+            "_veteranWType": "bow"
+          },
+          "wtype": "bow"
+        },
+        {
+          "npc": {
+            "id": 6,
+            "age": 20,
+            "currentJob": "fisher",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 0.5,
+            "_wsInit": 1,
+            "_veteranWType": "spear"
+          },
+          "wtype": "spear"
+        },
+        {
+          "npc": {
+            "id": 4,
+            "age": 20,
+            "currentJob": "miner",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 0.6,
+            "_wsInit": 1,
+            "_veteranWType": "spear"
+          },
+          "wtype": "spear"
+        },
+        {
+          "npc": {
+            "id": 5,
+            "age": 20,
+            "currentJob": "lumberjack",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 0.4,
+            "_wsInit": 1,
+            "_veteranWType": "sword"
+          },
+          "wtype": "sword"
+        },
+        {
+          "npc": {
+            "id": 7,
+            "age": 20,
+            "currentJob": "forager",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 2.6,
+            "_wsInit": 1,
+            "_veteranWType": "sling"
+          },
+          "wtype": "sling"
+        }
+      ],
+      "_individual": 1
+    }
+  },
+  {
+    "mode": "raid",
+    "opts": {
+      "forceCount": 3
+    },
+    "equal": true,
+    "lab": {
+      "composition": {
+        "champion": 0,
+        "dagger": 2,
+        "spear": 0,
+        "pike": 0,
+        "archer": 1,
+        "slinger": 0,
+        "greataxe": 0,
+        "militia": 0
+      },
+      "force": 3,
+      "warriors": 2,
+      "hunters": 1,
+      "archer": 1,
+      "melee": 2,
+      "champion": 0,
+      "arrows": 20,
+      "stones": 0,
+      "armed": 30,
+      "weapQ": 0.35,
+      "skillMean": 1,
+      "mode": "raid",
+      "veteranRoster": [
+        {
+          "npc": {
+            "id": 0,
+            "age": 20,
+            "currentJob": "warrior",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 0.5,
+            "_wsInit": 1,
+            "_veteranWType": "sword"
+          },
+          "wtype": "sword"
+        },
+        {
+          "npc": {
+            "id": 1,
+            "age": 20,
+            "currentJob": "warrior",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 0.5,
+            "_wsInit": 1,
+            "_veteranWType": "sword"
+          },
+          "wtype": "sword"
+        },
+        {
+          "npc": {
+            "id": 2,
+            "age": 20,
+            "currentJob": "hunter",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 1.2,
+            "_wsInit": 1,
+            "_veteranWType": "bow"
+          },
+          "wtype": "bow"
+        }
+      ],
+      "_individual": 1
+    },
+    "server": {
+      "composition": {
+        "champion": 0,
+        "dagger": 2,
+        "spear": 0,
+        "pike": 0,
+        "archer": 1,
+        "slinger": 0,
+        "greataxe": 0,
+        "militia": 0
+      },
+      "force": 3,
+      "warriors": 2,
+      "hunters": 1,
+      "archer": 1,
+      "melee": 2,
+      "champion": 0,
+      "arrows": 20,
+      "stones": 0,
+      "armed": 30,
+      "weapQ": 0.35,
+      "skillMean": 1,
+      "mode": "raid",
+      "veteranRoster": [
+        {
+          "npc": {
+            "id": 0,
+            "age": 20,
+            "currentJob": "warrior",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 0.5,
+            "_wsInit": 1,
+            "_veteranWType": "sword"
+          },
+          "wtype": "sword"
+        },
+        {
+          "npc": {
+            "id": 1,
+            "age": 20,
+            "currentJob": "warrior",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 0.5,
+            "_wsInit": 1,
+            "_veteranWType": "sword"
+          },
+          "wtype": "sword"
+        },
+        {
+          "npc": {
+            "id": 2,
+            "age": 20,
+            "currentJob": "hunter",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 1.2,
+            "_wsInit": 1,
+            "_veteranWType": "bow"
+          },
+          "wtype": "bow"
+        }
+      ],
+      "_individual": 1
+    }
+  },
+  {
+    "mode": "raid",
+    "opts": {
+      "mobFrac": 0.5
+    },
+    "equal": true,
+    "lab": {
+      "composition": {
+        "champion": 0,
+        "dagger": 2,
+        "spear": 1,
+        "pike": 0,
+        "archer": 1,
+        "slinger": 0,
+        "greataxe": 0,
+        "militia": 0
+      },
+      "force": 4,
+      "warriors": 2,
+      "hunters": 1,
+      "archer": 1,
+      "melee": 3,
+      "champion": 0,
+      "arrows": 20,
+      "stones": 0,
+      "armed": 30,
+      "weapQ": 0.35,
+      "skillMean": 1,
+      "mode": "raid",
+      "veteranRoster": [
+        {
+          "npc": {
+            "id": 0,
+            "age": 20,
+            "currentJob": "warrior",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 0.5,
+            "_wsInit": 1,
+            "_veteranWType": "sword"
+          },
+          "wtype": "sword"
+        },
+        {
+          "npc": {
+            "id": 1,
+            "age": 20,
+            "currentJob": "warrior",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 0.5,
+            "_wsInit": 1,
+            "_veteranWType": "sword"
+          },
+          "wtype": "sword"
+        },
+        {
+          "npc": {
+            "id": 2,
+            "age": 20,
+            "currentJob": "hunter",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 1.2,
+            "_wsInit": 1,
+            "_veteranWType": "bow"
+          },
+          "wtype": "bow"
+        },
+        {
+          "npc": {
+            "id": 6,
+            "age": 20,
+            "currentJob": "fisher",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 0.5,
+            "_wsInit": 1,
+            "_veteranWType": "spear"
+          },
+          "wtype": "spear"
+        }
+      ],
+      "_individual": 1
+    },
+    "server": {
+      "composition": {
+        "champion": 0,
+        "dagger": 2,
+        "spear": 1,
+        "pike": 0,
+        "archer": 1,
+        "slinger": 0,
+        "greataxe": 0,
+        "militia": 0
+      },
+      "force": 4,
+      "warriors": 2,
+      "hunters": 1,
+      "archer": 1,
+      "melee": 3,
+      "champion": 0,
+      "arrows": 20,
+      "stones": 0,
+      "armed": 30,
+      "weapQ": 0.35,
+      "skillMean": 1,
+      "mode": "raid",
+      "veteranRoster": [
+        {
+          "npc": {
+            "id": 0,
+            "age": 20,
+            "currentJob": "warrior",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 0.5,
+            "_wsInit": 1,
+            "_veteranWType": "sword"
+          },
+          "wtype": "sword"
+        },
+        {
+          "npc": {
+            "id": 1,
+            "age": 20,
+            "currentJob": "warrior",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 0.5,
+            "_wsInit": 1,
+            "_veteranWType": "sword"
+          },
+          "wtype": "sword"
+        },
+        {
+          "npc": {
+            "id": 2,
+            "age": 20,
+            "currentJob": "hunter",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 1.2,
+            "_wsInit": 1,
+            "_veteranWType": "bow"
+          },
+          "wtype": "bow"
+        },
+        {
+          "npc": {
+            "id": 6,
+            "age": 20,
+            "currentJob": "fisher",
+            "skills": {
+              "combat": 1,
+              "archery": 1
+            },
+            "_wsSword": 1,
+            "_wsBow": 1,
+            "_wsSpear": 1,
+            "_wsSling": 0.5,
+            "_wsInit": 1,
+            "_veteranWType": "spear"
+          },
+          "wtype": "spear"
+        }
+      ],
+      "_individual": 1
+    }
+  }
+]

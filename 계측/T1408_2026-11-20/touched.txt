@@ -1,0 +1,14 @@
+test-body-fields rc=0 1s === 14 통과 / 0 실패 ===
+test-coll-grid rc=0 14s === 결과: 20 PASS / 0 FAIL ===
+test-harness-lint rc=0 91s === 102건 중 PASS 102 · FAIL 0 ===
+test-hp-src rc=0 2s === 54 통과 / 0 실패 ===
+test-lab-alloc rc=0 104s === 결과: 54 PASS / 0 FAIL ===
+test-lon-day rc=0 1s === 22건 중 PASS 22 · FAIL 0 ===
+test-picker-tables rc=0 0s 결과: PASS
+test-t1046-wood-share rc=0 1s === 12건 중 PASS 12 · FAIL 0 ===
+test-t1198-birth-body rc=0 3s === T1198 결과: 47 통과 · 0 실패 ===
+test-t1226-job-flex rc=0 3s 결과: 59 통과 / 0 실패
+test-t1325-one-rot rc=0 1s 
+test-t1374-farm-winter rc=0 610s 5 통과 · 0 실패
+test-t1408-farm-4000 rc=0 2s 6 통과 · 0 실패
+test-wood-step1 rc=0 1s === 결과: 25 PASS / 0 FAIL ===

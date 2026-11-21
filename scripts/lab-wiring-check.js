@@ -1105,10 +1105,14 @@ console.log('\n[P] 랩 ↔ 서버 손 사본 대조 — T1395 전수표(`계측/
   for (const r of D) {
     if (!r.found) { bad(`${r.id} ${r.what} — 다름 줄의 글자를 못 찾음(정규식이 낡았다 · 자리를 다시 잡아라)`); continue; }
     if (r.same) { wrn(`${r.id} ${r.what} — 다름 줄인데 지금 값이 같다(${r.lab}) · SAME 으로 옮길 차례`); continue; }
-    if (OKL.has(r.id)) ok(`${r.id} ${r.what} — 허락된 다름(랩 ${r.lab} · 서버 ${r.srv} · ${OKL.get(r.id).jb || '족보 —'})`);
+    if (r.knob) ok(`${r.id} ${r.what} — 손잡이 뒤(랩 ${r.lab} · 서버 ${r.srv} · ${r.knob})`);
+    else if (OKL.has(r.id)) ok(`${r.id} ${r.what} — ${OKL.get(r.id).kind === 'refer' ? '판정 회부·기본 보존' : '사유 있는 시나리오/입출력'}(랩 ${r.lab} · 서버 ${r.srv} · ${OKL.get(r.id).jb || '근거 —'})`);
     else unok.push(`${r.id}(랩 ${r.lab} · 서버 ${r.srv}${r.knob ? ' · ' + r.knob : ''})`);
   }
-  if (unok.length) wrn(`다름 ${unok.length}줄이 \`scripts/lab-diff-ok.txt\` 허락 줄 없음(후보 = 보고/T1395) — ${unok.join(' · ')}`);
+  if (unok.length) bad(`다름 ${unok.length}줄이 \`scripts/lab-diff-ok.txt\` 허락 줄 없음(후보 = 보고/T1395) — ${unok.join(' · ')}`);
+  const closure = LD.checkClosure();
+  if (!closure.ok) bad(`T1409 사유 없는/새로 바뀐 다름 — ${closure.errors.join(' · ')}`);
+  if (closure.referred.length) wrn(`T1409 값 선택 회부 ${closure.referred.length}줄(허락과 구분) · 수종 표 R27은 생성 카탈로그 일치 확인`);
 }
 
 console.log(`\n=== 배선 검사: 실패 ${fail} · 경고 ${warn} ===`);

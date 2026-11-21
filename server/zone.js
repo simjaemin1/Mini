@@ -6003,7 +6003,7 @@ function npcStep(npc, dt, now) {
         // 같은 타일 중복 체크
         let occupied = false;
         for (const b of buildings.values()) if (Math.abs(b.x - gx) < BUILDING_SIZE && Math.abs(b.y - gy) < BUILDING_SIZE) { occupied = true; break; }
-        if (!occupied && !isTerrainBlockedLocal(gx, gy)) {  // 농지도 LAND에만 (물·바위 위 X)
+        if (!occupied && !isTerrainBlockedLocal(gx, gy) && !(SimVillages.T1406_KEEP_PATHS && SimVillages.t1406PathCell(Math.floor(gx / BUILDING_SIZE), Math.floor(gy / BUILDING_SIZE)))) {  // 농지도 LAND에만 (물·바위 위 X) · ★[T1406 ㉮] 켬 = 길 칸 밖
           // ★★[T108 2026-09-05] **NPC 도 카탈로그 작물을 심는다.** 여기가 60초 베리밭을 만들던 자리다.
           //   무엇을 심나: `Crops.wildSeedAt` — **그 자리가 이 철에 내주는 씨앗**(T58a 정본 · 결정론 ·
           //   주사위 0 · 새 술어 0). 그래서 가을 밭엔 월동 작물이 서고, 겨울엔 아무것도 안 심는다.

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress
-// @bait 5   ← [T1356] 미끼 판정 줄 수(파일 안 · `test-harness-lint` ⑲b 가 센다)
+// @bait 8   ← [T1356] 미끼 판정 줄 수(파일 안 · `test-harness-lint` ⑲b 가 센다)
 // === scripts/test-t1395-lab-diff.js — 랩 ↔ 서버 손 사본 대조 줄이 정말 무는가(T1395 · 자 `scripts/lib-lab-diff.js`) =====================
 //
 // ★무엇: 전수표(`계측/T1395_2026-11-20/전수표.md`)의 "같음 · 손 사본" 줄을 `lib-lab-diff.js` SAME 로 올렸다 —
@@ -124,8 +124,24 @@ console.log('\n⑤ lab-wiring-check [P]');
   ok(/\n\[P\] /.test(out), '[P] 섹션이 돈다');
   const pRows = (out.split('\n[P] ')[1] || '').split('\n=== ')[0];
   const checked = new Set([...pRows.matchAll(/✅ ([\w.-]+) /g)].map(m => m[1]));
-  ok(L.SAME.every(p => checked.has(p.id)) && checked.size === L.SAME.length, `[P] 같음 줄 ${L.SAME.length} 이 다 ✅`, `✅ ${checked.size}`);
+  ok(L.SAME.every(p => checked.has(p.id)) && [...checked].filter(id => L.SAME.some(p => p.id === id)).length === L.SAME.length, `[P] 같음 줄 ${L.SAME.length} 이 다 ✅`, `✅ ${checked.size}`);
   ok(r.status === 0, `lab-wiring-check 실패 0(종료 ${r.status})`);
+}
+
+console.log('\n⑥ T1409 — 손잡이 없이 남은 다름 = 보존 사유 목록');
+{
+  const r=L.checkClosure();
+  ok(r.ok && r.unflagged.length===r.allowanceCount && r.allowed.length===12 && r.referred.length===17 && r.shared.length===2 && r.flagged.length===3, '서른네 줄 피복 · 무손잡이29=사유29(허락12/회부17)', r.errors.join(' · '));
+  const p=L.DIFFS.find(p=>p.id==='D5-SLOT_GAP'),T=withTwist(p.srv[0],p.srv[1]),bad=L.checkClosure(T.srcOf);
+  ok(T.n()===1 && !bad.ok && bad.errors.some(e=>e.startsWith(p.id)), '★미끼 — 한쪽 대형 값 변경(바꾼 자리 1) → 등록값 쌍 검사 빨강');
+  const text=L.readRoot('scripts/lab-diff-ok.txt'),lines=text.split('\n'),drop=lines.filter(l=>l.startsWith('D6-H-MOB_WOLF_P |'));
+  const removed=lines.filter(l=>!l.startsWith('D6-H-MOB_WOLF_P |')).join('\n');
+  const lost=L.checkClosure(undefined,removed);
+  ok(drop.length===1 && !lost.ok && lost.errors.some(e=>e.includes('D6-H-MOB_WOLF_P')), '★미끼 — 허락 사유 삭제(바꾼 자리 1) → 누락 검사 빨강');
+  const f='lab/마을실험실.html#body',needle="'T1409_VIL_MARCH'";let n=0;
+  const srcOf=file=>{const src=read(file);if(file!==f)return src;n=src.split(needle).length-1;return src.replace(needle,"'T1409_VIL_MARCH_BAIT'");};
+  const renamed=L.checkClosure(srcOf);
+  ok(n===1 && !renamed.ok && renamed.errors.some(e=>e.startsWith('D7-V-WAR_MARCH')), '★미끼 — 손잡이 이름만 변경(바꾼 자리 1) → 실제 연결 검사 빨강');
 }
 
 console.log(`\n=== T1395 랩↔서버 대조: 통과 ${pass} · 실패 ${fail} ===`);
