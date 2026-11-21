@@ -80,6 +80,8 @@ function model(src, q) {
   return { log, end, st: q ? Q.st : null };
 }
 function cmpModel(src) {
+  const S0 = loadSS(src, '1');
+  if (typeof S0.qBegin !== 'function' || !S0.Q) return { R: { log: [], end: [] }, M: { log: [], end: [], st: {} }, same: false, at: 0, a: '줄 몸통 없음(옛 stand-skip)', b: '', endBad: -1 };
   const R = model(SS_SRC, false), M = model(src, true);
   let i = 0; while (i < R.log.length && R.log[i] === M.log[i]) i++;
   const endBad = R.end.filter((x, j) => x !== M.end[j]).length;
