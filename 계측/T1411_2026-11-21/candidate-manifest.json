@@ -35,7 +35,7 @@
  "supervision": "new worlds: T1308_GUARD_MAX=0, preserve first failure; successful-day scheduling unchanged",
  "diagnosticMethodsVersion": "method-v3",
  "diagnosticMethods": {
-  "t1411-census.cjs": "68b1b8eb5626f4a3b3bbeae7a6d3228da907ff526c8064db24cda8d923e7e721",
+  "t1411-census.cjs": "02a2ef9c5fa6e18286a6e77fcb69fe5af068581c58d87d4ec815b25dde84ade8",
   "t1411-profile-hook.cjs": "736bea70a84106d3aa54d7f32c85cb915f47704c4f0af64641f2588c9679055d",
   "t1411-run.py": "b129faf9fbb5fd6bc203d16380b03e87a4781c815e05e1feae129c3d4270a9d6",
   "t1411-compare.py": "318b80bc8e5c5f9d2cb0b91ddcc179917958ec7687a58ae40c8118daf78f50ea"

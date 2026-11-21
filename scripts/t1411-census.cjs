@@ -44,14 +44,23 @@ E.createLedger = function () {
   };
   return ledger;
 };
-// Diagnostic replays only. 24 is the number of observation points per existing
-// game day; it changes no game rate. Keep the benchmark's frozen v2 hook intact.
+// Diagnostic replays only. Observe after the existing game tick; add no timer
+// and preserve the checkpoint's timer IDs/phases. 24 is an observation cadence,
+// not a game rate. Keep the benchmark's frozen v2 hook intact.
 if (process.env.T1411_HOURLY === '1') {
   const dayMs = +process.env.VILLAGE_DAY_MS;
   if (!(dayMs > 0 && Number.isFinite(dayMs))) throw new Error('hourly census needs the declared game day');
-  const timer = setInterval(() => {
-    const row = snapshot();
-    if (row) fs.appendFileSync(process.env.T577_OUT + '.t1411-hourly.jsonl', JSON.stringify(row) + '\n');
-  }, dayMs / 24);
-  if (timer && typeof timer.unref === 'function') timer.unref();
+  const tick = V.onGameTick;
+  let nextAt = -Infinity;
+  V.onGameTick = function () {
+    const result = tick.apply(this, arguments), now = Date.now();
+    if (now >= nextAt) {
+      const row = snapshot();
+      if (row && row.bodies > 0) {
+        nextAt = now + dayMs / 24;
+        fs.appendFileSync(process.env.T577_OUT + '.t1411-hourly.jsonl', JSON.stringify(row) + '\n');
+      }
+    }
+    return result;
+  };
 }
