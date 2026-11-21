@@ -15261,38 +15261,38 @@
    "cls0": "나",
    "why0": "child_process",
    "cls": "나",
-   "maxSec": 20.5,
+   "maxSec": 21.1,
    "same5": true,
    "core": true,
    "why": "core",
    "runs": [
     {
      "rc": 0,
-     "secs": 20.1,
+     "secs": 20.7,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 20.5,
+     "secs": 21,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 19.6,
+     "secs": 20.7,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 19.2,
+     "secs": 21.1,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 18.8,
+     "secs": 20.9,
      "green": true,
      "fails": []
     }
@@ -15378,6 +15378,52 @@
    "same5": null,
    "core": false,
    "why": "안 잼"
+  },
+  "test-t1405-leave-rare.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "다",
+   "maxSec": 37.6,
+   "same5": true,
+   "core": false,
+   "why": "srv",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 37.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 34.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 34.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 35.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 32.8,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "다",
+   "child": [
+    "spawnSync node"
+   ],
+   "srv": true
   },
   "test-t1408-farm-4000.js": {
    "cls0": "나",
@@ -15468,6 +15514,48 @@
    "child": [
     "execFileSync node"
    ]
+  },
+  "test-t1409-shared-rules.js": {
+   "cls0": "가",
+   "why0": "",
+   "cls": "가",
+   "maxSec": 0.9,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 0.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.9,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "가"
   },
   "test-t721-apply.js": {
    "cls0": "나",

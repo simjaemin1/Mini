@@ -1,0 +1,4 @@
+# 옛 코드 빨강 — 하네스 = ef3bc442 · 제품(server sim public lab) = 1aa63e63 · 시한 600초
+예외(PM 목록) | test-t1395-lab-diff.js |  랩 ↔ 서버 맞대는 자(`lib-lab-diff` · `lab-wiring-check`)를 잰다 — 제품 0줄 카드라 옛 제품 위�
+빨강 ○ | test-t1409-shared-rules.js | RC=1 · ✓ 0 · ✗ 1 |   ✗ 공유 계산 세 입구 존재
+# 합: 빨강 1 · 크래시 0 · 초록 0 · 모름 0 · 제품 무관 1

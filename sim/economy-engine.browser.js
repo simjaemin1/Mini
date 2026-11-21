@@ -7,7 +7,23 @@
   //   실제로 터졌다: rational picker 에 전사 줄을 넣자 warriorTarget(process.env.PEACE_W)이
   //   랩에서 처음 호출돼 즉사했다 — CLI 하네스는 못 잡는 브라우저 전용 지뢰라 여기서 구조적으로 막는다.
   var process=(typeof root.process!=='undefined'&&root.process)?root.process:{env:{}};
-  function req(p){ for(var k of ["freshfish","seafish","fish-goods","fish-preserve","sustain","fishing","kcal"])if(p.endsWith('/'+k))return modules[k]; if(/hanbando-minerals$/.test(p))return modules.oreKinds; if(/ore-goods$/.test(p))return modules.oreGoods; if(/move-model/.test(p))return modules.movem; if(/equilibrium/.test(p))return modules.equil; if(/(^|[/])carry$/.test(p))return modules.carry; if(/(^|[/])body$/.test(p))return modules.body; if(/(^|[/])weather$/.test(p))return modules.weather; if(/(^|[/])salt$/.test(p))return modules.salt; if(/(^|[/])tidal$/.test(p))return modules.tidal; if(/(^|[/])animals$/.test(p))return modules.animals; if(/(^|[/])game-meat$/.test(p))return modules.gmeat; if(/(^|[/])spoil$/.test(p))return modules.spoil; if(/(^|[/])lots$/.test(p))return modules.lots; if(/crops[.]json$/.test(p))return modules.cropsData; if(/crop-cal/.test(p))return modules.cropcal; if(/(^|[/])events$/.test(p))return modules.events; if(/(^|[/])crops$/.test(p))return modules.crops; if(/calendar/.test(p))return modules.cal; if(/zone-config/.test(p))return modules.zcfg; if(/weights$/.test(p))return modules.wts; if(/hut-stages/.test(p))return modules.hut; if(/stone-uses/.test(p))return modules.stoneu; if(/granary-stages/.test(p))return modules.granst; if(/smelt-uses/.test(p))return modules.smeltu; if(/village-layout/.test(p))return modules.vlayout; if(/era/.test(p))return modules.era; if(/specialty/.test(p))return modules.specialty; if(/economy-sim-v2/.test(p))return modules.v2; if(/economy-sim/.test(p))return modules.v1; return {}; }
+  function req(p){ if(/shared-lab-rules$/.test(p))return modules.sharedLabRules; for(var k of ["freshfish","seafish","fish-goods","fish-preserve","sustain","fishing","kcal"])if(p.endsWith('/'+k))return modules[k]; if(/hanbando-minerals$/.test(p))return modules.oreKinds; if(/ore-goods$/.test(p))return modules.oreGoods; if(/move-model/.test(p))return modules.movem; if(/equilibrium/.test(p))return modules.equil; if(/(^|[/])carry$/.test(p))return modules.carry; if(/(^|[/])body$/.test(p))return modules.body; if(/(^|[/])weather$/.test(p))return modules.weather; if(/(^|[/])salt$/.test(p))return modules.salt; if(/(^|[/])tidal$/.test(p))return modules.tidal; if(/(^|[/])animals$/.test(p))return modules.animals; if(/(^|[/])game-meat$/.test(p))return modules.gmeat; if(/(^|[/])spoil$/.test(p))return modules.spoil; if(/(^|[/])lots$/.test(p))return modules.lots; if(/crops[.]json$/.test(p))return modules.cropsData; if(/crop-cal/.test(p))return modules.cropcal; if(/(^|[/])events$/.test(p))return modules.events; if(/(^|[/])crops$/.test(p))return modules.crops; if(/calendar/.test(p))return modules.cal; if(/zone-config/.test(p))return modules.zcfg; if(/weights$/.test(p))return modules.wts; if(/hut-stages/.test(p))return modules.hut; if(/stone-uses/.test(p))return modules.stoneu; if(/granary-stages/.test(p))return modules.granst; if(/smelt-uses/.test(p))return modules.smeltu; if(/village-layout/.test(p))return modules.vlayout; if(/era/.test(p))return modules.era; if(/specialty/.test(p))return modules.specialty; if(/economy-sim-v2/.test(p))return modules.v2; if(/economy-sim/.test(p))return modules.v1; return {}; }
+  modules["sharedLabRules"]=(function(){var module={exports:{}};Object.defineProperty(module,"exports",{get:function(){return modules["sharedLabRules"];},set:function(v){modules["sharedLabRules"]=v;}});module.exports={};var exports=module.exports;var require=req;
+// T1409 — 랩/서버의 같은 계산. 입력·상태·호출 시점은 각 호스트가 소유한다.
+'use strict';
+function waterAccess(nd) { return Math.max(0.05, Math.min(1, 1 - nd / 140)); }
+function oreRegenRaw(R0, days, K, reg0, reg1) {
+  const A = reg0 + reg1, B = reg1 / K, asymptote = A / B;
+  return Math.min(K, asymptote - (asymptote - R0) * Math.exp(-B * days));
+}
+function conscriptWith(individual, aggregate, v, mode, opts) {
+  const ind = individual(v, mode, opts);
+  if (ind) return ind;
+  return aggregate(v, mode, opts);
+}
+module.exports = { waterAccess, oreRegenRaw, conscriptWith };
+
+;return module.exports;})();
   modules["cal"]=(function(){var module={exports:{}};Object.defineProperty(module,"exports",{get:function(){return modules["cal"];},set:function(v){modules["cal"]=v;}});module.exports={};var exports=module.exports;var require=req;var window=undefined;
 // === server/calendar.js — 달력 정본 하나: 그레고리력 (T570 · 재민 10-02) ================================
 //
@@ -2431,7 +2447,7 @@ const ORE_REG0 = 0.01, ORE_REG1 = 0.01;
 const _ORE_A = ORE_REG0 + ORE_REG1, _ORE_B = ORE_REG1 / ORE_K, _ORE_ASY = _ORE_A / _ORE_B;
 function oreRegen(R0, gameDays) {
   if (!(gameDays > 0)) return Math.min(ORE_K, R0);
-  return Math.min(ORE_K, _ORE_ASY - (_ORE_ASY - R0) * Math.exp(-_ORE_B * gameDays));
+  return require('../sim/shared-lab-rules').oreRegenRaw(R0, gameDays, ORE_K, ORE_REG0, ORE_REG1);
 }
 // 광부 1명 일일 정산량(NPC 마을 경제용) — L_MINE 동형 유도:
 //   1440 게임분 × 노동률 0.633 × 왕복효율 0.9697 ÷ 60 = 14.73 덩이/게임일
@@ -7314,6 +7330,13 @@ for (const [id, z] of Object.entries(ZONES_BASE)) {
     host: hostFromEnv(id, 'localhost'),
   };
 }
+// ★[T1406 고침 ① 2026-11-20 · 손잡이 `T1406_BRIDGES=1` · 끔 기본 = 한 글자도 안 바뀐다] 누가 길을 막아도 돌아갈 길 — 걸음 ÷ 곧은 거리 3배 넘는 이웃 쌍을 푸는 다리.
+//   자료 = `server/bridges-t1406.json`({존: flat [cx,cy,…]} · `scripts/audit-walk-place.js` 가 `plan-bridges-v2` 규약(축 4방 · 폭 2 · 두 끝 뭍)으로 뽑았다) — 후보 가지에만 · 채택은 재민.
+//   켜면 그 칸을 `bridges` 끝에 붙인다(읽는 자리 = 서버 막힘 · welcome · 계획기 · 감사 자 모두 이 한 줄을 본다).
+if (process.env.T1406_BRIDGES === '1') {
+  let add = null; try { add = require('./bridges-t1406.json'); } catch (e) { console.warn('[zone-config] T1406_BRIDGES=1 인데 bridges-t1406.json 이 없다 — 다리 없이 간다'); }
+  for (const [id, flat] of Object.entries(add || {})) if (ZONES[id] && Array.isArray(flat) && flat.length) ZONES[id] = { ...ZONES[id], bridges: (ZONES[id].bridges || []).concat(flat) };
+}
 
 // ★★[T214 2026-09-12 · 재민 확정] `CENTRAL_URL` 을 **읽는 쪽에 이었다** — 정본은 여기 하나다.
 //   §0-ⓒ 실측: 스크립트 **90개**가 존에 `CENTRAL_URL` 을 넘기는데 `server/` 에서 읽는 자리가 **0**이었다
@@ -7564,6 +7587,7 @@ module.exports = {
 // =============================================================================
 (function () {
   const HOUSE_HALF = 2;            // (레거시 호환 수출 — 서버 materialize 5×5 한옥 건물 반폭. 부지·판정은 아래 원판이 정본)
+  const _t1409WaterAccess = nd => (typeof require==='function' ? require('../sim/shared-lab-rules').waterAccess(nd) : (typeof window!=='undefined'&&window.EconEngine&&window.EconEngine.Rules ? window.EconEngine.Rules.waterAccess(nd) : Math.max(0.05,Math.min(1,1-nd/140))));
   const HOUSE_CAP_PER_FLOOR = 6;   // ★[고증 v2 재동기 — 랩 선행분 이관] 8→6: 단층 움집 6명(송국리 장방형 24~28㎡ 발굴 추정 5~6명의 상단). 신규 시딩만 영향(econ housing 무관)
   const LAND_PER_HOUSE = 400;      // ★채당 영토 배분 400셀 — 영토 공식의 유일 정본: 채당 수용이 바뀌어도 취락:영토 비율 불변
   // ★★[T100 4판 · 재민 판정 2026-09-07] **인당 기준 경작칸 8 → 12**(×1.5).
@@ -7731,7 +7755,7 @@ module.exports = {
     // ── 직업 믹스 = 국소 자원에서 emergent
     const fert = opts.fert != null ? opts.fert : fertScore;
     let nd = 999, wdx = 0, wdy = 0; for (let r = 1; r < 140 && nd === 999; r++) for (let a = 0; a < 360; a += 20) { const ca = Math.cos(a * Math.PI / 180), sa = Math.sin(a * Math.PI / 180); const x = Math.round(ccx + ca * r), y = Math.round(ccy + sa * r); if (t.isWater && t.isWater(x, y)) { nd = r; wdx = ca; wdy = sa; break; } }
-    const water = opts.water != null ? opts.water : Math.max(0.05, Math.min(1, 1 - nd / 140));
+    const water = opts.water != null ? opts.water : _t1409WaterAccess(nd);
     const wFarm = fert * 0.4, wFish = water * 0.25, wOther = 0.18;
     const wSum = wFarm + wFish + wOther;
     const fShare = wFarm / wSum, hShare = wFish / wSum;
@@ -14542,6 +14566,37 @@ function t1205NeedOut(v, N, T) {
   const nMax = Math.pow((S - T1134_EMIG_H) * Math.pow(Math.max(1, T), P.b) / P.c, 1 / P.a);   // 부담 ≤ S − 0.25 인 가장 큰 인구
   return Math.max(0, Math.ceil(N - nMax - 1e-9));
 }
+// ★★[T1405 2026-11-20 · ★재민 11-20 "애초에 이탈하는 주민이 거의 없어야 해.. 왜 이탈하는 거야..?" · 11-07 "0.25 밑은 정말 드물게"] 떠나는 주민을 드물게 — 손잡이 둘(끔 기본 · 끔 = 종전 바이트 · 새 수 0).
+//   왜(보고 T1405 §1): 큰 마을은 행복 h 가 0.5 밑으로 가도 출생이 거의 안 깎인다 — 행복 항 (h − 0.5) × 0.6 × r × N 은 h = 0.25 에서 −0.15 r N 뿐이라
+//     로지스틱 성장(K 에서 먼 마을 ≈ + r N)이 그대로 남아 사람이 늘고, 부담 B(∝ N²)가 h 를 0.25 밑으로 민다 → 그날 부담이 0.25 로 돌아올 만큼(`t1205NeedOut`) 떠난다 —
+//     날마다 난 만큼 떠나는 고리. 그리고 받는 쪽 문(호스트 `_t1147Pick` · T1312 `_t1312Pass`)은 "더 행복한 이웃"만 보니 받은 마을이 그 사람 몫 부담으로 0.25 밑에 가도 받는다.
+//   ㉡ `T1405_BIRTH`(`'1'` 만 켬) — 출생이 행복을 읽는 곡선을 0.25 에 맞춘다: h 가 0.5(행복 항의 중립 — 위 `_happyTerm` 식의 그 0.5)에서 0.25(이탈 문턱 `T1134_EMIG_H`)로 내려가는 동안
+//     기대 자연사를 채우는 몫(T1206 `_natExp`)을 뺀 성장 몫이 1 → 0 으로 곧게 줄어 **0.25 에 닿기 전에 출생 = 자연사**가 된다(그 밑도 자연사만 채운다 — 사람 수가 그대로 · 떠남은 종전 식).
+//     종전 깎기(행복 항)가 더 세면 종전 값 그대로(둘 가운데 작은 출생).
+//     ★곡선이 읽는 행복은 **붐빔 행복** `t1405BirthH` = S − B + max(0, E) — 굶주림 기억(E > 0)을 뺀 행복(카드 "B 에 맞춘다"). 첫 판(곡선이 h 를 그대로 읽음 — 보고 §4 첫 판)에서
+//     굶은 작은 마을(E ≈ 1 · S < 0.25)이 출생 = 자연사에 묶여 한 줌에서 다시 못 차고 굶어 비었다(시드 7 · 빈 마을 3 — 끔 0). 굶은 마을은 종전 출생 그대로(그 마을의 고침은 굶주림 쪽 — ㉣).
+//     좋은 일(E < 0 — 승전 약탈)은 빼지 않는다(그 몫은 S 에 그대로 — 붐빔 행복을 올리지 않는다).
+//   ㉠ `T1405_RECV`(`'1'` 만 켬) — 받는 쪽 문: 한 사람을 받으면 제 행복이 0.25 밑으로 가는 마을은 안 받는다(있는 부담 식 `t1205Burden` · 이탈 문턱 0.25 · `t1205NeedOut` 그 셈).
+//     끔 세계(호스트가 받는 마을 오늘 값을 읽는 길)는 받는 마을의 S · 인구 · 영토로 · T1312 들은 줄 길은 들은 행복 · 들은 인구(+ 무리 셈)에 부담 차를 빼서 — 영토는 눈에 보이는 땅(받는 마을 영토 셀 수).
+const T1405_BIRTH = (typeof process !== 'undefined' && process.env && process.env.T1405_BIRTH === '1');
+const T1405_RECV = (typeof process !== 'undefined' && process.env && process.env.T1405_RECV === '1');
+const T1405_H_MID = 0.5;   // 행복 항의 중립(아래 `_happyTerm = (h − 0.5) × …` 의 그 0.5 — 새 수 아님)
+//   ㉡ 출생 곡선 — 행복 h · 출생 깎기 앞 몫 oth(로지스틱 + 자연사 채움 + 건강 + 위신) · 자연사 채움 rep → 출생 상한(종전 dP 와 작은 쪽을 쓴다)
+function t1405BirthCap(h, oth, rep) {
+  if (!(oth > 0)) return oth;
+  const r = Math.max(0, Math.min(oth, rep || 0)), grow = Math.max(0, oth - r);
+  const f = Math.max(0, Math.min(1, (h - T1134_EMIG_H) / (T1405_H_MID - T1134_EMIG_H)));
+  return r + grow * f;
+}
+//   ㉡ 붐빔 행복 — 느린 S · 부담 B · 겪은 일 E → S − B + max(0, E)(자르지 않는다 — 곡선이 0 ~ 1 로 자른다)
+function t1405BirthH(S, B, E) { return (S || 0) - (B || 0) + Math.max(0, E || 0); }
+//   ㉠ 받는 쪽 문 — 받는 마을 v 가 add 사람을 더 받아도 행복이 0.25 위인가(true = 받는다). 들은 줄 길은 hHeard · nHeard(+ 무리 셈 add)를 준다.
+function t1405RecvOk(v, add, hHeard, nHeard) {
+  if (!T1205_HAPPY || !v) return true;
+  const P = t1205Par(), T = (v.lastStats && v.lastStats.terrCells) || t1205Terr(v), a = Math.max(1, add || 1);
+  if (hHeard != null && nHeard != null) return hHeard - (t1205Burden(nHeard + a, T, P) - t1205Burden(nHeard, T, P)) >= T1134_EMIG_H;
+  return t1205NeedOut(v, v.npcs.length + a, T) === 0;
+}
 // ★★[T931 2026-10-26 · T924 회부 2-ⓐ · 재민 10-24 "창고에 식량이 있는데 자유민이 그렇게 빨리 죽어?"]
 //   **식량 자리 K 에도 신뢰 관성** — 손잡이 `T931_SLOTK_EMA`(★[T943] **켬 기본 = `'season'`** · 되돌림 `'0'` = 끔 = 종전 바이트 · `'1'` = 값 전체 · 그 밖 · 미설정 = `'season'` · 브라우저 랩 = `'season'`).
 //   ★[T943 2026-10-27 · PM 결정 — T931 회부 1 = `'season'`(카드 글자 "계절 배수에"의 꼴 · 서버 띠 그날 굶주림 0 인 죽음 −45% · 랩 −23%)] T931 보고 §7 · T943 보고.
@@ -18478,6 +18533,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
     if ((T1075_HAPPY_EQ || T1134_HAPPY_TARGET) && _happyTerm < 0) {   // ★[T1075 ④] 불행은 죽이지 않는다 — 출생을 먼저 깎고 남는 몫은 이탈 압력
       const _oth = dP + _healthTerm + _prestigeTerm, _aft = _oth + _happyTerm;
       dP = _oth > 0 ? Math.max(0, _aft) : _oth;
+      if (T1405_BIRTH && T1205_HAPPY && _oth > 0) dP = Math.min(dP, t1405BirthCap(t1405BirthH(stats.happinessSlow, stats.happinessBurden, v._t1134E), _oth, T1206_NAT_DEATH ? (v._natExp || 0) : 0));   // ★[T1405 ㉡] 붐빔이 0.25 에 닿기 전에 출생 = 자연사(위 머리말 · 끔 = 이 줄 무동작)
       _t1075Emig = _oth > 0 ? Math.max(0, -_aft) : -_happyTerm;
       if (T1134_HAPPY_TARGET && !(stats.happiness < T1134_EMIG_H)) _t1075Emig = 0;   // ★[T1134] 이탈은 h < 0.25 일 때만(그 위는 출생만 깎인다)
       if (T1205_HAPPY) _t1075Emig = _homeN * t1205Par().k2 * Math.max(0, T1134_EMIG_H - stats.happiness);   // ★[T1205] 떠나기 = 인구 × k₂ × (0.25 − h)(연속 · 출생 깎고 남은 몫과 무관)
@@ -20649,7 +20705,7 @@ module.exports = {
   _autoSwitchJobForTest: autoSwitchJob, _switchNPCJobForTest: switchNPCJob,
   t1226On, t1226Flex, _t1226Table, _t1226V, _t1226Sk, _t1226Net, _t1226LookDay, _t1226In, _t1226Out, _t1226FarmersOf, _t1226Stat, T1226_SWITCH_DAYS, opportunityCost, _needValueOf, villageMasterSkill, apprenticeInherit,   // ★[T1226] 직업 바꾸기 유연 — 하네스 · 계측이 같은 함수를 읽는다(사본 0)   // ★[T1085] 하네스가 자율 전환 그 함수를 부른다(시험 이름 · 사본 0)
   T1075_HAPPY_EQ, HAPPY_EQ_HALF_DAYS,
-  T1205_HAPPY, T1205_E_MIN, T1205_E_MAX, T1205_DEF, t1205Par, t1205Terr, t1205Burden, t1205Ev, t1205Step, t1205NeedOut,   // ★[T1205] 행복 식 다시 — 하네스 · 호스트 · war-core 가 같은 함수를 읽는다
+  T1205_HAPPY, T1205_E_MIN, T1205_E_MAX, T1205_DEF, t1205Par, t1205Terr, t1205Burden, t1205Ev, t1205Step, t1205NeedOut, T1405_BIRTH, T1405_RECV, t1405BirthCap, t1405BirthH, t1405RecvOk,   // ★[T1405] 떠남 드물게 — 손잡이 둘 · 출생 곡선 · 받는 쪽 문(호스트 · 하네스가 같은 함수를 부른다)   // ★[T1205] 행복 식 다시 — 하네스 · 호스트 · war-core 가 같은 함수를 읽는다
   T1134_HAPPY_TARGET, T1134_EMIG_H, T1134_C_DEFAULT, t1134C, t1134Half, t1134Step,   // ★[T1134] 목표 행복 — 하네스 · 호스트가 같은 함수를 읽는다   // ★[T1075] 행복 평형 손잡이 · 반감기(평형 함수는 `sim/equilibrium.js` 하나 — T1076 과 같이 쓴다)
   foodDebtOf, T1074_FOOD_DEBT,   // ★[T1074] 식량 빚 읽는 함수 하나(T1075 가 읽는다)
   T1217_MARGIN, t1217HappyMu, t1217IdleFrac, LEISURE_HAPPY_W,   // ★[T1217] 한 시간 값 ↔ 쉰 값 — 물건 한 단위의 행복 기울기 · 여가 몫 밑변 · 여가 무게(v2 · 서버 · 하네스가 같은 함수를 읽는다)
@@ -24439,5 +24495,5 @@ module.exports = {
 
 ;return module.exports;})();
 
-  root.EconEngine=Object.assign({},modules.v1,modules.v2); root.EconEngine.Era=modules.era; root.EconEngine.Calendar=modules.cal; root.EconEngine.Layout=modules.vlayout; root.EconEngine.Crops=modules.crops; root.EconEngine.ZoneCfg=modules.zcfg; root.EconEngine.LifeCrew={"crew":2,"pday":1};
+  root.EconEngine=Object.assign({},modules.v1,modules.v2); root.EconEngine.Rules=modules.sharedLabRules; root.EconEngine.WarRuleValues={"WAR_MARCH":1440,"WAR_RAID_MIN":2}; root.EconEngine.Era=modules.era; root.EconEngine.Calendar=modules.cal; root.EconEngine.Layout=modules.vlayout; root.EconEngine.Crops=modules.crops; root.EconEngine.ZoneCfg=modules.zcfg; root.EconEngine.LifeCrew={"crew":2,"pday":1};
 })(typeof window!=='undefined'?window:globalThis);
