@@ -14114,12 +14114,15 @@ const _t1399G = new Map();   // 마을 dbId → 바뀜 도장(관측 · 판정 �
 //   `_lifeActAt` 을 읽는 자리는 존 `makeEntry` 하나(바뀐 뒤 1.2초 창 안이면 라벨을 싣는다)고, 클라는 안 온 라벨을 앞 값 그대로 둔다(`30-n-net` `prev?.act`) · 소리는 값이 바뀐 모서리에서만(`48-a-audio`) — 보고 §ⓒ 표.
 const T1399_FISH = process.env.T1399_FISH === '1';
 function t1399Bump(vil) { if (vil && vil.dbId != null) _t1399G.set(vil.dbId, (_t1399G.get(vil.dbId) || 0) + 1); }
-let _hzOn = false, _hzWalk = false, _hzT = Infinity, _hzNo = 0, _hzPN = 0, _hzPX = 0, _hzPY = 0, _hzPR = 0, _hzPO = 0, _hzVw = 0, _hzQ = 0, _hzQX = 0, _hzQY = 0, _hzWhy = '';
+let _hzOn = false, _hzWalk = false, _hzT = Infinity, _hzT2 = Infinity, _hzQS = null, _hzNo = 0, _hzPN = 0, _hzPX = 0, _hzPY = 0, _hzPR = 0, _hzPO = 0, _hzVw = 0, _hzQ = 0, _hzQX = 0, _hzQY = 0, _hzWhy = '';
 function _hzD(t) { if (_hzOn && t < _hzT) _hzT = t; }   // 시각 문턱(그 시각 앞까지 산다)
+function _hzD2(t) { if (_hzOn && t < _hzT2) _hzT2 = t; }   // ★[T1415 ③] 장인 시계(T1258 — `_t1253Now()`) 축 시각 문턱
+// ★[T1415 ③] 장인 일감 줄 지문 — 판정(`_t1365Art`)이 읽는 칸(작업표 차례 · id · 단계 · 쥔 몸 · 직업) 그대로의 글자. 줄을 쓰는 자리(econ 셋 · 생활층 둘)가 무엇을 바꿔도 지문이 바뀐다
+function _t1415QSig(Q) { if (!Q || !Q.length) return ''; let s = ''; for (const x of Q) s += x.id + ':' + x.st + ':' + (x.pid == null ? '' : x.pid) + ':' + x.job + '|'; return s; }
 function _hzP(x, y, r, out) { if (!_hzOn || !_hzWalk) return; if (_hzPN++ && !(_hzPX === x && _hzPY === y && _hzPR === r && _hzPO === out)) _hzX('p2'); _hzPX = x; _hzPY = y; _hzPR = r; _hzPO = out ? 1 : 0; }   // 자리 문턱 하나(`Math.hypot(몸 − 점) > r` 이 그 쪽) — 걷는 몸 표(첫 거름 3)만 적는다(서 있는 몸 표 1 · 2 는 자리가 안 바뀐다 — 움직이면 표를 내린다)
 function _hzX(w) { if (_hzOn && !_hzNo) { _hzNo = 1; _hzWhy = w; } }   // 표 없음(결정 사이에 다른 몸이 바꾸는 값을 읽었다)
-const _t1399Tk = { T: Infinity, px: 0, py: 0, pr: 0, po: 0, pn: 0, vw: 0, q: 0, qx: 0, qy: 0, pat: 0, day: 0, bday: 0, wday: 0, gen: 0, sc: 1, why: '' };
-function t1399Rec(walk) { _hzOn = true; _hzWalk = !!walk; _hzT = Infinity; _hzNo = 0; _hzPN = 0; _hzVw = 0; _hzQ = 0; _hzWhy = ''; }
+const _t1399Tk = { T: Infinity, T2: Infinity, qs: null, px: 0, py: 0, pr: 0, po: 0, pn: 0, vw: 0, q: 0, qx: 0, qy: 0, pat: 0, day: 0, bday: 0, wday: 0, gen: 0, sc: 1, why: '' };
+function t1399Rec(walk) { _hzOn = true; _hzWalk = !!walk; _hzT = Infinity; _hzT2 = Infinity; _hzQS = null; _hzNo = 0; _hzPN = 0; _hzVw = 0; _hzQ = 0; _hzWhy = ''; }
 // 해 몫 쪽 — 판정이 해 몫을 견주는 문턱 넷(잠 창 끝 `dayR` · 깸 `_dOff` · 반일 `SCH_HALF_R` · 농부 출근 창 `SCH_FARMW_R`)의 어느 쪽인가(판정 글자 그대로의 식)
 function _t1399Fv(npc, now) {
   const wpF = state.deps.worldPhase, dayR = state.deps.dayPhaseRatio || 0.7;
@@ -14134,7 +14137,7 @@ function t1399Take(npc, now, k) {
   if (!k || _hzNo) { _t1399Tk.why = k ? _hzWhy : ''; return null; }
   const vil = state.byDbId && state.byDbId.get(npc.simVillageId); if (!vil) return null;
   const T = _t1399Tk;
-  T.T = _hzT; T.pn = _hzPN; T.px = _hzPX; T.py = _hzPY; T.pr = _hzPR; T.po = _hzPO; T.vw = _hzVw; T.q = _hzQ; T.qx = _hzQX; T.qy = _hzQY;
+  T.T = _hzT; T.T2 = _hzT2; T.qs = _hzQS; T.pn = _hzPN; T.px = _hzPX; T.py = _hzPY; T.pr = _hzPR; T.po = _hzPO; T.vw = _hzVw; T.q = _hzQ; T.qx = _hzQX; T.qy = _hzQY;
   T.pat = _t1399Fv(npc, now);
   T.day = state.dayMs ? (T731_ON ? _ledgerDay(vil, now) : gameDayOf(now)) : 0;
   T.bday = T720_LON_DAY ? (state.dayMs ? _bodyDay(npc, now) : 0) : T.day;
@@ -14143,7 +14146,7 @@ function t1399Take(npc, now, k) {
   return T;
 }
 // 표가 아직 사는가(결정 때마다 — 판정 대신) · 인자 = 표에 적은 값
-function t1399Still(npc, now, T, pat, day, bday, wday, gen, sc, pn, px, py, pr, po, vw, q, qx, qy) {
+function t1399Still(npc, now, T, pat, day, bday, wday, gen, sc, pn, px, py, pr, po, vw, q, qx, qy, T2, qs) {
   if (!(now < T)) return false;
   if (T698_BOUNDARY_SLICE && state.tickJobs) return false;
   const vil = state.byDbId && state.byDbId.get(npc.simVillageId);
@@ -14157,6 +14160,8 @@ function t1399Still(npc, now, T, pat, day, bday, wday, gen, sc, pn, px, py, pr, 
   if (pn && (Math.hypot(npc.x - px, npc.y - py) > pr ? 1 : 0) !== po) return false;
   if (vw && state.deps.isPositionActive && state.deps.isPositionActive(npc.x, npc.y)) return false;
   if (q && state.deps.isWaterTileLocal && !state.deps.isWaterTileLocal(qx, qy)) return false;   // ⓒ 드리운 칸이 아직 물인가(밀물 · 썰물)
+  if (T2 !== undefined && T2 !== Infinity && !(_t1253Now() < T2)) return false;   // ★[T1415 ③] 장인 시계 문턱
+  if (qs != null && _t1415QSig(vil.econ && vil.econ._t1196Q) !== qs) return false;   // ★[T1415 ③] 장인 일감 줄 지문
   return true;
 }
 function t1399Why() { return _t1399Tk.why; }
@@ -14394,7 +14399,7 @@ function t1365Work(npc, now) {
     return (npc._jobT && now < npc._jobT) ? 1 : _z('W63');   // 수색 머묾
   }
   if (!LIFE_FIELD_JOBS.has(jb)) {   // 회관 일(주민 · 장인)
-    if (T1196_KIND[jb]) { if (_hzOn && _t1196On(vil)) _hzX('art'); const r = _t1365Art(vil, npc, now, jb); if (r !== null) return r; }   // ★[T1399] 장인 일감 줄은 다른 몸이 쥔다(표 없음)
+    if (T1196_KIND[jb]) { if (_hzOn && _t1196On(vil)) _hzQS = _t1415QSig(vil.econ._t1196Q); const r = _t1365Art(vil, npc, now, jb); if (r !== null) return r; }   // ★[T1399] 장인 일감 줄은 다른 몸이 쥔다(표 없음)
     const idx = _lifeOtherIndex(vil, npc);
     const wx = (vil.ccx + ((idx % 6) - 3)) * SZ + SZ / 2, wy = (vil.ccy + ((((idx / 6) | 0) % 6) - 3)) * SZ + SZ / 2;
     if (Math.hypot(npc.x - wx, npc.y - wy) > 44) return _z('W48');   // 출근(정체 가드 칸을 쓴다)
@@ -14441,13 +14446,16 @@ function _t1365Art(vil, npc, now0, job) {
   const W = npc._t1196W; if (!W) return _z('A3');
   if (W.ph === 'draw' || W.ph === 'back') {
     const L = _t1196Ladder(vil, npc);
+    if (_hzOn && _hzWalk) _hzX('artw');   // ★[T1415 ③] 걷는 몸 — 가장 가까운 사다리가 걸음마다 바뀔 수 있다(표 없음 · 서 있는 몸은 자리가 안 바뀐다)
     if (Math.hypot(npc.x - L.x, npc.y - L.y) > 44) return (W.at === 0 && _t1365Same(npc, L.x, L.y, W.ph === 'draw' ? '인출' : '운반')) ? 2 : _z('A4');   // 사다리로 가는 중(그 갈래의 표 내림은 첫 거름 칸만)
     if (!W.at || npc._lifeAct !== (W.ph === 'draw' ? '인출' : '저장')) return _z('A4b');
+    if (_hzOn) { const d = W.at + (W.ph === 'draw' ? G_DRAWW : G_STOREW) - 1; if (T1258_ARTISAN_CLOCK) _hzD2(d); else _hzD(d); }
     return now - W.at < (W.ph === 'draw' ? G_DRAWW : G_STOREW) ? 1 : _z('A7');
   }
   if (W.ph === 'go' && !(W.tx || W.ty)) return _z('A5');
-  if (Math.hypot(npc.x - W.tx, npc.y - W.ty) > 44) return (W.at === 0 && W.ph === 'go' && _t1365Same(npc, W.tx, W.ty, '운반')) ? 2 : _z('A6');   // 작업 자리로 가는 중
+  if (Math.hypot(npc.x - W.tx, npc.y - W.ty) > 44) { if (_hzOn) _hzP(W.tx, W.ty, 44, true); return (W.at === 0 && W.ph === 'go' && _t1365Same(npc, W.tx, W.ty, '운반')) ? 2 : _z('A6'); }   // 작업 자리로 가는 중
   if (!W.at || npc._lifeAct !== '제작') return _z('A6b');
+  if (_hzOn) { _hzP(W.tx, W.ty, 44, false); const d = W.at + _t1196CraftMs(T1196_KIND[job]) - 1; if (T1258_ARTISAN_CLOCK) _hzD2(d); else _hzD(d); }
   return now - W.at < _t1196CraftMs(T1196_KIND[job]) ? 1 : _z('A8');
 }
 function t1295Ph(now) { const t = (now - state.epoch) / state.dayMs; return t - Math.floor(t); }   // ★[T1322] 판 하루 축 해 몫(몸 안 짚기 — `t1295Wp` 의 몸 칸 문 뒤 그 식 · 존 첫 거름이 판 시계 몸 표에 쓴다)
@@ -21106,7 +21114,7 @@ module.exports = { artisanPerf,   // ★[T1196] 장인 작업장 관측
   t1372PidAt: (v, i) => { const vil = state.byDbId && state.byDbId.get(v); return vil && vil.npcPids ? (vil.npcPids[i] ?? null) : null; },   // ★[T1372 ⓒ] 존이 벽 세대를 저장 값으로 되돌렸다 — 닿음 기억 도장은 저장 그대로(T1340 ③′ 다시 찍기 안 함)
   t742Bind, t742On: () => T742_ZONE, t742Stat: () => _t742Stat,   // ★[T742] 존 · 모듈 메모리 영속(손잡이 · 거는 문 · 계측)   // ★[T740] 메모리 전용 마을 칸 영속(손잡이 · 계측)
   T1241_SCH: { SCH_HALF_R, SCH_FARMW_R },   // ★[T1241] 사건 시뮬이 걸음 토막 끝을 일과 문턱에 맞춘다(읽기만 · 사본 0)
-  init, onGameTick, deferLate, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT, T871_ONE_CLOCK, t1295S, t1295Wp, t1295Ph, t1337Sleep, t1337Still, t1348Farm, t1365Work, t1365Why, t1365Want, t1399Bump, t1399Rec, t1399Take, t1399Still, t1399Why, SCH_REST_IN, _t1295Stat, T1295_FARM_CLOCK, T1295_GOURD, T1316_BODY_CLOCK, T1316_SUBSTEP, t1316K, T1326_HUNT_CLOCK, T1351_MINE_CLOCK, t1351MineOn: (vil) => _t1351MineOn(vil),   // ★[T871] 시계 하나 손잡이(하네스 `test-one-clock` 이 읽는다)
+  init, onGameTick, deferLate, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT, T871_ONE_CLOCK, t1295S, t1295Wp, t1295Ph, t1295DayMs: () => state.dayMs, t1337Sleep, t1337Still, t1348Farm, t1365Work, t1365Why, t1365Want, t1399Bump, t1399Rec, t1399Take, t1399Still, t1399Why, SCH_REST_IN, _t1295Stat, T1295_FARM_CLOCK, T1295_GOURD, T1316_BODY_CLOCK, T1316_SUBSTEP, t1316K, T1326_HUNT_CLOCK, T1351_MINE_CLOCK, t1351MineOn: (vil) => _t1351MineOn(vil),   // ★[T871] 시계 하나 손잡이(하네스 `test-one-clock` 이 읽는다)
  
   chiefOf, chiefGreetAsk, chiefGreetHas, chiefWalking, kinWrite,   // ★[T785] 마을 칸 쓰기(회관 행)
   bedSlotOf,   // ★[T540] 관측 — 침대 슬롯·집(`/walkdbg`)   // ★[T529] 촌장이 온다(손잡이 `T529_CHIEF_WALKS` · 읽는 곳 하나)
