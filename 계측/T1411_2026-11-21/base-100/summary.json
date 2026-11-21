@@ -1,0 +1,890 @@
+{
+ "base-plain-1020": {
+  "done": true,
+  "days": 100,
+  "target": 100,
+  "pop": 1219,
+  "points": {
+   "1": {
+    "case": "base-plain-1020",
+    "day": 1,
+    "segmentStart": 0,
+    "pop": 408,
+    "bodies": 408,
+    "empty": 0,
+    "territory": 76500,
+    "cpuSeconds": 141.055105,
+    "completed": 0,
+    "completedWood": 0,
+    "placedWood": null,
+    "scheduledAwakeAtLedger": null,
+    "doneDay": 0,
+    "zeroVillages": 51,
+    "zeroNeverCompleted": 51,
+    "zeroWithQueue": 51,
+    "zeroWithWoodOwed": 51,
+    "zeroDryWoodOwed": 0,
+    "emptyQueueWithNeed": 0,
+    "traceAdded": 0,
+    "batchCalls": 0,
+    "bodyStarve": 0,
+    "debtDeaths": 0,
+    "emigrationCumulative": 0,
+    "emigrationDay": 0,
+    "bornDay": 0,
+    "missingResidents": 0,
+    "drawnWood": null,
+    "loadTrips": null,
+    "pendingPlacedWood": null,
+    "materialsResidual": null,
+    "zeroLast10Mean": 51,
+    "zeroWholeLast10": 51,
+    "cpuMeanAll": 141.055105,
+    "cpuMeanSteady": null,
+    "cpuLast100Mean": 141.055105,
+    "emigrated": 0
+   },
+   "10": {
+    "case": "base-plain-1020",
+    "day": 10,
+    "segmentStart": 0,
+    "pop": 611,
+    "bodies": 611,
+    "empty": 0,
+    "territory": 88120,
+    "cpuSeconds": 54.768501,
+    "completed": 11620,
+    "completedWood": 3548.6741777300736,
+    "placedWood": null,
+    "scheduledAwakeAtLedger": null,
+    "doneDay": 1419,
+    "zeroVillages": 1,
+    "zeroNeverCompleted": 0,
+    "zeroWithQueue": 1,
+    "zeroWithWoodOwed": 1,
+    "zeroDryWoodOwed": 1,
+    "emptyQueueWithNeed": 0,
+    "traceAdded": 11620,
+    "batchCalls": 0,
+    "bodyStarve": 0,
+    "debtDeaths": 0,
+    "emigrationCumulative": 0,
+    "emigrationDay": 0,
+    "bornDay": 26,
+    "missingResidents": 0,
+    "drawnWood": null,
+    "loadTrips": null,
+    "pendingPlacedWood": null,
+    "materialsResidual": null,
+    "zeroLast10Mean": 9.4,
+    "zeroWholeLast10": 0,
+    "cpuMeanAll": 54.0662622,
+    "cpuMeanSteady": 44.40083522222222,
+    "cpuLast100Mean": 54.0662622,
+    "emigrated": 0
+   },
+   "20": {
+    "case": "base-plain-1020",
+    "day": 20,
+    "segmentStart": 10,
+    "pop": 746,
+    "bodies": 746,
+    "empty": 0,
+    "territory": 94546,
+    "cpuSeconds": 74.236778,
+    "completed": 18046,
+    "completedWood": 5063.391104087177,
+    "placedWood": null,
+    "scheduledAwakeAtLedger": null,
+    "doneDay": 342,
+    "zeroVillages": 32,
+    "zeroNeverCompleted": 0,
+    "zeroWithQueue": 32,
+    "zeroWithWoodOwed": 32,
+    "zeroDryWoodOwed": 31,
+    "emptyQueueWithNeed": 0,
+    "traceAdded": 18046,
+    "batchCalls": 0,
+    "bodyStarve": 0,
+    "debtDeaths": 0,
+    "emigrationCumulative": 0,
+    "emigrationDay": 0,
+    "bornDay": 11,
+    "missingResidents": 0,
+    "drawnWood": null,
+    "loadTrips": null,
+    "pendingPlacedWood": null,
+    "materialsResidual": null,
+    "zeroLast10Mean": 24.6,
+    "zeroWholeLast10": 4,
+    "cpuMeanAll": 62.6272449,
+    "cpuMeanSteady": 56.69723783333333,
+    "cpuLast100Mean": 62.6272449,
+    "emigrated": 0
+   },
+   "30": {
+    "case": "base-plain-1020",
+    "day": 30,
+    "segmentStart": 20,
+    "pop": 819,
+    "bodies": 819,
+    "empty": 0,
+    "territory": 98836,
+    "cpuSeconds": 84.119205,
+    "completed": 22336,
+    "completedWood": 6320.510294524052,
+    "placedWood": null,
+    "scheduledAwakeAtLedger": null,
+    "doneDay": 457,
+    "zeroVillages": 33,
+    "zeroNeverCompleted": 0,
+    "zeroWithQueue": 33,
+    "zeroWithWoodOwed": 33,
+    "zeroDryWoodOwed": 29,
+    "emptyQueueWithNeed": 0,
+    "traceAdded": 22336,
+    "batchCalls": 0,
+    "bodyStarve": 0,
+    "debtDeaths": 0,
+    "emigrationCumulative": 0,
+    "emigrationDay": 0,
+    "bornDay": 3,
+    "missingResidents": 0,
+    "drawnWood": null,
+    "loadTrips": null,
+    "pendingPlacedWood": null,
+    "materialsResidual": null,
+    "zeroLast10Mean": 33.4,
+    "zeroWholeLast10": 16,
+    "cpuMeanAll": 71.22459473333333,
+    "cpuMeanSteady": 66.21175874074073,
+    "cpuLast100Mean": 71.22459473333333,
+    "emigrated": 0
+   },
+   "100": {
+    "case": "base-plain-1020",
+    "day": 100,
+    "segmentStart": 90,
+    "pop": 1219,
+    "bodies": 1219,
+    "empty": 0,
+    "territory": 135340,
+    "cpuSeconds": 128.897229,
+    "completed": 58840,
+    "completedWood": 15424.464650585573,
+    "placedWood": 15476.633601028814,
+    "scheduledAwakeAtLedger": null,
+    "doneDay": 574,
+    "zeroVillages": 23,
+    "zeroNeverCompleted": 0,
+    "zeroWithQueue": 20,
+    "zeroWithWoodOwed": 20,
+    "zeroDryWoodOwed": 20,
+    "emptyQueueWithNeed": 0,
+    "traceAdded": 58840,
+    "batchCalls": 0,
+    "bodyStarve": 0,
+    "debtDeaths": 0,
+    "emigrationCumulative": 0,
+    "emigrationDay": 0,
+    "bornDay": 7,
+    "missingResidents": 0,
+    "drawnWood": 17763.21406892479,
+    "loadTrips": 7016,
+    "pendingPlacedWood": 52.16895044324977,
+    "materialsResidual": -1.0032863428932615e-11,
+    "zeroLast10Mean": 26.5,
+    "zeroWholeLast10": 9,
+    "cpuMeanAll": 99.01225134,
+    "cpuMeanSteady": 94.7411468,
+    "cpuLast100Mean": 99.01225134,
+    "emigrated": 0
+   }
+  },
+  "cpuMeanAll": 99.01225134,
+  "completed": 58840,
+  "completedWood": 15424.464650585573,
+  "minBodyRatio": 1.0,
+  "maxBodyGap": 0,
+  "maxMissingResidents": 0,
+  "batchCalls": 0,
+  "observerErrors": 0,
+  "launch": {
+   "root": "/tmp/t1411/base",
+   "arm": "ON",
+   "days": 100,
+   "seed": 1020,
+   "every": 10,
+   "profile": false,
+   "profileHookSha256": "736bea70a84106d3aa54d7f32c85cb915f47704c4f0af64641f2588c9679055d",
+   "source": {
+    "server/villages.js": "943ffd07acb11fcba66f3b0ae205e6964e0836d9c6b19ee6882cc28facbad1b5",
+    "server/zone.js": "65a00705e2278d674f0facc1dff212dd9e389755b20b12cc16370fe664cea822",
+    "server/build-haul.js": "deb39bce3f2f53287810e8a0d71f15691dbd39247063c7863853b1417287f0db",
+    "server/terr-body.js": "9c2482d018eb367fcef1534e608631ef58ca5b71705d94d18996b3acfd709188",
+    "scripts/t1308-long-run.js": "6629ff2af5659f8349f8f8a3ba8d29281a784794be1ba77bdb0cc11644662bd4"
+   },
+   "env": {
+    "VILLAGE_DAY_MS": "1440000",
+    "VILLAGE_NPC_CAP": "Infinity",
+    "T400_BUILD_ACT": "0",
+    "VILLAGE_CARAVAN_MAX": "0",
+    "T745_VCLOCK": "1",
+    "T1244_BODY_MS": "10000",
+    "T1221_EVERY": "10",
+    "T1259_WOOD_CAP": "0",
+    "T1243_FARM_ON": "0",
+    "T325_WOOD_ACT": "1",
+    "T1207_TERR_REAL": "1",
+    "T1238_TERR_V2": "1",
+    "T1283_WOOD_DEMAND": "1",
+    "T1297_BIRTH_FOOD": "1",
+    "T1306_MIGRATE_FOOD": "1",
+    "T1302_TERR_BODY": "1",
+    "T1329_TERR_CREW": "1",
+    "T1329_OBS": "1",
+    "T1358_STAKE_REQUOTE": "1",
+    "NODE_OPTIONS": "-r /tmp/t1411/t1411-profile-hook.cjs -r /tmp/t1411/base/scripts/t1274-baseline-hook.js -r /tmp/t1411/base/scripts/t1302-observe.js -r /tmp/t1411/base/scripts/t1243-observe.js -r /tmp/t1411/base/scripts/t1221-observe.js -r /tmp/t1411/base/scripts/t1230-observe.js -r /tmp/t1411/base/scripts/t1251-observe.js -r /tmp/t1411/base/scripts/t1274-observe.js -r /tmp/t1411/base/scripts/t1329-observe.js",
+    "T1411_CPU_PROF": "0",
+    "T1411_PROFILE_DIR": "/tmp/t1411/worlds/base-plain-1020-profiles",
+    "T740_DUMP_DAYS": "100,200,300,365,400,500,600,700,730"
+   }
+  },
+  "segments": [
+   {
+    "from": 0,
+    "to": 10,
+    "sec": 519.5,
+    "code": 0,
+    "at": "2026-11-21T02:32:35.969Z"
+   },
+   {
+    "from": 10,
+    "to": 20,
+    "sec": 689,
+    "code": 0,
+    "at": "2026-11-21T02:44:06.062Z"
+   },
+   {
+    "from": 20,
+    "to": 30,
+    "sec": 863.4,
+    "code": 0,
+    "at": "2026-11-21T02:58:30.966Z"
+   },
+   {
+    "from": 30,
+    "to": 40,
+    "sec": 951.4,
+    "code": 0,
+    "at": "2026-11-21T03:14:24.146Z"
+   },
+   {
+    "from": 40,
+    "to": 50,
+    "sec": 972.3,
+    "code": 0,
+    "at": "2026-11-21T03:30:38.780Z"
+   },
+   {
+    "from": 50,
+    "to": 60,
+    "sec": 977.4,
+    "code": 0,
+    "at": "2026-11-21T03:46:57.388Z"
+   },
+   {
+    "from": 60,
+    "to": 70,
+    "sec": 992.4,
+    "code": 0,
+    "at": "2026-11-21T04:03:31.038Z"
+   },
+   {
+    "from": 70,
+    "to": 80,
+    "sec": 1267.1,
+    "code": 0,
+    "at": "2026-11-21T04:24:39.629Z"
+   },
+   {
+    "from": 80,
+    "to": 90,
+    "sec": 1176.4,
+    "code": 0,
+    "at": "2026-11-21T04:44:17.187Z"
+   },
+   {
+    "from": 90,
+    "to": 100,
+    "sec": 1194.2,
+    "code": 0,
+    "at": "2026-11-21T05:04:12.021Z"
+   }
+  ],
+  "clockExitMeta": [
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 533195952,
+     "system": 11439714
+    },
+    "uptimeSeconds": 518.896385866,
+    "clock": {
+     "V": 1767239747703.7935,
+     "V0": 1767225600000,
+     "fired": 604262,
+     "timers": 23671,
+     "intervals": 17,
+     "started": true,
+     "startAt": 1767225600000,
+     "paused": false,
+     "yields": 1510,
+     "maxQ": 22,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "100",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 703357473,
+     "system": 13374615
+    },
+    "uptimeSeconds": 688.485740125,
+    "clock": {
+     "V": 1767254147735.3037,
+     "V0": 1767239747503.7935,
+     "fired": 599559,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767239747503.7935,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "100",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 873332092,
+     "system": 15951822
+    },
+    "uptimeSeconds": 862.862250703,
+    "clock": {
+     "V": 1767268547733.4807,
+     "V0": 1767254147535.3037,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767254147535.3037,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "100",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 967618762,
+     "system": 20726045
+    },
+    "uptimeSeconds": 950.913665773,
+    "clock": {
+     "V": 1767282947731.6577,
+     "V0": 1767268547533.4807,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767268547533.4807,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "100",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 985679585,
+     "system": 18007815
+    },
+    "uptimeSeconds": 971.757564452,
+    "clock": {
+     "V": 1767297347729.8347,
+     "V0": 1767282947531.6577,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767282947531.6577,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "100",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 990497157,
+     "system": 19620371
+    },
+    "uptimeSeconds": 976.749643768,
+    "clock": {
+     "V": 1767311747728.0117,
+     "V0": 1767297347529.8347,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767297347529.8347,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "100",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 1008902079,
+     "system": 18283036
+    },
+    "uptimeSeconds": 991.436787763,
+    "clock": {
+     "V": 1767326147726.1887,
+     "V0": 1767311747528.0117,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767311747528.0117,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "100",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 1292895303,
+     "system": 24432730
+    },
+    "uptimeSeconds": 1266.483813471,
+    "clock": {
+     "V": 1767340547724.3657,
+     "V0": 1767326147526.1887,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767326147526.1887,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "100",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 1203553397,
+     "system": 22699446
+    },
+    "uptimeSeconds": 1175.777871057,
+    "clock": {
+     "V": 1767354947722.5427,
+     "V0": 1767340547524.3657,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767340547524.3657,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "100",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 1213682546,
+     "system": 20095331
+    },
+    "uptimeSeconds": 1193.599027006,
+    "clock": {
+     "V": 1767369347515.7197,
+     "V0": 1767354947522.5427,
+     "fired": 599548,
+     "timers": 8594,
+     "intervals": 17,
+     "started": true,
+     "startAt": 1767354947522.5427,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "100",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   }
+  ],
+  "actualExit": {
+   "exit": 0
+  },
+  "emptyQueuePositiveNeedVillageDays": 0,
+  "villageWorst": [
+   {
+    "village": "임업6",
+    "zeroDays": 57,
+    "maxConsecutiveZero": 55,
+    "completed": 1080
+   },
+   {
+    "village": "어촌2",
+    "zeroDays": 65,
+    "maxConsecutiveZero": 49,
+    "completed": 839
+   },
+   {
+    "village": "임업2",
+    "zeroDays": 71,
+    "maxConsecutiveZero": 44,
+    "completed": 658
+   },
+   {
+    "village": "임업1",
+    "zeroDays": 56,
+    "maxConsecutiveZero": 44,
+    "completed": 958
+   },
+   {
+    "village": "농촌4",
+    "zeroDays": 56,
+    "maxConsecutiveZero": 41,
+    "completed": 1140
+   },
+   {
+    "village": "농촌9",
+    "zeroDays": 47,
+    "maxConsecutiveZero": 41,
+    "completed": 1319
+   },
+   {
+    "village": "농촌2",
+    "zeroDays": 80,
+    "maxConsecutiveZero": 40,
+    "completed": 479
+   },
+   {
+    "village": "임업4",
+    "zeroDays": 66,
+    "maxConsecutiveZero": 39,
+    "completed": 840
+   },
+   {
+    "village": "농촌22",
+    "zeroDays": 65,
+    "maxConsecutiveZero": 35,
+    "completed": 890
+   },
+   {
+    "village": "광산5",
+    "zeroDays": 48,
+    "maxConsecutiveZero": 33,
+    "completed": 1316
+   },
+   {
+    "village": "임업5",
+    "zeroDays": 59,
+    "maxConsecutiveZero": 31,
+    "completed": 886
+   },
+   {
+    "village": "어촌16",
+    "zeroDays": 60,
+    "maxConsecutiveZero": 31,
+    "completed": 991
+   },
+   {
+    "village": "농촌15",
+    "zeroDays": 53,
+    "maxConsecutiveZero": 30,
+    "completed": 1200
+   },
+   {
+    "village": "임업3",
+    "zeroDays": 44,
+    "maxConsecutiveZero": 28,
+    "completed": 1316
+   },
+   {
+    "village": "어촌11",
+    "zeroDays": 71,
+    "maxConsecutiveZero": 26,
+    "completed": 718
+   },
+   {
+    "village": "어촌8",
+    "zeroDays": 59,
+    "maxConsecutiveZero": 26,
+    "completed": 945
+   },
+   {
+    "village": "농촌3",
+    "zeroDays": 72,
+    "maxConsecutiveZero": 24,
+    "completed": 660
+   },
+   {
+    "village": "농촌12",
+    "zeroDays": 51,
+    "maxConsecutiveZero": 24,
+    "completed": 1168
+   },
+   {
+    "village": "어촌6",
+    "zeroDays": 77,
+    "maxConsecutiveZero": 23,
+    "completed": 521
+   },
+   {
+    "village": "광산1",
+    "zeroDays": 71,
+    "maxConsecutiveZero": 23,
+    "completed": 659
+   },
+   {
+    "village": "농촌8",
+    "zeroDays": 48,
+    "maxConsecutiveZero": 23,
+    "completed": 1245
+   },
+   {
+    "village": "어촌5",
+    "zeroDays": 56,
+    "maxConsecutiveZero": 22,
+    "completed": 798
+   },
+   {
+    "village": "광산2",
+    "zeroDays": 60,
+    "maxConsecutiveZero": 21,
+    "completed": 991
+   },
+   {
+    "village": "어촌1",
+    "zeroDays": 54,
+    "maxConsecutiveZero": 21,
+    "completed": 1015
+   },
+   {
+    "village": "농촌11",
+    "zeroDays": 44,
+    "maxConsecutiveZero": 21,
+    "completed": 1410
+   },
+   {
+    "village": "농촌10",
+    "zeroDays": 54,
+    "maxConsecutiveZero": 20,
+    "completed": 1200
+   },
+   {
+    "village": "광산3",
+    "zeroDays": 56,
+    "maxConsecutiveZero": 19,
+    "completed": 960
+   },
+   {
+    "village": "농촌5",
+    "zeroDays": 55,
+    "maxConsecutiveZero": 19,
+    "completed": 1080
+   },
+   {
+    "village": "어촌13",
+    "zeroDays": 49,
+    "maxConsecutiveZero": 19,
+    "completed": 1135
+   },
+   {
+    "village": "농촌20",
+    "zeroDays": 49,
+    "maxConsecutiveZero": 19,
+    "completed": 1316
+   },
+   {
+    "village": "광산6",
+    "zeroDays": 45,
+    "maxConsecutiveZero": 19,
+    "completed": 1440
+   },
+   {
+    "village": "어촌9",
+    "zeroDays": 48,
+    "maxConsecutiveZero": 18,
+    "completed": 1260
+   },
+   {
+    "village": "광산4",
+    "zeroDays": 50,
+    "maxConsecutiveZero": 18,
+    "completed": 1310
+   },
+   {
+    "village": "어촌4",
+    "zeroDays": 49,
+    "maxConsecutiveZero": 17,
+    "completed": 944
+   },
+   {
+    "village": "광산7",
+    "zeroDays": 48,
+    "maxConsecutiveZero": 17,
+    "completed": 1200
+   },
+   {
+    "village": "농촌7",
+    "zeroDays": 36,
+    "maxConsecutiveZero": 17,
+    "completed": 1613
+   },
+   {
+    "village": "농촌6",
+    "zeroDays": 38,
+    "maxConsecutiveZero": 16,
+    "completed": 1498
+   },
+   {
+    "village": "어촌7",
+    "zeroDays": 43,
+    "maxConsecutiveZero": 15,
+    "completed": 1228
+   },
+   {
+    "village": "농촌17",
+    "zeroDays": 32,
+    "maxConsecutiveZero": 15,
+    "completed": 1795
+   },
+   {
+    "village": "농촌21",
+    "zeroDays": 45,
+    "maxConsecutiveZero": 14,
+    "completed": 1409
+   },
+   {
+    "village": "농촌16",
+    "zeroDays": 28,
+    "maxConsecutiveZero": 14,
+    "completed": 1768
+   },
+   {
+    "village": "어촌12",
+    "zeroDays": 54,
+    "maxConsecutiveZero": 13,
+    "completed": 960
+   },
+   {
+    "village": "농촌18",
+    "zeroDays": 52,
+    "maxConsecutiveZero": 13,
+    "completed": 1200
+   },
+   {
+    "village": "어촌15",
+    "zeroDays": 42,
+    "maxConsecutiveZero": 13,
+    "completed": 1468
+   },
+   {
+    "village": "어촌3",
+    "zeroDays": 51,
+    "maxConsecutiveZero": 12,
+    "completed": 1229
+   },
+   {
+    "village": "농촌13",
+    "zeroDays": 34,
+    "maxConsecutiveZero": 12,
+    "completed": 1619
+   },
+   {
+    "village": "어촌10",
+    "zeroDays": 52,
+    "maxConsecutiveZero": 11,
+    "completed": 1080
+   },
+   {
+    "village": "농촌14",
+    "zeroDays": 48,
+    "maxConsecutiveZero": 11,
+    "completed": 1316
+   },
+   {
+    "village": "어촌14",
+    "zeroDays": 36,
+    "maxConsecutiveZero": 11,
+    "completed": 1413
+   },
+   {
+    "village": "농촌19",
+    "zeroDays": 40,
+    "maxConsecutiveZero": 11,
+    "completed": 1497
+   },
+   {
+    "village": "농촌1",
+    "zeroDays": 9,
+    "maxConsecutiveZero": 4,
+    "completed": 1860
+   }
+  ]
+ }
+}

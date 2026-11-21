@@ -1,0 +1,50 @@
+{
+ "v": 1,
+ "tag": "early-census",
+ "seed": 1020,
+ "days": 1,
+ "every": 10,
+ "dir": "/tmp/t1411/worlds/early-census-1020",
+ "ck": 1,
+ "segs": [
+  {
+   "from": 0,
+   "to": 1,
+   "sec": 141.8,
+   "code": 0,
+   "at": "2026-11-21T05:07:20.098Z"
+  }
+ ],
+ "done": true,
+ "env": {
+  "T1207_TERR_REAL": "1",
+  "VILLAGE_NPC_CAP": "Infinity",
+  "NODE_OPTIONS": "-r /tmp/t1411/method-v3/t1411-profile-hook.cjs -r /tmp/t1411/base/scripts/t1274-baseline-hook.js -r /tmp/t1411/base/scripts/t1302-observe.js -r /tmp/t1411/base/scripts/t1243-observe.js -r /tmp/t1411/base/scripts/t1221-observe.js -r /tmp/t1411/base/scripts/t1230-observe.js -r /tmp/t1411/base/scripts/t1251-observe.js -r /tmp/t1411/base/scripts/t1274-observe.js -r /tmp/t1411/base/scripts/t1329-observe.js -r /tmp/t1411/method-v3/t1411-census.cjs",
+  "T745_VCLOCK": "1",
+  "T1411_HOURLY": "1",
+  "T1329_OBS": "1",
+  "T1302_TERR_BODY": "1",
+  "T325_WOOD_ACT": "1",
+  "T1244_BODY_MS": "10000",
+  "T740_DUMP_DAYS": "100,200,300,365,400,500,600,700,730",
+  "T1411_CPU_PROF": "0",
+  "T1358_STAKE_REQUOTE": "1",
+  "VILLAGE_CARAVAN_MAX": "0",
+  "T1308_GUARD_MAX": "0",
+  "T1329_TERR_CREW": "1",
+  "T1411_PROFILE_DIR": "/tmp/t1411/worlds/early-census-1020-profiles",
+  "T400_BUILD_ACT": "0",
+  "T1283_WOOD_DEMAND": "1",
+  "T1243_FARM_ON": "0",
+  "T1238_TERR_V2": "1",
+  "T1306_MIGRATE_FOOD": "1",
+  "T1221_EVERY": "10",
+  "T1259_WOOD_CAP": "0",
+  "T1297_BIRTH_FOOD": "1",
+  "VILLAGE_DAY_MS": "1440000",
+  "T1411_ROOT": "/tmp/t1411/base"
+ },
+ "started": "2026-11-21T05:04:58.244Z",
+ "tries": 0,
+ "ended": "2026-11-21T05:07:20.104Z"
+}

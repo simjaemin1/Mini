@@ -1,0 +1,9 @@
+{
+ "left": "/tmp/t1411/worlds/base-plain-1020",
+ "right": "/tmp/t1411/worlds/early-census-1020",
+ "days": 1,
+ "econCompared": 1,
+ "villageCompared": 1,
+ "same": true,
+ "differences": []
+}
