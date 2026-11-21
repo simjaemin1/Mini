@@ -92,7 +92,7 @@ function zoneChild() {
     res.before = snap();
     res.deaths0 = S._deaths || 0;
     if (pr) {
-      const tig = { px: pr.px + 1.5, py: pr.py, type: '🐯', gid: 99914, hp: 14, tmp: 1, stam: 1, hun: 0, ang: Math.PI, pause: 0, cd: 0, fcd: 0, cvo: 0, cvt: 0, flk: 0, st: 'charge', tgt: pr, chg: 28 };
+      const tig = { px: pr.px + 1.5, py: pr.py, type: String.fromCodePoint(0x1F42F), gid: 99914, hp: 14, tmp: 1, stam: 1, hun: 0, ang: Math.PI, pause: 0, cd: 0, fcd: 0, cvo: 0, cvt: 0, flk: 0, st: 'charge', tgt: pr, chg: 28 };
       S.mobs.push(tig);
       let k = 0; for (; k < 300 && body.hp > 0; k++) tick();
       res.ticks = k;
@@ -266,7 +266,8 @@ async function main() {
     let Z = null; try { Z = JSON.parse(fs.readFileSync(out, 'utf8')); } catch (e) { Z = { err: `결과 없음(종료 ${r.status} · 신호 ${r.signal}) ${String(r.stderr || '').slice(-300)}` }; }
     ok(!Z.err && Z.wildOn && Z.proxy, '[상황] 존 자식이 섰다 · 존의 야생 인스턴스 켬 · 사냥꾼 몸이 야생 대리(프록시)로 섰다', Z.err || '');
     if (!Z.err) {
-      const tiger = (Z.dmg || []).some((x) => /^wild:🐯/.test(x.src) && x.d >= 50);
+      const TIG = String.fromCodePoint(0x1F42F);   // 호랑이(lint ② — 판정 자리엔 코드 포인트)
+      const tiger = (Z.dmg || []).some((x) => x.src.startsWith('wild:' + TIG) && x.d >= 50);
       ok(tiger && Z.bodyHp <= 0 && Z.deaths1 === Z.deaths0 + 1 && Z.hDead === 1 && Z.proxyGone,
         '[상황] 호랑이가 사냥꾼 몸을 쓰러뜨렸다(존 `damagePlayer` · `wild:🐯습격`) · `reapDead` 가 한 번 돌았다(대리 빠짐 · 사망 +1)', `피해 ${JSON.stringify(Z.dmg)} · 몸 hp ${Z.bodyHp} · 사망 ${Z.deaths0}→${Z.deaths1} · 틱 ${Z.ticks}`);
       const B0 = Z.before, B1 = Z.after;
