@@ -1,0 +1,28 @@
+{
+ "base": "1aa63e637f24c0cdde4e6b7988f7c013a23301a8",
+ "feature": "768d740b0783ee815342a404b4c754e8dc5c4e61",
+ "baseSource": {
+  "server/villages.js": "943ffd07acb11fcba66f3b0ae205e6964e0836d9c6b19ee6882cc28facbad1b5",
+  "server/zone.js": "65a00705e2278d674f0facc1dff212dd9e389755b20b12cc16370fe664cea822",
+  "server/build-haul.js": "deb39bce3f2f53287810e8a0d71f15691dbd39247063c7863853b1417287f0db",
+  "server/terr-body.js": "9c2482d018eb367fcef1534e608631ef58ca5b71705d94d18996b3acfd709188",
+  "server/terr-cost.js": "a8bc781b27c421950c3737c315bce5306bbcc516f377f6d25d813319d106294e",
+  "sim/economy-sim.js": "69d152fc17a733d9dd6de6817062f594b674883bbd66b3059f0c1f6756c8ea9c",
+  "scripts/t1308-long-run.js": "6629ff2af5659f8349f8f8a3ba8d29281a784794be1ba77bdb0cc11644662bd4"
+ },
+ "featureSource": {
+  "server/villages.js": "ce4d8c7f1f157d64297e93f3b69df3cc7773a62c16bc0e9139d1ff56a589477e",
+  "server/zone.js": "fb89408587a5d2291e9783b203e4c56bf938a8df31153c4821e186d68c523d81",
+  "server/build-haul.js": "deb39bce3f2f53287810e8a0d71f15691dbd39247063c7863853b1417287f0db",
+  "server/terr-body.js": "9c2482d018eb367fcef1534e608631ef58ca5b71705d94d18996b3acfd709188",
+  "server/terr-cost.js": "a8bc781b27c421950c3737c315bce5306bbcc516f377f6d25d813319d106294e",
+  "sim/economy-sim.js": "69d152fc17a733d9dd6de6817062f594b674883bbd66b3059f0c1f6756c8ea9c",
+  "scripts/t1308-long-run.js": "6629ff2af5659f8349f8f8a3ba8d29281a784794be1ba77bdb0cc11644662bd4"
+ },
+ "methods": {
+  "t1411-census.cjs": "0f58c83de0bfd0533285e9be4b69b2695929cd5d0fdfd18ab974d6563f574a3e",
+  "t1411-profile-hook.cjs": "736bea70a84106d3aa54d7f32c85cb915f47704c4f0af64641f2588c9679055d",
+  "t1411-run.py": "5d2d1a985bf788cc8dec94ce7c7ae9e364bc1289a6bacedc3c0337586d1a21c4",
+  "t1411-compare.py": "318b80bc8e5c5f9d2cb0b91ddcc179917958ec7687a58ae40c8118daf78f50ea"
+ }
+}

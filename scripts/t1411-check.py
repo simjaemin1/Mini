@@ -10,6 +10,7 @@ a.out.mkdir(parents=True, exist_ok=True)
 root = Path(__file__).resolve().parent.parent
 commands = [
     ('new-harness', ['node', 'scripts/test-t1411-terr-cpu.js']),
+    ('old-code-red', ['bash', 'scripts/pm-old-code-red.sh', 'origin/main', 'test-t1411-terr-cpu.js']),
     ('touched', ['node', 'scripts/touched-harness.js', 'origin/main', '--run']),
     ('bundle', ['node', 'sim/build-econ-bundle.js', '--check']),
     ('inline', ['node', 'sim/inline-engine.js', '--check']),
@@ -22,6 +23,10 @@ commands = [
 results = []
 for name, command in commands:
     env = dict(os.environ)
+    if name == 'old-code-red':
+        env['OUT'] = str((a.out/'old-code-red-result.log').resolve())
+    if name == 't17':
+        env['T17_JSON'] = str((a.out/'t17.json').resolve())
     if name == 'touched':
         i = int(env.get('GIT_CONFIG_COUNT', '0'))
         env.update(GIT_CONFIG_COUNT=str(i + 1))
@@ -35,6 +40,12 @@ for name, command in commands:
     start = time.monotonic()
     with (a.out/(name+'.log')).open('wb') as log:
         r = subprocess.run(command, cwd=root, env=env, stdout=log, stderr=subprocess.STDOUT)
+    if name == 'old-code-red' and r.returncode == 0:
+        proof = (a.out/'old-code-red-result.log').read_text()
+        assert '빨강 1 · 크래시 0 · 초록 0 · 모름 0' in proof, proof
+    if name == 't17' and r.returncode == 0:
+        measured = json.loads((a.out/'t17.json').read_text())
+        assert sum(v['pop'] for v in measured['vpop']) == 6198, measured['vpop']
     results.append(dict(name=name, command=command, exit=r.returncode, seconds=time.monotonic()-start))
     (a.out/'status.json').write_text(json.dumps(results, ensure_ascii=False, indent=1))
     print(name, 'exit', r.returncode, flush=True)
