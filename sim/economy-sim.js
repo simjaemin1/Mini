@@ -1953,6 +1953,37 @@ function t1205NeedOut(v, N, T) {
   const nMax = Math.pow((S - T1134_EMIG_H) * Math.pow(Math.max(1, T), P.b) / P.c, 1 / P.a);   // 부담 ≤ S − 0.25 인 가장 큰 인구
   return Math.max(0, Math.ceil(N - nMax - 1e-9));
 }
+// ★★[T1405 2026-11-20 · ★재민 11-20 "애초에 이탈하는 주민이 거의 없어야 해.. 왜 이탈하는 거야..?" · 11-07 "0.25 밑은 정말 드물게"] 떠나는 주민을 드물게 — 손잡이 둘(끔 기본 · 끔 = 종전 바이트 · 새 수 0).
+//   왜(보고 T1405 §1): 큰 마을은 행복 h 가 0.5 밑으로 가도 출생이 거의 안 깎인다 — 행복 항 (h − 0.5) × 0.6 × r × N 은 h = 0.25 에서 −0.15 r N 뿐이라
+//     로지스틱 성장(K 에서 먼 마을 ≈ + r N)이 그대로 남아 사람이 늘고, 부담 B(∝ N²)가 h 를 0.25 밑으로 민다 → 그날 부담이 0.25 로 돌아올 만큼(`t1205NeedOut`) 떠난다 —
+//     날마다 난 만큼 떠나는 고리. 그리고 받는 쪽 문(호스트 `_t1147Pick` · T1312 `_t1312Pass`)은 "더 행복한 이웃"만 보니 받은 마을이 그 사람 몫 부담으로 0.25 밑에 가도 받는다.
+//   ㉡ `T1405_BIRTH`(`'1'` 만 켬) — 출생이 행복을 읽는 곡선을 0.25 에 맞춘다: h 가 0.5(행복 항의 중립 — 위 `_happyTerm` 식의 그 0.5)에서 0.25(이탈 문턱 `T1134_EMIG_H`)로 내려가는 동안
+//     기대 자연사를 채우는 몫(T1206 `_natExp`)을 뺀 성장 몫이 1 → 0 으로 곧게 줄어 **0.25 에 닿기 전에 출생 = 자연사**가 된다(그 밑도 자연사만 채운다 — 사람 수가 그대로 · 떠남은 종전 식).
+//     종전 깎기(행복 항)가 더 세면 종전 값 그대로(둘 가운데 작은 출생).
+//     ★곡선이 읽는 행복은 **붐빔 행복** `t1405BirthH` = S − B + max(0, E) — 굶주림 기억(E > 0)을 뺀 행복(카드 "B 에 맞춘다"). 첫 판(곡선이 h 를 그대로 읽음 — 보고 §4 첫 판)에서
+//     굶은 작은 마을(E ≈ 1 · S < 0.25)이 출생 = 자연사에 묶여 한 줌에서 다시 못 차고 굶어 비었다(시드 7 · 빈 마을 3 — 끔 0). 굶은 마을은 종전 출생 그대로(그 마을의 고침은 굶주림 쪽 — ㉣).
+//     좋은 일(E < 0 — 승전 약탈)은 빼지 않는다(그 몫은 S 에 그대로 — 붐빔 행복을 올리지 않는다).
+//   ㉠ `T1405_RECV`(`'1'` 만 켬) — 받는 쪽 문: 한 사람을 받으면 제 행복이 0.25 밑으로 가는 마을은 안 받는다(있는 부담 식 `t1205Burden` · 이탈 문턱 0.25 · `t1205NeedOut` 그 셈).
+//     끔 세계(호스트가 받는 마을 오늘 값을 읽는 길)는 받는 마을의 S · 인구 · 영토로 · T1312 들은 줄 길은 들은 행복 · 들은 인구(+ 무리 셈)에 부담 차를 빼서 — 영토는 눈에 보이는 땅(받는 마을 영토 셀 수).
+const T1405_BIRTH = (typeof process !== 'undefined' && process.env && process.env.T1405_BIRTH === '1');
+const T1405_RECV = (typeof process !== 'undefined' && process.env && process.env.T1405_RECV === '1');
+const T1405_H_MID = 0.5;   // 행복 항의 중립(아래 `_happyTerm = (h − 0.5) × …` 의 그 0.5 — 새 수 아님)
+//   ㉡ 출생 곡선 — 행복 h · 출생 깎기 앞 몫 oth(로지스틱 + 자연사 채움 + 건강 + 위신) · 자연사 채움 rep → 출생 상한(종전 dP 와 작은 쪽을 쓴다)
+function t1405BirthCap(h, oth, rep) {
+  if (!(oth > 0)) return oth;
+  const r = Math.max(0, Math.min(oth, rep || 0)), grow = Math.max(0, oth - r);
+  const f = Math.max(0, Math.min(1, (h - T1134_EMIG_H) / (T1405_H_MID - T1134_EMIG_H)));
+  return r + grow * f;
+}
+//   ㉡ 붐빔 행복 — 느린 S · 부담 B · 겪은 일 E → S − B + max(0, E)(자르지 않는다 — 곡선이 0 ~ 1 로 자른다)
+function t1405BirthH(S, B, E) { return (S || 0) - (B || 0) + Math.max(0, E || 0); }
+//   ㉠ 받는 쪽 문 — 받는 마을 v 가 add 사람을 더 받아도 행복이 0.25 위인가(true = 받는다). 들은 줄 길은 hHeard · nHeard(+ 무리 셈 add)를 준다.
+function t1405RecvOk(v, add, hHeard, nHeard) {
+  if (!T1205_HAPPY || !v) return true;
+  const P = t1205Par(), T = (v.lastStats && v.lastStats.terrCells) || t1205Terr(v), a = Math.max(1, add || 1);
+  if (hHeard != null && nHeard != null) return hHeard - (t1205Burden(nHeard + a, T, P) - t1205Burden(nHeard, T, P)) >= T1134_EMIG_H;
+  return t1205NeedOut(v, v.npcs.length + a, T) === 0;
+}
 // ★★[T931 2026-10-26 · T924 회부 2-ⓐ · 재민 10-24 "창고에 식량이 있는데 자유민이 그렇게 빨리 죽어?"]
 //   **식량 자리 K 에도 신뢰 관성** — 손잡이 `T931_SLOTK_EMA`(★[T943] **켬 기본 = `'season'`** · 되돌림 `'0'` = 끔 = 종전 바이트 · `'1'` = 값 전체 · 그 밖 · 미설정 = `'season'` · 브라우저 랩 = `'season'`).
 //   ★[T943 2026-10-27 · PM 결정 — T931 회부 1 = `'season'`(카드 글자 "계절 배수에"의 꼴 · 서버 띠 그날 굶주림 0 인 죽음 −45% · 랩 −23%)] T931 보고 §7 · T943 보고.
@@ -5848,6 +5879,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
     if ((T1075_HAPPY_EQ || T1134_HAPPY_TARGET) && _happyTerm < 0) {   // ★[T1075 ④] 불행은 죽이지 않는다 — 출생을 먼저 깎고 남는 몫은 이탈 압력
       const _oth = dP + _healthTerm + _prestigeTerm, _aft = _oth + _happyTerm;
       dP = _oth > 0 ? Math.max(0, _aft) : _oth;
+      if (T1405_BIRTH && T1205_HAPPY && _oth > 0) dP = Math.min(dP, t1405BirthCap(t1405BirthH(stats.happinessSlow, stats.happinessBurden, v._t1134E), _oth, T1206_NAT_DEATH ? (v._natExp || 0) : 0));   // ★[T1405 ㉡] 붐빔이 0.25 에 닿기 전에 출생 = 자연사(위 머리말 · 끔 = 이 줄 무동작)
       _t1075Emig = _oth > 0 ? Math.max(0, -_aft) : -_happyTerm;
       if (T1134_HAPPY_TARGET && !(stats.happiness < T1134_EMIG_H)) _t1075Emig = 0;   // ★[T1134] 이탈은 h < 0.25 일 때만(그 위는 출생만 깎인다)
       if (T1205_HAPPY) _t1075Emig = _homeN * t1205Par().k2 * Math.max(0, T1134_EMIG_H - stats.happiness);   // ★[T1205] 떠나기 = 인구 × k₂ × (0.25 − h)(연속 · 출생 깎고 남은 몫과 무관)
@@ -8015,7 +8047,7 @@ module.exports = {
   _autoSwitchJobForTest: autoSwitchJob, _switchNPCJobForTest: switchNPCJob,
   t1226On, t1226Flex, _t1226Table, _t1226V, _t1226Sk, _t1226Net, _t1226LookDay, _t1226In, _t1226Out, _t1226FarmersOf, _t1226Stat, T1226_SWITCH_DAYS, opportunityCost, _needValueOf, villageMasterSkill, apprenticeInherit,   // ★[T1226] 직업 바꾸기 유연 — 하네스 · 계측이 같은 함수를 읽는다(사본 0)   // ★[T1085] 하네스가 자율 전환 그 함수를 부른다(시험 이름 · 사본 0)
   T1075_HAPPY_EQ, HAPPY_EQ_HALF_DAYS,
-  T1205_HAPPY, T1205_E_MIN, T1205_E_MAX, T1205_DEF, t1205Par, t1205Terr, t1205Burden, t1205Ev, t1205Step, t1205NeedOut,   // ★[T1205] 행복 식 다시 — 하네스 · 호스트 · war-core 가 같은 함수를 읽는다
+  T1205_HAPPY, T1205_E_MIN, T1205_E_MAX, T1205_DEF, t1205Par, t1205Terr, t1205Burden, t1205Ev, t1205Step, t1205NeedOut, T1405_BIRTH, T1405_RECV, t1405BirthCap, t1405BirthH, t1405RecvOk,   // ★[T1405] 떠남 드물게 — 손잡이 둘 · 출생 곡선 · 받는 쪽 문(호스트 · 하네스가 같은 함수를 부른다)   // ★[T1205] 행복 식 다시 — 하네스 · 호스트 · war-core 가 같은 함수를 읽는다
   T1134_HAPPY_TARGET, T1134_EMIG_H, T1134_C_DEFAULT, t1134C, t1134Half, t1134Step,   // ★[T1134] 목표 행복 — 하네스 · 호스트가 같은 함수를 읽는다   // ★[T1075] 행복 평형 손잡이 · 반감기(평형 함수는 `sim/equilibrium.js` 하나 — T1076 과 같이 쓴다)
   foodDebtOf, T1074_FOOD_DEBT,   // ★[T1074] 식량 빚 읽는 함수 하나(T1075 가 읽는다)
   T1217_MARGIN, t1217HappyMu, t1217IdleFrac, LEISURE_HAPPY_W,   // ★[T1217] 한 시간 값 ↔ 쉰 값 — 물건 한 단위의 행복 기울기 · 여가 몫 밑변 · 여가 무게(v2 · 서버 · 하네스가 같은 함수를 읽는다)

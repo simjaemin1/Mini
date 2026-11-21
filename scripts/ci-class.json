@@ -15379,6 +15379,52 @@
    "core": false,
    "why": "안 잼"
   },
+  "test-t1405-leave-rare.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "다",
+   "maxSec": 37.6,
+   "same5": true,
+   "core": false,
+   "why": "srv",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 37.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 34.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 34.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 35.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 32.8,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "다",
+   "child": [
+    "spawnSync node"
+   ],
+   "srv": true
+  },
   "test-t721-apply.js": {
    "cls0": "나",
    "why0": "child_process",
