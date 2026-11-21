@@ -82,8 +82,8 @@ function stampSites(src) {
   console.log(`\n=== 일터 깨움 표 한 번 판정 = 판정 = 결정 문 — 시드 ${SEED} · ${DAYS}날 · ${out} ===`);
   { const vm = require('vm'), SRC = fs.readFileSync(path.join(ROOT, 'server', 'stand-skip.js'), 'utf8');
     const L = (env) => { const m = { exports: {} }; vm.runInThisContext('(function (module, exports, require, process) {' + SRC + '\n})')(m, m.exports, require, { env }); return m.exports; };
-    const a = L({}), b = L({ T1399_TOK: '1' }), c = L({ T1399_TOK: 'verify' }), d = L({ T1322_PREFILTER: '0', T1399_TOK: '1' });
-    ok(!a.TOK_ON && b.TOK_ON && !b.TOK_VERIFY && c.TOK_ON && c.TOK_VERIFY && !d.TOK_ON, '⑤ 손잡이 `T1399_TOK` — 끔 기본 · `1` 켬 · `verify` 켬 + 견줌 · 첫 거름 끔이면 무동작'); }
+    const a = L({}), b = L({ T1399_TOK: '1' }), c = L({ T1399_TOK: 'verify' }), d = L({ T1322_PREFILTER: '0', T1399_TOK: '1' }), e = L({ T1399_TOK: '0' });
+    ok(a.TOK_ON && !a.TOK_VERIFY && b.TOK_ON && !b.TOK_VERIFY && c.TOK_ON && c.TOK_VERIFY && !d.TOK_ON && !e.TOK_ON, '⑤ 손잡이 `T1399_TOK` — ★[T1415 -on] 켬 기본 · `0` 끔 · `verify` 켬 + 견줌 · 첫 거름 끔이면 무동작'); }
   const SP = stampSites();
   ok(SP.n >= 40 && SP.miss.length === 0, '④ 마을 바뀜 도장 — 판정이 읽는 마을 문 칸을 쓰는 줄마다 같은 줄에 `t1399Bump`', `쓰는 줄 ${SP.n} · 도장 없는 줄 ${SP.miss.length}${SP.miss.length ? ' · ' + SP.miss.slice(0, 4).join(' | ') : ''}`);
   { const src = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8'), mark = 'vil.npcPids.push(p.pid); t1399Bump(vil);', hit = src.split(mark).length - 1, B3 = stampSites(src.replace(mark, 'vil.npcPids.push(p.pid);'));

@@ -28,11 +28,11 @@ const FMODE = (typeof process !== 'undefined' && process.env && process.env.T134
 const WORK_ON = ON && FMODE !== '0', WORK_VERIFY = FMODE === 'verify';
 // ★[T1365 ⓐ] 일터 깨움 나머지 손잡이 `T1365_WORK` — **끔 기본**(같은 자에서 이득이 안 섰다 — 판정 셈이 결정 문 셈과 거의 같다 · 보고 T1365 §5) · `'1'` 켬 · `'verify'` 켬 + 건너려는 결정을 실제로 돌려 견줌 + 직업마다 덮음 셈(무동작 결정 중 판정이 잡은 몫)
 const XMODE = (typeof process !== 'undefined' && process.env && process.env.T1365_WORK || '').trim();
-const WORK2_ON = ON && (XMODE === '1' || XMODE === 'verify'), WORK2_VERIFY = XMODE === 'verify';
+const WORK2_ON = ON && XMODE !== '0', WORK2_VERIFY = XMODE === 'verify';   // ★[T1415 -on] 켬 기본 후보(30날 × 3시드 + 던짐 대본 판 같음 · 400날 끈 판 같음 — 보고 T1415 §4) · `'0'` 끔
 // ★[T1399 ⓐ] 일터 깨움 표 한 번 판정 손잡이 `T1399_TOK` — **끔 기본** · `'1'` 켬 · `'verify'` 켬 판의 표를 적되 결정마다 판정을 실제로 다시 해 견줌(행동은 판정 답 = 종전)
 //   켬 = 일터 깨움 판정(`t1348Farm` · `t1365Work`)이 참이면 그 판정이 산 조건을 열에 적고(생활층 `t1399Take`), 다음 결정은 그 조건이 아직 사는가(`t1399Still`)만 본다 — 판정을 다시 안 한다.
 const TMODE = (typeof process !== 'undefined' && process.env && process.env.T1399_TOK || '').trim();
-const TOK_ON = ON && (TMODE === '1' || TMODE === 'verify'), TOK_VERIFY = TMODE === 'verify';
+const TOK_ON = ON && TMODE !== '0', TOK_VERIFY = TMODE === 'verify';   // ★[T1415 -on] 켬 기본 후보 · `'0'` 끔
 // ★★[T1415 ② 2026-11-21] 깨움 시각 줄 손잡이 `T1415_WAKEQ` — **끔 기본** · `'1'` 켬 · `'verify'` 줄은 쌓고 꺼내되 몸은 종전처럼 틱마다 보며 견줌(행동 = 종전).
 //   켬 = 서 있는 몸(표 1 · 2)이 틱마다 첫 거름(`_t1322Skip`)을 받는 대신, 거른 틱 끝에 다음에 볼 시각(결정 시각 · 해 질 녘 아래 끝)을 힙에 넣고 고리에서 뺀다(주차).
 //     때가 된 몸만 틱 머리에서 꺼내(`qPop`) 종전 첫 거름에 다시 넣는다. 그 사이 틱마다 쓰였을 칸(`VT` 거른 틱 · `SK` 거른 시각 · 거름 셈)은 꺼낼 때 한 번에 쓴다(`qMat`).

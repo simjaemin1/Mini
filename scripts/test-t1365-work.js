@@ -75,8 +75,8 @@ function clockCheck() {
   console.log(`\n=== 일터 깨움 판정 = 결정 문 — 시드 ${SEED} · ${DAYS}날 · ${out} ===`);
   { const vm = require('vm'), SRC = fs.readFileSync(path.join(ROOT, 'server', 'stand-skip.js'), 'utf8');
     const L = (env) => { const m = { exports: {} }; vm.runInThisContext('(function (module, exports, require, process) {' + SRC + '\n})')(m, m.exports, require, { env }); return m.exports; };
-    const a = L({}), b = L({ T1365_WORK: '1' }), c = L({ T1365_WORK: 'verify' }), d = L({ T1322_PREFILTER: '0', T1365_WORK: '1' });
-    ok(!a.WORK2_ON && b.WORK2_ON && !b.WORK2_VERIFY && c.WORK2_ON && c.WORK2_VERIFY && !d.WORK2_ON, '⑤ 손잡이 `T1365_WORK` — 끔 기본(같은 자에서 이득 없음) · `1` 켬 · `verify` 켬 + 견줌 · 첫 거름 끔이면 무동작'); }
+    const a = L({}), b = L({ T1365_WORK: '1' }), c = L({ T1365_WORK: 'verify' }), d = L({ T1322_PREFILTER: '0', T1365_WORK: '1' }), e = L({ T1365_WORK: '0' });
+    ok(a.WORK2_ON && !a.WORK2_VERIFY && b.WORK2_ON && !b.WORK2_VERIFY && c.WORK2_ON && c.WORK2_VERIFY && !d.WORK2_ON && !e.WORK2_ON, '⑤ 손잡이 `T1365_WORK` — ★[T1415 -on] 켬 기본 · `0` 끔 · `verify` 켬 + 견줌 · 첫 거름 끔이면 무동작'); }
   const CK = clockCheck();
   ok(CK.n > 5000 && CK.outs > 100 && CK.diff === 0, '④ ★[T1365 ⓒ] 예산 시계 한 번 — `TB.outAt(…, t)` 가 같은 시각의 `TB.out` 과 같은 답 · 같은 셈 칸', `견줌 ${CK.n} · 멈춤 ${CK.outs} · 어긋남 ${CK.diff}`);
   const baitEnv = (b) => ({ __T1365_BAIT: b, __T1365_BAIT_LOG: path.join(out, `bait-${b}.log`), T1294_PRELOAD: __filename });

@@ -14112,7 +14112,7 @@ const _t1399G = new Map();   // 마을 dbId → 바뀜 도장(관측 · 판정 �
 //   던짐 대본(`fishActOn`) 어부의 기다림 결정(찌를 본다 — `now < biteAt` · 자리 머묾 `_fishT` 앞 · 같은 시간 칸)은 라벨을 '드리움' → '낚시' 로 두 번 쓴다 —
 //   값은 그대로 '낚시'이고 바뀌는 것은 관측 칸 `_lifeActAt`(= 그 결정의 `Date.now()`) 하나다. 켬 = 판정 3(머묾 + 라벨 시각) — 존이 결정을 건너고 그 시각을 열에 두었다가 몸을 열 때 쓴다(미룬 도장).
 //   `_lifeActAt` 을 읽는 자리는 존 `makeEntry` 하나(바뀐 뒤 1.2초 창 안이면 라벨을 싣는다)고, 클라는 안 온 라벨을 앞 값 그대로 둔다(`30-n-net` `prev?.act`) · 소리는 값이 바뀐 모서리에서만(`48-a-audio`) — 보고 §ⓒ 표.
-const T1399_FISH = process.env.T1399_FISH === '1';
+const T1399_FISH = process.env.T1399_FISH !== '0';   // ★[T1415 -on] 켬 기본 후보 · `'0'` 끔
 function t1399Bump(vil) { if (vil && vil.dbId != null) _t1399G.set(vil.dbId, (_t1399G.get(vil.dbId) || 0) + 1); }
 let _hzOn = false, _hzWalk = false, _hzT = Infinity, _hzT2 = Infinity, _hzQS = null, _hzNo = 0, _hzPN = 0, _hzPX = 0, _hzPY = 0, _hzPR = 0, _hzPO = 0, _hzVw = 0, _hzQ = 0, _hzQX = 0, _hzQY = 0, _hzWhy = '';
 function _hzD(t) { if (_hzOn && t < _hzT) _hzT = t; }   // 시각 문턱(그 시각 앞까지 산다)
