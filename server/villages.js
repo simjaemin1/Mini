@@ -12336,10 +12336,12 @@ const T198_BRIDGE = process.env.T198_BRIDGE === '1';
 //     `_clearedFrac = |개간| / (|개간| + |미개간 존닝|)`   — `_farmSet` · `_potSet`
 //     `_paddyShare  = (|개간| − |밭|) / |개간|`            — `_drySet` ⊂ `_farmSet` 이라 나머지가 논이다
 //   ⚠분모가 0 이면 **안 심는다**(지어낸 값 0 — econ 이 종전대로 ×1 로 받는다).
+let _t1421C = null; function _t1421Cap() { if (_t1421C === null) { const E = _lifeEcon(); if (!E) return false; _t1421C = !!E.T1421_FIELD_CAP; } return _t1421C; }
 function _fieldBridge(vil) {
   const ec = vil && vil.econ; if (!ec) return;
   const f = vil._farmSet ? vil._farmSet.size : 0;
   ec._fieldCells = f;
+  if (_t1421Cap()) ec._t1421Land = f + (vil._potSet ? vil._potSet.size : 0);   // ★[T1421 ②] 갈 수 있는 땅 = 밭 + 개간 후보 칸(끔 = 칸 없음)
   if (!T198_BRIDGE) return;   // ★되돌림 — 두 칸은 `undefined` 그대로다(비트 동일의 뿌리)
   const p = vil._potSet ? vil._potSet.size : 0;
   const d = vil._drySet ? vil._drySet.size : 0;
@@ -13885,9 +13887,10 @@ const _t1224Stat = { vilDays: 0, ghost: 0, ghostBudget: 0, body: 0, batch: 0 };
 // ★[T1276] 지금 선 작물이 낼 식량(econ 식량 단위) — 심은 칸마다 정본 `_t368Item`(비옥 · 물 · 품질) × 낱개 값(`t368FoodPer`) · econ `_t1276Stand` 에(부양력 밭 흐름이 읽는다 · 끔 = 무동작)
 function _t1276Stand(vil) {
   const E = _lifeEcon(); if (!E || !E.T1276_FARM_K || !vil || !vil.econ || !vil._crop) return 0;
-  let S = 0;
-  for (const [k, e] of vil._crop) { if (!e || !e.c) continue; const it = _t368Item(vil, k, e); if (it && it.u > 0) S += it.u * (E.t368FoodPer(vil.econ, e.c) || 0); }
+  let S = 0, nS = 0;
+  for (const [k, e] of vil._crop) { if (!e || !e.c) continue; const it = _t368Item(vil, k, e); if (it && it.u > 0) { S += it.u * (E.t368FoodPer(vil.econ, e.c) || 0); nS++; } }
   vil.econ._t1276Stand = S;
+  if (E.T1421_FIELD_CAP) vil.econ._t1421StandN = nS;   // ★[T1421 ②] 선 칸 수(칸 하나가 낼 식량 = 선 작물 식량 ÷ 이 수 · 끔 = 칸 없음)
   return S;
 }
 // ★★[T1374 ② 2026-11-18 · 지시 T1374 ㉳] **다음 거둠 날** — econ `_t1374Next`(출생 문 `T1374_BIRTH_HARV` · 기근 문 `T1374_FAMINE_HARV` 가 읽는다 · 밭 세계 · 둘 다 끔이면 무동작).
