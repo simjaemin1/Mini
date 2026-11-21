@@ -7,7 +7,7 @@ TAG="$1"; SEED="$2"; DAYS="$3"; OUTD="$4"
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 mkdir -p "$OUTD"
 LOG="$OUTD/$TAG-$SEED.log"
-export NODE_OPTIONS="--require $ROOT/계측/T1394_2026-11-20/t1394hook.js"
+export NODE_OPTIONS="${T1394_HEAP:+--max-old-space-size=$T1394_HEAP }--require $ROOT/계측/T1394_2026-11-20/t1394hook.js"   # 힙(T1394_HEAP · MB)은 계산을 안 바꾼다 — 넘치면 죽을 뿐
 T0=$(date +%s)
 node --experimental-sqlite "$ROOT/scripts/server-baseline-check.js" --make "$OUTD/$TAG-$SEED.sbc-base.json" --days "$DAYS" --seeds "$SEED" --vclock --side off --par 1 > "$LOG" 2>&1
 RC=$?
