@@ -108,7 +108,7 @@ try:
             with (root/(name+'.driver.log')).open('ab') as f:
                 child = subprocess.Popen(entry['command'], cwd=repo, stdout=f, stderr=subprocess.STDOUT, start_new_session=True)
             active[name] = child
-            entry.setdefault('infrastructureResumes', []).append(dict(checkpoint=progress(name)['ck'], evidence=str(root/'infrastructure-recovery.json'), previousPid=entry['pid']))
+            entry.setdefault('infrastructureResumes', []).append(dict(checkpoint=progress(name)['ck'], evidence=str(Path(recovery['archive'])/'interruption.json'), previousPid=entry['pid']))
             entry['pid'] = child.pid
         heartbeat()
     while queue or active:

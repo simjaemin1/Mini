@@ -1,0 +1,59 @@
+{
+ "kind": "daily-observation-replay-check",
+ "complete": false,
+ "scope": "All retained daily observation fields except the three named CPU/uptime fields; not a full-state fingerprint or an independent world.",
+ "cases": {
+  "OFF-1020/t1274-days": {
+   "expectedDays": [
+    351,
+    352,
+    353,
+    354,
+    355,
+    356,
+    357,
+    358
+   ],
+   "matchedDays": [],
+   "excludedTimingFields": [
+    "cpuSeconds",
+    "processCPUSeconds",
+    "uptimeSeconds"
+   ],
+   "differences": [],
+   "archivedFileSha256": "0cd9331e4faa475c032aaa7df159c93e9b0dfb30650c15bc8cc714c69dd63769"
+  },
+  "OFF-1020/t1302-days": {
+   "expectedDays": [
+    351,
+    352,
+    353,
+    354,
+    355,
+    356,
+    357,
+    358
+   ],
+   "matchedDays": [],
+   "excludedTimingFields": [],
+   "differences": [],
+   "archivedFileSha256": "f004612cf78ed86a90e5ba782ae9dbf8c3a5ab0030f9fdaebee1921efa45ec0a"
+  },
+  "OFF-1020/t1411-census": {
+   "expectedDays": [
+    351,
+    352,
+    353,
+    354,
+    355,
+    356,
+    357,
+    358
+   ],
+   "matchedDays": [],
+   "excludedTimingFields": [],
+   "differences": [],
+   "archivedFileSha256": "af0af036e2caa8eedaacc40535a78fa1c9fc224ed5764e744317c4211cfaba03"
+  }
+ }
+}

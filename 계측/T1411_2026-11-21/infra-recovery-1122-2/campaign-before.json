@@ -1,0 +1,76 @@
+{
+ "stage": "six-worlds",
+ "worlds": {
+  "ON-1020": {
+   "pid": 12896,
+   "command": [
+    "python3",
+    "/tmp/t1411/method-v2/t1411-run.py",
+    "ON",
+    "--tree",
+    "/tmp/t1411/fast",
+    "--out",
+    "/tmp/t1411/worlds",
+    "--tag",
+    "ON",
+    "--seed",
+    "1020",
+    "--days",
+    "730",
+    "--census",
+    "--set",
+    "T1411_TERR_FAST=1"
+   ],
+   "infrastructureResumes": [
+    {
+     "checkpoint": 250,
+     "evidence": "/tmp/t1411/infrastructure-recovery.json",
+     "previousPid": 17139
+    }
+   ]
+  },
+  "OFF-1020": {
+   "pid": 12897,
+   "command": [
+    "python3",
+    "/tmp/t1411/method-v2/t1411-run.py",
+    "OFF",
+    "--tree",
+    "/tmp/t1411/fast",
+    "--out",
+    "/tmp/t1411/worlds",
+    "--tag",
+    "OFF",
+    "--seed",
+    "1020",
+    "--days",
+    "730",
+    "--census"
+   ],
+   "infrastructureResumes": [
+    {
+     "checkpoint": 210,
+     "evidence": "/tmp/t1411/infrastructure-recovery.json",
+     "previousPid": 31136
+    }
+   ]
+  }
+ },
+ "diagnostics": {
+  "late-profile-1020": {
+   "pid": 25579,
+   "command": [
+    "python3",
+    "/workspace/Mini/scripts/t1411-late-profile.py",
+    "--root",
+    "/tmp/t1411"
+   ],
+   "sharedPrefixThrough": 90,
+   "exit": 0,
+   "checkpoint": 100,
+   "done": true,
+   "lastStatus": "2026-11-21T05:30:09.884Z · late-profile-1020 · 끝 — 100날 · 마디 10 · 묶음 json.sbc.json json.t740.json t1230.json t1243.json t1251.json\n"
+  }
+ },
+ "fingerprint30": true
+}

@@ -1,0 +1,113 @@
+{
+ "kind": "cloud-environment-interruption",
+ "observedEnvironmentPhase": "unavailable/pending",
+ "connectivityBeforeStartup": "offline",
+ "productExitObserved": false,
+ "archive": "/workspace/scratch/t1411/interruptions/20261122T023920Z",
+ "previousInterruptionArchive": "/workspace/scratch/t1411/interruptions/20261121T172313Z",
+ "cases": {
+  "ON-1020": {
+   "checkpoint": 350,
+   "lastLoggedDay": 350,
+   "cap": "Infinity",
+   "partialFiles": [
+    {
+     "file": "seg-350.log",
+     "sha256": "575e4dfdcf6256a61283a273bef3f35ea2a675ffa15c8bc46741f0a6d1f02443",
+     "bytes": 236515
+    }
+   ],
+   "binaryCheckpointHashes": {
+    "state.json": "b1f02b011904a56a41c7874e34a388f2b21b3e8ff51b8c65b1c002a1925faa4d",
+    "w.db-wal": "217fbb6198b9353b1a685cca23e74f301d030ee66a0a4ae73d0786ee245e7ea8",
+    "w.db": "ddda3457f4905bd5efba94b2dd16b2541b66b411a1333a8eae08a065088924de",
+    "phase-350.json": "c6fcd843d592463804b97bdf2a469b91136aca5d5cb9323c17950cd31c5320d9",
+    "day": "deeeb5df3f2cee6bf4e597a8a3a878a6ce49b932b9e90b416922d4499f54fae6",
+    "w.db-shm": "a49880489f6caf6a8d9cc8f0be1daa4c1cb5554439224a89622505ece76949f5",
+    "keep-350.json": "c1c86e827ab5dc4bb6583cdf46c1f81d406d8026a2ac3f37674afe51cb79a333",
+    "stop-350.json": "aaace8f2f9042e7ef5d5942ebb20cf0eac4d10e5cf3647da9752b7219d8de541"
+   },
+   "preservedBinaryCheckpoint": "/workspace/scratch/t1411/interruptions/20261122T023920Z/binary-checkpoints/ON-1020",
+   "discardedObservedLedgerDays": [],
+   "discardedObservedLedgerCpuSeconds": 0,
+   "unobservedPartialCpuUnknown": true
+  },
+  "OFF-1020": {
+   "checkpoint": 350,
+   "lastLoggedDay": 358,
+   "cap": "Infinity",
+   "partialFiles": [
+    {
+     "file": "seg-350.json.t1411-census.jsonl",
+     "sha256": "b762dab098432c2b6b4ecd595eeb52175ae5ecd148d93ad62cf71da50248ed30",
+     "bytes": 35991
+    },
+    {
+     "file": "seg-350.json.t1274.json",
+     "sha256": "70bb57d9c462270256b8e72e0db5c8f22f641707bbff2dfbd270ebcf5cb89d81",
+     "bytes": 61882
+    },
+    {
+     "file": "seg-350.log",
+     "sha256": "7703188143bbb197ea1943b1deead9487ef82701a8edf98577d61a7dfcecb469",
+     "bytes": 360501
+    },
+    {
+     "file": "seg-350.json.t1302-emigration.jsonl",
+     "sha256": "9082182267fe9818cef2e1b737d264e4e7cb6e0b767565220daf9c0a38fb87c8",
+     "bytes": 8596
+    },
+    {
+     "file": "seg-350.json.t1274-days.jsonl",
+     "sha256": "ba4684cb5362c5496e66b475e47de48ad38c376eee5918232abd104c69bd926a",
+     "bytes": 8330
+    },
+    {
+     "file": "seg-350.t1243.json",
+     "sha256": "f7e378515b61613bc24c6c46255c36f90cda35da37e167c4da48dc49851c1641",
+     "bytes": 3115
+    },
+    {
+     "file": "seg-350.json.t1302-days.jsonl",
+     "sha256": "6b77db8ebce167c16092f9f6c62e6e9c5e6d52eaad33abb22bacc61daadb31de",
+     "bytes": 370565
+    }
+   ],
+   "binaryCheckpointHashes": {
+    "state.json": "896213b616e79f63dca5d4eb44848fa8498a281d4f04f48fad989a7a145a56af",
+    "w.db-wal": "435605ed5b595e58b0d6b15c07efb7576b0c640160d6fff1e8bd70e8bd70b366",
+    "w.db": "98a40c10b6827f0aead2201ab4896b22e9e3187ffd27967ffbdea40540f3d85e",
+    "phase-350.json": "c6fcd843d592463804b97bdf2a469b91136aca5d5cb9323c17950cd31c5320d9",
+    "day": "deeeb5df3f2cee6bf4e597a8a3a878a6ce49b932b9e90b416922d4499f54fae6",
+    "w.db-shm": "476aefef4504444b7a9798d02c73a50747232c3c426973d4c6dde00f5524603e",
+    "keep-350.json": "b805d0072c33a8e9ac66f3fb6f4b1e0ab6a6121864449d214e3aea218dcb2492",
+    "stop-350.json": "3fc6115fd5160adf68948148d748ff7723340526280815bfeb3b6509b7aa6e47"
+   },
+   "preservedBinaryCheckpoint": "/workspace/scratch/t1411/interruptions/20261122T023920Z/binary-checkpoints/OFF-1020",
+   "discardedObservedLedgerDays": [
+    351,
+    352,
+    353,
+    354,
+    355,
+    356,
+    357,
+    358
+   ],
+   "discardedObservedLedgerCpuSeconds": 2177.567587,
+   "unobservedPartialCpuUnknown": true
+  }
+ },
+ "metadataMigration": [
+  {
+   "world": "ON-1020",
+   "old": "/tmp/t1411/infrastructure-recovery.json",
+   "new": "/workspace/scratch/t1411/interruptions/20261121T172313Z/interruption.json"
+  },
+  {
+   "world": "OFF-1020",
+   "old": "/tmp/t1411/infrastructure-recovery.json",
+   "new": "/workspace/scratch/t1411/interruptions/20261121T172313Z/interruption.json"
+  }
+ ]
+}
