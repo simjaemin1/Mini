@@ -3101,6 +3101,7 @@ const WEATHER_KINDS = [
   { name: '🌈풍요', mult: { fertility: 1.25, game: 1.2 }, days: [5, 10] },
   { name: '🌫️안개', mult: { game: 0.7, water: 1.1 }, days: [4, 8] },
 ];
+if (v1.T1437_SEEN) v1.t1437Drought(WEATHER_KINDS);   // ★[T1437] 켬('seen') = 새 마을 여유분 = 이 표의 가장 긴 가뭄 날(끔 = 이 줄 무동작)
 function tickWeather(world, day) {
   // v2 r7: 마을마다 독립 phase로 다양화 — 좌표를 seed offset으로 사용해 동조화 방지.
   for (let i = 0; i < world.villages.length; i++) _weatherRollOne(world.villages[i], day);
@@ -3611,6 +3612,7 @@ module.exports = {
   _t1188Probe:{budgetPart:_orePart,returnGlutted:_returnGluttedV2,exportCandidates:_exportCandidatesV2,quote:_oreQuote},
   createWorldV2,
   tickWorldV2, tickWorldV2Parts,   // ★[T513] 하루 틱 조각(서버 하루 마감이 여러 프레임에 흘린다 · 정본 한 벌)
+  WEATHER_KINDS,   // ★[T1437] 날씨 정본 표(하네스가 가장 긴 가뭄 날을 옮겨 적지 않는다 · 값 무변)
   computeShadowPrices,
   t1217PricesOf, t1217Value, t1266OreValue, t1217RestValue, t1217Hour, t1217PxStat: () => Object.assign({}, _t1217PxStat),   // ★[T1217] 시세 하루 안 갱신 · 어부 한 시간 값(서버 · 하네스가 같은 함수를 읽는다)
   shadowPricesOf,   // ★[T1161 · K13] 값표의 몇 칸만(전 표의 그 칸과 같은 값) — 거래소 견적 · 실행이 부른다

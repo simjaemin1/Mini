@@ -27,7 +27,7 @@ const V1F = 'sim/economy-sim.js', V2F = 'sim/economy-sim-v2.js', VSF = 'server/v
 // 미끼 — 이름: [파일 · 바꿀 글자(그 파일에 정확히 1곳) · 새 글자 · 돌릴 팔]
 const BAITS = {
   old30: [V1F, "  if (foodEquiv < N * t1419Days(v, null, 30, 'famine')) {", '  if (foodEquiv < N * 30) {', 'harv'],
-  const: [V1F, '  const d = Math.max(1, best / C);\n  v._t1419N = { day: d0, d };', '  const d = 30;\n  v._t1419N = { day: d0, d };', 'harv'],
+  const: [V1F, '  const d = Math.max(1, best / C) + _b;', '  const d = 30;', 'harv'],   // ★[T1437] 핀 — (가) 몸통 줄이 'seen' 여유분을 더한다(판정 무변 · 같은 자리)
   offcall: [V1F, '  if (!T1419_FOOD_NEED) return legacy;', '  if (!T1419_FOOD_NEED) { foodNeedDays(v, day == null ? 0 : day); return legacy; }', 'off'],
 };
 const KNOBS = ['T1419_FOOD_NEED', 'T1297_BIRTH_FOOD', 'T1306_BIRTH_GRADE', 'T1306_MIGRATE_FOOD', 'T1319_AUTUMN_LOOK', 'T1346_BIRTH_FLOW', 'T1243_FARM_ON', 'T1374_BIRTH_HARV', 'T1374_FAMINE_HARV', 'T1373_NO_SEASON_YIELD', 'T570_CALENDAR', 'T726_ONE_TARGET', 'T1152_MARKET', 'T1156_SPECIALTY_JOB', 'T1384_MINE_FOOD', 'T1384_FOOD_KEEP'];
