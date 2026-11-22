@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress
-// @bait 1   ← 미끼 판정 줄 수(파일 안 · `test-harness-lint` ⑲b 가 센다)
+// @bait 2   ← 몫 읽기 · 전원 사망 뒤 보충
 // === scripts/test-t1413-hunt-year.js — 사냥실험실 한 해 자(t1413-hunt-year)의 꼴 · 끝남 · 사냥 몫을 읽나 [T1413] ==========
 //   ① `--quick`(🦌 · 환율 5,000 · 사냥꾼 1 · 몫 100% · 2날) — 표 한 줄의 꼴: ⓐ 빈 날 ≤ 날 · ⓑ 잡은 마리 ≥ 1 · kg = 마리 × 33(서버 정본 사슴 고기 kg) ·
 //      ⓒ 사냥꾼-날당 kg = kg ÷ (사냥꾼 × 날) · ⓓ 끝 몸 ÷ 첫 몸 ∈ [0, 1) · 장부에서 뺀 마리(killed) ≥ 1 · 같은 씨 두 번 = 같은 줄(바이트).
@@ -18,7 +18,7 @@ const RUL = path.join(__dirname, 't1413-hunt-year.js'), LAB = path.join(ROOT, 'l
 const DEER = String.fromCodePoint(0x1F98C);   // 사슴 — 판정 자리엔 코드 포인트로(lint ②)
 let pass = 0, fail = 0;
 const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (x != null && x !== '' ? '  ' + x : '')); };
-const run = (file, args) => spawnSync('node', [file, '--lab', LAB, ...args], { cwd: ROOT, encoding: 'utf8', timeout: 300000, maxBuffer: 1 << 26 });
+const run = (file, args, env) => spawnSync('node', [file, '--lab', LAB, ...args], { cwd: ROOT, encoding: 'utf8',env:{...process.env,...env}, timeout: 300000, maxBuffer: 1 << 26 });
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 't1413-hy-'));
 const BAIT = { share: ['const shareOn = (share, gm) => {', 'const shareOn = (share, gm) => { return true;'] };
 const baitCopy = (file, B, dst) => { const src = fs.readFileSync(file, 'utf8'); const n = src.split(B[0]).length - 1; fs.writeFileSync(dst, n === 1 ? src.replace(B[0], B[1]) : src); return n; };
@@ -66,6 +66,17 @@ try {
   const cA = cell3(fA, path.join(TMP, 'bait.jsonl'));
   ok(nA === 1 && cA.rc === 0 && sameNum(cA.p10, cA.p100), "★미끼 ⓐ — 바꾼 자리 1곳(`shareOn`) · 그 사본에선 ③ '몫 10% ≠ 100%' 가 빨강(두 몫이 같은 수)",
     `n ${nA} · ` + (cA.p10 && cA.p100 ? `10%: ${cA.p10.harv} · ${cA.p10.end} / 100%: ${cA.p100.harv} · ${cA.p100.end}` : cA.err));
+
+  console.log('⑤ 전원 사망 뒤에도 예정된 사냥꾼 보충 · 빠른 판 = 원식');
+  const refillArgs=['--sp','🐗','--exch','500','--share','0.25','--hunters','1','--seeds','7','--cap','free','--days','2'];
+  const f5=path.join(TMP,'refill-fast.jsonl'),o5=path.join(TMP,'refill-oracle.jsonl');
+  const fast=run(RUL,[...refillArgs,'--out',f5]),oracle=run(RUL,[...refillArgs,'--out',o5],{T1413_NOFAST:'1'}),v5=rowsOf(f5)[0];
+  const refilled=r=>!!r&&r.refills>0&&r.hDead>r.nh&&r.activeHunterMinutes>0;
+  ok(fast.status===0&&refilled(v5),'⑤ 한 명이 죽은 뒤 새 몸이 사냥을 이어감(보충>0 · 사망>처음 인원)',v5?`보충 ${v5.refills} · 사망 ${v5.hDead} · 실제 사람분 ${v5.activeHunterMinutes}`:'');
+  ok(oracle.status===0&&fs.readFileSync(f5,'utf8')===fs.readFileSync(o5,'utf8'),'⑤ 공간 조회·수학 캐시·vm 별칭 켬 = 원래 전수 조회/원식(결과 전 칸 바이트)');
+  const refillBait=path.join(TMP,'refill-bait.js'),nR=baitCopy(RUL,['if (sched || on) A.driveHunters(1);','if (on) A.driveHunters(1);'],refillBait),b5=path.join(TMP,'refill-bait.jsonl');
+  const rb=run(refillBait,[...refillArgs,'--out',b5]),vb=rowsOf(b5)[0];
+  ok(nR===1&&rb.status===0&&!!vb&&!refilled(vb),'★미끼 ⓑ — 전원 사망 뒤 driver를 안 부르는 사본(바꾼 자리 1) → 보충 단언 빨강',vb?`보충 ${vb.refills} · 사망 ${vb.hDead}`:'');
 } finally {
   fs.rmSync(TMP, { recursive: true, force: true });
 }

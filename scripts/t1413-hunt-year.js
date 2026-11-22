@@ -67,6 +67,49 @@ function load(seed, exch, nh, sp) {
   //   그 상자에 바위(숲)가 하나도 없으면 걸음 없이 거짓(0)이 답이다 — 누적합으로 O(1)에 본다 · 있으면 랩 걸음 그대로. 초원 판은 바위 0 이라 losRk 가 늘 거짓인데
   //   사슴 무리가 지도 끝으로 흘러가면 사냥꾼 × 몸 × 300 걸음이 틱마다 돈다(17명 판 하루 0.17초 → 4초). `T1413_NOFAST=1` = 지름길 끔(같은 표인지 견주는 판).
   if (!process.env.T1413_NOFAST) {
+    // Keep scans over vm-owned animal objects in that same realm. The reference
+    // host-side loops below remain available through NOFAST for byte comparison.
+    js = `function __ledgerDead(){let n=0;for(const m of s.mobs)if(m.st==='dead'&&!m.__d){m.__d=1;if(!MOB_DEF[m.type].pred)n++;}return n;}
+    function __ledgerTrim(c){let live=0;for(const m of s.mobs)if(m.st!=='dead'&&!MOB_DEF[m.type].pred)live++;if(live<=c)return 0;
+      const H=new Set();for(const a of s.agents){if(a._tgt)H.add(a._tgt);if(a._cm)H.add(a._cm);if(a._carc)H.add(a._carc);if(a._bm)H.add(a._bm);}
+      let removed=0;for(let j=s.mobs.length-1;j>=0&&live>c;j--){const m=s.mobs[j];if(m.st==='dead'||m.st==='hide'||MOB_DEF[m.type].pred||H.has(m))continue;m.rot=-1;s.mobs.splice(j,1);live--;removed++;}return removed;
+    }\n` + js;
+    // Exact separation broad phase. The reference sums neighbours in s.mobs
+    // order and sees positions updated earlier in this same tick. Keep both:
+    // query locally, sort by the original index, and move the index in finally.
+    // Cell width is twice the existing separation radius; exceptional/outside
+    // coordinates fall back to the original scan. No physics parameter changes.
+    rep("for(const m of s.mobs){ if(m.st==='dead')continue;",
+      "const __sep=__sepGrid(s.mobs,MOB_SEP_R);for(let __mi=0;__mi<s.mobs.length;__mi++){const m=s.mobs[__mi];if(m.st==='dead')continue;try{");
+    rep("for(const o of s.mobs){if(o===m||o.st==='dead')continue;const dx=m.px-o.px,dy=m.py-o.py,d2=dx*dx+dy*dy;",
+      "for(const __oi of __sep.query(__mi)){const o=s.mobs[__oi];if(o===m||o.st==='dead')continue;const dx=m.px-o.px,dy=m.py-o.py,d2=dx*dx+dy*dy;");
+    rep('\n  }\n  const mgrid=', '\n  }finally{__sep.move(__mi);}}\n  const mgrid=');
+    js = `let __sepStore=null;
+    function __sepGrid(mobs,r){
+      const width=r*2,edge=Math.ceil(N/width)+1,stride=edge*2+1,count=mobs.length;
+      if(!__sepStore||__sepStore.head.length!==stride*stride||__sepStore.next.length<count){
+        const capacity=Math.max(count,__sepStore?__sepStore.next.length*2:count);
+        __sepStore={head:new Int32Array(stride*stride),next:new Int32Array(capacity),prev:new Int32Array(capacity),where:new Int32Array(capacity),out:[]};
+      }
+      const {head,next,prev,where,out}=__sepStore;head.fill(0);let bad=false;
+      const valid=m=>Number.isFinite(m.px)&&Number.isFinite(m.py)&&Math.abs(m.px)<=N&&Math.abs(m.py)<=N;
+      const key=m=>(Math.floor(m.px/width)+edge)*stride+Math.floor(m.py/width)+edge;
+      function put(i,k){const first=head[k];next[i]=first;prev[i]=0;if(first)prev[first-1]=i+1;head[k]=i+1;where[i]=k;}
+      for(let i=0;i<count;i++){if(!valid(mobs[i]))bad=true;else put(i,key(mobs[i]));}
+      return {
+        query(i){out.length=0;const m=mobs[i];if(bad||mobs.length!==count||!valid(m)){bad=true;for(let j=0;j<mobs.length;j++)out.push(j);return out;}
+          const x=Math.floor(m.px/width),y=Math.floor(m.py/width);
+          for(let a=x-1;a<=x+1;a++)for(let b=y-1;b<=y+1;b++)for(let at=head[(a+edge)*stride+b+edge];at;at=next[at-1]){
+            const j=at-1,o=mobs[j];if(i===j||o.st==='dead')continue;const dx=m.px-o.px,dy=m.py-o.py,d2=dx*dx+dy*dy;
+            if(d2<r*r&&d2>1e-4)out.push(j);
+          }
+          if(out.length>1)out.sort((a,b)=>a-b);return out;
+        },
+        move(i){if(bad)return;const m=mobs[i];if(i>=count||!valid(m)){bad=true;return;}const k=key(m),old=where[i];if(k===old)return;
+          const before=prev[i],after=next[i];if(before)next[before-1]=after;else head[old]=after;if(after)prev[after-1]=before;put(i,k);
+        }
+      };
+    }\n` + js;
     rep('const losRk=(x1,y1,x2,y2)=>{if(!TR.rock)return false;', 'const losRk=(x1,y1,x2,y2)=>{if(!TR.rock)return false;if(__none(__PR,x1,y1,x2,y2))return false;');
     rep('const losFT=(x1,y1,x2,y2)=>{if(!TR.forest)return 0;', 'const losFT=(x1,y1,x2,y2)=>{if(!TR.forest)return 0;if(__PF)return __ft(x1,y1,x2,y2);');
     js = 'let __PR=null,__PF=null;const __ps=(g)=>{const M=N+1,P=new Int32Array(M*M);for(let y=0;y<N;y++){let r=0;for(let x=0;x<N;x++){r+=g[y*N+x]?1:0;P[(y+1)*M+x+1]=P[y*M+x+1]+r;}}return P;};'
@@ -83,11 +126,33 @@ function load(seed, exch, nh, sp) {
   const C = { console, performance: { now: () => 0 }, requestAnimationFrame: () => {}, addEventListener: () => {} };
   C.document = { getElementById: (id) => els[id] || (els[id] = { value: { nh: String(nh), cap: String(LAB_CAP), spd: '36', terr: '초원' }[id] || '0', textContent: '', innerHTML: '' }), querySelectorAll: () => [] };
   C.window = C; vm.createContext(C);
+  // vm's contextified global lookup is expensive inside the animal loop.
+  // These are aliases to the same objects/functions, not replacements.
+  if (!process.env.T1413_NOFAST) vm.runInContext('const Math=globalThis.Math,Number=globalThis.Number,Map=globalThis.Map,Set=globalThis.Set,Array=globalThis.Array,Int32Array=globalThis.Int32Array,isFinite=globalThis.isFinite;',C);
   vm.runInContext(`{let _s0=(${seed | 0})*2654435761>>>0;Math.random=function(){_s0=_s0+0x6D2B79F5|0;let t=Math.imul(_s0^_s0>>>15,1|_s0);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}`, C);
   vm.runInContext(DETMATH + '(Math)', C);
+  // Pure-function shortcuts: preserve the reference operation order and bits.
+  // Two-argument hypot avoids allocating an array on every animal separation;
+  // pow memoizes repeated species/forest attenuation inputs. NOFAST keeps the oracle.
+  if (!process.env.T1413_NOFAST) vm.runInContext(`{
+    const H=Math.hypot,P=Math.pow,cache=new Map();
+    Math.hypot=function(x,y){
+      if(arguments.length!==2||!Number.isFinite(x)||!Number.isFinite(y))return H.apply(Math,arguments);
+      const a=x<0?-x:x,b=y<0?-y:y,max=Math.max(a,b);if(max===0)return 0;
+      let q=a/max,summand=q*q,sum=0+summand,comp=(sum-0)-summand;
+      q=b/max;summand=q*q-comp;const pre=sum+summand;
+      return Math.sqrt(pre)*max;
+    };
+    Math.pow=function(x,y){
+      if(typeof x!=='number'||typeof y!=='number'||!(x>0)||!Number.isFinite(x)||!Number.isFinite(y))return P(x,y);
+      let row=cache.get(x);if(row&&row.has(y))return row.get(y);
+      const value=P(x,y);if(!row)cache.set(x,row=new Map());row.set(y,value);return value;
+    };
+  }`, C);
   vm.runInContext(js + `
 ;globalThis.__api={get s(){return s;},get lifeGM(){return lifeGM;},set lifeGM(v){lifeGM=v;},resetAll,driveHunters,updateMobs,
   MOB_DEF,N,NPC_MAXHP,get camp(){return camp;},rnd:()=>Math.random(),setSp(x){HUNT_SPECIES=x;},setCap(x){HUNT_CAP=x;},getCap(){return HUNT_CAP;},inForest(x,y){const X=Math.floor(x),Y=Math.floor(y);return X>=0&&Y>=0&&X<N&&Y<N&&!!forest[Y*N+X];},fast(){if(typeof __ps==='function'){__PR=__ps(TR.rock);__PF=__ps(TR.forest);}},
+  takeDeaths:typeof __ledgerDead==='function'?__ledgerDead:null,trimLedger:typeof __ledgerTrim==='function'?__ledgerTrim:null,
   win(K){const cx=Math.round(N*0.18)+5,cy=Math.round(N*0.5);const L=[];for(let i=0;i<N*N;i++)if(forest0[i])L.push([Math.hypot(i%N-cx,((i/N)|0)-cy),i]);
     if(!(K>0)||K>=L.length)return {K:L.length,R:null};L.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);const keep=new Uint8Array(N*N);for(let k=0;k<K;k++)keep[L[k][1]]=1;
     for(let i=0;i<N*N;i++)if(!keep[i])forest0[i]=0;return {K,R:+L[K-1][0].toFixed(1)};}};`, C);
@@ -104,11 +169,14 @@ function runOne(seed, exch, nh, sp, share, cap, r, days) {
   const s = A.s, MD = A.MOB_DEF;
   const K = HB5000 * 5000 / exch;
   const kb = []; let N = K, empty = null, over = 0, killed = 0, predKill = 0, trimmed = 0, home = [];
+  let refills=0,activeHunterMinutes=0;
+  const seenHunters=new WeakSet(s.agents);
   const capOf = () => { const n = Math.floor(N + 1e-9); return cap === 'lab' ? Math.min(LAB_CAP, n) : n; };
   const isPrey = (m) => !MD[m.type].pred;
   const held = () => { const H = new Set(); for (const a of s.agents) { if (a._tgt) H.add(a._tgt); if (a._cm) H.add(a._cm); if (a._carc) H.add(a._carc); if (a._bm) H.add(a._bm); } return H; };
   const trim = () => {   // 랩이 그린 산 먹잇감 > 장부면 넘은 만큼 뺀다(뒤에서부터 · 쥔 몸 · 굴 속 · 사체 제외)
-    const c = capOf(); let live = 0; for (const m of s.mobs) if (m.st !== 'dead' && isPrey(m)) live++;
+    const c = capOf();if(A.trimLedger){trimmed+=A.trimLedger(c);return;}
+    let live = 0; for (const m of s.mobs) if (m.st !== 'dead' && isPrey(m)) live++;
     if (live <= c) return;
     const H = held();
     for (let j = s.mobs.length - 1; j >= 0 && live > c; j--) { const m = s.mobs[j]; if (m.st === 'dead' || m.st === 'hide' || !isPrey(m) || H.has(m)) continue; m.rot = -1; s.mobs.splice(j, 1); live--; trimmed++; }
@@ -139,11 +207,14 @@ function runOne(seed, exch, nh, sp, share, cap, r, days) {
     if (!sched && !on) { while (dt < 8 && gm + dt + 1 <= dayEnd - 1 && !shareOn(share, gm + dt + 1)) dt++; }
     A.lifeGM = gm + dt; s.day = Math.floor(A.lifeGM / 1440);
     A.setCap(capOf());
-    if (on) A.driveHunters(1);
+    // The driver's existing replacement branch must also run when the last
+    // hunter died. Testing only `on` stranded an empty roster for the whole year.
+    if (sched || on) A.driveHunters(1);
+    for(const a of s.agents){if(!seenHunters.has(a)){seenHunters.add(a);refills++;}if(!a._dead)activeHunterMinutes++;}
     A.updateMobs(s, dt);
     // 죽음 셈 — 이번 틱에 새로 죽은 먹잇감 가운데 사냥꾼 몫(_kA + _kM 늘어난 만큼)만 장부에서
     const kNow = (s._kA || 0) + (s._kM || 0), dK = kNow - kA0; kA0 = kNow;
-    let nd = 0; for (const m of s.mobs) if (m.st === 'dead' && !m.__d) { m.__d = 1; if (isPrey(m)) nd++; }
+    let nd = 0;if(A.takeDeaths)nd=A.takeDeaths();else for (const m of s.mobs) if (m.st === 'dead' && !m.__d) { m.__d = 1; if (isPrey(m)) nd++; }
     const hk = Math.min(nd, dK); killed += hk; predKill += nd - hk;
     if (hk) { const b = Math.floor((A.lifeGM - NPC_START) / 1440 / 30); while (kb.length <= b) kb.push(0); kb[b] += hk; }   // 30날 칸별 죽인 수(멈춤 · 교착 찾기)
     if (N < K) N += r * N * (1 - N / K) * dt / 1440;
@@ -155,7 +226,8 @@ function runOne(seed, exch, nh, sp, share, cap, r, days) {
   const harv = s._mobKills || 0;
   return { sp, exch, nh, share, seed, cap, r, days, win: w.K, K: +K.toFixed(3),
     empty: empty == null ? days : empty, emptied: empty != null, harv, kg: harv * KG[sp], kgHD: +(harv * KG[sp] / (nh * days)).toFixed(3),
-    end: +(N / K).toFixed(4), killed, predKill, trimmed, hDead: s._hDeadN || 0, inj: s._inj || 0, shots: s._shots || 0, over, kb };
+    end: +(N / K).toFixed(4),initialBodies:K,endBodies:N,holds:N>=K*0.9,
+    killed, predKill, trimmed, hDead: s._hDeadN || 0, inj: s._inj || 0, shots: s._shots || 0, over, kb,refills,activeHunterMinutes };
 }
 
 const labConst = () => {
@@ -172,6 +244,7 @@ const kgCheck = () => {   // 손 사본 대조 — 서버 정본 드롭 kg
 
 // ── 표 · 경계 ──
 const key = (r) => [r.sp, r.exch, r.nh, r.share, r.seed, r.cap, r.r, r.days].join('|');
+const holds = r => typeof r.holds==='boolean' ? r.holds : r.end>=0.9;
 function summarize(rows) {
   const f = (x) => (x == null ? '-' : x);
   const groups = new Map();
@@ -188,7 +261,7 @@ function summarize(rows) {
     const order = (a, b) => SPS.indexOf(a.sp) - SPS.indexOf(b.sp) || a.exch - b.exch || effort(b.share) - effort(a.share) || a.nh - b.nh;
     for (const [, xs] of [...cells].sort((p, q) => order(p[1][0], q[1][0]))) {
       xs.sort((a, b) => a.seed - b.seed); const x = xs[0];
-      const hold = xs.every((y) => y.end >= 0.9);
+      const hold = xs.every(holds);
       out.push(`| ${x.sp} | ${x.exch.toLocaleString('en')} | ${x.K} | ${shName(x.share)} | ${x.nh} | ${xs.map((y) => y.empty + (y.emptied ? '' : '+')).join(' / ')} | ${xs.map((y) => y.harv + ' · ' + y.kg).join(' / ')} | ${xs.map((y) => y.kgHD).join(' / ')} | ${xs.map((y) => y.end).join(' / ')} | ${hold ? '○' : '✗'} |`);
     }
     // ③ 경계 — 종 × 환율마다 버티는(씨 둘 다 끝 ≥ 0.9) 가장 센 사냥(몫 × 사냥꾼)
@@ -198,7 +271,7 @@ function summarize(rows) {
     for (const sp of SPS) for (const ex of EXCH) {
       const cs = [...cells.values()].filter((xs) => xs[0].sp === sp && xs[0].exch === ex);
       if (!cs.length) continue;
-      const H = cs.filter((xs) => xs.every((y) => y.end >= 0.9)), B = cs.filter((xs) => !xs.every((y) => y.end >= 0.9));
+      const H = cs.filter((xs) => xs.every(holds)), B = cs.filter((xs) => !xs.every(holds));
       const E = (xs) => effort(xs[0].share) * xs[0].nh;
       H.sort((a, b) => E(b) - E(a) || b[0].nh - a[0].nh); B.sort((a, b) => E(a) - E(b) || a[0].nh - b[0].nh);
       const top = H[0], weak = B[0];
