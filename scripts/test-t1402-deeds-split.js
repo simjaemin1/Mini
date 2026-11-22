@@ -28,7 +28,7 @@ const HOUR = 3600000, DAYMS = 24 * HOUR;
 const put = (R, k, c, x) => { R[k] = !!c; if (x !== undefined) R[k + '#'] = String(x).slice(0, 260); };
 
 if (MODE) {
-  Object.assign(process.env, { ZONE_ID: 'hanbando', ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', CLAIM_ABSENCE: '0', T1305_DEEDS: '1', T1402_SPLIT_OK: '1' });
+  Object.assign(process.env, { ZONE_ID: 'hanbando', ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', CLAIM_ABSENCE: '0', T1305_DEEDS: '1', T1402_SPLIT_OK: '1', T1392_FIRST_LOT: '0' });   // ★[T1428] 첫 집터(-on 켬 기본 후보)는 글자로 끈다 — 땅 꼴은 한 칸 선포로 짓는다
   const _l = console.log, _w = console.warn, _e = console.error; console.log = () => {}; console.warn = () => {}; console.error = () => {};
   const H = require(process.env.__T1402S_ZONE || path.join(ROOT, 'server', 'zone.js')).__testBind();
   console.log = _l; console.warn = _w; console.error = _e;
