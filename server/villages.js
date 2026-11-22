@@ -18107,8 +18107,8 @@ const _t1416Stat = { trips: 0, kg: 0, units: 0, items: {}, sp: {} };
 function _t1429Spill(S) {   // 다시 뜬 판에서 저장된 몸 줄이 지금 몸보다 많을 때 — 손은 저장된 자리에 · 둔 몫은 제자리에 땅 더미로(wildlife)
   let W = null; try { W = require('./wildlife'); } catch (e) {} if (!W || !W.t1429Ground) return;
   const Hh = S._t1416H, C = S._t1416C;
-  if (Hh && Hh.kg > 0 && Number.isFinite(S.x)) W.t1429Ground(S.x / SZ, S.y / SZ, null, Hh.kg, Hh.it, 'spill');
-  if (C && C.kg > 0) W.t1429Ground(C.x, C.y, C.d, C.kg, C.it, 'spill');
+  if (Hh && Hh.kg > 0) W.t1429Ground(Number.isFinite(S.x) ? S.x / SZ : null, Number.isFinite(S.y) ? S.y / SZ : null, Hh.kg, Hh.it, 'spill', S);   // 자리 모르면 자리 없는 더미(셈은 그대로)
+  if (C && C.kg > 0) W.t1429Ground(C.x, C.y, C.kg, C.it, 'spill', S);
 }
 function _t1416Deliver(vil, npc) {
   const Hh = npc._t1416H; if (!Hh || !(Hh.kg > 0)) return 0;
