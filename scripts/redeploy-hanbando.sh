@@ -29,6 +29,9 @@ set -euo pipefail
 REPO_DIR="${REPO_DIR:-/opt/Mini}"
 STAMP="${STAMP:-/srv/durango/deployed-hanbando.sha}"
 cd "$REPO_DIR"
+# ★[T1443 ③] 앞 배포가 끊긴 흔적이면 첫 줄에 알린다(읽기만 — 하는 일은 아래 판정 그대로 · 새 규칙 0). 사고 2026-11-21: 존 stop 뒤에서 끊겨 재부팅에도 존이 안 떴다.
+_LS="$(bash "$REPO_DIR/scripts/live-status.sh" --brief 2>/dev/null || true)"
+case "$_LS" in "상태 ✗"*) echo "⚠ $_LS"; echo ;; esac
 
 MODE="${1:-}"
 FORCE_ALL=0; FORCE_CENTRAL=0; FORCE_ZONE=0; DRY=0
