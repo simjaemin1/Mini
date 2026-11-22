@@ -73,7 +73,11 @@ const DEAD = tsv(arg('--dead')).map(([n, at, hs, why]) => ({ n, at, hs: +hs, why
 
 const nonGreen = cur.rows.filter((r) => r.kind !== 'D').sort((a, b) => ORDER[a.kind] - ORDER[b.kind] || b.parRed - a.parRed || a.f.localeCompare(b.f));
 const cnt = (k) => cur.rows.filter((r) => r.kind === k).length;
-const runRow = (file, i, kind) => { const L = readLog(file), n = path.basename(file, '.log'), t = LEFT.get(n) || {}; return { n, kind, green: L.green, red: L.red, held: L.held, wall: L.wall, ...t }; };
+// 판 줄의 초록 · 빨강 · 유보는 하네스 덩어리의 판정 줄(✓ · ✗ · ⚠ RC=75)로 센다 — 러너 요약 줄(통과 · 실패 · 유보)은 따로 둔다
+//   (러너 -j 판의 par_collect 는 ⚠ RC=75 유보를 '실패(rc=?)'로 센다 — 둘이 다르면 표에 그대로 보인다)
+const runRow = (file, i, kind) => { const L = readLog(file), n = path.basename(file, '.log'), t = LEFT.get(n) || {};
+  const by = (p) => L.rows.filter((x) => p(x.rc)).length;
+  return { n, kind, green: by((rc) => rc === 0), red: by((rc) => rc !== 0 && rc !== 75), held: by((rc) => rc === 75), sGreen: L.green, sRed: L.red, sHeld: L.held, wall: L.wall, ...t }; };
 const runs = PAR.map((f, i) => runRow(f, i, 'par')).concat(SOLO.map((f, i) => runRow(f, i, 'solo')));
 const parRuns = runs.filter((r) => r.kind === 'par');
 const leftPar = parRuns.map((r) => (r.tn || 0) + (r.sn || 0)), leftParB = parRuns.map((r) => (r.tb || 0) + (r.sb || 0));
@@ -106,8 +110,8 @@ L.push('# T1418 흔들림 전수 둘째 — 러너 로그만 읽는다(`node scr
 L.push(`· 하네스 ${sum.kinds}종 · -j 4 판 ${PAR.length} · 혼자 판(-j 4 에서 한 번이라도 빨강인 것만) ${SOLO.length} · 죽은 · 무효 판 ${DEAD.length} · 판 벽 합 **${wallH}시간**`);
 L.push(`· 늘 빨강 **${sum.A}** · 혼자도 흔들림 **${sum.B}** · 나란히만 **${sum.C}** · 초록 **${sum.D}**${sum.X ? ` · 가름 못 함 ${sum.X}` : ''}`);
 L.push('· 칸: ○ 초록 · ✗ 빨강 · ⏱ 상한 넘김(RC=124) · △ 유보(RC=75 — 빨강 아님) · 찌꺼기 = 판 뒤 그 판의 TMPDIR 에 남은 것 + /tmp 에 새로 선 것(박힌 `/tmp/` 경로 몫)', '');
-L.push('## 1. 판', '', '| 판 | 갈래 | 초록 | 빨강 | 건너뜀(유보) | 벽 | 찌꺼기 TMPDIR | 찌꺼기 /tmp | 찌꺼기 합 |', '|---|---|---:|---:|---:|---|---|---|---|');
-for (const r of runs) L.push(`| ${r.n} | ${r.kind === 'par' ? '-j 4' : '-j 1'} | ${r.green ?? '?'} | ${r.red ?? '?'} | ${r.held} | ${h(r.wall)} | ${r.tn ?? '?'}개 · ${mb(r.tb)} | ${r.sn ?? '?'}개 · ${mb(r.sb)} | ${(r.tn ?? 0) + (r.sn ?? 0)}개 · ${mb((r.tb ?? 0) + (r.sb ?? 0))} |`);
+L.push('## 1. 판', '', '| 판 | 갈래 | 초록 | 빨강 | 건너뜀(유보) | 러너 요약 통과/실패/유보 | 벽 | 찌꺼기 TMPDIR | 찌꺼기 /tmp | 찌꺼기 합 |', '|---|---|---:|---:|---:|---|---|---|---|---|');
+for (const r of runs) L.push(`| ${r.n} | ${r.kind === 'par' ? '-j 4' : '-j 1'} | ${r.green ?? '?'} | ${r.red ?? '?'} | ${r.held} | ${r.sGreen ?? '?'}/${r.sRed ?? '?'}/${r.sHeld}${r.sRed !== r.red || r.sHeld !== r.held ? ' ≠' : ''} | ${h(r.wall)} | ${r.tn ?? '?'}개 · ${mb(r.tb)} | ${r.sn ?? '?'}개 · ${mb(r.sb)} | ${(r.tn ?? 0) + (r.sn ?? 0)}개 · ${mb((r.tb ?? 0) + (r.sb ?? 0))} |`);
 if (DEAD.length) {
   L.push('', '죽은 판 · 무효 판(덮지 않음 — 다음 번호로 새 판을 띄웠다)', '', '| 판 | 죽은 때(로그 마지막 쓰기 · UTC) | 하네스 몇째 | 까닭 | 찌꺼기(치움) |', '|---|---|---:|---|---|');
   for (const d of DEAD) { const t = LEFT.get(d.n) || {}; L.push(`| ${d.n} | ${d.at} | ${d.hs} | ${d.why} | ${(t.tn ?? 0) + (t.sn ?? 0)}개 · ${mb((t.tb ?? 0) + (t.sb ?? 0))} |`); }
