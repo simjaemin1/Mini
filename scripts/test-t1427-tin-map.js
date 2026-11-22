@@ -115,7 +115,7 @@ const J = judge();
 if (MUT) { process.stdout.write('@@T1427 ' + JSON.stringify({ sites: baitSites, res: Object.fromEntries(Object.entries(J).map(([k, v]) => [k, v[0]])) }) + '\n'); process.exit(0); }
 
 let pass = 0, fail = 0;
-const ok = (c, msg, why) => { if (c) pass++; else fail++; console.log(`  ${c ? '✔' : '✘'} ${msg}${why ? ' — ' + why : ''}`); };
+const ok = (c, msg, why) => { if (c) pass++; else fail++; console.log(`  ${c ? '✓' : '✗'} ${msg}${why ? ' — ' + why : ''}`); };
 console.log('## T1427 주석 지도 — 큰 주석 광맥 둘 · NPC 마을이 쥔다');
 ok(J.A1[0], 'A1 큰 주석 광맥 = 둘 · 손 배정 표(광산5 · 임업2 주석 주력)의 두 광맥 · 청동기 광종 주요 MIN_MAJOR 이상', J.A1[1]);
 ok(J.A2[0], 'A2 ★재민 조건 — NPC 마을 노동권(land.oreMix 정본 함수)에 주석이 든 마을 하나 이상', J.A2[1]);
