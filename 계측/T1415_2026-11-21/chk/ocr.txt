@@ -1,0 +1,4 @@
+# 옛 코드 빨강 — 하네스 = c95e9bcf9 · 제품(server sim public lab) = 1aa63e637 · 시한 900초
+빨강(크래시) △ | test-t1415-wakeq.js | RC=1 · ✓ 0 · ✗ 0 | TypeError: SS.qBegin is not a function
+빨강 ○ | test-t1273-clock-rest.js | RC=1 · ✓ 103 · ✗ 1 |   ✗ ⓪ [전제] `_t1253Now()` 읽는 자리 19곳 중 이 판의 여섯(몸 세우기 셋 · 도착 동기 · 이웃 존 몸 · 장마당 그림) + T1282 둘
+# 합: 빨강 1 · 크래시 1 · 초록 0 · 모름 0 · 제품 무관 0

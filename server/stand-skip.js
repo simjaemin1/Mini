@@ -33,6 +33,14 @@ const WORK2_ON = ON && (XMODE === '1' || XMODE === 'verify'), WORK2_VERIFY = XMO
 //   켬 = 일터 깨움 판정(`t1348Farm` · `t1365Work`)이 참이면 그 판정이 산 조건을 열에 적고(생활층 `t1399Take`), 다음 결정은 그 조건이 아직 사는가(`t1399Still`)만 본다 — 판정을 다시 안 한다.
 const TMODE = (typeof process !== 'undefined' && process.env && process.env.T1399_TOK || '').trim();
 const TOK_ON = ON && (TMODE === '1' || TMODE === 'verify'), TOK_VERIFY = TMODE === 'verify';
+// ★★[T1415 ② 2026-11-21] 깨움 시각 줄 손잡이 `T1415_WAKEQ` — **끔 기본** · `'1'` 켬 · `'verify'` 줄은 쌓고 꺼내되 몸은 종전처럼 틱마다 보며 견줌(행동 = 종전).
+//   켬 = 서 있는 몸(표 1 · 2)이 틱마다 첫 거름(`_t1322Skip`)을 받는 대신, 거른 틱 끝에 다음에 볼 시각(결정 시각 · 해 질 녘 아래 끝)을 힙에 넣고 고리에서 뺀다(주차).
+//     때가 된 몸만 틱 머리에서 꺼내(`qPop`) 종전 첫 거름에 다시 넣는다. 그 사이 틱마다 쓰였을 칸(`VT` 거른 틱 · `SK` 거른 시각 · 거름 셈)은 꺼낼 때 한 번에 쓴다(`qMat`).
+//   밖에서 깨우는 쓰기(밀기 · 체력 문 · 대피 · 종료 저장 · players 쓰기 · 고리 거울 지움 · 칸 다시 받기)는 모두 쓰기 앞에서 꺼낸다(`qWake` — 존 `_t1322Wake` 머리 · 아래 PMap · OrdSet · install).
+//   고리 예산 끊김 · 고리가 안 돈 틱(빠짐) · 표 행 뜨기(T1372) = 주차 몸 전부 꺼냄(`qAll` — 종전이 '빠짐'으로 깨울 몸을 같은 틱에 깨운다).
+//   걷는 몸(표 3)은 넣지 않는다 — 커널이 틱마다 속도 · 막힘 표본을 쓴다(건너뛸 틱이 없다 · 보고 §2).
+const QMODE = (typeof process !== 'undefined' && process.env && process.env.T1415_WAKEQ || '').trim();
+const WQ_ON = LOOP && (QMODE === '1' || QMODE === 'verify'), WQ_VERIFY = QMODE === 'verify';
 const A = { TK: new Uint8Array(0), W95: new Uint8Array(0), VT: new Int32Array(0), NDA: new Float64Array(0), LON: new Float64Array(0), SK: new Float64Array(0), SX: new Float64Array(0), SY: new Float64Array(0),
   // ★[T1337] 잠 깨움 표(결정 문까지 건넌다) — DS 표 · SH 신원 해시 · CX/CY 셀 · T95 판 시계 배율 · VID 마을 · SEG 창 쪽(1 저녁 · 2 새벽) · DOF `_dOff` · BDY 몸 날 · DAY 장부 날 · DK 미룬 결정 도장(`_t540DecAt`)
   // ★[T1348 ⓑ] 걷는 몸 표(표 종류 3) — PI 길 번호 · PN 길 길이(거울) · PX0/PY0 첫 점(거울) · PAT `_pathAt` · ST 길 만료 · SPX/SPY/SPA 막힘 자리(`_stuckPos`) · SPD 걸음 빠르기 · WD 해 질 녘에 깨움
@@ -45,9 +53,11 @@ const A = { TK: new Uint8Array(0), W95: new Uint8Array(0), VT: new Int32Array(0)
   WK: new Uint8Array(0), WT: new Float64Array(0), WFP: new Uint8Array(0), WDY: new Float64Array(0), WBD: new Float64Array(0), WWD: new Float64Array(0), WGD: new Float64Array(0), WG: new Float64Array(0), WSC: new Float64Array(0),
   WPN: new Uint8Array(0), WPX: new Float64Array(0), WPY: new Float64Array(0), WPR: new Float64Array(0), WPO: new Uint8Array(0), WVW: new Uint8Array(0),
   // ★[T1399 ⓒ] WQ/WQX/WQY 드리운 칸(물인가 다시 봄) · LAT 미룬 라벨 시각 도장(`_lifeActAt` — 던짐 대본 기다림 결정이 썼을 그 결정의 `Date.now()` · 없으면 NaN)
-  WQ: new Uint8Array(0), WQX: new Float64Array(0), WQY: new Float64Array(0), LAT: new Float64Array(0) };
+  WQ: new Uint8Array(0), WQX: new Float64Array(0), WQY: new Float64Array(0), LAT: new Float64Array(0),
+  WT2: new Float64Array(0) };   // ★[T1415 ③] 장인 시계 축 시각 문턱(없으면 Infinity)
 const own = [];          // 칸 → 몸(빈 칸 = null)
-const WPA = [];          // ★[T1348 ⓑ] 칸 → 걷는 몸의 길 배열(표 종류 3 · 짓고 나면 안 바뀌는 배열)
+const WPA = [];
+const WQS = [];         // ★[T1415 ③] 칸 → 장인 일감 줄 지문(표가 그 줄을 읽었으면 글자 · 아니면 null)          // ★[T1348 ⓑ] 칸 → 걷는 몸의 길 배열(표 종류 3 · 짓고 나면 안 바뀌는 배열)
 const slotOf = new Map();   // pid → 칸
 let cap = 0, n = 0;
 const stat = { installed: 0, grant: 0, skip: 0, wake: 0, stamp: 0, touch: 0, flushAll: 0, gap: 0, due: 0, dusk: 0, gone: 0, vchecks: 0, bad: 0, why: {}, ex: [],
@@ -64,7 +74,7 @@ function _grow(need) {
 }
 // 몸이 칸을 받는다(같은 pid 로 다시 낳으면 새 칸 — 옛 칸은 비운다)
 function install(p) {
-  const old = slotOf.get(p.pid); if (old !== undefined) { own[old] = null; A.TK[old] = 0; A.DS[old] = 0; WPA[old] = null; }
+  const old = slotOf.get(p.pid); if (old !== undefined) { if (WQ_ON) qWake(old); own[old] = null; A.TK[old] = 0; A.DS[old] = 0; WPA[old] = null; }
   const s = n++; if (s >= cap) _grow(s + 1);
   own[s] = p; WPA[s] = null; slotOf.set(p.pid, s); A.TK[s] = 0; A.SK[s] = NaN; A.VT[s] = -1; A.DS[s] = 0; A.DK[s] = NaN; A.WK[s] = 0; A.LAT[s] = NaN;
   A.GN[s] = _players && _players.get(p.pid) === p ? 0 : 1;   // ★[T1348 ⓐ] 낳는 몸은 보통 아직 players 밖(곧 `set` 이 0 으로)
@@ -76,8 +86,9 @@ function install(p) {
 class OrdSet extends Set {
   constructor() { super(); this.P = []; this.S = []; this.pos = new Map(); this.dead = 0; }
   add(pid) { if (!super.has(pid)) { super.add(pid); this.pos.set(pid, this.P.length); this.P.push(pid); this.S.push(-2); } return this; }
-  delete(pid) { const r = super.delete(pid); if (r) { const i = this.pos.get(pid); this.pos.delete(pid); this.P[i] = undefined; this.S[i] = -2; this.dead++; } return r; }
-  clear() { super.clear(); this.P.length = 0; this.S.length = 0; this.pos.clear(); this.dead = 0; }
+  delete(pid) { if (WQ_ON && super.has(pid)) { const s0 = slotOf.get(pid); if (s0 !== undefined) qWake(s0); }   // ★[T1415 ②] 거울에서 빠지기 앞 — 주차 몸 꺼냄
+    const r = super.delete(pid); if (r) { const i = this.pos.get(pid); this.pos.delete(pid); this.P[i] = undefined; this.S[i] = -2; this.dead++; } return r; }
+  clear() { if (WQ_ON) qAll('clr'); super.clear(); this.P.length = 0; this.S.length = 0; this.pos.clear(); this.dead = 0; }
   compact(force) {
     if (!this.dead || (!force && (this.dead < 64 || this.dead * 4 < this.P.length))) return false;
     const P = [], S = []; this.pos.clear();
@@ -89,9 +100,9 @@ class OrdSet extends Set {
 // ★[T1348 ⓐ] players — 쓰기(`set` · `delete` · `clear`)마다 그 pid 칸의 `GN` 을 고친다(읽기 `get` · 순회는 Map 그대로)
 let _players = null;
 class PMap extends Map {
-  set(k, v) { super.set(k, v); const s = slotOf.get(k); if (s !== undefined) A.GN[s] = v === own[s] ? 0 : 1; return this; }
-  delete(k) { const r = super.delete(k); const s = slotOf.get(k); if (s !== undefined) A.GN[s] = 1; return r; }
-  clear() { super.clear(); A.GN.fill(1); }
+  set(k, v) { const s = slotOf.get(k); if (WQ_ON && s !== undefined) qWake(s); super.set(k, v); if (s !== undefined) A.GN[s] = v === own[s] ? 0 : 1; return this; }   // ★[T1415 ②] 쓰기 앞 — 주차 몸 꺼냄
+  delete(k) { const s0 = slotOf.get(k); if (WQ_ON && s0 !== undefined) qWake(s0); const r = super.delete(k); const s = slotOf.get(k); if (s !== undefined) A.GN[s] = 1; return r; }
+  clear() { if (WQ_ON) qAll('clr'); super.clear(); A.GN.fill(1); }
 }
 function newPlayers() { const m = LOOP ? new PMap() : new Map(); _players = m; return m; }
 function newNpcs() { return LOOP ? new OrdSet() : new Set(); }
@@ -99,7 +110,57 @@ function slot(pid) { const s = slotOf.get(pid); return s === undefined ? -1 : s;
 function count() { return n; }
 // 판 셈 — `T1322_STAT=<파일>`(`%p` = 프로세스 번호 — 판 여럿이 같이 돌 때) 이면 끝날 때(와 30초마다) 표 셈을 적는다(켬일 때만)
 if (ON && process.env.T1322_STAT) {
-  const fs = require('fs'), _f = process.env.T1322_STAT.replace('%p', String(process.pid)), put = () => { try { fs.writeFileSync(_f, JSON.stringify(Object.assign({ mode: MODE, wmode: WMODE, lmode: LMODE, kmode: KMODE, fmode: FMODE, xmode: XMODE, tmode: TMODE, slots: n }, stat))); } catch (e) {} };
+  const fs = require('fs'), _f = process.env.T1322_STAT.replace('%p', String(process.pid)), put = () => { try { fs.writeFileSync(_f, JSON.stringify(Object.assign({ mode: MODE, wmode: WMODE, lmode: LMODE, kmode: KMODE, fmode: FMODE, xmode: XMODE, tmode: TMODE, slots: n }, stat, WQ_ON ? { qmode: QMODE, q: Q.st } : {}))); } catch (e) {} };
   setInterval(put, 30000).unref(); process.on('exit', put);
 }
-module.exports = { ON, VERIFY, MODE, WAKE_ON, WAKE_VERIFY, WMODE, LOOP, LMODE, WALK_ON, WALK_VERIFY, KMODE, WORK_ON, WORK_VERIFY, FMODE, WORK2_ON, WORK2_VERIFY, XMODE, TOK_ON, TOK_VERIFY, TMODE, A, own, WPA, install, slot, count, stat, OrdSet, PMap, newPlayers, newNpcs };
+// ★[T1415 ②] 깨움 시각 줄 — 칸마다 주차 표(`P`) · 고리 거울 자리(`I`) · 세대(`G` · 힙의 묵은 칸 거름) · 주차한 틱(`V`) · 거울 자리마다 주차 표(`K`) · 힙(시각 · 칸 · 세대)
+//   고리 기록: `lastN` · `lastNow` = 마지막으로 끝난 고리의 틱 · 시각 · `curN` · `curNow` · `at` = 지금 고리가 보는 거울 자리(고리 밖 −1)
+const Q = { P: new Uint8Array(0), I: new Int32Array(0), G: new Uint32Array(0), V: new Float64Array(0), cap: 0, K: new Uint8Array(1024),
+  hT: [], hS: [], hG: [], parked: 0, lastN: -9, lastNow: NaN, curN: -9, curNow: NaN, at: -1,
+  st: { park: 0, pop: 0, stale: 0, ext: 0, all: 0, allN: 0, brk: 0, gap: 0, snap: 0, cpt: 0, lost: 0, vskip: 0, vis: 0, vbad: 0, vwhy: {}, vex: [], heapMax: 0, parkedMax: 0 } };
+function _qGrow(need) {
+  let c = Q.cap || 1024; while (c < need) c *= 2;
+  const g = (o) => { const B = new o.constructor(c); B.set(o); return B; };
+  Q.P = g(Q.P); Q.I = g(Q.I); Q.G = g(Q.G); Q.V = g(Q.V); Q.cap = c;
+}
+function _qK(i) { if (i >= Q.K.length) { let c = Q.K.length; while (c <= i) c *= 2; const B = new Uint8Array(c); B.set(Q.K); Q.K = B; } }
+function _qBad(w, s) { const st = Q.st; st.vbad++; st.vwhy[w] = (st.vwhy[w] || 0) + 1; if (st.vex.length < 8) st.vex.push(`${own[s] ? own[s].pid : '?'} ${w} n=${Q.curN}`); }
+// 주차 동안 쓰였을 칸 — 고리 안이면 지금 자리보다 앞 = 이번 틱에 거른 몸 · 아니면 마지막 끝난 고리의 틱. 주차한 틱 뒤로 거른 틱이 없으면 손대지 않는다(표를 준 틱 = `SK` NaN 그대로).
+function qMat(s) {
+  const inLoop = Q.at >= 0, vis = inLoop && Q.I[s] < Q.at, n = vis ? Q.curN : Q.lastN, t = vis ? Q.curNow : Q.lastNow;
+  if (!(n > Q.V[s])) return;
+  if (WQ_VERIFY) { if (A.VT[s] !== n || !Object.is(A.SK[s], t)) _qBad('mat', s); return; }   // verify = 종전 길이 이미 썼다 — 같은 값인가만
+  A.VT[s] = n; A.SK[s] = t;   // 거른 셈은 고리가 주차 몸을 지날 때마다 이미 셌다(존 고리 끝)
+}
+function _qOff(s) { Q.P[s] = 0; const i = Q.I[s]; if (i >= 0 && i < Q.K.length) Q.K[i] = 0; Q.parked--; }
+// 밖에서 깨움(쓰기 앞) — 주차 몸이면 칸을 쓰고 고리에 되돌린다
+function qWake(s) { if (s >= 0 && s < Q.cap && Q.P[s]) { qMat(s); _qOff(s); Q.st.ext++; } }
+function qDrop(s, w) { if (Q.P[s]) { _qBad(w, s); _qOff(s); } }   // verify — 줄이 놓친 깨움(칸은 종전 길이 이미 썼다)
+function qAll(why) { if (!Q.parked) return; Q.st.all++; Q.st[why] = (Q.st[why] || 0) + 1; for (let s = 0; s < n && Q.parked; s++) if (Q.P[s]) { qMat(s); _qOff(s); Q.st.allN++; } Q.parked = 0; }
+function _hUp(j) { const T = Q.hT, S = Q.hS, G = Q.hG, t = T[j], a = S[j], g = G[j]; while (j > 0) { const p = (j - 1) >> 1; if (!(t < T[p])) break; T[j] = T[p]; S[j] = S[p]; G[j] = G[p]; j = p; } T[j] = t; S[j] = a; G[j] = g; }
+function _hDown(j) { const T = Q.hT, S = Q.hS, G = Q.hG, L = T.length, t = T[j], a = S[j], g = G[j];
+  for (;;) { let c = 2 * j + 1; if (c >= L) break; if (c + 1 < L && T[c + 1] < T[c]) c++; if (!(T[c] < t)) break; T[j] = T[c]; S[j] = S[c]; G[j] = G[c]; j = c; }
+  T[j] = t; S[j] = a; G[j] = g; }
+function _hPop() { const T = Q.hT, S = Q.hS, G = Q.hG, lt = T.pop(), ls = S.pop(), lg = G.pop(); if (T.length) { T[0] = lt; S[0] = ls; G[0] = lg; _hDown(0); } }
+// 주차 — 이번 틱에 거른(또는 표를 받은) 몸 · 거울 자리 `i` · 다음에 볼 시각 `T`(이 시각이 된 틱 머리에 꺼낸다 · 이르면 이를수록 안전 = 종전 첫 거름이 다시 본다)
+function qPark(s, i, T, tn) {
+  if (s >= Q.cap) _qGrow(s + 1); _qK(i);
+  Q.P[s] = 1; Q.I[s] = i; Q.V[s] = tn; const g = (Q.G[s] = (Q.G[s] + 1) >>> 0); Q.K[i] = 1; Q.parked++; Q.st.park++;
+  Q.hT.push(T); Q.hS.push(s); Q.hG.push(g); _hUp(Q.hT.length - 1);
+  if (Q.hT.length > Q.st.heapMax) Q.st.heapMax = Q.hT.length; if (Q.parked > Q.st.parkedMax) Q.st.parkedMax = Q.parked;
+}
+// 고리 머리 — 빠진 틱(앞 고리가 바로 앞 틱이 아님)이면 전부 꺼냄 · 거울을 메웠으면 자리 다시 셈 · 때가 된 몸 꺼냄 · 힙 청소
+function qBegin(tn, now, cpt, P, S) {
+  Q.st.loops = (Q.st.loops || 0) + 1; Q.curN = tn; Q.curNow = now; Q.at = -1;
+  if (Q.parked && Q.lastN !== tn - 1) qAll('gap');
+  if (cpt && Q.parked) { Q.st.cpt++; Q.K.fill(0); _qK(P.length); let c = 0;
+    for (let i = 0; i < P.length; i++) { const s = S[i]; if (P[i] !== undefined && s >= 0 && s < Q.cap && Q.P[s] && own[s] && own[s].pid === P[i]) { Q.I[s] = i; Q.K[i] = 1; c++; } }
+    if (c !== Q.parked) { Q.st.lost++; for (let s = 0; s < n; s++) if (Q.P[s] && !Q.K[Q.I[s]]) { Q.I[s] = -1; qMat(s); _qOff(s); } } }
+  const T = Q.hT;
+  while (T.length && !(now < T[0])) { const s = Q.hS[0], g = Q.hG[0]; _hPop(); if (Q.P[s] && Q.G[s] === g) { qMat(s); _qOff(s); Q.st.pop++; } else Q.st.stale++; }
+  if (T.length > 4 * Q.parked + 4096) { const t = [], a = [], gg = []; for (let j = 0; j < T.length; j++) { const s = Q.hS[j]; if (Q.P[s] && Q.G[s] === Q.hG[j]) { t.push(T[j]); a.push(s); gg.push(Q.hG[j]); } }
+    Q.hT = t; Q.hS = a; Q.hG = gg; for (let j = (t.length >> 1) - 1; j >= 0; j--) _hDown(j); }
+}
+// 고리 끝 — 끊겼으면(예산) 주차 몸 전부 꺼냄(끊긴 자리 앞 = 이번 틱 거름 · 뒤 = 못 거름 → 다음 첫 거름이 '빠짐'으로 깨운다 = 종전)
+function qEnd(tn, now, cutAt) { if (cutAt >= 0 && Q.parked) { Q.at = cutAt; qAll('brk'); } Q.at = -1; Q.lastN = tn; Q.lastNow = now; }
+module.exports = { ON, VERIFY, MODE, WAKE_ON, WAKE_VERIFY, WMODE, LOOP, LMODE, WALK_ON, WALK_VERIFY, KMODE, WORK_ON, WORK_VERIFY, FMODE, WORK2_ON, WORK2_VERIFY, XMODE, TOK_ON, TOK_VERIFY, TMODE, QMODE, WQ_ON, WQ_VERIFY, Q, qPark, qWake, qAll, qBegin, qEnd, qMat, qDrop, A, own, WPA, WQS, install, slot, count, stat, OrdSet, PMap, newPlayers, newNpcs };

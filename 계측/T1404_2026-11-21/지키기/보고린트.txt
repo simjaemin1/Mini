@@ -1,0 +1,2 @@
+LINT-REPORT-GATE PASS · 2026-11-20 뒤 보고 3 · 끈 판 있는 보고 2 · 경고 0
+RC=0

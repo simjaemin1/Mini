@@ -280,7 +280,13 @@ async function runDays(n, sink) {
     if (!await up()) { console.log('  ✗ 4판 기동 실패'); process.exit(1); }
     const R4 = await jget(`http://localhost:${ZPORT}/routedbg`);
     console.log(`  4판(mtime 만 바뀜)  물려받은 ${R4.primed} · 마을 칸 달라 버린 ${R4.stale} · 서명 ${String(R4.sig).slice(0, 60)}…`);
-    ok(R4.primed === R3.db && R4.sig === R3.sig, '⑤ ★★[T619] 파일 mtime 만 바뀌면 옛 경로를 **다 물려받는다**(내용 해시)', `물려받은 ${R4.primed}/${R3.db}쌍`);
+    //   ★[T1410 · 야간 11-20 · nightly-known] 서명 견줌은 **파일 몫**만 — `T1327_ROUTE_FIX` 켬(land1084 기본) 판의 서명 끝에는 도랑 지문(`fix:T1327:<8>` · `_t1327DitchSig` — 지금 세계의
+    //     환호 칸)이 붙고, 환호가 다시 실리면 비웠다가 다시 센다(`_t1327DitchRedig`). 이 줄이 재는 것은 "파일 내용이 같으면(mtime 만 바뀜) 서명이 같다"이고 도랑은 판 사이 세계 상태라
+    //     그 토막을 뺀다 — 혼자 판 5/5 빨강(물려받은 38/38 · 42/42 · 44/44 = 다 물려받았는데 서명 끝 토막만 다름). 도랑이 바뀐 길을 버리는 것은 ⑥ · 제품 몫(T1327).
+    const fileSig = (sg) => String(sg).split('|').filter((p) => !/^fix:T1327:/.test(p)).join('|');
+    //     또 `/routedbg` 의 서명 칸은 `state._routeSig || null` 이라, 적재 뒤 환호가 다시 실리면(`_t1327DitchRedig` 가 비움) 다음에 셀 때까지 null 이다(이 판 실측).
+    //     적재 문(`_routePrime`)은 **지금 서명과 같은 행만** 싣는다 — 물려받은 수 = DB 행 수가 곧 "서명 같음"의 증거다. 서명 칸이 서 있으면 파일 몫도 견준다.
+    ok(R4.primed === R3.db && R3.db > 0 && (R4.sig == null || fileSig(R4.sig) === fileSig(R3.sig)), '⑤ ★★[T619] 파일 mtime 만 바뀌면 옛 경로를 **다 물려받는다**(내용 해시 — 적재 문은 서명이 같은 행만 싣는다)', `물려받은 ${R4.primed}/${R3.db}쌍 · 서명 칸 ${R4.sig == null ? 'null(환호 다시 실림이 비움 · T1327)' : (fileSig(R4.sig) === fileSig(R3.sig) ? '파일 몫 같음' : '파일 몫 다름')}`);
     await down();
   } finally {
     fs.utimesSync(TF, st0.atime, st0.mtime);   // ★원상 복구 — 레포 파일을 바꾼 채로 두지 않는다

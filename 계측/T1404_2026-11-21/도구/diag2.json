@@ -1,0 +1,4 @@
+[
+ {"tag": "DIAG2_OFF_1020", "seed": 1020, "days": 240, "env": {}, "kind": "sbc", "root": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1404/diagwt"},
+ {"tag": "DIAG2_NORISK_1020", "seed": 1020, "days": 240, "env": {"DIAG_NORISK": "1"}, "kind": "sbc", "root": "/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1404/diagwt"}
+]

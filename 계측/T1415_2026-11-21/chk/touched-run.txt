@@ -1,0 +1,189 @@
+# 만진 함수 → 하네스 (touched-harness · base 1aa63e637 · 갈림점 1aa63e637)
+· 바뀐 코드 파일 4 · 이름 35(물린 것 20 · 흔한 이름 뺌 0) · 바뀐 하네스 3 · 규약 다섯 · **돌릴 하네스 28**(@regress 아님 1: test-assets-audit.js)
+  scripts/t1415-stamp-hook.cjs: t1415-stamp-hook
+  server/stand-skip.js: QMODE T1322_STAT T1415_WAKEQ WQ_ON _hDown _hPop _hUp _qBad _qGrow _qOff install qAll qBegin qDrop qEnd qMat qPark qWake
+  server/villages.js: _hzD2 _hzOn _t1365Art _t1399Tk _t1415QSig t1365Work t1399Rec t1399Still t1399Take
+  server/zone.js: T1415Q _t1322Dusk _t1322Wake _t1348Dec _t1372SSTake _t1399Put _t1415Dusk
+· 이름 → 하네스 수: QMODE 1 · T1322_STAT 4 · T1415Q 2 · T1415_WAKEQ 1 · WQ_ON 1 · _t1322Dusk 3 · _t1322Wake 4 · _t1348Dec 2 · _t1365Art 1 · _t1372SSTake 1 · install 18 · qAll 2 · qBegin 1 · qEnd 1 · qMat 1 · qPark 1 · qWake 1 · t1365Work 3 · t1399Still 1 · t1415-stamp-hook 1
+· 바뀐 하네스: test-t1273-clock-rest.js test-t1348-loop.js test-t1415-wakeq.js
+· 돌릴 하네스: e2e-guest-reconnect.js e2e-metallurgy.js e2e-npc-walk.js e2e-site-exit.js e2e-streams.js e2e-village.js e2e-well.js test-assets-audit.js test-bandit-camp.js test-bandit-walk.js test-body-fields.js test-coll-grid.js test-day-deaths.js test-harness-lint.js test-hp-src.js test-lon-day.js test-t1130-hosted.js test-t1273-clock-rest.js test-t1314-cols.js test-t1322-prefilter.js test-t1322-verify-night.js test-t1337-wake.js test-t1348-loop.js test-t1365-work.js test-t1399-tok.js test-t1415-wakeq.js test-t999-trade-cap.js test-tidal.js
+  [나란히] -j 2 · 28개 · 혼자 돌 것 2개 먼저 차례로 · 고정 포트 쥔 하네스는 같은 포트끼리 차례로
+##### e2e-npc-walk.js #####
+=== e2e-npc-walk 결과: 19 통과 / 0 실패 ===
+  ✓ [on] 걷는 NPC 의 곧은 창이 모였다(자명 통과 금지 — 창 0 이면 아래 판정은 공짜다)  — NPC 9 · 창 349
+  ✓ [off] 걷는 NPC 의 곧은 창이 모였다(자명 통과 금지 — 창 0 이면 아래 판정은 공짜다)  — NPC 7 · 창 96
+=== e2e-npc-walk 결과: 19 통과 / 0 실패 ===
+  [소요] 114초
+  ✓ RC=0
+##### test-t1322-verify-night.js #####
+=== T1322 첫 거름 견줌 판 8 통과 · 0 실패 ===
+=== T1322 첫 거름 견줌 판 8 통과 · 0 실패 ===
+  [소요] 3337초
+  ✓ RC=0
+##### test-assets-audit.js #####
+  ✓ ⑦b 자명 통과 금지 — `-` 의 `state` 를 떼면 ⑦a 가 문다  문 키 0개
+  ✓ ⓐ-2 ★대조 — 옛 자는 **적어도 한 표본에서 갈라진다**(안 갈라지면 이 절은 자명 통과다)  bridge/bridge_cap0_x.webp 옛 3종 · 투명아래 채운 화소 [0 8420 7544] · bridge/bridge_cap0_y.webp 옛 3종 · 투명아래 채운 화소 [0 7648 7316] · char/back_carrier_aim.png 옛 1종 · 투명아래 채운 화소 [0 0 0] · char/back_carrier_aim2.png 옛 1종 · 투명아래 채운 화소 [0 0 0]
+결과: PASS
+  [소요] 30초
+  ✓ RC=0
+##### test-bandit-camp.js #####
+결과: PASS (35 통과 · 0 실패)
+결과: PASS (35 통과 · 0 실패)
+  [소요] 4초
+  ✓ RC=0
+##### test-bandit-walk.js #####
+결과: PASS (37 통과 · 0 실패)
+결과: PASS (37 통과 · 0 실패)
+  [소요] 5초
+  ✓ RC=0
+##### test-body-fields.js #####
+=== 14 통과 / 0 실패 ===
+  ✓ ★자명 통과 금지 — `??=` 꼴도 문다 · 읽기(`==`)는 안 문다  zone.js:20265 npc._t673Bait2
+  ✓ ★[T1140 ③-가] 자명 통과 금지 — 값 하나(`nextDecisionAt: 1`)를 바꾸면 문다
+  ✓ ⑳ 판정 칸 쓰기 자리를 다 셌다(자명 통과 아님)  전체 462 · 걸음 문 안 260 · 문 밖 202(표 내림 75 · 까닭 127)
+=== 14 통과 / 0 실패 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-coll-grid.js #####
+=== 결과: 20 PASS / 0 FAIL ===
+  ✓ ② [전제 · 자명 통과 금지] 걸음이 **실제로 막힌다** · 옛 격자 질의의 셋에 하나 넘게에 **밭·마당이 섞였다**  막힘 10476/40000 · 밭 섞임 4525/10000
+=== 결과: 20 PASS / 0 FAIL ===
+  [소요] 14초
+  ✓ RC=0
+##### test-day-deaths.js #####
+  ✓ ⓑ ★자명 통과 금지 — 빈 날 옛 칸은 전날 값 그대로다(구멍이 정말 있다)  옛 칸 2
+  ✓ ⓔ [전제] 관찰기 파일을 실제로 훑었다(0 이면 아래가 자명 통과다)  204개
+  ✓ ⓔ 자명 통과 금지 — 옛 읽기 한 줄을 넣은 미끼는 문다(주석 줄은 안 문다)  1줄
+=== 13건 중 PASS 13 · FAIL 0 ===
+  [소요] 0초
+  ✓ RC=0
+##### test-harness-lint.js #####
+  ✗ ★★⑲b 새 `@regress` 하네스는 `// @bait <n>` 표지 · 미끼 판정 줄(`미끼` + `바꾼 자리`)이 꼭 n 개 — 미끼는 파일 안에  test-t1415-wakeq.js(count 0/4)
+=== 102건 중 PASS 101 · FAIL 1 ===
+  ✓ ⑳ [전제] `@harness-only` 표지를 단 하네스가 실제로 있다(0 이면 아래가 자명 통과다)  test-ci-changes.js test-ci-list.js test-harness-bite.js test-notice-mark.js
+  ✓ ★⑳ 자명 통과 금지 — 제품 부름 셋은 물고 · 주석 · scripts 자리는 보낸다  req=hit,join=hit,rel=hit,cmt=none,scr=none
+  ✓ ★㉑ 자명 통과 금지 — 안 지우는 셋은 물고 · 지우는 넷은 보낸다  mk=hit,anon=hit,pidJson=hit,rm=none,lib=none,pidDb=none,own=none
+=== 102건 중 PASS 101 · FAIL 1 ===
+  [소요] 114초
+  ✗ RC=1 · 결과줄 142개 → **실패로 센다**
+##### test-hp-src.js #####
+=== 54 통과 / 0 실패 ===
+  ✓ [상황] 세 파일을 실제로 읽었다(못 읽으면 아래가 자명 통과다)  zone 1239250 · net 109161 · wildlife 111078
+  ✓ ★⓪ 자명 통과 금지 — 직접 대입 한 줄을 되살리면 잡힌다
+  ✓ [상황] `server/villages.js` 를 실제로 읽었다(못 읽으면 아래가 자명 통과다)  villages 1525927
+=== 54 통과 / 0 실패 ===
+  [소요] 3초
+  ✓ RC=0
+##### test-lon-day.js #####
+=== 22건 중 PASS 22 · FAIL 0 ===
+  [소요] 0초
+  ✓ RC=0
+##### test-t1273-clock-rest.js #####
+  ✓ ⑨ [T1300] T1289 글자 사본은 옛 저장 → 끔 판에서 축 섞인 몸이 0 이 아니다(자명 통과 금지 · 회부 4)  2 + 0
+  ✓ ⑨ 고치기 전 사본은 축 섞인 몸이 0 이 아니다(자명 통과 금지)  9
+  ✓ ⑪ [자명 통과 금지] T1289 거리 규칙은 보통 판은 맞고 큰 판에서 틀린다(econ 값 > 저장 순간 벽시계의 반) — 새 경계가 그 판을 맞춘다  보통 0 · 큰 2
+=== PASS 104 / FAIL 0 ===
+  [소요] 75초
+  ✓ RC=0
+##### test-t1314-cols.js #####
+=== T1314 몸 칸 열 10 통과 · 0 실패 ===
+  ✓ [미끼] ① 의 열 견줌(`check`)이 문다(자명 통과 아님)  바꾼 자리 1 · 어긋남 765
+=== T1314 몸 칸 열 10 통과 · 0 실패 ===
+  [소요] 0초
+  ✓ RC=0
+##### test-t1322-prefilter.js #####
+=== T1322 첫 거름 21 통과 · 0 실패 ===
+=== T1322 첫 거름 21 통과 · 0 실패 ===
+  [소요] 40초
+  ✓ RC=0
+##### test-t1337-wake.js #####
+=== T1337 잠 깨움 11 통과 · 0 실패 ===
+=== T1337 잠 깨움 11 통과 · 0 실패 ===
+  [소요] 57초
+  ✓ RC=0
+##### e2e-guest-reconnect.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+=== 게스트 재접속 소유 E2E: 40 통과 / 0 실패 ✅ ===
+=== 게스트 재접속 소유 E2E: 40 통과 / 0 실패 ✅ ===
+  [소요] 435초
+  ✓ RC=0
+##### e2e-metallurgy.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+=== 실클라 E2E: 20 통과 / 0 실패 ✅ ===
+=== 실클라 E2E: 20 통과 / 0 실패 ✅ ===
+  [소요] 29초
+  ✓ RC=0
+##### test-t1348-loop.js #####
+=== T1348 고리 거울 · 걷는 몸 커널 20 통과 · 0 실패 ===
+=== T1348 고리 거울 · 걷는 몸 커널 20 통과 · 0 실패 ===
+  [소요] 131초
+  ✓ RC=0
+##### e2e-site-exit.js #####
+  [찌꺼기] /tmp 에서 죽은 판 이름 DB 12개 지움(18 MB)
+=== 터 · 건축 모드 E2E: 34 통과 / 0 실패 ✅ ===
+  ✓ [켬] ★자명 통과 금지 — Shift 배치(이어 놓기)는 배치 · 건축 모드를 **지킨다**(종전 그대로)  {"bm":true,"pm":"kiln_site","n":[]}
+  ✓ [켬] ★자명 통과 금지 — 집 의뢰(`psite`)는 다섯 터가 아니다 — 건축 모드가 남는다(손대지 않음)  {"bm":true,"pm":null,"n":[]}
+=== 터 · 건축 모드 E2E: 34 통과 / 0 실패 ✅ ===
+  [소요] 64초
+  ✓ RC=0
+##### e2e-streams.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+  [찌꺼기] /tmp 에서 죽은 판 이름 DB 6개 지움(3 MB)
+=== 개울 E2E: 14 통과 / 0 실패 ✅ ===
+=== 개울 E2E: 14 통과 / 0 실패 ✅ ===
+  [소요] 35초
+  ✓ RC=0
+##### e2e-village.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+=== 마을 건립 실클라 E2E: 51 통과 / 0 실패 ✅ ===
+=== 마을 건립 실클라 E2E: 51 통과 / 0 실패 ✅ ===
+  [소요] 159초
+  ✓ RC=0
+##### e2e-well.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+  [찌꺼기] /tmp 에서 죽은 판 이름 DB 6개 지움(9 MB)
+=== 우물 E2E: 16 통과 / 0 실패 ✅ ===
+=== 우물 E2E: 16 통과 / 0 실패 ✅ ===
+  [소요] 30초
+  ✓ RC=0
+##### test-t1130-hosted.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+  ✓ ★서버 없는 존 몫 콘솔 오류 줄 · 실패한 요청 0  0 · (참고) 콘솔 오류 전체 2
+  ✓ 큰 지도 — 서버 없는 뭍 존은 주소 없음(`no-url` · 종전 실패 꼴 그대로 그린다)  no-url 18 · 지도 존 19 · 뭍 19
+  ✓ 전제(자명 통과 금지): 한반도 개울 · 큰 지도 그림은 물었다 — 묻는 길이 돌았다  streams 1(ok) · bigmap 1(ok)
+=== 28건 중 PASS 28 · FAIL 0 ===
+  [소요] 73초
+  ✓ RC=0
+##### test-t1365-work.js #####
+=== T1365 일터 깨움 7 통과 · 0 실패 ===
+=== T1365 일터 깨움 7 통과 · 0 실패 ===
+  [소요] 584초
+  ✓ RC=0
+##### test-t1415-wakeq.js #####
+=== 22 통과 · 0 실패 ===
+=== 22 통과 · 0 실패 ===
+  [소요] 431초
+  ✓ RC=0
+##### test-t999-trade-cap.js #####
+=== 22건 중 PASS 22 · FAIL 0 ===
+  [소요] 22초
+  ✓ RC=0
+##### test-tidal.js #####
+  ✓ ★★자명 통과 금지 — **닫히는 때가 실제로 있다**  1399/4000
+  ✓ (전제) 대조군도 **간조**다 — 물이 차서 통과하는 게 아니다
+=== 123건 중 PASS 123 · FAIL 0 ===
+  [소요] 2초
+  ✓ RC=0
+##### test-t1399-tok.js #####
+=== T1399 일터 깨움 표 8 통과 · 0 실패 ===
+=== T1399 일터 깨움 표 8 통과 · 0 실패 ===
+  [소요] 795초
+  ✓ RC=0
+
+=== 러너 요약 ===
+  통과 27: e2e-npc-walk.js test-t1322-verify-night.js test-assets-audit.js test-bandit-camp.js test-bandit-walk.js test-body-fields.js test-coll-grid.js test-day-deaths.js test-hp-src.js test-lon-day.js test-t1273-clock-rest.js test-t1314-cols.js test-t1322-prefilter.js test-t1337-wake.js e2e-guest-reconnect.js e2e-metallurgy.js test-t1348-loop.js e2e-site-exit.js e2e-streams.js e2e-village.js e2e-well.js test-t1130-hosted.js test-t1365-work.js test-t1415-wakeq.js test-t999-trade-cap.js test-tidal.js test-t1399-tok.js
+  실패 1: test-harness-lint.js(rc=1)
+  걸린 시간 상위(초): test-t1322-verify-night.js 3337 · test-t1399-tok.js 795 · test-t1365-work.js 584 · e2e-guest-reconnect.js 435 · test-t1415-wakeq.js 431 · e2e-village.js 159 · test-t1348-loop.js 131 · e2e-npc-walk.js 114 · test-harness-lint.js 114 · test-t1273-clock-rest.js 75
+  걸린 시간 합: 하네스 6584초 · 러너 전체 5071초(그 사이 = 배수 · 정리 기다림 · 머리)
+  나란히(T1288): -j 2 · 배수 쉼 없음(남은 포트는 lib-port 가 피한다)
+  배수(T1161): 쉼 0번 × 8초 · 건넘 0번(앞 판이 남긴 아이 없음)
