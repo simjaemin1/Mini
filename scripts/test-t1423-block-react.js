@@ -136,7 +136,7 @@ function zoneChild() {
   }
   //   ①d 글자 — 짓기 문 자리(zone.js)
   const src = fs.readFileSync(ZFILE, 'utf8');
-  out.sites = { gate: (src.match(/if \(T1423_NO_BUILD\) \{ const _w = _t1423NoBuild\(/g) || []).length, rect: (src.match(/if \(T1423_NO_BUILD\) \{ const _w = _t1423NoBuildRect\(/g) || []).length, lot: (src.match(/if \(!why && T1423_NO_BUILD\) why = _t1423NoBuild\(x, y\);/g) || []).length };
+  out.sites = { gate: (src.match(/if \(T1423_NO_BUILD\) \{ const _w = _t1423NoBuild\(/g) || []).length, rect: (src.match(/if \(T1423_NO_BUILD\) \{ const _w = _t1423NoBuildRect\(/g) || []).length, lot: (src.match(/if \(!why && T1423_NO_BUILD\) \{ const w = _t1423NoBuild\(x, y\);/g) || []).length };   // [T1440 합침] 다시 잡는 칸(T1403)이어도 다리 끝이면 막는 꼴
   const cl = ['public/client/11-r1-mountain.js', 'public/client/30-n-net.js', 'public/client/32-m-render.js'].map((f) => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n');
   out.clientSrc = { noAt: /function _t1423NoAt\(ax, ay\)[\s\S]{0,260}isBridgeAtAbs\(wx, wy\) \|\| isWaterAtAbs\(wx, wy\) \|\| _t1423NoAbs\.has/.test(cl), welcome: /msg\.t1423NoBuild[\s\S]{0,120}_t1423NoAbs\.on = true/.test(cl), ghost: (cl.match(/_t1423NoAt\(/g) || []).length };
   for (const f of [TMP, TMP + '-wal', TMP + '-shm']) { try { fs.unlinkSync(f); } catch (e) {} }

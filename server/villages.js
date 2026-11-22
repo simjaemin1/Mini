@@ -3970,6 +3970,15 @@ const T598_ROUTE_EDGE = process.env.T598_ROUTE_EDGE === '1';
 // ★[PM land1084 2026-11-18 · 재민 "켜는 거 맞고"] 켬 기본('0' 만 끔 = 종전 글자 그대로 · 끈 판 = 서버기준선 11-16 과 같음 · 켬 정본 = 서버기준선 11-18).
 const T1327_ROUTE_FIX = process.env.T1327_ROUTE_FIX !== '0';
 const _T598E = T598_ROUTE_EDGE || T1327_ROUTE_FIX;   // 이웃 잇기 규칙이 켜졌나(끔 = T598_ROUTE_EDGE 그대로)
+// ★★[T1440 2026-11-22 · ★재민 판정 47 · 48] 처음 길 — 놓는 순간 판정 · 길을 닫는 조각만 보호가 없다 · 길은 지어진 것을 보고 다시 구한다
+//   (표 · 판정 = `server/road-rule.js` 머리 주석 · 손잡이 `T1440_ROAD_RULE` '1' 만 켬 · ★끔 기본 = 아래 `T1440_ROAD_RULE` 갈래가 하나도 안 닿는다 — 모듈도 안 싣는다).
+//   켬: ⓐ 교역로 격자(`ensureRouteGrid`)가 구조물 표를 본다 — 칸(울타리 · 발자국 · 개인 사유지)은 막힌 칸 · 변(벽 · 문)은 이웃 잇기 · 칸 BFS · 곧은 줄 검사가 넘지 않는다
+//        (거리행렬 · econ 은 지형 그대로 — 교역 거리는 이 카드 밖). ⓑ 길 표(쌍이 지나는 칸 → 쌍)를 캐시에 두고 구조물이 서거나 헐린 칸을 지나던 쌍만 버린다(전부 버리던 줄은 끔 갈래).
+//      ⓒ 판정 문(`t1440Judge` · `t1440Step` · `t1440Apply`) — 존의 짓기 문과 마을의 터 고르기가 부른다. ⓓ 가는 도중 막히면 그 자리에서 목적 마을까지 다시 구해 잇는다(되돌아오지 않는다).
+const T1440_ROAD_RULE = process.env.T1440_ROAD_RULE === '1';
+const RoadRule = T1440_ROAD_RULE ? require('./road-rule') : null;
+const _t1440Cpu = () => { const u = process.cpuUsage(); return (u.user + u.system) / 1000; };   // 계측(판정 길 구하기 · 마무리 · 고치기 CPU ms)
+const _t1440S = { touch: 0, flush: 0, drop: 0, keep: 0, reopen: 0, reroute: 0, rerouteFail: 0, temp: 0, applied: 0, markHit: 0, stepHit: 0, siteClose: 0, siteProt: 0, granClose: 0, judgeCpu: 0 };
 const _t1327St = { finish: 0, link: 0, linkFail: 0, endLink: 0, endFail: 0, pull: 0, ditchRedig: 0, ditchRuns: 0 };
 let _t598C = null, _t598T = null;   // chunk.js · terrain.js 지연 적재(순환 회피)
 function _t598Chunk() { return _t598C || (_t598C = require('./chunk')); }
@@ -3985,7 +3994,7 @@ function _t598FootBuild() {
 }
 // 코스 칸(gx,gy)을 지나는 값의 배수 — 칸 안 셀마다 열린 몫(물·바위 막힘 0 · 집채 0 · 그 밖 1 − 나무 − 광물)의 평균의 역수.
 function _t598CellMul(ta, gx, gy, gw) {
-  const M = state._t598Mul;
+  const M = ta._t1440Mul || state._t598Mul;   // ★[T1440] 켬 · 걸음마다 따로(그 격자의 막힘으로 센 배수 — 끔 = 칸 없음 = 종전)
   const i = gy * gw + gx;
   if (M && M[i] > 0) return M[i];
   const C = _t598Chunk(), Z = state.zoneId, F = state._t598Foot;
@@ -4052,14 +4061,16 @@ function _t598Anchor(ta, gx, gy) {
 // ★[T598 ④] 이웃 두 코스 노드(가운데 칸)를 몸이 이을 수 있나 — 곧은 선이 막힌 칸을 안 밟으면 참 · 아니면 두 코스 칸(합친 상자) 안 4방 BFS.
 //   메모 = 노드마다 8방 2비트(판정함·답).
 function _t598EdgeOk(ta, gx, gy, dx, dy, gw) {
-  const E = state._t598Edge;
+  const E = ta._t1440M || state._t598Edge;   // ★[T1440] 켬 · 구조물을 보는 길 격자 = 그 격자 메모(거리행렬 메모와 따로 — 끔 = 칸 없음 = 종전)
   const d = (dx + 1) * 3 + (dy + 1), bit = 1 << d;   // 0..8 (가운데 4 안 씀)
   const i = gy * gw + gx;
   if (E && (E.done[i] & bit)) return !!(E.ok[i] & bit);
   const [ax, ay] = _t598Anchor(ta, gx, gy), [bx, by] = _t598Anchor(ta, gx + dx, gy + dy);
   let ok = true;
   { const n = Math.max(Math.abs(bx - ax), Math.abs(by - ay)) * 4;
-    for (let k = 0; k <= n && ok; k++) { const x = Math.floor(ax + 0.5 + (bx - ax) * k / n), y = Math.floor(ay + 0.5 + (by - ay) * k / n); if (ta.isBlocked(x, y)) ok = false; } }
+    let _px = null, _py = null;   // ★[T1440] 앞 표본 칸(켬 · 변 술어가 있을 때만 쓴다)
+    for (let k = 0; k <= n && ok; k++) { const x = Math.floor(ax + 0.5 + (bx - ax) * k / n), y = Math.floor(ay + 0.5 + (by - ay) * k / n); if (ta.isBlocked(x, y)) ok = false;
+      else if (ta.edgeBlk) { if (_px !== null && (x !== _px || y !== _py) && _t1440Hop(ta, _px, _py, x, y)) ok = false; _px = x; _py = y; } } }
   if (!ok) {   // 두 코스 칸 합친 상자 안 BFS
     const x0 = Math.min(gx, gx + dx) * DIST_STEP, y0 = Math.min(gy, gy + dy) * DIST_STEP;
     const x1 = (Math.max(gx, gx + dx) + 1) * DIST_STEP - 1, y1 = (Math.max(gy, gy + dy) + 1) * DIST_STEP - 1;
@@ -4071,6 +4082,7 @@ function _t598EdgeOk(ta, gx, gy, dx, dy, gw) {
         if (nx < x0 || ny < y0 || nx > x1 || ny > y1) continue;
         const k = ny * 65536 + nx; if (seen.has(k)) continue; seen.add(k);
         if (ta.isBlocked(nx, ny)) continue;
+        if (ta.edgeBlk && ta.edgeBlk(x, y, nx, ny)) { seen.delete(k); continue; }   // ★[T1440] 켬 · 벽 · 문 변(다른 이웃에서는 들어올 수 있게 본 표를 되돌린다)
         if (nx === bx && ny === by) { ok = true; break; }
         q.push([nx, ny]);
       }
@@ -4415,11 +4427,13 @@ function* _distMatrixGen(reason, opts) {
 //   · 반환 pts = [출발px, 코스노드 중심px..., 도착px] — 노드 중심 = 행렬이 샘플한 바로 그 셀 중심.
 // =============================================================================
 function ensureRouteGrid() {
+  if (T1440_ROAD_RULE && _t1440Cur !== '1') return _t1440Grid(_t1440Cur);   // ★[T1440] 켬 · 걸음 2 · 판정 격자(걸음 1 = 아래 `state._route` 그대로)
   if (state._route) return state._route;
   if (!state._distCtx) return null;
-  const { ta, ZONE } = state._distCtx;
+  const { ta: _ta0, ZONE } = state._distCtx;
   const cellsW = Math.ceil(ZONE.zoneWidth / SZ), cellsH = Math.ceil(ZONE.zoneHeight / SZ);
   const gw = Math.ceil(cellsW / DIST_STEP), gh = Math.ceil(cellsH / DIST_STEP);
+  const ta = T1440_ROAD_RULE ? _t1440Ta(_ta0, gw, gh, RoadRule.M1) : _ta0;   // ★[T1440] 켬 = 구조물을 보는 지형 어댑터 · 걸음 1(다 피해서 — 교역로 격자만 · 거리행렬은 `_distCtx.ta` 그대로)
   state._route = {
     ta, gw, gh, half: DIST_STEP >> 1,
     blk: new Int8Array(gw * gh),                      // 0=미판정 1=열림 2=차단 (lazy 메모 — invalidate가 리셋)
@@ -4580,6 +4594,7 @@ function _routeBegin(x0, y0, x1, y1, extraBlk, plain, noEdge) {
 // 노드열 → px 폴리라인. 문 둘이 **같은 이걸** 쓴다(변환을 두 번 적으면 그게 사본이다).
 function _routeFinish(J, nodesP) {
   if (!nodesP) return null;
+  if (T1440_ROAD_RULE && T1327_ROUTE_FIX && J.ta && J.ta.edgeBlk) { const c0 = _t1440Cpu(), f = _t1327Finish(J, nodesP), c1 = _t1440Cpu(), out = RoadRule.fixRoute(f, (cx, cy) => J.ta.isBlocked(cx, cy), J.ta.edgeBlk); _t1440S.tFin = (_t1440S.tFin || 0) + (c1 - c0); _t1440S.tFix = (_t1440S.tFix || 0) + (_t1440Cpu() - c1); return out; }   // ★[T1440] 켬 · 못 이은 이음(곧은 줄)이 막혔으면 칸 A* 로 갈아 끼운다
   if (T1327_ROUTE_FIX && J.ta) return _t1327Finish(J, nodesP);   // ★[T1327 ⓑ] 켬 = 몸 칸을 잇는 줄(끔 = 아래 종전 글자)
   const pts = [{ x: J.x0, y: J.y0 }];
   for (const n of nodesP) pts.push({ x: n.x * DIST_STEP * SZ + J.half * SZ + SZ / 2, y: n.y * DIST_STEP * SZ + J.half * SZ + SZ / 2 });
@@ -4604,7 +4619,10 @@ function _t1327Cells(a, b, fn) {
   }
   return false;
 }
-function _t1327Clear(ta, a, b) { return !_t1327Cells(a, b, (cx, cy) => ta.isBlocked(cx, cy)); }   // 두 점(px) 곧은 줄이 막힌 칸을 하나도 안 지나나
+function _t1327Clear(ta, a, b) {
+  if (ta.edgeBlk) return RoadRule.clearLine(_t1327Cells, a, b, (cx, cy) => ta.isBlocked(cx, cy), ta.edgeBlk);   // ★[T1440] 켬 · 칸 사이 변도(끔 = 아래 종전 글자)
+  return !_t1327Cells(a, b, (cx, cy) => ta.isBlocked(cx, cy));
+}   // 두 점(px) 곧은 줄이 막힌 칸을 하나도 안 지나나
 function _t1327Bfs(ta, ax, ay, bx, by, x0, y0, x1, y1) {   // 칸 (ax,ay) → (bx,by) · 상자 [x0,x1]×[y0,y1] 안 4방 · 칸 열 또는 null
   if (ta.isBlocked(ax, ay) || ta.isBlocked(bx, by)) return null;
   const W = x1 - x0 + 1, Hh = y1 - y0 + 1; if (W <= 0 || Hh <= 0 || W * Hh > 40000) return null;
@@ -4616,7 +4634,7 @@ function _t1327Bfs(ta, ax, ay, bx, by, x0, y0, x1, y1) {   // 칸 (ax,ay) → (b
     const cx = x0 + (c % W), cy = y0 + ((c / W) | 0);
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const nx = cx + dx, ny = cy + dy; if (nx < x0 || ny < y0 || nx > x1 || ny > y1) continue;
-      const k = id(nx, ny); if (prev[k] !== -2 || ta.isBlocked(nx, ny)) continue; prev[k] = c; q[t++] = k;
+      const k = id(nx, ny); if (prev[k] !== -2 || ta.isBlocked(nx, ny) || (ta.edgeBlk && ta.edgeBlk(cx, cy, nx, ny))) continue; prev[k] = c; q[t++] = k;   // ★[T1440] 켬 · 변 술어(끔 = 칸 없음 = 종전)
     }
   }
   if (prev[g] === -2) return null;
@@ -4682,6 +4700,10 @@ function _t1327DitchRedig() {
 }
 // ── 동기 문 — **서명 무변**. 랩·하네스·전쟁·귀환 폴백·감사가 전부 이 문만 안다.
 function computeRoutePts(x0, y0, x1, y1, extraBlk) {
+  if (T1440_ROAD_RULE && _t1440Cur === '1' && !extraBlk) return _t1440Route2(x0, y0, x1, y1);   // ★[T1440] 켬 · 길 구하기 두 걸음(정해진 것 3)
+  return _computeRoutePts1(x0, y0, x1, y1, extraBlk);
+}
+function _computeRoutePts1(x0, y0, x1, y1, extraBlk) {
   const J = _routeBegin(x0, y0, x1, y1, extraBlk);
   if (!J) return null;
   const path = PathCore.pathStep(J.S, 0).path;
@@ -4817,6 +4839,7 @@ function _routeSig() {
   if (T598_ROUTE_EDGE) parts.push('edge:T598');
   if (T1327_ROUTE_FIX) parts.push('fix:T1327:' + _t1327DitchSig());   // ★[T1327] 켬 판은 다른 길 + 도랑 지문(도랑이 바뀌면 영속 길을 안 물려받는다) — 끔 서명은 종전 글자 그대로
   if (T619_LOCAL_H) parts.push('h:T619');   // ★[T619] 켬 판은 h 가 달라 다른 길 — 끔 서명엔 안 붙는다
+  if (T1440_ROAD_RULE) parts.push('road:T1440');   // ★[T1440] 켬 = 구조물을 보는 길(끔 서명은 종전 글자)
   return parts.join('|');
 }
 // ★★[T42 ①ⓑ 2026-09-01] **부팅 직후 선계산** — 콜드를 게임일 경계에서 떼어 낸다.
@@ -4995,7 +5018,7 @@ function _t699RouteFile() {
   let reach = '';
   if (mat) for (let i = 0; i < V.length; i++) for (let j = i + 1; j < V.length; j++) reach += (mat[i] && isFinite(mat[i][j])) ? '1' : '0';
   let roadCells = 0; try { const R = state.roads && state.roads._S; roadCells = R && R.cells ? R.cells.size : 0; } catch (e) {}
-  const key = [state._routeSig || (state._routeSig = _routeSig()), V.map((v) => `${v.dbId}:${v.ccx},${v.ccy}`).join(';'), reach, 'roads:' + roadCells].join('|');
+  const key = [state._routeSig || (state._routeSig = _routeSig()), V.map((v) => `${v.dbId}:${v.ccx},${v.ccy}`).join(';'), reach, 'roads:' + roadCells].concat(T1440_ROAD_RULE ? ['struct:' + RoadRule.sig()] : []).join('|');   // ★[T1440] 켬 = 구조물 표 지문(같은 구조물이면 같은 길 · 끔 = 종전 글자)
   const h = require('crypto').createHash('sha1').update(key).digest('hex').slice(0, 16);
   return require('path').join(dir, `routes_${state.zoneId}_${h}.json`);
 }
@@ -5007,6 +5030,7 @@ function routeCacheLoad() {   // → true(물려받음) · false(파일 없음 �
   let n = 0;
   for (const [k, pts] of rows) { if (state.routeCache.has(k)) continue; state.routeCache.set(k, pts); n++; }
   console.log(`[${state.zoneId}] 🐂 [T699] 교역로 디스크 캐시 ${n}쌍 물려받음(${require('path').basename(f)})`);
+  if (T1440_ROAD_RULE) { try { _t1440Validate('T699 디스크'); } catch (e) {} }   // ★[T1440] 켬
   return true;
 }
 function routeCacheSave() {
@@ -5169,6 +5193,7 @@ function _routeStore(key, pts, s, t, workMs) {
   else if (!_routeWarned.has(key)) { _routeWarned.add(key); console.warn(`[${state.zoneId}] 🐂 교역로 A* 실패: ${s.name}↔${t.name} — 실체 생략(econ은 그대로 진행)`); }
 }
 function getRoute(aVil, bVil) { // 무방향 쌍 캐시(랩 getTradePath 동형) — null도 캐시(불능쌍 반복 계산 방지)
+  if (T1440_ROAD_RULE) _t1440Flush();   // ★[T1440] 켬 · 구조물이 바뀐 칸을 지나던 쌍을 먼저 버린다
   const { fwd, key } = _routeKey(aVil, bVil);
   let pts = state.routeCache.get(key);
   if (pts !== undefined) _probe.routeHit++;
@@ -5185,6 +5210,7 @@ function getRoute(aVil, bVil) { // 무방향 쌍 캐시(랩 getTradePath 동형)
 //   `{ done:false }` 면 아직이다: 부른 쪽은 **같은 하루 안의 다음 조각**에 다시 물어야 한다
 //   (경계를 넘기면 출발일이 밀리고, 그러면 `travelDays` 규약(T60 ③)이 흔들린다 — 그래서 다음 날이 아니다).
 function getRouteResumable(aVil, bVil, budgetMs) {
+  if (T1440_ROAD_RULE) _t1440Flush();   // ★[T1440] 켬 · 위와 같다
   const { fwd, key } = _routeKey(aVil, bVil);
   const cached = state.routeCache.get(key);
   if (cached !== undefined) {
@@ -5194,7 +5220,7 @@ function getRouteResumable(aVil, bVil, budgetMs) {
   const [s, t] = fwd ? [aVil, bVil] : [bVil, aVil];
   const r = _routeResume(key, s.ccx * SZ + SZ / 2, s.ccy * SZ + SZ / 2, t.ccx * SZ + SZ / 2, t.ccy * SZ + SZ / 2, budgetMs);
   if (!r.done) return { done: false };
-  _routeStore(key, r.pts, s, t, r.workMs);
+  if (T1440_ROAD_RULE && !_t1440Step1Ok(key, r.pts)) { r.pts = _t1440Mode('2', () => _computeRoutePts1(s.ccx * SZ + SZ / 2, s.ccy * SZ + SZ / 2, t.ccx * SZ + SZ / 2, t.ccy * SZ + SZ / 2)) || r.pts; _t1440S.step2 = (_t1440S.step2 | 0) + 1; }   // ★[T1440] 켬 · 첫째 걸음(다 피해서)이 없거나 3배를 넘으면 둘째 걸음(주인 없는 구조물은 없는 것 — 동기 · 드물다)
   return { done: true, pts: r.pts ? (fwd ? r.pts.slice() : r.pts.slice().reverse()) : null };
 }
 
@@ -5266,6 +5292,7 @@ const WALK_SMOOTH_SPAN = DIST_STEP ** 3;                 // 스트링 풀링 창
 function _walkCellBlocked(cx, cy) {
   const ta = state._distCtx && state._distCtx.ta;
   if (ta && ta.isBlocked(cx, cy)) return true;
+  if (T1440_ROAD_RULE && RoadRule.cellBlk(cx, cy)) return true;   // ★[T1440] 켬 · 구조물 칸(울타리 · 발자국 · 개인 사유지 — 표시 붙은 조각은 없는 것)
   const tb = state.deps && state.deps.treeCellBlocked;
   if (tb) { try { if (tb(cx, cy)) return true; } catch (e) {} }
   return false;
@@ -5281,10 +5308,13 @@ function _walkNodeCell(px, py) {   // 노드 칸이 막혔으면(다리 구제 �
 }
 function _walkLineClear(ax, ay, bx, by) {   // px 두 점 사이 직선이 막힌 칸을 안 밟나(1/16칸 보폭 — 모서리를 스치는 칸도 본다)
   const dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy), n = Math.max(1, Math.ceil(L / (SZ / 16)));
-  let lk = -1;
+  const eg = T1440_ROAD_RULE && RoadRule.hasAny();   // ★[T1440] 켬 · 칸 사이 변(벽 · 문)도 본다 — 다듬은 줄이 마을 벽을 가로지르면 몸이 그 벽에서 선다(걸음 A* 는 변을 본다 · 다듬기만 칸을 봤다 · 끔 = 종전 글자)
+  let lk = -1, px = 0, py = 0;
   for (let i = 0; i <= n; i++) {
     const x = ax + dx * i / n, y = ay + dy * i / n, cx = Math.floor(x / SZ), cy = Math.floor(y / SZ), k = cx * 65536 + cy;
-    if (k === lk) continue; lk = k;
+    if (k === lk) continue;
+    if (eg && lk !== -1 && RoadRule.stepBlk8(px, py, cx, cy)) return false;
+    lk = k; px = cx; py = cy;
     if (_walkCellBlocked(cx, cy)) return false;
   }
   return true;
@@ -5292,6 +5322,10 @@ function _walkLineClear(ax, ay, bx, by) {   // px 두 점 사이 직선이 막�
 function _walkResume(key, coarse, budgetMs) {
   if (!state.walkCache) state.walkCache = new Map();
   const hit = state.walkCache.get(key);
+  if (hit && hit.coarse === coarse && T1440_ROAD_RULE && hit.v !== RoadRule._S.ver) {   // ★[T1440] 켬 · 판 뒤 구조물 표가 바뀌었다 — 교역로가 그대로여도 걷는 길(코스 길 둘레 몇 칸)은 새 벽에 막힐 수 있다
+    if (hit.ok === false || RoadRule.clearRoute(hit.pts)) hit.v = RoadRule._S.ver;   // 아직 열림(또는 판 때부터 못 연 길 — 다시 파도 같다) → 그대로
+    else if (budgetMs > 0) { state.walkCache.delete(key); _t1440S.walkRedo = (_t1440S.walkRedo | 0) + 1; return _walkResume(key, coarse, budgetMs); }   // 막혔다 → 다시 판다(예산 있는 부름만 · 귀로 한 번에 파는 부름은 아래 종전 규칙대로 낡은 길)
+  }
   if (hit && hit.coarse === coarse) return { done: true, pts: hit.pts };
   //   ★한 번에 다 파야 하는 부름(예산 0 — 귀환 출발 `startReturnLeg`)이 **낡은** 걷는 길을 만나면(교역로를 다시 팠다) 그 길을 그대로 쓴다 —
   //     같은 두 마을 사이의 땅 위 길이라 걸을 수 있다. 새 길은 다음 출발(예산 있는 부름)이 판다. 귀환 한 번이 틱을 수백 ms 잡지 않게.
@@ -5304,7 +5338,7 @@ function _walkResume(key, coarse, budgetMs) {
   }
   const RD = state.roads;
   const prefer = RD ? ((x, y) => RD.levelOf(x, y)) : null;
-  const blockedStep = (fx, fy, tx, ty) => _walkCellBlocked(tx, ty);
+  const blockedStep = T1440_ROAD_RULE ? ((fx, fy, tx, ty) => _walkCellBlocked(tx, ty) || RoadRule.edgeStep(fx, fy, tx, ty)) : ((fx, fy, tx, ty) => _walkCellBlocked(tx, ty));   // ★[T1440] 켬 · 벽 · 문 변
   const t0 = Date.now();
   const N = J.nodes;
   const over = () => budgetMs > 0 && Date.now() - t0 >= budgetMs;
@@ -5327,7 +5361,7 @@ function _walkResume(key, coarse, budgetMs) {
           const _l0 = Date.now(); seg = PathCore.localPath(a.x, a.y, b.x, b.y, { blockedStep, prefer, radius: r, maxNodes: side * side }); _t1061Piece('near' + ri, Date.now() - _l0);
         }
         if (!seg) {   // 가까이선 안 풀린다 — 다리까지 돌아가는 길을 **조각내며** 판다(재개형 문 · 8방 · 코너컷 금지 · 같은 칸 술어)
-          const _b0 = Date.now(); J.farS = PathCore.routePathBegin(a.x, a.y, b.x, b.y, { blocked: _walkCellBlocked, maxPops: WALK_FAR_POPS }); _t1061Piece('farBegin', Date.now() - _b0);
+          const _b0 = Date.now(); J.farS = PathCore.routePathBegin(a.x, a.y, b.x, b.y, T1440_ROAD_RULE ? { blocked: _walkCellBlocked, stepBlocked: (fx, fy, tx, ty) => _walkCellBlocked(tx, ty) || RoadRule.stepBlk8(fx, fy, tx, ty), maxPops: WALK_FAR_POPS } : { blocked: _walkCellBlocked, maxPops: WALK_FAR_POPS }); _t1061Piece('farBegin', Date.now() - _b0);   // ★[T1440] 켬 · 변(대각 = 두 L 길)
           if (!J.farS) { seg = null; (state._walkSegFar || (state._walkSegFar = new Map())).set(sk, null); }
         }
       }
@@ -5363,7 +5397,7 @@ function _walkResume(key, coarse, budgetMs) {
   const pts = J.out;
   _probe.walkStraight = (_probe.walkStraight || 0) + J.straight; _probe.walkFar = (_probe.walkFar || 0) + J.far; _probe.walkBuilt = (_probe.walkBuilt || 0) + 1;
   state._walkJobs.delete(key);
-  state.walkCache.set(key, { coarse, pts });
+  state.walkCache.set(key, T1440_ROAD_RULE ? { coarse, pts, v: RoadRule._S.ver, ok: RoadRule.clearRoute(pts) } : { coarse, pts });   // ★[T1440] 켬 · 판 때 구조물 표 판 · 열림(위 다시 보기)
   return { done: true, pts };
 }
 // 교역로 키·방향 그대로 걷는 길을 낸다(정본은 정방향 — 거꾸로면 뒤집는다). 예산이 0 이하면 한 번에 완주.
@@ -5954,6 +5988,7 @@ function startReturnLeg(body, now) { // 도착 머묾(linger) 종료 → 귀환 
 //   유일하게 통행이 보장된 길 = 걸어온 역경로. (벽 인지 행렬은 Stage 5 정밀화 인계 — 모듈 헤더 참조)
 function isolateCaravanReturn(body, p, now) {
   const c = body.c, world = state.world;
+  if (T1440_ROAD_RULE) { _t1440S.iso = (_t1440S.iso | 0) + 1; console.log(`[${state.zoneId}] 🛤️ [T1440] ⚠ 고립 귀환 — 그 자리에서 다시 구한 길도 없다(규칙상 안 생긴다 · 수를 센다)`); }   // ★[T1440] 켬 · 로그 · 수
   // ★★[T533] 이웃 존이 낀 몸(팔 켬 + 호스트 — 끔이면 두 줄 다 안 닿는다) — 받은 몸은 기록이 아직 econ 에 안 들었다(다음 경계에 든다 · 여기선 안 가른다) ·
   //   이웃 존 캐러밴은 집이 경계 너머라 이 존 곳간으로 못 돌린다 ⇒ 넘어온 경계 칸으로 되짚어 집 존에 돌려준다(`_xzIsolate`).
   if (c && c._xzPending) { body.repairFailN = 0; return; }
@@ -6016,12 +6051,28 @@ function _t1136Isolate(body, p, now) {
   });
   console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} [T1136] 완전 고립 → 바구니 보존 귀환: ${c.to.name}→${c.from.name} ${c.basket.length}품목 ${days.toFixed(3)}일`);
 }
+// ★[T1440] 켬 · 정해진 것 7 — 국소 재경로가 못 지나면 그 자리 → 이 구간 끝(목적 마을 · 귀로면 집)까지 교역로를 다시 구해(구조물을 본다) 잇는다 · 시계는 늘어난 만큼 민다
+function _t1440Reroute(body, p) {
+  _t1440Flush();
+  const end = body.pts[body.pts.length - 1];
+  const np = computeRoutePts(p.x, p.y, end.x, end.y);
+  if (!np || np.length < 2) { _t1440S.rerouteFail++; return false; }
+  const oldRemain = body.len - body.prog;
+  setBodyPts(body, np);
+  const extraPx = body.len - oldRemain;
+  let pushed = 0;
+  if (extraPx > body.pxPerDay * 0.05) { pushed = Math.max(1, Math.ceil(extraPx / Math.max(1, body.pxPerDay))); _clockPush(body.c, pushed, body.phase); body.arriveAt += pushed * state.dayMs; body.delayedDays += pushed; }
+  _t1440S.reroute++;
+  console.log(`[${state.zoneId}] 🐂 캐러밴#${body.c.id} [T1440] 국소 재경로 실패 → 그 자리에서 다시 구해 잇는다(연장 ${Math.round(extraPx)}px${pushed ? `, econ 도착 +${pushed}일` : ''})`);
+  return true;
+}
 // §5.5b 1단계 — 이동 중 차단: 로컬 A*(벽 인지 — 활성 청크는 건물이 메모리에 로드됨) 재경로 →
 //   연장분만큼 econ arriveDay 지연. 반복 실패 시 고립 처리.
 function caravanBlockedResponse(body, p, now) {
   if (T681_ON && T661_ON && body._t661) { if (body._t681RepDay === state.world.day) return; body._t681RepDay = state.world.day; }   // ★[T681 ④] 장부가 부르는 판 — econ 하루 한 번(2초 벽시계 쿨다운 대신)
   else if (now - body.lastRepairAt < CARAVAN_REPAIR_COOLDOWN_MS) return;
   body.lastRepairAt = now;
+  if (T1440_ROAD_RULE && body._t1440Claim != null) { body._t1440Claim = null; if (_t1440Reroute(body, p)) { body.repairFailN = 0; return; } body._t1440Thru = body.phase; _t1440S.claimThru = (_t1440S.claimThru | 0) + 1; }   // ★[T1440] 켬 · 그 자리에서 사유지를 비키는 길이 없다(코스 길 탐색이 못 떠남 · 사유지에 둘러싸임) — 이 구간은 사유지를 걸어 지난다(정해진 것 6 — 사유지는 걸음을 안 막는다 · 되돌아오지 않는다). 없으면 같은 자리에서 날마다 선다(봇 판 1020: 한 캐러밴 55날)   // ★[T1440] 켬 · 사유지 앞에서 섰다(걸음은 안 막는다 — 국소 A* 는 그 칸을 지난다) → 그 자리에서 목적 마을까지 다시 구해 잇는다
   const c = body.c;
   // 우회 목표 = 전방 lookahead 지점의 경로 정점(차단 구간 너머)
   let vi = Math.min(body.segIdx + 1, body.pts.length - 1);
@@ -6038,7 +6089,8 @@ function caravanBlockedResponse(body, p, now) {
   const _t1423A = _t1423h ? _t1423Ahead(body, body.prog, Math.min(body.len, body.prog + CARAVAN_REPAIR_LOOKAHEAD_PX)) : null;
   let _t1423P = null;
   if (_t1423A && _t1423A.length) { const last = _t1423A.reduce((m, e) => Math.max(m, e.at), body.prog); _t1423P = Math.min(body.len, Math.max(body.prog + CARAVAN_REPAIR_LOOKAHEAD_PX, last + 2 * SZ)); tgt = caravanPointAt(body, _t1423P, { segIdx: 0 }); }
-  const blockedFn = _t1423h ? ((a, b, c2, d, fl) => blockedFn0(a, b, c2, d, fl) || state.deps.t1423StepHit(a, b, c2, d)) : blockedFn0;
+  const blockedFn1 = _t1423h ? ((a, b, c2, d, fl) => blockedFn0(a, b, c2, d, fl) || state.deps.t1423StepHit(a, b, c2, d)) : blockedFn0;
+  const blockedFn = T1440_ROAD_RULE ? ((a, b, c2, d, fl) => blockedFn1(a, b, c2, d, fl) || _t1440StepPx(a, b, c2, d)) : blockedFn1;   // ★[T1440] 켬 · 잠든 청크의 구조물도(벽 술어는 깨어 있는 청크만 본다 · `findPath` 는 (선 칸 → 이웃 칸) 차례로 묻는다 — T1423 술어와 같은 차례)
   const rp = state.pathfind ? state.pathfind.findPath(p.x, p.y, tgt.x, tgt.y, {
     floor: 0, isBlockedFn: blockedFn, isWaterFn: state.deps.isTerrainBlockedLocal,
     maxCells: 900, searchRadiusCells: 48, // NPC A*(200/24)보다 넉넉히 — 캐러밴은 소수·저빈도
@@ -6064,6 +6116,7 @@ function caravanBlockedResponse(body, p, now) {
     body.repairFailN = 0;
     console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 차단 감지 → 로컬 재경로 성공(연장 ${Math.round(extraPx)}px${pushed ? `, econ 도착 +${pushed}일 지연` : ', 지연 없음'}) — §5.5b 1단계`);
   } else {
+    if (T1440_ROAD_RULE && _t1440Reroute(body, p)) { body.repairFailN = 0; return; }   // ★[T1440] 켬 · 정해진 것 7 — 그 자리에서 다시 구해 잇는다(되돌아오지 않는다)
     body.repairFailN++;
     _t1034Mark('rf');   // ★[T1034] 재경로 실패 셈(고립 문턱)
     console.log(`[${state.zoneId}] 🐂 캐러밴#${c.id} 차단 — 로컬 재경로 실패 ${body.repairFailN}/${CARAVAN_ISOLATE_FAILS}`);
@@ -6128,11 +6181,15 @@ function _t661Day(body, now) {
     const st = { segIdx: 0 };
     let prev = caravanPointAt(T.path, T.L, st);
     const _t1423h = T1423_BLOCK_REACT && _t1423On();   // ★[T1423 ①] 켬 — 잠든 청크도 플레이어 막는 물건에서 선다(끔 = false · 종전 줄)
+    const _t1440w = T1440_ROAD_RULE && !!(state.deps && state.deps.t1440MarkHit);   // ★[T1440] 켬 · 길을 닫는 조각은 친다 · 잠든 청크도 구조물 표에서 선다(끔 = false · 종전 줄)
     for (let q = T.L + SZ / 4; ; q += SZ / 4) {
       const at = Math.min(q, want);
       const nx = caravanPointAt(T.path, at, st);
-      if (isPositionActive(prev.x, prev.y) && isBlockedByWall(nx.x, nx.y, prev.x, prev.y, 0)) { to = Math.max(T.L, at - SZ / 4); blockedAt = prev; break; }
+      if (_t1440w && state.deps.t1440MarkHit(prev.x, prev.y, nx.x, nx.y, state.deps.players && state.deps.players.get(body.pid))) { _t1440S.markHit++; }
+      else if (isPositionActive(prev.x, prev.y) && isBlockedByWall(nx.x, nx.y, prev.x, prev.y, 0)) { to = Math.max(T.L, at - SZ / 4); blockedAt = prev; break; }
       if (_t1423h && !isPositionActive(prev.x, prev.y) && state.deps.t1423StepHit(prev.x, prev.y, nx.x, nx.y)) { to = Math.max(T.L, at - SZ / 4); blockedAt = prev; _t1423S.stopSleep++; break; }
+      if (_t1440w && !isPositionActive(prev.x, prev.y) && _t1440StepPx(prev.x, prev.y, nx.x, nx.y)) { to = Math.max(T.L, at - SZ / 4); blockedAt = prev; _t1440S.stepHit++; _t1440StepNote(body, prev, nx, 'day'); break; }
+      if (_t1440w && body._t1440Thru !== body.phase && _t1440ClaimStep(prev.x, prev.y, nx.x, nx.y)) { to = Math.max(T.L, at - SZ / 4); blockedAt = prev; body._t1440Claim = state.world.day | 0; _t1440S.claimStop = (_t1440S.claimStop | 0) + 1; break; }   // ★[T1440] 가는 사이 새로 선포된 사유지 — 그 앞에서 서서 거기서부터 다시 구해 잇는다(정해진 것 8)
       prev = nx;
       if (at >= want) break;
     }
@@ -6206,6 +6263,7 @@ const T1320_ROCK_PATH = process.env.T1320_ROCK_PATH !== '0';   // ★[PM land108
 const _t1320St = { link: 0, fail: 0, clear: 0 };
 function _t1320Clear(a, b) {
   const f = state.deps && state.deps.isTerrainBlockedLocal; if (!f) return true;
+  if (T1440_ROAD_RULE && _t1440SegPhys(a, b)) return false;   // ★[T1440] 켬 · 몸이 그 마디를 걸으면 구조물(마을 것 · 사유지 안 벽 · 문 · 울타리)에 선다 → 걸음 정본으로 다시 잇는다(잠든 청크도 — 끔 = 이 줄 없음)
   if (T1327_ROUTE_FIX) return !_t1327Cells(a, b, (cx, cy) => f(cx * SZ + SZ / 2, cy * SZ + SZ / 2));   // ★[T1327] 켬 = 표본이 아니라 지나는 칸 전부(모서리 깎기 0) · 끔 = 아래 종전 표본
   const n = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / (SZ / 4));
   for (let i = 1; i <= n; i++) { const t = i / n; if (f(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)) return false; }
@@ -6215,7 +6273,7 @@ function _t1320Link(a, b) {
   if (_t1320Clear(a, b)) { _t1320St.clear++; return [a, b]; }
   const PF = state.pathfind || require('./pathfind');
   const md = Math.ceil((Math.abs(b.x - a.x) + Math.abs(b.y - a.y)) / SZ);   // 마디가 길면(교역로 직선 마디 ~ 2,048px) 탐색 반경도 그만큼(+16칸) — 재경로 상한 900 · 48 은 바닥
-  const rp = PF.findPath(a.x, a.y, b.x, b.y, { floor: 0, isBlockedFn: state.deps.isBlockedByWall, isWaterFn: state.deps.isTerrainBlockedLocal, maxCells: Math.max(900, (md + 16) * (md + 16)), searchRadiusCells: Math.max(48, md + 16) });
+  const rp = PF.findPath(a.x, a.y, b.x, b.y, { floor: 0, isBlockedFn: T1440_ROAD_RULE ? ((fx, fy, tx, ty, fl) => state.deps.isBlockedByWall(fx, fy, tx, ty, fl) || _t1440StepPx(fx, fy, tx, ty)) : state.deps.isBlockedByWall, isWaterFn: state.deps.isTerrainBlockedLocal, maxCells: Math.max(900, (md + 16) * (md + 16)), searchRadiusCells: Math.max(48, md + 16) });   // ★[T1440] 켬 · 잠든 청크의 구조물도(벽 술어는 깨어 있는 청크만 본다 · `findPath` 는 (선 칸 → 이웃 칸) 차례로 묻는다)
   _t1320St.link++;
   if (!rp || !rp.length) {
     if (T1327_ROUTE_FIX) { const r2 = _t1327BodyLink(a, b); if (r2) return r2; }   // ★[T1327 ⓓ] 켬 = 재경로 상한에 못 이으면 넓혀 가는 상자 BFS(같은 칸 술어 · 교차 존 합친 길 · 도랑 둘레)
@@ -6226,7 +6284,7 @@ function _t1320Link(a, b) {
 // ★[T1327 ⓓ] 몸 길 마디 잇기 — `_t1320Link` 의 재경로(900칸 상한)가 못 이은 마디(환호 둘레를 도는 길 · 교차 존 합친 길이 지형만 본 마디)를
 //   교역로 줄과 같은 상자 BFS(`_t1327Bfs` · 코스 칸 2 · 6 · 16 둘레)로 잇는다. 칸 술어 = 교역로 어댑터(`ta.isBlocked` = 존 걸음 정본 · 다리 칸 열림 · 도랑 막힘).
 function _t1327BodyLink(a, b) {
-  const ta = state._distCtx && state._distCtx.ta; if (!ta) return null;
+  const ta = (T1440_ROAD_RULE && _t1440Grid('2') && _t1440Grid('2').ta) || (state._distCtx && state._distCtx.ta); if (!ta) return null;   // ★[T1440] 켬 · 구조물을 보는 칸 술어(걸음 2 격자 어댑터 — 벽 · 문 변까지)
   const ax = Math.floor(a.x / SZ), ay = Math.floor(a.y / SZ), bx = Math.floor(b.x / SZ), by = Math.floor(b.y / SZ);
   _t1327St.bodyLink = (_t1327St.bodyLink | 0) + 1;
   let cells = null;
@@ -6261,10 +6319,15 @@ const _t1320Of = new WeakMap(), _t1320Done = new WeakMap();
 function _t1320ChainOf(pts) {
   if (!pts || pts.length < 2 || !state.deps || !state.deps.isTerrainBlockedLocal) return pts;
   if (_t1320Done.get(pts) === pts.length) return pts;
-  const m = _t1320Of.get(pts); if (m && m.n === pts.length) return m.out;
+  const m = _t1320Of.get(pts);
+  if (m && m.n === pts.length) {
+    if (!T1440_ROAD_RULE || m.v === RoadRule._S.ver) return m.out;
+    if (m.ok === false || _t1440ChainOk(m.out)) { m.v = RoadRule._S.ver; return m.out; }   // ★[T1440] 켬 · 구조물 표가 바뀌었다 — 잇는 줄이 아직 열렸으면 같은 배열(같음 관계 그대로) · 막혔으면 다시 잇는다
+    _t1440S.chainRedo = (_t1440S.chainRedo | 0) + 1;
+  }
   const ch = _t1320Chain(pts);
   const out = (ch.length === pts.length && ch.every((q, i) => q.x === pts[i].x && q.y === pts[i].y)) ? pts : ch;
-  _t1320Done.set(out, out.length); _t1320Of.set(pts, { out, n: pts.length });
+  _t1320Done.set(out, out.length); _t1320Of.set(pts, T1440_ROAD_RULE ? { out, n: pts.length, v: RoadRule._S.ver, ok: _t1440ChainOk(out) } : { out, n: pts.length });
   if (out !== pts) _t1320St.changed = (_t1320St.changed | 0) + 1;
   return out;
 }
@@ -6278,10 +6341,14 @@ function _t1182Walk(path,p,want,dtMs) {
   }
   let at=path.prog, prev={x:p.x,y:p.y}, blocked=false;
   const _t1423h=T1423_BLOCK_REACT && _t1423On();   // ★[T1423 ①] 켬 · 플레이어 막는 물건이 하나라도 있으면 — 잠든 청크에서도 그 물건에서 선다(끔 = 이 칸 false · 종전 줄)
+  const _t1440w=T1440_ROAD_RULE && !!(state.deps && state.deps.t1440MarkHit);   // ★[T1440] 켬 · 길을 닫는 조각은 친다(지나간다) · 잠든 청크도 구조물 표에서 선다(끔 = false · 종전 줄)
   for(let q=at+SZ/4;at<want;q+=SZ/4) {
     const L=Math.min(q,want), next=caravanPointAt(path,L);
-    if(isPositionActive && isPositionActive(prev.x,prev.y) && isBlockedByWall && isBlockedByWall(next.x,next.y,prev.x,prev.y,0)){blocked=true;break;}
+    if(_t1440w && state.deps.t1440MarkHit(prev.x,prev.y,next.x,next.y,p)){_t1440S.markHit++;}
+    else if(isPositionActive && isPositionActive(prev.x,prev.y) && isBlockedByWall && isBlockedByWall(next.x,next.y,prev.x,prev.y,0)){blocked=true;break;}
     if(_t1423h && !(isPositionActive && isPositionActive(prev.x,prev.y)) && state.deps.t1423StepHit(prev.x,prev.y,next.x,next.y)){blocked=true;_t1423S.stopSleep++;break;}
+    if(_t1440w && path.c && !(isPositionActive && isPositionActive(prev.x,prev.y)) && _t1440StepPx(prev.x,prev.y,next.x,next.y)){blocked=true;_t1440S.stepHit++;_t1440StepNote(path,prev,next,'walk');break;}   // 상인 몸이 제 길을 걸을 때만(호위 · 다시 붙는 곧은 줄은 종전대로 — 그 줄은 길이 아니다)
+    if(_t1440w && path.c && path._t1440Thru !== path.phase && _t1440ClaimStep(prev.x,prev.y,next.x,next.y)){blocked=true;path._t1440Claim=(state.world&&state.world.day)|0;_t1440S.claimStop=(_t1440S.claimStop|0)+1;break;}   // ★[T1440] 가는 사이 새로 선포된 사유지 — 그 앞에서 선다(정해진 것 8)
     at=L;prev=next;
     if(state.roads)state.roads.stampEntityPx(p,next.x,next.y);
   }
@@ -8088,25 +8155,26 @@ function _t1423Release(p) {   // 마을 일과로(`_t1104Release` 그 줄 · 명
 function _t1423Arrived(r) { return !!r && (T681_ON ? (r.L != null && r.len - r.L <= 0.5) : (r.len - r.prog <= 0.5)); }
 //   하루 — `_t681Day` 끝(몸 장부가 오늘 자리가 된 뒤): 닿은 소식 → 적대감 · 알림 · 일감 · 걷는 몸 → 닿으면 친다 · 집으로 → 닿으면 일과로
 function _t1423Day(now) {
-  if (!T1423_BLOCK_REACT || (!_t1423Known.size && !_t1423Jobs.length)) return;
+  if (!(T1423_BLOCK_REACT || T1440_ROAD_RULE) || (!_t1423Known.size && !_t1423Jobs.length)) return;   // ★[T1440] 켬 — 마을 땅 위 길이 지나는 칸의 일감도 이 사다리로(`t1440VilJob` · 끔 둘 다 = 종전)
   const S = _t1423S, d = state.world.day | 0, dp = state.deps, players = dp.players;
+  const infoOf = (o) => (o.t1440 ? dp.t1440Info : dp.t1423Info), breakOf = (o) => (o.t1440 ? dp.t1440Break : dp.t1423Break);   // ★[T1440] 그 일감의 표(T1423 막는 물건 표 · T1440 구조물 표)
   for (const k of _t1423Known.values()) {
     if (k.st !== 'news' && k.st !== 'nobody') continue;
     if (k.learnDay > d) continue;
     const vil = state.byDbId && state.byDbId.get(k.vid);
     if (!vil || !vil.econ) { k.st = 'novil'; continue; }
-    const live = k.ids.map((id) => dp.t1423Info(id)).filter(Boolean);
+    const live = k.ids.map((id) => infoOf(k)(id)).filter(Boolean);
     if (!live.length) { k.st = 'gone'; S.gone++; continue; }
     if (k.st === 'news') {
       S.learned++; k.knownDay = d;
       if (T1423_REACT_MEET) { k.st = 'meet'; continue; }
       const owners = new Map(); for (const e of live) if (!owners.has(e.ownerId)) owners.set(e.ownerId, e.ownerName);
-      k.hostile = []; for (const [o, n] of owners) { k.hostile.push([o, dp.t1423Hostile(o, n, vil.name)]); S.hostile++; }
+      k.hostile = []; if (!k.noHostile) for (const [o, n] of owners) { k.hostile.push([o, dp.t1423Hostile(o, n, vil.name)]); S.hostile++; }
     }
     if (_t1423Jobs.some((j) => j.st !== 'done' && j.ids.some((id) => k.ids.includes(id)))) { k.st = 'job'; continue; }   // 이미 다른 소식으로 나선 몸이 있다
     const bodies = _t1423Draft(vil, live.length);
     if (!bodies.length) { k.st = 'nobody'; S.nobody++; continue; }
-    const job = { id: 't1423_' + (++_t1423JobN), vid: vil.dbId, vname: vil.name, key: k.key, ids: live.map((e) => e.id), stand: k.stand, pids: [], st: 'go', d0: d, len: [] };
+    const job = { id: 't1423_' + (++_t1423JobN), vid: vil.dbId, vname: vil.name, key: k.key, ids: live.map((e) => e.id), stand: k.stand, pids: [], st: 'go', d0: d, len: [], ...(k.t1440 ? { t1440: true } : {}) };
     for (const p of bodies) { const r = _t1423Walk(p, k.stand.x, k.stand.y, job.id, vil); if (!r) continue; job.pids.push(p.pid); job.len.push(Math.round(r.len)); S.bodies++; S.walkPx += r.len; }
     if (!job.pids.length) { k.st = 'nobody'; S.nobody++; continue; }
     k.st = 'job'; k.job = job.id; _t1423Jobs.push(job); S.jobs++;
@@ -8123,13 +8191,13 @@ function _t1423Day(now) {
         _t1323Touch(p); if (T1145_XY_COLS) BC.w(p, q.x, q.y); else { p.x = q.x; p.y = q.y; } }   // 장부 자리 = 몸이 걸어 닿은 그 자리(틱이 그리던 몸 · 하루 경계에 맞춘다 · 표를 먼저 내린다 — T1323)
       let i = 0;
       for (const id of job.ids) {
-        const info = dp.t1423Info(id); if (!info) { job.hit.push({ id, gone: true }); continue; }
+        const info = infoOf(job)(id); if (!info) { job.hit.push({ id, gone: true }); continue; }
         const p = players.get(alive[i++ % alive.length]);
         //   그 물건 앞(집 쪽 · 한 칸 안)까지 걸어 붙는다 — 선 자리에서 물건까지 곧장(같은 길목 · 몇 칸)
         const dx = job.stand.x - info.px, dy = job.stand.y - info.py, L = Math.hypot(dx, dy) || 1, ax = info.px + dx / L * Math.min(L, 24), ay = info.py + dy / L * Math.min(L, 24);
         const step = Math.hypot(ax - p.x, ay - p.y); S.walkPx += step;
         _t1323Touch(p); if (T1145_XY_COLS) BC.w(p, ax, ay); else { p.x = ax; p.y = ay; }
-        const r = dp.t1423Break(id, p);
+        const r = breakOf(job)(id, p);
         if (r && !r.gone) { S.breaks++; S.hits += r.hits; }
         job.hit.push({ id, by: p.pid, at: [Math.round(p.x), Math.round(p.y)], reach: +Math.hypot(p.x - info.px, p.y - info.py).toFixed(1), step: Math.round(step), ...(r || {}) });
       }
@@ -8806,8 +8874,306 @@ function _terrAdd(vil, keys, target, fell) {
   return added.size;
 }
 
+// ═══ ★★[T1440 2026-11-22] 길 쪽 — 구조물을 보는 길 격자 · 길 표 · 판정 문 · 부분 무효화(손잡이 `T1440_ROAD_RULE` · 끔 = 아래 함수를 아무도 안 부른다) ═══
+//   구조물 표 · 길 표 · 처음 길 · 판정의 몸통은 `server/road-rule.js`(존 · 마을 시뮬이 같은 표를 쓴다). 여기는 마을 시뮬 쪽 문만:
+//   ⓐ `_t1440Ta` — 교역로 격자의 지형 어댑터(칸 = 지형 ∨ 구조물 칸 · 변 = 벽 · 문 · 구조물 모서리) ⓑ `_t1440ForgetRect` — 구조물이 바뀐 칸 둘레의 격자 메모
+//   ⓒ `_t1440Boot` — 캐시 Map 을 감싸 길 표 · 처음 길을 따라 세운다(set · delete · clear 한 자리 — 캐시를 채우는 줄이 여럿이라 줄마다 손대지 않는다)
+//   ⓓ `t1440Touch` · `_t1440Flush` — 존 DB 문이 구조물 칸을 알린다 → 그 칸을 지나던 쌍 가운데 지금 길이 막힌 쌍만 버린다 · 헐렸으면 처음 길이 그 칸을 지나던 돌아가던 쌍도 버린다
+//   ⓔ 판정 문 — `t1440Judge`(조각) → `t1440Step`(예산) → `t1440Apply`(보호 = 새 길을 저장) · `_t1440RouteTemp`(조각을 잠깐 넣고 교역로 A*)
+function _t1440Ta(ta, gw, gh, M) {   // M = 걸음(모드) — 함수면 그때그때 읽는다(판정 격자 'J')
+  const w = Object.assign({}, ta), Mf = typeof M === 'function' ? M : () => M;
+  w.isBlocked = (cx, cy) => ta.isBlocked(cx, cy) || RoadRule.cellBlkM(cx, cy, Mf());
+  w.edgeBlk = (fx, fy, tx, ty) => RoadRule.edgeStepM(fx, fy, tx, ty, Mf());
+  w.sBlk = (cx, cy) => RoadRule.cellBlkM(cx, cy, Mf());
+  w._t1440M = { done: new Uint16Array(gw * gh), ok: new Uint16Array(gw * gh) };   // 이웃 잇기 메모(이 격자 전용 — `_t598Arrays` 와 같은 꼴)
+  w._t1440Mul = new Float32Array(gw * gh);   // 칸 배수 메모(이 격자 전용)
+  return w;
+}
+//   걸음마다 교역로 격자 — '1' = `state._route`(걸음 1 · 다 피해서) · '2' = 걸음 2(주인 없는 구조물은 없는 것) · 'J' = 판정 격자(걸음 3 · 4 — 사유지 문턱이 판정마다 다르다)
+let _t1440Cur = '1', _t1440MJ = null;
+const _t1440G = {}, _t1440GJ = new Map();   // 'J' 판정 격자는 걸음 물건(M)마다 따로 — 최근 넷(쌍마다 문턱이 오가도 격자 메모를 다시 안 비운다)
+const _T1440_GJ_N = 4;
+function _t1440GridNew(M) {
+  const { ta: _ta0, ZONE } = state._distCtx;
+  const gw = Math.ceil(Math.ceil(ZONE.zoneWidth / SZ) / DIST_STEP), gh = Math.ceil(Math.ceil(ZONE.zoneHeight / SZ) / DIST_STEP);
+  const ta = _t1440Ta(_ta0, gw, gh, M);
+  return { ta, gw, gh, half: DIST_STEP >> 1, blk: new Int8Array(gw * gh), openN: new Int8Array(gw * gh).fill(-1), g: new Int32Array(gw * gh), came: new Int32Array(gw * gh), stamp: new Int32Array(gw * gh), gen: 0 };
+}
+function _t1440Grid(mode) {
+  if (!state._distCtx) return null;
+  if (mode === 'J') {
+    const M = _t1440MJ || RoadRule.M2;
+    let R = _t1440GJ.get(M);
+    if (R) { _t1440GJ.delete(M); _t1440GJ.set(M, R); return R; }   // 최근 쓴 것을 뒤로(LRU)
+    R = _t1440GridNew(M); _t1440GJ.set(M, R);
+    while (_t1440GJ.size > _T1440_GJ_N) _t1440GJ.delete(_t1440GJ.keys().next().value);
+    return R;
+  }
+  return _t1440G[mode] || (_t1440G[mode] = _t1440GridNew(mode === '2' ? RoadRule.M2 : RoadRule.M1));
+}
+function _t1440Mode(mode, fn, MJ) {
+  const prev = _t1440Cur, prevJ = _t1440MJ;
+  if (mode === 'J') _t1440MJ = MJ;
+  _t1440Cur = mode;
+  try { return fn(); } finally { _t1440Cur = prev; _t1440MJ = prevJ; }
+}
+//   쌍 열쇠(두 끝이 마을 가운데 칸이면) — 3배의 기준을 찾는다
+let _t1440VAt = null;
+function _t1440KeyOf(x0, y0, x1, y1) {
+  if (!_t1440VAt || _t1440VAt.n !== (state.villages || []).length) { _t1440VAt = new Map(); _t1440VAt.n = (state.villages || []).length; for (const v of state.villages || []) _t1440VAt.set((v.ccx * SZ + SZ / 2) + ',' + (v.ccy * SZ + SZ / 2), v.dbId); }
+  const a = _t1440VAt.get(x0 + ',' + y0), b = _t1440VAt.get(x1 + ',' + y1);
+  return (a != null && b != null) ? (a <= b ? `${a}_${b}` : `${b}_${a}`) : null;
+}
+//   첫째 걸음 길이 통과인가(있고 · 처음 길이 있으면 그 3배 안)
+function _t1440Step1Ok(key, pts) { if (!pts) return false; const f = key ? RoadRule.firstGet(key) : null; return !f || RoadRule.plen(pts) <= RoadRule.MULT * f.len; }
+//   길 구하기 두 걸음(정해진 것 3) — 걸음 1(사유지 · 마을 것 · 주인 없는 구조물까지 다 피해서)이 없거나 처음 길의 3배를 넘으면 걸음 2(주인 없는 구조물은 없는 것 — 그 길 위 것은 캐러밴이 친다)
+function _t1440Route2(x0, y0, x1, y1) {
+  const key = _t1440KeyOf(x0, y0, x1, y1);
+  const r1 = _computeRoutePts1(x0, y0, x1, y1);
+  if (_t1440Step1Ok(key, r1)) { _t1440S.route1 = (_t1440S.route1 | 0) + 1; return r1; }
+  const r2 = _t1440Mode('2', () => _computeRoutePts1(x0, y0, x1, y1));
+  _t1440S.route2 = (_t1440S.route2 | 0) + 1;
+  return r2 || r1;
+}
+//   이웃 잇기 곧은 줄 표본 한 걸음(앞 칸 → 이 칸)이 변 · 구조물 모서리에 막히나 — 대각 = 두 L 길 가운데 하나가 열려야(지형 모서리는 종전처럼 안 본다)
+function _t1440Hop(ta, px, py, x, y) {
+  const sx = x - px, sy = y - py;
+  if (Math.abs(sx) > 1 || Math.abs(sy) > 1) return false;
+  if (sx && sy) {
+    const a = !ta.edgeBlk(px, py, px + sx, py) && !ta.sBlk(px + sx, py) && !ta.edgeBlk(px + sx, py, x, y);
+    const b = !ta.edgeBlk(px, py, px, py + sy) && !ta.sBlk(px, py + sy) && !ta.edgeBlk(px, py + sy, x, y);
+    return !(a || b);
+  }
+  return ta.edgeBlk(px, py, x, y);
+}
+//   칸 상자 [x0..x1]×[y0..y1] 둘레 코스 칸의 격자 메모(열림 · 열린 칸 수 · 이웃 잇기)를 버린다 — 이웃 잇기 상자는 두 코스 칸이라 ±1 코스 칸이면 다 덮는다(`_t598Forget` 과 같은 자)
+function _t1440ForgetRect(x0, y0, x1, y1) {
+  for (const R of [state._route, _t1440G['2'], ..._t1440GJ.values()]) {
+    if (!R) continue;
+    const M = R.ta && R.ta._t1440M, Mu = R.ta && R.ta._t1440Mul;
+    const g0x = Math.floor(x0 / DIST_STEP) - 1, g0y = Math.floor(y0 / DIST_STEP) - 1, g1x = Math.floor(x1 / DIST_STEP) + 1, g1y = Math.floor(y1 / DIST_STEP) + 1;
+    for (let y = Math.max(0, g0y); y <= Math.min(R.gh - 1, g1y); y++) for (let x = Math.max(0, g0x); x <= Math.min(R.gw - 1, g1x); x++) {
+      const i = y * R.gw + x; R.blk[i] = 0; R.openN[i] = -1; if (M) { M.done[i] = 0; M.ok[i] = 0; } if (Mu) Mu[i] = 0;
+    }
+  }
+  if (state._walkSegFar) state._walkSegFar.clear();   // 걷는 길 넓힌 구간 메모(쌍을 건너 쓴다 — 구조물이 바뀌면 다시 푼다)
+}
+function _t1440ForgetPiece(piece) { const b = RoadRule.pieceBox(piece); _t1440ForgetRect(b[0] - 1, b[1] - 1, b[2] + 1, b[3] + 1); }
+function _t1440Ends(key) {
+  const ids = String(key).split('_'), A = state.byDbId && state.byDbId.get(+ids[0]), B = state.byDbId && state.byDbId.get(+ids[1]);
+  return (A && B) ? [A.ccx * SZ + SZ / 2, A.ccy * SZ + SZ / 2, B.ccx * SZ + SZ / 2, B.ccy * SZ + SZ / 2] : null;
+}
+function _t1440RouteTemp(piece, x0, y0, x1, y1, M, bound) {   // 그 조각을 잠깐 표에 넣고(마을 것 급 — 어느 걸음에서도 막는다 · 판 번호는 안 오른다 — '__' 열쇠) 그 걸음으로 교역로 A* → 빼고 메모를 되돌린다
+  _t1440S.temp++;
+  RoadRule.sAdd('__t1440tmp', piece, 'V'); _t1440ForgetPiece(piece);
+  try {
+    const mode = M === RoadRule.M1 ? '1' : (M === RoadRule.M2 ? '2' : 'J');
+    //   bound(px) = 그 길이 넘으면 쓸모없다(3배) — 두 끝까지 거리 합이 그보다 먼 코스 칸은 막힌 것으로 친다(그 칸을 지나는 길은 늘 그보다 길다 · 못 닿는 쌍의 탐색이 온 세계를 훑지 않게)
+    const slack = 4 * DIST_STEP * SZ, eb = bound > 0 ? ((gx, gy) => { const px = (gx + 0.5) * DIST_STEP * SZ, py = (gy + 0.5) * DIST_STEP * SZ; return Math.hypot(px - x0, py - y0) + Math.hypot(px - x1, py - y1) > bound + slack; }) : undefined;
+    const c0 = _t1440Cpu(), pts = _t1440Mode(mode, () => _computeRoutePts1(x0, y0, x1, y1, eb), M);
+    _t1440S.tTemp = (_t1440S.tTemp || 0) + (_t1440Cpu() - c0);
+    if (pts && !RoadRule.clearRoute(pts, null, M)) { _t1440S.tempUnclear = (_t1440S.tempUnclear | 0) + 1; return null; }   // 못 잇는 이음이 남은 길(곧은 줄)이 그 걸음의 막힘을 지난다 = 길이 없다
+    return pts;
+  }
+  finally { RoadRule.sDel('__t1440tmp'); _t1440ForgetPiece(piece); }
+}
+function _t1440Boot(ZONE) {
+  RoadRule.init({ W: Math.ceil(ZONE.zoneWidth / SZ), H: Math.ceil(ZONE.zoneHeight / SZ) });
+  const RC = state.routeCache, _set = RC.set.bind(RC), _del = RC.delete.bind(RC), _clr = RC.clear.bind(RC);
+  RC.set = (k, v) => { _set(k, v); try { if (v) { RoadRule.rIndex(k, v); RoadRule.firstSet(k, v); } else RoadRule.rUnindex(k); } catch (e) {} return RC; };
+  RC.delete = (k) => { const r = _del(k); try { RoadRule.rUnindex(k); } catch (e) {} return r; };
+  RC.clear = () => { _clr(); try { RoadRule.rClear(); } catch (e) {} };
+  RoadRule.bindRoutes({ cellsOf: _t1327Cells, routeOf: (k) => RC.get(k) });
+  RoadRule.bindJudge({ terrBlk: (x, y) => { const ta = state._distCtx && state._distCtx.ta; return ta ? ta.isBlocked(x, y) : false; }, routeTemp: _t1440RouteTemp, ends: _t1440Ends });
+  let rows = [];
+  try { rows = (state.db && state.db.t1440FirstAll) ? state.db.t1440FirstAll(state.zoneId) : []; } catch (e) {}
+  RoadRule.firstUse(rows, (k, len, pts) => { if (state.db && state.db.t1440FirstPut) state.db.t1440FirstPut(state.zoneId, k, len, JSON.stringify(pts)); });
+  console.log(`[${state.zoneId}] 🛤️ [T1440] 처음 길 — 길이 · 줄 ${rows.length}쌍 물려받음(길 표는 캐시를 채우며 선다)`);
+}
+//   존 DB 문(구조물 행이 서고 · 헐리고 · 부서졌다)이 그 칸을 알린다 — 메모는 바로 · 쌍은 모아 두었다 마을 틱 머리(또는 판정 · 길 구하기 앞)에서 한 번
+const _t1440Pend = { cells: new Set(), removed: new Set() };
+function t1440Touch(cells, removed, cls) {   // cls 'U'(주인 없는 땅의 구조물)가 서면 길은 안 비킨다 — 쌍을 버리지 않는다(격자 메모만) · 헐리면 돌아가던 쌍을 다시
+  if (!T1440_ROAD_RULE) return;
+  _t1440S.touch++;
+  const q = removed || cls !== 'U';
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const c of cells) { const x = RoadRule.KX(c), y = RoadRule.KY(c); if (q) _t1440Pend.cells.add(c); if (removed) _t1440Pend.removed.add(c); if (x < x0) x0 = x; if (y < y0) y0 = y; if (x > x1) x1 = x; if (y > y1) y1 = y; }
+  if (x0 <= x1) _t1440ForgetRect(x0 - 1, y0 - 1, x1 + 1, y1 + 1);
+}
+function _t1440Flush() {
+  if (!T1440_ROAD_RULE || !_t1440Pend.cells.size || !state.routeCache) return 0;
+  _t1440S.flush++;
+  const cells = [..._t1440Pend.cells], removed = [..._t1440Pend.removed];
+  _t1440Pend.cells.clear(); _t1440Pend.removed.clear();
+  const box = RoadRule.pieceBox({ cells, edges: [] });
+  return _t1440Check(RoadRule.rNear(cells), box, removed);
+}
+//   ① 후보 쌍(그 칸 둘레 8×8 덩이 — 길 표)의 지금 길이 상자 둘레에서 구조물에 막혔나 — 막혔으면 버린다(다음 출발이 구조물을 보고 다시 판다)
+//   ② 헐렸다 — 처음 길이 그 칸 둘레를 지나고 지금 길이 처음 길보다 긴 쌍(돌아가던 쌍)도 버린다(더 짧은 길이 다시 열렸을 수 있다 · 다시 판 길이 처음 길이면 되돌아온다)
+function _t1440Check(keys, box, removed) {
+  const drop = new Set();
+  for (const key of keys) {
+    const pts = state.routeCache.get(key); if (!pts) continue;
+    if (!RoadRule.clearRoute(pts, box)) drop.add(key); else _t1440S.keep++;
+  }
+  if (removed && removed.length) {
+    const rs = new Set(removed), rb = RoadRule.pieceBox({ cells: removed, edges: [] });
+    for (const [key, f] of RoadRule._F) {
+      if (drop.has(key) || !f.pts) continue;
+      const cur = state.routeCache.get(key); if (!cur) continue;
+      if (RoadRule.plen(cur) <= f.len + 0.5) continue;
+      let hit = false;
+      for (let i = 1; i < f.pts.length && !hit; i++) {
+        const a = f.pts[i - 1], b = f.pts[i];
+        if (Math.max(a.x, b.x) / SZ < rb[0] - 2 || Math.min(a.x, b.x) / SZ > rb[2] + 2 || Math.max(a.y, b.y) / SZ < rb[1] - 2 || Math.min(a.y, b.y) / SZ > rb[3] + 2) continue;
+        _t1327Cells(a, b, (cx, cy) => { for (let dy = -1; dy <= 1 && !hit; dy++) for (let dx = -1; dx <= 1; dx++) if (rs.has(RoadRule.K(cx + dx, cy + dy))) { hit = true; break; } return hit; });
+      }
+      if (hit) { drop.add(key); _t1440S.reopen++; }
+    }
+  }
+  for (const key of drop) {
+    state.routeCache.delete(key);
+    if (state.db && state.db.deleteTradeRoute) { try { state.db.deleteTradeRoute(state.zoneId, key); } catch (e) {} }   // 영속 캐시도 그 쌍만(T42 `clearTradeRoutes` 는 끔 갈래에)
+  }
+  if (drop.size) { _t1440S.drop += drop.size; try { if (state.ready) _routeWarmBuild(); } catch (e) {} }
+  return drop.size;
+}
+//   물려받은 길(T42 영속 · T699 디스크)을 지금 구조물 표로 한 번 본다 — 다시 뜬 판 · 구조물이 다른 세계의 캐시
+function _t1440Validate(why) {
+  if (!T1440_ROAD_RULE || !state.routeCache || !state.routeCache.size) return 0;
+  _t1440Pend.cells.clear(); _t1440Pend.removed.clear();
+  const n = _t1440Check([...state.routeCache.keys()], null, null);
+  _t1440S.validate = (_t1440S.validate | 0) + 1; _t1440S.validateDrop = (_t1440S.validateDrop | 0) + n;
+  console.log(`[${state.zoneId}] 🛤️ [T1440] 물려받은 길 ${state.routeCache.size + n}쌍을 구조물 표로 봄(${why}) — 막힌 ${n}쌍 버림`);
+  return n;
+}
+//   판정 문 — 존(짓기 · 사유지 · 미리보기)과 마을(터 고르기)이 부른다. 흐름은 `road-rule.js` 머리 ④.
+function t1440Judge(piece, meta) { _t1440Flush(); return RoadRule.judgeBegin(piece, meta); }
+function t1440Step(job, budgetMs) { if (job.phase !== 'done' && RoadRule.stale(job)) { const j2 = RoadRule.judgeBegin(job.piece, job.meta); Object.assign(job, j2); } const c0 = job.cpu; const r = RoadRule.judgeStep(job, budgetMs); _t1440S.judgeCpu += job.cpu - c0; return r; }
+//   판정이 구한 새 길을 저장(보호 · 내줌 둘 다 — 통과한 쌍만 · 걸음 5 에서 길이 없으면 null = 그 쌍은 교역 0) · 반환 = 저장한 쌍 수
+function t1440Apply(job) {
+  if (!job || job.verdict === 'free' || job._applied) return 0;
+  job._applied = true;
+  let n = 0;
+  for (const [key, pts] of job.res) {
+    state.routeCache.set(key, pts || null);   // 길 표는 감싼 set 이 고친다(처음 길은 이미 있다 — 안 바뀐다)
+    if (!pts) { _t1440S.noRoute = (_t1440S.noRoute | 0) + 1; console.log(`[${state.zoneId}] 🛤️ [T1440] 걸음 5 — 쌍 ${key} 길 없음(교역 0)`); }
+    if (state.db && state.db.upsertTradeRoute) { try { state.db.upsertTradeRoute(state.zoneId, key, state._routeSig || (state._routeSig = _routeSig()), pts ? JSON.stringify(pts) : null); } catch (e) {} }
+    n++;
+  }
+  _t1440S.applied += n;
+  for (const [, s] of job.stepOf) _t1440S['st' + s] = (_t1440S['st' + s] | 0) + 1;
+  return n;
+}
+//   마을 터 고르기(정해진 것 8) — 그 렉트가 길을 닫으면 참(그 자리는 안 고른다) · 보호면 새 길을 저장하고 거짓 · 길에 안 닿으면 거짓
+//   NPC 마을 터 고르기(정해진 것 4 — PM 결정): 마을 건물 급이지만 걸음 2 까지만(주인 없는 구조물까지만 밀어내는 자리) — 걸음 3 이상이 드는 자리면 참(그 자리는 안 고른다)
+function _t1440SiteCloses(x0, y0, x1, y1) {
+  if (!T1440_ROAD_RULE || !state.routeCache) return false;
+  const job = t1440Judge(RoadRule.pieceRect(x0, y0, x1, y1), { cls: 4, max: 2, early: true, npc: 1 });
+  t1440Step(job, 0);
+  if (job.verdict === 'yield') return true;
+  if (job.verdict === 'protected') { t1440Apply(job); _t1440S.siteProt++; }
+  return false;
+}
+//   몸이 그 마디(px 두 점)를 걸으면 구조물 표에서 서나 — 장부 걸음과 같은 자(8px 표본마다 `_t1440StepPx`) · T1320 몸 길 잇기가 묻는다
+function _t1440ChainOk(pts) { for (let i = 1; i < pts.length; i++) if (_t1440SegPhys(pts[i - 1], pts[i])) return false; return true; }
+function _t1440SegPhys(a, b) {
+  if (!RoadRule.hasAny()) return false;
+  const n = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / (SZ / 4)));
+  let px = a.x, py = a.y;
+  for (let i = 1; i <= n; i++) { const t = i / n, x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t; if (_t1440StepPx(px, py, x, y)) return true; px = x; py = y; }
+  return false;
+}
+//   걷는 몸의 한 걸음(px)이 새로 선포된 개인 사유지 칸(길이 지나는 칸 아님)에 들어서나 — 저장된 길은 사유지를 안 지나니 걸음이 거기 닿으면 가는 사이 새로 선 것(정해진 것 8)
+function _t1440ClaimStep(ox, oy, nx, ny) {
+  let cx = Math.floor(ox / SZ), cy = Math.floor(oy / SZ);
+  const tx = Math.floor(nx / SZ), ty = Math.floor(ny / SZ);
+  if (cx === tx && cy === ty) return false;
+  for (let g = 0; (cx !== tx || cy !== ty) && g < 64; g++) {
+    cx += Math.sign(tx - cx); cy += Math.sign(ty - cy);
+    const o = RoadRule.claimAt(cx, cy); if (o && !o.pass) return true;
+  }
+  return false;
+}
+//   걷는 몸의 한 걸음(px)이 구조물 표의 칸 · 변을 지나나 — 잠든 청크(보는 사람 없는 곳)에서 몸이 그 자리에서 선다(깨어 있는 청크는 존 벽 술어가 본다)
+function _t1440StepPx(ox, oy, nx, ny) {
+  let cx = Math.floor(ox / SZ), cy = Math.floor(oy / SZ);
+  const tx = Math.floor(nx / SZ), ty = Math.floor(ny / SZ);
+  for (let g = 0; (cx !== tx || cy !== ty) && g < 64; g++) {
+    const sx = Math.sign(tx - cx), sy = Math.sign(ty - cy);
+    const fx = cx + sx, fy = cy + sy;
+    if (RoadRule.stepPhys8(cx, cy, fx, fy)) return true;   // 몸이 실제로 부딪는 것만(콜라이더 그 술어 — 사유지 · 발자국은 길만 막는다)
+    cx = fx; cy = fy;
+  }
+  return false;
+}
+//   잠든 청크에서 몸이 구조물 표에 선 자리(계측 — 처음 40번 · 그 걸음의 칸 둘 · 쌍 열쇠 · 그 길이 구조물 표에 열렸나)
+function _t1440StepNote(body, a, b, how) {
+  const L = _t1440S.stepAt || (_t1440S.stepAt = []); _t1440S.stepN = (_t1440S.stepN | 0) + 1; if (L.length >= 80 || (L.length >= 20 && _t1440S.stepN % 40)) return;   // 처음 20 + 그 뒤 40번에 하나(계측)
+  const key = body && body.c ? (() => { const v = state.byEcon && state.byEcon.get(body.c.from), w = state.byEcon && state.byEcon.get(body.c.to); return v && w ? (v.dbId <= w.dbId ? `${v.dbId}_${w.dbId}` : `${w.dbId}_${v.dbId}`) : null; })() : null;
+  const cur = key && state.routeCache ? state.routeCache.get(key) : null;
+  const bx = Math.floor(b.x / SZ), by = Math.floor(b.y / SZ), ax = Math.floor(a.x / SZ), ay = Math.floor(a.y / SZ);
+  let onCur = false; if (cur) for (let i = 1; i < cur.length && !onCur; i++) _t1327Cells(cur[i - 1], cur[i], (x, y) => { if ((x === bx && y === by) || (x === ax && y === ay)) { onCur = true; return true; } return false; });
+  const sameGeo = !!(body && cur && body.pts && body.pts.length === cur.length && body.pts.every((q, i) => Math.abs(q.x - cur[i].x) < 1 && Math.abs(q.y - cur[i].y) < 1)) || !!(body && cur && body.pts && body.pts.length === cur.length && body.pts.every((q, i) => Math.abs(q.x - cur[cur.length - 1 - i].x) < 1 && Math.abs(q.y - cur[cur.length - 1 - i].y) < 1));
+  const kE = RoadRule.EK, sx = bx - ax, sy = by - ay, eHit = [];
+  for (const [fx, fy, tx, ty] of [[ax, ay, ax + sx, ay], [ax + sx, ay, bx, by], [ax, ay, ax, ay + sy], [ax, ay + sy, bx, by]]) { if (fx === tx && fy === ty) continue; const e = tx > fx ? kE(fx, fy, 'E') : tx < fx ? kE(tx, ty, 'E') : ty > fy ? kE(tx, ty, 'N') : kE(fx, fy, 'N'); if (RoadRule._S.edge.V.has(e)) eHit.push('V'); else if (RoadRule._S.edge.P.has(e)) eHit.push('P'); }
+  L.push({ how, a: [ax, ay], b: [bx, by], key, n: _t1440S.stepN, phase: body && body.phase, sameGeo, onCur, cell: RoadRule._S.phys.V.has(RoadRule.K(bx, by)) ? 'V' : (RoadRule._S.phys.P.has(RoadRule.K(bx, by)) ? 'P' : null), eHit, curClear: cur ? RoadRule.clearRoute(cur) : null, bodyClear: body && body.pts ? RoadRule.clearRoute(body.pts) : null, day: (state.world && state.world.day) | 0 });
+}
+//   길을 닫는 조각을 친 몸 — 그 캐러밴의 집 마을 · 가는 마을(존이 알림 · 원한에 쓴다 · 친 순간에만 부른다)
+function t1440WhoOf(p) {
+  if (!p || !state.caravanBodies) return null;
+  for (const body of state.caravanBodies.values()) if (body && body.pid === p.pid) {
+    const v = state.byEcon && state.byEcon.get(body.c.from), w = state.byEcon && state.byEcon.get(body.c.to);
+    return { vil: v ? v.name : null, vid: v ? v.dbId : null, to: w ? w.name : null, cid: body.c.id };
+  }
+  return null;
+}
+//   마을 것(NPC 마을 행 `npc_simvil_<dbId>`)이 길을 닫았다 — 그 길을 쓰던 마을들(닫힌 쌍의 두 끝 · 주인 마을 빼고)이 그 마을에 원한(`warAddGrudge` · 있는 수 `WAR_GRUDGE_CAS` — 보고 표)
+//   ⚠ NPC 마을은 닫는 자리를 안 고른다(정해진 것 8) — 이 문은 그래도 생긴 것(옛 판 · 플레이어 마을 행이 생기면 같은 문)을 위한 것. 플레이어 마을 주인 풀이는 회부.
+function t1440Grudge(ownerId, pairs) {
+  const m = /^npc_simvil_(\d+)$/.exec(String(ownerId || '')); if (!m || !state.byDbId) return 0;
+  const O = state.byDbId.get(+m[1]); if (!O) return 0;
+  const W = require('../sim/war-core'), vs = new Set();
+  for (const k of pairs || []) for (const id of String(k).split('_')) { const v = state.byDbId.get(+id); if (v && v !== O && v.econ) vs.add(v); }
+  for (const v of vs) W.warAddGrudge(v.econ, O.name, W.WAR_GRUDGE_CAS);
+  _t1440S.grudge = (_t1440S.grudge | 0) + vs.size;
+  return vs.size;
+}
+function t1440Stat() { return Object.assign({ on: T1440_ROAD_RULE }, _t1440S, RoadRule ? { rr: RoadRule.stats(), cpu: RoadRule.cpuList() } : {}); }
+//   마을 땅 위 길이 지나는 칸의 막는 것 — 그 마을이 알아채고 부순다(정해진 것 3 걸음 4 · 4): T1423 소식 · 일감 사다리 그대로(`_t1423Known` 한 줄 → `_t1423Day` — 소식이 닿는 날 몸이 걸어가 친다)
+//   닿는 날 = 오늘 + 소문 시계(그 자리에서 마을 머리까지 걸음 · 최소 하루 — T1423 ① 그 식) · 벌점(T1423 ②)은 닫는 조각만(먼저 선 것은 0 — `hostile`)
+function t1440VilJob(vid, id, px, py, hostile) {
+  if (!T1440_ROAD_RULE || !state.byDbId || !state.world) return false;
+  const vil = state.byDbId.get(+vid); if (!vil || !vil.econ) return false;
+  const key = 't1440|' + vil.dbId + '|' + id;
+  if (_t1423Known.has(key)) return false;
+  const d = state.world.day | 0, R = require('./rumor');
+  const lag = R.CFG.OFF ? 1 : R.travelDaysOf(Math.hypot(px - (vil.ccx * SZ + SZ / 2), py - (vil.ccy * SZ + SZ / 2)) / PX_PER_ECON);
+  const at = { x: Math.round(px), y: Math.round(py) };
+  _t1423Known.set(key, { key, t1440: true, noHostile: !hostile, vid: vil.dbId, vname: vil.name, ids: [id], own: [], at, stand: at, cid: null, leg: null, cut: false, ratio: null, meetDay: d, learnDay: d + (isFinite(lag) ? lag : 1), lag, st: 'news', job: null });
+  _t1440S.vilJob = (_t1440S.vilJob | 0) + 1;
+  return true;
+}
+//   그 칸들을 지나던 처음 길이 있나(사유지를 내놓을 때 알림 한 줄 — 길이 이 자리로 돌아올 수 있다)
+function t1440FirstAt(cells) {
+  if (!T1440_ROAD_RULE || !cells || !cells.length) return false;
+  const rs = new Set(cells), rb = RoadRule.pieceBox({ cells, edges: [] });
+  for (const [, f] of RoadRule._F) {
+    if (!f.pts) continue;
+    for (let i = 1; i < f.pts.length; i++) {
+      const a = f.pts[i - 1], b = f.pts[i];
+      if (Math.max(a.x, b.x) / SZ < rb[0] - 1 || Math.min(a.x, b.x) / SZ > rb[2] + 1 || Math.max(a.y, b.y) / SZ < rb[1] - 1 || Math.min(a.y, b.y) / SZ > rb[3] + 1) continue;
+      let hit = false; _t1327Cells(a, b, (cx, cy) => { if (rs.has(RoadRule.K(cx, cy))) { hit = true; return true; } return false; });
+      if (hit) return true;
+    }
+  }
+  return false;
+}
 function invalidateTradeDistances(cx, cy) { // eslint-disable-line no-unused-vars
   if (!state.ready) return;
+  //   ★[T1440] 켬 · 칸을 준 부름(벽 · 울타리 · 문이 서거나 헐렸다) = 그 칸 둘레 메모만 — 길은 구조물 표가 바뀐 그 자리에서 그 칸을 지나던 쌍만 버린다(`t1440Touch` · 존 DB 문).
+  //     거리행렬(econ)은 지형만 보니 안 바뀐다. 칸 없는 부름(다리 완공 · 마을이 늘었다 · 감사)은 아래 종전 줄 그대로(전부 버린다).
+  if (T1440_ROAD_RULE && Number.isFinite(cx) && Number.isFinite(cy)) { _t1440ForgetRect(cx - 1, cy - 1, cx + 1, cy + 1); lifeSiteResetAll(); return; }
   state.distDirty = true;
   if (state.routeCache) { _probe.routeClear++; state.routeCache.clear(); }
   // ★★[T85] **파던 길도 버린다.** 재개형은 여러 프레임에 걸쳐 파므로, 무효화 순간에 반쯤 판 길이
@@ -9010,7 +9376,9 @@ function init(deps) {
     // Stage 4B: 캐러밴 실체 상태 — world.caravans는 비영속(재부팅 시 빈 배열)이라 복원 불필요
     state.caravanBodies = new Map();
     state.routeCache = new Map();
+    if (T1440_ROAD_RULE) { try { _t1440Boot(ZONE); } catch (e) { console.error(`[${state.zoneId}] 🛤️ [T1440] 길 표 부팅 실패(켬이지만 표 없이 계속):`, e.message); } }   // ★[T1440] 길 표 · 처음 길 · 판정 문(캐시를 채우는 줄들보다 먼저)
     try { _routePrime(); } catch (e) { console.warn(`[${state.zoneId}] 🐂 교역로 캐시 복원 실패(빈 캐시로 계속):`, e.message); }   // ★[T42]
+    if (T1440_ROAD_RULE) { try { _t1440Validate('T42 영속'); } catch (e) {} }   // ★[T1440] 물려받은 길이 지금 구조물을 지나면 그 쌍만 버린다
     state._routeWarmPending = true;   // ★[T42 ①ⓑ] 마을·거리행렬이 다 선 뒤에 큐를 세운다(init 끝에서)
     state.pathfind = require('./pathfind'); // 로컬 재경로(벽 인지) — lazy(플래그 off면 이 줄까지 안 옴)
     state.roads = require('./roads');        // §16 답압 길(4파) — 캐러밴·행군 스탬프 + 교역 A* 할인(ENABLE_ROADS=0이면 내부 no-op)
@@ -11265,7 +11633,7 @@ function _t681Day(now) {
       if (r.len - r.L <= 0.5) { _bxGone(r, p); _bx.arrive++; }
     }
   }
-  if (T1423_BLOCK_REACT) _t1423Day(now);   // ★[T1423 ②~⑤] 몸 장부가 오늘 자리가 된 뒤 — 닿은 소식 · 치우러 간 몸(끔 = 이 줄 무동작)
+  if (T1423_BLOCK_REACT || T1440_ROAD_RULE) _t1423Day(now);   // ★[T1440] 켬 — 마을 땅 위 길이 지나는 칸 일감도 · ★[T1423 ②~⑤] 몸 장부가 오늘 자리가 된 뒤 — 닿은 소식 · 치우러 간 몸(끔 = 이 줄 무동작)
 }
 // ★[T681 ①] 행군 지휘관 장부 — 그날(d)까지 간 자리(진 끝 `campProg` 까지 · 답압 · 지휘관 자리 · 방향). `_t681Day` 의 행군 갈래 몸통 글자 그대로 옮겼다.
 //   ★[T703] 교전 들기(`_warEngage`)도 먼저 부른다 — 도착 날엔 하루 마감(war-core `daily` → 결단 뒤 `_warAfterDaily` → `_warEngage`)이 `_t681Day` 보다 **앞**이라,
@@ -16772,12 +17140,13 @@ function pickShelterSpot(vid, arrive) {
     cand.push([x, y, Math.hypot(x - gx, y - gy)]);
   }
   cand.sort((a, b) => a[2] - b[2]);
+  const _t1440c = (x, y) => T1440_ROAD_RULE && _t1440SiteCloses(x - 5, y - 5, x, y - 2);   // ★[T1440] 켬 · 정해진 것 8 — 쉼터(6×4 집채)도 길을 닫는 자리는 안 고른다(끔 = false)
   for (const c of cand) {
     // strict → loose. 집터 자동 배치와 **같은 2패스**다.
-    if (!F.reject(c[0], c[1], true)) return { cx: c[0], cy: c[1], why: null };
+    if (!F.reject(c[0], c[1], true) && !_t1440c(c[0], c[1])) return { cx: c[0], cy: c[1], why: null };
   }
   for (const c of cand) {
-    if (!F.reject(c[0], c[1], false)) return { cx: c[0], cy: c[1], why: null };
+    if (!F.reject(c[0], c[1], false) && !_t1440c(c[0], c[1])) return { cx: c[0], cy: c[1], why: null };
   }
   return null;
 }
@@ -17028,7 +17397,8 @@ function _lifeAddHouseSiteInner(vil) {
     cand.sort((a2, b2) => a2[2] - b2[2]);
     for (const c2 of cand) {
       const x = c2[0], y = c2[1];
-      { const _r = F.reject(x, y, strict); if (_r) { _probe.siteReason[_r] = (_probe.siteReason[_r] || 0) + 1; rej.add(x + ',' + y); continue; } }   // ★[11차 T4] 하드 필터는 _lifeSiteFilters 소유 — 플레이어 의뢰 터와 **같은 코드**(랩 siteFilters 규약 이식)
+      { const _r = F.reject(x, y, strict); if (_r) { _probe.siteReason[_r] = (_probe.siteReason[_r] || 0) + 1; rej.add(x + ',' + y); continue; } }   // ★[11차 T4] 하드 필터는 _lifeSiteFilters 소유 — 플레이어 의뢰
+      if (T1440_ROAD_RULE && _t1440SiteCloses(x - 5, y - 5, x, y - 2)) { _t1440S.siteClose++; _probe.siteReason['길을 닫는 자리'] = (_probe.siteReason['길을 닫는 자리'] || 0) + 1; continue; }   // ★[T1440] 켬 · 정해진 것 8 — 길을 닫는 자리는 안 고른다(거부 캐시엔 안 넣는다 — 길이 바뀌면 답이 바뀐다) 터와 **같은 코드**(랩 siteFilters 규약 이식)
       if (!strict) { for (const [dx, dy] of _lifeVL().LOT_CELLS) vil._potSet.delete((x + dx) + ',' + (y + dy)); lifeSiteReset(vil); }   // 선점 부지는 잠재농지 제거(★[T41] 캐시도 판다 — 위와 같은 이유)
       const bo = state.deps.liveBuildRow ? state.deps.liveBuildRow('hut_site', (x - 2.5) * SZ, (y - 3.5) * SZ,
         { stage: 1, x0: x - 5, y0: y - 5, x1: x + 0, y1: y - 2, owner: 'npc', floor: 0 }, `npc_simvil_${vil.dbId}`, `${vil.name} 새 움집터`, null) : null;   // ★NPC 정본 렉트를 hut_site 규약에 실음(완공 기하 동일)
@@ -17860,6 +18230,7 @@ function _lifeGranAdd(vil) {
     ownSet: vil._terrSet, farmSet, houses: vil._houseCells, gran: vil._granList,
   });
   if (!g) return;   // 링 여력 없음 — 관용(시딩 '자리 없음 스킵'과 동일)
+  if (T1440_ROAD_RULE && _t1440SiteCloses(g.cx - 2, g.cy - 1, g.cx + 2, g.cy + 1)) { _t1440S.granClose++; return; }   // ★[T1440] 켬 · 정해진 것 8 — 길을 닫는 자리면 오늘은 안 짓는다(고르는 문이 한 자리만 낸다 — 회부)
   vil._granPend = { cx: g.cx, cy: g.cy, day: day + G_BUILDD }; t1399Bump(vil);
   if (T1238_TERR_V2) _t1238StructAdd(vil, _t1238GranCells(g.cx, g.cy), true);   // ★[T1238 ①] 곳간 터(5×3)만 벤다
   _t1053Deforest(vil, g.cx, g.cy, L_DEFOREST_GRAN);   // ★[T1053] 랩 곳간 자리 → `deforestArea(±3)`(끔 = 무동작)
@@ -21401,7 +21772,11 @@ function __rumorProbe() {
     rumor: Object.assign({}, L.rumorStats) };
 }
 
-module.exports = { T1423_BLOCK_REACT, T1423_REACT_MEET, T1423_RATIO, t1423Stat: () => Object.assign({}, _t1423S, { known: [..._t1423Known.values()].map((k) => Object.assign({}, k)), jobs: _t1423Jobs.map((j) => Object.assign({}, j)) }),   // ★[T1423 ⓑ] 길을 막으면 세계가 치운다(손잡이 · 셈 · 소식 · 일감)
+module.exports = { T1440_ROAD_RULE, t1440Touch, t1440Judge, t1440Step, t1440Apply, t1440Flush: () => _t1440Flush(), t1440Stat, t1440WhoOf, t1440Grudge, t1440Budget: () => TICK_SLICE_MS, t1440Day: () => ((state.world && state.world.day) | 0), t1440VilJob, t1440FirstAt,   // ★[T1440] 존 문(짓기 · 사유지 · 미리보기 · 구조물 표 알림) · 하네스
+  __t1440: { setup: (o) => { for (const n of ['deps', 'world', 'villages', 'byDbId', 'byEcon', 'caravanBodies', 'pathfind', 'dayMs', 'zoneId', 'db', 'roads']) if (o && n in o) state[n] = o[n]; state._distCtx = { ta: o.ta, ZONE: o.ZONE }; state._route = null; state.routeCache = new Map(); _t1440Boot(o.ZONE); },
+    route: (...a) => computeRoutePts(...a), getRoute: (a, b) => getRoute(a, b), cells: _t1327Cells, flush: () => _t1440Flush(), validate: (w) => _t1440Validate(w || 'test'), siteCloses: (...a) => _t1440SiteCloses(...a), reroute: (b, p) => _t1440Reroute(b, p), stepPx: (...a) => _t1440StepPx(...a),
+    blocked: (...a) => caravanBlockedResponse(...a), walk1182: (...a) => _t1182Walk(...a), setBodyPts: (b, pts) => setBodyPts(b, pts), walkFor: (a, b, ms) => _walkFor(a, b, ms), state: () => state, S: _t1440S, pend: _t1440Pend },
+  T1423_BLOCK_REACT, T1423_REACT_MEET, T1423_RATIO, t1423Stat: () => Object.assign({}, _t1423S, { known: [..._t1423Known.values()].map((k) => Object.assign({}, k)), jobs: _t1423Jobs.map((j) => Object.assign({}, j)) }),   // ★[T1423 ⓑ] 길을 막으면 세계가 치운다(손잡이 · 셈 · 소식 · 일감)
   __t1423: { meet: (...a) => _t1423Meet(...a), day: (now) => _t1423Day(now), ahead: (...a) => _t1423Ahead(...a), draft: (v, n) => _t1423Draft(v, n), known: _t1423Known, jobs: _t1423Jobs, S: _t1423S, blocked: (...a) => caravanBlockedResponse(...a), walk1182: (...a) => _t1182Walk(...a), t681Day: (now) => _t681Day(now),
     setup: (o) => { const k = {}; for (const n of ['deps', 'world', 'villages', 'byDbId', 'byEcon', 'caravanBodies', 'pathfind', 'ta', 'dayMs', 'bodyExits', 'zoneId', 'war', 'warBodies', 'roads']) if (o && n in o) { k[n] = state[n]; state[n] = o[n]; } return k; } },   // 하네스 주입구(최소 · `_t569Probe.setup` 그 규약)
   t1406PathCell: (cx, cy, vil) => _t1406PathCell(cx, cy, vil || null), T1406_KEEP_PATHS, t1406BridgeCell: (cx, cy) => _t1406BridgeCell(cx, cy) === true, t1406BridgeCells: () => { _t1406BridgeCell(0, 0); return _t1406BrList ? _t1406BrList.slice() : []; },   // ★[T1423 ⓐ] ㉮ 다리 칸 · 다리 머리(손잡이 없는 술어 · 칸 줄 — 짓기 문 · 클라 미리보기)

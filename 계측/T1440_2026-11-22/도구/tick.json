@@ -1,0 +1,4 @@
+[
+ {"tag":"TICK_ON_1020","seed":1020,"days":2,"bot":1,"env":{"T577_BODY":"1","T1440_ROAD_RULE":"1","T1423_NO_BUILD":"1"}},
+ {"tag":"TICK_OFF_1020","seed":1020,"days":2,"bot":1,"env":{"T577_BODY":"1"}}
+]

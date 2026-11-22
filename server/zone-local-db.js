@@ -619,6 +619,36 @@ function getTradeRoutes(zone, sig) { return stmtGetRoutes.all(zone, String(sig))
 function upsertTradeRoute(zone, pair, sig, ptsJson) { stmtUpsertRoute.run(zone, String(pair), String(sig), ptsJson === null ? null : String(ptsJson)); }
 function clearTradeRoutes(zone) { return stmtClearRoutes.run(zone).changes | 0; }
 function countTradeRoutes(zone) { return (stmtCountRoutes.get(zone) || {}).n | 0; }
+// ★★[T1440] 처음 길(쌍마다 길이 · 줄 — 3배의 기준) · 쌍 하나 지우기 · 사유지 칸 "길이 지나는 칸" — 손잡이 `T1440_ROAD_RULE` 켬에서만 부른다
+//   (표 · 열은 처음 부를 때 — CREATE TABLE IF NOT EXISTS · 열은 T45 규약대로 PRAGMA 로 보고 붙인다 · 구DB 안전 · 끔 = 표 0 · 열 0 · 행 0)
+//   길을 닫는 조각의 표시는 건물 `data` 한 칸(`t1440c` — 행 0 · 표 0).
+let _t1440Q = null;
+function _t1440Db() {
+  if (_t1440Q) return _t1440Q;
+  db.exec('CREATE TABLE IF NOT EXISTS t1440_first (zone TEXT NOT NULL, pair TEXT NOT NULL, len REAL NOT NULL, pts TEXT, PRIMARY KEY (zone, pair))');
+  _t1440Q = {
+    fAll: db.prepare('SELECT pair, len, pts FROM t1440_first WHERE zone = ?'),
+    fPut: db.prepare('INSERT INTO t1440_first (zone, pair, len, pts) VALUES (?, ?, ?, ?) ON CONFLICT(zone, pair) DO NOTHING'),
+    rDel: db.prepare('DELETE FROM trade_routes WHERE zone = ? AND pair = ?'),
+  };
+  return _t1440Q;
+}
+function t1440FirstAll(zone) { return _t1440Db().fAll.all(zone).map((r) => { let pts = null; try { pts = r.pts ? JSON.parse(r.pts) : null; } catch (e) {} return [r.pair, r.len, pts]; }); }
+function t1440FirstPut(zone, pair, len, ptsJson) { _t1440Db().fPut.run(zone, String(pair), +len, ptsJson == null ? null : String(ptsJson)); }
+function deleteTradeRoute(zone, pair) { return _t1440Db().rDel.run(zone, String(pair)).changes | 0; }
+//   사유지 칸 "길이 지나는 칸" — claims 열 하나(`t1440_pass` · 1 | NULL) · 부팅 로드는 `SELECT *` 가 읽는다(zone.js 사유지 로드)
+let _t1440CP = null;
+function t1440ClaimPass(dbId, v) {
+  if (!dbId) return false;
+  try {
+    if (!_t1440CP) {
+      const cc = db.prepare('PRAGMA table_info(claims)').all().map((c) => c.name);
+      if (!cc.includes('t1440_pass')) db.exec('ALTER TABLE claims ADD COLUMN t1440_pass INTEGER');
+      _t1440CP = db.prepare('UPDATE claims SET t1440_pass = ? WHERE id = ?');
+    }
+    _t1440CP.run(v ? 1 : null, dbId); return true;
+  } catch (e) { return false; }
+}
 
 // === [배치 20 B] 동적 토양치 + 지질 플래그(server/soil.js) ===
 // mined_cells 의 lazy 패턴을 그대로 베낀 것: **기준선에서 벗어난 셀만** 행을 갖는다.
@@ -925,6 +955,7 @@ module.exports = {
   getSoilCells, upsertSoilCell, deleteSoilCell,
   // [T42] 교역로 캐시 영속 (villages.js getRoute)
   getTradeRoutes, upsertTradeRoute, clearTradeRoutes, countTradeRoutes,
+  t1440FirstAll, t1440FirstPut, deleteTradeRoute, t1440ClaimPass,   // ★[T1440] 처음 길 · 쌍 하나 지우기 · 길이 지나는 칸(켬에서만)
   // [T537] 마을이 짓는 다리 — 진척·완공 영속(villages `_t527*` · 존 부팅 복원)
   getVillageBridges, upsertVillageBridge,
   // [T916] 못 닿은 사람 저장 줄(zone.js `_saveSend` · 손잡이 `T916_SAVE_RETRY`)
