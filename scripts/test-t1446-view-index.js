@@ -9,7 +9,8 @@
 //      끔 주소(`?t1446=0`)는 맨 Map(종전 글자).
 //   Ⓑ 그린 것 같음 — 같은 프레임 자리에서 그리는 길만 끔 ↔ 켬(`__t1446.set`)으로 바꿔 정렬된 목록 서명(`__t1446.cap()` — 종류 · 자리 · z · 등급 · 건물 id)을
 //      맞댄다(길 · 건물 · 지붕 · 마당 소품 · 계단 — 움직이는 것 · 서버가 흘리는 것은 뺀다). 자리: 마을 한가운데(촘촘) · 교역로 가(성김) · 상자 경계 ·
-//      존 서쪽 끝(이웃 존 `jungwon_n` 관전 접속 — 접속 둘 · 서로 다른 ox) · 확대 1 · 1.5 · 2.
+//      존 서쪽 끝(이웃 존 `jungwon_n` 관전 접속 — 접속 둘 · 서로 다른 ox) · 확대 1 · 1.5 · 2 · 달리는 중(소수 자리 화면 가운데 70곳 · 화면 끝이 칸 가운데에
+//      꼭 닿는 자리 ± 1e-7 — 같은 목록에서 종전 고리와 색인 질의를 칸 · 등급 · 차례로 맞댄다).
 //   Ⓒ 길 고침 — 방송 입구(`handleMessage` · `road_cells`)로 화면 안 칸을 지우고 · 새로 넣고 · 등급을 바꾸고 · 지운 칸을 다시 넣은 뒤(다시 넣으면 Map 맨 뒤)
 //      같음 · 색인 맞음 · 지운 칸은 안 그린다.
 //   Ⓓ 훑기 ms — 같은 판 · 같은 자리에서 프레임 캡처의 "길 훑기"(T1446 쪼갠 층) 프레임당 중앙값: 켬 ≤ 끔 × 0.1.
@@ -221,21 +222,37 @@ async function scanMs(page) {
       const q = await capAt('dense', z);
       ok(q.same && q.roads === r.roads, `Ⓑ2 확대 ${z} — 같다(확대는 화면 상자를 안 바꾼다 — VIEW_RADIUS 상수)`, `길 ${q.roads}${q.same ? '' : ` · 첫 다름 #${q.first} ${q.a} ≠ ${q.b}`}`);
     }
+    //   달리는 중(화면 가운데가 프레임마다 소수 자리로 바뀐다) · 화면 끝이 칸 가운데에 꼭 닿는 자리(±1,500 · ±1,500 ± 1e-7) — 같은 목록에서 종전 고리와 색인 질의를 맞댄다
+    const fz = await M.page.evaluate(([sx, sy]) => {
+      const c = conns.get(window.__getPrimaryZoneId()), ox = c.meta.worldOffsetX, oy = c.meta.worldOffsetY || 0, R = 1500;
+      let s = 1446; const rnd = () => { s = (s * 1103515245 + 12345) % 2147483648; return s / 2147483648; };
+      const old = (wx, wy) => { const out = []; for (const [rk, lv] of c.roads) { const ci = rk.indexOf(','); const rcx = +rk.slice(0, ci), rcy = +rk.slice(ci + 1);
+        const rax = ox + rcx * 32 + 16, ray = oy + rcy * 32 + 16; if (Math.abs(rax - wx) > R || Math.abs(ray - wy) > R) continue; out.push(rcx + ',' + rcy + ',' + lv); } return out; };
+      const idx = (wx, wy) => { const Q = _t1446Cells(c.roads, ox, oy, wx, wy, R), out = []; for (let i = 0; i < Q.n; i++) { const j = Q.sk[i] % 16384; out.push(Q.cx[j] + ',' + Q.cy[j] + ',' + Q.lv[j]); } return out; };
+      const pts = [];
+      for (let i = 0; i < 40; i++) pts.push([ox + sx + (rnd() - 0.5) * 4000, oy + sy + (rnd() - 0.5) * 4000]);
+      for (let i = 0; i < 10; i++) { const cx = Math.floor((sx + (rnd() - 0.5) * 2000) / 32), cy = Math.floor((sy + (rnd() - 0.5) * 2000) / 32);
+        for (const e of [0, 1e-7, -1e-7]) pts.push([ox + cx * 32 + 16 + R + e, oy + cy * 32 + 16 - R - e]); }
+      let bad = 0, n = 0, first = null;
+      for (const [wx, wy] of pts) { const a = old(wx, wy), b = idx(wx, wy); n += a.length; if (a.length !== b.length || a.some((x, i) => x !== b[i])) { bad++; if (!first) first = [wx, wy, a.length, b.length]; } }
+      return { pts: pts.length, bad, n, first };
+    }, [SPOTS.dense.x, SPOTS.dense.y]);
+    ok(fz.bad === 0 && fz.n > 10000, 'Ⓑ3 달리는 중 · 화면 끝 칸 — 소수 자리 화면 가운데 70곳에서 종전 고리와 색인 질의가 같은 칸 · 같은 등급 · 같은 차례', `자리 ${fz.pts} · 다름 ${fz.bad} · 견준 칸 ${fz.n}${fz.first ? ' · 첫 다름 ' + JSON.stringify(fz.first) : ''}`);
   }
   for (const key of ['sparse', 'edge']) {
     const arr = await goTo(M.page, SPOTS[key]);
     const r = await capAt(key, 0);
-    ok(arr && r.same && r.roads > 0, `Ⓑ3 ${SPOTS[key].name} — 같다`, `도착 ${arr} · 서명 ${r.nA} · 길 ${r.roads}${r.same ? '' : ` · 첫 다름 #${r.first} ${r.a} ≠ ${r.b}`}`);
+    ok(arr && r.same && r.roads > 0, `Ⓑ4 ${SPOTS[key].name} — 같다`, `도착 ${arr} · 서명 ${r.nA} · 길 ${r.roads}${r.same ? '' : ` · 첫 다름 #${r.first} ${r.a} ≠ ${r.b}`}`);
   }
   {
     const arrW = await goTo(M.page, SPOTS.west, true);
     const st = await M.page.evaluate(() => window.__t1446.stat());
     const nb = st.conns.find((x) => x.zone === 'jungwon_n') || {};
     const r = await capAt('west', 0);
-    ok(arrW && nb.roads === NB.flat.length / 3 && nb.roadIx && r.zones[0] > 0 && r.zones[1] > 0, 'Ⓑ4 ★전제 — 존 서쪽 끝: 이웃 존(jungwon_n) 관전 접속이 섰고 두 존의 길이 다 화면에 있다', `도착 ${arrW} · 이웃 길 ${nb.roads} · 화면 길 이웃 ${r.zones[0]} · 주 ${r.zones[1]} · 접속 ${st.conns.map((x) => x.zone).join('·')}`);
-    ok(r.same, 'Ⓑ5 존 서쪽 끝(접속 둘 · 서로 다른 원점) — 같다', `서명 ${r.nA}${r.same ? '' : ` · 첫 다름 #${r.first} ${r.a} ≠ ${r.b}`}`);
+    ok(arrW && nb.roads === NB.flat.length / 3 && nb.roadIx && r.zones[0] > 0 && r.zones[1] > 0, 'Ⓑ5 ★전제 — 존 서쪽 끝: 이웃 존(jungwon_n) 관전 접속이 섰고 두 존의 길이 다 화면에 있다', `도착 ${arrW} · 이웃 길 ${nb.roads} · 화면 길 이웃 ${r.zones[0]} · 주 ${r.zones[1]} · 접속 ${st.conns.map((x) => x.zone).join('·')}`);
+    ok(r.same, 'Ⓑ6 존 서쪽 끝(접속 둘 · 서로 다른 원점) — 같다', `서명 ${r.nA}${r.same ? '' : ` · 첫 다름 #${r.first} ${r.a} ≠ ${r.b}`}`);
     const chk = await M.page.evaluate(() => window.__t1446.check());
-    ok(chk.length >= 4 && chk.every((x) => x.ok), 'Ⓑ6 이웃 존 목록도 색인이 그대로 비춘다', chk.map((x) => `${x.zone}.${x.list} ${x.n} ${x.ok ? 'ok' : x.why}`).join(' · '));
+    ok(chk.length >= 4 && chk.every((x) => x.ok), 'Ⓑ7 이웃 존 목록도 색인이 그대로 비춘다', chk.map((x) => `${x.zone}.${x.list} ${x.n} ${x.ok ? 'ok' : x.why}`).join(' · '));
   }
 
   // ══ Ⓒ 길 고침(road_cells) ══════════════════════════════════════════════════
@@ -267,27 +284,27 @@ async function scanMs(page) {
   {   // ① 화면 밖 길 — 색인 질의의 컬링 줄을 뺀다(상자에 든 칸을 다 민다)
     const B = LB.swap(SRC.c, '          if (Math.abs(ax - wcx) > R || Math.abs(ay - wcy) > R) continue;\n', '');
     const r = await baitRun({ '00-const.js': B.src }, async (p) => { await goTo(p, SPOTS.dense); return capPair(p, 0); });
-    ok(B.n === 1 && !!r && !r.same && r.roadsB > r.roads, '미끼 ① 화면 밖 길을 그리는 사본 → Ⓑ 빨강(켬이 더 그린다)', `바꾼 자리 ${B.n} · 길 끔 ${r && r.roads} · 켬 ${r && r.roadsB}`);
+    ok(B.n === 1 && !!r && !r.same && r.roadsB > r.roads, '미끼 ① 화면 밖 길을 그리는 사본 → Ⓑ1 빨강(켬이 더 그린다)', `바꾼 자리 ${B.n} · 길 끔 ${r && r.roads} · 켬 ${r && r.roadsB}`);
   }
   {   // ② road_cells 지움을 색인이 놓친다
     const B = LB.swap(SRC.c, 'else { B.k.splice(i, 1); B.s.splice(i, 1); if (!B.k.length) this._ix.delete(bk); }', 'else {}');
     const r = await baitRun({ '00-const.js': B.src }, async (p) => { await goTo(p, SPOTS.dense); await roadEdit(p, 1); return { cap: await capPair(p, 0), dd: await deletedDrawn(p) }; });
-    ok(B.n === 1 && !!r && !r.cap.same && r.dd > 0, '미끼 ② road_cells 지움을 색인이 놓치는 사본 → Ⓒ 빨강(지운 칸을 그린다)', `바꾼 자리 ${B.n} · 지운 칸 그림 ${r && r.dd}`);
+    ok(B.n === 1 && !!r && !r.cap.same && r.dd > 0, '미끼 ② road_cells 지움을 색인이 놓치는 사본 → Ⓒ1 빨강(지운 칸을 그린다)', `바꾼 자리 ${B.n} · 지운 칸 그림 ${r && r.dd}`);
   }
   {   // ③ 이웃 존 길을 주 존 원점으로 찾는다
     const B = LB.swap(SRC.r, '_t1446Cells(c.roads, ox, oy, worldCx, worldCy, VIEW_RADIUS)', '_t1446Cells(c.roads, pConn.meta.worldOffsetX, pConn.meta.worldOffsetY || 0, worldCx, worldCy, VIEW_RADIUS)');
     const r = await baitRun({ '34-m-renderloop.js': B.src }, async (p) => { await goTo(p, SPOTS.west, true); return capPair(p, 0); });
-    ok(B.n === 1 && !!r && !r.same && r.zones[0] > 0, '미끼 ③ 이웃 존 접속의 길을 주 존 원점으로 찾는 사본 → Ⓑ 존 끝 빨강', `바꾼 자리 ${B.n} · 이웃 길 끔 ${r && r.zones[0]} · 켬 ${r && r.zonesB[0]}`);
+    ok(B.n === 1 && !!r && !r.same && r.zones[0] > 0, '미끼 ③ 이웃 존 접속의 길을 주 존 원점으로 찾는 사본 → Ⓑ6 존 끝 빨강', `바꾼 자리 ${B.n} · 이웃 길 끔 ${r && r.zones[0]} · 켬 ${r && r.zonesB[0]}`);
   }
   {   // ④ 확대에서 화면 상자를 확대로 나눈다
     const B = LB.swap(SRC.r, '_t1446Cells(c.roads, ox, oy, worldCx, worldCy, VIEW_RADIUS)', '_t1446Cells(c.roads, ox, oy, worldCx, worldCy, VIEW_RADIUS / ZOOM)');
     const r = await baitRun({ '34-m-renderloop.js': B.src }, async (p) => { await goTo(p, SPOTS.dense); return { z1: await capPair(p, 0), z2: await capPair(p, 2) }; });
-    ok(B.n === 1 && !!r && r.z1.same && !r.z2.same, '미끼 ④ 확대에서 가장자리 길이 빠지는 사본 → Ⓑ 확대 2 빨강(확대 1 은 초록)', `바꾼 자리 ${B.n} · 확대 2 길 끔 ${r && r.z2.roads} · 켬 ${r && r.z2.roadsB}`);
+    ok(B.n === 1 && !!r && r.z1.same && !r.z2.same, '미끼 ④ 확대에서 가장자리 길이 빠지는 사본 → Ⓑ2 확대 2 빨강(확대 1 은 초록)', `바꾼 자리 ${B.n} · 확대 2 길 끔 ${r && r.z2.roads} · 켬 ${r && r.z2.roadsB}`);
   }
   {   // ⑤ 색인은 세웠는데 그리는 길은 여전히 전부 돈다
     const B = LB.swap(SRC.r, 'const _rQ = (c.roads && c.roads.size && _t1446Use(c.roads))', 'const _rQ = (c.roads && c.roads.size && false && _t1446Use(c.roads))');
     const r = await baitRun({ '34-m-renderloop.js': B.src }, async (p) => { await goTo(p, SPOTS.dense); const st = await p.evaluate(() => window.__t1446.stat()); return { cap: await capPair(p, 0), ms: await scanMs(p), ix: st.conns[0].roadIx }; });
-    ok(B.n === 1 && !!r && r.ix && r.cap.same && !(r.ms.on <= r.ms.off * 0.1), '미끼 ⑤ 색인은 세웠는데 여전히 전부 도는 사본 → Ⓓ 빨강(같음은 초록 — 프레임 ms 로만 잡힌다)', `바꾼 자리 ${B.n} · 색인 ${r && r.ix} · 같음 ${r && r.cap.same} · 길 훑기 끔 ${r && r.ms.off} · 켬 ${r && r.ms.on}ms`);
+    ok(B.n === 1 && !!r && r.ix && r.cap.same && !(r.ms.on <= r.ms.off * 0.1), '미끼 ⑤ 색인은 세웠는데 여전히 전부 도는 사본 → Ⓓ1 빨강(같음은 초록 — 프레임 ms 로만 잡힌다)', `바꾼 자리 ${B.n} · 색인 ${r && r.ix} · 같음 ${r && r.cap.same} · 길 훑기 끔 ${r && r.ms.off} · 켬 ${r && r.ms.on}ms`);
   }
 
   await browser.close();
