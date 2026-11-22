@@ -77,7 +77,8 @@ try {
   ok(h1 === '--max-old-space-size=6144 --require x' && h2 === '--max-old-space-size=100 -r y' && h3 === '-r z' && callers, '★④ 긴 판 힙 — 없으면 6,144 MB · 준 값 그대로 · 0 이면 안 얹음 · t1308 · sbc 가 그 문을 부른다', `${h1} | ${h3} | 부름 ${callers}`);
   // ⑤ 땅값 손잡이
   const E = require(path.join(ROOT, 'sim', 'economy-sim'));
-  const px = E.t1426ExpandPx({ _priceCache: { food: 0.3, wood: 1.2, stone: 0.6 } }), none = E.t1426ExpandPx({});
+  const hasPx = typeof E.t1426ExpandPx === 'function';   // 옛 제품엔 없다 — 크래시 대신 ✗
+  const px = hasPx ? E.t1426ExpandPx({ _priceCache: { food: 0.3, wood: 1.2, stone: 0.6 } }) : null, none = hasPx ? E.t1426ExpandPx({}) : undefined;
   ok(E.T1426_EXPAND_PRICE === false && E.EXPAND_PRICE_FOODEQ.wood === 1.67 && px && Math.abs(px.wood - 4) < 1e-9 && Math.abs(px.stone - 2) < 1e-9 && none === null, '⑤a 손잡이 끔 기본 · 그림자 값 환산(나무 1.2 ÷ 식량 0.3 = 4 · 돌 2) · 값 없으면 null(정적 표)', JSON.stringify(px));
   const kid = (on) => { const r = spawnSync(process.execPath, [__filename, '--child'], { cwd: ROOT, env: Object.assign({}, process.env, { T1426_EXPAND_PRICE: on ? '1' : '' }), encoding: 'utf8' }); try { return JSON.parse(String(r.stdout).trim().split('\n').pop()); } catch (e) { return null; } };   // 엔진이 머리 줄을 stdout 에 찍는다 — 마지막 줄만
   const off = kid(false), on = kid(true);
