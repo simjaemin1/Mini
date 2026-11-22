@@ -2,6 +2,7 @@
 'use strict';
 // @regress
 // @bait 3
+// @old-red-also scripts/us-line.js scripts/t646-anatomy.js
 // === scripts/test-t1425-ruler.js — 자(us-line · t646 표)의 분자 · 분모 · 틱 비용 줄(T1425 ①) ===
 //   판을 띄우지 않는다 — T1415 자 판 하나(`계측/T1415_2026-11-21/ruler/main1.json` · 표본 줄 `lines-main1.jsonl.gz`)를 틀로 삼아
 //   지금 `scripts/t646-anatomy.js table` · `scripts/us-line.js line` 사본을 임시 폴더에서 돈다(레포 무접촉).
