@@ -1,0 +1,62 @@
+{
+  "task": "T1413",
+  "scope": "cap lab/free r=.002; cap lab r=.0004/.0006",
+  "expected": 1152,
+  "inheritedSafeRows": 419,
+  "newRowsRequired": 733,
+  "inheritedSkippedRows": 30,
+  "inheritedUnsafeRowsRemeasured": 1,
+  "species": [
+    "deer",
+    "boar",
+    "rabbit"
+  ],
+  "shares": [
+    "1",
+    "0.25",
+    "0.1",
+    "5d"
+  ],
+  "hunterSlots": [
+    1,
+    3,
+    17
+  ],
+  "exchange": [
+    500,
+    5000,
+    50000,
+    187000
+  ],
+  "seeds": [
+    7,
+    1020
+  ],
+  "daysPerSeedRow": 365,
+  "holds": "endBodies >= initialBodies * 0.9; paired requires both seeds",
+  "meatKgPerHarvest": {
+    "deer": 33,
+    "boar": 4,
+    "rabbit": 1
+  },
+  "meatKcalPerKg": 1200,
+  "kcalPerPersonDay": 2450,
+  "kgHDdenominator": "hunterSlots * 365 calendar days",
+  "concurrencyLimit": 2,
+  "physicsSourceHashes": {
+    "scripts/t1413-hunt-year.js": "1fef4d856fa5d8572a050f24f4179fe888dd16f4e366b18f8f60d322ebc06232",
+    "lab/사냥실험실.html": "219e4871e911f4632b8da0f0d4c84f67612e346f66d45fa512a1965e0199103d",
+    "sim/det-math.js": "5aad3afb2382bb76fa1745273efb8055cdc5e55b9129c9a012ba14b1f2a417c0"
+  },
+  "evidence": {
+    "fullRaw": "연간표/전체.jsonl",
+    "newAppendOnly": "연간표/추가실측.jsonl",
+    "finalAudit": "표-요약.json",
+    "fullCsv": "전수표.csv",
+    "fullMarkdown": "전수표.md",
+    "pairedCapEffectCsv": "상한-짝차이.csv",
+    "boundaries": "경계.md",
+    "guards": "검증-종료.json",
+    "matchingNodeBaseline": "검증-추가.json"
+  }
+}
