@@ -1725,7 +1725,8 @@ function _t1340EconIn(o) {
 //   없으면 넘김 · 재기동 뒤 손의 씨가 "그냥 손 물건"이 되어 곳간 몫 셈이 끊겼다. `T1243_FARM_ON` 끔이면 그 칸이 안 서서(undefined) 몸 줄 바이트 그대로.
 const _T747_KEYS = ['simJob', 'x', 'y', 'hp', '_rest', 'inventory', 'oreLedger', '_t312U', '_t312Kg', '_t1180FullFish', '_t1181Haul', '_t1181Returns', '_t1302Terr', '_t368H', '_t368N', '_t1243S', '_t717L', '_t733F',
   '_lifeTask', '_farmK', '_fOutD', '_workSite', '_jobN', '_fishSpotX', '_fishSpotY', '_t340N', '_t724Site', '_huntBud', '_huntKil',
-  '_sh', '_hd', '_half'];   // 신원 해시 캐시(존 `_shOf` 가 `playerId` — 스폰마다 무작위 꼬리 — 로 먼저 세우면 다시 뜬 몸의 주사위 씨가 바뀐다) · 그날 반일 굴림(같은 날 다시 굴리지 않게)
+  '_sh', '_hd', '_half',
+  '_t1416H', '_t1416C', '_t1416Go', '_t1416Sp'];   // ★[T1429 ② · T1416 회부 8] 사냥꾼 손 · 둔 몫(자리 · kg · 날) · 곳간 길 표지 · 실은 종 — 어부 `_t312U` 꼴(칸이 없던 옛 저장 = 빈 손)   // 신원 해시 캐시(존 `_shOf` 가 `playerId` — 스폰마다 무작위 꼬리 — 로 먼저 세우면 다시 뜬 몸의 주사위 씨가 바뀐다) · 그날 반일 굴림(같은 날 다시 굴리지 않게)
 // ★★[T1133 2026-11-04 · ★PM 11-03 판정대기 문 17 ㄱ "몸 영속과 같이 저장"] 손잡이 `T1133_BAG_PERSIST`(★켬 기본 후보 · `=0` = 종전 글자).
 //   원정 몸 짐의 로트 줄(`granary-lots.js` `BAG` — 몸 밖 WeakMap · T748)은 몸이 다시 뜨면 새 객체라 잃었다: 양(`inventory` — 위 T747 칸)은 남고 날짜만 사라져
 //   그 짐이 늙기를 잃었다(신선도 캐논 ★재민 10-12 · 10-14 "아이템마다 신선도를 따로"). 켜면 몸 줄에 두 칸을 더 싣는다(몸 필드 0 · 새 수 0):
@@ -1833,6 +1834,7 @@ function _t747Restore() {
       const S0 = rows[i]; if (!S0) continue;
       const S = _t740Dec(S0);
       const b = i < vil.npcPids.length ? P.get(vil.npcPids[i]) : null;
+      if (!b && (S._t1416H || S._t1416C)) _t1429Spill(S);   // ★[T1429] 저장된 몸이 없다 — 그 사냥꾼 손 · 둔 몫은 땅에(소멸 0)
       if (!b) { if (S.inventory) spill.push(S.inventory); if(S.oreLedger)spillOre.push(S.oreLedger); if (S._bag) spillBag.push(S._bag); if (S._lots) spillLots.push(S._lots); if(S._t1181Haul?.n>0)spillHaul.push({...S._t1181Haul,returning:true,at:null}); for(const h of(S._t1181Returns||[]))if(h.n>0)spillHaul.push({...h,returning:true,at:null}); continue; }
       R.bodies++;
       if (S._bag && T1133_BAG) { if (_t1133BagLoad(b, S._bag, S._packOf, false) < 0 && T1166_LOT && _T732_ON) { _t1166Pend.push({ b, bag: S._bag, packOf: S._packOf, spill: false }); _t1166Stat.bagDeferred++; } }   // ★[T1133] 같은 자리 몸에 짐 줄 · 표식(끄면 칸을 안 읽는다) · ★[T1166] 시계 전이면 미룬다
@@ -1843,7 +1845,7 @@ function _t747Restore() {
       if (Number.isFinite(S.hp) && S.hp > 0) { _setHp(b, Math.min(S.hp, b.maxHp || S.hp), 'restore'); if (b.hp < (b.maxHp || 100)) R.hpLow++; }   // ★[T942] 문으로
       if (S._rest != null) b._rest = S._rest;
       if (S.inventory && typeof S.inventory === 'object') { b.inventory = S.inventory; let any = false; for (const k in S.inventory) if (S.inventory[k] > 0 && k !== 'seed_berry') any = true; if (any) R.hands++; }
-      for (const k of ['oreLedger', '_t312U', '_t312Kg', '_t1180FullFish', '_t1181Haul', '_t1181Returns', '_t1302Terr', '_t368H', '_t368N', '_t1243S', '_t717L', '_t733F', '_farmK', '_fOutD', '_workSite', '_jobN', '_fishSpotX', '_fishSpotY', '_t340N', '_t724Site', '_huntBud', '_huntKil', '_sh', '_hd', '_half'])
+      for (const k of ['oreLedger', '_t312U', '_t312Kg', '_t1180FullFish', '_t1181Haul', '_t1181Returns', '_t1302Terr', '_t368H', '_t368N', '_t1243S', '_t717L', '_t733F', '_farmK', '_fOutD', '_workSite', '_jobN', '_fishSpotX', '_fishSpotY', '_t340N', '_t724Site', '_huntBud', '_huntKil', '_sh', '_hd', '_half', '_t1416H', '_t1416C', '_t1416Go', '_t1416Sp'])
         if (k in S) b[k] = S[k];
       if (T1340_EXACT && S.$all && Number.isFinite(S.$at)) { const C = state._t1340R || (state._t1340R = _t1340Ctx(Date.now())); _t1340Stat.bodyKeys += _t1340UnpackObj(b, S.$all, C); _t1340Stat.bodies++; if (S.$ltn && b._lifeTask === undefined) b._lifeTask = null; }   // ★[T1340 ②] 몸 칸 전부(시각은 차로 · 진행 일 시각도 그대로)
       else {
@@ -18102,6 +18104,12 @@ const _t1393On = () => T1393_HUNT_CHASE && T1331_BEAST_BODY;
 //   하루 경계 `_t1195HuntIn` ① 은 켬에서 잡은 수가 0 이라 안 넣는다(두 길 0). 새 수 0 — 손 상한은 짐 정본(`carry.CFG.CAP_KG`)을 사냥판이 읽는다.
 const T1416_CARRY_HOME = T1393_HUNT_CHASE && T1331_BEAST_BODY && process.env.T1416_CARRY_HOME === '1';
 const _t1416Stat = { trips: 0, kg: 0, units: 0, items: {}, sp: {} };
+function _t1429Spill(S) {   // 다시 뜬 판에서 저장된 몸 줄이 지금 몸보다 많을 때 — 손은 저장된 자리에 · 둔 몫은 제자리에 땅 더미로(wildlife)
+  let W = null; try { W = require('./wildlife'); } catch (e) {} if (!W || !W.t1429Ground) return;
+  const Hh = S._t1416H, C = S._t1416C;
+  if (Hh && Hh.kg > 0 && Number.isFinite(S.x)) W.t1429Ground(S.x / SZ, S.y / SZ, null, Hh.kg, Hh.it, 'spill');
+  if (C && C.kg > 0) W.t1429Ground(C.x, C.y, C.d, C.kg, C.it, 'spill');
+}
 function _t1416Deliver(vil, npc) {
   const Hh = npc._t1416H; if (!Hh || !(Hh.kg > 0)) return 0;
   const E = _lifeEcon(), K = _kcal(); if (!K || !vil.econ) return 0;
