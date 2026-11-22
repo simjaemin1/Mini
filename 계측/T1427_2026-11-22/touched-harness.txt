@@ -1,0 +1,8 @@
+# 만진 함수 → 하네스 (touched-harness · base origin/main · 갈림점 01df9e8f9)
+· 바뀐 코드 파일 4 · 이름 3(물린 것 0 · 흔한 이름 뺌 0) · 바뀐 하네스 1 · 규약 다섯 · **돌릴 하네스 6**
+  scripts/rebalance-ore-minerals.js: (이름 없음)
+  scripts/t1427-tin-bake.js: t1427-tin-bake
+  scripts/t1427-tin-map.js: t1427-tin-map
+  scripts/t1427-table.js: t1427-table
+· 바뀐 하네스: test-t1427-tin-map.js
+· 돌릴 하네스: test-body-fields.js test-coll-grid.js test-harness-lint.js test-hp-src.js test-lon-day.js test-t1427-tin-map.js

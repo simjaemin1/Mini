@@ -1,0 +1,951 @@
+{
+ "zone": "hanbando",
+ "nMajor": 63,
+ "nAll": 787,
+ "cntMaj": {
+  "lead": 19,
+  "copper": 22,
+  "obsidian": 7,
+  "tin": 2,
+  "jade_raw": 1,
+  "gold": 11,
+  "sulfur": 1
+ },
+ "cntAll": {
+  "lead": 206,
+  "copper": 153,
+  "obsidian": 73,
+  "tin": 13,
+  "jade_raw": 12,
+  "gold": 115,
+  "sulfur": 17,
+  "iron": 198
+ },
+ "tinRows": [
+  {
+   "i": 5,
+   "name": "광맥6",
+   "center": [
+    36139,
+    94325
+   ],
+   "radius": 700,
+   "pk": 0.2405,
+   "touch": [
+    {
+     "name": "광산5",
+     "area": 1503,
+     "shareOfVilTin": 0.51,
+     "distCells": 38
+    },
+    {
+     "name": "임업2",
+     "area": 240,
+     "shareOfVilTin": 1,
+     "distCells": 162
+    }
+   ],
+   "nearV": {
+    "name": "광산5",
+    "d": 38
+   },
+   "share": {
+    "cells": 1501,
+    "in1": 1501,
+    "in2": 240,
+    "pairs": {
+     "광산5+임업2": 240
+    }
+   }
+  },
+  {
+   "i": 8,
+   "name": "광맥9",
+   "center": [
+    33616,
+    95696
+   ],
+   "radius": 700,
+   "pk": 0.2313,
+   "touch": [
+    {
+     "name": "광산5",
+     "area": 1503,
+     "shareOfVilTin": 0.49,
+     "distCells": 102
+    }
+   ],
+   "nearV": {
+    "name": "광산5",
+    "d": 102
+   },
+   "share": {
+    "cells": 1489,
+    "in1": 1489,
+    "in2": 0,
+    "pairs": {}
+   }
+  }
+ ],
+ "villages": [
+  {
+   "name": "광산1",
+   "ccx": 2120,
+   "ccy": 2117,
+   "ore": 2.07,
+   "oreGrade": 2.0474,
+   "oreMix": {
+    "lead": 0.0474,
+    "silver": 0.0084,
+    "sulfur": 0.9442
+   },
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "광산2",
+   "ccx": 2007,
+   "ccy": 218,
+   "ore": 1.25,
+   "oreGrade": 1.1818,
+   "oreMix": {
+    "lead": 0.721,
+    "silver": 0.1576,
+    "gold": 0.1214
+   },
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0.1517
+  },
+  {
+   "name": "광산3",
+   "ccx": 1425,
+   "ccy": 794,
+   "ore": 0.24,
+   "oreGrade": 0.5225,
+   "oreMix": {
+    "copper": 0.9,
+    "gold": 0.05,
+    "silver": 0.05
+   },
+   "tinLand": 0,
+   "cuLand": 0.216,
+   "goldLand": 0.012
+  },
+  {
+   "name": "광산4",
+   "ccx": 1285,
+   "ccy": 1330,
+   "ore": 1.06,
+   "oreGrade": 1.3583,
+   "oreMix": {
+    "obsidian": 0.117,
+    "copper": 0.7947,
+    "gold": 0.0442,
+    "silver": 0.0442
+   },
+   "tinLand": 0,
+   "cuLand": 0.8424,
+   "goldLand": 0.0469
+  },
+  {
+   "name": "어촌1",
+   "ccx": 1296,
+   "ccy": 2361,
+   "ore": 1.21,
+   "oreGrade": 1.8065,
+   "oreMix": {
+    "copper": 0.9,
+    "gold": 0.05,
+    "silver": 0.05
+   },
+   "tinLand": 0,
+   "cuLand": 1.089,
+   "goldLand": 0.0605
+  },
+  {
+   "name": "광산5",
+   "ccx": 1115,
+   "ccy": 2912,
+   "ore": 0.83,
+   "oreGrade": 1.0578,
+   "oreMix": {
+    "tin": 0.7512,
+    "copper": 0.2239,
+    "gold": 0.0124,
+    "silver": 0.0124
+   },
+   "tinLand": 0.6235,
+   "cuLand": 0.1858,
+   "goldLand": 0.0103
+  },
+  {
+   "name": "광산6",
+   "ccx": 227,
+   "ccy": 3078,
+   "ore": 1.08,
+   "oreGrade": 2.3061,
+   "oreMix": {
+    "copper": 0.9,
+    "gold": 0.05,
+    "silver": 0.05
+   },
+   "tinLand": 0,
+   "cuLand": 0.972,
+   "goldLand": 0.054
+  },
+  {
+   "name": "광산7",
+   "ccx": 2038,
+   "ccy": 3099,
+   "ore": 0.71,
+   "oreGrade": 0.7287,
+   "oreMix": {
+    "obsidian": 1
+   },
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "어촌2",
+   "ccx": 1655,
+   "ccy": 375,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "임업1",
+   "ccx": 891,
+   "ccy": 3516,
+   "ore": 0.95,
+   "oreGrade": 2.1072,
+   "oreMix": {
+    "lead": 0.85,
+    "silver": 0.15
+   },
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "임업2",
+   "ccx": 1188,
+   "ccy": 3098,
+   "ore": 0.31,
+   "oreGrade": 0.7157,
+   "oreMix": {
+    "tin": 0.2255,
+    "gold": 0.0395,
+    "silver": 0.0389,
+    "copper": 0.6961
+   },
+   "tinLand": 0.0699,
+   "cuLand": 0.2158,
+   "goldLand": 0.0122
+  },
+  {
+   "name": "임업3",
+   "ccx": 1793,
+   "ccy": 1910,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "농촌1",
+   "ccx": 438,
+   "ccy": 2438,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "임업4",
+   "ccx": 326,
+   "ccy": 1304,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "임업5",
+   "ccx": 982,
+   "ccy": 684,
+   "ore": 0.05,
+   "oreGrade": 0.2954,
+   "oreMix": {
+    "lead": 0.85,
+    "silver": 0.15
+   },
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "어촌3",
+   "ccx": 572,
+   "ccy": 2612,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "임업6",
+   "ccx": 1537,
+   "ccy": 554,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "농촌2",
+   "ccx": 625,
+   "ccy": 3441,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "농촌3",
+   "ccx": 2013,
+   "ccy": 3576,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "어촌4",
+   "ccx": 685,
+   "ccy": 732,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "농촌4",
+   "ccx": 84,
+   "ccy": 510,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "농촌5",
+   "ccx": 1378,
+   "ccy": 2091,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "어촌5",
+   "ccx": 198,
+   "ccy": 2125,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "어촌6",
+   "ccx": 2032,
+   "ccy": 3930,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "어촌7",
+   "ccx": 1517,
+   "ccy": 173,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "어촌8",
+   "ccx": 61,
+   "ccy": 1797,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "어촌9",
+   "ccx": 796,
+   "ccy": 543,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "어촌10",
+   "ccx": 854,
+   "ccy": 899,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "어촌11",
+   "ccx": 1722,
+   "ccy": 2742,
+   "ore": 0.05,
+   "oreGrade": 0.1236,
+   "oreMix": {
+    "gold": 0.8,
+    "silver": 0.2
+   },
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0.04
+  },
+  {
+   "name": "어촌12",
+   "ccx": 744,
+   "ccy": 3274,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "어촌13",
+   "ccx": 405,
+   "ccy": 3316,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "어촌14",
+   "ccx": 1797,
+   "ccy": 654,
+   "ore": 0.43,
+   "oreGrade": 1.3824,
+   "oreMix": {
+    "lead": 0.85,
+    "silver": 0.15
+   },
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "어촌15",
+   "ccx": 334,
+   "ccy": 781,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "농촌6",
+   "ccx": 153,
+   "ccy": 202,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "어촌16",
+   "ccx": 213,
+   "ccy": 609,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "농촌7",
+   "ccx": 159,
+   "ccy": 933,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "농촌8",
+   "ccx": 161,
+   "ccy": 1667,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "농촌9",
+   "ccx": 161,
+   "ccy": 2390,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "농촌10",
+   "ccx": 161,
+   "ccy": 2760,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "농촌11",
+   "ccx": 161,
+   "ccy": 3499,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "농촌12",
+   "ccx": 157,
+   "ccy": 3849,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "농촌13",
+   "ccx": 428,
+   "ccy": 210,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "농촌14",
+   "ccx": 424,
+   "ccy": 581,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "농촌15",
+   "ccx": 428,
+   "ccy": 939,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "농촌16",
+   "ccx": 428,
+   "ccy": 1667,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "농촌17",
+   "ccx": 428,
+   "ccy": 2032,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "농촌18",
+   "ccx": 428,
+   "ccy": 2760,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "농촌19",
+   "ccx": 428,
+   "ccy": 3124,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "농촌20",
+   "ccx": 428,
+   "ccy": 3489,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "농촌21",
+   "ccx": 422,
+   "ccy": 3845,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  },
+  {
+   "name": "농촌22",
+   "ccx": 964,
+   "ccy": 1864,
+   "ore": 0.1,
+   "oreGrade": 1,
+   "oreMix": {},
+   "tinLand": 0,
+   "cuLand": 0,
+   "goldLand": 0
+  }
+ ],
+ "tinVils": [
+  "광산5",
+  "임업2"
+ ],
+ "land": {
+  "tin": 0.693,
+  "copper": 3.521,
+  "gold": 0.388
+ },
+ "smallTin": [
+  {
+   "i": 100,
+   "name": "광맥101",
+   "center": [
+    63632,
+    107536
+   ],
+   "radius": 288,
+   "pk": 0.124,
+   "nearTinMajor": {
+    "name": "광맥6",
+    "d": 953
+   },
+   "nearVil": {
+    "name": "농촌3",
+    "d": 217
+   }
+  },
+  {
+   "i": 140,
+   "name": "광맥141",
+   "center": [
+    49552,
+    71568
+   ],
+   "radius": 256,
+   "pk": 0.1471,
+   "nearTinMajor": {
+    "name": "광맥6",
+    "d": 825
+   },
+   "nearVil": {
+    "name": "농촌5",
+    "d": 223
+   }
+  },
+  {
+   "i": 155,
+   "name": "광맥156",
+   "center": [
+    56720,
+    105360
+   ],
+   "radius": 224,
+   "pk": 0.0554,
+   "nearTinMajor": {
+    "name": "광맥6",
+    "d": 730
+   },
+   "nearVil": {
+    "name": "광산7",
+    "d": 329
+   }
+  },
+  {
+   "i": 376,
+   "name": "광맥377",
+   "center": [
+    35856,
+    58640
+   ],
+   "radius": 288,
+   "pk": 0.1047,
+   "nearTinMajor": {
+    "name": "광맥6",
+    "d": 1115
+   },
+   "nearVil": {
+    "name": "농촌22",
+    "d": 159
+   }
+  },
+  {
+   "i": 402,
+   "name": "광맥403",
+   "center": [
+    45072,
+    64400
+   ],
+   "radius": 224,
+   "pk": 0.6088,
+   "nearTinMajor": {
+    "name": "광맥6",
+    "d": 976
+   },
+   "nearVil": {
+    "name": "농촌5",
+    "d": 85
+   }
+  },
+  {
+   "i": 443,
+   "name": "광맥444",
+   "center": [
+    48272,
+    110608
+   ],
+   "radius": 224,
+   "pk": 0.1948,
+   "nearTinMajor": {
+    "name": "광맥6",
+    "d": 635
+   },
+   "nearVil": {
+    "name": "임업2",
+    "d": 480
+   }
+  },
+  {
+   "i": 449,
+   "name": "광맥450",
+   "center": [
+    16656,
+    72976
+   ],
+   "radius": 288,
+   "pk": 0.0627,
+   "nearTinMajor": {
+    "name": "광맥9",
+    "d": 886
+   },
+   "nearVil": {
+    "name": "농촌1",
+    "d": 178
+   }
+  },
+  {
+   "i": 478,
+   "name": "광맥479",
+   "center": [
+    10640,
+    67344
+   ],
+   "radius": 288,
+   "pk": 0.4434,
+   "nearTinMajor": {
+    "name": "광맥9",
+    "d": 1140
+   },
+   "nearVil": {
+    "name": "농촌17",
+    "d": 120
+   }
+  },
+  {
+   "i": 496,
+   "name": "광맥497",
+   "center": [
+    56336,
+    71056
+   ],
+   "radius": 192,
+   "pk": 0.1632,
+   "nearTinMajor": {
+    "name": "광맥6",
+    "d": 963
+   },
+   "nearVil": {
+    "name": "임업3",
+    "d": 312
+   }
+  },
+  {
+   "i": 538,
+   "name": "광맥539",
+   "center": [
+    23312,
+    70288
+   ],
+   "radius": 160,
+   "pk": 0.24,
+   "nearTinMajor": {
+    "name": "광맥6",
+    "d": 851
+   },
+   "nearVil": {
+    "name": "농촌17",
+    "d": 342
+   }
+  },
+  {
+   "i": 580,
+   "name": "광맥581",
+   "center": [
+    44432,
+    69392
+   ],
+   "radius": 128,
+   "pk": 0.0874,
+   "nearTinMajor": {
+    "name": "광맥6",
+    "d": 821
+   },
+   "nearVil": {
+    "name": "농촌5",
+    "d": 78
+   }
+  }
+ ],
+ "profile": {
+  "own": {
+   "iron": 0.26262626262626265,
+   "copper": 0.26262626262626265,
+   "gold": 0.1414141414141414,
+   "silver": 0.09090909090909091,
+   "lead": 0.13131313131313133,
+   "tin": 0.020202020202020204,
+   "obsidian": 0.09090909090909091
+  },
+  "can": [
+   "copper",
+   "gold",
+   "lead",
+   "tin",
+   "obsidian"
+  ],
+  "wSum": 0.6464646464646466,
+  "expect": {
+   "copper": 25.59,
+   "gold": 13.78,
+   "lead": 12.8,
+   "tin": 1.97,
+   "obsidian": 8.86
+  },
+  "pool": {
+   "iron": 26,
+   "copper": 16,
+   "gold": 14,
+   "lead": 13,
+   "jade_raw": 11,
+   "silver": 9,
+   "obsidian": 9,
+   "tin": 2
+  },
+  "noMajor": [
+   "iron",
+   "iron_sand"
+  ]
+ }
+}
