@@ -21,7 +21,7 @@ const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  �
 const run = (file, args, env) => spawnSync('node', [file, '--lab', LAB, ...args], { cwd: ROOT, encoding: 'utf8',env:{...process.env,...env}, timeout: 300000, maxBuffer: 1 << 26 });
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 't1413-hy-'));
 const BAIT = { share: ['const shareOn = (share, gm) => {', 'const shareOn = (share, gm) => { return true;'] };
-const baitCopy = (file, B, dst) => { const src = fs.readFileSync(file, 'utf8'); const n = src.split(B[0]).length - 1; fs.writeFileSync(dst, n === 1 ? src.replace(B[0], B[1]) : src); return n; };
+const baitCopy = (file, B, dst) => { if(!fs.existsSync(file)){fs.writeFileSync(dst,'');return 0;} const src = fs.readFileSync(file, 'utf8'); const n = src.split(B[0]).length - 1; fs.writeFileSync(dst, n === 1 ? src.replace(B[0], B[1]) : src); return n; };
 const rowsOf = (file) => fs.existsSync(file) ? fs.readFileSync(file, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)) : [];
 const cell3 = (file, out) => { const r = run(file, ['--sp', '🦌', '--exch', '5000', '--hunters', '1', '--seeds', '7', '--days', '3', '--share', '0.1,1', '--out', out]);
   const R = rowsOf(out); return { rc: r.status, p10: R.find((x) => x.share === '0.1'), p100: R.find((x) => x.share === '1'), err: (r.stderr || '').split('\n').find((l) => /Error/.test(l)) || '' }; };
@@ -52,7 +52,7 @@ try {
     '③ 몫 10% ≠ 100%(잡은 마리 · 끝 몫) · 100% 가 더 잡는다', c3.p10 && c3.p100 ? `10%: 잡음 ${c3.p10.harv} · 끝 ${c3.p10.end} / 100%: 잡음 ${c3.p100.harv} · 끝 ${c3.p100.end}` : c3.err);
 
   console.log('④ 표의 꼴(--sum)');
-  const qf = path.join(TMP, 'q.jsonl'); fs.writeFileSync(qf, (q ? JSON.stringify(q) + '\n' : '') + fs.readFileSync(path.join(TMP, 'share.jsonl'), 'utf8'));
+  const qf = path.join(TMP, 'q.jsonl'); fs.writeFileSync(qf, (q ? JSON.stringify(q) + '\n' : '') + (fs.existsSync(path.join(TMP,'share.jsonl'))?fs.readFileSync(path.join(TMP,'share.jsonl'),'utf8'):''));
   const s4 = spawnSync('node', [RUL, '--sum', qf], { cwd: ROOT, encoding: 'utf8' });
   const L4 = (s4.stdout || '').split('\n');
   const head = L4.find((l) => /^\| 종 \| 환율 \| 첫 몸 K \|/.test(l)), bh = L4.find((l) => /^\| 종 \| 환율 \| 버티는 칸/.test(l));

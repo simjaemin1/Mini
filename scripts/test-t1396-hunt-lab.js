@@ -28,7 +28,7 @@ const BAIT = {
   pre: ["out=lab[:st2]+hdr+pre+blk+lab[en2:]", "out=lab[:st2]+hdr+blk+lab[en2:]"],
   seed: ["  vm.runInContext(`{let _s0=(${seed | 0})*2654435761>>>0;", "  if (0) vm.runInContext(`{let _s0=(${seed | 0})*2654435761>>>0;"],
 };
-const baitCopy = (file, B, dst) => { const src = fs.readFileSync(file, 'utf8'); const n = src.split(B[0]).length - 1; fs.writeFileSync(dst, n === 1 ? src.replace(B[0], B[1]) : src); return n; };
+const baitCopy = (file, B, dst) => { if(!fs.existsSync(file)){fs.writeFileSync(dst,'');return 0;} const src = fs.readFileSync(file, 'utf8'); const n = src.split(B[0]).length - 1; fs.writeFileSync(dst, n === 1 ? src.replace(B[0], B[1]) : src); return n; };
 // hunt-check 줄 머리: 두 칸 + 표(U+2705 통과 · U+274C 실패) + 한 칸 — 판정 자리엔 코드 포인트로(lint ②)
 const PASS_CP = 0x2705, FAIL_CP = 0x274C;
 const mark = (l) => (l.slice(0, 2) === '  ' ? l.codePointAt(2) : 0);
