@@ -150,7 +150,7 @@ function liveOrder(decoy) {
   const log = fs.readFileSync(LOGL, 'utf8').split('\n').filter(Boolean);
   const at = (re) => log.findIndex((l) => re.test(l));
   const o = { rc, out, log, swapped: !!(lines[0] && lines[1]),
-    cRun: at(/^seoul docker run .*--name durango-central /), hStop: at(/^seoul docker stop durango-zone-hanbando$/), hRun: at(/^seoul docker run .*--name durango-zone-hanbando /),
+    cRun: at(/^seoul docker run .*--name durango-central /), hStop: at(/^seoul docker stop (-t \d+ )?durango-zone-hanbando$/)   /* [T1443 ④] -t 60(존 내리기 잰 값) */, hRun: at(/^seoul docker run .*--name durango-zone-hanbando /),
     tLight: at(/^tokyo redeploy-light\.sh/) };
   o.order = o.cRun >= 0 && o.hStop > o.cRun && o.hRun > o.hStop && o.tLight > o.hRun;
   return o;
