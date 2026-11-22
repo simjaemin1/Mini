@@ -8,6 +8,12 @@ const root=path.join(__dirname,'..'),inDir=opt('in'),outDir=opt('out');if(!inDir
 let workers=Number(opt('workers',2));if(![1,2].includes(workers))throw Error('only one or two simultaneous simulations');
 fs.mkdirSync(outDir,{recursive:true});
 const model=path.join(__dirname,'t1413-hunt-year.js'),sha=f=>crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex'),modelHash=sha(model);
+const physicsHashes=Object.fromEntries([model,path.join(root,'lab','사냥실험실.html'),path.join(root,'sim','det-math.js')].map(f=>[path.relative(root,f),sha(f)]));
+const protocolFile=path.join(outDir,'protocol.json');
+if(fs.existsSync(protocolFile)){
+  const prior=JSON.parse(fs.readFileSync(protocolFile,'utf8'));
+  if(JSON.stringify(prior.physicsHashes)!==JSON.stringify(physicsHashes))throw Error('physics source changed; use a new output directory');
+}else fs.writeFileSync(protocolFile,JSON.stringify({physicsHashes},null,2)+'\n');
 const key=r=>[r.sp,r.exch,r.nh,r.share,r.seed,r.cap,r.r,r.days].join('|');
 const read=f=>fs.existsSync(f)?fs.readFileSync(f,'utf8').split('\n').filter(l=>l.trim()).map(l=>JSON.parse(l)):[];
 const data=new Map(),rejected=[],sources=[];
