@@ -12501,7 +12501,7 @@ function _t1392IsFirst(pid) {
   return true;
 }
 const _T1392_DIR = [['북서', '북', '북동'], ['서', '가운데', '동'], ['남서', '남', '남동']];
-const _T1392_WHY = { claim: '남의 땅', mine: '풀린 내 땅', water: '물', rock: '바위', ditch: '도랑', village: '마을 시설', building: '건물' };
+const _T1392_WHY = { claim: '남의 땅', mine: '풀린 내 땅', water: '물', rock: '바위', ditch: '도랑', village: '마을 시설', building: '건물', vacant: '빈 집' };   // ★[T1428] 빈 집 — 주인이 땅을 내놓은 사람 움집(헐면 잡힌다)
 //   선 칸(cx, cy)을 가운데로 한 아홉 칸 — 칸마다 막힌 까닭(없으면 null). 문(영토 · 인정)은 따로(`_t1392Check`).
 function _t1392Cells(pid, cx, cy) {
   const S = BUILDING_SIZE, h = (T1392_SIDE - 1) / 2, out = [];
@@ -12520,7 +12520,13 @@ function _t1392Cells(pid, cx, cy) {
     if (!why && !retake && isTerrainBlockedLocal(px, py)) why = isWaterTileLocal(px, py) ? 'water' : (isRockTileLocal(px, py) ? 'rock' : 'ditch');
     if (!why && !retake) for (const b of near) {   // ★[T1403] 다시 잡는 내 칸 위 건물(내 움집 등)은 막지 않는다 — 한 칸 길처럼 그 땅 그대로 이어받는다(`Claims.transfer` 가 시설도 잇는다)
       if ((b.floor || 0) !== 0) continue;
-      if (Math.floor(b.x / S) === x && Math.floor(b.y / S) === y) { why = isVillageTaggedBuilding(b) ? 'village' : 'building'; break; }
+      if (Math.floor(b.x / S) === x && Math.floor(b.y / S) === y) {
+        //   ★[T1428 · T1403 회부 7] 내 건물(내놓은 내 움집 — 벽 · 바닥 · 집 행)은 막지 않는다 — 이사한 사람이 옛 자리에 다시 선다(다시 잡으면 다시 제 집).
+        //     사람 움집의 벽 · 바닥은 겉모양 표지(`data.hut`)를 실어 "마을 시설"로 읽혔다 — 마을 것이 아니면 '빈 집'(헐면 잡힌다) · 그 밖은 '건물'.
+        if (String(b.ownerId) === String(pid)) continue;
+        const _pv = !b.sim && b.ownerId && !/^(npc_|village_)/.test(String(b.ownerId));
+        why = _pv ? (_t1428Vacant(b) ? 'vacant' : 'building') : (isVillageTaggedBuilding(b) ? 'village' : 'building'); break;
+      }
     }
     out.push(Object.assign({ dx, dy, x, y, why }, retake ? { retake } : {}));
   }
@@ -12700,7 +12706,7 @@ function tryClaim(player, kind = 'personal') {
     if (T1402_SPLIT && !adj.first) {
       const g = _t1402GrowSet(player), qx = Math.floor(cx / SZ), qy = Math.floor(cy / SZ);
       if (g && ![[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => g.set.has((qx + dx) + ',' + (qy + dy)))) {
-        send(player.ws, { type: 'notice', text: g.home ? '본거지와 이어져야 넓힐 수 있습니다. 떨어진 땅은 복도를 다시 이으면 넓힐 수 있습니다.' : '본거지를 정해야 넓힐 수 있습니다. 내 땅 위 내 집을 눌러 본거지로 삼으십시오.' });
+        send(player.ws, { type: 'notice', text: g.home ? '본거지와 이어져야 넓힐 수 있습니다. 떨어진 땅은 복도를 다시 이으면 넓힐 수 있습니다.' : (g.seed ? '먼저 지은 집(집이 없으면 처음 잡은 칸)이 선 땅덩이에만 넓힐 수 있습니다. 다른 땅덩이를 넓히려면 그 덩이의 집을 본거지로 삼으십시오.' : '본거지를 정해야 넓힐 수 있습니다. 내 땅 위 내 집을 눌러 본거지로 삼으십시오.') });
         return;
       }
     }
@@ -12917,6 +12923,8 @@ function _t1386SaveRec(pid) { const r = deedDebt.get(pid); if (r && db.saveDeedD
 // 집 = 내 사유지 안 내 움집(가운데 칸이 내 칸 · 여럿이면 가장 먼저 지은 것 — 건물 dbId 차례) · 없으면 가장 먼저 선포한 칸(사유지 dbId 차례)
 function _t1386Home(pid, cells) {
   const S = BUILDING_SIZE, mine = new Set(cells.map((q) => q.x + ',' + q.y));
+  //   ★[T1428 · T1402 회부 3] 본거지를 골랐으면(켬 `T1402_SPLIT_OK`) 빚 풀림의 "집"도 그 집 — 집 행 가운데 칸(아래 먼저 지은 집과 같은 칸 셈) · 본거지가 사라지면(헐림 · 발자국이 풀림) 아래 종전 사다리
+  if (T1402_SPLIT) { const hm = _t1428HomeOf(pid); if (hm) { const k = Math.floor(hm.b.x / S) + ',' + Math.floor(hm.b.y / S); if (mine.has(k)) return k; } }
   let best = null;
   for (const b of buildings.values()) {
     if (b.type !== 'hut' || String(b.ownerId) !== String(pid)) continue;
@@ -12936,7 +12944,7 @@ function _t1386Home(pid, cells) {
 //   ⑤ 본거지가 없을 때(안 골랐거나 집이 없어짐) — `T1402_NOHOME`: 'one'(기본 · PM 안) 내 땅 위 집이 하나뿐이면 그 집 · 아니면 종전처럼 내 땅 어디든 /
 //      'none' 어느 조각에도 못 붙인다(첫 칸만) — 고르는 것은 재민(보고 회부).
 const T1402_SPLIT = !!(Deeds.ON && Deeds.SPLIT_OK);
-const T1402_NOHOME = process.env.T1402_NOHOME === 'none' ? 'none' : 'one';
+const T1402_NOHOME = process.env.T1402_NOHOME === 'none' ? 'none' : (process.env.T1402_NOHOME === 'one' ? 'one' : 'home');   // ★[T1428] 새 기본 'home'(PM 결정 · 재민 거부권) — `one` · `none` 은 남긴다
 const T1402_HOME_COOL_MS = (() => { const v = parseFloat(process.env.T1402_HOME_COOL_H); return (Number.isFinite(v) && v >= 0 ? v : 24) * 3600000; })();
 let _t1402Wall = () => Date.now();
 function _t1402SetWall(f) { _t1402Wall = typeof f === 'function' ? f : (() => Date.now()); }   // 하네스가 뜸 시계를 넣는 길
@@ -12982,6 +12990,8 @@ function _t1402GrowSet(player) {
   let home = _t1402Home(player), auto = false;
   if (!home) {
     if (T1402_NOHOME === 'none') return { set: new Set(), home: null, auto: false };
+    //   ★[T1428] 'home'(기본) — 안 골랐으면 빚 풀림이 쓰는 그 집(`_t1386Home` — 먼저 지은 내 움집 · 없으면 처음 잡은 칸)이 든 덩이 하나만
+    if (T1402_NOHOME === 'home') { const k = _t1386Home(pid, _t1428MyCells(pid)); return k ? { set: _t1402Piece(live, [k]), home: null, auto: true, seed: k } : null; }
     const huts = []; for (const b of buildings.values()) { const cells = _t1402HutOk(pid, b); if (cells) huts.push({ b, cells }); }
     if (huts.length !== 1) return null;
     home = huts[0]; auto = true;
@@ -13008,9 +13018,41 @@ function _t1402SetHome(player, bid) {
   }
   if (!Deeds.bodyOf(player)) Deeds.setZone(player, ZONE_ID, 0);
   player.deeds.h = { z: ZONE_ID, b: b.dbId, x: b.x, y: b.y, at: now };   // x · y = 집 행 자리(청크가 안 켜진 판에서 DB 로 읽는 길)
+  _t1428SyncHome(player);   // ★[T1428] 존 사본(오프라인 빚 풀림 · 부팅 셈)
   try { savePlayer(player); } catch (e) {}
   send(player.ws, { type: 'notice', text: '이 집을 본거지로 삼았습니다. 이제 이 집이 선 땅덩이에만 새 칸을 붙일 수 있습니다.' });
   try { _t1343Send(player.playerId, true); } catch (e) {}
+}
+// ★★[T1428 · T1402 회부 1 · 3 · PM 결정(재민 11-22 알림)] 본거지의 존 쪽 사본 · 본거지 없음 = 한 덩이 · 잇기(빚 풀림 · 깨어날 자리)
+//   `deedHome` = 주인 → { b(집 dbId), x, y } — 몸 칸 `deeds.h` 가 정본(접속 · 고를 때 맞춘다) · DB `deed_owners.home`(켬에서만 서는 열) · 오프라인 주인의 빚 풀림 · 부팅 셈이 읽는다.
+const deedHome = new Map();
+function _t1428SyncHome(player) {   // 몸 칸 → 존 사본(이 존의 본거지만 · 다른 존이면 이 존 사본을 지운다)
+  if (!T1402_SPLIT || !player || !player.playerId) return;
+  const h = _t1402HomeRec(player), pid = player.playerId;
+  const want = h && String(h.z) === String(ZONE_ID) ? { b: h.b | 0, x: +h.x, y: +h.y } : null, cur = deedHome.get(pid) || null;
+  if (JSON.stringify(want) === JSON.stringify(cur)) return;
+  if (want) deedHome.set(pid, want); else deedHome.delete(pid);
+  if (db.saveDeedHome) db.saveDeedHome(pid, want);
+}
+function _t1428HomeOf(pid) {   // 존 사본으로 본거지 집 — 살아 있고 발자국이 다 내 땅이면 { b, cells } · 아니면 null
+  const h = deedHome.get(pid); if (!h) return null;
+  const b = _t1402HutRow(h); if (!b) return null;
+  const cells = _t1402HutOk(pid, b); return cells ? { b, cells } : null;
+}
+//   ★[T1428 · T1403 회부 7] 빈 집 = 사람 움집(벽 · 바닥 · 집 행)인데 그 집 가운데 칸이 주인의 살아 있는 개인 칸이 아니다(주인이 땅을 내놓았다 · 풀렸다).
+//     따로 적는 표지 0 — 땅에서 읽는다(옛 주인이 다시 잡으면 그 순간 다시 제 집). 빈 집은 누구나 헐 수 있다(허물기는 종전에도 누구나).
+function _t1428Vacant(b) {
+  if (!b || !b.ownerId) return false;
+  let cx, cy; const S = BUILDING_SIZE, t = b.data && b.data.hut;
+  if (Array.isArray(t) && t.length === 4) { cx = Math.floor((t[0] + t[2] + 1) / 2); cy = Math.floor((t[1] + t[3] + 1) / 2); }
+  else if (b.type === 'hut') { cx = Math.floor(b.x / S); cy = Math.floor(b.y / S); }
+  else return false;
+  return !_t1392Mine(String(b.ownerId), cx, cy);
+}
+function _t1428MyCells(pid) {   // `_t1386Home` 꼴의 칸 목록(칸 · 그 칸 행) — 살아 있는 내 개인 칸
+  const S = BUILDING_SIZE, out = [];
+  for (const c of claims.values()) { if (c.ownerPid !== pid || c.kind !== 'personal' || (c.state || 'active') === 'free') continue; for (const [x, y] of Claims.cellsOf(c)) out.push({ x, y, c }); }
+  return out;
 }
 // 사람 상태 P(`deeds.advance` 꼴) — 청크 줄 · 살아 있는 내 칸 · 집 · 빚
 function _t1386Build(pid, mine, others) {
@@ -13126,6 +13168,7 @@ function _t1343Send(pid, force) {
 function _t1305Day(player, now) {
   if (!Deeds.ON || !player || player.isNpc || !player.playerId) return 0;
   if (!Deeds.bodyOf(player)) Deeds.setZone(player, ZONE_ID, 0);
+  _t1428SyncHome(player);   // ★[T1428] 몸의 본거지 → 존 사본(접속 · 존 넘어옴)
   const pid = player.playerId, rec = _t1386Rec(pid);
   _t1386Login = pid; let r; try { r = _t1343Advance(pid, now || _t1332Clock()); } finally { _t1386Login = null; }
   // ★[T1386] 돌아왔을 때 — 비운 동안 풀린 칸을 한 줄로(예약이 푼 것 + 이 셈이 푼 것)
@@ -13218,7 +13261,7 @@ if (Deeds.ON) {
   try {
     _t1402Boot();   // ★[T1402] 꺼져 있던 시간을 먼저 물린다(아래 셈 · 예약이 다 이 시계로 돈다)
     for (const r of (db.getDeedChunks ? db.getDeedChunks() : [])) deedChunks.set(_t1332Key(String(r.owner_id), r.cx | 0, r.cy | 0), { pid: String(r.owner_id), cx: r.cx | 0, cy: r.cy | 0, m: r.m == null ? NaN : +r.m, t: r.t == null ? NaN : +r.t });
-    for (const r of (db.getDeedOwners ? db.getDeedOwners() : [])) { deedOthers.set(String(r.owner_id), r.others | 0); if (r.debt != null || r.dt != null || r.lost) deedDebt.set(String(r.owner_id), { debt: +r.debt || 0, t: r.dt == null ? NaN : +r.dt, lost: r.lost | 0 }); }   // ★[T1386] 빚 줄
+    for (const r of (db.getDeedOwners ? db.getDeedOwners() : [])) { if (r.home) { try { const h = JSON.parse(r.home); if (h && h.b != null) deedHome.set(String(r.owner_id), h); } catch (e) {} } deedOthers.set(String(r.owner_id), r.others | 0); if (r.debt != null || r.dt != null || r.lost) deedDebt.set(String(r.owner_id), { debt: +r.debt || 0, t: r.dt == null ? NaN : +r.dt, lost: r.lost | 0 }); }   // ★[T1386] 빚 줄
     const pids = new Set(); for (const c of claims.values()) if (c.kind === 'personal' && (c.state || 'active') !== 'free') pids.add(c.ownerPid);
     const now = _t1332Clock(); for (const pid of pids) _t1343Advance(pid, now, false, { budgetMs: _T1389_BUDGET_MS });   // ★[T1402] 사유지 시계(꺼진 시간 뺌)
     _t1343Arm();
@@ -15754,7 +15797,7 @@ function __testBind() {
     nearestVillageWake, resolveDowned, buildings, _liveBuildRow, isTerrainBlockedLocal,
     Claims, db, tryClaim, tryUnclaim, countMyClaims, listRespawnOptions,
     findGuildClaimContaining, _claimFootprint, Onboarding, CLAIM_COST,
-    _t1402Stat: () => Object.assign({}, _t1402Stat, { off: _t1402Off }), _t1402Uptime, _t1402Save, _t1402SetHome, _t1402SetWall, _t1402GrowSet, _t1402Home, _t1402HutCells, _t1402Pieces, T1402_SPLIT: () => T1402_SPLIT,   // ★[T1402] 사유지 시계(꺼진 시간 뺌)
+    _t1402Stat: () => Object.assign({}, _t1402Stat, { off: _t1402Off }), _t1402Uptime, _t1402Save, _t1402SetHome, _t1402SetWall, _t1402GrowSet, _t1402Home, _t1402HutCells, _t1402Pieces, T1402_SPLIT: () => T1402_SPLIT, _t1428HomeOf, _t1428Vacant, deedHome, _t1392IsFirst,   // ★[T1402] 사유지 시계(꺼진 시간 뺌)
     Deeds, _t1305Day, _t1305Gate, _t1332Use, _t1332Dwell, _t1332MyChunks, deedChunks, deedOthers, _t1343Stat, _t1343Advance, _t1343Arm, T1332_USE, _t1332SetClock, deedDebt, _t1386Home, _t1386Build, _t1343Send, _t1389Pending,   // ★[T1305 → T1332] 사유지 돌봄(청크) — 하네스가 정본 그대로 부른다
     CLAIM_SLOT_PERSONAL_START, CLAIM_SLOT_TEMPORARY_START, CLAIM_SLOT_GUILD_START,
     // ★[T1238] 영토 v2 존 몫 — 하네스(`test-t1238-terr-v2`)가 정본 함수를 그대로 부른다(벌점 · 갇힘 · 작물 · 칸 일)
@@ -16532,7 +16575,20 @@ function listRespawnOptions(p) {
     }
   }
   // ② 개인·임시 사유지
+  //   ★[T1428 · T1402 회부 3] 켬(`T1402_SPLIT_OK`) — 본거지를 골랐으면 개인 사유지 가운데 **본거지 집**이 첫 자리(깨어나는 칸 사다리 ① 움집 문간이 그 집 문을 찾는다) · 사라졌으면 종전 차례
+  let _t1428Hc = null;
+  if (T1402_SPLIT) {
+    const hm = _t1428HomeOf(p.playerId);
+    if (hm) {
+      const S = BUILDING_SIZE, hx = Math.floor(hm.b.x / S), hy = Math.floor(hm.b.y / S);
+      for (const c of claims.values()) {
+        if (c.ownerPid !== p.playerId || c.kind !== 'personal' || (c.state || 'active') === 'free') continue;
+        if (Claims.cellsOf(c).some(([qx, qy]) => qx === hx && qy === hy)) { _t1428Hc = c.id; opts.push({ claimId: c.id, kind: 'personal', home: 1, x: hm.b.x, y: hm.b.y, cw: S, ch: S, cxp: c.x, cyp: c.y }); break; }
+      }
+    }
+  }
   for (const c of claims.values()) {
+    if (_t1428Hc && c.id === _t1428Hc) continue;   // ★[T1428] 본거지 칸은 위에 먼저 섰다
     // ★★[T45 2026-09-02] **`c.ownerId` 는 클레임에 없는 필드다** — 사유지는 `ownerPid` 로만 주인을 적는다
     //   (`tryClaim`·부팅 로드·`countMyClaims`·`tryUnclaim` 이 전부 `ownerPid`). `undefined !== '<id>'` 라
     //   이 절은 **언제나 continue** 였다 ⇒ 개인·임시 사유지가 **재시작과 무관하게 한 번도 부활 지점이 된 적이 없다.**

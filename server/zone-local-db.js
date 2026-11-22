@@ -276,6 +276,7 @@ function deleteMob(id) { stmtDeleteMob.run(id); }
     if (!_do.includes('debt')) db.exec('ALTER TABLE deed_owners ADD COLUMN debt REAL');
     if (!_do.includes('dt')) db.exec('ALTER TABLE deed_owners ADD COLUMN dt INTEGER');
     if (!_do.includes('lost')) db.exec('ALTER TABLE deed_owners ADD COLUMN lost INTEGER');
+    if (!_do.includes('home')) db.exec('ALTER TABLE deed_owners ADD COLUMN home TEXT');   // ★[T1428] 본거지 집(존이 오프라인 주인의 빚 풀림 · 깨어날 자리에 쓴다 · 몸 칸 `deeds.h` 의 존 쪽 사본 — 몸이 정본)
   }
 }
 const stmtGetClaims = db.prepare('SELECT * FROM claims');
@@ -323,6 +324,8 @@ function getDeedOwners() { try { if (!_stmtDoAll) _stmtDoAll = db.prepare('SELEC
 function saveDeedOwner(ownerId, others) { try { if (!_stmtDoPut) _stmtDoPut = db.prepare('INSERT INTO deed_owners (owner_id, others) VALUES (?, ?) ON CONFLICT(owner_id) DO UPDATE SET others = excluded.others'); _stmtDoPut.run(String(ownerId), others | 0); return true; } catch (e) { return false; } }
 let _stmtDdPut = null;
 function saveDeedDebt(ownerId, debt, dt, lost) { try { if (!_stmtDdPut) _stmtDdPut = db.prepare('INSERT INTO deed_owners (owner_id, others, debt, dt, lost) VALUES (?, 0, ?, ?, ?) ON CONFLICT(owner_id) DO UPDATE SET debt = excluded.debt, dt = excluded.dt, lost = excluded.lost'); _stmtDdPut.run(String(ownerId), +debt || 0, dt == null ? null : Math.round(dt), lost | 0); return true; } catch (e) { return false; } }   // ★[T1386] 빚 줄
+let _stmtDhPut = null;
+function saveDeedHome(ownerId, home) { try { if (!_stmtDhPut) _stmtDhPut = db.prepare('INSERT INTO deed_owners (owner_id, others, home) VALUES (?, 0, ?) ON CONFLICT(owner_id) DO UPDATE SET home = excluded.home'); _stmtDhPut.run(String(ownerId), home == null ? null : JSON.stringify(home)); return true; } catch (e) { return false; } }
 function deleteDeedChunk(ownerId, cx, cy) { try { if (!_stmtDcDel) _stmtDcDel = db.prepare('DELETE FROM deed_chunks WHERE owner_id = ? AND cx = ? AND cy = ?'); _stmtDcDel.run(String(ownerId), cx | 0, cy | 0); return true; } catch (e) { return false; } }
 function deleteClaim(dbId) { if (!dbId) return false; try { stmtDeleteClaim.run(dbId); return true; } catch (e) { return false; } }
 
@@ -899,7 +902,7 @@ module.exports = {
   getResources, insertResource, updateResourceHp, deleteResource,
   getBuildings, getBuildingsInRect, insertBuilding, updateBuildingData, deleteBuilding,
   getMobs, insertMob, updateMobState, deleteMob,
-  getClaims, insertClaim, updateClaimState, updateClaimOwner, deleteClaim, getDeedChunks, saveDeedChunk, deleteDeedChunk, getDeedOwners, saveDeedOwner, saveDeedDebt,   // ★[T45] 사유지 v2 — 종류·상태기 영속
+  getClaims, insertClaim, updateClaimState, updateClaimOwner, deleteClaim, getDeedChunks, saveDeedChunk, deleteDeedChunk, getDeedOwners, saveDeedOwner, saveDeedDebt, saveDeedHome,   // ★[T45] 사유지 v2 — 종류·상태기 영속
   insertHarvestedSeed, getAllHarvestedSeeds, promoteHarvestedDays, deleteHarvestedSeed,   // ★[T341] 재생 — 벤 기록을 지우는 문
   upsertMinedCell, getAllMinedCells, deleteMinedCell,
   upsertFishCell, getAllFishCells, deleteFishCell,
