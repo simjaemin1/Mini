@@ -1479,6 +1479,11 @@
         b.data.hp = msg.hp;
         b.data.damaged = msg.damaged;
       }
+    } else if (msg.type === 't1438_wear') {   // ★[T1438] 움집 부위 값(서버가 5% 걸음마다 알린다 · 그림 · 이름표가 읽는다 · 클라 셈 0)
+      const b = c.buildings.get(msg.id);
+      if (b) b.wear = msg.wear;
+    } else if (msg.type === 't1438_info') {   // ★[T1438] 손질 — 부위별 내구 · 넣을 재료(우클릭 "손질…" 의 답 · 고르는 줄은 46-h-verbs)
+      if (typeof t1438OnInfo === 'function') t1438OnInfo(msg);
     } else if (msg.type === 'arrow_spawn') {
       // Phase 5-I: 화살 발사체 — 절대좌표로 저장, 클라가 등속 외삽 (서버는 spawn/remove만 보냄)
       if (!window._arrows) window._arrows = new Map();

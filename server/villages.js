@@ -8764,14 +8764,14 @@ function init(deps) {
       }
       for (const b of bRows) {
         if (!_bLite) { const r = Math.hypot(b.cx - row.cx, b.cy - row.cy); if (r > maxCellR) maxCellR = r; }
-        if (b.type === 'house') { housesPx.push({ x: b.cx * SZ + SZ / 2, y: b.cy * SZ + SZ / 2 }); houseCells.push({ cx: b.cx, cy: b.cy }); }
+        if (b.type === 'house') { housesPx.push({ x: b.cx * SZ + SZ / 2, y: b.cy * SZ + SZ / 2 }); houseCells.push(T1438_DECAY ? _t1438Load(b) : { cx: b.cx, cy: b.cy }); }   // ★[T1438] 켬 = 줄 번호 · 태어난 날 · 적은 칸
         else if (b.type === 'farmland') { farmN++; farmSet.add(b.cx + ',' + b.cy); }
         else if (b.type === 'dryfield') { dryN++; farmSet.add(b.cx + ',' + b.cy); drySet.add(b.cx + ',' + b.cy); }   // ★[생활 층 100% ③] 밭 셀 구분(논=물대기 대상, 밭=아님 — 랩 field 동형)
         else if (b.type === 'terr') terrSet.add(b.cx + ',' + b.cy);
         else if (b.type === 'nongzone') potSet.add(b.cx + ',' + b.cy);
-        else if (b.type === 'granary') granList.push({ cx: b.cx, cy: b.cy });
+        else if (b.type === 'granary') granList.push(T1438_DECAY ? _t1438Load(b) : { cx: b.cx, cy: b.cy });   // ★[T1438]
         else if (b.type === 'housesite') siteRows.push({ cx: b.cx, cy: b.cy });
-        else if (b.type === 'phouse') pHouseRows.push({ cx: b.cx, cy: b.cy, data: b.data });   // ★[11차 T4] 플레이어 의뢰 집 — 집채는 되살리되 **마을 침대 명부엔 안 넣는다**
+        else if (b.type === 'phouse') pHouseRows.push(T1438_DECAY ? Object.assign(_t1438Load(b), { data: b.data }) : { cx: b.cx, cy: b.cy, data: b.data });   // ★[11차 T4] 플레이어 의뢰 집 — 집채는 되살리되 **마을 침대 명부엔 안 넣는다**
         else if (b.type === 'psitework') pSiteRows.push({ cx: b.cx, cy: b.cy, data: b.data });   // 공사 중이던 의뢰 집터
         else if (b.type === 'ditch') ditchCells.push({ cx: b.cx, cy: b.cy });   // ★[11차 T3 환호] 도랑 셀(영속) — 콜라이더·렌더의 원천
         // ★★[T62 2026-09-03] **공용 쉼터** — 마을당 최대 하나. 종류를 잃지 않게 행에서 그대로 복구한다
@@ -14028,7 +14028,7 @@ function _lifeHeadlessDay(vil) {
   if (!_body && !_cut && !_t84) _lifeClearDay(vil, farmerN);   // ★[T1243] 걷음
   // ② 신축 — 크루 인일=단계(실걸음과 동일 속도). 완공 시 _lifeCompleteHouse가 실체화(집·마당·침대 명부)
   //   ★[T400] 켬이면 이 절은 **안 돈다**(호출 0) — 집은 `_t400BuildDay`(자재를 나르는 크루)가 모든 마을에서 올린다(관측자 무관).
-  if (vil._site && !_lifeEcon().T400_BUILD_ACT) { let st = Math.min(LIFE_CREW, popN) * LIFE_STAGE_PDAY; while (st-- > 0 && vil._site) _lifeAdvanceSite(vil); }
+  if (vil._site && !_lifeEcon().T400_BUILD_ACT) { let st = Math.min(LIFE_CREW, popN) * LIFE_STAGE_PDAY; if (T1438_DECAY) st = Math.max(0, st - _t1438Ded(vil)); while (st-- > 0 && vil._site) _lifeAdvanceSite(vil); }   // ★[T1438] 손질에 쓴 손을 뺀다(낱 단계 — 남는 조각은 이월)
   // ③ 작물 — `lifeFarmDay` 정본 하나(아래). 계측기도 **이 함수를 부른다**(사본 0 · T117).
   if (_cut) { /* ★[T1243] 몸만 — 일괄 0 */ }
   else if (!_body) { lifeFarmDay(vil, _farmDay(vil, day), farmerN); if (_t84) _lifeClearDay(vil, farmerN); }   // ★[T1212 ①] 밭 날(끔 = `day` 그대로) · ★[T1284 ③] 켬 = 남은 낮으로 개간
@@ -16932,7 +16932,7 @@ function _t400BuildDay(vil) {
   dbg.dayS = +((_tripDayMs() * ((state.deps && state.deps.dayPhaseRatio) || 0) / 1000) * crew.length).toFixed(3);   // ★[T627] 왕복 상한과 같은 낮 초
   // ★★[T1050] 몸통(곳간 → 손 → 왕복 → 집터 · 자재와 시공이 차면 그 순간 단계)은 econ 정본 `houseCrewDay` 한 벌이다 — 글자 그대로 옮겼다(사본 0).
   //   이 줄은 몸 · 걸음 · 단계 올림만 넘긴다. 랩(몸 없는 마을 `labHouseDay`)이 같은 함수에 일꾼 날수를 넘긴다.
-  E.houseCrewDay(vil.econ, s2, crew, crew.length * LIFE_STAGE_PDAY, tripsEach, (k) => _t400PerLoad(k), roundS, dbg, () => {   // 짐 수 · 한 짐 = 몸 크루 두 함수(T491 몸 하루와 같은 둘)
+  E.houseCrewDay(vil.econ, s2, crew, T1438_DECAY ? Math.max(0, crew.length * LIFE_STAGE_PDAY - _t1438Ded(vil)) : crew.length * LIFE_STAGE_PDAY, tripsEach, (k) => _t400PerLoad(k), roundS, dbg, () => {   // 짐 수 · 한 짐 = 몸 크루 두 함수(T491 몸 하루와 같은 둘)
     (vil._t400Log || (vil._t400Log = [])).push(day + ':' + (s2.stage | 0));   // ④ 단계 시각(관측자 게이트 대조)
     if (vil._t400Log.length > 400) vil._t400Log.splice(0, vil._t400Log.length - 400);
     _lifeAdvanceSite(vil);
@@ -16989,11 +16989,12 @@ function _lifeCompleteHouse(vil, which) {   // 완공: 터 제거 + NPC 정본 6
   const cx = s2.cx, cy = s2.cy;
   const ownerId = isP ? s2.owner : `npc_simvil_${vil.dbId}`;                       // 소유 = 의뢰한 플레이어(약탈·철거 권한이 기존 owner 규약을 그대로 탄다)
   const onm = isP ? (s2.ownerName || '의뢰 움집') : `${vil.name} 움집`, made = [];
+  if (T1438_DECAY && dp.t1438ClearRuins) { try { dp.t1438ClearRuins(_vbFootprint('house', cx, cy)); } catch (e) {} }   // ★[T1438] 그 자리 폐허를 먼저 치운다(짓는 일꾼 몫)
   _liveHut6x4(vil, cx, cy, ownerId, onm, made);
   if (made.length) { try { dp.broadcast({ type: 'buildings_spawn', buildings: made }); } catch (e) {} }
   // ★[11차 T4] 의뢰 집은 'phouse' — 다음 부팅에 **집채는 되살아나되 마을 침대 명부엔 안 들어간다**(랩 ⑤ 규약 이식).
-  state.db.insertVillageBuilding({ village_id: vil.dbId, type: isP ? 'phouse' : 'house', cx, cy, floors: 1, data: isP ? JSON.stringify({ owner: ownerId }) : null });
-  if (!isP) { vil._houseCells.push({ cx, cy }); vil.housesPx.push({ x: cx * SZ + SZ / 2, y: cy * SZ + SZ / 2 }); }
+  const _vb1438 = state.db.insertVillageBuilding({ village_id: vil.dbId, type: isP ? 'phouse' : 'house', cx, cy, floors: 1, data: isP ? JSON.stringify({ owner: ownerId }) : null });
+  if (!isP) { vil._houseCells.push(T1438_DECAY ? { cx, cy, _vb: _vb1438, _born: Date.now() } : { cx, cy }); vil.housesPx.push({ x: cx * SZ + SZ / 2, y: cy * SZ + SZ / 2 }); }   // ★[T1438] 켬 = 줄 번호 · 태어난 시각
   if (T1238_TERR_V2) _t1238StructAdd(vil, _t1238Lot(cx, cy), true);   // ★[T1238] 집 부지 = 쓰는 칸(집터에서 이미 벴다 · 남은 그루만)
   const tiles = [];
   for (const [dx, dy] of _lifeVL().LOT_CELLS) {   // 마당·텃밭(시딩 블록 동형)
@@ -17008,7 +17009,7 @@ function _lifeCompleteHouse(vil, which) {   // 완공: 터 제거 + NPC 정본 6
   }
   if (tiles.length) dp.broadcast({ type: 'buildings_spawn', buildings: tiles });
   if (isP) {
-    (vil._pHouses = vil._pHouses || []).push({ cx, cy, data: JSON.stringify({ owner: ownerId }) });   // 관측용 명부(마을 침대 명부와 별개 — /lifedbg pHouses)
+    (vil._pHouses = vil._pHouses || []).push(T1438_DECAY ? { cx, cy, data: JSON.stringify({ owner: ownerId }), _vb: _vb1438, _born: Date.now() } : { cx, cy, data: JSON.stringify({ owner: ownerId }) });   // 관측용 명부(마을 침대 명부와 별개 — /lifedbg pHouses)
     vil._psite = null; vil._psiteCrew = 0; t1399Bump(vil);
     lifeSiteReset(vil);   // ★[T41 ①] 의뢰 집터가 사라지면 그 반경 18 이 **다시 열린다** — 옛 거부가 뒤집히므로 캐시도 판다
     try { state.db.db.prepare("DELETE FROM village_buildings WHERE village_id=? AND type='psitework' AND cx=? AND cy=?").run(vil.dbId, cx, cy); } catch (e) {}
@@ -17040,6 +17041,209 @@ const G_STOCK_CAP = 60;       // 곳간 1동 물리 수용(칸 수 기준) — �
 function _granStockOf(vil, g) { if (!vil._granStock) vil._granStock = new Map(); return vil._granStock.get(g.cx + ',' + g.cy) || 0; }
 function _granStockAdd(vil, g, d) { if (!vil._granStock) vil._granStock = new Map(); const k = g.cx + ',' + g.cy; vil._granStock.set(k, Math.max(0, (vil._granStock.get(k) || 0) + d)); }
 function _granLadder(g) { return { x: g.cx * SZ + SZ / 2, y: (g.cy + 2) * SZ + SZ / 2 }; }   // ★문 없는 고상곳간 — 5×3 렉트[cy-1..cy+1] 남쪽 인접칸이 사다리 자리
+// ═══ ★★[T1438 2026-11-22 · ★재민 11-22 판정 38 · 39 · 11-08 "플레이어와 NPC 는 같은 활동을 같은 규칙으로"] 구조물은 낡는다 — 마을 쪽 ═══
+//   손잡이 `T1438_DECAY`('1' 만 켬 · ★끔 기본 — 끔이면 아래 함수가 하나도 안 불린다 · 마을 집 줄 · 곳간 줄의 칸도 안 는다 = 종전 바이트).
+//   NPC 집(`_houseCells`) · 의뢰 집(`_pHouses` — 주인 = 플레이어) · 마을 곳간(`_granList`)이 플레이어 구조물과 **같은 셈**(`decay.js`)으로 낡는다:
+//   집 = 지붕(이엉 — 풀) + 뼈대(기둥 · 서까래 — 나무) · 곳간 = 한 값(판자 · 돌 — 지을 때 든 재료로). 시계 = 존이 준 낡음 날(서버가 켜져 있던 날 · `deps.t1438Now`).
+//   상태 = 마을 집 줄(village_buildings) `data` 칸의 `dk`({ t, v }) — 손질 · 공격 · 무너짐 때만 적는다(쓰기 0 · 행 0) · 칸 없는 줄 = 태어난 날(`created_at`)과 켠 날 가운데 늦은 쪽.
+//   손질(하루 한 번 · 마을마다 · 집 짓는 크루와 같은 손 `min(LIFE_CREW, 인구) × LIFE_STAGE_PDAY` 인일을 먼저 쓴다 — 남은 손이 새 집을 짓는다):
+//     가장 낡은 집 먼저(NPC 집 배정이 없다 — "제 집 먼저"는 회부) · 넣는 재료는 낱개(이엉 하나 = 지붕 ⅛ · 통나무 하나 = 뼈대 1/28)라 모자란 몫이 낱개 하나를 넘을 때 든다(문턱이 아니라 낱개 — 반 장 이엉은 없다).
+//     지붕 = 풀(econ 재화가 아니다 — 베어 엮는다 · 품은 공정 ④ 한 단계 몫만 · 풀 베는 품 미확인 — 고증 §1-ㄱ) · 뼈대 = 곳간 통나무 **잉여만**(`woodSpare` — 1인 비축 · 집 몫 뒤 · 숯가마 · 다리 크루와 같은 함수 · `actFromGranary` 곳간 출구 정본 · 없으면 못 고친다) ·
+//     곳간 = 곳간 통나무 · 돌. 품 = 그 부위 공정 단계 수 × 모자란 몫(지붕 ④ 하나 · 뼈대 ② ③ 둘 · 곳간 한 단계) · 나름 = 가장 가까운 곳간 사다리 ↔ 집 왕복(T400 크루 장부와 같은 셈 · 걸음 초).
+//   무너짐 = 뼈대 0(집 · 의뢰 집) — 존이 발자국 행(벽 · 바닥)을 걷고(`deps.t1438RemoveTag`) 마을 줄을 지운다 · 침상이 그만큼 준다(`_mapBedsOf`) · 곳간 0 = 회부(속 곡식 — 부서짐만 센다).
+const Decay = require('./decay');
+const T1438_DECAY = Decay.ON;
+const _t1438V = { days: 0, repairs: 0, roofRep: 0, frameRep: 0, granRep: 0, fiber: 0, wood: 0, stone: 0, labor: 0, walkS: 0, trips: 0, noWood: 0, collapse: 0, pCollapse: 0, hits: 0, rowFix: 0, writes: 0, ded: 0 };
+function _t1438VNow() { return (state.deps && state.deps.t1438Now) ? state.deps.t1438Now() : 0; }
+function _t1438VT0(e) {
+  if (e._dk && Number.isFinite(e._dk.t)) return e._dk.t;
+  const D = state.deps || {}, ms = D.t1438DayMs ? D.t1438DayMs() : 1, ep = D.t1438EpochDay ? D.t1438EpochDay() : 0;
+  if (!Number.isFinite(e._born)) e._born = Date.now();
+  const born = (D.t1438Up ? D.t1438Up(e._born) : e._born) / ms;
+  return born > ep ? born : ep;
+}
+//   줄 번호 · 태어난 날 · 적은 칸을 늦게 채운다(시딩 길 · 옛 줄 — 한 번 묻는다)
+function _t1438Row(vil, type, e) {
+  if (e._vb) return e._vb;
+  try {
+    const r = state.db.db.prepare('SELECT id, data, created_at FROM village_buildings WHERE village_id = ? AND type = ? AND cx = ? AND cy = ? ORDER BY id LIMIT 1').get(vil.dbId, type, e.cx, e.cy);
+    if (r) { e._vb = r.id; if (!Number.isFinite(e._born)) e._born = r.created_at; if (!e._dk && r.data) { try { const d = JSON.parse(r.data); if (d && d.dk) e._dk = d.dk; } catch (x) {} } _t1438V.rowFix++; }
+  } catch (x) {}
+  return e._vb || null;
+}
+function _t1438Save(vil, type, e) {
+  const id = _t1438Row(vil, type, e); if (!id) return;
+  let d = {};
+  try { const r = state.db.db.prepare('SELECT data FROM village_buildings WHERE id = ?').get(id); d = r && r.data ? JSON.parse(r.data) : {}; } catch (x) { d = {}; }
+  d = d && typeof d === 'object' ? d : {}; d.dk = e._dk;
+  try { state.db.updateVillageBuildingData(id, JSON.stringify(d)); _t1438V.writes++; } catch (x) {}
+}
+const _T1438_KT = { house: 'house', phouse: 'house', granary: 'granary' };
+function _t1438Parts(type, e, now) {   // { v, k } — 집 = 두 부위 · 곳간 = 한 값(몫 0..1)
+  const k = Decay.kindOf(_T1438_KT[type] || type, null); if (!k) return null;
+  return { k, v: Decay.readParts(k.multi ? k : { parts: k.parts }, e._dk, now, _t1438VT0(e)) };
+}
+//   발자국 열쇠 → 마을 · 종류 · 줄(지붕 몫을 묻는 존 · 공격 · 손질이 쓴다)
+//   색인 — 발자국 열쇠 → { vil, type, e }(몸이 선 칸마다 · 틱마다 묻는다 — 집을 다 훑지 않게). 도장 = 마을마다 세 명부의 길이와 끝 칸(넣고 빼면 바뀐다) ·
+//   찾은 줄이 명부에서 빠졌으면(같은 틱에 빼고 넣은 드문 꼴) 다시 짓는다.
+let _t1438Ix = null, _t1438IxStamp = '';
+function _t1438Stamp() {
+  let s = '';
+  for (const vil of state.villages) for (const L of [vil._houseCells, vil._pHouses, vil._granList]) { const n = (L && L.length) | 0; s += n + (n ? ':' + L[n - 1].cx + '.' + L[n - 1].cy : '') + ','; }
+  return s;
+}
+function _t1438IxBuild() {
+  const m = new Map();
+  for (const vil of state.villages) {
+    for (const h of (vil._houseCells || [])) { const F = _vbFootprint('house', h.cx, h.cy); if (F) m.set(F.join(','), { vil, type: 'house', e: h }); }
+    for (const h of (vil._pHouses || [])) { const F = _vbFootprint('phouse', h.cx, h.cy); if (F) m.set(F.join(','), { vil, type: 'phouse', e: h }); }
+    for (const g of (vil._granList || [])) { const F = _vbFootprint('granary', g.cx, g.cy); if (F) m.set(F.join(','), { vil, type: 'granary', e: g }); }
+  }
+  _t1438Ix = m;
+}
+function _t1438Find(R) {
+  if (!Array.isArray(R) || R.length < 4) return null;
+  const key = R[0] + ',' + R[1] + ',' + R[2] + ',' + R[3];
+  const st = _t1438Stamp();
+  if (!_t1438Ix || st !== _t1438IxStamp) { _t1438IxBuild(); _t1438IxStamp = st; }
+  let f = _t1438Ix.get(key) || null;
+  if (f) {
+    const L = f.type === 'house' ? f.vil._houseCells : f.type === 'phouse' ? f.vil._pHouses : f.vil._granList;
+    if (!L || L.indexOf(f.e) < 0) { _t1438IxBuild(); f = _t1438Ix.get(key) || null; }
+  }
+  return f;
+}
+function t1438HouseAt(R, now) {
+  if (!T1438_DECAY) return null;
+  const f = _t1438Find(R); if (!f) return null;
+  const P = _t1438Parts(f.type, f.e, now == null ? _t1438VNow() : now); if (!P) return null;
+  const name = f.type === 'granary' ? `${f.vil.name} 곳간` : f.type === 'phouse' ? '의뢰 움집' : `${f.vil.name} 움집`;
+  return f.type === 'granary' ? { name, roof: P.v.body, body: P.v.body, type: f.type } : { name, roof: P.v.roof, frame: P.v.frame, type: f.type };
+}
+function t1438HitHouse(R, atk, now) {   // 공격 — 집 벽을 치면 그 집 뼈대(한 값 · 판정 39) · 돌려주는 값 = 남은 뼈대(무너졌으면 0)
+  if (!T1438_DECAY) return null;
+  const f = _t1438Find(R); if (!f || f.type === 'granary') return null;
+  const t = now == null ? _t1438VNow() : now, P = _t1438Parts(f.type, f.e, t);
+  P.v.frame = Math.max(0, P.v.frame - atk / P.k.hpScale);
+  f.e._dk = { t, v: P.v }; _t1438V.hits++;
+  if (P.v.frame <= 0) _t1438Collapse(f.vil, f.type, f.e, P);
+  else _t1438Save(f.vil, f.type, f.e);
+  return P.v.frame;
+}
+function t1438RepairHouse(R, partK, add, now) {   // 플레이어가 넣은 재료 몫(존이 셈 · 소비) → 그 부위
+  if (!T1438_DECAY || !(add > 0)) return false;
+  const f = _t1438Find(R); if (!f) return false;
+  const t = now == null ? _t1438VNow() : now, P = _t1438Parts(f.type, f.e, t);
+  const k = f.type === 'granary' ? 'body' : partK; if (!(k in P.v)) return false;
+  P.v[k] = Math.min(1, P.v[k] + add);
+  f.e._dk = { t, v: P.v }; _t1438Save(f.vil, f.type, f.e);
+  return true;
+}
+//   무너짐 — 존이 발자국 행을 걷고 · 마을 줄을 지운다 · 남은 지붕 몫만큼 이엉이 바닥에(폐허 — 존 `_t1438RemoveTag`)
+function _t1438Collapse(vil, type, e, P) {
+  const R = _vbFootprint(type, e.cx, e.cy);
+  const owner = type === 'phouse' ? ((() => { try { return JSON.parse(e.data || '{}').owner; } catch (x) { return null; } })() || null) : `npc_simvil_${vil.dbId}`;
+  try { if (state.deps && state.deps.t1438RemoveTag) state.deps.t1438RemoveTag(R, owner, P); } catch (x) { console.error(`[${state.zoneId}] T1438 무너짐 행 걷기 실패:`, x.message); }
+  const id = _t1438Row(vil, type, e);
+  if (id) { try { state.db.db.prepare('DELETE FROM village_buildings WHERE id = ?').run(id); } catch (x) {} }
+  if (type === 'house') {
+    const i = vil._houseCells.indexOf(e); if (i >= 0) vil._houseCells.splice(i, 1);
+    const j = vil.housesPx.findIndex((h) => Math.abs(h.x - (e.cx * SZ + SZ / 2)) < 1 && Math.abs(h.y - (e.cy * SZ + SZ / 2)) < 1); if (j >= 0) vil.housesPx.splice(j, 1);
+    _t1438V.collapse++;
+  } else if (type === 'phouse') { const i = (vil._pHouses || []).indexOf(e); if (i >= 0) vil._pHouses.splice(i, 1); _t1438V.pCollapse++; }
+  t1399Bump(vil);
+  try { invalidateTradeDistances(); } catch (x) {}
+  console.log(`[${state.zoneId}] 🏚️ [T1438] [${vil.name}] ${type === 'phouse' ? '의뢰 ' : ''}움집이 무너졌다 @(${e.cx},${e.cy}) — 뼈대 0`);
+}
+//   하루 — 마을마다 한 번(집 짓는 크루 하루 앞) · 무너짐 · 손질 · 계측
+function _t1438VilDay(vil) {
+  vil._t1438Used = 0;
+  if (!vil.econ) return null;
+  const now = _t1438VNow(), E = _lifeEcon();
+  _t1438V.days++;
+  // ① 무너짐(뼈대 0) — 집 · 의뢰 집
+  for (const [type, list] of [['house', vil._houseCells], ['phouse', vil._pHouses || []]]) {
+    for (const e of list.slice()) { const P = _t1438Parts(type, e, now); if (P && P.v.frame <= 0) _t1438Collapse(vil, type, e, P); }
+  }
+  // ② 손질 — 마을 것(NPC 집 · 곳간)만 · 가장 낡은 것 먼저 · 손 = 집 크루 하루 인일
+  const popN = (vil.econ.npcs && vil.econ.npcs.length) || 0;
+  let labor = Math.min(LIFE_CREW, popN) * LIFE_STAGE_PDAY;
+  if (!(labor > 0)) { _t1438GranF(vil, now); return null; }
+  const todo = [];
+  for (const e of vil._houseCells) { const P = _t1438Parts('house', e, now); if (P) todo.push({ type: 'house', e, P, low: Math.min(P.v.roof, P.v.frame) }); }
+  for (const g of (vil._granList || [])) { const P = _t1438Parts('granary', g, now); if (P) todo.push({ type: 'granary', e: g, P, low: P.v.body }); }
+  todo.sort((a, b) => a.low - b.low);
+  const sp = (state.deps && state.deps.moveSpeed) || 0;
+  for (const t of todo) {
+    if (!(labor > 1e-9)) break;
+    let did = false;
+    const parts = t.P.k.parts.slice().sort((a, b) => t.P.v[a.k] - t.P.v[b.k]);
+    for (const part of parts) {
+      if (!(labor > 1e-9)) break;
+      const cur = t.P.v[part.k], def = 1 - cur;
+      const stages = t.type === 'granary' ? 1 : (part.k === 'roof' ? 1 : 2);   // 공정 단계 수(④ 이엉 · ② ③ 뼈대 · 곳간 한 단계)
+      const raws = t.type === 'granary' ? ['wood', 'stone'] : (part.k === 'roof' ? ['fiber'] : ['wood']);
+      for (const item of raws) {
+        const one = Decay.shareOf(part, item, 1); if (!(one > 0)) continue;
+        let want = Math.floor((1 - t.P.v[part.k]) / one + 1e-9);   // 낱개 — 모자란 몫이 낱개 하나를 넘을 때만
+        if (!(want > 0)) continue;
+        const maxByLabor = Math.floor(labor / (stages * one) + 1e-9); if (!(maxByLabor > 0)) continue;
+        want = Math.min(want, maxByLabor);
+        let got = want;
+        if (item !== 'fiber') {   // 곳간 출구 정본(꺼낸 만큼 · 모자라면 그만큼만 고친다)
+          //   ★통나무는 잉여만 — 숯가마 · 다리 크루 · 땅 말뚝과 같은 함수(`woodSpare` = 재고 − 1인 비축 − 집 몫 · T488 · T537 · 새 수 0). 돌은 다리 크루와 같이 곳간 재고까지.
+          //     (켠 판 갈래: 재고에서 바로 꺼내면 무너지던 마을 — 42 임업5 · 7 농촌9 · 10 — 이 비축을 손질에 내주고 0 에 닿았다 · 보고 T1438 §5)
+          const room = item === 'wood' ? Math.floor(Math.max(0, E.woodSpare(vil.econ)) + 1e-9) : want;
+          got = room > 0 ? E.actFromGranary(vil.econ, item, Math.min(want, room)) : 0;
+          if (!(got > 0)) { _t1438V.noWood++; continue; }
+        }
+        const add = Decay.shareOf(part, item, got);
+        t.P.v[part.k] = Math.min(1, t.P.v[part.k] + add);
+        const L = stages * add; labor -= L; vil._t1438Used += L; _t1438V.labor += L;
+        _t1438V[item] = (_t1438V[item] || 0) + got;
+        if (t.type === 'granary') _t1438V.granRep++; else if (part.k === 'roof') _t1438V.roofRep++; else _t1438V.frameRep++;
+        if (item !== 'fiber') {   // 나름 — 가장 가까운 곳간 사다리 ↔ 그 자리(T400 크루와 같은 셈)
+          const tx = t.e.cx * SZ, ty = t.e.cy * SZ; let bd = Infinity;
+          for (const g of (vil._granList || [])) { const Lg = _granLadder(g), d = Math.hypot(Lg.x - tx, Lg.y - ty); if (d < bd) bd = d; }
+          if (!Number.isFinite(bd)) bd = Math.hypot(vil.ccx * SZ - tx, vil.ccy * SZ - ty);
+          const trips = Math.ceil(got / Math.max(1, _t400PerLoad(item)));
+          _t1438V.trips += trips; if (sp > 0) _t1438V.walkS += trips * 2 * bd / sp;
+        }
+        did = true;
+      }
+    }
+    if (did) { t.e._dk = { t: now, v: t.P.v }; _t1438Save(vil, t.type, t.e); _t1438V.repairs++; }
+  }
+  _t1438GranF(vil, now);
+  return null;
+}
+//   곳간 몫 → econ 마을 칸 `_t1438GranF`(곳간 로트 장부가 새 로트의 자리 칸을 그만큼 — `granary-lots._granV` · 곳간이 없으면 칸을 안 둔다)
+function _t1438GranF(vil, now) {
+  let s = 0, n = 0;
+  for (const g of (vil._granList || [])) { const P = _t1438Parts('granary', g, now); if (P) { s += P.v.body; n++; } }
+  if (n) vil.econ._t1438GranF = s / n; else delete vil.econ._t1438GranF;
+}
+function _t1438Ded(vil) {   // 집 짓는 날 — 그날 손질에 든 품(조각)을 이월 칸에 더해 낱 단계만 뺀다(짓는 터가 없는 날의 손질은 노는 손 — 안 뺀다)
+  vil._t1438Carry = (vil._t1438Carry || 0) + (vil._t1438Used || 0); vil._t1438Used = 0;
+  const d = Math.floor(vil._t1438Carry + 1e-9); vil._t1438Carry -= d; _t1438V.ded += d;
+  return d;
+}
+function _t1438Load(b) {   // 부팅 줄 → 집 · 곳간 칸(종전 { cx, cy } 에 줄 번호 · 태어난 벽 시각 · 적은 칸만 보탠다)
+  let dk = null; if (b.data) { try { const d = JSON.parse(b.data); if (d && d.dk) dk = d.dk; } catch (x) {} }
+  return Object.assign({ cx: b.cx, cy: b.cy, _vb: b.id, _born: b.created_at }, dk ? { _dk: dk } : {});
+}
+function t1438Stat() {
+  if (!T1438_DECAY) return null;
+  const now = _t1438VNow(), roof = [], frame = [], gran = [];
+  let houses = 0;
+  for (const vil of state.villages) {
+    for (const e of (vil._houseCells || [])) { const P = _t1438Parts('house', e, now); if (P) { houses++; roof.push(P.v.roof); frame.push(P.v.frame); } }
+    for (const g of (vil._granList || [])) { const P = _t1438Parts('granary', g, now); if (P) gran.push(P.v.body); }
+  }
+  const med = (a) => { if (!a.length) return null; const s = a.slice().sort((x, y) => x - y); return +s[Math.floor(s.length / 2)].toFixed(4); };
+  const lo = (a) => a.length ? +Math.min(...a).toFixed(4) : null;
+  return Object.assign({ now: +now.toFixed(3), houses, roofMed: med(roof), roofMin: lo(roof), frameMed: med(frame), frameMin: lo(frame), granN: gran.length, granMed: med(gran), granMin: lo(gran) }, _t1438V);
+}
 function _granPick(vil, npc, forDraw) {         // 저장=여유 있는 곳 / 인출=재고 있는 곳 중 최근접
   let best = null, bd = 1e9;
   for (const g of (vil._granList || [])) {
@@ -17708,8 +17912,8 @@ function _lifeCompleteGranary(vil, cx, cy) {
       lb('floor', x * SZ + SZ / 2, y * SZ + SZ / 2, { floor: 0, gran: tag }, ownerId, onm, made);
     if (made.length) dp.broadcast({ type: 'buildings_spawn', buildings: made });
   }
-  state.db.insertVillageBuilding({ village_id: vil.dbId, type: 'granary', cx, cy, floors: 1, data: null });
-  vil._granList.push({ cx, cy }); t1399Bump(vil);
+  const _vb1438 = state.db.insertVillageBuilding({ village_id: vil.dbId, type: 'granary', cx, cy, floors: 1, data: null });
+  vil._granList.push(T1438_DECAY ? { cx, cy, _vb: _vb1438, _born: Date.now() } : { cx, cy }); t1399Bump(vil);   // ★[T1438]
   if (T1238_TERR_V2) _t1238StructAdd(vil, _t1238GranCells(cx, cy), true);   // ★[T1238] 쓰는 칸(이미 벤 칸이면 표만)
   noteVillageBuilt(vil, 'granary');   // ★[T50] 사건 장부 접점 1줄
   console.log(`[${state.zoneId}] 🏘️ [${vil.name}] 곳간 증설 완공 @(${cx},${cy}) — 총 ${vil._granList.length}동`);
@@ -19258,6 +19462,8 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
   if (!vil._site && _wantSite) { try { _lifeAddHouseSite(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 신축 실패(${vil.name}):`, e.message); } }
   _sub('site');
   if (T687_ON) { const _pz0 = _t523Pause; yield; const _pz = _t523Pause - _pz0; _lt += _pz; _lt0 += _pz; }   // ★[T687] 쉼표(차례 그대로 · 쉰 시간은 스톱워치에서 뺀다)
+  // ★★[T1438] 낡음 — 무너짐 · 손질(집 크루와 같은 손을 먼저 쓴다 · 남은 손이 아래 집을 짓는다). 끔이면 한 줄도 안 돈다.
+  if (T1438_DECAY) { try { _t1438VilDay(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 낡음 실패(${vil.name}):`, e.message); } }
   // ★★[T400] 집 — 자재를 나르는 크루의 하루(관측자 무관 · 이 줄은 아래 관측자 문 **앞**이다). 끔이면 한 줄도 안 돈다.
   if (_lifeEcon().T400_BUILD_ACT) { try { _t400BuildDay(vil); } catch (e) { console.error(`[${state.zoneId}] 생활층 집 행위 실패(${vil.name}):`, e.message); } _sub('site'); }
   // ★★[T527] 다리 — 섬 마을 여유 크루의 하루(관측자 무관 · 같은 자리). 끔이면 한 줄도 안 돈다.
@@ -21226,6 +21432,8 @@ function __rumorProbe() {
 }
 
 module.exports = { t1406PathCell: (cx, cy, vil) => _t1406PathCell(cx, cy, vil || null), T1406_KEEP_PATHS, artisanPerf,   // ★[T1196] 장인 작업장 관측
+  T1438_DECAY, t1438HouseAt, t1438HitHouse, t1438RepairHouse, t1438Stat, __t1438: { villageDay: (v) => _t1438VilDay(v), find: _t1438Find, parts: _t1438Parts, collapse: _t1438Collapse, V: _t1438V, load: (b) => _t1438Load(b), ded: (v) => _t1438Ded(v), fp: (type, cx, cy) => _vbFootprint(type, cx, cy),
+    setup: (o) => { const K = ['deps', 'villages', 'db', 'zoneId']; const k = {}; for (const n of K) k[n] = state[n]; if (o) for (const n of K) if (n in o) state[n] = o[n]; return k; } },   // ★[T1438] 마을 집 · 곳간 낡음(하네스 · 판 계측 — 읽기 · 주입만)
   __t740: () => state,   // ★[T1287 · T1280 회부 1] 생활층 지문 훅(`scripts/t740-side-hook.js`)의 공식 자리 — 읽기만 · 세계 0. 종전엔 훅이 컴파일 때 이 한 줄을 덧붙여서, 관찰기가 villages 를 먼저 실으면 훅이 못 붙었다(생활층 0일)
   _t1259WoodRadius, _t1259WoodCells,
   t1243FieldClearMinAt, T1207_TERR_REAL, terrQuote, terrPlayerAdd, t1207Stat, villageById, _t1207CellCost, _t1207Batch, _t1207Queue, _t1207BodyDone, _t1283BodyHaul, _t1207LogIn, _t1207Flush, _t1207CanTake, _terrAdd, _terrGrow,   // ★[T1207] 영토 확장 실물화 — 존(우클릭)과 하네스가 같은 함수를 부른다(사본 0)
