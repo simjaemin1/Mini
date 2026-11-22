@@ -1,0 +1,6 @@
+[
+ {"tag":"NUDGE_42","seed":42,"days":360,"probe":1,"ablate":"nudge","env":{}},
+ {"tag":"AB_DED_42","seed":42,"days":360,"probe":1,"ablate":"indoor,ded","env":{"T1438_DECAY":"1","T1438_DECAY_SET":"mid"}},
+ {"tag":"NUDGE_7","seed":7,"days":400,"probe":1,"ablate":"nudge","env":{}},
+ {"tag":"OFF_7","seed":7,"days":400,"probe":1,"env":{}}
+]
