@@ -105,8 +105,10 @@ async function openPage(browser, opt) {
   }
   await page.goto(`http://localhost:${CPORT}/${(opt && opt.q) || ''}`);
   await page.waitForFunction(() => { const b = document.getElementById('enter'); return !!(b && b.onclick && !b.disabled); }, null, { timeout: 60000 }).catch(() => {});
+  //   시작 지역은 central 이 잰 RTT 로 칸이 차고 가장 빠른 존이 골라진다(존이 둘이면 판마다 갈린다) — 주 존을 hanbando 로 못 박는다(t1045-settle-probe 와 같은 꼴)
+  await page.waitForFunction(() => { const s = document.getElementById('startZone'); const o = s && [...s.options].find((x) => x.value === 'hanbando' && !x.disabled); if (o) s.value = 'hanbando'; return !!o; }, null, { timeout: 60000, polling: 250 }).catch(() => {});
   try { await page.click('#enter'); } catch (e) {}
-  const entered = await page.waitForFunction(() => !!(window._shadowMask && window.__getPrimaryZoneId && window.__getPrimaryZoneId() && window.__t1446), null, { timeout: 120000 }).then(() => true).catch(() => false);
+  const entered = await page.waitForFunction(() => !!(window._shadowMask && window.__getPrimaryZoneId && window.__getPrimaryZoneId() === 'hanbando' && window.__t1446), null, { timeout: 120000 }).then(() => true).catch(() => false);
   if (entered) await page.evaluate(() => { if (typeof window.__rainForce === 'function') window.__rainForce({ precip: 0 }); if (window.__terrain19) window.__terrain19.windOff = true; });
   return { ctx, page, errs, entered };
 }
