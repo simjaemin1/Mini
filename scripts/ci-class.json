@@ -15425,6 +15425,51 @@
    "core": false,
    "why": "안 잼"
   },
+  "test-t1413-hunt-year.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": 7.2,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 6.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 6.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 7.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 7.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 7,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawnSync node"
+   ]
+  },
   "test-t721-apply.js": {
    "cls0": "나",
    "why0": "child_process",
@@ -17733,5 +17778,5 @@
    "srv": true
   }
  },
- "at": "2026-11-20"
+ "at": "2026-11-21"
 }
