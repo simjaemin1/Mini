@@ -1,0 +1,1180 @@
+{
+ "species": [
+  {
+   "name": "e2e-aim",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 56,
+   "secMax": 62,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-assign-job",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 37.5,
+   "secMax": 43,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-audio-probe",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 136,
+   "secMax": 137,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-bgm-phrase",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 22.5,
+   "secMax": 28,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-bigmap-cells",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 48.5,
+   "secMax": 83,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-bigmap-live",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 53,
+   "secMax": 57,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-blizzard",
+   "n": 20,
+   "red": 5,
+   "yubo": 0,
+   "green": 15,
+   "secMed": 75,
+   "secMax": 87,
+   "cls": "㉯",
+   "kinds": 1,
+   "xs": [
+    {
+     "run": 10,
+     "rc": 1,
+     "line": "✗ ★★유보 — 프레임 계기가 층을 못 본다(층 0.49ms 인데 프레임엔 0.20ms) · 이 절의 값은 못 믿는다"
+    },
+    {
+     "run": 11,
+     "rc": 1,
+     "line": "✗ ★★유보 — 프레임 계기가 층을 못 본다(층 0.60ms 인데 프레임엔 -0.20ms) · 이 절의 값은 못 믿는다"
+    },
+    {
+     "run": 14,
+     "rc": 1,
+     "line": "✗ ★★유보 — 프레임 계기가 층을 못 본다(층 0.48ms 인데 프레임엔 0.00ms) · 이 절의 값은 못 믿는다"
+    },
+    {
+     "run": 15,
+     "rc": 1,
+     "line": "✗ ★★유보 — 프레임 계기가 층을 못 본다(층 0.51ms 인데 프레임엔 0.20ms) · 이 절의 값은 못 믿는다"
+    },
+    {
+     "run": 16,
+     "rc": 1,
+     "line": "✗ ★★유보 — 프레임 계기가 층을 못 본다(층 0.48ms 인데 프레임엔 -0.29ms) · 이 절의 값은 못 믿는다"
+    }
+   ]
+  },
+  {
+   "name": "e2e-breath",
+   "n": 20,
+   "red": 1,
+   "yubo": 0,
+   "green": 19,
+   "secMed": 84,
+   "secMax": 115,
+   "cls": "㉯",
+   "kinds": 1,
+   "xs": [
+    {
+     "run": 20,
+     "rc": 1,
+     "line": "✗ ★ⓓ 잡음 대조 — 같은 몸 판 두 장(입김 없음)은 획 상자에서 **한 화소도 안 다르다**  phase 2"
+    }
+   ]
+  },
+  {
+   "name": "e2e-browser",
+   "n": 20,
+   "red": 20,
+   "yubo": 0,
+   "green": 0,
+   "secMed": 8,
+   "secMax": 9,
+   "cls": "㉮",
+   "kinds": 1,
+   "xs": [
+    {
+     "run": 1,
+     "rc": 1,
+     "line": "(하네스 ✗ 줄 없음 · RC=1)"
+    },
+    {
+     "run": 2,
+     "rc": 1,
+     "line": "(하네스 ✗ 줄 없음 · RC=1)"
+    },
+    {
+     "run": 3,
+     "rc": 1,
+     "line": "(하네스 ✗ 줄 없음 · RC=1)"
+    },
+    {
+     "run": 4,
+     "rc": 1,
+     "line": "(하네스 ✗ 줄 없음 · RC=1)"
+    },
+    {
+     "run": 5,
+     "rc": 1,
+     "line": "(하네스 ✗ 줄 없음 · RC=1)"
+    },
+    {
+     "run": 6,
+     "rc": 1,
+     "line": "(하네스 ✗ 줄 없음 · RC=1)"
+    },
+    {
+     "run": 7,
+     "rc": 1,
+     "line": "(하네스 ✗ 줄 없음 · RC=1)"
+    },
+    {
+     "run": 8,
+     "rc": 1,
+     "line": "(하네스 ✗ 줄 없음 · RC=1)"
+    },
+    {
+     "run": 9,
+     "rc": 1,
+     "line": "(하네스 ✗ 줄 없음 · RC=1)"
+    },
+    {
+     "run": 10,
+     "rc": 1,
+     "line": "(하네스 ✗ 줄 없음 · RC=1)"
+    },
+    {
+     "run": 11,
+     "rc": 1,
+     "line": "(하네스 ✗ 줄 없음 · RC=1)"
+    },
+    {
+     "run": 12,
+     "rc": 1,
+     "line": "(하네스 ✗ 줄 없음 · RC=1)"
+    },
+    {
+     "run": 13,
+     "rc": 1,
+     "line": "(하네스 ✗ 줄 없음 · RC=1)"
+    },
+    {
+     "run": 14,
+     "rc": 1,
+     "line": "(하네스 ✗ 줄 없음 · RC=1)"
+    },
+    {
+     "run": 15,
+     "rc": 1,
+     "line": "(하네스 ✗ 줄 없음 · RC=1)"
+    },
+    {
+     "run": 16,
+     "rc": 1,
+     "line": "(하네스 ✗ 줄 없음 · RC=1)"
+    },
+    {
+     "run": 17,
+     "rc": 1,
+     "line": "(하네스 ✗ 줄 없음 · RC=1)"
+    },
+    {
+     "run": 18,
+     "rc": 1,
+     "line": "(하네스 ✗ 줄 없음 · RC=1)"
+    },
+    {
+     "run": 19,
+     "rc": 1,
+     "line": "(하네스 ✗ 줄 없음 · RC=1)"
+    },
+    {
+     "run": 20,
+     "rc": 1,
+     "line": "(하네스 ✗ 줄 없음 · RC=1)"
+    }
+   ]
+  },
+  {
+   "name": "e2e-char3d",
+   "n": 5,
+   "red": 1,
+   "yubo": 0,
+   "green": 4,
+   "secMed": 305,
+   "secMax": 311,
+   "cls": "㉯",
+   "kinds": 1,
+   "xs": [
+    {
+     "run": 4,
+     "rc": 1,
+     "line": "✗ ⓒ ★가림 ○ — 3D(제 차례)도 시트도 흐림 겹 **아래**다: 산을 켜면 몸↔바탕 대비가 (1 − MT_OCC_A) = 0.66 배로 준다(같은 술어)  3D k 0.51 · 시트 k 0.654 · 바뀐 양 3D 11.29 · 시트 10.21(0–255)"
+    }
+   ]
+  },
+  {
+   "name": "e2e-charsprite",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 99,
+   "secMax": 110,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-chronicle",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 108.5,
+   "secMax": 124,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-cold",
+   "n": 5,
+   "red": 0,
+   "yubo": 0,
+   "green": 5,
+   "secMed": 445,
+   "secMax": 448,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-conn",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 167,
+   "secMax": 202,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-craft",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 57,
+   "secMax": 62,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-cutaway",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 176,
+   "secMax": 198,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-downed",
+   "n": 5,
+   "red": 0,
+   "yubo": 0,
+   "green": 5,
+   "secMed": 431,
+   "secMax": 433,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-emptystart",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 56.5,
+   "secMax": 64,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-events",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 61.5,
+   "secMax": 67,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-first30",
+   "n": 5,
+   "red": 4,
+   "yubo": 0,
+   "green": 1,
+   "secMed": 2416,
+   "secMax": 2416,
+   "cls": "㉰",
+   "kinds": 2,
+   "xs": [
+    {
+     "run": 2,
+     "rc": 1,
+     "line": "✗ 16.81분  막힘 [첫 잠자리] 쉼터를 봤으나 못 감(?)"
+    },
+    {
+     "run": 3,
+     "rc": 1,
+     "line": "✗ 20.72분  막힘 [첫 잠자리] 쉼터를 봤으나 못 감(?)"
+    },
+    {
+     "run": 4,
+     "rc": 1,
+     "line": "(하네스 ✗ 줄 없음 · RC=1)"
+    },
+    {
+     "run": 5,
+     "rc": 1,
+     "line": "(하네스 ✗ 줄 없음 · RC=1)"
+    }
+   ]
+  },
+  {
+   "name": "e2e-fishing",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 80.5,
+   "secMax": 89,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-fogray",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 62.5,
+   "secMax": 69,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-forage-village",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 106,
+   "secMax": 110,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-friends",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 94,
+   "secMax": 98,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-frost",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 134.5,
+   "secMax": 149,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-guest-reconnect",
+   "n": 12,
+   "red": 0,
+   "yubo": 0,
+   "green": 12,
+   "secMed": 282,
+   "secMax": 314,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-guild",
+   "n": 20,
+   "red": 1,
+   "yubo": 0,
+   "green": 19,
+   "secMed": 104,
+   "secMax": 107,
+   "cls": "㉯",
+   "kinds": 1,
+   "xs": [
+    {
+     "run": 7,
+     "rc": 1,
+     "line": "✗ ★⑦c 마을 사람이 아니어도 **곳간이 형편을 말한다**(누구나 본다 · 꺼내기 촌장만 · 한도 말 없음)  \"\""
+    }
+   ]
+  },
+  {
+   "name": "e2e-handoff-proto",
+   "n": 20,
+   "red": 1,
+   "yubo": 0,
+   "green": 19,
+   "secMed": 235.5,
+   "secMax": 255,
+   "cls": "㉯",
+   "kinds": 1,
+   "xs": [
+    {
+     "run": 18,
+     "rc": 1,
+     "line": "✗ ⓛ ★★⑨ 넘기 순간 화면의 세계가 멈춘 최대 < 200 ms — 받는 존 소켓 틱 이음 최대(관측 → 승격 · 넘기 앞 0.5초 → 승격 뒤 첫 틱 + 2초)  205 ms"
+    }
+   ]
+  },
+  {
+   "name": "e2e-hp",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 75,
+   "secMax": 96,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-inv",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 77,
+   "secMax": 82,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-membership",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 80.5,
+   "secMax": 98,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-metallurgy",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 39,
+   "secMax": 41,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-mountain",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 197,
+   "secMax": 224,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-move",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 91,
+   "secMax": 93,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-mtcorridor",
+   "n": 20,
+   "red": 1,
+   "yubo": 0,
+   "green": 19,
+   "secMed": 122.5,
+   "secMax": 129,
+   "cls": "㉯",
+   "kinds": 1,
+   "xs": [
+    {
+     "run": 20,
+     "rc": 1,
+     "line": "✗ ★통로 축과 **정확히** 맞는 조작을 실측으로 찾았다 ('s', 일치도 0.45)"
+    }
+   ]
+  },
+  {
+   "name": "e2e-mtcut",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 149,
+   "secMax": 161,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-mtfoot",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 70.5,
+   "secMax": 77,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-mtfuzz",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 219,
+   "secMax": 262,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-mtocc",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 107,
+   "secMax": 117,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-nametag-others",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 50,
+   "secMax": 53,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-nature",
+   "n": 5,
+   "red": 0,
+   "yubo": 0,
+   "green": 5,
+   "secMed": 385,
+   "secMax": 389,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-next-step",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 51,
+   "secMax": 86,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-npc-walk",
+   "n": 5,
+   "red": 0,
+   "yubo": 0,
+   "green": 5,
+   "secMed": 109,
+   "secMax": 462,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-npcsprite",
+   "n": 20,
+   "red": 2,
+   "yubo": 0,
+   "green": 18,
+   "secMed": 114,
+   "secMax": 125,
+   "cls": "㉯",
+   "kinds": 1,
+   "xs": [
+    {
+     "run": 12,
+     "rc": 1,
+     "line": "✗ ★프레임 비용 증가 10.2% ≤ 10% (T13 카드 조건 · NPC 15명)  — 넘었다 — 표시 거리/캐시로 줄이거나 값만 보고하고 회부"
+    },
+    {
+     "run": 18,
+     "rc": 1,
+     "line": "✗ ★프레임 비용 증가 10.1% ≤ 10% (T13 카드 조건 · NPC 22명)  — 넘었다 — 표시 거리/캐시로 줄이거나 값만 보고하고 회부"
+    }
+   ]
+  },
+  {
+   "name": "e2e-onboarding",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 187,
+   "secMax": 195,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-oseok-all",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 76,
+   "secMax": 82,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-pick-top",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 151.5,
+   "secMax": 159,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-pid-collide",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 11,
+   "secMax": 12,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-preserve",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 111,
+   "secMax": 117,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-respawn-choice",
+   "n": 5,
+   "red": 1,
+   "yubo": 0,
+   "green": 4,
+   "secMed": 466,
+   "secMax": 472,
+   "cls": "㉯",
+   "kinds": 1,
+   "xs": [
+    {
+     "run": 4,
+     "rc": 1,
+     "line": "✗ ⓑ 두 번째 누름이 **시계를 되감지 않는다**(같은 자리 = ⓐ 와 같은 초 · +3초 안 · 되감기면 두 누름 사이 16초만큼 늦다)  ⓐ 106.9초 · ⓑ 110.1초 · 말한 초 [109,94]"
+    }
+   ]
+  },
+  {
+   "name": "e2e-rooms",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 141,
+   "secMax": 144,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-rtt",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 235.5,
+   "secMax": 259,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-rumor",
+   "n": 20,
+   "red": 1,
+   "yubo": 0,
+   "green": 19,
+   "secMed": 118,
+   "secMax": 140,
+   "cls": "㉯",
+   "kinds": 1,
+   "xs": [
+    {
+     "run": 3,
+     "rc": 1,
+     "line": "✗ ④c2 전제: 얼린 순간이 사건 직후다(소문이 아직 걸어올 시간이 없었다 · T133)  얼린 날 17 − 사건일 13 = 4일"
+    }
+   ]
+  },
+  {
+   "name": "e2e-salt",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 82.5,
+   "secMax": 87,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-site-exit",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 59.5,
+   "secMax": 67,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-snow",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 129.5,
+   "secMax": 139,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-spoil2",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 73,
+   "secMax": 96,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-streams",
+   "n": 20,
+   "red": 1,
+   "yubo": 0,
+   "green": 19,
+   "secMed": 46.5,
+   "secMax": 48,
+   "cls": "㉯",
+   "kinds": 1,
+   "xs": [
+    {
+     "run": 12,
+     "rc": 1,
+     "line": "✗ ★★③ 같은 키 — 개울 줄기 위 한 걸음 = 뭍의 절반(걸음당 거리 · 예측 = 서버 좌표)  뭍 2.198px/걸음(33) · 개울 1.032px/걸음(31) · ×0.470"
+    }
+   ]
+  },
+  {
+   "name": "e2e-t1160-promote-key",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 102,
+   "secMax": 107,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-t1163-welcome-sig",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 23.5,
+   "secMax": 25,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-t1204-now-words",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 65.5,
+   "secMax": 75,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-t1341-own-house",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 66,
+   "secMax": 71,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-terrain",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 180,
+   "secMax": 197,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-thirst",
+   "n": 5,
+   "red": 0,
+   "yubo": 0,
+   "green": 5,
+   "secMed": 563,
+   "secMax": 564,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-tidal",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 117,
+   "secMax": 120,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-tilestate",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 116.5,
+   "secMax": 131,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-trade",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 138,
+   "secMax": 161,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-ui",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 130.5,
+   "secMax": 144,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-verbs",
+   "n": 5,
+   "red": 0,
+   "yubo": 0,
+   "green": 5,
+   "secMed": 174,
+   "secMax": 611,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-village",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 119.5,
+   "secMax": 123,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-village-view",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 70.5,
+   "secMax": 82,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-waterperf",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 135,
+   "secMax": 148,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-weather",
+   "n": 20,
+   "red": 0,
+   "yubo": 4,
+   "green": 16,
+   "secMed": 71,
+   "secMax": 89,
+   "cls": "㉲",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-weight",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 63.5,
+   "secMax": 70,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-well",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 45,
+   "secMax": 51,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-winter",
+   "n": 19,
+   "red": 1,
+   "yubo": 0,
+   "green": 18,
+   "secMed": 99,
+   "secMax": 554,
+   "cls": "㉯",
+   "kinds": 1,
+   "xs": [
+    {
+     "run": 19,
+     "rc": 1,
+     "line": "✗ ⑤b ★곡식 의뢰가 없으면 납품으로 안 받는다(\"그런 의뢰가 없다\" — 장부 정본) — 겨울 몫 갈래 0(손의 곡식 그대로)  {\"f0\":10,\"f1\":10,\"nt\":[\"마을이 하루 장부를 닫는 중입니다. 곧 처리됩니다.\"]}"
+    }
+   ]
+  },
+  {
+   "name": "e2e-xzone-caravan",
+   "n": 5,
+   "red": 1,
+   "yubo": 0,
+   "green": 4,
+   "secMed": 462,
+   "secMax": 1205,
+   "cls": "㉯",
+   "kinds": 1,
+   "xs": [
+    {
+     "run": 5,
+     "rc": 1,
+     "line": "✗ ⓗ4 ★켬 — 다시 뜬 닛폰이 한 번 정산해 'return' 하나(판 짐 = 넘긴 짐)  없음"
+    }
+   ]
+  },
+  {
+   "name": "e2e-zone-cross",
+   "n": 5,
+   "red": 0,
+   "yubo": 0,
+   "green": 5,
+   "secMed": 814,
+   "secMax": 842,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  },
+  {
+   "name": "e2e-zoom",
+   "n": 20,
+   "red": 0,
+   "yubo": 0,
+   "green": 20,
+   "secMed": 88.5,
+   "secMax": 97,
+   "cls": "㉱",
+   "kinds": 0,
+   "xs": []
+  }
+ ],
+ "runs": 1406,
+ "totSec": 169747,
+ "counts": {
+  "㉮": 1,
+  "㉯": 12,
+  "㉰": 1,
+  "㉱": 64,
+  "㉲": 1
+ }
+}

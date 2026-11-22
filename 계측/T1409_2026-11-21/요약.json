@@ -1,0 +1,111 @@
+{
+  "base": "1aa63e63",
+  "counts": {
+    "shared": 2,
+    "flag": 3,
+    "allow": 12,
+    "refer": 17,
+    "unflagged": 29,
+    "reasonList": 29,
+    "unexplained": 0
+  },
+  "catalogEqual": true,
+  "arms": [
+    {
+      "lab": "war",
+      "arm": "before",
+      "seed": 1020,
+      "days": 100,
+      "pop": 380,
+      "food": 8501.496353607869,
+      "empty": 0
+    },
+    {
+      "lab": "war",
+      "arm": "off",
+      "seed": 1020,
+      "days": 100,
+      "pop": 380,
+      "food": 8501.496353607869,
+      "empty": 0
+    },
+    {
+      "lab": "war",
+      "arm": "water",
+      "seed": 1020,
+      "days": 100,
+      "pop": 446,
+      "food": 7382.839733344119,
+      "empty": 0,
+      "parameters": {
+        "WAR_RAID_MIN": 2,
+        "WAR_MARCH": 1440
+      }
+    },
+    {
+      "lab": "village",
+      "arm": "before",
+      "seed": 1020,
+      "days": 100,
+      "pop": 403,
+      "food": 6809.338596365383,
+      "empty": 0
+    },
+    {
+      "lab": "village",
+      "arm": "off",
+      "seed": 1020,
+      "days": 100,
+      "pop": 403,
+      "food": 6809.338596365383,
+      "empty": 0
+    },
+    {
+      "lab": "village",
+      "arm": "water",
+      "seed": 1020,
+      "days": 100,
+      "pop": 447,
+      "food": 7933.837774326645,
+      "empty": 0,
+      "parameters": {
+        "WAR_RAID_MIN": 3,
+        "WAR_MARCH": 240
+      }
+    },
+    {
+      "lab": "village",
+      "arm": "raid",
+      "seed": 1020,
+      "days": 100,
+      "pop": 403,
+      "food": 6809.338596365383,
+      "empty": 0,
+      "parameters": {
+        "WAR_RAID_MIN": 2,
+        "WAR_MARCH": 240
+      }
+    },
+    {
+      "lab": "village",
+      "arm": "march",
+      "seed": 1020,
+      "days": 100,
+      "pop": 403,
+      "food": 6809.338596365383,
+      "empty": 0,
+      "parameters": {
+        "WAR_RAID_MIN": 3,
+        "WAR_MARCH": 1440
+      }
+    }
+  ],
+  "selectedDailyHashParity100": {
+    "war": true,
+    "village": true
+  },
+  "t17": {
+    "pop": 6198,
+    "byteEqual": true
+  }
+}

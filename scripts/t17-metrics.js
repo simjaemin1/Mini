@@ -117,7 +117,7 @@ if (!seeds) {
   }
   if (_SEEDCACHE) { try { fs.mkdirSync(path.dirname(_SEEDCACHE), { recursive: true }); fs.writeFileSync(_SEEDCACHE, JSON.stringify(seeds)); } catch (e) {} }
 }
-const world = econV2.createWorldV2({ seed: SEED, villageCount: seeds.length, picker: 'rational', infoRange: 5000, raidPer100: 0.005 });
+let world = econV2.createWorldV2({ seed: SEED, villageCount: seeds.length, picker: 'rational', infoRange: 5000, raidPer100: 0.005 });
 world.villages = []; world.events = [];
 // ★★[T135] 나무 층 주입 — **서버가 부르는 그 문**(`server/villages.js` Stage 3)을 계측기도 부른다.
 //   ⚠족보 130: 계측기가 이 문을 안 열면 여덟 수는 대체를 못 보고 "안 움직인다"고 말한다.
@@ -399,6 +399,10 @@ const _T1152 = process.env.T17_MARKET ? (() => {
   };
   return { day, out };
 })() : null;
+// ★[T1420 · 계측 전용 · **env 가 없으면 한 글자도 안 바뀐다**] 평형 저장본 — `T1420_EQ=1` 이면 세계를 저장본으로 갈아 끼우고(`T1420_LOAD`) ·
+//   정한 날에 통째 저장(`T1420_SAVE_AT`) · 날마다 세계 지문 · 평형 관측 줄을 적는다. 몸통은 `scripts/lib-eq-lab.js` 한 벌(`scripts/eq-run.js` 가 부른다).
+const _EQ = process.env.T1420_EQ === '1' ? require('./lib-eq-lab').bindT17({ world, econ, zone: Z, seed: SEED }) : null;
+if (_EQ) world = _EQ.world;
 const depositMap = Villages.playerVillageDepositMap();
 const shortByItem = new Map(), glutByItem = new Map(), reqByItem = new Map();
 const L = Events.createLedger({
@@ -432,6 +436,7 @@ const floorTrace = floorIdx.map(([v]) => ({ name: v.name, land: +(v.land.stone |
 const _log = console.log; console.log = () => {};
 for (let d = 0; d < DAYS; d++) {
   econV2.tickWorldV2(world); L.scanDay(world, world.day, {});
+  if (_EQ) _EQ.day();                                            // ★[T1420] 세계 지문 · 관측 줄 · 저장(env 있을 때만)
   if (_T1088) _t1088Day(d);                                      // ★[T1088] 품목 빈도(env 있을 때만)
   if (_T1136) _T1136.day(d);                                     // ★[T1136] 바구니 표(env 있을 때만)
   if (_T1152) _T1152.day(d);                                     // ★[T1152] 식량 흐름 · 치를 힘 표(env 있을 때만)
@@ -451,6 +456,7 @@ for (let d = 0; d < DAYS; d++) {
 }
 if (_CLEAR) console.log(`  [T100] 개간 관측 — 끝 밭 ${_clearVils.reduce((a, v) => a + v._farmSet.size, 0)}칸 · 마을당 중앙 ${_clearVils.map((v) => v._farmSet.size).sort((a, b) => a - b)[Math.floor(_clearVils.length / 2)]}칸`);
 console.log = _log;
+if (_EQ) _EQ.end();
 if (_T1152) {   // ★[T1152] 식량 흐름 · 치를 힘 표 JSON(env 있을 때만)
   fs.writeFileSync(process.env.T17_MARKET, JSON.stringify({ card: 'T1152', zone: Z, seed: SEED, days: DAYS, market: !!econV2.T1152_MARKET, flags: econV2._t1152Probe ? econV2._t1152Probe.flags : null, curve: (econV2.T1152_MARKET && econV2._t1152Probe && econV2._t1152Probe.flags.cal) ? econV2._t1152Probe.cal(world.day) : null, basket: !!econV2.T1136_BASKET, t474: econV2.CARAVAN_DAY_SPEED !== econV2.NPC_SPEED, ..._T1152.out() }, null, 1));
   console.log(`  [T1152] 식량 흐름 표: ${process.env.T17_MARKET}`);

@@ -17,18 +17,27 @@ const HEARTHS = [
   { key: 'in', dx: -2, dy: -1 },      // 실내 화덕(노지)
 ];
 
+// ★[T1403 · 재민 11-20 판정 24 "ㅇㅋ 가"] 간이 움집(3×3 · `small`)도 완공하면 실내 화덕 하나(수혈주거 가운데 불자리 — 큰 집과 같은 규칙 · 값 따로 0).
+//   6×4 표의 사본이 아니라 간이 발자국 상대 한 줄 — 앵커 = 같은 태그 (x1, y1)(3×3 의 남동 칸) · 마당 화덕 0.
+//   자리 = 북쪽 줄 가운데 (x0+1, y0) = 앵커 + (−1, −2): 기둥 둘(가운데 줄 — 가운데 칸 서 · 동 변 · `hut-stages.SMALL_POSTS`)이 선 줄과
+//   문 안 칸(남쪽 줄 가운데 (x0+1, y1) — 문 = 남벽 가운데)을 피하고, 문에서 들어와 두 기둥 사이로 곧장 걸어 닿는 맞은편 칸(걸음 안 막힘).
+//   남는 바닥 칸 = 9 − 문 안 1 − 화덕 1 = 7.   클라 그림 자리(`36-r2-building` 간이 행 `_dx === -1 && _dy === -2`)와 하네스가 대조한다.
+const HEARTHS_SMALL = [
+  { key: 'in', dx: -1, dy: -2 },      // 실내 화덕(북쪽 줄 가운데)
+];
+
 // 이 바닥 행이 그 움집의 캐리어(발자국 남동단 한 칸 — 움집당 정확히 하나)인가 — 클라 마당 소품 캐리어와 같은 규칙
 function isCarrier(b, cellSize) {
-  const h = b && b.type === 'floor' && b.data && !b.data.small && b.data.hut;   // ★[T1392] 간이 움집(`small`)은 화덕을 안 그린다 — 화덕 자리가 6×4 앵커 상대라 3×3 밖이다(보고 T1392 ⓓ)
+  const h = b && b.type === 'floor' && b.data && b.data.hut;   // ★[T1403 · 판정 24] 간이 움집(`small`)도 캐리어 — 화덕 표가 `HEARTHS_SMALL`(T1392 는 6×4 자리라 뺐다)
   if (!Array.isArray(h) || h.length < 4) return false;
   return Math.floor(b.x / cellSize) === h[2] && Math.floor(b.y / cellSize) === h[3];
 }
-// 움집 태그 → 화덕 칸 둘(셀 · 픽셀 중심)
-function hearthsOf(hut, cellSize) {
-  return HEARTHS.map((e) => {
+// 움집 태그 → 화덕 칸(6×4 둘 · 간이 하나 — `small`)(셀 · 픽셀 중심)
+function hearthsOf(hut, cellSize, small) {
+  return (small ? HEARTHS_SMALL : HEARTHS).map((e) => {
     const cx = hut[2] + e.dx, cy = hut[3] + e.dy;
     return { key: e.key, cx, cy, x: cx * cellSize + cellSize / 2, y: cy * cellSize + cellSize / 2 };
   });
 }
 
-module.exports = { HEARTHS, isCarrier, hearthsOf };
+module.exports = { HEARTHS, HEARTHS_SMALL, isCarrier, hearthsOf };

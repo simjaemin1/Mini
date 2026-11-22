@@ -1,0 +1,28 @@
+test-t1243-farm-on.js rc=0 1804s 85 통과 · 0 실패
+test-t1294-perf.js rc=0 3s === T1294 성능 자리 14 통과 · 0 실패 ===
+test-t1331-beast-body.js rc=0 34s PASS 미끼 keepledger 빨강 — 바꾼 자리 1 · FAIL 2건 · 첫 ② 장부
+test-t1337-wake.js rc=0 32s === T1337 잠 깨움 11 통과 · 0 실패 ===
+test-t1393-hunt-chase.js rc=0 5s 10 통과 · 0 실패
+test-t1416-hunt-body2.js rc=0 121s 13 통과 · 0 실패
+test-terr-backfill.js rc=0 1s   ✓ _lifeGranAdd: 백필 후 통과(백필 전이면 차단)
+test-villager-stuck.js rc=0 0s 
+test-wood-act.js rc=0 7s   ✓ ⑪ [전제 · 자명 통과 금지] 판이 한도에 걸린다 — 하루
+test-zone-fauna.js rc=0 49s === 39건 중 PASS 39 · FAIL 0 ===
+END
+test-bandit-all.js rc=0(다시) 결과: PASS (32 통과 · 0 실패)
+test-body-fields.js rc=0(다시) === 14 통과 / 0 실패 ===
+test-build-act.js rc=0(다시)   ✓ ④ [전제] 판 안에서 집이 실제로 선다(0 이면 아�
+test-coll-grid.js rc=0(다시) === 결과: 20 PASS / 0 FAIL ===
+test-dusk-stamp.js rc=0(다시) === 결과: 21 PASS / 0 FAIL ===
+test-fell-loot.js rc=0(다시) === 결과: 31 PASS / 0 FAIL ===
+test-forage-act.js rc=0(다시) === 결과: 251 PASS / 0 FAIL ===
+test-harness-lint.js rc=0(다시) === 102건 중 PASS 102 · FAIL 0 ===
+test-headless-parity.js rc=0(다시) 결과: PASS
+test-hp-src.js rc=0(다시) === 54 통과 / 0 실패 ===
+test-hunt-vis.js rc=0(다시) === 32건 중 PASS 32 · FAIL 0 ===
+test-lon-day.js rc=0(다시) === 22건 중 PASS 22 · FAIL 0 ===
+test-move-soa.js rc=0(다시) === 결과: 287 PASS / 0 FAIL ===
+test-physical-stone-cycle.js rc=0(다시) 
+test-server-market.js rc=0(다시) === 28건 중 PASS 28 · FAIL 0 ===
+test-t1146-stone-rule.js rc=0(다시) === T1146: 45건 중 PASS 45 · FAIL 0 ===
+test-t1237-water-deer.js rc=0(다시) === 38건 중 PASS 38 · FAIL 0 ===

@@ -1,0 +1,7 @@
+test-t1322-prefilter.js rc=1 x=0 0s
+test-t1337-wake.js rc=1 x=0 0s
+test-t1348-loop.js rc=1 x=0 0s
+test-t1273-clock-rest.js rc=0 x=0 56s
+test-t1365-work.js rc=0 x=0 635s
+test-t1399-tok.js rc=0 x=0 706s
+test-t1415-wakeq.js rc=0 x=0 378s

@@ -179,6 +179,14 @@
       return;
     }
     if (type === 'hut') {
+      // ★[T1403] 간이 움집 — 가운데 기둥 둘(서버 `data.posts` = 앵커 기준 월드 px · `hut-stages.js SMALL_POSTS` · 그림만 · 지붕 그림이 없어 기둥이 보인다)
+      if (building.data && building.data.small && Array.isArray(building.data.posts)) {
+        for (const [wx, wy] of building.data.posts) {
+          const sx = x + (wx - wy), sy = y + (wx + wy) * 0.5;   // 월드 → 화면(아이소 · `o2s` 와 같은 꼴)
+          ctx.fillStyle = '#5a3d22'; ctx.fillRect(sx - 2, sy - 26, 4, 26);
+          ctx.fillStyle = '#7a5a36'; ctx.fillRect(sx - 2, sy - 26, 2, 26);
+        }
+      }
       // 완공 앵커 — 몸체(벽·바닥)는 기존 경로가 그림. 라벨만.
       ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = '#e8d8b0'; ctx.textAlign = 'center';
       ctx.fillText('움집', x, y - 6);
@@ -426,6 +434,19 @@
       // ★[T95] 몸체 = 스프라이트(다짐 바닥 한 칸 · `BUILDING_HEIGHT.floor = 4px`).
       //   종전 다이아는 셀을 꽉 채운 **단색 판**이라 흙이 다져진 느낌이 없었다.
       if (!drawPropBody('floor', x, y)) drawPropPending(x, y);
+      //   ★[T1403 · 재민 11-20 판정 24] 간이 움집(3×3) 실내 화덕 — 서버 표 `hut-hearth.HEARTHS_SMALL`(앵커 (x1, y1) + (−1, −2) = 북쪽 줄 가운데) 칸에 모닥불 몸 + 잉걸빛.
+      //     3×3 화덕 그림이 올 때까지 지금 모닥불 그림(`campfire`) — 서버는 그 칸을 모닥불 시설로 친다(보이는 것 = 일어난 것). 하네스가 이 글자를 서버 표와 대조한다.
+      if (building?.data?.small && Array.isArray(building.data.hut)) {
+        const _h = building.data.hut, _dx = Math.floor(building.x / 32) - _h[2], _dy = Math.floor(building.y / 32) - _h[3];
+        if (_dx === -1 && _dy === -2) {
+          const _g = ctx.createRadialGradient(x, y, 2, x, y, 26);
+          _g.addColorStop(0, 'rgba(255,150,60,0.35)'); _g.addColorStop(1, 'rgba(255,150,60,0)');
+          ctx.fillStyle = _g; ctx.beginPath(); ctx.ellipse(x, y, 26, 13, 0, 0, Math.PI * 2); ctx.fill();
+          if (!drawPropBody('campfire', x, y)) drawPropPending(x, y);
+          ctx.fillStyle = '#ff9a4a'; ctx.fillRect(x - 2, y - 2, 4, 3);     // 잉걸 — 상태(6×4 실내 화덕과 같은 결)
+          ctx.fillStyle = '#ffd27a'; ctx.fillRect(x - 1, y - 1, 2, 1);
+        }
+      }
       // ★층 표시는 **몸체가 아니라 진단**이다(14.49-e7ak DEBUG). 몸체를 스프라이트로 옮기면서
       //   단색 칠을 없앴으니, 층 단서는 **테두리 한 줄**로 남긴다 — 정보는 지키고 몸은 하나다.
       {

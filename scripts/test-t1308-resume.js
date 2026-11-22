@@ -83,7 +83,12 @@ const full = (r) => r && r.both > 0 && r.same === r.both;
   const MP = P.code === 0 ? mom(D('P')) : null;
   ok(MP && MP.bodies > 0 && nk(MP.groups['몸']) === 0 && nk(MP.groups['서버 마을']) === 0, '다시 뜬 첫 틱 = 종료 저장 순간 — 몸 칸 · 서버 마을 칸 갈림 0', MP ? `몸 ${MP.bodies} · 몸 칸 ${nk(MP.groups['몸'])} · 마을 칸 ${nk(MP.groups['서버 마을'])}` : `코드 ${P.code}`);
   const MB = Pb.code === 0 ? mom(D('B')) : null;
-  ok(MB && nk(MB.groups['몸']) > 0, '[미끼] 종료 저장에서 몸 칸 전부 줄(걸음 · 일 진행 · 결정 시각)을 뺀 사본은 갈린다', MB ? `몸 칸 ${nk(MB.groups['몸'])}` : `코드 ${Pb.code}`);
+  //   ★[T1410 · 야간 11-20] 몸 칸 줄을 뺀 사본은 이제 **다시 뜨지 못한다** — 다시 뜬 첫 틱에 걷는 몸의 `_stuckPos` 가 없어 걸음 깨움(`_t1322Wake` · T1348)이
+  //     던진다(`TypeError: Cannot set properties of undefined (setting 'x')`) · 판 자 코드 3. 갈림을 잴 판이 없어 종전 줄이 빨강이었다(혼자 5/5).
+  //     미끼의 뜻("그 줄이 없으면 다시 뜬 몸이 이어지지 않는다")은 더 세게 선다 — 갈리거나(종전) · 그 줄 없이 다시 뜬 판이 죽거나(지금). 죽음은 제품 흠(옛 저장 · 몸 칸 빠진 줄을 만나면 존이 죽는다) — 회부.
+  const crashB = Pb.code !== 0 ? (() => { try { return (fs.readFileSync(path.join(D('B'), 'seg-10.log'), 'utf8').match(/^(\w*Error: .*)$/m) || [])[1] || ''; } catch (e) { return ''; } })() : '';
+  ok((MB && nk(MB.groups['몸']) > 0) || (Pb.code === 3 && !!crashB), '[미끼] 종료 저장에서 몸 칸 전부 줄(걸음 · 일 진행 · 결정 시각)을 뺀 사본은 갈린다(또는 다시 뜬 판이 죽는다)',
+    MB ? `몸 칸 ${nk(MB.groups['몸'])}` : `코드 ${Pb.code} · ${crashB.slice(0, 90) || '죽은 까닭 줄 없음'}`);
   const V = MP ? MP.ready.V : null;
   const Q = V ? await run(['12', '1020', '--every', '12', '--tag', 'Q', '--dir', D('Q')], Object.assign({ T1340_AT_V: String(V) }, MO)) : { code: -1 };
   const RQ = Q.code === 0 ? cmp(D('Q'), D('P')) : null;

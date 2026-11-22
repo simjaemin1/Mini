@@ -1,0 +1,126 @@
+{
+ "tag": "bundle",
+ "extra": {
+  "T1334_BUNDLE": "1"
+ },
+ "rows": [
+  {
+   "v": 1,
+   "self": {
+    "x": 14544,
+    "y": 78480
+   },
+   "scan": {
+    "type": "__e2e_lot_scan",
+    "from": {
+     "cx": 454,
+     "cy": 2452
+    },
+    "first": {
+     "cx": 454,
+     "cy": 2452,
+     "steps": 0
+    },
+    "free": {
+     "cx": 454,
+     "cy": 2452,
+     "steps": 0,
+     "gate": null
+    },
+    "tried": 1,
+    "why": {}
+   }
+  },
+  {
+   "v": 2,
+   "self": {
+    "x": 52528,
+    "y": 12304
+   },
+   "scan": {
+    "type": "__e2e_lot_scan",
+    "from": {
+     "cx": 1641,
+     "cy": 384
+    },
+    "first": {
+     "cx": 1641,
+     "cy": 393,
+     "steps": 9
+    },
+    "free": {
+     "cx": 1641,
+     "cy": 383,
+     "steps": 1,
+     "gate": "어촌2 영토 안 집터는 그 마을에서 인정받은"
+    },
+    "tried": 117,
+    "why": {
+     "water": 93,
+     "gate:어촌2 영토 안 집터는 그 마을에서 인정받은": 35,
+     "village": 181
+    }
+   }
+  },
+  {
+   "v": 3,
+   "self": {
+    "x": 38928,
+    "y": 99152
+   },
+   "scan": {
+    "type": "__e2e_lot_scan",
+    "from": {
+     "cx": 1216,
+     "cy": 3098
+    },
+    "first": {
+     "cx": 1215,
+     "cy": 3098,
+     "steps": 1
+    },
+    "free": {
+     "cx": 1215,
+     "cy": 3098,
+     "steps": 1,
+     "gate": null
+    },
+    "tried": 2,
+    "why": {
+     "water": 3
+    }
+   }
+  },
+  {
+   "v": 4,
+   "self": {
+    "x": 41584,
+    "y": 42192
+   },
+   "scan": {
+    "type": "__e2e_lot_scan",
+    "from": {
+     "cx": 1299,
+     "cy": 1318
+    },
+    "first": {
+     "cx": 1299,
+     "cy": 1298,
+     "steps": 20
+    },
+    "free": {
+     "cx": 1297,
+     "cy": 1318,
+     "steps": 2,
+     "gate": "광산4 영토 안 집터는 그 마을에서 인정받은"
+    },
+    "tried": 409,
+    "why": {
+     "water": 107,
+     "gate:광산4 영토 안 집터는 그 마을에서 인정받은": 204,
+     "village": 999
+    }
+   }
+  }
+ ]
+}

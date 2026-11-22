@@ -501,9 +501,10 @@ const fnOf = (i) => { const j = VC.lastIndexOf('\nfunction ', i); return j < 0 ?
   //   ★[T1289] 13 → 17곳 — 고침이 읽는 자리 넷을 더했다(`_caravanSyncOne` T1136 바구니 머묾 끝 · `_t1289Leg` 세 칸 · `_t1289In` 되살림 축 · `_xzWalkToBorder` 경계 걷기의 '지금' · 보고 T1289 전수 표).
   //     종전 조건(이 판 여섯 · T1282 둘 · 함수마다 수)은 그대로 두고 동기만 1 → 2(같은 함수에 바구니 줄) · 새 넷을 더 묶었다(느슨하게 한 것 0).
   //   ★[land1087 · PM · T1365] 17 → 18곳 — 일터 깨움의 장인 판정 `_t1365Art` 가 장인 줄의 시각을 같은 손잡이(`T1258_ARTISAN_CLOCK`)로 읽는다(장인 본문 19700줄의 거울 · 축 무변) · 종전 조건은 그대로 두고 하나를 더 묶었다.
-  ok(fns.length === 18 && cnt._t1365Art === 1 && cnt.spawnCaravanBody === 3 && cnt._caravanSyncOne === 2 && cnt._xzMakeBody === 1 && cnt.marketVillages === 1 && cnt.startReturnLeg === 1 && cnt._t1282Wall === 1
+  //   ★[T1415 ③] 18 → 19곳 — 일터 깨움 표(`t1399Still`)가 장인 판정이 적은 장인 시계 문턱을 그 '지금'으로 다시 본다(읽기만 · 종전 조건 그대로).
+  ok(fns.length === 19 && cnt._t1365Art === 1 && cnt.t1399Still === 1 && cnt.spawnCaravanBody === 3 && cnt._caravanSyncOne === 2 && cnt._xzMakeBody === 1 && cnt.marketVillages === 1 && cnt.startReturnLeg === 1 && cnt._t1282Wall === 1
     && cnt._t1289Leg === 1 && cnt._t1289In === 1 && cnt._xzWalkToBorder === 1,
-    '⓪ [전제] `_t1253Now()` 읽는 자리 18곳 중 이 판의 여섯(몸 세우기 셋 · 도착 동기 · 이웃 존 몸 · 장마당 그림) + T1282 둘(귀환 t0 · 걸음 날 수) + T1289 넷(바구니 머묾 끝 · 세 칸 · 되살림 축 · 경계 걷기) — 나머지 다섯은 T1268 판 · 하나는 T1365 판정 함수',
+    '⓪ [전제] `_t1253Now()` 읽는 자리 19곳 중 이 판의 여섯(몸 세우기 셋 · 도착 동기 · 이웃 존 몸 · 장마당 그림) + T1282 둘(귀환 t0 · 걸음 날 수) + T1289 넷(바구니 머묾 끝 · 세 칸 · 되살림 축 · 경계 걷기) — 나머지 다섯은 T1268 판 · 하나는 T1365 판정 함수',
     `${fns.length}곳 · 몸 세우기 ${cnt.spawnCaravanBody} · 동기 ${cnt._caravanSyncOne} · 이웃 ${cnt._xzMakeBody} · 장마당 ${cnt.marketVillages} · 귀환 ${cnt.startReturnLeg} · 날 수 ${cnt._t1282Wall} · 세 칸 ${cnt._t1289Leg} · 되살림 ${cnt._t1289In} · 경계 ${cnt._xzWalkToBorder}`);
   const site = BAITS.slice(0, 6).map(([, , from]) => fnOf(VC.indexOf(from)));
   ok(site.join() === 'spawnCaravanBody,spawnCaravanBody,spawnCaravanBody,_caravanSyncOne,_xzMakeBody,marketVillages', '⓪ 미끼 여섯이 그 여섯 자리(함수)를 바꾼다', site.join(' · '));

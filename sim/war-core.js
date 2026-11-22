@@ -313,7 +313,7 @@ function _warConscriptAggregate(v, mode, opts) {
   const arrows = archer * (BattleCore.ARROWS_PER || 20);
   return { composition, force: champion + dagger + spear + pike + archer + militia, warriors: warrior, hunters: hunter, archer, melee, champion, arrows, stones: 0, armed: armedCap, weapQ, mode };
 }
-function conscript(v, mode, opts) { const ind = _warConscriptIndividual(v, mode, opts); if (ind) return ind; return _warConscriptAggregate(v, mode, opts); }
+function conscript(v, mode, opts) { const shared = typeof require==='function' ? require('./shared-lab-rules') : (root.EconEngine && root.EconEngine.Rules); if (shared) return shared.conscriptWith(_warConscriptIndividual, _warConscriptAggregate, v, mode, opts); return _warConscriptIndividual(v, mode, opts) || _warConscriptAggregate(v, mode, opts); }
 
 // 편성 비례축소(과밀 방지)
 const _COMP_KEYS = ['champion', 'greataxe', 'spear', 'pike', 'dagger', 'archer', 'slinger', 'militia'];
