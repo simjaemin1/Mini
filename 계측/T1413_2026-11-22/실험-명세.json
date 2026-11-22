@@ -58,5 +58,12 @@
     "boundaries": "경계.md",
     "guards": "검증-종료.json",
     "matchingNodeBaseline": "검증-추가.json"
-  }
+  },
+  "completed": true,
+  "actualCounts": {
+    "inherited": 419,
+    "newMeasured": 733,
+    "total": 1152
+  },
+  "finalAudit": "최종-감사.json"
 }
