@@ -264,7 +264,7 @@ function deleteMob(id) { stmtDeleteMob.run(id); }
   // ★[T1305 → T1332 → ★T1343] 돌봄 = **청크 계량기 줄**(주인 · 청크 좌표 → 관리도 `m` · 마지막 셈 시각 `t` ms) · 다른 존 칸 기억(`deed_owners`).
   //   **켬 판에서만** 만든다(끔 = 스키마 그대로 · 바이트 같음). T1305 의 칸마다 두 열(`care_n` · `care_w`)은 안 쓴다(켬 판 DB 없음 — 라이브 끔).
   //   줄이 없는 내 칸(켜기 앞의 옛 칸)은 첫 셈이 가득으로 잡는다(`deeds.init` · 켜는 순간 줄지 않는다).
-  if (process.env.T1305_DEEDS === '1') {
+  if (process.env.T1305_DEEDS !== '0') {   // ★[T1428 -on 후보] 켬 기본
     db.exec('CREATE TABLE IF NOT EXISTS deed_chunks (owner_id TEXT NOT NULL, cx INTEGER NOT NULL, cy INTEGER NOT NULL, m REAL, t INTEGER, PRIMARY KEY (owner_id, cx, cy))');
     // ★[T1343] 계량기 꼴(관리도 `m` · 마지막 셈 시각 `t` ms) — T1332 꼴(`w` · `n0`)로 선 표는 두 열을 붙인다(옛 줄은 NULL → 첫 셈이 가득으로 잡는다)
     const _dc = db.prepare('PRAGMA table_info(deed_chunks)').all().map((c) => c.name);

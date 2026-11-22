@@ -12459,8 +12459,7 @@ function gatherResource(player, best) {
 // 개인 사유지(personal): 길드 사유지 안에만, 강보호 (전쟁 외 공격 X)
 // 임시 사유지(temporary): 어디든, 약보호 (벌점 시스템만)
 // 길드 사유지(guild): 길드 리더만, 1 grid 단위 도시 영토 — 개인 사유지의 부모
-// 시작 슬롯: 개인 9 + 임시 4 + 길드 50 (리더만)
-const CLAIM_SLOT_PERSONAL_START = 9;
+// 시작 슬롯: 임시 4 + 길드 50 (리더만) — ★[T1428 -on · 판정 28] 개인 숫자 한도(9)는 지웠다(개인 사유지의 상한 = 돌봄 · `deeds.js` · 숨은 안전판 `SAFETY`)
 const CLAIM_SLOT_TEMPORARY_START = 4;
 const CLAIM_SLOT_GUILD_START = 50;
 const CLAIM_COST = {
@@ -12485,7 +12484,7 @@ function countMyClaims(playerId) {
 //   수 둘은 재민의 것(한 변 3 · 값 4배) — 값은 `CLAIM_COST.personal` 에서 유도(따로 박지 않는다).
 //   첫 등록 = 살아 있는(돌봄 `free` 아닌) 내 개인 칸이 0 인 사람(다 풀린 사람이 다시 잡을 때도 첫 등록 — 보고 T1392 회부).
 //   ★칸 행은 한 칸씩 아홉 행이다 — 돌봄(`deeds.js`)의 N · 청크가 행을 칸으로 센다(`_t1332MyChunks`) · 인접 · 내놓기(`claims.js`)도 칸 행 그대로.
-const T1392_FIRST_LOT = process.env.T1392_FIRST_LOT === '1';
+const T1392_FIRST_LOT = process.env.T1392_FIRST_LOT === '1' || (process.env.T1392_FIRST_LOT !== '0' && Deeds.ON);   // ★[T1428 -on 후보 · 판정 28] 첫 집터는 돌봄과 **같이만** 켠다 — 돌봄 켬이면 켬 기본(되돌림 `=0`) · 돌봄을 끄면(`T1305_DEEDS=0`) 같이 꺼진다
 const T1392_SIDE = 3, T1392_MULT = 4;   // ★재민 11-19 "첫 땅은 무조건 3x3 단위로만" · "9배 말고 4배 정도만"
 function _t1392Cost() { const c = CLAIM_COST.personal; return { wood: c.wood * T1392_MULT, stone: c.stone * T1392_MULT }; }
 function _t1392Cfg() {
@@ -12629,7 +12628,7 @@ function tryClaim(player, kind = 'personal') {
   // 슬롯 한도 체크
   const used = countMyClaims(player.playerId);
   const usedCount = kind === 'temporary' ? used.temporary : (kind === 'guild' ? used.guild : used.personal);
-  const max = kind === 'temporary' ? CLAIM_SLOT_TEMPORARY_START : (kind === 'guild' ? CLAIM_SLOT_GUILD_START : CLAIM_SLOT_PERSONAL_START);
+  const max = kind === 'temporary' ? CLAIM_SLOT_TEMPORARY_START : (kind === 'guild' ? CLAIM_SLOT_GUILD_START : Infinity);   // ★[T1428 -on] 개인 = 숫자 한도 없음
   // ★★[T1305] 켬 — 개인 사유지는 **숫자 상한이 없다**(실제 상한 = 돌봄 · `deeds.js`). ★[T1332] 내 칸 위에서 C = 안내 한 줄(돌봄은 쓰거나 머물면 저절로 — 손보기 단추 0).
   //   숨은 안전판(DB · 성능용)과 ★청크 문 하나: 새 청크를 열면 청크 수가 `FREE_D × BASE` 에 닿아 **다음 날 모든 청크가 풀리는** 자리면 막는다
   //   (초선형의 닫힌 꼴 — 그 칸을 받으면 들인 땅 전부를 잃는 덫이다 · 수는 `deeds.daysToFree` 유도 · 화면엔 숫자 0).
@@ -12645,7 +12644,7 @@ function tryClaim(player, kind = 'personal') {
     if (_live >= Deeds.CFG.SAFETY) { send(player.ws, { type: 'notice', text: '🏠 여기서는 더 넓힐 수 없습니다. 땅이 넓을수록 빨리 낡습니다 — 있는 땅을 먼저 돌보십시오.' }); return; }
     _t1343Advance(player.playerId, _t1332Clock());   // ★[T1343] N 이 바뀌기 앞 — 지금까지 옛 속도로 셈(그 순간부터 새 속도)
   }
-  if (!_t1305P && usedCount >= max) {
+  if (usedCount >= max) {   // ★[T1428 -on · 판정 28] 개인은 숫자 한도 없음(위 `max` = 무한 · 끔 `T1305_DEEDS=0` 에서도 — 종전 9 는 지웠다)
     const kName = { personal: '개인', temporary: '임시', guild: '마을' }[kind];
     send(player.ws, { type: 'notice', text: `${kName} 사유지를 더 둘 수 없습니다(한도 ${max}).` });
     return;
@@ -15799,7 +15798,7 @@ function __testBind() {
     findGuildClaimContaining, _claimFootprint, Onboarding, CLAIM_COST,
     _t1402Stat: () => Object.assign({}, _t1402Stat, { off: _t1402Off }), _t1402Uptime, _t1402Save, _t1402SetHome, _t1402SetWall, _t1402GrowSet, _t1402Home, _t1402HutCells, _t1402Pieces, T1402_SPLIT: () => T1402_SPLIT, _t1428HomeOf, _t1428Vacant, deedHome, _t1392IsFirst,   // ★[T1402] 사유지 시계(꺼진 시간 뺌)
     Deeds, _t1305Day, _t1305Gate, _t1332Use, _t1332Dwell, _t1332MyChunks, deedChunks, deedOthers, _t1343Stat, _t1343Advance, _t1343Arm, T1332_USE, _t1332SetClock, deedDebt, _t1386Home, _t1386Build, _t1343Send, _t1389Pending,   // ★[T1305 → T1332] 사유지 돌봄(청크) — 하네스가 정본 그대로 부른다
-    CLAIM_SLOT_PERSONAL_START, CLAIM_SLOT_TEMPORARY_START, CLAIM_SLOT_GUILD_START,
+    CLAIM_SLOT_TEMPORARY_START, CLAIM_SLOT_GUILD_START,
     // ★[T1238] 영토 v2 존 몫 — 하네스(`test-t1238-terr-v2`)가 정본 함수를 그대로 부른다(벌점 · 갇힘 · 작물 · 칸 일)
     T1238_ON, VP_STEAL_CROP, VP_BREAK_FENCE, VP_TRESPASS_GATHER, VP_ATTACK_PLAYER, VP_THRESHOLD, VP_MAX,
     _t1238StealCheck, _t1238StealApply, _t1238Trap, _t1238TrapWaiver, _t1238FenceCost, _t1238FenceApply, _t1238TrapVillage, _t1238BuiltCells, _t1238VilOf, _t1238Work,
