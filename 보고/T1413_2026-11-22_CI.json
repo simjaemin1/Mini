@@ -88,5 +88,145 @@
     "test": "test-assets-audit.js",
     "assertion": "shipped unreachable files 53 > baseline 52",
     "fix": ".dockerignore excludes CLI-only sim/det-math.js; test and threshold unchanged"
+  },
+  "completedDataHead": {
+    "runId": 44989341225,
+    "head": "07722a92a632eb7227c10186e892cbef86c1865f",
+    "url": "https://github.com/simjaemin1/Mini/actions/runs/44989341225",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "id": 137106750207,
+        "name": "바뀐 자리 (문서만이면 아래 잡 건너뜀)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 137106912251,
+        "name": "서버 하네스 2/2 (차례로 · 반드시 초록)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 137106912260,
+        "name": "옛 코드 빨강 (새 하네스는 옛 제품 위에서 빨강)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 137106912286,
+        "name": "긴 판 (만진 것만 · 차례로)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 137106912294,
+        "name": "러너 자가 검사 · 게이트 셋 · 하네스 규약",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 137106912330,
+        "name": "서버 하네스 1/2 (차례로 · 반드시 초록)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 137106912333,
+        "name": "단위 회귀 4/5 (반드시 초록)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 137106912348,
+        "name": "단위 회귀 2/5 (반드시 초록)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 137106912359,
+        "name": "단위 회귀 3/5 (반드시 초록)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 137106912366,
+        "name": "단위 회귀 5/5 (반드시 초록)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 137106912396,
+        "name": "지켜보는 하나 (배지 안 깸)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 137106912553,
+        "name": "단위 회귀 1/5 (반드시 초록)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 137108593861,
+        "name": "CI 문 (필수 체크 하나)",
+        "status": "completed",
+        "conclusion": "success"
+      }
+    ]
+  },
+  "intermediateUnchangedProductFailure": {
+    "head": "117982308e5030973412b97b0daf234c2dd0455f",
+    "runId": 44986196387,
+    "failedTest": "test-guest-rejoin.js",
+    "failedAttempts": 2,
+    "distanceFromWalkedPositionPx": [
+      258,
+      256
+    ],
+    "distanceFromOldSavedPositionPx": [
+      0,
+      0
+    ],
+    "codeOrTestFixApplied": false,
+    "newReferralCount": 1,
+    "evidence": "../계측/T1413_2026-11-22/CI-재접속-귀속.json"
+  },
+  "unchangedCodeTreesAcrossGreenFailedGreenRuns": {
+    "server": {
+      "78526d2f": "1bf9f8780fc3d7ddb33834208578eb47d3d15059",
+      "11798230": "1bf9f8780fc3d7ddb33834208578eb47d3d15059",
+      "07722a92": "1bf9f8780fc3d7ddb33834208578eb47d3d15059"
+    },
+    "sim": {
+      "78526d2f": "d9fb0bb725c3c32d3bf5aec882ac41b91fccfe93",
+      "11798230": "d9fb0bb725c3c32d3bf5aec882ac41b91fccfe93",
+      "07722a92": "d9fb0bb725c3c32d3bf5aec882ac41b91fccfe93"
+    },
+    "public": {
+      "78526d2f": "ce739a20439c3f704ab7a25e55e15f8606e22891",
+      "11798230": "ce739a20439c3f704ab7a25e55e15f8606e22891",
+      "07722a92": "ce739a20439c3f704ab7a25e55e15f8606e22891"
+    },
+    "lab": {
+      "78526d2f": "e58d16907016a6d532019a0b86e28c6dda2e8bb4",
+      "11798230": "e58d16907016a6d532019a0b86e28c6dda2e8bb4",
+      "07722a92": "e58d16907016a6d532019a0b86e28c6dda2e8bb4"
+    },
+    "scripts": {
+      "78526d2f": "7a82c951edeee1e101d1d9269cc34ba019f9e2b5",
+      "11798230": "7a82c951edeee1e101d1d9269cc34ba019f9e2b5",
+      "07722a92": "7a82c951edeee1e101d1d9269cc34ba019f9e2b5"
+    },
+    ".github": {
+      "78526d2f": "c0a84f4a3971214438bec3099c410d180e9656d1",
+      "11798230": "c0a84f4a3971214438bec3099c410d180e9656d1",
+      "07722a92": "c0a84f4a3971214438bec3099c410d180e9656d1"
+    },
+    ".dockerignore": {
+      "78526d2f": "4749704aa377bb97b213f8bb11315ced427c7742",
+      "11798230": "4749704aa377bb97b213f8bb11315ced427c7742",
+      "07722a92": "4749704aa377bb97b213f8bb11315ced427c7742"
+    }
   }
 }
