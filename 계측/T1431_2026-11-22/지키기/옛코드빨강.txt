@@ -1,0 +1,3 @@
+# 옛 코드 빨강 — 하네스 = 0795557df · 제품(server sim public lab) = 01df9e8f9 · 시한 600초
+빨강 ○ | test-t1431-raid-battle.js | RC=1 · ✓ 2 · ✗ 6 |   ✗ [전제] 아이 판이 돌았다  rc 1 · bject..js (node:internal/modules/cjs/loader:1913:10)
+# 합: 빨강 1 · 크래시 0 · 초록 0 · 모름 0 · 제품 무관 0
