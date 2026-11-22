@@ -3905,6 +3905,10 @@ const NPC_NAMES = ['에코', '루나', '오리온', '베가', '카이', '미라'
 const NPC_COLORS = ['#d8806a', '#7aa8d0', '#9ad8a0', '#d8c060', '#c080d8', '#80d8c0'];
 const NPC_COUNT_PER_ZONE = 30; // 면적 100배지만 NPC는 메모리 차지하니 30명만
 const NPC_RESPAWN_MS = 30 * 1000;
+// ★★[T1432 2026-11-22 · 재민 11-22 판정 36 "ㄱ"] 쓰러진 마을 NPC 는 진짜 죽는다 — 손잡이 `T1432_NPC_DEATH`(★끔 기본 · `'1'` 만 켬 · 끔 = 아래 30초 되살림 종전 글자 그대로).
+//   켬 = `damagePlayer` NPC 갈래가 마을 몸을 `SimVillages.t1432Die`(그 자리 주검 · 명부 · econ 명부 · 직업 수 · 야생 누계 · 연표 한 줄)로 보낸다.
+//   마을 명부 밖 몸(캐러밴 · 출정 · 마을 없는 NPC)은 그 문이 false 를 내고 종전 되살림을 탄다(회부).
+const T1432_NPC_DEATH = process.env.T1432_NPC_DEATH === '1';
 const NPC_FLEE_RANGE = 250;        // 늑대 시야 안이면 도망
 const NPC_CLAIM_SIZE = 192;
 
@@ -16442,6 +16446,7 @@ function damagePlayer(p, dmg, source) {
     // ★[T109] `p.hp = 0` 은 지웠다 — `setHp` 가 이미 하한 0 으로 눌렀다(사본 0).
     if (p.isNpc) {
       if (p._bdtGid != null && Bandits.t1078Died && Bandits.t1078Died(p, source)) return;   // ★[T1078] 도적 단원 몸 — 그 자리에 쓰러진다 · 단 n −1(되살림 0 · 끔 = `_bdtGid` 가 안 서서 이 줄 무동작)
+      if (T1432_NPC_DEATH && SimVillages.t1432Die && SimVillages.t1432Die(p, source)) { for (const m of mobs.values()) if (m.aggroTarget === p.pid) m.aggroTarget = null; return; }   // ★[T1432] 켬 — 마을 몸은 진짜 죽는다(되살림 0)
       // NPC: 30초 후 자기 사유지 중심에 부활 (기존 로직 유지)
       console.log(`[${ZONE_ID}] 🤖 NPC ${p.name} 사망 (by ${source}) — ${NPC_RESPAWN_MS/1000}초 후 부활`);
       let respawnX = ZONE.zoneWidth/2, respawnY = ZONE.zoneHeight/2;
