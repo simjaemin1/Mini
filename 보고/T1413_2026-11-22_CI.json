@@ -1,0 +1,92 @@
+{
+  "runId": 44984256807,
+  "head": "78526d2fbdf11f612f4a894ad65fa637e7ef1290",
+  "url": "https://github.com/simjaemin1/Mini/actions/runs/44984256807",
+  "jobs": [
+    {
+      "id": 137091245900,
+      "name": "바뀐 자리 (문서만이면 아래 잡 건너뜀)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 137091385630,
+      "name": "지켜보는 하나 (배지 안 깸)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 137091385702,
+      "name": "긴 판 (만진 것만 · 차례로)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 137091385706,
+      "name": "옛 코드 빨강 (새 하네스는 옛 제품 위에서 빨강)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 137091385725,
+      "name": "서버 하네스 2/2 (차례로 · 반드시 초록)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 137091385729,
+      "name": "서버 하네스 1/2 (차례로 · 반드시 초록)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 137091385759,
+      "name": "단위 회귀 4/5 (반드시 초록)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 137091385775,
+      "name": "러너 자가 검사 · 게이트 셋 · 하네스 규약",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 137091385795,
+      "name": "단위 회귀 1/5 (반드시 초록)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 137091385801,
+      "name": "단위 회귀 5/5 (반드시 초록)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 137091385812,
+      "name": "단위 회귀 2/5 (반드시 초록)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 137091385884,
+      "name": "단위 회귀 3/5 (반드시 초록)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 137093030242,
+      "name": "CI 문 (필수 체크 하나)",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "previousFailure": {
+    "runId": 44983265738,
+    "head": "c6f4a0b1915b9d9f9aec5100cf708dbc101d1477",
+    "test": "test-assets-audit.js",
+    "assertion": "shipped unreachable files 53 > baseline 52",
+    "fix": ".dockerignore excludes CLI-only sim/det-math.js; test and threshold unchanged"
+  }
+}
