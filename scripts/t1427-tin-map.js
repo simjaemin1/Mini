@@ -99,7 +99,15 @@ const tinRows = tinMaj.map((o) => {
   const touch = [];
   for (const v of vils) { const c = contrib.get(v.name); const e = c.list.find((x) => x.i === o.i); if (e) touch.push({ name: v.name, area: Math.round(e.area), shareOfVilTin: e.wTin > 0 && v.lp.oreMix && v.lp.oreMix.tin > 0 ? +(e.wTin / c.list.reduce((s, x) => s + x.wTin, 0)).toFixed(3) : 0, distCells: Math.round(distOf(o.center, [v.x, v.y]) / SZ) }); }
   let nearV = null; for (const v of vils) { const d = distOf(o.center, [v.x, v.y]) / SZ; if (!nearV || d < nearV.d) nearV = { name: v.name, d: Math.round(d) }; }
-  return { i: o.i, name: o.name, center: o.center, radius: o.radius, pk: o.pk, touch, nearV };
+  // 공유 — 광맥 원(셀 한 칸 해상도) 가운데 마을 노동권 하나 · 둘 이상에 든 칸(어느 마을들인지)
+  const rC = (o.radius || 0) / SZ, cx = o.center[0] / SZ, cy = o.center[1] / SZ, LR = S.LABOR_R;
+  let cells = 0, in1 = 0, in2 = 0; const pairs = {};
+  for (let y = Math.floor(cy - rC); y <= Math.ceil(cy + rC); y++) for (let x = Math.floor(cx - rC); x <= Math.ceil(cx + rC); x++) {
+    if (Math.hypot(x + 0.5 - cx, y + 0.5 - cy) > rC) continue; cells++;
+    const who = vils.filter((v) => Math.hypot(x + 0.5 - (v.x / SZ), y + 0.5 - (v.y / SZ)) <= LR).map((v) => v.name);
+    if (who.length >= 1) in1++; if (who.length >= 2) { in2++; const k = who.sort().join('+'); pairs[k] = (pairs[k] || 0) + 1; }
+  }
+  return { i: o.i, name: o.name, center: o.center, radius: o.radius, pk: o.pk, touch, nearV, share: { cells, in1, in2, pairs } };
 });
 // ② 마을
 const vRows = vils.map((v) => ({ name: v.name, ccx: v.ccx, ccy: v.ccy, ore: v.lp.ore, oreGrade: v.lp.oreGrade, oreMix: v.lp.oreMix || {},
@@ -128,7 +136,8 @@ say(`## T1427 주석 지도 — ${Z} 광맥 ${ores.length}(주요 ${majors.lengt
 say(`주요 광종: ${Object.entries(cntMaj).sort((a, b) => b[1] - a[1]).map(([k, v]) => k + ' ' + v).join(' · ')} — 주석 : 구리 = 1 : ${((cntMaj.copper || 0) / Math.max(1, cntMaj.tin || 0)).toFixed(1)}`);
 say(`전체 광종: ${Object.entries(cntAll).sort((a, b) => b[1] - a[1]).map(([k, v]) => k + ' ' + v).join(' · ')}`);
 say('\n큰 주석 광맥:');
-for (const r of tinRows) say(`  #${r.i} ${r.name} (${r.center}) r${r.radius} pk ${r.pk} · 가장 가까운 마을 ${r.nearV.name} ${r.nearV.d}셀 · 닿는 마을 ${r.touch.map((t) => `${t.name}(겹침 ${t.area}셀² · 그 마을 주석의 ${(t.shareOfVilTin * 100).toFixed(0)}%)`).join(' · ') || '없음'}`);
+for (const r of tinRows) say(`  #${r.i} ${r.name} (${r.center}) r${r.radius} pk ${r.pk} · 가장 가까운 마을 ${r.nearV.name} ${r.nearV.d}셀 · 닿는 마을 ${r.touch.map((t) => `${t.name}(겹침 ${t.area}셀² · 그 마을 주석의 ${(t.shareOfVilTin * 100).toFixed(0)}%)`).join(' · ') || '없음'}`
+  + ` · 공유 — 광맥 ${r.share.cells}칸 가운데 노동권 하나 이상 ${r.share.in1} · 둘 이상 ${r.share.in2}${r.share.in2 ? '(' + Object.entries(r.share.pairs).map(([k, v]) => k + ' ' + v).join(' · ') + ')' : ''}`);
 say('\n주석이 드는 마을:');
 for (const v of tinVils) say(`  ${v.name} — 주석 몫 ${v.oreMix.tin} · 땅 ore ${v.ore} · 땅 주석 ${v.tinLand} · 땅 구리 ${v.cuLand} · 조성 ${JSON.stringify(v.oreMix)}`);
 say(`\n마을 노동권 땅 합 — 주석 ${out.land.tin} · 구리 ${out.land.copper} · 금 ${out.land.gold}`);
