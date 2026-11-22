@@ -5,3 +5,11 @@
 미완성 ON350·OFF350 마디를 덮기 전에 gzip 보존했다. 끔의 마지막 관측은 358날이며, 버리는 351~358날 장부 CPU 관측 합은 2,177.567587초다. 켬의 미완성 기동과 양팔 마지막 미완성 날의 CPU는 미측정이다. 첫 중단 증거는 ../infra-recovery-1122에 별도로 남긴다. 이번 자료는 이전 자료를 대체하지 않는다.
 
 체크포인트 해시·이전 복구 증거 경로의 메타데이터 보정은 interruption.json에 있다. 이진 체크포인트는 해당 파일의 preservedBinaryCheckpoint가 가리키는 workspace scratch 폴더에 별도로 보존했으며 Git에는 넣지 않았다. 복구 후 재생되는 끔351~358날은 동일 일일 장부 비교기로 이어서 검사한다. 제품 종료 실패와 환경 중단 후 복구를 따로 센다.
+
+## 복구 뒤 재생 검사
+
+같은 끔351~358날의 t1274 장부·t1302 몸 관찰·t1411 census를 각각8/8날 맞췄다. CPU·프로세스CPU누계·uptime만 제외했고 가상 시각을 포함했다. 원자료는 원래 JSONL 줄 그대로 replayed/OFF-1020에 있다. 기존 100날 원본/후보 지문 범위를 늘리는 자료나 독립 세계가 아니다.
+
+```sh
+python3 scripts/t1411-recovery-check.py --evidence 계측/T1411_2026-11-21/infra-recovery-1122-2 --runs 계측/T1411_2026-11-21/infra-recovery-1122-2/replayed --out /tmp/t1411/recovery-check-2.json
+```
