@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
+// @harness-only   ← [T1443] 제품을 안 부른다(`scripts/live-ping.js` 만 — 밖에서 보는 자) · 옛 제품 위에서도 초록이 맞다
 // @bait 4   ← [T1443] 미끼 판정 줄 수(파일 안 · `test-harness-lint` ⑲b 가 센다)
 // === scripts/test-live-ping.js — 밖에서 보는 생존 확인(`scripts/live-ping.js`)이 이번 사고 꼴을 빨강으로 잡는가(T1443 ②) ==========
 //

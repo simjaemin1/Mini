@@ -18,6 +18,7 @@
 //   미끼 둘(이 파일 안 — live-status.sh 한 자리 고친 사본): `stamp` 스탬프 = HEAD 만 보면 끝났다 → ⑥ 못 잡음 · `names` 컨테이너가 있기만 하면 돈다 → ③ 못 잡음
 // 실행: node scripts/test-update-live-status.js   (약 60초 — 배포 줄 안의 sleep 2 들)
 'use strict';
+if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존(배포 줄 · zone.js)을 띄운다 — 남의 central(기본 3010)에 안 붙게
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
