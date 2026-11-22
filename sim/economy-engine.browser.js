@@ -23275,6 +23275,17 @@ function _raidScrum(escN, escAtk, gangN, gangArmed) {
   const traderDead = A[A.length - 1].h <= 0;   // 상인(마지막) 사망 여부
   return { repel: banBroke && !escBroke, banditsKilled, escKilled, traderDead, escStart: Math.max(0, escN | 0) };
 }
+// ★★[T1431 2026-11-22 · ★재민 11-22 판정 35] **몸 전투 문** — 호스트가 `world.raidFight(c, 단, 구간, 날)` 을 꽂으면(서버 도적 층 · 손잡이 `T1431_RAID_BATTLE` 켬) 위
+//   `_raidScrum` 대신 그 답을 쓴다(battle-core 한 판 · 거리 · 전력 차 · 사기 — `sim/caravan-battle.js` `raidBattle`). 답의 꼴은 `_raidScrum` 그대로에 칸 하나:
+//   `loss` = 진 쪽(달아난 쪽)이 버린 짐 몫(호스트 답 — 버리면 1 · 이기면 0) — 있으면 위 부분 손실 식(0.25 + 0.5 × …) 대신 그 몫(식이 정한 값 → 몸이 정한 값).
+//   이긴 싸움에서 쓰러진 행상(`traderDead` + `repel`)은 그 사람만 죽는다(짐은 산 호위가 나른다 — 캐러밴은 간다). 종전 `_raidScrum` 은 이긴 판의 행상 죽음을 안 봤다(칸 없음 = 그대로).
+//   끔(호스트가 안 꽂음 — 랩 · CLI · 서버 끔) = `world.raidFight` 없음 · `R.loss` 없음 → 이 문들이 안 닿는다(종전 바이트 · 같은 주사위 차례).
+function _t1431Fell(c, v) {
+  const t = c.trader;
+  if (t && v && !v._xz && v.npcs) { const i = v.npcs.indexOf(t); if (i >= 0) { v.npcs.splice(i, 1); if (v.counts) v.counts[t.currentJob] = Math.max(0, (v.counts[t.currentJob] || 0) - 1); if (v1.T1206_NAT_DEATH) v._t1206Due = (v._t1206Due || 0) + 1; } }
+  if (v && v.tradeStats) v.tradeStats.tradersKilled = (v.tradeStats.tradersKilled || 0) + 1;
+  c.trader = null;
+}
 // 호위 전사 사상 → 마을 전사 실제 감소(엔티티 상호작용 반영)
 function _killWarriors(v, n) {
   if (!v.npcs || n <= 0) return;
@@ -23312,7 +23323,7 @@ function _t707Xz(c) { return !!(c && (c._xzHome || (c.from && c.from._xz) || (c.
 function _raidOut(world, c, day, gangO) {
     let outboundLoss = 0;
     if (gangO && gangO.n > 0) {
-      const R = _raidScrum(c.escort, _escAtk(c.from), gangO.n, world.banditArmed ? world.banditArmed(gangO) : null);   // ★[T1079] 단 무기 짐(호스트가 줄 때만)
+      const R = world.raidFight ? world.raidFight(c, gangO, 'outbound', day) : _raidScrum(c.escort, _escAtk(c.from), gangO.n, world.banditArmed ? world.banditArmed(gangO) : null);   // ★[T1079] 단 무기 짐(호스트가 줄 때만) · ★[T1431] 호스트 몸 전투 문(아래 주석)
       gangO.n = Math.max(0, gangO.n - R.banditsKilled);   // 도적 사상 반영(엔티티 대결 결과)
       if (R.escKilled > 0) _xzKillW(c, c.from, R.escKilled);   // 죽은 호위만 마을 전사 감소(도주 생존 제외)
       if (!R.repel) {   // 호위 붕괴
@@ -23326,7 +23337,7 @@ function _raidOut(world, c, day, gangO) {
           }
           _xzKillT(c, c.from);
         } else {   // ★상인 도주 → 사상 비례 부분 약탈만, 남은 화물로 감축 배송(전손 아님)
-          outboundLoss = Math.min(0.85, 0.25 + 0.5 * Math.min(1, R.escKilled / Math.max(1, R.escStart + 1)));
+          outboundLoss = R.loss != null ? R.loss : Math.min(0.85, 0.25 + 0.5 * Math.min(1, R.escKilled / Math.max(1, R.escStart + 1)));   // ★[T1431] 몸 전투 = 진 쪽(달아난 쪽)이 짐을 버린다(호스트가 준 몫)
           if (c.basket) { for (const it of c.basket) { const _l = it.amt * outboundLoss; if (c.from.tradeStats) c.from.tradeStats.cargoLost += _l; if (world.onBanditLoot && _l > 0) world.onBanditLoot(c.from, c.to, it.res, _l, day, gangO); } }   // ★[T1136] 바구니 — 품목마다 같은 비율
           else {
           const _loot = c.giveAmt * outboundLoss;
@@ -23334,7 +23345,7 @@ function _raidOut(world, c, day, gangO) {
           if (world.onBanditLoot && _loot > 0) world.onBanditLoot(c.from, c.to, c.giveRes, _loot, day, gangO);
           }
         }
-      } else if (c.from.tradeStats) { c.from.tradeStats.banditsRepelled = (c.from.tradeStats.banditsRepelled || 0) + 1; }   // 격퇴
+      } else { if (c.from.tradeStats) c.from.tradeStats.banditsRepelled = (c.from.tradeStats.banditsRepelled || 0) + 1; if (R.traderDead && R.loss != null) _t1431Fell(c, c.from); }   // 격퇴 · ★[T1431] 이긴 싸움에서 쓰러진 행상
     }
     return outboundLoss;
 }
@@ -23342,7 +23353,7 @@ function _raidOut(world, c, day, gangO) {
 function _raidIn(world, c, day, gangI) {
       let inboundLoss = 0;
       if (gangI && gangI.n > 0) {
-        const R = _raidScrum(c.escort, _escAtk(c.from), gangI.n, world.banditArmed ? world.banditArmed(gangI) : null);   // ★[T1079] 단 무기 짐(호스트가 줄 때만)
+        const R = world.raidFight ? world.raidFight(c, gangI, 'inbound', day) : _raidScrum(c.escort, _escAtk(c.from), gangI.n, world.banditArmed ? world.banditArmed(gangI) : null);   // ★[T1079] 단 무기 짐(호스트가 줄 때만) · ★[T1431]
         gangI.n = Math.max(0, gangI.n - R.banditsKilled);
         if (R.escKilled > 0) _killWarriors(c.from, R.escKilled);   // 죽은 호위만 감소
         if (!R.repel) {   // 호위 붕괴
@@ -23353,11 +23364,11 @@ function _raidIn(world, c, day, gangI) {
             else if (world.onBanditLoot && c._returningRes && c._returningAmt > 0) world.onBanditLoot(c.from, c.to, c._returningRes, c._returningAmt, day, gangI);
             killTrader(c, c.from);
           } else {   // ★상인 도주 → 부분 약탈, 나머지는 고향까지 회수(감축 입금 — 아래 received)
-            inboundLoss = Math.min(0.85, 0.25 + 0.5 * Math.min(1, R.escKilled / Math.max(1, R.escStart + 1)));
+            inboundLoss = R.loss != null ? R.loss : Math.min(0.85, 0.25 + 0.5 * Math.min(1, R.escKilled / Math.max(1, R.escStart + 1)));   // ★[T1431]
             if (c.basket) { if (world.onBanditLoot) for (const it of (c._retBasket || [])) if (it.amt > 0) world.onBanditLoot(c.from, c.to, it.res, it.amt * inboundLoss, day, gangI); }   // ★[T1136]
             else if (world.onBanditLoot && c._returningRes && c._returningAmt > 0) world.onBanditLoot(c.from, c.to, c._returningRes, c._returningAmt * inboundLoss, day, gangI);
           }
-        } else if (c.from.tradeStats) { c.from.tradeStats.banditsRepelled = (c.from.tradeStats.banditsRepelled || 0) + 1; }
+        } else { if (c.from.tradeStats) c.from.tradeStats.banditsRepelled = (c.from.tradeStats.banditsRepelled || 0) + 1; if (R.traderDead && R.loss != null) _t1431Fell(c, c.from); }   // ★[T1431]
       }
       return inboundLoss;
 }
