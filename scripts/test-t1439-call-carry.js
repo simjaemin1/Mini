@@ -7,7 +7,7 @@
 //   ① 손잡이 `T1439_CALL_CARRY` — 끔 기본 · `'1'` 만 · 걸어 나르기(`T1416_CARRY_HOME`) 켬 안에서만 · wildlife · villages 같은 env
 //   ② 몰이 → 나르기 — 사체가 앉는 순간 몰이 반경(해제 18 · 맨해튼) 안 살아 있는 사냥꾼 대리가 명단에 오르고(먼 몸 · 죽은 몸 · 사냥꾼 아닌 몸 빠짐) ·
 //      한 손에 다 못 실은 몫은 명단 몸마다 제 손 빈 자리만큼 그 몸의 둔 몫으로 나뉜다(합 보존 · 제 둔 몫이 있는 몸 · 판을 떠난 몸 건너뜀) · 그 몸은 지고 곧장 곳간 길(글자)
-//   ③ 마을에서 데려가기 — 남은 kg 60 · 짐 25 → ⌈60 ÷ 25⌉ − 1 = 2 명(쏜 몸이 한 짐) · 쉬는 몸('휴식') 먼저 · 판에 든 사냥꾼 · 일감 몸 · 누운 몸 건너뜀 ·
+//   ③ 마을에서 데려가기 — 남은 kg 60 · 짐 25 → ⌈60 ÷ 25⌉ = 3 명(둔 몫을 다 나눠 진다) · 쉬는 몸('휴식') 먼저 · 판에 든 사냥꾼 · 일감 몸 · 누운 몸 건너뜀 ·
 //      조각마다 짐 상한 이하 · 합 보존 · **불린 몸은 제자리**(일감 목표만 사체 자리 — 순간이동 0)
 //   ④ 불려 온 몸의 하루 — 멀면 걷기만('고기 가지러' · 손 0) · 닿으면 그날 몫을 손에(상한까지) · 곳간 사다리에서 넣는다(그 마을 곳간 kg 누계) · 날이 바뀌어 닿으면 헛걸음(센다 · 빈손)
 //   ⑤ 불려 간 몸은 제 일을 같이 안 한다 — 생활층 일감 갈래가 직업 갈래 앞에서 `return` 한다(글자 차례)
@@ -57,9 +57,9 @@ const vil={npcPids:[...players.keys()],econ:{},_granList:[],ccx:30,ccy:30};
 const n=V._t1439Probe.call(vil,killer,5000);const by=[...players.values()].filter(p=>p._lifeTask&&p._lifeTask.k==='meat');
 console.log(JSON.stringify({n,who:by.map(p=>p.pid),parts:by.map(p=>p._lifeTask.C.kg),pos:by.map(p=>[p.x,p.y]),tgt:by.map(p=>[p._lifeTask.px,p._lifeTask.py]),left:killer._t1416C?killer._t1416C.kg:0,stat:V.t1439Stat(),baitN:globalThis.__baitN}));`;
 const C0 = run(ON, CALL());
-const callOk = (r) => !r.err && r.n === 2 && JSON.stringify(r.who) === '["r1","h1"]' && r.parts.every((k) => k <= 25 + 1e-9) && Math.abs(r.parts.reduce((x, y) => x + y, 0) + r.left - 60) < 1e-6
+const callOk = (r) => !r.err && r.n === 3 && JSON.stringify(r.who) === '["r1","h1","o1"]' && r.left === 0 && r.parts.every((k) => k <= 25 + 1e-9) && Math.abs(r.parts.reduce((x, y) => x + y, 0) + r.left - 60) < 1e-6
   && r.pos.every((q) => q[0] === 1000 && q[1] === 1000) && r.tgt.every((q) => q[0] === 6400 && q[1] === 9600);
-ok(callOk(C0), '③ 마을에서 데려가기 — 60 kg · 짐 25 → 2 명(쉬는 몸 → 판 밖 사냥꾼 · 판 안 사냥꾼 · 일감 · 누운 몸 빠짐) · 조각 ≤ 25 · 합 보존 · 불린 몸은 제자리(목표만 사체)',
+ok(callOk(C0), '③ 마을에서 데려가기 — 60 kg · 짐 25 → ⌈60 ÷ 25⌉ = 3 명(쉬는 몸 → 판 밖 사냥꾼 → 그 밖 · 판 안 사냥꾼 · 일감 · 누운 몸 빠짐 · 둔 몫이 다 나뉘어 사냥꾼 둔 몫 0) · 조각 ≤ 25 · 합 보존 · 불린 몸은 제자리(목표만 사체)',
   JSON.stringify({ n: C0.n, who: C0.who, parts: C0.parts, left: C0.left, pos: C0.pos, err: C0.err }));
 // ── ④ 불려 온 몸의 하루 ──
 const STEP = `const V=require('./server/villages'),Wl=require('./server/wildlife');const players=new Map();

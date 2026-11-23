@@ -18116,7 +18116,7 @@ let _t1439W = null; function _t1439Wl() { if (_t1439W === null) { try { _t1439W 
 function _t1439Call(vil, npc, now) {
   const C = npc._t1416C, W = _t1439Wl(); if (!C || !(C.kg > 0) || !W) return 0;
   const cap = W.cap(); if (!(cap > 0)) return 0;
-  const want = Math.ceil(C.kg / cap - 1e-9) - 1; if (!(want > 0)) return 0;
+  const want = Math.ceil(C.kg / cap - 1e-9); if (!(want > 0)) return 0;   // 카드 글자 그대로 — 데려갈 수 = ⌈남은 kg ÷ 한 사람 짐⌉(사냥꾼은 길잡이 · 둔 몫은 불린 몸들이 다 진다 → 사냥꾼 둔 몫이 비면 사냥꾼은 다시 사냥판으로)
   const pl = state.deps && state.deps.players; if (!pl) return 0;
   const tiers = [[], [], []];
   for (const pid of (vil.npcPids || [])) {

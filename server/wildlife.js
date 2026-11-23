@@ -905,7 +905,7 @@ const T1416_CARRY_HOME = T1393 && process.env.T1416_CARRY_HOME === '1';
 //      도살이 끝나 한 손에 다 못 실은 몫이 남으면(`_t1416Done` 의 남은 몫) 명단의 몸마다 제 손 빈 자리만큼 나눠 그 몸의 둔 몫(`_t1416C` — 제 둔 몫이 없는 몸만)으로 —
 //      그 몸은 있는 '회수' 걸음으로 사체 자리까지 걸어가 지고(`_t1416Fetch`) 곧장 곳간 길에 오른다(`_t1439Go` 표지 → `_t1416Go`).
 //   ⓑ 그래도 남으면 마을에서 데려온다 — 쏜 사냥꾼이 제 짐을 지고 곳간까지 걸어와 넣은 순간(T720 정산 `_t720Settle` — villages `_t1439Call`)
-//      그날 둔 몫이 남았으면 그 마을 몸을 ⌈남은 kg ÷ 한 사람 짐⌉ − 1 명(사냥꾼 자신이 한 짐 — 그 몸도 다시 간다) 데리고 간다 · 불려 온 몸도 걸어가 지고 걸어온다(`villages` 생활층 일감 'meat').
+//      그날 둔 몫이 남았으면 그 마을 몸을 ⌈남은 kg ÷ 한 사람 짐⌉ 명 데리고 간다(둔 몫을 그 몸들이 나눠 진다) · 불려 온 몸도 걸어가 지고 걸어온다(`villages` 생활층 일감 'meat').
 //   새 수 0 — 짐 상한 `carry.CFG.CAP_KG` · 몰이 반경 18 · 썩음 = 날 바뀜(T1416 · T1429 규칙 그대로).
 const T1439_CALL_CARRY = T1416_CARRY_HOME && process.env.T1439_CALL_CARRY === '1';
 const _t1439St = { kills: 0, coKills: 0, coN: 0, coShare: 0, coShareKg: 0, coLoadKg: 0, coMiss: 0, calls: 0, callBodies: 0, callKg: 0, loadKg: 0, miss: 0, missKg: 0 };
