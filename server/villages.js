@@ -8816,12 +8816,7 @@ const T1447_NO_RAID = T1447_GRUDGE && process.env.T1447_NO_RAID === '1';   // �
 const _t1447Jobs = [];
 let _t1447JobN = 0;
 const _t1447T = { casus: 0, noNeed: 0, noFight: 0, far: 0, cool: 0, food: 0, busy: 0, go: 0, chief: 0, arrive: 0, razed: 0, drops: 0, unclaimed: 0, split: 0, looted: 0, lootVal: 0, lootKg: 0, paid: 0, home: 0, lost: 0, rows: [], log: [] };
-function _t1447Target(vil) {
-  const e = vil.econ; if (!e || !e.land) return 0;
-  const VL = _lifeVL(); let t = VL.territoryTarget(e.land.size, _t966TerrHousing(e)).target;
-  if (T538_TERR_CAP && !e.founder) t = Math.min(t, _terrCap(vil));
-  return t;
-}
+function _t1447Target(vil) { const t = _terrGrowTarget(vil); return t == null ? 0 : t; }   // 넓힘 목표 — 넓힘과 같은 함수(사본 0)
 //   그 사유지에서 그 마을에 가장 가까운 칸(몸이 서는 자리 — 칸 가운데 px)
 function _t1447Stand(vil, cells) {
   let best = null, bd = Infinity;
@@ -8979,13 +8974,18 @@ function _terrGrow(vil) {
   _t1238St.growN++; _t1238St.growUs += us; if (us > _t1238St.growMaxUs) _t1238St.growMaxUs = us;
   return r;
 }
-function _terrGrowCore(vil) {
-  if (!state.ta || !vil || !vil._terrSet || !vil._terrSet.size) return 0;
-  if (T1207_TERR_REAL && vil.econ && vil.econ.founder) return 0;   // ★[T1207 ③] 플레이어 마을은 집을 지어도 영토가 저절로 안 붙는다 — 영토는 우클릭 넓히기(`terrPlayerAdd`)로만
-  const land = vil.econ && vil.econ.land; if (!land || !land.size) return 0;
+//   넓힘 목표(영토 칸) — 넓힘(`_terrGrowCore`)과 ★[T1447] 토벌 결단("땅이 모자라나")이 같은 함수를 읽는다(식 한 자리 · 땅이 없으면 null)
+function _terrGrowTarget(vil) {
+  const land = vil && vil.econ && vil.econ.land; if (!land || !land.size) return null;
   const _tt = _lifeVL().territoryTarget(land.size, _t966TerrHousing(vil.econ));
   let target = T230_TERR_HOUSING ? _tt.target : _tt.econ;
   if (T538_TERR_CAP && !vil.econ.founder) target = Math.min(target, _terrCap(vil));   // ★[T559 ⓪] 유저 마을은 상한 밖 · ★[T579] 상한 = 인구 × (밭 + 집 부지)
+  return target;
+}
+function _terrGrowCore(vil) {
+  if (!state.ta || !vil || !vil._terrSet || !vil._terrSet.size) return 0;
+  if (T1207_TERR_REAL && vil.econ && vil.econ.founder) return 0;   // ★[T1207 ③] 플레이어 마을은 집을 지어도 영토가 저절로 안 붙는다 — 영토는 우클릭 넓히기(`terrPlayerAdd`)로만
+  const target = _terrGrowTarget(vil); if (target == null) return 0;
   if (vil._terrSet.size >= target) return 0;
   const ta = state.ta, own = vil._terrSet, ccx = vil.ccx, ccy = vil.ccy;
   const fertW = 3.5, compactW = 0, distW = 0.1;
