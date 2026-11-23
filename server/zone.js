@@ -14332,7 +14332,7 @@ function _t1441GraceOf(pid) {
 }
 //   ⑧ villages.js 가 묻는다 — 그 칸이 개인 · 임시 사유지면 { owner, member(그 마을 사람인가) } · 아니면 null
 function _t1441ClaimOwner(vid, cx, cy) {
-  const c = _t1441ClaimAt(cx, cy, true); if (!c) return null;
+  const c = _t1441ClaimAt(cx, cy, false); if (!c) return null;   // 풀린 칸(`free`)은 주인 없는 땅 — 마을이 가진다 · 비운 사이(held · pref)는 아직 그 사람 것
   _t1441Z.terr.ask++;
   const mv = _t1441VidOfId(c.ownerPid);
   return { owner: c.ownerPid, member: mv != null && (mv | 0) === (vid | 0) };

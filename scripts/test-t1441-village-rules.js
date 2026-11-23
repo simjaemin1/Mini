@@ -123,6 +123,13 @@ if (MODE) {
       H._t1423Hostile(n3.playerId, n3.name, '을마을', '시험', 9002);
       H.players.set(n3.pid, n3); const before = !!n3.member; H._t1423Collect(n3);
       put(R, 'e5_offline', before && !n3.member, `접속 안 한 사이 길 막기 → 들어오는 순간 ${n3.member ? '남음' : '내보냄'}(벌점 ${Math.round(n3.vp)})`);
+      // 봇 줄 — 을마을 사람이 을마을 길을 닫는 조각을 일곱 번(캐러밴이 칠 때마다 +8) → 일곱째에 내보내짐 → 가입 거절 → 벌점 49 · 2시간 뒤 가입
+      SV.villageWithdrawGate = (vid, x, y) => ({ vil: VB[vid | 0] || NV });
+      const bot = mk('bot', 9002); const seq = [];
+      for (let k = 1; k <= 7; k++) { H._t1423Hostile(bot.playerId, bot.name, '을마을', '시험', 9002); seq.push(Math.round(bot.vp) + (bot.member ? '' : '✕')); }
+      const j1 = Membership.join(bot, 9002);
+      bot.vp = 49; bot.memberCool = Date.now() - 1; const j2 = Membership.join(bot, 9002);
+      put(R, 'e5_bot', seq.slice(0, 6).every((x) => !/✕/.test(x)) && /✕/.test(seq[6]) && !j1.ok && j2.ok, `벌점 차례 ${seq.join(' · ')} · 바로 가입 ${j1.ok ? '됨' : '거절(' + j1.err + ')'} · 벌점 49 · 2시간 뒤 가입 ${j2.ok ? '됨' : '거절 ' + j2.err}`);
       // ── ⑥ 말미 ──
       const g = mk('g1', 9001); put1(g, X + 14, Y + 3); const gF = fence(g, X + 14, Y + 3).b; put1(g, X + 15, Y + 3); const gC = fence(g, X + 15, Y + 3).b; gC.data.t1440c = { why: 'mark', vil: 9001 };
       const lv = Membership.leave(g, 'self');
@@ -174,7 +181,7 @@ const show = (R, keys) => { for (const [k, name] of keys) ok(R[k] === true, name
 const KEYS = [['b1_outsider', '① 남은 갑마을 땅에 울타리 · 벽(변 한쪽) · 임시 사유지를 못 세운다'], ['b1_member', '① 그 마을 사람 · 마을 밖은 선다'], ['b1_preview', '① 미리보기 · 첫 집터가 같은 답'],
   ['d2_owner', '② 마을 문 = 그 마을 사람 · 개인 문 = 주인 · 주인 없는 땅 문 = 누구나'], ['d2_npc', '② 걷는 NPC — 제 마을 문은 지나고 남의 마을 문은 벽'],
   ['w3_war', '③ 마을 땅 위 사유지 건물 — 싸울 때만 · 길을 닫는 조각 · 풀린 칸은 예외'], ['c4_chief', '④ 촌장은 구성원 건물을 헌다(재료 바닥 · 벌점 0) · 구성원끼리는 못 친다'],
-  ['e5_expel', '⑤ 벌점 50 + 그 마을 길 막기 → 내보냄 · 벌점만으로는 안 내보냄'], ['e5_rejoin', '⑤ 다시 들기 = 2시간 + 벌점 50 아래'], ['e5_offline', '⑤ 접속 안 한 사이 받은 몫 — 들어오는 순간'],
+  ['e5_expel', '⑤ 벌점 50 + 그 마을 길 막기 → 내보냄 · 벌점만으로는 안 내보냄'], ['e5_rejoin', '⑤ 다시 들기 = 2시간 + 벌점 50 아래'], ['e5_offline', '⑤ 접속 안 한 사이 받은 몫 — 들어오는 순간'], ['e5_bot', '⑤ 봇 줄 — 길 닫는 조각 일곱 번 → 추방 → 가입 거절 → 49 · 2시간 뒤 가입'],
   ['g6_lock', '⑥ 말미 — 잠김(길을 닫는 조각 빼고) · 주인은 마을 문을 연다 · 새로 짓지는 못한다'], ['g6_clock', '⑥ 말미 시계는 몸에 실려 그대로 · 나갈 때 알림'], ['g6_after', '⑥ 말미 뒤 — 문 닫힘 · 촌장이 친다 · 다시 들면 말미가 닫힌다'],
   ['v7_first', '⑦ 겹치면 마을 우선 — 마을 땅 위 사유지는 벌점으로 안 풀린다'], ['v7_2h', '⑦ 추방 2시간 · 탈퇴 1시간'], ['t8_terr', '⑧ 영토는 제 마을 사람 사유지만 덮는다']];
 if (require.main === module) {
@@ -208,12 +215,13 @@ if (require.main === module) {
   const SRC = { zone: path.join(ROOT, 'server', 'zone.js'), memb: path.join(ROOT, 'server', 'membership.js'), vil: path.join(ROOT, 'server', 'villages.js') };
   const made = [];
   console.log('=== 미끼(사본 한 곳 — 그 판정이 빨개야 한다) ===');
+  const BR = [];
   try {
     BAITS.forEach((b, i) => {
       const src = fs.readFileSync(SRC[b.f], 'utf8');
       let s = src, nRep = 0;
       for (const [from, to] of b.rep) { const k = s.split(from).length - 1; if (k !== 1) { nRep = -1; break; } s = s.replace(from, to); nRep++; }
-      if (nRep < 1) { ok(false, `미끼 ${b.name} — 바꾼 자리가 한 곳이 아님`); return; }
+      if (nRep < 1) { ok(false, `미끼 ${b.name} — 고칠 곳이 한 곳이 아님`); return; }
       const tag = '_t1441bait-' + (i + 1);
       const env = {};
       if (b.f === 'zone') { const p = path.join(ROOT, 'server', tag + '.js'); fs.writeFileSync(p, s); made.push(p); env.__T1441_ZONE = p; }
@@ -226,9 +234,29 @@ if (require.main === module) {
         if (!k) { ok(false, `미끼 ${b.name} — 존이 그 모듈을 부르는 자리를 못 찾음`); return; }
       }
       const R = runChild('on', env);
-      ok(R[b.key] === false, `미끼 ${b.name} → ${b.key} 빨강(바꾼 자리 ${nRep})`, R[b.key + '#']);
+      BR[i] = { red: R[b.key] === false, n: nRep, x: R[b.key + '#'] };
     });
   } finally { for (const p of made) { try { fs.unlinkSync(p); } catch (e) {} } }
+  const bk = (i) => BR[i] || { red: false, n: 0, x: '돌지 않음' };
+  ok(bk(0).red, `미끼 ① 남의 마을 땅에 벽이 서는 사본 → b1_outsider 빨강(바꾼 자리 ${bk(0).n})`, bk(0).x);
+  ok(bk(1).red, `미끼 ② 남의 개인 문이 열리는 사본 → d2_owner 빨강(바꾼 자리 ${bk(1).n})`, bk(1).x);
+  ok(bk(2).red, `미끼 ③ 전쟁 중이 아닌데 치는 사본 → w3_war 빨강(바꾼 자리 ${bk(2).n})`, bk(2).x);
+  ok(bk(3).red, `미끼 ④ 구성원이 부수는 사본(촌장 표지를 안 본다) → c4_chief 빨강(바꾼 자리 ${bk(3).n})`, bk(3).x);
+  ok(bk(4).red, `미끼 ⑤ 벌점 50 만 보고 내보내는 사본 → e5_expel 빨강(바꾼 자리 ${bk(4).n})`, bk(4).x);
+  ok(bk(5).red, `미끼 ⑥ 걷는 NPC 가 남의 마을 문도 지나는 사본 → d2_npc 빨강(바꾼 자리 ${bk(5).n})`, bk(5).x);
+  ok(bk(6).red, `미끼 ⑦ 접속 안 한 사이 받은 길 막기를 들어올 때 안 얹는 사본 → e5_offline 빨강(바꾼 자리 ${bk(6).n})`, bk(6).x);
+  ok(bk(7).red, `미끼 ⑧ 말미 중 촌장이 부수는 사본 → g6_lock 빨강(바꾼 자리 ${bk(7).n})`, bk(7).x);
+  ok(bk(8).red, `미끼 ⑨ 말미 중 주인이 새 벽을 세우는 사본 → g6_lock 빨강(바꾼 자리 ${bk(8).n})`, bk(8).x);
+  ok(bk(9).red, `미끼 ⑩ 말미 뒤에도 문이 열리는 사본 → g6_after 빨강(바꾼 자리 ${bk(9).n})`, bk(9).x);
+  ok(bk(10).red, `미끼 ⑪ 말미 시계가 재접속 때 다시 감기는 사본 → g6_clock 빨강(바꾼 자리 ${bk(10).n})`, bk(10).x);
+  ok(bk(11).red, `미끼 ⑫ 길을 닫는 조각까지 잠그는 사본 → g6_lock 빨강(바꾼 자리 ${bk(11).n})`, bk(11).x);
+  ok(bk(12).red, `미끼 ⑬ 벌점 50 넘은 주인의 마을 안 사유지가 풀리는 사본 → v7_first 빨강(바꾼 자리 ${bk(12).n})`, bk(12).x);
+  ok(bk(13).red, `미끼 ⑭ 추방 뒤 1시간에 다시 드는 사본 → v7_2h 빨강(바꾼 자리 ${bk(13).n})`, bk(13).x);
+  ok(bk(14).red, `미끼 ⑮ 탈퇴까지 2시간이 되는 사본 → v7_2h 빨강(바꾼 자리 ${bk(14).n})`, bk(14).x);
+  ok(bk(15).red, `미끼 ⑯ NPC 마을에서 벌점 50 위인데 2시간 뒤 들어가는 사본 → e5_rejoin 빨강(바꾼 자리 ${bk(15).n})`, bk(15).x);
+  ok(bk(16).red, `미끼 ⑰ 소속이 아닌 사람 사유지를 덮는 사본 → t8_terr 빨강(바꾼 자리 ${bk(16).n})`, bk(16).x);
+  ok(bk(17).red, `미끼 ⑱ 제 마을 사람 사유지를 비켜 가는 사본 → t8_terr 빨강(바꾼 자리 ${bk(17).n})`, bk(17).x);
+  ok(bk(18).red, `미끼 ⑲ 영토가 소속을 안 묻는 사본(나간 사람 · 남의 땅도 덮는다) → t8_terr 빨강(바꾼 자리 ${bk(18).n})`, bk(18).x);
   console.log(`\n=== T1441 마을 쪽 규칙: ${pass} 통과 / ${fail} 실패 ===`);
   process.exit(fail ? 1 : 0);
 }

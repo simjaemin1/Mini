@@ -18181,7 +18181,8 @@ function _t1441Route(c, home, legA, legB, pts, phase) {
   const passes = _t1441Passes(); if (!passes.length || !home) return { pts, waste: null };
   const hit = _t1441Cross(pts, passes); if (!hit) return { pts, waste: null };
   const s = hit.site, vid = home.dbId | 0;
-  if (_t1441Know(s, vid) === 'closed') {
+  const _own = (s.by || []).indexOf(vid) >= 0;   // 낸 마을 — 제 통로의 꼴을 안다(제 문은 지난다 — 막는 것이 제 문뿐이면 지름길)
+  if (_own ? _t1441ClosedFor(_t1441Block(s), vid) : _t1441Know(s, vid) === 'closed') {
     if (!state._t1441Alt) state._t1441Alt = new Map();
     const key = legA.dbId + '|' + legB.dbId + '|' + s.i;
     let alt = state._t1441Alt.get(key);
@@ -21956,7 +21957,7 @@ module.exports = { T1440_ROAD_RULE, t1440Touch, t1440Judge, t1440Step, t1440Appl
     route: (...a) => computeRoutePts(...a), getRoute: (a, b) => getRoute(a, b), cells: _t1327Cells, flush: () => _t1440Flush(), validate: (w) => _t1440Validate(w || 'test'), siteCloses: (...a) => _t1440SiteCloses(...a), reroute: (b, p) => _t1440Reroute(b, p), stepPx: (...a) => _t1440StepPx(...a),
     blocked: (...a) => caravanBlockedResponse(...a), walk1182: (...a) => _t1182Walk(...a), setBodyPts: (b, pts) => setBodyPts(b, pts), walkFor: (a, b, ms) => _walkFor(a, b, ms), state: () => state, S: _t1440S, pend: _t1440Pend },
   T1423_BLOCK_REACT, T1423_REACT_MEET, T1423_RATIO, t1423Stat: () => Object.assign({}, _t1423S, { known: [..._t1423Known.values()].map((k) => Object.assign({}, k)), jobs: _t1423Jobs.map((j) => Object.assign({}, j)) }),   // ★[T1423 ⓑ] 길을 막으면 세계가 치운다(손잡이 · 셈 · 소식 · 일감)
-  t1441PassAt, __t1441: { by: (si, vl) => _t1441By(si, vl), block: (vil, x, y) => _t1441TerrBlock(vil, x, y), S: _t1441TS, PS: _t1441PS, passes: () => _t1441Passes(), passDay: () => _t1441PassDay(), know: (s, v) => _t1441Know(s, v), route: (...a) => _t1441Route(...a), cross: (...a) => _t1441Cross(...a), state: () => state, setDep: (f) => { if (!state.deps) state.deps = {}; state.deps.t1441ClaimOwner = f; } },   // ★[T1441 ⑧] 하네스
+  t1441PassAt, __t1441: { by: (si, vl) => _t1441By(si, vl), complete: (si, d) => _t527Complete(si, d), sites: () => _t527Sites(), block: (vil, x, y) => _t1441TerrBlock(vil, x, y), S: _t1441TS, PS: _t1441PS, passes: () => _t1441Passes(), passDay: () => _t1441PassDay(), know: (s, v) => _t1441Know(s, v), route: (...a) => _t1441Route(...a), cross: (...a) => _t1441Cross(...a), state: () => state, setDep: (f) => { if (!state.deps) state.deps = {}; state.deps.t1441ClaimOwner = f; } },   // ★[T1441 ⑧] 하네스
   __t1423: { meet: (...a) => _t1423Meet(...a), day: (now) => _t1423Day(now), ahead: (...a) => _t1423Ahead(...a), draft: (v, n) => _t1423Draft(v, n), known: _t1423Known, jobs: _t1423Jobs, S: _t1423S, blocked: (...a) => caravanBlockedResponse(...a), walk1182: (...a) => _t1182Walk(...a), t681Day: (now) => _t681Day(now),
     setup: (o) => { const k = {}; for (const n of ['deps', 'world', 'villages', 'byDbId', 'byEcon', 'caravanBodies', 'pathfind', 'ta', 'dayMs', 'bodyExits', 'zoneId', 'war', 'warBodies', 'roads']) if (o && n in o) { k[n] = state[n]; state[n] = o[n]; } return k; } },   // 하네스 주입구(최소 · `_t569Probe.setup` 그 규약)
   t1406PathCell: (cx, cy, vil) => _t1406PathCell(cx, cy, vil || null), T1406_KEEP_PATHS, t1406BridgeCell: (cx, cy) => _t1406BridgeCell(cx, cy) === true, t1406BridgeCells: () => { _t1406BridgeCell(0, 0); return _t1406BrList ? _t1406BrList.slice() : []; },   // ★[T1423 ⓐ] ㉮ 다리 칸 · 다리 머리(손잡이 없는 술어 · 칸 줄 — 짓기 문 · 클라 미리보기)

@@ -109,16 +109,22 @@ if (require.main === module) {
   ];
   const src = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8'), made = [];
   console.log('=== 미끼 ===');
+  const BR = [];
   try {
     BAITS.forEach((b, i) => {
       let s = src, nRep = 0;
       for (const [from, to] of b.rep) { if (s.split(from).length - 1 !== 1) { nRep = -1; break; } s = s.replace(from, to); nRep++; }
-      if (nRep < 1) { ok(false, `미끼 ${b.name} — 바꾼 자리가 한 곳이 아님`); return; }
+      if (nRep < 1) { ok(false, `미끼 ${b.name} — 고칠 곳이 한 곳이 아님`); return; }
       const p = path.join(ROOT, 'server', `_t1441pbait-${i + 1}.js`); fs.writeFileSync(p, s); made.push(p);
       const R2 = runChild({ __T1441P_VIL: p });
-      ok(R2[b.key] === false, `미끼 ${b.name} → ${b.key} 빨강(바꾼 자리 ${nRep})`, R2[b.key + '#']);
+      BR[i] = { red: R2[b.key] === false, n: nRep, x: R2[b.key + '#'] };
     });
   } finally { for (const p of made) { try { fs.unlinkSync(p); } catch (e) {} } }
+  const bk = (i) => BR[i] || { red: false, n: 0, x: '돌지 않음' };
+  ok(bk(0).red, `미끼 ① 닫힌 통로로 계속 떠나는 사본(아는 것을 안 본다) → d_known 빨강(바꾼 자리 ${bk(0).n})`, bk(0).x);
+  ok(bk(1).red, `미끼 ② 소문 없이 다시 열림을 아는 사본(여닫은 날 모두가 안다) → c_rumor 빨강(바꾼 자리 ${bk(1).n})`, bk(1).x);
+  ok(bk(2).red, `미끼 ③ 낸 마을을 안 적는 사본 → c_rumor 빨강(바꾼 자리 ${bk(2).n})`, bk(2).x);
+  ok(bk(3).red, `미끼 ④ 통로 위 막는 것을 안 보는 사본(늘 열림) → b_route 빨강(바꾼 자리 ${bk(3).n})`, bk(3).x);
   console.log(`\n=== T1441 새 통로: ${pass} 통과 / ${fail} 실패 ===`);
   process.exit(fail ? 1 : 0);
 }
