@@ -2256,6 +2256,7 @@ function* tickTradeV2Steps(world, day) {
         if (r === 'weapon') aTarget = Math.max(2, (((a.v.counts && a.v.counts.warrior) || 0) + ((a.v.counts && a.v.counts.hunter) || 0)) * 1.3);
         else if (r === 'armor') aTarget = Math.max(1, ((a.v.counts && a.v.counts.warrior) || 0) * 1.3);
         if (!(v1.T1398_BRONZE_BAND && r === 'weapon') && (a.v.storage[r] || 0) >= aTarget * WEAPON_RETURN_GLUT_MULT) continue;   // ★return-glut-cap: 무기는 사용자×1.3×배수 넘으면 안 실어옴(청동검 소량 수입). 그 외 극단 글럿 차단
+        if (_t1449NoBuy(a.v, r)) continue;   // ★[T1449 사 모으는 문] 켬 · 묶음 = 받는 마을의 칼 값(`t1449SwordWorth`)이 0 이면 안 싣는다(상한 되살림 0 · 끔 = 안 선다)
         const bStock = v1.seedReserveAvail(b.v, r);   // ★[T692] 되사 갈 수 있는 곳간 = 곳간 − 시딩 비축(끔 = 종전)
         const bSubs = (SUBSISTENCE_PER_NPC[r] || 0) * b.v.npcs.length;
         const bTarget = Math.max(bSubs * _t1419Sub(b.v, r, 'depart'), b.v.npcs.length * 0.3 * _orePart(r));
@@ -2632,6 +2633,10 @@ function _caravanArrive(world, c, day) {
     }
     _caravanTrade(world, c, day, deliveredGive, outboundLoss, pricesTo, pricesFrom, pTo);
 }
+// ★★[T1449 2026-11-23] 사 모으는 문 — 묶음(T1398)이 무기 되실음 상한을 걷은 자리에 **상한을 되살리지 않고** 받는 마을의 같은 값 함수를 읽는다:
+//   `T1449_ARMORY_BUY`(`'1'` 만 · 끔 기본 · 묶음 `T1398_BRONZE_BAND` 켬 위에서만) = 받는 마을의 근접검 한 자루 값(economy-sim `t1449SwordWorth(v, 'sword')` — 제 마을이 칼을 만드는 그 목표가 찰 때까지만 값)이
+//   0 이면 무기를 안 싣는다. 실려 온 칼은 받는 장부에서 석검으로 섞인다(`_t1344Mix` — 오늘 부은 청동 몫만 청동) — 그래서 석검 한 자루의 값으로 잰다.
+function _t1449NoBuy(av, r) { return r === 'weapon' && v1.T1449_ARMORY_BUY && v1.T1398_BRONZE_BAND && !!av && !(v1.t1449SwordWorth(av, 'sword').worth > 0); }
 // ★★[T1136] 귀환 마을 글럿 — 종전 `_caravanTrade` 안 닫개(`_returnGlutted`)를 **이름만 올렸다**(값 무변 · 바구니가 받아 올 짐에 같은 함수를 부른다 · 사본 0).
 function _returnGluttedV2(from, r) {
   const _fromN = from.npcs.length || 1;
@@ -2640,6 +2645,7 @@ function _returnGluttedV2(from, r) {
   // ★무기·갑옷은 자본재 — 목표=사용자(전사+사냥꾼)×1.3(활 포함). 일반칙(N×0.5)은 전사 적은 마을서 과대 → 무기 과잉비축 허용하던 원인.
   if (r === 'weapon') target = Math.max(2, ((from.counts && from.counts.warrior || 0) + (from.counts && from.counts.hunter || 0)) * 1.3);
   else if (r === 'armor') target = Math.max(1, (from.counts && from.counts.warrior || 0) * 1.3);
+  if (_t1449NoBuy(from, r)) return true;   // ★[T1449] 켬 · 묶음 = 받는 마을 칼 값 0 → 안 싣는다(끔 = 안 선다 · 아래 줄 종전 글자 그대로)
   return !(v1.T1398_BRONZE_BAND && r === 'weapon') && (from.storage[r] || 0) >= target * WEAPON_RETURN_GLUT_MULT;
 }
 // ★★[T707] 매도·매수·복귀 — 종전 `_caravanArrive` 의 "평소" 몸통을 **글자 그대로** 이름만 올렸다.

@@ -130,6 +130,9 @@ const _clamp01 = v => v < 0 ? 0 : (v > 1 ? 1 : v);
 //   편성의 청동 근접검 = 근접검 곳간 × 경제 장부의 청동 몫(`_t1344Q` — 그 손잡이가 켜면 economy-sim 이 날마다 섞는다) · 자격 · 무기 질 ramp 를 안 본다(끔 = 종전 두 줄 그대로).
 const _T1385_TIN = !!(typeof process !== 'undefined' && process.env && (process.env.T1385_BRONZE_NOCAP === '1' || process.env.T1385_BRONZE_NOCAP_TINGATE === '1'));
 function _t1385Q(e) { return _clamp01(e && e._t1344Q || 0); }
+// ★[T1449] 청동을 건네는 사람 수(= 전사) — 편성의 `champLeft` 와 경제 값 문(`economy-sim t1449ChampSlots`)이 같은 술어를 읽는다(하네스 T1449 가 맞댄다).
+function warChampSlots(e) { const c = (e && e.counts) || {}; return Math.round(c.warrior || 0); }
+const _T1449_WORTH = (typeof process !== 'undefined' && process.env && process.env.T1449_ARMORY_WORTH === '1');
 function _warBronzeCapable(v) { if (((v.land && v.land.tin) || 0) > 0) return true; const N = v.npcs ? v.npcs.length : 1; return ((v.storage && v.storage.tin) || 0) >= Math.max(_warBRONZE_TIN_MIN_ABS, N * _warBRONZE_TIN_MIN_PC); }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -209,7 +212,7 @@ function warSlingerCapByStone(e) { const stone = (e && e.storage && e.storage.st
 function _warConscriptIndividual(v, mode, opts) {
   opts = opts || {};
   const e = v.econ || v; if (!e || !e.npcs || !e.npcs.length) return null;
-  const N = e.npcs.length, c = e.counts || {}, warrior = Math.round(c.warrior || 0), hunter = Math.round(c.hunter || 0);
+  const N = e.npcs.length, c = e.counts || {}, warrior = warChampSlots(e), hunter = Math.round(c.hunter || 0);   // ★[T1449] 전사 = 청동을 건네는 사람 — 식은 `warChampSlots` 하나(값 문이 같은 술어를 읽는다 · 값 무변)
   const defense = !!opts.defense;
   let force;
   if (defense) { force = Math.max(1, N - 1); }
@@ -250,6 +253,7 @@ function _warConscriptIndividual(v, mode, opts) {
   for (const s of swordSeekers) {
     if (bronzeStock > 0 && champLeft > 0) { comp.champion++; bronzeStock--; champLeft--; _assignWType(s, 'sword'); }
     else if (stoneSwordStock > 0) { comp.dagger++; stoneSwordStock--; _assignWType(s, 'sword'); }
+    else if (_T1449_WORTH && bronzeStock > 0) { comp.dagger++; bronzeStock--; _assignWType(s, 'sword'); }   // ★[T1449 · PM 결정] 켬 = 전사 수를 넘는 청동검은 칼을 찾는 다른 병사가 석검과 같은 급(단검)으로 쥔다(있는 칼은 누군가 쥔다 · 끔 = 이 줄이 안 선다)
     else if (stoneAmmoCap > 0) { comp.slinger++; stoneAmmoCap--; _assignWType(s, 'sling'); }
     else { comp.militia++; _assignWType(s, 'militia'); }
   }
@@ -283,7 +287,7 @@ function _warConscriptAggregate(v, mode, opts) {
   opts = opts || {};
   const e = v.econ || v; if (!e || !e.npcs) return null;
   const defense = !!opts.defense;
-  const N = e.npcs.length, c = e.counts || {}, warrior = Math.round(c.warrior || 0), hunter = Math.round(c.hunter || 0);
+  const N = e.npcs.length, c = e.counts || {}, warrior = warChampSlots(e), hunter = Math.round(c.hunter || 0);   // ★[T1449] 전사 = 청동을 건네는 사람 — 식은 `warChampSlots` 하나(값 문이 같은 술어를 읽는다 · 값 무변)
   let force = defense ? Math.max(1, N - 1) : ((mode === 'raid') ? warrior + hunter : warrior + Math.round((N - warrior) * WAR_LEVY));
   force = Math.min(force, defense ? N - 1 : N - 2);
   if (!defense && force < WAR_RAID_MIN) return null;
@@ -1436,7 +1440,7 @@ const WarCore = {
   // 무기 숙련(pure)
   _warEnsureWSkills, warNPCWSkill, warJobWeaponType, warTickWeaponSkills, warVeteranGrowth, warSlingerCapByStone,
   // 편성·전투(pure)
-  _warBronzeCapable, _warConscriptIndividual, _warConscriptAggregate, conscript, _warCompTotal, _warScaleComp, toBattleSpec, runBattleHeadless,
+  _warBronzeCapable, _warConscriptIndividual, _warConscriptAggregate, conscript, _warCompTotal, _warScaleComp, toBattleSpec, runBattleHeadless, warChampSlots,   // ★[T1449] warChampSlots
   // 원한·명분·노획(pure — econ 입력)
   warFE, warGrudge, warAddGrudge, warTrauma, warAddTrauma, warJustice, warWeaponFlow,
   // ★[T403] 무기 반출/반납 장부(손잡이 `T403_ARMS_LEDGER` · 끔 = null/0)
