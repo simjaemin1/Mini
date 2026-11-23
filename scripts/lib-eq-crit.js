@@ -41,6 +41,15 @@ function enterDay(ser, key, th) {   // 처음 참이 되고 끝까지 참인 첫
   return d;
 }
 const TH = { c1: [0.01, 0.02, 0.05], c2: [0], c3: [0.02, 0.05, 0.1], c4: [0.01, 0.02, 0.05] };
+// ★[T1426 · 판정 33 재민 11-22] 평형의 기본 뜻 = "거의 멎은 때": C1 ≤ 0.05 그리고 C3 ≤ 0.1 그리고 C2(산 마을 수 변화 0 — "그리고"로 붙는 문).
+//   후보 표(`TH`)는 그대로 다 찍는다 — 이 셋은 "평형에 닿았나" 한 줄의 기본 문턱이다(판에서 바꾸려면 `--crit c1=0.02,c3=0.05`).
+const DEF = Object.freeze({ c1: 0.05, c3: 0.1, c2: 0 });
+function okAt(s, th) { const t = th || DEF; return s.c1 != null && s.c1 <= t.c1 && s.c3 != null && s.c3 <= t.c3 && s.c2 <= t.c2; }
+function reached(rows, W, th) {   // 기본 문턱의 든 날(처음 참이 되고 끝까지 참) · 끝 날 하나뿐이면 표시
+  const ser = series(rows, W || 365); if (!ser.length) return { day: '창 모자람', th: th || DEF };
+  let d = null; for (const s of ser) { if (okAt(s, th)) { if (d == null) d = s.d; } else d = null; }
+  return { day: d, onlyLast: d != null && d === ser[ser.length - 1].d, th: th || DEF, last: ser[ser.length - 1] };
+}
 function table(rows, W) {
   const w = W || 365, ser = series(rows, w), out = { W: w, n: rows.length, last: ser.length ? ser[ser.length - 1] : null, enter: {} };
   for (const [k, ths] of Object.entries(TH)) for (const th of ths) {
@@ -49,4 +58,4 @@ function table(rows, W) {
   }
   return out;
 }
-module.exports = { COL, series, enterDay, table, TH, slopeRel, mean };
+module.exports = { COL, series, enterDay, table, TH, DEF, okAt, reached, slopeRel, mean };

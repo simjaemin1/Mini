@@ -1,0 +1,59 @@
+{
+  "expected": 1152,
+  "complete": 1152,
+  "pending": 0,
+  "modelHash": "1fef4d856fa5d8572a050f24f4179fe888dd16f4e366b18f8f60d322ebc06232",
+  "sources": [
+    {
+      "file": "계측/T1413_2026-11-21/본표_맥에서_건짐/A2_s1020.jsonl",
+      "sha256": "e27920f227e29dacecd8bffd38d141ee3020ccb287a47fa0072799f6cefaef5b",
+      "used": 144,
+      "skips": 0,
+      "invalid": 0
+    },
+    {
+      "file": "계측/T1413_2026-11-21/본표_맥에서_건짐/A2_s7.jsonl",
+      "sha256": "6e802c3154dab2177fd83487c0571f25a98361cc0641e254ba14ca73f6240556",
+      "used": 144,
+      "skips": 0,
+      "invalid": 0
+    },
+    {
+      "file": "계측/T1413_2026-11-21/본표_맥에서_건짐/B500_s7.jsonl",
+      "sha256": "df5b2f91f24176f9d5741789bef6a305253c4e8b5950345fb8bc63ac9855dffb",
+      "used": 5,
+      "skips": 30,
+      "invalid": 1
+    },
+    {
+      "file": "계측/T1413_2026-11-21/본표_맥에서_건짐/B_s1020.jsonl",
+      "sha256": "9544eba4568999b85093520553bdcbd715af9463236a88ac3e6cfd0835e2c5ae",
+      "used": 36,
+      "skips": 0,
+      "invalid": 0
+    },
+    {
+      "file": "계측/T1413_2026-11-21/본표_맥에서_건짐/B_s7.jsonl",
+      "sha256": "2d2ae4a92865a00fb1f49c52558a559db173890e93c541b5f2a7d1677905f48e",
+      "used": 76,
+      "skips": 0,
+      "invalid": 0
+    },
+    {
+      "file": "계측/T1413_2026-11-21/본표_맥에서_건짐/C6_s7.jsonl",
+      "sha256": "e8b632339f5743a9d2a4f76161e4644dfdd47a9b6118bddcd09c374f96f679e0",
+      "used": 14,
+      "skips": 0,
+      "invalid": 0
+    }
+  ],
+  "rejected": [
+    {
+      "file": "계측/T1413_2026-11-21/본표_맥에서_건짐/B500_s7.jsonl",
+      "line": 33,
+      "key": "🐗|500|1|0.1|7|free|0.002|365",
+      "reason": "empty-roster risk or rounded threshold ambiguity"
+    }
+  ],
+  "peakSimultaneous": 2
+}

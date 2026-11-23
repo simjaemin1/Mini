@@ -7,6 +7,7 @@
 # 재민 맥에서 한 줄(T878 · T887 과 같은 꼴 · 서울에 있는 그 판):
 #   bash <(ssh seoul cat /opt/Mini/scripts/update-live.sh)          # 갱신
 #   bash <(ssh seoul cat /opt/Mini/scripts/update-live.sh) --dry    # 무엇을 할지만(라이브 무변 — 서울 `git fetch` 만)
+#   bash <(ssh seoul cat /opt/Mini/scripts/update-live.sh) --status # ★[T1443] 재부팅 뒤 — 앞 배포가 끝까지 갔나(컨테이너 · 커밋 라벨 · 스탬프 · 읽기만)
 #   ⚠이 줄이 도는 판은 **서울이 지금 가진** update-live.sh 다(①이 받기 전 판). 이 파일 자체가 바뀐 갱신이면 끝난 뒤 한 번 더 치면 새 판이 돈다.
 #   ⚠처음 한 번(서울에 이 파일이 아직 없으면): `ssh seoul 'cd /opt/Mini && git pull --ff-only'` 를 먼저 치거나 맥 레포에서 `bash scripts/update-live.sh`.
 #
@@ -49,8 +50,17 @@ set -uo pipefail
 S="${SYNC_SEOUL:-seoul}"; T="${SYNC_TOKYO:-tokyo}"
 SD="${SYNC_SEOUL_DIR:-/opt/Mini}"; TD="${SYNC_TOKYO_DIR:-/opt/Mini}"
 TSTAMP="${TOKYO_STAMP:-/srv/durango/deployed-nippon.sha}"; SSTAMP="${SEOUL_STAMP:-/srv/durango/deployed-hanbando.sha}"   # [T919] 서울 스탬프 자리도 env(하네스 · 종전 값 그대로)
-DRY=0; RB=0
-for a in "$@"; do case "$a" in --dry) DRY=1 ;; --rollback) RB=1 ;; *) sed -n '2,39p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//'; exit 2 ;; esac; done
+DRY=0; RB=0; STATUS=0
+for a in "$@"; do case "$a" in --dry) DRY=1 ;; --rollback) RB=1 ;; --status) STATUS=1 ;; *) sed -n '2,39p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//'; exit 2 ;; esac; done
+# ★[T1443 ③] --status — 재부팅 뒤 한 줄: 두 호스트의 컨테이너 상태 · 커밋 라벨 · 스탬프가 "앞 배포가 끝까지 갔나"(읽기만 · `scripts/live-status.sh` 를 호스트마다)
+if [ "$STATUS" = 1 ]; then
+  RC=0
+  echo "── 서울($S)"; ssh "$S" "cd '$SD' && STAMP='$SSTAMP' REPO_DIR='$SD' bash scripts/live-status.sh" 2>&1 | sed 's/^/  /'; R1=${PIPESTATUS[0]}
+  if [ "$T" != "-" ]; then echo "── 도쿄($T)"; ssh "$T" "cd '$TD' && EXPECT='durango-zone-nippon' STAMP='$TSTAMP' REPO_DIR='$TD' bash scripts/live-status.sh" 2>&1 | sed 's/^/  /'; R2=${PIPESTATUS[0]}; else R2=0; fi
+  [ "$R1" = 0 ] && [ "$R2" = 0 ] || RC=1
+  [ "$RC" = 0 ] && echo "⇒ 두 호스트 다 앞 배포가 끝까지 갔다" || echo "⇒ 끊긴 흔적이 있다 — 위 ✗ 줄의 '⇒' 대로(보통 배포 줄 한 번 더)"
+  exit "$RC"
+fi
 export SYNC_SEOUL="$S" SYNC_TOKYO="$T" SYNC_SEOUL_DIR="$SD" SYNC_TOKYO_DIR="$TD" LAG_SEOUL="$S" LAG_TOKYO="$T"
 DONE=""
 say() { echo "$*"; }

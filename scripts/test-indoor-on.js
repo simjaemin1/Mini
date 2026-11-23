@@ -77,8 +77,12 @@ const ZCODE = codeOnly(ZSRC);
   const wf = fnText(ZSRC, 'function weatherFor(');
   const RET_NEW = 'wind: +Wind.seasonWind(day).toFixed(3), exp: wexp, precip, wet: +wet.toFixed(4), cover }, T526_VILLAGE_INDOOR ? { indoor: isIndoorAt(p) } : null);';
   const RET_OLD = 'wind: +Wind.seasonWind(day).toFixed(3), exp: wexp, precip, wet: +wet.toFixed(4), cover });';
-  ok(wf.includes(RET_NEW) && wf.replace(RET_NEW, RET_OLD).includes(RET_OLD) && (wf.match(/T526_VILLAGE_INDOOR/g) || []).length === 1,
-    '★①e `weatherFor` 의 마지막 인자 하나 — 켬이면 `{ indoor }` · 끔이면 `null` · 그 인자를 빼면 T526 전 반환 줄 그대로', `${wf.split('\n').length}줄`);
+  //   ★[T1438] 그 뒤에 인자 하나 더 — 지붕 몫(`indoorF` · 구조물 낡음 `T1438_DECAY` 켬 + 이 손잡이 켬에서만 · 끔이면 `null` = 페이로드 바이트 동일).
+  //     그 인자를 빼면 위 T526 줄 그대로 · 둘 다 빼면 T526 전 줄 그대로(같은 자로 두 겹을 본다).
+  const T1438_ARG = ', (T1438_DECAY && T526_VILLAGE_INDOOR) ? { indoorF: +_t1438Roof(p, isIndoorAt(p)).toFixed(3) } : null);';
+  const RET_1438 = RET_NEW.replace(/\);$/, '') + T1438_ARG;
+  ok(wf.includes(RET_1438) && wf.replace(RET_1438, RET_NEW).includes(RET_NEW) && wf.replace(RET_1438, RET_OLD).includes(RET_OLD) && (wf.match(/T526_VILLAGE_INDOOR/g) || []).length === 2 && (wf.match(/T1438_DECAY/g) || []).length === 1,
+    '★①e `weatherFor` 의 마지막 인자 — 켬이면 `{ indoor }` · 끔이면 `null` · 그 인자를 빼면 T526 전 반환 줄 그대로(★[T1438] 그 뒤 지붕 몫 인자 하나 — 빼면 T526 줄 그대로)', `${wf.split('\n').length}줄`);
   const W0 = { tempC: 3.2, hint: '쌀쌀', day: 317 }, X0 = { shelter: 1, cut: 0.65, insC: 0, wind: -0.2, exp: 0, precip: 0, wet: 0, cover: 0 };
   const off = JSON.stringify(Object.assign({}, W0, X0, null)), old = JSON.stringify(Object.assign({}, W0, X0));
   const on = JSON.stringify(Object.assign({}, W0, X0, { indoor: true }));

@@ -43,6 +43,7 @@ const st = Wl.t1393Stat ? Wl.t1393Stat() : {}, s16 = Wl.t1416Stat ? Wl.t1416Stat
 const q = (p) => us[Math.min(us.length - 1, Math.floor(p * us.length))];
 const mean = us.reduce((a, c) => a + c, 0) / Math.max(1, us.length);
 const awake = [...B.W.bodies.values()].filter((b) => b.mat).length;
-console.log(JSON.stringify({ N, seen: SEEN, unit: !!s16.unit, pre: !!s16.pre, bodies: B.alive(), awakeEnd: awake, awakePeak: st.awakePeak, fields: st.fieldPeak, shadows: mobs.size,
+const sig = (() => { const a = []; for (const b of B.W.bodies.values()) a.push(b.id, b.cx, b.cy, b.hp | 0, b.mat); for (const m of mobs.values()) a.push(m.mid, Math.round(m.x * 1000), Math.round(m.y * 1000)); return require('crypto').createHash('sha1').update(a.join(',')).digest('hex').slice(0, 16); })();   // ★[T1429] 몸 표 · 그림자 자리 지문(같은 값 견줌)
+console.log(JSON.stringify({ N, sig, seen: SEEN, unit: !!s16.unit, pre: !!s16.pre, bodies: B.alive(), awakeEnd: awake, awakePeak: st.awakePeak, fields: st.fieldPeak, shadows: mobs.size,
   usMean: +mean.toFixed(1), usP50: q(0.5), usP99: q(0.99), usMax: us[us.length - 1], tickShare: +(mean / (1e6 / 30) * 100).toFixed(1), usPerAwake: awake ? +(mean / awake).toFixed(2) : null,
   unitSteps: s16.unitSteps, fracSteps: s16.fracSteps, obsFields: s16.obsFields, ticks, min: MIN }));

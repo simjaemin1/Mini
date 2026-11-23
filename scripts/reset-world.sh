@@ -165,8 +165,8 @@ plan() {
 
 backup_and_stop() {   # 멈춤 → 백업 → 확인 · 전역 B 에 폴더
   if [ "$STATE" = running ]; then
-    say "  [멈춤] docker stop -t 30 $C"
-    docker stop -t 30 "$C" >/dev/null
+    say "  [멈춤] docker stop -t "${STOP_T:-60}" $C"
+    docker stop -t "${STOP_T:-60}" "$C" >/dev/null
   fi
   STATE="$(insp "$F_STATE")"; [ "$STATE" != running ] || die "$C 가 안 멈췄다"
   if [ "$IMG_OK" = 1 ]; then docker tag "$IMG_ID" "$PRE_TAG"; PRE_ID="$IMG_ID"; say "  [옛 이미지] $PRE_TAG = $(echo "$IMG_ID" | cut -c8-19) (되돌리기용)"
@@ -200,7 +200,7 @@ backup_and_stop() {   # 멈춤 → 백업 → 확인 · 전역 B 에 폴더
 
 recreate() {   # recreate <이미지> — 전역 NEWENV(K=V…) · LABELS(k=v…)로 같은 이름·포트·볼륨에 다시 만든다(값은 env 로만 넘긴다)
   local img=$1
-  [ "$(insp "$F_STATE")" = running ] && docker stop -t 30 "$C" >/dev/null   # 존은 SIGTERM 에 몸·짐승을 저장하고 내린다(rm -f 는 SIGKILL)
+  [ "$(insp "$F_STATE")" = running ] && docker stop -t "${STOP_T:-60}" "$C" >/dev/null   # 존은 SIGTERM 에 몸·짐승을 저장하고 내린다(rm -f 는 SIGKILL)
   docker rm "$C" >/dev/null
   (
     a=()
@@ -382,7 +382,7 @@ restore)
   say "  되놓을 것  ${RF[*]:-(없음)} · 이미지 $(echo "$RIMG" | cut -c1-40) (커밋 $(commit_of "$RIMG")) · env T565_MAP_LIVE ${OT5:--} · PLAYER_CAP ${OCAP:--}(옛 값)"
   say "  지금 DB    ${DBF[*]:-(없음)} → $BACKUP_ROOT/<UTC시각>-$TARGET-replaced/ 로 옮긴다(안 지운다)"
   ask "  되돌린다. 대상 이름을 그대로 쳐라($TARGET): " "$TARGET" || die "그만뒀다 — 아무것도 안 바꿨다"
-  [ "$STATE" = running ] && { docker stop -t 30 "$C" >/dev/null; say "  [멈춤] $C"; }
+  [ "$STATE" = running ] && { docker stop -t "${STOP_T:-60}" "$C" >/dev/null; say "  [멈춤] $C"; }
   if [ ${#DBF[@]} -gt 0 ]; then
     R="$BACKUP_ROOT/$(date -u +%Y%m%d-%H%M%S)-$TARGET-replaced"; mkdir -p "$R"
     for f in "${DBF[@]}"; do mv -- "$VOL/$f" "$R/$f"; done
