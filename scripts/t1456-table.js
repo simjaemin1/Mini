@@ -16,6 +16,13 @@ const ROOT = path.join(__dirname, '..');
 const W = require(path.join(ROOT, 'server', 'weights.js'));
 const Cr = require('./lib-eq-crit');
 const { cmpFp } = require('./lib-eq-lab');
+// 관찰기 판 견줌 — 관찰기는 `world.onCast` 칸 하나(감싼 훅)를 세계에 더한다(fp 의 세계 몫 `w` 가 날마다 다르다 · 실측 FPKEYS 날 2: 다른 칸 = onCast 하나).
+//   그래서 관찰기 판은 마을 몫(`v` — 마을 51 통째)만 견준다: 같은 날 마을 지문이 다 같으면 "같음" · 세계 몫이 다른 날 수는 따로 적는다.
+function vCmp(A, B) {
+  const m = new Map((B.fp || []).map((r) => [r.d, r])); let n = 0, same = 0, wd = 0, first = null;
+  for (const r of A.fp || []) { const q = m.get(r.d); if (!q) continue; n++; if (r.v.join() === q.v.join()) same++; else if (first == null) first = r.d; if (r.w !== q.w) wd++; }
+  return { n, same, first, wd };
+}
 const KG_ORE = W.kgOf('ore_tin');
 const A = process.argv.slice(2);
 const DIR = path.resolve(A.find((x, i) => !x.startsWith('--') && A[i - 1] !== '--keep') || path.join(ROOT, '계측', 'T1456_2026-11-23'));
@@ -74,11 +81,11 @@ out.push('# T1456 — 새 주석 지도로 평형 저장본(1,900날 · 세 시�
   for (const m of MAPS) for (const sd of SEEDS) {
     const b = done(`${m}-bake-${sd}`), meta = rdz(path.join(R, `${m}-bake-${sd}.save-meta.json`));
     const fa = rdz(path.join(R, `${m}-bake-${sd}.off.fp.json.gz`)), fr = rdz(path.join(R, `${m}-ref-${sd}.ref.fp.json.gz`)), fo = rdz(path.join(R, `${m}-obs-${sd}.obs.fp.json.gz`));
-    const c = fa && fr ? cmpFp(fa, fr) : null, co = fo && fr ? cmpFp(fo, fr) : null;
-    const pf = rdz(path.join(R, `${m}-plus-off-${sd}.off.fp.json.gz`)), cp = pf && fr ? cmpFp(pf, fr) : null;
+    const c = fa && fr ? cmpFp(fa, fr) : null, co = fo && fr ? vCmp(fo, fr) : null;
+    const pf = rdz(path.join(R, `${m}-plus-off-${sd}.off.fp.json.gz`)), cp = pf && fr ? vCmp(pf, fr) : null;
     rows.push([MK[m], sd, b ? `rc ${b.rc}` : '안 돎', meta ? `${f0(meta.bytes)} B` : '—', meta ? `\`${meta.sha}\`` : '—', meta && meta.makeSec != null ? f0(meta.makeSec) : '—',
-      c ? `${c.same}/${c.n}${c.first != null ? ` · 첫 갈림 ${c.first}` : ''}` : '—', co ? `${co.same}/${co.n}${co.first != null ? ` · 첫 갈림 ${co.first}` : ''}` : '—',
-      cp ? `${cp.same}/${cp.n}${cp.first != null ? ` · 첫 갈림 ${cp.first}` : ''}` : '—', meta ? `\`${String(meta.sig).slice(0, 8)}\`` : '—']);
+      c ? `${c.same}/${c.n}${c.first != null ? ` · 첫 갈림 ${c.first}` : ''}` : '—', co ? `마을 ${co.same}/${co.n}${co.first != null ? ` · 첫 갈림 ${co.first}` : ''} · 세계 몫 다른 날 ${co.wd}(onCast)` : '—',
+      cp ? `마을 ${cp.same}/${cp.n}${cp.first != null ? ` · 첫 갈림 ${cp.first}` : ''} · 세계 몫 다른 날 ${cp.wd}(onCast)` : '—', meta ? `\`${String(meta.sig).slice(0, 8)}\`` : '—']);
   }
   out.push('## ① 1,900날 저장본 · 되살림', '');
   T(['지도', '시드', '굽기', '크기(gzip)', 'sha', '만든 초', '되살려 +100날 = 안 끊은 판(1,901 ~ 2,000)', '관찰기 판 = 안 끊은 판(1,801 ~ 1,900)', '+730 끔 팔(관찰기) = 안 끊은 판(1,901 ~ 2,000)', '코드 지문'], rows);
