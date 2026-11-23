@@ -206,7 +206,8 @@ check('body: the same hour predicate (stop at an empty spot), and a stopped body
   V._t1217Day(vil, 7);
   near(v._t1217Rest, (0.7 - 0.35) / 0.7);
   const src = fs.readFileSync(path.join(ROOT, 'server/villages.js'), 'utf8');
-  assert(src.includes("if (_t1217On() && npc._t1217Stop && npc._t1217Stop.day === day) { _lifeGoHome(npc, '휴식'); return true; }"), 'stopped body goes home');
+  assert(src.includes("if (_t1217On() && npc._t1217Stop && npc._t1217Stop.day === day) { _lifeGoHome(npc, '휴식'); return true; }")
+    || src.includes("if (_t1217On() && npc._t1217Stop && npc._t1217Stop.day === day) { if (_t1422Side(vil, npc, now, 'quota')) return true; _lifeGoHome(npc, '휴식'); return true; }"), 'stopped body goes home');   // [land1091 · PM] T1422(side work — off by default: `_t1422Side` returns false) sits in front of the same go-home line
 });
 const MOVE = 'site choice: fishers go where the fish are (best bite ratio among the shore sites) · an emptied water is left for one that still holds fish';
 check(MOVE, () => {

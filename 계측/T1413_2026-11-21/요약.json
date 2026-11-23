@@ -1,0 +1,53 @@
+{
+  "taskComplete": false,
+  "blockedBy": "Original H15 Mac first-divergence evidence absent; do not replace fixture or relax threshold",
+  "checklist": {
+    "변경전": {
+      "pass": 14,
+      "total": 15,
+      "h15": "❌ H15 호랑이=레이드(3일: 크래시 0·사망 ≤1·창 자살돌격 0) — 사망2·근접킬0·수확0"
+    },
+    "node18-변경전": {
+      "pass": 14,
+      "total": 15,
+      "h15": "❌ H15 호랑이=레이드(3일: 크래시 0·사망 ≤1·창 자살돌격 0) — 사망2·근접킬0·수확0"
+    },
+    "node20-변경전": {
+      "pass": 14,
+      "total": 15,
+      "h15": "❌ H15 호랑이=레이드(3일: 크래시 0·사망 ≤1·창 자살돌격 0) — 사망2·근접킬0·수확0"
+    },
+    "node22-변경전": {
+      "pass": 14,
+      "total": 15,
+      "h15": "❌ H15 호랑이=레이드(3일: 크래시 0·사망 ≤1·창 자살돌격 0) — 사망2·근접킬0·수확0"
+    },
+    "jitless-변경전": {
+      "pass": 14,
+      "total": 15,
+      "h15": "❌ H15 호랑이=레이드(3일: 크래시 0·사망 ≤1·창 자살돌격 0) — 사망2·근접킬0·수확0"
+    }
+  },
+  "traceRowsPerRuntime": 28804,
+  "observedFirstDifferenceLinux22vs24": null,
+  "t17": {
+    "pop": 6198,
+    "live": 51
+  },
+  "canonical": {
+    "equal": false,
+    "econFirstDay": 226,
+    "sideFirstDay": 1,
+    "field": "_oreCells"
+  },
+  "touched": {
+    "passed": 5,
+    "failed": [
+      "test-t1396-hunt-lab.js"
+    ],
+    "runnerRC": 1
+  },
+  "annualRowsMeasured": null,
+  "newBaits": null,
+  "referrals": 1
+}

@@ -70,7 +70,7 @@ function _mobView(){const v=(typeof view!=='undefined')?view:{z:1,ox:0,oy:0},c=(
   return {x0:Math.max(0,Math.floor(-v.ox/v.z/c)-2),x1:Math.min(N,Math.ceil((760-v.ox)/v.z/c)+2),y0:Math.max(0,Math.floor(-v.oy/v.z/c)-2),y1:Math.min(N,Math.ceil((760-v.oy)/v.z/c)+2)};}
 function reapDead(s){if(!s._anyDead)return;s._anyDead=0;   // ★사망 처리: agent 제거 + econ.npcs 하나 제거(진짜 인구감소 — 리싱크 부활 방지). 인구 0 마을은 lifeDayAll이 소멸시킴.
   for(let i=s.agents.length-1;i>=0;i--){const a=s.agents[i];if(!a._dead)continue;s.agents.splice(i,1);
-    if(s.econ&&s.econ.npcs&&s.econ.npcs.length){let k=-1;for(let j=0;j<s.econ.npcs.length;j++)if(s.econ.npcs[j].currentJob===a.job){k=j;break;}if(k<0)k=(_rw()*s.econ.npcs.length)|0;s.econ.npcs.splice(k,1);s.econ._wildDeadTot=(s.econ._wildDeadTot||0)+1;}   /* ★[T1315] 야생에 죽은 사람 누계 — 서버 몸 꼬리표(`_bxObserve`)가 읽는다 · 세계 무변 */   // 같은 직업 우선 제거(직업분포 유지)
+    if(s.econ&&s.econ.npcs&&s.econ.npcs.length){let k=-1;for(let j=0;j<s.econ.npcs.length;j++)if(s.econ.npcs[j].currentJob===a.job){k=j;break;}if(k<0)k=(_rw()*s.econ.npcs.length)|0;const _rd=s.econ.npcs.splice(k,1)[0];if(s.econ.counts&&_rd&&_rd.currentJob)s.econ.counts[_rd.currentJob]=Math.max(0,(s.econ.counts[_rd.currentJob]||0)-1);s.econ._wildDeadTot=(s.econ._wildDeadTot||0)+1;}   /* ★[T1315] 야생에 죽은 사람 누계 — 서버 몸 꼬리표(`_bxObserve`)가 읽는다 · 세계 무변 */ /* ★[T1432 · T1414 회부 2] 직업 수 줄(랩 T311 그 식 — 서버 상태엔 econ 칸이 없어 잠든 줄 · 깨어나도 counts 가 남지 않게) */   // 같은 직업 우선 제거(직업분포 유지)
     s._deaths=(s._deaths||0)+1;}
   if(s.econ)s.pop=s.econ.npcs.length;}
 const HSK_W=a=>{const n=a._esk||a;return Math.min(10,n.skills?(n.skills.archery||0):(a._hsk||0));};   /* ★활 숙련(사격): 명중·시위. 마을=연결된 econ NPC(_esk), 랩=_hsk */
@@ -82,6 +82,7 @@ const losFT=(x1,y1,x2,y2)=>{if(!TR.forest)return 0;const d9=Math.hypot(x2-x1,y2-
 function nextBlood(s,a,tgt){if(a._bkT!==tgt){a._bkT=tgt;a._bk=0;}if(!s._blood||!s._blood.length)return null;   // ★핏자국 추적: 내 표적의 핏방울 중 아직 안 밟은 가장 오래된 것 — 사슴이 지난 경로를 그대로 밟아감(전지적 직진 금지)
   for(;;){let bt=null,bk=1e18;for(const b of s._blood){if(b.o!==tgt||b.k<=(a._bk||0))continue;if(b.k<bk){bk=b.k;bt=b;}}
     if(!bt)return null;if(Math.hypot(bt.x-a.px,bt.y-a.py)<2+HSK_F(a)*0.15){a._bk=bt.k;continue;}return bt;}}   /* ★추적 숙련: 핏방울 포착 반경 레벨0 2m→레벨10 3.5m — 능숙한 추적자는 자국을 덜 놓치고 빠르게 잇는다 */
+const _sgC=[],_sgCmp=(a,b)=>a-b,_sgN={m:0,p:0};   // ★[T1429 ③] 분리 이웃 후보(빌려 쓰는 배열 하나 · updateMobs 는 다시 들어오지 않는다)
 function updateMobs(s,step){
   if(!s.gameRich||!s.forestCells||!s.agents)return; if(!s.mobs)s.mobs=[]; if(!s._wp)s._wp=new Map();
   const vr=_mobView(),inV=(x,y)=>x>=vr.x0&&x<vr.x1&&y>=vr.y0&&y<vr.y1,dt=Math.min(8,step||1);
@@ -140,7 +141,9 @@ function updateMobs(s,step){
       wp={x:best?best.cx:g.cx,y:best?best.cy:g.cy,t:60+_rw()*90};s._wp.set(gid,wp);}   // 한자리 오래 머묾(잦은 이주 방지)
     g.wp=wp;}
   if(s._wp.size>G.size+24)for(const k of s._wp.keys())if(!G.has(k))s._wp.delete(k);   // 사라진 무리 웨이포인트 청소
-  for(const m of s.mobs){ if(m.st==='dead')continue;
+  const SG=MOB_SEP_R,sgk=(x,y)=>(Math.floor(x/SG)+1048576)*2097152+(Math.floor(y/SG)+1048576),sgrid=new Map();for(let i=0;i<s.mobs.length;i++){const o=s.mobs[i],k=sgk(o.px,o.py);o._si=i;o._sk=k;const l=sgrid.get(k);l?l.push(i):sgrid.set(k,[i]);}   /*★[T1429 ③] 분리 이웃 격자(칸 = 분리 반경) — 몸 줄 번호를 칸에. 고리 안에서 자리를 바꾸는 것은 그 몸 자신뿐이라 다음 몸 차례 첫머리에서 앞 몸의 칸만 고치면 격자가 늘 지금 자리다*/
+  let sgPrev=null;const sgFix=(o)=>{const k=sgk(o.px,o.py);if(k===o._sk)return;const l=sgrid.get(o._sk);if(l){const j=l.indexOf(o._si);if(j>=0)l.splice(j,1);}o._sk=k;const l2=sgrid.get(k);l2?l2.push(o._si):sgrid.set(k,[o._si]);};
+  for(const m of s.mobs){ if(sgPrev)sgFix(sgPrev);sgPrev=m; if(m.st==='dead')continue;
     if(m.st==='hide'){if((m._hid-=dt)<=0){m.st='alert';m.fcd=0;m.px=m._den.x;m.py=m._den.y;m.pause=6;}continue;}   // ★🐇 굴속: 개체수 집계엔 포함(리스폰 억제=진짜 '기회 상실'), 25~50분 뒤 굴에서 재등장
     const D=MOB_DEF[m.type],g=G.get(m.gid)||{n:1,cx:m.px,cy:m.py,ax:0,ay:0,pn:0,px:0,py:0},wnd=(0.55+0.45*(m.hp/D.hp))*(1-(m.bld||0));   // wnd=부상 감속 × ★출혈 피로(1-bld): 화살 박힌 채 달릴수록 점점 느려짐(이동 거리 비례 누적, 최대 절반) → 핏자국 추적·지구력 사냥이 성립
     m.cd-=dt;m.fcd-=dt;m.cvt-=dt;m._mv=0;
@@ -165,8 +168,9 @@ function updateMobs(s,step){
     const td=thr?Math.sqrt(td2):1e9;   // 최종 1회만 sqrt
     const fl=D.flee*m.tmp*(m.hp<D.hp?1.3:1),al=D.alert*m.tmp;   // 개체 성격(tmp)·부상(아드레날린=더 예민) 반영 반경
     let sx=0,sy=0,scn=0;   // 분리(전종·근접) — 겹침 방지
-    for(const o of s.mobs){if(o===m||o.st==='dead')continue;const dx=m.px-o.px,dy=m.py-o.py,d2=dx*dx+dy*dy;
-      if(d2<MOB_SEP_R*MOB_SEP_R&&d2>1e-4){const d=Math.sqrt(d2),ov=1-d/MOB_SEP_R;sx+=dx/d*ov;sy+=dy/d*ov;scn++;}}   // ★겹침 깊이 비례(경계선 근처 미는 힘→0) — 무리 내 프레임 진동 제거
+    {const bx=Math.floor(m.px/SG),by=Math.floor(m.py/SG),cand=_sgC;cand.length=0;for(let ix=bx-1;ix<=bx+1;ix++)for(let iy=by-1;iy<=by+1;iy++){const l=sgrid.get((ix+1048576)*2097152+(iy+1048576));if(l)for(let q=0;q<l.length;q++)cand.push(l[q]);}if(cand.length>1)cand.sort(_sgCmp);_sgN.m++;_sgN.p+=cand.length;   /*★[T1429 ③] 둘레 3×3 칸만(분리 반경 안 몸은 다 여기 있다) · 몸 줄 차례로 — 전수 고리와 같은 몸 · 같은 차례 · 같은 합(비트 같음)*/
+    for(let q=0;q<cand.length;q++){const o=s.mobs[cand[q]];if(o===m||o.st==='dead')continue;const dx=m.px-o.px,dy=m.py-o.py,d2=dx*dx+dy*dy;
+      if(d2<MOB_SEP_R*MOB_SEP_R&&d2>1e-4){const d=Math.sqrt(d2),ov=1-d/MOB_SEP_R;sx+=dx/d*ov;sy+=dy/d*ov;scn++;}}}   // ★겹침 깊이 비례(경계선 근처 미는 힘→0) — 무리 내 프레임 진동 제거
     if(m.st==='huff'){const t=m.tgt;if(!t||(t.hp!==undefined&&t.hp<=0)){m.st='alert';m.tgt=null;}
       else{m.ang=Math.atan2(t.py-m.py,t.px-m.px);if((m.hf-=dt)<=0){m.st='charge';m.chg=28;}}}   // ★🐗 발구르기: 제자리 조준 — 직후 직선 돌진(이 순간이 회피 타이밍)
     else if(m.st==='charge'){const t=m.tgt;m.chg-=dt;   // ══ 공통: 돌진(🐗 반격·🐺 역습 — 대상이 NPC든 몹이든 동일 처리) ══
@@ -873,7 +877,7 @@ const T1393 = T1331 && process.env.T1393_HUNT_CHASE === '1';
 const T1393_SEE = 216;   // `_hunterBrain` 방심 포착 반경(그 줄 `calm3 ? 216` 글자 — 하네스가 같은 글자인지 본다)
 const _t1393F = new Map();      // 판 키(무리터) → { key, s(블록 상태), gm, ag: Set(대리), scan }
 const _t1393Px = new Map();     // 사냥꾼 · 사람 pid → 대리(블록 agent)
-const _t1393St = { wake: 0, sleep: 0, hunt: 0, seen: 0, cap: 0, cut: 0, steps: 0, ticks: 0, cpuUs: 0, cpuMax: 0, awakeSum: 0, awakeN: 0, awakePeak: 0, own: 0, ownPeak: 0, fields: 0, fieldPeak: 0, put: 0, lost: 0, scanChunks: 0, huntMin: 0, scanUs: 0, scanMax: 0 };
+const _t1393St = { wake: 0, sleep: 0, hunt: 0, seen: 0, cap: 0, cut: 0, steps: 0, ticks: 0, cpuUs: 0, cpuMax: 0, awakeSum: 0, awakeN: 0, awakePeak: 0, own: 0, ownPeak: 0, fields: 0, fieldPeak: 0, put: 0, lost: 0, scanChunks: 0, huntMin: 0, scanUs: 0, scanMax: 0, butch: 0, carcLost: 0, lostWhy: {} };
 const _t1393Em = {}; for (const k of Object.keys(MAIN_TYPE)) _t1393Em[MAIN_TYPE[k]] = k;   // 몸 종 id → 랩 종(사본 0 — 위 `MAIN_TYPE` 를 뒤집는다)
 const _T1393_CALM = new Set(['graze', 'sleep', 'feed', 'rest', 'prowl']);
 // ═══ ★★[T1416 2026-11-21 · S15 · T1393 회부 3 · 4 · T1396 회부 3] 사냥판의 뒷일 넷 — 손잡이 넷(다 끔 기본 · `'1'` 만 · 사냥판 `T1393` 켬 안에서만 · 끔 = 종전 바이트) ═══
@@ -1054,30 +1058,66 @@ function _t1416Done(a, F) {
   const r = _t1416Take(rp, it, a.px, a.py, Math.floor(F.gm / L_MINDAY));
   _t1416St.load++; _t1416St.loadKg = +(_t1416St.loadKg + r.got).toFixed(3);
   const o = rp._t1416Sp || (rp._t1416Sp = {}); o[sp] = (o[sp] || 0) + 1;   // 계측 — 손에 실은 종(곳간에 들 때 비운다)
-  if (r.left) { rp._t1416C = r.left; _t1416St.cacheKg = +(_t1416St.cacheKg + r.left.kg).toFixed(3); a._t1416Go = 1; }   // 한 마리를 다 못 실었다 — 둔 몫을 남기고 곳간 길로
+  if (r.left) { r.left.t0 = F.gm; r.left.trips = 1; r.left.sp = sp; rp._t1416C = r.left; _t1416St.cacheKg = +(_t1416St.cacheKg + r.left.kg).toFixed(3); a._t1416Go = 1; }   // 한 마리를 다 못 실었다 — 둔 몫을 남기고 곳간 길로 · ★[T1429 ④] 생애 셈(처음 게임분 · 길 수 · 종)
 }
 //   ★[T1416 ④] 둔 몫 회수 — 그날(판 시계 날) 둔 몫이면 그 자리로 걸어가(랩 '회수' 걸음) 손에 싣는다 · 지난날 몫은 두고 온 것으로 센다
 function _t1416Fetch(a, st, F) {
   const rp = a._real, C = rp && rp._t1416C; if (!C) return false;
-  if (C.d !== Math.floor(F.gm / L_MINDAY)) { _t1416St.leftKg = +(_t1416St.leftKg + C.kg).toFixed(3); rp._t1416C = null; return false; }
+  if (C.d !== Math.floor(F.gm / L_MINDAY)) { _t1416St.leftKg = +(_t1416St.leftKg + C.kg).toFixed(3); _t1429Life(C, F.gm, false); rp._t1416C = null; return false; }   // ★[T1429 ④] 지난날 둔 몫 = 썩음(다음 날 안 가져온다)
   a._bm = null; a.sneak = 0; a._hold = 0;
   if (Math.hypot(C.x - a.px, C.y - a.py) >= 1.6) { a.action = '회수'; a._tx = C.x; a._ty = C.y; _t1393Walk(a, st); return true; }
   const r = _t1416Take(rp, C.it, C.x, C.y, C.d);
   _t1416St.fetchKg = +(_t1416St.fetchKg + r.got).toFixed(3);
+  if (r.left) { r.left.t0 = C.t0; r.left.trips = (C.trips || 1) + 1; r.left.sp = C.sp; } else _t1429Life(C, F.gm, true);   // ★[T1429 ④] 생애 셈 — 다 가져왔다
   rp._t1416C = r.left; a.action = '수확';
   if (r.left) a._t1416Go = 1;   // 또 다 못 실었다 — 또 곳간 길로(남은 몫은 그 자리에)
   return true;
 }
+// ★★[T1429 ④ · 코너] 두고 온 몫이 어디로 가나 — 둔 몫 생애(처음 둔 게임분 → 다 가져옴 / 썩음 · 길 수) · 땅 더미(주인이 사라진 손 · 둔 몫)
+//   손이나 둔 몫을 가진 몸은 장부(`_t1429Who`)에 오른다. 깨움 틱마다 그 몸이 존에서 사라졌거나 · 죽었거나 · 사냥꾼이 아니거나 · 마을이 바뀌었으면
+//   손 몫은 마지막으로 본 자리에 · 둔 몫은 제자리에 **땅 더미**(`_t1429Gnd`)로 떨어진다(사라짐 0). 땅 더미는 떨어진 그날(떨군 몸의 몸 시계 날 — 둔 몫의 판 시계 날과 같은 축 · 더미마다 제 축 · 섞지 않는다)이 지나면 썩는다(센다) —
+//   아무도 줍지 않는다(다른 사냥꾼 · 사람 줍기는 회부). 새 수 0.
+const _t1429Who = new Map(), _t1429Gnd = [];
+let _t1429Day = -1;
+function _t1429DayOf(now, S) { const s = S > 0 && Number.isFinite(S) ? S : 1; return Math.floor(_gmOfEl(now - (H.WORLD.worldEpoch || 0), H.WORLD.dayLengthMs / s, H.WORLD.dayPhaseRatio) / L_MINDAY); }   // 더미 날 = 떨군 몸의 몸 시계(판 시계 판과 같은 축 — `_t1326S`) · 운영 시계 = 1
+const _t1429St = { lifeDone: 0, lifeDoneMin: 0, lifeDoneTrips: 0, lifeRot: 0, lifeRotKg: 0, lifeRotTrips: 0, drop: 0, dropKg: 0, gndRot: 0, gndRotKg: 0, why: {} };
+function _t1429Life(C, gm, done) {
+  if (!C || C.t0 == null) return;
+  if (done) { _t1429St.lifeDone++; _t1429St.lifeDoneMin += gm - C.t0; _t1429St.lifeDoneTrips += (C.trips || 1) + 1; }
+  else { _t1429St.lifeRot++; _t1429St.lifeRotKg = +(_t1429St.lifeRotKg + C.kg).toFixed(3); _t1429St.lifeRotTrips += C.trips || 1; }
+}
+function _t1429Drop(rp, e, why) {   // 그 몸의 손 · 둔 몫을 땅에(주인 표지를 지운다)
+  const Hh = rp._t1416H, C = rp._t1416C;
+  if (Hh && Hh.kg > 0) { _t1429Gnd.push({ x: e.x, y: e.y, d: null, s: _t1326S(rp), kg: Hh.kg, it: Hh.it, why }); _t1429St.drop++; _t1429St.dropKg = +(_t1429St.dropKg + Hh.kg).toFixed(3); }
+  if (C && C.kg > 0) { _t1429Gnd.push({ x: C.x, y: C.y, d: null, s: _t1326S(rp), kg: C.kg, it: C.it, why }); _t1429St.drop++; _t1429St.dropKg = +(_t1429St.dropKg + C.kg).toFixed(3); }
+  _t1429St.why[why] = (_t1429St.why[why] || 0) + 1;
+  rp._t1416H = null; rp._t1416C = null; rp._t1416Go = 0;
+}
+function _t1429Check(players, now) {
+  for (const [pid, e] of _t1429Who) {
+    const p = players.get(pid);
+    const why = p !== e.rp ? 'gone' : (p.hp <= 0 ? 'dead' : (p.simJob !== 'hunter' ? 'job' : (p.simVillageId !== e.vid ? 'move' : null)));
+    if (why) { _t1429Drop(e.rp, e, why); _t1429Who.delete(pid); continue; }
+    if (!p._t1416H && !p._t1416C) { _t1429Who.delete(pid); continue; }
+    e.x = p.x / 32; e.y = p.y / 32;
+  }
+  for (let i = _t1429Gnd.length - 1; i >= 0; i--) { const g = _t1429Gnd[i], dd = _t1429DayOf(now, g.s); if (g.d == null) { g.d = dd; continue; } if (g.d < dd) { _t1429St.gndRot++; _t1429St.gndRotKg = +(_t1429St.gndRotKg + g.kg).toFixed(3); _t1429Gnd.splice(i, 1); } }
+}
+//   바깥(villages 다시 뜬 판의 남는 몸 줄 · 하네스) — 그 몸 없이 손 · 둔 몫을 땅에
+function t1429Ground(x, y, kg, it, why, rp) { if (kg > 0) { _t1429Gnd.push({ x, y, d: null, s: rp ? _t1326S(rp) : 1, kg, it, why }); _t1429St.drop++; _t1429St.dropKg = +(_t1429St.dropKg + kg).toFixed(3); _t1429St.why[why] = (_t1429St.why[why] || 0) + 1; } }
 function _t1393Tick(now) {
   const B = require('./beast-body').current; if (!B) return;
   const u0 = process.cpuUsage(), cm = H.chunkManager, cs = cm.chunkSize, act = H.getActiveChunkKeys();
-  const on = (x, y) => act.has(cm.keyOf(Math.floor(x / cs), Math.floor(y / cs)));
+  //   ★[T1429 ③] 켜진 청크를 틱에 한 번 숫자 집합으로(`cx_cy` 꼴 — 존 `chunkManager.keyOf`) — 몸마다 글자 열쇠를 안 만든다 · 꼴이 다르면 종전 글자 길(같은 답)
+  let actN = null; if (act.size && cm.keyOf(3, 7) === '3_7') { actN = new Set(); for (const k of act) { const i = k.indexOf('_'); const cx = +k.slice(0, i), cy = +k.slice(i + 1); if (!Number.isInteger(cx) || !Number.isInteger(cy)) { actN = null; break; } actN.add(cx * 1048576 + cy); } }
+  const on = actN ? (x, y) => actN.has(Math.floor(x / cs) * 1048576 + Math.floor(y / cs)) : (x, y) => act.has(cm.keyOf(Math.floor(x / cs), Math.floor(y / cs)));
   _t1393St.ticks++;
   if (T1416_WAKE_PRE) _t1416Pre(B);
   if (T1416_BEAST_WALL && _t1416BldT !== _t1393St.ticks) { _t1416BldT = _t1393St.ticks; _t1416Bld = (H.t1416Bldg && H.t1416Bldg()) || (() => false); _t1416Edge = H.t1416Edge || null; }
   // 1) 깨우는 이 — 일하는 사냥꾼 몸 · 사람(활성) → 대리 · 판
   const live = new Set();
   for (const p of H.players.values()) {
+    if (T1416_CARRY_HOME && (p._t1416H || p._t1416C) && !_t1429Who.has(p.pid)) _t1429Who.set(p.pid, { rp: p, vid: p.simVillageId, x: p.x / 32, y: p.y / 32 });   // ★[T1429] 손 · 둔 몫 장부
     if (p.hp <= 0 || p.isDown || p.handingOff || p.simWar) continue;
     const hunter = p.isNpc && p.simJob === 'hunter' && p._huntOn && !(T1416_CARRY_HOME && p._t1416Go);   // ★[T1416 ④] 곳간에 지고 가는 몸은 판이 안 쥔다(놓는다)
     if (p.isNpc ? !hunter : !H.isPositionActive(p.x, p.y)) continue;
@@ -1105,6 +1145,7 @@ function _t1393Tick(now) {
   // 2) 깨움 — 깬 몸 아닌 몸 가운데 깨우는 이에서 반경 안(64 m 통 · 3×3 ~ 반경 칸 통) · 판 시계로 1게임분에 한 번(운영 시계 = TICK_HZ 틱마다 · 판 시계 = 틱마다 — 깨우는 이는 1분에 몇 m 만 걷는다)
   let fast = false; for (const pr of live) if (pr.state === 'work' && _t1326S(pr._real) > 1) { fast = true; break; }
   const wakeNow = fast || (_t1393St.ticks % ((H.TICK_HZ | 0) || 30)) === 1;
+  if (T1416_CARRY_HOME && wakeNow) { _t1429Day = _t1429DayOf(now, 1); _t1429Check(H.players, now); }   // ★[T1429] 손 · 둔 몫 주인 살피기 · 땅 더미 썩음
   const BK = 64, grid = new Map();
   if (wakeNow) for (const b of B.W.bodies.values()) { if (b.mat || b.tr) continue; const k = ((b.cx / BK) | 0) * 65536 + ((b.cy / BK) | 0); const l = grid.get(k); l ? l.push(b) : grid.set(k, [b]); }
   const RR = Math.ceil(T1393_SEE / BK);
@@ -1145,13 +1186,13 @@ function _t1393Tick(now) {
       const st = unit ? 1 : Math.min(1, g1 - F.gm); F.gm += st; lifeGM = F.gm; _t1393St.steps++;
       if (T1416_FIELD_UNIT) { if (unit) _t1416St.unitSteps++; else _t1416St.fracSteps++; }
       for (const a of s.agents) {
-        if (a.state !== 'work') continue;
+        if (a.state !== 'work') { if (a._carc) a._t1429Off = a._carc; continue; }   // ★[T1429 ①] 계측 — 사체를 둔 채 일 밖(값 무관)
         if (T1416_CARRY_HOME && a._t1416Go) continue;   // ★[T1416 ④] 곳간에 지고 갈 몸 — 틱 끝에 놓는다
         _t1393St.huntMin += st;   // 계측 — 사냥꾼 판 분(사냥 한 번 분 = 이 합 ÷ 사냥 죽음)
         if (T1416_CARRY_HOME && _t1416Fetch(a, st, F)) continue;   // ★[T1416 ④] 둔 몫 회수
         _hunterBrain(a, s, st);
         if (a._hgo) { a._tx = a._hgx; a._ty = a._hgy; a._hgo = 0; }
-        if (T1416_CARRY_HOME && a._carc) a._hold = 0;   // ★[T1416 ④] 사체가 있으면 조준 자세가 아니다 — 블록 실행층은 사체 있는 사냥꾼을 `a._hold = 0` 줄 앞에서 넘긴다(쏜 때의 0.02 배속이 남아 회수가 사체 썩기 전에 못 닿았다 · T1393 은 잡은 순간 세어 안 드러났다)
+        if (a._carc) a._hold = 0;   // ★[T1429 ① · T1416 ④] 사체가 있으면 조준 자세가 아니다(사냥판 켬 — 걸어 나르기 끔 길도) — 블록 실행층은 사체 있는 사냥꾼을 `a._hold = 0` 줄 앞에서 넘긴다(쏜 때의 0.02 배속이 남아 회수가 사체 썩기 전에 못 닿았다 · T1393 은 잡은 순간 세어 안 드러났다)
         _t1393Walk(a, st);
       }
       _t1393Vf(s);
@@ -1162,7 +1203,8 @@ function _t1393Tick(now) {
         if ((_t1416LX === Math.floor(lm._t16x) && _t1416LY === Math.floor(lm._t16y)) || _t1416Cross(lm._t16x, lm._t16y, lx, ly)) { lm.px = lm._t16x; lm.py = lm._t16y; } else { lm.px = lx; lm.py = ly; }   // 그 칸 가운데로 가는 길도 모서리를 스치면 제자리
         lm._vx = 0; lm._vy = 0; _t1416St.cross++; }
       for (const lm of s.mobs) if (lm._b != null) { if (lm.st === 'dead') _t1393Dead(B, F, lm); else if (lm.st !== 'hide') { lm._bx = lm.px; lm._by = lm.py; } }
-      if (T1416_CARRY_HOME) for (const a of s.agents) if (a._t1416P !== undefined && a._t1416P !== false && !a._carc) _t1416Done(a, F);   // ★[T1416 ④] 도살 끝 · 사체 잃음
+      if (T1416_CARRY_HOME) for (const a of s.agents) if (a._t1416P !== undefined && a._t1416P !== false && !a._carc) _t1416Done(a, F);
+      for (const a of s.agents) if (a._carcSeen && !a._carc && a._t1429B !== a._carcSeen) { a._t1429B = a._carcSeen; if (a.action === '수확') _t1393St.butch++; else { _t1393St.carcLost++; const c = a._carcSeen, w = c.st !== 'dead' ? 'eaten' : (c.rot <= 0 ? ((c._bp || 0) > 0 ? 'rotCut' : 'rot') : 'other'); const w2 = w + (a._t1429Off === c ? '·일밖' : '') + (S95 > 1 ? '·판시계' : ''); _t1393St.lostWhy[w2] = (_t1393St.lostWhy[w2] || 0) + 1; } }   // ★[T1429 ①] 계측 — 사체가 도살 끝났나 · 잃었나(값 무관)   // ★[T1416 ④] 도살 끝 · 사체 잃음
     }
     // 잠듦 — 깨우는 이가 반경 밖 · 몸이 가라앉음(방심 상태) · 굴 밖
     const ags = s.agents;
@@ -1388,4 +1430,7 @@ if (T1393) module.exports.t1416Stat = () => { const w = _t1416St.wakeUs.slice().
   return Object.assign({ pre: T1416_WAKE_PRE, unit: T1416_FIELD_UNIT, wall: T1416_BEAST_WALL, carry: T1416_CARRY_HOME, preLeft: _t1416Q ? _t1416Q.length : null }, _t1416St, { wakeUs: undefined, wakeP50: q(0.5), wakeP99: q(0.99), wakeMax: w.length ? w[w.length - 1] : null }); };   // ★[T1393] 켬만 — 사냥판 셈(끔 = 칸 없음)
 module.exports.T1393 = T1393; module.exports.T1393_SEE = T1393_SEE;
 module.exports.T1416 = { pre: T1416_WAKE_PRE, unit: T1416_FIELD_UNIT, wall: T1416_BEAST_WALL, carry: T1416_CARRY_HOME };   // ★[T1416] 손잡이 넷(하네스)
+module.exports.t1429Ground = t1429Ground;
+module.exports.t1429Sep = () => ({ m: _sgN.m, p: _sgN.p });   // ★[T1429 ③] 분리 이웃 셈 — 몸 걸음 수 · 견준 이웃 수(전수면 몸 수에 가깝다 · 하네스)   // ★[T1429] 손 · 둔 몫을 땅에(villages 다시 뜬 판의 남는 몸 줄)
+module.exports.t1429Stat = () => Object.assign({ gnd: _t1429Gnd.length, gndKg: +_t1429Gnd.reduce((a, g) => a + g.kg, 0).toFixed(3), who: _t1429Who.size, day: _t1429Day }, JSON.parse(JSON.stringify(_t1429St)));   // ★[T1429] 두고 온 몫 갈래 셈
 if (T1393) module.exports._t1416Mobs = () => { const o = []; for (const F of _t1393F.values()) for (const lm of F.s.mobs) if (lm._b != null) o.push({ b: lm._b, st: lm.st, x: lm.px, y: lm.py }); return o; };   // ★[T1416] 관찰자(하네스) — 깬 몸 상태 · 자리(읽기만)   // ★[T1331] 켬만 — 보임 다리 셈(끔 = 칸 없음)

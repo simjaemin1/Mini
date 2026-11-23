@@ -1,0 +1,4 @@
+# 옛 코드 빨강 — 하네스 = 8d1dd8cd · 제품(server sim public lab) = 01df9e8f · 시한 600초
+빨강 ○ | test-t1396-hunt-lab.js | RC=1 · ✓ 1 · ✗ 11 |   ✗ ① `rebuild-huntlab.py --check` 초록 — 패치 9/9 · 앞잇기 1 · 랩 파일이 지금 블록 그대로  FileNotFoundError: [Errno 2] No such file
+빨강 ○ | test-t1413-hunt-year.js | RC=1 · ✓ 0 · ✗ 12 |   ✗ ① --quick 나감 0 · 같은 씨 두 번 = 같은 줄(바이트)  node:fs:483
+# 합: 빨강 2 · 크래시 0 · 초록 0 · 모름 0 · 제품 무관 0

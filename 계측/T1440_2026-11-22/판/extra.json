@@ -1,0 +1,4837 @@
+{
+ "refer": 5,
+ "neckJ": {
+  "cpu": 19369,
+  "pairs": 184,
+  "full": 42
+ },
+ "again1020": 24,
+ "againVp1020": 192,
+ "road": {
+  "ask": 0,
+  "avoid": 492,
+  "keep": 3,
+  "keepCells": 3
+ },
+ "claimCpu": {
+  "n": 135,
+  "p50": 25.3,
+  "p90": 175.8,
+  "p99": 60852.7,
+  "max": 64037.1
+ },
+ "acts": 1093,
+ "passedLower": 3,
+ "passCells": 9,
+ "widthEsc": 8496,
+ "widthM": 12003,
+ "widthOff": "0/8496",
+ "widthEscP99": 0,
+ "widthEscMax": 0,
+ "widthMMax": 0,
+ "ex": {
+  "wingsU": {
+   "on": [
+    {
+     "s": 1020,
+     "at": [
+      1198,
+      819
+     ],
+     "routes": 170,
+     "want": 11,
+     "v": {
+      "road": 3,
+      "?": 8
+     },
+     "end": [
+      7,
+      0,
+      0,
+      null
+     ],
+     "pieces": 11,
+     "claims": 0,
+     "passN": 0,
+     "steps": null,
+     "again": 0,
+     "againVp": 0,
+     "cpu": 66,
+     "keepB": null
+    },
+    {
+     "s": 7,
+     "at": [
+      1198,
+      819
+     ],
+     "routes": 170,
+     "want": 11,
+     "v": {
+      "road": 3,
+      "?": 8
+     },
+     "end": [
+      6,
+      0,
+      0,
+      null
+     ],
+     "pieces": 11,
+     "claims": 0,
+     "passN": 0,
+     "steps": null,
+     "again": 0,
+     "againVp": 0,
+     "cpu": 48,
+     "keepB": null
+    },
+    {
+     "s": 42,
+     "at": [
+      1198,
+      819
+     ],
+     "routes": 170,
+     "want": 11,
+     "v": {
+      "road": 3,
+      "?": 8
+     },
+     "end": [
+      7,
+      0,
+      0,
+      null
+     ],
+     "pieces": 11,
+     "claims": 0,
+     "passN": 0,
+     "steps": null,
+     "again": 0,
+     "againVp": 0,
+     "cpu": 62,
+     "keepB": null
+    }
+   ],
+   "off": [
+    {
+     "s": 1020,
+     "end": [
+      11,
+      0,
+      0,
+      null
+     ],
+     "pieces": 11
+    },
+    {
+     "s": 7,
+     "end": [
+      11,
+      0,
+      0,
+      null
+     ],
+     "pieces": 11
+    },
+    {
+     "s": 42,
+     "end": [
+      11,
+      0,
+      0,
+      null
+     ],
+     "pieces": 11
+    }
+   ],
+   "ctl": [
+    {
+     "s": 1020,
+     "end": [
+      11,
+      0,
+      0,
+      null
+     ],
+     "pieces": 11
+    },
+    {
+     "s": 7,
+     "end": [
+      11,
+      0,
+      0,
+      null
+     ],
+     "pieces": 11
+    },
+    {
+     "s": 42,
+     "end": [
+      11,
+      0,
+      0,
+      null
+     ],
+     "pieces": 11
+    }
+   ]
+  },
+  "wingsP": {
+   "on": [
+    {
+     "s": 1020,
+     "at": [
+      214,
+      3022
+     ],
+     "routes": 243,
+     "want": 10,
+     "v": {
+      "protected": 9,
+      "yield": 1
+     },
+     "end": [
+      0,
+      0,
+      1,
+      null
+     ],
+     "pieces": 0,
+     "claims": 10,
+     "passN": 1,
+     "steps": null,
+     "again": 0,
+     "againVp": 0,
+     "cpu": 3490,
+     "keepB": null
+    },
+    {
+     "s": 7,
+     "at": [
+      214,
+      3022
+     ],
+     "routes": 243,
+     "want": 10,
+     "v": {
+      "protected": 9,
+      "yield": 1
+     },
+     "end": [
+      0,
+      0,
+      1,
+      null
+     ],
+     "pieces": 0,
+     "claims": 10,
+     "passN": 1,
+     "steps": null,
+     "again": 0,
+     "againVp": 0,
+     "cpu": 3951,
+     "keepB": null
+    },
+    {
+     "s": 42,
+     "at": [
+      214,
+      3022
+     ],
+     "routes": 243,
+     "want": 10,
+     "v": {
+      "protected": 9,
+      "yield": 1
+     },
+     "end": [
+      0,
+      0,
+      1,
+      null
+     ],
+     "pieces": 0,
+     "claims": 10,
+     "passN": 1,
+     "steps": null,
+     "again": 0,
+     "againVp": 0,
+     "cpu": 3686,
+     "keepB": null
+    }
+   ],
+   "off": [
+    {
+     "s": 1020,
+     "end": [
+      0,
+      0,
+      0,
+      null
+     ],
+     "pieces": 0
+    },
+    {
+     "s": 7,
+     "end": [
+      0,
+      0,
+      0,
+      null
+     ],
+     "pieces": 0
+    },
+    {
+     "s": 42,
+     "end": [
+      0,
+      0,
+      0,
+      null
+     ],
+     "pieces": 0
+    }
+   ],
+   "ctl": [
+    {
+     "s": 1020,
+     "end": [
+      0,
+      0,
+      0,
+      null
+     ],
+     "pieces": 0
+    },
+    {
+     "s": 7,
+     "end": [
+      0,
+      0,
+      0,
+      null
+     ],
+     "pieces": 0
+    },
+    {
+     "s": 42,
+     "end": [
+      0,
+      0,
+      0,
+      null
+     ],
+     "pieces": 0
+    }
+   ]
+  },
+  "thick": {
+   "on": [
+    {
+     "s": 1020,
+     "at": [
+      838,
+      1408
+     ],
+     "routes": 150,
+     "want": 11,
+     "v": {
+      "?": 67,
+      "road": 32
+     },
+     "end": [
+      69,
+      0,
+      0,
+      null
+     ],
+     "pieces": 99,
+     "claims": 0,
+     "passN": 0,
+     "steps": null,
+     "again": 0,
+     "againVp": 0,
+     "cpu": 231,
+     "keepB": null
+    },
+    {
+     "s": 7,
+     "at": [
+      838,
+      1408
+     ],
+     "routes": 150,
+     "want": 11,
+     "v": {
+      "?": 67,
+      "road": 32
+     },
+     "end": [
+      77,
+      0,
+      0,
+      null
+     ],
+     "pieces": 99,
+     "claims": 0,
+     "passN": 0,
+     "steps": null,
+     "again": 0,
+     "againVp": 0,
+     "cpu": 318,
+     "keepB": null
+    },
+    {
+     "s": 42,
+     "at": [
+      838,
+      1408
+     ],
+     "routes": 150,
+     "want": 11,
+     "v": {
+      "?": 67,
+      "road": 32
+     },
+     "end": [
+      77,
+      0,
+      0,
+      null
+     ],
+     "pieces": 99,
+     "claims": 0,
+     "passN": 0,
+     "steps": null,
+     "again": 0,
+     "againVp": 0,
+     "cpu": 222,
+     "keepB": null
+    }
+   ],
+   "off": [
+    {
+     "s": 1020,
+     "end": [
+      99,
+      0,
+      0,
+      null
+     ],
+     "pieces": 99
+    },
+    {
+     "s": 7,
+     "end": [
+      99,
+      0,
+      0,
+      null
+     ],
+     "pieces": 99
+    },
+    {
+     "s": 42,
+     "end": [
+      99,
+      0,
+      0,
+      null
+     ],
+     "pieces": 99
+    }
+   ],
+   "ctl": [
+    {
+     "s": 1020,
+     "end": [
+      99,
+      0,
+      0,
+      null
+     ],
+     "pieces": 99
+    },
+    {
+     "s": 7,
+     "end": [
+      99,
+      0,
+      0,
+      null
+     ],
+     "pieces": 99
+    },
+    {
+     "s": 42,
+     "end": [
+      99,
+      0,
+      0,
+      null
+     ],
+     "pieces": 99
+    }
+   ]
+  },
+  "houseF": {
+   "on": [
+    {
+     "s": 1020,
+     "at": [
+      214,
+      2901
+     ],
+     "routes": 145,
+     "want": 1,
+     "v": {
+      "protected": 1,
+      "?": 9
+     },
+     "end": [
+      9,
+      0,
+      0,
+      1.984
+     ],
+     "pieces": 9,
+     "claims": 1,
+     "passN": 0,
+     "steps": null,
+     "again": 0,
+     "againVp": 0,
+     "cpu": 69,
+     "keepB": null
+    },
+    {
+     "s": 7,
+     "at": [
+      214,
+      2901
+     ],
+     "routes": 145,
+     "want": 1,
+     "v": {
+      "protected": 1,
+      "?": 9
+     },
+     "end": [
+      9,
+      0,
+      0,
+      1.983
+     ],
+     "pieces": 9,
+     "claims": 1,
+     "passN": 0,
+     "steps": null,
+     "again": 0,
+     "againVp": 0,
+     "cpu": 82,
+     "keepB": null
+    },
+    {
+     "s": 42,
+     "at": [
+      214,
+      2901
+     ],
+     "routes": 145,
+     "want": 1,
+     "v": {
+      "protected": 1,
+      "?": 9
+     },
+     "end": [
+      9,
+      0,
+      0,
+      2.26
+     ],
+     "pieces": 9,
+     "claims": 1,
+     "passN": 0,
+     "steps": null,
+     "again": 0,
+     "againVp": 0,
+     "cpu": 64,
+     "keepB": null
+    }
+   ],
+   "off": [
+    {
+     "s": 1020,
+     "end": [
+      9,
+      0,
+      0,
+      null
+     ],
+     "pieces": 9
+    },
+    {
+     "s": 7,
+     "end": [
+      9,
+      0,
+      0,
+      null
+     ],
+     "pieces": 9
+    },
+    {
+     "s": 42,
+     "end": [
+      9,
+      0,
+      0,
+      null
+     ],
+     "pieces": 9
+    }
+   ],
+   "ctl": [
+    {
+     "s": 1020,
+     "end": [
+      9,
+      0,
+      0,
+      null
+     ],
+     "pieces": 9
+    },
+    {
+     "s": 7,
+     "end": [
+      9,
+      0,
+      0,
+      null
+     ],
+     "pieces": 9
+    },
+    {
+     "s": 42,
+     "end": [
+      9,
+      0,
+      0,
+      null
+     ],
+     "pieces": 9
+    }
+   ]
+  },
+  "houseN": {
+   "on": [
+    {
+     "s": 1020,
+     "at": [
+      1482,
+      3217
+     ],
+     "routes": 76,
+     "want": 10,
+     "v": {
+      "free": 1,
+      "protected": 4,
+      "?": 4,
+      "road": 1
+     },
+     "end": [
+      5,
+      0,
+      0,
+      null
+     ],
+     "pieces": 5,
+     "claims": 5,
+     "passN": 0,
+     "steps": null,
+     "again": 0,
+     "againVp": 0,
+     "cpu": 47147,
+     "keepB": null
+    },
+    {
+     "s": 7,
+     "at": [
+      1482,
+      3217
+     ],
+     "routes": 76,
+     "want": 10,
+     "v": {
+      "free": 1,
+      "protected": 4,
+      "?": 4,
+      "road": 1
+     },
+     "end": [
+      5,
+      0,
+      0,
+      null
+     ],
+     "pieces": 5,
+     "claims": 5,
+     "passN": 0,
+     "steps": null,
+     "again": 0,
+     "againVp": 0,
+     "cpu": 44259,
+     "keepB": null
+    },
+    {
+     "s": 42,
+     "at": [
+      1482,
+      3217
+     ],
+     "routes": 76,
+     "want": 10,
+     "v": {
+      "free": 1,
+      "protected": 4,
+      "?": 4,
+      "road": 1
+     },
+     "end": [
+      5,
+      0,
+      0,
+      null
+     ],
+     "pieces": 5,
+     "claims": 5,
+     "passN": 0,
+     "steps": null,
+     "again": 0,
+     "againVp": 0,
+     "cpu": 49710,
+     "keepB": null
+    }
+   ],
+   "off": [
+    {
+     "s": 1020,
+     "end": [
+      5,
+      0,
+      0,
+      null
+     ],
+     "pieces": 5
+    },
+    {
+     "s": 7,
+     "end": [
+      5,
+      0,
+      0,
+      null
+     ],
+     "pieces": 5
+    },
+    {
+     "s": 42,
+     "end": [
+      5,
+      0,
+      0,
+      null
+     ],
+     "pieces": 5
+    }
+   ],
+   "ctl": [
+    {
+     "s": 1020,
+     "end": [
+      5,
+      0,
+      0,
+      null
+     ],
+     "pieces": 5
+    },
+    {
+     "s": 7,
+     "end": [
+      5,
+      0,
+      0,
+      null
+     ],
+     "pieces": 5
+    },
+    {
+     "s": 42,
+     "end": [
+      5,
+      0,
+      0,
+      null
+     ],
+     "pieces": 5
+    }
+   ]
+  },
+  "vilpush": {
+   "on": [
+    {
+     "s": 1020,
+     "at": [
+      2018,
+      3126
+     ],
+     "routes": 23,
+     "want": 14,
+     "v": {
+      "protected": 1
+     },
+     "end": [
+      0,
+      0,
+      1,
+      null
+     ],
+     "pieces": 0,
+     "claims": 14,
+     "passN": 0,
+     "steps": null,
+     "again": 0,
+     "againVp": 0,
+     "cpu": 60899,
+     "vil": "광산7",
+     "keepB": {
+      "v": "free",
+      "pass": false
+     }
+    },
+    {
+     "s": 7,
+     "at": [
+      2018,
+      3126
+     ],
+     "routes": 23,
+     "want": 14,
+     "v": {
+      "protected": 1
+     },
+     "end": [
+      0,
+      0,
+      1,
+      null
+     ],
+     "pieces": 0,
+     "claims": 14,
+     "passN": 0,
+     "steps": null,
+     "again": 0,
+     "againVp": 0,
+     "cpu": 58988,
+     "vil": "광산7",
+     "keepB": {
+      "v": "free",
+      "pass": false
+     }
+    },
+    {
+     "s": 42,
+     "at": [
+      2018,
+      3126
+     ],
+     "routes": 23,
+     "want": 14,
+     "v": {
+      "protected": 1
+     },
+     "end": [
+      0,
+      0,
+      1,
+      null
+     ],
+     "pieces": 0,
+     "claims": 14,
+     "passN": 0,
+     "steps": null,
+     "again": 0,
+     "againVp": 0,
+     "cpu": 64087,
+     "vil": "광산7",
+     "keepB": {
+      "v": "free",
+      "pass": false
+     }
+    }
+   ],
+   "off": [
+    {
+     "s": 1020,
+     "end": [
+      0,
+      0,
+      0,
+      null
+     ],
+     "pieces": 0
+    },
+    {
+     "s": 7,
+     "end": [
+      0,
+      0,
+      0,
+      null
+     ],
+     "pieces": 0
+    },
+    {
+     "s": 42,
+     "end": [
+      0,
+      0,
+      0,
+      null
+     ],
+     "pieces": 0
+    }
+   ],
+   "ctl": [
+    {
+     "s": 1020,
+     "end": [
+      0,
+      0,
+      0,
+      null
+     ],
+     "pieces": 0
+    },
+    {
+     "s": 7,
+     "end": [
+      0,
+      0,
+      0,
+      null
+     ],
+     "pieces": 0
+    },
+    {
+     "s": 42,
+     "end": [
+      0,
+      0,
+      0,
+      null
+     ],
+     "pieces": 0
+    }
+   ]
+  },
+  "neck": {
+   "on": [
+    {
+     "s": 1020,
+     "at": [
+      842,
+      1367
+     ],
+     "routes": 188,
+     "want": 10,
+     "v": {
+      "protected": 9,
+      "yield": 1,
+      "close": 1
+     },
+     "end": [
+      1,
+      1,
+      1,
+      null
+     ],
+     "pieces": 1,
+     "claims": 10,
+     "passN": 1,
+     "steps": null,
+     "again": 24,
+     "againVp": 192,
+     "cpu": 20011,
+     "keepB": null
+    },
+    {
+     "s": 7,
+     "at": [
+      842,
+      1367
+     ],
+     "routes": 188,
+     "want": 10,
+     "v": {
+      "protected": 9,
+      "yield": 1,
+      "close": 1
+     },
+     "end": [
+      1,
+      1,
+      1,
+      null
+     ],
+     "pieces": 1,
+     "claims": 10,
+     "passN": 1,
+     "steps": null,
+     "again": 21,
+     "againVp": 168,
+     "cpu": 19609,
+     "keepB": null
+    },
+    {
+     "s": 42,
+     "at": [
+      842,
+      1367
+     ],
+     "routes": 188,
+     "want": 10,
+     "v": {
+      "protected": 9,
+      "yield": 1,
+      "close": 1
+     },
+     "end": [
+      1,
+      1,
+      1,
+      null
+     ],
+     "pieces": 1,
+     "claims": 10,
+     "passN": 1,
+     "steps": null,
+     "again": 25,
+     "againVp": 200,
+     "cpu": 20327,
+     "keepB": null
+    }
+   ],
+   "off": [
+    {
+     "s": 1020,
+     "end": [
+      0,
+      0,
+      0,
+      null
+     ],
+     "pieces": 0
+    },
+    {
+     "s": 7,
+     "end": [
+      0,
+      0,
+      0,
+      null
+     ],
+     "pieces": 0
+    },
+    {
+     "s": 42,
+     "end": [
+      0,
+      0,
+      0,
+      null
+     ],
+     "pieces": 0
+    }
+   ],
+   "ctl": [
+    {
+     "s": 1020,
+     "end": [
+      0,
+      0,
+      0,
+      null
+     ],
+     "pieces": 0
+    },
+    {
+     "s": 7,
+     "end": [
+      0,
+      0,
+      0,
+      null
+     ],
+     "pieces": 0
+    },
+    {
+     "s": 42,
+     "end": [
+      0,
+      0,
+      0,
+      null
+     ],
+     "pieces": 0
+    }
+   ]
+  },
+  "grad": {
+   "on": [
+    {
+     "s": 1020,
+     "at": [
+      214,
+      2969
+     ],
+     "routes": 147,
+     "want": 1,
+     "v": {},
+     "end": [
+      0,
+      0,
+      0,
+      1.984
+     ],
+     "pieces": 0,
+     "claims": 0,
+     "passN": 0,
+     "maxProt": 1.386,
+     "steps": 160,
+     "again": 0,
+     "againVp": 0,
+     "cpu": 11522,
+     "stepsArr": [
+      [
+       0,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       1,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -1,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       2,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -2,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       3,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -3,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       4,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -4,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       5,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -5,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       6,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -6,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       7,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -7,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       8,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -8,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       9,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -9,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       10,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -10,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       11,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -11,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       12,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -12,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       13,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -13,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       14,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -14,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       15,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -15,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       16,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -16,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       17,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -17,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       18,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -18,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       19,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -19,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       20,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -20,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       21,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -21,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       22,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -22,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       23,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -23,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       24,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -24,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       25,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -25,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       26,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -26,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       27,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -27,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       28,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -28,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       29,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -29,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       30,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -30,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       31,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -31,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       32,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -32,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       33,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -33,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       34,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -34,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       35,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -35,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       36,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -36,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       37,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -37,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       38,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -38,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       39,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -39,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       40,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -40,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       41,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -41,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       42,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -42,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       43,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -43,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       44,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -44,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       45,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -45,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       46,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -46,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       47,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -47,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       48,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -48,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       49,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -49,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       50,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -50,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       51,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -51,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       52,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -52,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       53,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -53,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       54,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -54,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       55,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -55,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       56,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -56,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       57,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -57,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       58,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -58,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       59,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -59,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       60,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -60,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       61,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -61,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       62,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -62,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       63,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -63,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       64,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -64,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       65,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -65,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       66,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -66,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       67,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -67,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       68,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -68,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       69,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -69,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       70,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -70,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       71,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -71,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       72,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -72,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       73,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -73,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       74,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -74,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       75,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -75,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       76,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -76,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       77,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -77,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       78,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -78,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       79,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -79,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       80,
+       "protected",
+       1.386,
+       0
+      ]
+     ],
+     "keepB": null
+    },
+    {
+     "s": 7,
+     "at": [
+      214,
+      2969
+     ],
+     "routes": 147,
+     "want": 1,
+     "v": {},
+     "end": [
+      0,
+      0,
+      0,
+      1.983
+     ],
+     "pieces": 0,
+     "claims": 0,
+     "passN": 0,
+     "maxProt": 1.386,
+     "steps": 160,
+     "again": 0,
+     "againVp": 0,
+     "cpu": 10701,
+     "stepsArr": [
+      [
+       0,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       1,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -1,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       2,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -2,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       3,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -3,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       4,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -4,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       5,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -5,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       6,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -6,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       7,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -7,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       8,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -8,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       9,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -9,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       10,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -10,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       11,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -11,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       12,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -12,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       13,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -13,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       14,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -14,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       15,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -15,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       16,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -16,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       17,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -17,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       18,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -18,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       19,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -19,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       20,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -20,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       21,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -21,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       22,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -22,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       23,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -23,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       24,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -24,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       25,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -25,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       26,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -26,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       27,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -27,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       28,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -28,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       29,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -29,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       30,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -30,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       31,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -31,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       32,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -32,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       33,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -33,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       34,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -34,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       35,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -35,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       36,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -36,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       37,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -37,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       38,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -38,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       39,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -39,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       40,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -40,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       41,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -41,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       42,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -42,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       43,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -43,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       44,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -44,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       45,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -45,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       46,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -46,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       47,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -47,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       48,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -48,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       49,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -49,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       50,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -50,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       51,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -51,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       52,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -52,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       53,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -53,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       54,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -54,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       55,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -55,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       56,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -56,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       57,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -57,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       58,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -58,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       59,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -59,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       60,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -60,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       61,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -61,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       62,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -62,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       63,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -63,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       64,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -64,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       65,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -65,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       66,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -66,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       67,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -67,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       68,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -68,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       69,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -69,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       70,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -70,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       71,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -71,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       72,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -72,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       73,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -73,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       74,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -74,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       75,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -75,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       76,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -76,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       77,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -77,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       78,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -78,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       79,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -79,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       80,
+       "protected",
+       1.386,
+       0
+      ]
+     ],
+     "keepB": null
+    },
+    {
+     "s": 42,
+     "at": [
+      214,
+      2969
+     ],
+     "routes": 147,
+     "want": 1,
+     "v": {},
+     "end": [
+      0,
+      0,
+      0,
+      2.26
+     ],
+     "pieces": 0,
+     "claims": 0,
+     "passN": 0,
+     "maxProt": 1.386,
+     "steps": 160,
+     "again": 0,
+     "againVp": 0,
+     "cpu": 11984,
+     "stepsArr": [
+      [
+       0,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       1,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -1,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       2,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -2,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       3,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -3,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       4,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -4,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       5,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -5,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       6,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -6,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       7,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -7,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       8,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -8,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       9,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -9,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       10,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -10,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       11,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -11,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       12,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -12,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       13,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -13,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       14,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -14,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       15,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -15,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       16,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -16,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       17,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -17,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       18,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -18,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       19,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -19,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       20,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -20,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       21,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -21,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       22,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -22,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       23,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -23,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       24,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -24,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       25,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -25,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       26,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -26,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       27,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -27,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       28,
+       "free",
+       1.386,
+       0
+      ],
+      [
+       -28,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       29,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -29,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       30,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -30,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       31,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -31,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       32,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -32,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       33,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -33,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       34,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -34,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       35,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -35,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       36,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -36,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       37,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -37,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       38,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -38,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       39,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -39,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       40,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -40,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       41,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -41,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       42,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -42,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       43,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -43,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       44,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -44,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       45,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -45,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       46,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -46,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       47,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -47,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       48,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -48,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       49,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -49,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       50,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -50,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       51,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -51,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       52,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -52,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       53,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -53,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       54,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -54,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       55,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -55,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       56,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -56,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       57,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -57,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       58,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -58,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       59,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -59,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       60,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -60,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       61,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -61,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       62,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -62,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       63,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -63,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       64,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -64,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       65,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -65,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       66,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -66,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       67,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -67,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       68,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -68,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       69,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -69,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       70,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -70,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       71,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -71,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       72,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -72,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       73,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -73,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       74,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -74,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       75,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -75,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       76,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -76,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       77,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -77,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       78,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -78,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       79,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       -79,
+       "protected",
+       1.386,
+       0
+      ],
+      [
+       80,
+       "protected",
+       1.386,
+       0
+      ]
+     ],
+     "keepB": null
+    }
+   ],
+   "off": [
+    {
+     "s": 1020,
+     "end": [
+      0,
+      0,
+      0,
+      null
+     ],
+     "pieces": 0
+    },
+    {
+     "s": 7,
+     "end": [
+      0,
+      0,
+      0,
+      null
+     ],
+     "pieces": 0
+    },
+    {
+     "s": 42,
+     "end": [
+      0,
+      0,
+      0,
+      null
+     ],
+     "pieces": 0
+    }
+   ],
+   "ctl": [
+    {
+     "s": 1020,
+     "end": [
+      0,
+      0,
+      0,
+      null
+     ],
+     "pieces": 0
+    },
+    {
+     "s": 7,
+     "end": [
+      0,
+      0,
+      0,
+      null
+     ],
+     "pieces": 0
+    },
+    {
+     "s": 42,
+     "end": [
+      0,
+      0,
+      0,
+      null
+     ],
+     "pieces": 0
+    }
+   ]
+  },
+  "door": {
+   "on": [
+    {
+     "s": 1020,
+     "at": [
+      1174,
+      3002
+     ],
+     "routes": 99,
+     "want": 11,
+     "v": {
+      "?": 9,
+      "road": 2
+     },
+     "end": [
+      9,
+      0,
+      0,
+      null
+     ],
+     "pieces": 11,
+     "claims": 0,
+     "passN": 0,
+     "steps": null,
+     "again": 0,
+     "againVp": 0,
+     "cpu": 68,
+     "keepB": null
+    },
+    {
+     "s": 7,
+     "at": [
+      1174,
+      3002
+     ],
+     "routes": 99,
+     "want": 11,
+     "v": {
+      "?": 9,
+      "road": 2
+     },
+     "end": [
+      9,
+      0,
+      0,
+      null
+     ],
+     "pieces": 11,
+     "claims": 0,
+     "passN": 0,
+     "steps": null,
+     "again": 0,
+     "againVp": 0,
+     "cpu": 57,
+     "keepB": null
+    },
+    {
+     "s": 42,
+     "at": [
+      1174,
+      3002
+     ],
+     "routes": 99,
+     "want": 11,
+     "v": {
+      "?": 9,
+      "road": 2
+     },
+     "end": [
+      9,
+      0,
+      0,
+      null
+     ],
+     "pieces": 11,
+     "claims": 0,
+     "passN": 0,
+     "steps": null,
+     "again": 0,
+     "againVp": 0,
+     "cpu": 76,
+     "keepB": null
+    }
+   ],
+   "off": [
+    {
+     "s": 1020,
+     "end": [
+      11,
+      0,
+      0,
+      null
+     ],
+     "pieces": 11
+    },
+    {
+     "s": 7,
+     "end": [
+      11,
+      0,
+      0,
+      null
+     ],
+     "pieces": 11
+    },
+    {
+     "s": 42,
+     "end": [
+      11,
+      0,
+      0,
+      null
+     ],
+     "pieces": 11
+    }
+   ],
+   "ctl": [
+    {
+     "s": 1020,
+     "end": [
+      11,
+      0,
+      0,
+      null
+     ],
+     "pieces": 11
+    },
+    {
+     "s": 7,
+     "end": [
+      11,
+      0,
+      0,
+      null
+     ],
+     "pieces": 11
+    },
+    {
+     "s": 42,
+     "end": [
+      11,
+      0,
+      0,
+      null
+     ],
+     "pieces": 11
+    }
+   ]
+  },
+  "shop": {
+   "on": [
+    {
+     "s": 1020,
+     "at": [
+      851,
+      552
+     ],
+     "routes": 32,
+     "want": 1,
+     "v": {
+      "protected": 2
+     },
+     "end": [
+      0,
+      0,
+      0,
+      1.032
+     ],
+     "pieces": 0,
+     "claims": 3,
+     "passN": 0,
+     "steps": 2,
+     "again": 0,
+     "againVp": 0,
+     "cpu": 343,
+     "offAt": 2,
+     "stepsArr": [
+      [
+       1,
+       [
+        852,
+        553
+       ],
+       "protected",
+       32,
+       1,
+       1
+      ],
+      [
+       2,
+       [
+        852,
+        552
+       ],
+       "protected",
+       0,
+       2,
+       1
+      ]
+     ],
+     "adj0": 32,
+     "adj1": 0,
+     "d0": 1,
+     "d1": 2,
+     "shopAt": [
+      851,
+      553
+     ],
+     "keepB": {
+      "v": "free",
+      "pass": false
+     }
+    },
+    {
+     "s": 7,
+     "at": [
+      851,
+      552
+     ],
+     "routes": 32,
+     "want": 1,
+     "v": {
+      "protected": 2
+     },
+     "end": [
+      0,
+      0,
+      0,
+      1.049
+     ],
+     "pieces": 0,
+     "claims": 3,
+     "passN": 0,
+     "steps": 2,
+     "again": 0,
+     "againVp": 0,
+     "cpu": 327,
+     "offAt": 2,
+     "stepsArr": [
+      [
+       1,
+       [
+        852,
+        553
+       ],
+       "protected",
+       32,
+       1,
+       1
+      ],
+      [
+       2,
+       [
+        852,
+        552
+       ],
+       "protected",
+       0,
+       2,
+       1
+      ]
+     ],
+     "adj0": 32,
+     "adj1": 0,
+     "d0": 1,
+     "d1": 2,
+     "shopAt": [
+      851,
+      553
+     ],
+     "keepB": {
+      "v": "free",
+      "pass": false
+     }
+    },
+    {
+     "s": 42,
+     "at": [
+      851,
+      552
+     ],
+     "routes": 32,
+     "want": 1,
+     "v": {
+      "protected": 2
+     },
+     "end": [
+      0,
+      0,
+      0,
+      1.013
+     ],
+     "pieces": 0,
+     "claims": 3,
+     "passN": 0,
+     "steps": 2,
+     "again": 0,
+     "againVp": 0,
+     "cpu": 314,
+     "offAt": 2,
+     "stepsArr": [
+      [
+       1,
+       [
+        852,
+        553
+       ],
+       "protected",
+       32,
+       1,
+       1
+      ],
+      [
+       2,
+       [
+        852,
+        552
+       ],
+       "protected",
+       0,
+       2,
+       1
+      ]
+     ],
+     "adj0": 32,
+     "adj1": 0,
+     "d0": 1,
+     "d1": 2,
+     "shopAt": [
+      851,
+      553
+     ],
+     "keepB": {
+      "v": "free",
+      "pass": false
+     }
+    }
+   ],
+   "off": [
+    {
+     "s": 1020,
+     "end": [],
+     "pieces": null
+    },
+    {
+     "s": 7,
+     "end": [],
+     "pieces": null
+    },
+    {
+     "s": 42,
+     "end": [],
+     "pieces": null
+    }
+   ],
+   "ctl": [
+    {
+     "s": 1020,
+     "end": [],
+     "pieces": null
+    },
+    {
+     "s": 7,
+     "end": [],
+     "pieces": null
+    },
+    {
+     "s": 42,
+     "end": [],
+     "pieces": null
+    }
+   ]
+  },
+  "shopK": {
+   "on": [
+    {
+     "s": 1020,
+     "at": [
+      1489,
+      182
+     ],
+     "routes": 28,
+     "want": 1,
+     "v": {
+      "protected": 1
+     },
+     "end": [
+      0,
+      0,
+      1,
+      1.005
+     ],
+     "pieces": 0,
+     "claims": 2,
+     "passN": 1,
+     "steps": 1,
+     "again": 0,
+     "againVp": 0,
+     "cpu": 310,
+     "offAt": 1,
+     "stepsArr": [
+      [
+       1,
+       [
+        1490,
+        181
+       ],
+       "protected",
+       0,
+       1,
+       1
+      ]
+     ],
+     "d1": 1,
+     "thru0": 28,
+     "thru1": 0,
+     "shopAt": [
+      1489,
+      182
+     ],
+     "keepB": {
+      "v": "keep",
+      "pass": true
+     }
+    },
+    {
+     "s": 7,
+     "at": [
+      1489,
+      182
+     ],
+     "routes": 28,
+     "want": 1,
+     "v": {
+      "protected": 1
+     },
+     "end": [
+      0,
+      0,
+      1,
+      1.007
+     ],
+     "pieces": 0,
+     "claims": 2,
+     "passN": 1,
+     "steps": 1,
+     "again": 0,
+     "againVp": 0,
+     "cpu": 241,
+     "offAt": 1,
+     "stepsArr": [
+      [
+       1,
+       [
+        1490,
+        181
+       ],
+       "protected",
+       0,
+       1,
+       1
+      ]
+     ],
+     "d1": 1,
+     "thru0": 28,
+     "thru1": 0,
+     "shopAt": [
+      1489,
+      182
+     ],
+     "keepB": {
+      "v": "keep",
+      "pass": true
+     }
+    },
+    {
+     "s": 42,
+     "at": [
+      1489,
+      182
+     ],
+     "routes": 28,
+     "want": 1,
+     "v": {
+      "protected": 1
+     },
+     "end": [
+      0,
+      0,
+      1,
+      1.004
+     ],
+     "pieces": 0,
+     "claims": 2,
+     "passN": 1,
+     "steps": 1,
+     "again": 0,
+     "againVp": 0,
+     "cpu": 239,
+     "offAt": 1,
+     "stepsArr": [
+      [
+       1,
+       [
+        1490,
+        181
+       ],
+       "protected",
+       0,
+       1,
+       1
+      ]
+     ],
+     "d1": 1,
+     "thru0": 28,
+     "thru1": 0,
+     "shopAt": [
+      1489,
+      182
+     ],
+     "keepB": {
+      "v": "keep",
+      "pass": true
+     }
+    }
+   ],
+   "off": [
+    {
+     "s": 1020,
+     "end": [],
+     "pieces": null
+    },
+    {
+     "s": 7,
+     "end": [],
+     "pieces": null
+    },
+    {
+     "s": 42,
+     "end": [],
+     "pieces": null
+    }
+   ],
+   "ctl": [
+    {
+     "s": 1020,
+     "end": [],
+     "pieces": null
+    },
+    {
+     "s": 7,
+     "end": [],
+     "pieces": null
+    },
+    {
+     "s": 42,
+     "end": [],
+     "pieces": null
+    }
+   ]
+  }
+ },
+ "heavy": [
+  [
+   1020,
+   "houseN",
+   1485,
+   3217,
+   2,
+   "protected",
+   76,
+   47020,
+   76,
+   "{\"1\":60,\"2\":16}"
+  ],
+  [
+   1020,
+   "vilpush",
+   2018,
+   3126,
+   3,
+   "protected",
+   23,
+   60842,
+   46,
+   "{\"3\":23}"
+  ],
+  [
+   1020,
+   "neck",
+   836,
+   1367,
+   2,
+   "yield",
+   184,
+   19369,
+   42,
+   "{}"
+  ],
+  [
+   7,
+   "houseN",
+   1485,
+   3217,
+   2,
+   "protected",
+   76,
+   44106,
+   76,
+   "{\"1\":60,\"2\":16}"
+  ],
+  [
+   7,
+   "vilpush",
+   2018,
+   3126,
+   3,
+   "protected",
+   23,
+   58926,
+   46,
+   "{\"3\":23}"
+  ],
+  [
+   7,
+   "neck",
+   836,
+   1367,
+   2,
+   "yield",
+   184,
+   18994,
+   42,
+   "{}"
+  ],
+  [
+   42,
+   "houseN",
+   1485,
+   3217,
+   2,
+   "protected",
+   76,
+   49549,
+   76,
+   "{\"1\":60,\"2\":16}"
+  ],
+  [
+   42,
+   "vilpush",
+   2018,
+   3126,
+   3,
+   "protected",
+   23,
+   64023,
+   46,
+   "{\"3\":23}"
+  ],
+  [
+   42,
+   "neck",
+   836,
+   1367,
+   2,
+   "yield",
+   184,
+   19595,
+   42,
+   "{}"
+  ]
+ ],
+ "popWall": {
+  "7": "1031초(끔 1314초)",
+  "42": "1307초(끔 938초)",
+  "1020": "1091초(끔 1036초)"
+ },
+ "siteN": 2378,
+ "siteP50": 0.252,
+ "siteP90": 7.554,
+ "siteP99": 20.442,
+ "siteMax": 38.195,
+ "siteClose": 0,
+ "siteProt": 979,
+ "reopen": 4676,
+ "stepHit": 45,
+ "reroute": 2,
+ "rerouteFail": 0,
+ "walkRedo": 82,
+ "chainRedo": 0,
+ "botT": {
+  "claimStop": 6,
+  "claimThru": 2,
+  "reroute": 6,
+  "rerouteFail": 2,
+  "stepHit": 32,
+  "walkRedo": 23
+ },
+ "popSlow": "1.04",
+ "tickOn": 1.958,
+ "tickOff": 12.011,
+ "tickRows": "| 켬 | 47,867 | 0.334 ms | 0.539 ms | 1.958 ms | 32.459 ms | 256777.76 ms |\n| 끔 | 47,867 | 0.286 ms | 0.593 ms | 12.011 ms | 75.37 ms | 61304.23 ms |",
+ "exploitOk": 7,
+ "exRows": "| 날개 — 주인 없는 땅 | 길 양옆 · 길 위에 울타리 11개(길을 좁혀 몰기) | 길 위 3개에 알림 · 캐러밴이 친 것 4 · 5 · 4 · 저장된 길 그대로(쌍 안 버림) | 선 것 11/11 · 11/11 · 11/11(길이 울타리를 안 본다 · 잠든 청크에선 몸이 지나간다) | 11/11 · 11/11 · 11/11 | ○ |\n| 날개 — 사유지 | 길 양옆을 사유지로 한 칸씩 10칸(길을 밀어 다른 쪽으로) | 보호 9(길이 옆 칸으로) · 마지막 칸 내줌 1(길이 지나는 칸) | 선포 10 · 길은 사유지를 안 본다(그대로) | — | ○ |\n| 열 겹 | 길을 가로지르는 울타리 여러 겹(99개) | 길 위 32개 알림 · 캐러밴이 친 것 30 · 22 · 22 · 길 그대로 | 선 것 99/99 · 99/99 · 99/99 | 99/99 · 99/99 · 99/99 | ○ |\n| 남의 집 위로 길 몰기 | 남(B)이 주인 없는 땅에 집(들 9 · 목 5) · A 가 사유지로 길을 그 집 쪽으로 | 걸음 1 이 집까지 비켜 간다 — 집이 맞은 것 들 0 · 0 · 0 · 목 0 · 0 · 0 | 길은 사유지 · 집을 안 본다(그대로) | — | ○ |\n| 마을 땅 사유지로 마을 밖 사유지 밀기 | 마을 땅 위 목(광산7)을 마을 땅 사유지 14칸으로 · 길이 갈 곳은 남의 마을 밖 사유지 | 걸음 3 보호 1 — 낮은 급(마을 밖) 사유지 가운데 나중 것이 길을 내줌(세 시드 합 3) · 같은 급 이상 처지 바뀜 0 | 길은 사유지를 안 본다 | — | ○ |\n| 좁은 목 사유지 + 울타리 | 교역로 188줄이 지나는 목(10칸)을 가운데부터 사유지로 · 닫는 칸에 울타리 | 보호 9 · 목을 닫는 칸 = 길이 지나는 칸 · 울타리 = 닫는 조각 — 캐러밴이 쳤고 봇이 다시 놓음 24 · 21 · 25번(벌점 192 · 168 · 200) | 선포 10 · 길은 사유지를 안 본다 | — | ○ |\n| 조금씩 3배 | 길을 가로지르는 사유지 줄을 날마다 두 칸씩(선포마다 판정) | 선포 160 · 160 · 160 · 보호 동안 처음 길 대비 가장 길게 1.386 · 1.386 · 1.386배 · 3배 넘음 0 | 선포만 쌓임 | — | ○ |\n| 문 통행세 | 길을 가로지르는 벽 줄(11)에 문 하나 | 문도 길에겐 벽 — 길 위 2 알림 · 캐러밴이 친 것 2 · 2 · 2 · 통행세 0 | 선 것 11/11 · 11/11 · 11/11 | 11/11 · 11/11 · 11/11 | ○ |\n| 남의 가게 앞 길 돌리기 — 길가 | B 가 길가 칸(길 칸 옆 한 칸)을 사유지로 · A 가 그 앞 길 칸을 \"비켜 가게\" 사유지로 한 칸씩(B 칸에 가까운 길 칸부터) | B 칸 둘레 한 칸을 지나는 쌍이 0 이 될 때까지 A 선포 2칸(거리 1→1→2) · 2칸(거리 1→1→2) · 2칸(거리 1→1→2) | 길이 사유지를 안 본다(못 돌린다) | — | 재기(판정 51 이 허락한 것 — 회부 정보) |\n| 남의 가게 앞 길 돌리기 — 그대로 둠 | B 가 길 칸을 \"그대로 둠\"으로(길이 B 땅을 지난다) · A 가 그 앞뒤 길 칸을 \"비켜 가게\"로 한 칸씩 | B 칸을 지나는 쌍이 0 이 될 때까지 A 선포 1칸(지나는 쌍 28→0) · 1칸(지나는 쌍 28→0) · 1칸(지나는 쌍 28→0) · B 칸은 끝까지 길이 지나는 칸(처지 그대로) | — | — | 재기(판정 51 이 허락한 것 — 회부 정보) |\n| (닫는 조각 다시 놓기) | 부서질 때마다 다시 | 위 목 줄 — 벌점이 쌓인다(추방 판정 46 = T1441) | — | — | → T1441 |\n| 판 전체 | | 고립 귀환 0 · 0 · 0 · 먼저 잡은 사유지 처지 바뀜 어김 0 | 고립 귀환 0 · 0 · 0 | 고립 귀환 222 · 231 · 219 | |",
+ "heavyRows": "| 시드 | 무리 | 자리 | 급 | 판정 | 쌍 | CPU | 쌍 전체 다시 구하기 | 걸음 |\n|---|---|---|---|---|---|---|---|---|\n| 1020 | houseN | (1485, 3217) | 2 | protected | 76 | 47.0 s | 76 | {\"1\":60,\"2\":16} |\n| 1020 | vilpush | (2018, 3126) | 3 | protected | 23 | 60.8 s | 46 | {\"3\":23} |\n| 1020 | neck | (836, 1367) | 2 | yield | 184 | 19.4 s | 42 | {} |\n| 7 | houseN | (1485, 3217) | 2 | protected | 76 | 44.1 s | 76 | {\"1\":60,\"2\":16} |\n| 7 | vilpush | (2018, 3126) | 3 | protected | 23 | 58.9 s | 46 | {\"3\":23} |\n| 7 | neck | (836, 1367) | 2 | yield | 184 | 19.0 s | 42 | {} |\n| 42 | houseN | (1485, 3217) | 2 | protected | 76 | 49.5 s | 76 | {\"1\":60,\"2\":16} |\n| 42 | vilpush | (2018, 3126) | 3 | protected | 23 | 64.0 s | 46 | {\"3\":23} |\n| 42 | neck | (836, 1367) | 2 | yield | 184 | 19.6 s | 42 | {} |",
+ "referJ": 1,
+ "referP": 1,
+ "referI": 3,
+ "referRows": "| # | 갈래 | 무엇 | 내용 |\n|---|---|---|---|\n| 1 | 재민 판정 | 붐비는 목의 선포 판정 시간 | 한 칸 선포가 쌍 수십 ~ 수백을 다른 목으로 돌려야 하면 판정이 수십 초 CPU 다(봇 판 가장 큼 64.0 s · 재개형 16ms 몫 — 플레이어는 \"길을 확인하고 있습니다\" 를 1분 넘게 본다). 받아들일지 · 판정에 상한을 둘지(예: 쌍 수 · CPU 상한을 넘으면 그 칸을 바로 길이 지나는 칸으로) — 상한은 새 수라 판정이 든다. |\n| 2 | 정보 | 길 막기 벌점 · 원한의 자리 | 닫는 조각 · 길 위 주인 없는 것을 캐러밴이 치면 세운 사람 +8(T1423 소식 줄 그대로) · 닫는 조각 주인이 NPC 마을 행이면 그 길을 쓰던 마을들이 원한(`t1440Grudge`). 사람 대상 원한으로 옮기는 것은 T1447(판정 55 ~ 58 · S8 — 이 가지 위)이 받는다 · 쌓인 벌점 추방은 T1441. |\n| 3 | 정보 | 남의 가게 앞 길 돌리기(판정 51) | \"비켜 가게\" 사유지로 남의 길가 · 길 칸 앞 길을 미는 데 드는 칸 수(§3-2 — 길가 2 · 2 · 2칸 · 그대로 둠 1 · 1 · 1칸). 막는 규칙은 없다(판정 51 이 허락한 손짓) — 값이 싸다고 보면 판정(예: 남의 길가 칸 둘레 선포는 걸음 3 으로). |\n| 4 | 정보 | 가는 도중 사유지를 비키는 길이 없을 때 | 그 구간은 사유지를 걸어 지난다(§3-0 고침 3 — 정해진 것 6 · 8 에서 나온 동작). 다른 동작(그 자리 대기 · 되돌아가기)을 원하면 판정. |\n| 5 | PM | NPC 마을 인구 켬 ÷ 끔 · 늦은 굶음 | 세 시드 0.991 · 1.036 · 0.919(T1406_KEEP_ROUTES 0.84 처럼 깎이지는 않는다). 다만 식량 빚 죽음(1020 · 7 · 42)이 켬 0 · 158 · 154 · 끔 0 · 0 · 1(7 · 42 켬은 330날 무렵부터) — 임업5 는 세 시드 켬 모두 econ 영토 확장 0(§3-1). 첫 켬 판의 굶음(몸이 서서 교역이 밀림)은 고친 뒤 사라졌고 이것은 다른 갈래다. 판 셋으로는 까닭을 못 갈랐다 — 승인 앞에 시드를 더 돌릴지 · 임업5 확장 게이트를 따로 잴지. |",
+ "ciList": "16/16",
+ "shopOff": "2 · 2 · 2",
+ "shopKOff": "1 · 1 · 1",
+ "shopRatio": "1 · 1 · 1",
+ "shopKPass": "그대로 · 그대로 · 그대로"
+}

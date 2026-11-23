@@ -1,0 +1,82 @@
+{
+ "done": [
+  {
+   "tag": "BOT_CTRL_1020",
+   "rc": 0,
+   "wallS": 486,
+   "end": "2026-11-21T18:10:14.937Z",
+   "freedMB": 81
+  },
+  {
+   "tag": "BOT_ON_1020",
+   "rc": 0,
+   "wallS": 502,
+   "end": "2026-11-21T18:10:31.617Z",
+   "freedMB": 82
+  },
+  {
+   "tag": "BOT_OFF_1020",
+   "rc": 0,
+   "wallS": 516,
+   "end": "2026-11-21T18:18:51.429Z",
+   "freedMB": 81
+  },
+  {
+   "tag": "BOT_ON_7",
+   "rc": 0,
+   "wallS": 563,
+   "end": "2026-11-21T18:19:54.354Z",
+   "freedMB": 83
+  },
+  {
+   "tag": "BOT_CTRL_7",
+   "rc": 0,
+   "wallS": 369,
+   "end": "2026-11-21T18:25:00.752Z",
+   "freedMB": 81
+  },
+  {
+   "tag": "BOT_OFF_7",
+   "rc": 0,
+   "wallS": 363,
+   "end": "2026-11-21T18:25:57.530Z",
+   "freedMB": 82
+  },
+  {
+   "tag": "BOT_ON_42",
+   "rc": 0,
+   "wallS": 396,
+   "end": "2026-11-21T18:31:37.108Z",
+   "freedMB": 81
+  },
+  {
+   "tag": "BOT_CTRL_42",
+   "rc": 0,
+   "wallS": 350,
+   "end": "2026-11-21T18:31:47.147Z",
+   "freedMB": 82
+  },
+  {
+   "tag": "BOT_OFF_42",
+   "rc": 0,
+   "wallS": 305,
+   "end": "2026-11-21T18:36:41.751Z",
+   "freedMB": 82
+  }
+ ],
+ "cur": {},
+ "pid": 1652,
+ "list": [
+  "BOT_ON_1020",
+  "BOT_CTRL_1020",
+  "BOT_OFF_1020",
+  "BOT_ON_7",
+  "BOT_CTRL_7",
+  "BOT_OFF_7",
+  "BOT_ON_42",
+  "BOT_CTRL_42",
+  "BOT_OFF_42"
+ ],
+ "started": "2026-11-21T18:02:09.332Z",
+ "finished": "2026-11-21T18:36:41.752Z"
+}

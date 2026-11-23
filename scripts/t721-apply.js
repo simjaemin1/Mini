@@ -22,7 +22,7 @@ if (APPLY && (!OUT || path.resolve(OUT) === path.resolve(DBP) || fs.existsSync(O
 if (APPLY && CEN && (!CEN_OUT || path.resolve(CEN_OUT) === path.resolve(CEN) || fs.existsSync(CEN_OUT))) { console.error('--central 을 처리하려면 --central-out <없는 새 파일>'); process.exit(2); }
 const Database = require(path.join(__dirname, '..', 'node_modules', 'better-sqlite3'));
 const W = DIFF.W, H = DIFF.H, ZONE = DIFF.zone, SZ = 32, CHUNK = 1024;
-const dec = (b64) => new Uint32Array(Buffer.from(b64 || '', 'base64').buffer.slice(0));
+const dec = (b64) => { const b = Buffer.from(b64 || '', 'base64'); return new Uint32Array(b.buffer.slice(b.byteOffset, b.byteOffset + (b.length & ~3))); };   // ★[T1433] 작은 Buffer 는 풀(8 KB) 조각이다 — `.buffer` 통째(풀 전체 2,048칸)가 아니라 제 바이트만
 const S = {}; for (const [k, v] of Object.entries(DIFF.cells || {})) S[k] = new Set(dec(v));
 for (const k of ['통행→막힘', '뭍→바다', '뭍→강호수', '바위 생김', '다리 빠짐', '숲 빠짐', '숲 생김', '광맥 빠짐', '광맥 바뀜', '광맥 생김', '물→뭍', '개울 생김']) if (!S[k]) S[k] = new Set();
 // 막힘 = 통행→막힘(뭍→바다 · 뭍→강호수 · 바위 생김 · 다리 빠짐이 물 위면 거기 다 든다)
@@ -94,14 +94,29 @@ if (CEN) {
 if (has(db, 'mobs')) for (const m of db.prepare('SELECT id, type, x, y FROM mobs').iterate()) { const i = cellPx(m.x, m.y); if (i >= 0 && BLOCK.has(i)) plan.R4.rows.push({ id: m.id, type: m.type, why: why(i) }); }
 // R5 · R6 · R7 · R8 마을 셀
 const TERR = new Set(['terr', 'nongzone']), BUILD6 = new Set(['house', 'phouse', 'housesite', 'farmland', 'dryfield', 'garden', 'yard', 'plaza', 'ditch']);
+//   ★[T1433] 영토 묶음 행(`terrseq` — 한 행에 칸 여럿 · 차례 그대로)은 행이 아니라 **칸**으로 본다: 그 마을 영토를 되읽어(칸 행 + 묶음 행 · id 차례) 막힌 칸마다 R5 한 줄 ·
+//     적용 = 그 마을에 뺌 토막 행 하나(지운 칸 행과 같은 뜻 · 존 `_t1238Remove` 와 같은 문법). 묶음 행이 없는 DB 는 종전 그대로.
+const _t1433R5 = new Set();
 if (has(db, 'village_buildings')) for (const r of db.prepare('SELECT id, village_id, type, cx, cy FROM village_buildings').iterate()) {
+  if (r.type === 'terrseq') continue;   // ★[T1433] 아래에서 칸으로
   if (!vById.has(r.village_id) || r.cx < 0 || r.cy < 0 || r.cx >= W || r.cy >= H) continue;
   const i = r.cy * W + r.cx; if (!BLOCK.has(i)) continue;
   const row = { id: r.id, village: vName(r.village_id), type: r.type, cell: [r.cx, r.cy], why: why(i) };
+  if (r.type === 'terr') _t1433R5.add(r.village_id + ':' + r.cx + ',' + r.cy);
   if (TERR.has(r.type)) plan.R5.rows.push(row);
   else if (BUILD6.has(r.type)) plan.R6.rows.push(row);
   else if (r.type === 'granary') { plan.R8.rows.push(row); stops.push({ rule: 'R8', what: `${row.village} 곳간 셀 (${r.cx},${r.cy})`, cls: STOP.DEBRIS }); }
   else { plan.R7.rows.push(row); stops.push({ rule: 'R7', what: `${row.village} ${r.type} 셀 (${r.cx},${r.cy})`, cls: STOP.CORNER }); }
+}
+if (has(db, 'village_buildings') && db.prepare("SELECT 1 AS y FROM village_buildings WHERE type = 'terrseq' LIMIT 1").get()) {
+  const TR = require(path.join(__dirname, '..', 'server', 'terr-rows'));
+  const st = db.prepare("SELECT id, type, cx, cy, data FROM village_buildings WHERE village_id = ? AND type IN ('terr','terrseq') ORDER BY id");
+  for (const v of vById.values()) {
+    const rows = st.all(v.id); if (!rows.some((r) => r.type === 'terrseq')) continue;
+    for (const k of TR.replay(rows)) { const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1); if (x < 0 || y < 0 || x >= W || y >= H) continue;
+      const i = y * W + x; if (!BLOCK.has(i) || _t1433R5.has(v.id + ':' + k)) continue;
+      plan.R5.rows.push({ id: null, seqVid: v.id, village: v.name, type: 'terrseq', cell: [x, y], why: why(i) }); }
+  }
 }
 for (const v of vById.values()) { const i = v.cy * W + v.cx; if (BLOCK.has(i)) { plan.R7.rows.push({ village: v.name, type: '마을 가운데', cell: [v.cx, v.cy], why: why(i) }); stops.push({ rule: 'R7', what: `${v.name} 마을 가운데`, cls: STOP.CORNER }); } }
 for (const s of (DIFF.villageSites || [])) { const live = [...vById.values()].find((v) => v.name === s.name); if (live) { plan.R7.rows.push({ village: s.name, type: `마을 터 ${s.what}`, cell: s.to || s.from }); stops.push({ rule: 'R7', what: `${s.name} 마을 터 ${s.what}(정본)`, cls: STOP.CORNER }); } }
@@ -169,7 +184,13 @@ const tx = w.transaction(() => {
   const n = {};
   n.R1 = del('claims', 'id', plan.R1.rows.map((r) => r.id));
   n.R4 = del('mobs', 'id', plan.R4.rows.map((r) => r.id));
-  n.R5 = del('village_buildings', 'id', plan.R5.rows.map((r) => r.id));
+  n.R5 = del('village_buildings', 'id', plan.R5.rows.filter((r) => r.id != null).map((r) => r.id));
+  {   // ★[T1433] 묶음 행 마을 — 마을마다 뺌 토막 행 하나(행 cx,cy = 마을 가운데 · 반지름에 안 닿는다)
+    const TR = require(path.join(__dirname, '..', 'server', 'terr-rows')), by = new Map();
+    for (const r of plan.R5.rows) if (r.seqVid != null) { if (!by.has(r.seqVid)) by.set(r.seqVid, []); by.get(r.seqVid).push([TR.DEL, r.cell[0], r.cell[1]]); }
+    const st = w.prepare("INSERT INTO village_buildings (village_id, type, cx, cy, floors, data, created_at) VALUES (?, 'terrseq', ?, ?, 0, ?, ?)");
+    for (const [vid, ops] of by) { const v = vById.get(vid); st.run(vid, v.cx, v.cy, TR.encode(ops, v.cx, v.cy), Date.now()); n.R5 += ops.length; }
+  }
   n.R6 = del('village_buildings', 'id', plan.R6.rows.map((r) => r.id));
   n.R12 = plan.R12.rows.length ? (() => { const st = w.prepare('DELETE FROM roads WHERE zone = ? AND cell_key = ?'); let c = 0; for (const r of plan.R12.rows) c += st.run(ZONE, r.key).changes; return c; })() : 0;
   n.R13 = del('mined_cells', 'cell_key', plan.R13.rows.map((r) => r.key));

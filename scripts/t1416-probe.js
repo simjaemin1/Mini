@@ -40,7 +40,8 @@ if (OUT && /server[\/\\]zone\.js$/.test(process.argv[1] || '')) {
     let chase = null; try { chase = W.t1393Stat ? W.t1393Stat() : null; } catch (e) {}
     let t16 = null; try { t16 = W.t1416Stat ? W.t1416Stat() : null; } catch (e) {}
     let c16 = null; try { c16 = V.t1416Stat ? V.t1416Stat() : null; } catch (e) {}
-    return { d, cpu: (() => { const u = process.cpuUsage(); return u.user + u.system; })(), pop, hun, meat: +meat.toFixed(3), got, carryKg: +ckg.toFixed(3), body, chase, t16, c16,
+    let t29 = null; try { t29 = W.t1429Stat ? W.t1429Stat() : null; } catch (e) {}   // ★[T1429] 두고 온 몫 갈래 · 둔 몫 생애 · 땅 더미
+    return { d, cpu: (() => { const u = process.cpuUsage(); return u.user + u.system; })(), pop, hun, meat: +meat.toFixed(3), got, carryKg: +ckg.toFixed(3), body, chase, t16, c16, t29,
       tick: { n: a.length, p50: q(0.5), p99: q(0.99), max: a.length ? a[a.length - 1] : null } };
   }
 }
