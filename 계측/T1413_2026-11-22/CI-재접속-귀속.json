@@ -1,0 +1,41 @@
+{
+  "allGreenRun": 44984256807,
+  "checkpointFailedRun": 44986196387,
+  "failedHarness": "test-guest-rejoin.js",
+  "identicalGitTreesAndFiles": {
+    "server": {
+      "allGreen78526d2f": "1bf9f8780fc3d7ddb33834208578eb47d3d15059",
+      "checkpoint11798230": "1bf9f8780fc3d7ddb33834208578eb47d3d15059"
+    },
+    "sim": {
+      "allGreen78526d2f": "d9fb0bb725c3c32d3bf5aec882ac41b91fccfe93",
+      "checkpoint11798230": "d9fb0bb725c3c32d3bf5aec882ac41b91fccfe93"
+    },
+    "public": {
+      "allGreen78526d2f": "ce739a20439c3f704ab7a25e55e15f8606e22891",
+      "checkpoint11798230": "ce739a20439c3f704ab7a25e55e15f8606e22891"
+    },
+    "lab": {
+      "allGreen78526d2f": "e58d16907016a6d532019a0b86e28c6dda2e8bb4",
+      "checkpoint11798230": "e58d16907016a6d532019a0b86e28c6dda2e8bb4"
+    },
+    "scripts": {
+      "allGreen78526d2f": "7a82c951edeee1e101d1d9269cc34ba019f9e2b5",
+      "checkpoint11798230": "7a82c951edeee1e101d1d9269cc34ba019f9e2b5"
+    },
+    ".github": {
+      "allGreen78526d2f": "c0a84f4a3971214438bec3099c410d180e9656d1",
+      "checkpoint11798230": "c0a84f4a3971214438bec3099c410d180e9656d1"
+    },
+    ".dockerignore": {
+      "allGreen78526d2f": "4749704aa377bb97b213f8bb11315ced427c7742",
+      "checkpoint11798230": "4749704aa377bb97b213f8bb11315ced427c7742"
+    }
+  },
+  "diffNames": [
+    "\"\\352\\263\\204\\354\\270\\241/T1413_2026-11-22/\\354\\227\\260\\352\\260\\204\\355\\221\\234/\\354\\266\\224\\352\\260\\200\\354\\213\\244\\354\\270\\241.jsonl\"",
+    "\"\\353\\263\\264\\352\\263\\240/T1413_2026-11-22.md\"",
+    "\"\\353\\263\\264\\352\\263\\240/T1413_2026-11-22_CI.json\""
+  ],
+  "action": "rerun only failed server1/2 job, no source/test edits"
+}

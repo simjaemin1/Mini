@@ -59,6 +59,15 @@ if (process.env.T538_CHILD && _t538Main) {
     const Module = require('module'); const _c = Module.prototype._compile; const VJS = path.join('server', 'villages.js');
     Module.prototype._compile = function (content, filename) { if (filename.endsWith(VJS)) content += '\n;globalThis.__t538 = { state };\n'; return _c.call(this, content, filename); };
   }
+  //   ★[T1433] 미끼 — `T538_MUT='["server/파일.js","바꿀 글자","새 글자"]'` 면 그 파일을 실을 때 그 자리(정확히 1곳 — 아니면 던진다)만 바꾼 사본으로 싣는다(파일 무변)
+  if (process.env.T538_MUT) {
+    const [mf, from, to] = JSON.parse(process.env.T538_MUT);
+    const Module = require('module'); const _c2 = Module.prototype._compile;
+    Module.prototype._compile = function (content, filename) {
+      if (filename.endsWith(path.join(...mf.split('/')))) { const n = content.split(from).length - 1; if (n !== 1) throw new Error(`T538_MUT 자리 ${n}곳 — ${mf}`); content = content.replace(from, to); rec.mut = { file: mf, n }; }
+      return _c2.call(this, content, filename);
+    };
+  }
   function dumpVillages() {
     const crypto = require('crypto'); const st = globalThis.__t538.state; const out = [];
     const hs = (arr) => crypto.createHash('sha256').update(arr.join('|')).digest('hex').slice(0, 16);
@@ -161,9 +170,11 @@ if (process.argv[2] === '--boot') {
     const died = !up;
     const fatal = (log.match(/FATAL ERROR[^\n]*/) || [null])[0];
     const res = { src: SRC, heap: HEAP, tree: TREE, died, exit, fatal, upS: up ? +(up / 1000).toFixed(1) : null, heapMax: MB(R.heapMax || 0), heapMaxAt: R.heapMaxAt, rssMax: MB(R.rssMax || 0),
-      perf, stages: (R.stages || []).map((s) => ({ t: +(s.t / 1000).toFixed(1), heap: MB(s.heap), rss: MB(s.rss), line: s.line })), vil: (R.vil || []).map((v) => ({ rows: v.rows, heap: MB(v.heap), sql: v.sql })), dump: R.dump || null };
+      perf, stages: (R.stages || []).map((s) => ({ t: +(s.t / 1000).toFixed(1), heap: MB(s.heap), rss: MB(s.rss), line: s.line })), vil: (R.vil || []).map((v) => ({ rows: v.rows, heap: MB(v.heap), sql: v.sql })), dump: R.dump || null, mut: R.mut || null };
     fs.writeFileSync(OUT, JSON.stringify(res, null, 1));
     fs.copyFileSync(logf, OUT.replace(/\.json$/, '') + '.log');
+    //   ★[T1433] `T538_KEEP_DB=<경로>` — 부팅이 쓴 존 DB(본 파일 + WAL)를 그 경로로 남긴다(이관한 DB 를 다음 부팅 · 표 세기에 넘길 때)
+    if (process.env.T538_KEEP_DB) { const K = process.env.T538_KEEP_DB; for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(K + s); } catch (e) {} } fs.copyFileSync(zdb, K); try { fs.copyFileSync(zdb + '-wal', K + '-wal'); } catch (e) {} }
     for (const f of fs.readdirSync(TMP)) { try { fs.unlinkSync(path.join(TMP, f)); } catch (e) {} } try { fs.rmdirSync(TMP); } catch (e) {}
     console.log(`[T538 ①] ${SRC} · 힙 상한 ${HEAP}MB · ${died ? `**죽음** ${fatal || JSON.stringify(exit)}` : `up ${res.upS}초`} · heapUsed 최고 ${res.heapMax}MB(그때 마지막 줄: ${res.heapMaxAt}) · RSS 최고 ${res.rssMax}MB`);
     process.exit(0);

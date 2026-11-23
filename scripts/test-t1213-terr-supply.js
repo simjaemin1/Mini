@@ -103,12 +103,12 @@ process.stdout.write(JSON.stringify({ a, other: other.econ._t1213Bridge === unde
   ok(b0.a === null, '끔(T1213 끔) — 칸을 안 세운다(종전 비트)', b0.a);
 }
 
-console.log('\n⑥ 글자');
+console.log('\n⑥ 글자');   // ★[land1091 · PM] T1419 가 결정층 · 정산 두 자리의 `subs * 30` 을 `subs * _t1419Sub(v, r, 'ref')`(끔 = 30)로 바꿨다 — 두 꼴을 다 센다(부패 자리는 30 그대로 — S2 회부)
 {
   const V2S = rd('sim/economy-sim-v2.js'), ES = rd('sim/economy-sim.js'), VS = rd('server/villages.js');
-  ok((V2S.match(/target = _fishTarget\(v,r,Math\.max\(subs \* 30, buffer, flowT, derivT\) \+ buildT\);/g) || []).length === 3
+  ok((V2S.match(/target = _fishTarget\(v,r,Math\.max\(subs \* (?:30|_t1419Sub\(v, r, 'ref'\)), buffer, flowT, derivT\) \+ buildT\);/g) || []).length === 3
     && (V2S.match(/const buildT = v1\.buildInputTarget \? v1\.buildInputTarget\(v, r\) : 0;/g) || []).length === 3
-    && !/Math\.max\(subs \* 30, buffer, flowT, derivT\)\);/.test(V2S), '★v2 목표 세 자리(결정층 · 정산 · 부패) — 짓는 항을 **더한다**(동기 계약 · 남은 `max` 단독 자리 0)');
+    && !/Math\.max\(subs \* (?:30|_t1419Sub\(v, r, 'ref'\)), buffer, flowT, derivT\)\);/.test(V2S), '★v2 목표 세 자리(결정층 · 정산 · 부패) — 짓는 항을 **더한다**(동기 계약 · 남은 `max` 단독 자리 0)');
   ok((ES.match(/process\.env\.T1213_DERIV_ADD/g) || []).length === 1 && /const T1213_ON = \(typeof process !== 'undefined' && process\.env && process\.env\.T1207_TERR_REAL === '1' && process\.env\.T1213_DERIV_ADD !== '0'\);/.test(ES)
     && !/T1213_[A-Z_]+ = process\.env/.test(VS), '손잡이 한 줄(econ) — T1207 켬에 묶임 · 생활층은 econ 칸을 읽는다');
   ok(/const spare = woodSpareAfterLand\(v\);/.test(ES) && /room = k === 'wood' \? Math\.max\(0, E\.woodSpareAfterLand\(vil\.econ\)\)/.test(VS)

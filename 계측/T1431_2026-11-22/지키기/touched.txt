@@ -1,0 +1,169 @@
+# 만진 함수 → 하네스 (touched-harness · base origin/main · 갈림점 01df9e8f9)
+· 바뀐 코드 파일 4 · 이름 18(물린 것 12 · 흔한 이름 뺌 0) · 바뀐 하네스 1 · 규약 다섯 · **돌릴 하네스 26**(@regress 아님 1: test-t1245-seeds.js)
+  server/bandits.js: T1431_RAID_BATTLE _cbM _t1404Meet _t1431Fight _t1431St installHooks t1431
+  sim/caravan-battle.js: ENGAGE_R _side decide inRange raidBattle resolveRaid seedOf
+  sim/economy-engine.browser.js: _raidIn _raidOut _raidScrum _t1431Fell
+  sim/economy-sim-v2.js: _raidIn _raidOut _raidScrum _t1431Fell
+· 이름 → 하네스 수: ENGAGE_R 1 · T1431_RAID_BATTLE 1 · _raidIn 1 · _raidOut 2 · _raidScrum 5 · _t1404Meet 1 · _t1431Fight 1 · decide 4 · inRange 3 · installHooks 1 · raidBattle 1 · seedOf 13
+· 바뀐 하네스: test-t1431-raid-battle.js
+· 돌릴 하네스: test-bandit-all.js test-bandit-camp.js test-bandit-walk.js test-body-fields.js test-coll-grid.js test-crops.js test-econ-fieldyield.js test-fishing.js test-harness-lint.js test-hp-src.js test-icons.js test-lon-day.js test-move-soa.js test-recut.js test-t1187-names.js test-t1237-water-deer.js test-t1243-farm-on.js test-t1245-seeds.js test-t1257-seed-handoff.js test-t1322-prefilter.js test-t1337-wake.js test-t1348-loop.js test-t1365-work.js test-t1404-bandit-live.js test-t1431-raid-battle.js test-t766-dissolve.js
+##### test-bandit-all.js #####
+결과: PASS (32 통과 · 0 실패)
+결과: PASS (32 통과 · 0 실패)
+  [소요] 3초
+  ✓ RC=0
+##### test-bandit-camp.js #####
+결과: PASS (35 통과 · 0 실패)
+결과: PASS (35 통과 · 0 실패)
+  [소요] 3초
+  ✓ RC=0
+##### test-bandit-walk.js #####
+결과: PASS (37 통과 · 0 실패)
+결과: PASS (37 통과 · 0 실패)
+  [소요] 4초
+  ✓ RC=0
+##### test-body-fields.js #####
+=== 14 통과 / 0 실패 ===
+  ✓ ★자명 통과 금지 — `??=` 꼴도 문다 · 읽기(`==`)는 안 문다  zone.js:20516 npc._t673Bait2
+  ✓ ★[T1140 ③-가] 자명 통과 금지 — 값 하나(`nextDecisionAt: 1`)를 바꾸면 문다
+  ✓ ⑳ 판정 칸 쓰기 자리를 다 셌다(자명 통과 아님)  전체 462 · 걸음 문 안 260 · 문 밖 202(표 내림 75 · 까닭 127)
+=== 14 통과 / 0 실패 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-coll-grid.js #####
+=== 결과: 20 PASS / 0 FAIL ===
+  ✓ ② [전제 · 자명 통과 금지] 걸음이 **실제로 막힌다** · 옛 격자 질의의 셋에 하나 넘게에 **밭·마당이 섞였다**  막힘 10476/40000 · 밭 섞임 4525/10000
+=== 결과: 20 PASS / 0 FAIL ===
+  [소요] 12초
+  ✓ RC=0
+##### test-crops.js #####
+  [찌꺼기] /tmp 에서 죽은 판 이름 DB 2개 지움(3 MB)
+=== 결과: 170 PASS / 0 FAIL ===
+  · [상황] T91 이 내던 마늘 수확일은 겨울 문턱(11월 말)이었다(자명 통과 금지)  게임일 285 · 12월
+  ✓ ★⑬ⓑ 그리고 하루 뒤엔 안 익어 있다(자명 통과 금지)
+  ✓ ★⑬ⓒ 중간은 1~2 (자명 통과 금지)  단계 1
+=== 결과: 170 PASS / 0 FAIL ===
+  [소요] 2초
+  ✓ RC=0
+##### test-econ-fieldyield.js #####
+⑦ ★이 하네스가 실패할 줄 아는가
+=== 결과: 206 PASS / 0 FAIL ===
+  · [상황] 심을 수 없는 날(겨울)이 실제로 있다 — 자명 통과 금지  90일
+  ✓ ⑩ 그 날 수가 실제 달력 위에 앉는다(휴면 T99 를 통과한 값)
+  ✓ ㉑ [자명 통과 금지] 이 입력은 종전이라면 **실제로 버렸을** 입력이다  버림 145.0
+=== 결과: 206 PASS / 0 FAIL ===
+  [소요] 37초
+  ✓ RC=0
+##### test-fishing.js #####
+  ✓ ★전제 — **마을 노동권 안의 물**을 실제로 찾았다(없으면 이 절이 자명 통과다)  42곳 · 첫 마을 농촌1
+  ✓ ★전제 — 실지도에 뭍과 맞닿은 바다 칸이 충분하다(자명 통과 금지)  300곳
+  ✓ ⑧ⓖ 여름 풀이 겨울 풀보다 넓다(철이 실제로 거른다 — 자명 통과 금지)  여름 7 · 겨울 1
+=== 120건 중 PASS 120 · FAIL 0 ===
+  [소요] 46초
+  ✓ RC=0
+##### test-harness-lint.js #####
+  ✓ ⑳ [전제] `@harness-only` 표지를 단 하네스가 실제로 있다(0 이면 아래가 자명 통과다)  test-ci-changes.js test-ci-list.js test-harness-bite.js test-notice-mark.js
+  ✓ ★⑳ 자명 통과 금지 — 제품 부름 셋은 물고 · 주석 · scripts 자리는 보낸다  req=hit,join=hit,rel=hit,cmt=none,scr=none
+  ✓ ★㉑ 자명 통과 금지 — 안 지우는 셋은 물고 · 지우는 넷은 보낸다  mk=hit,anon=hit,pidJson=hit,rm=none,lib=none,pidDb=none,own=none
+=== 102건 중 PASS 102 · FAIL 0 ===
+  [소요] 70초
+  ✓ RC=0
+##### test-hp-src.js #####
+=== 54 통과 / 0 실패 ===
+  ✓ [상황] 세 파일을 실제로 읽었다(못 읽으면 아래가 자명 통과다)  zone 1259737 · net 109441 · wildlife 126076
+  ✓ ★⓪ 자명 통과 금지 — 직접 대입 한 줄을 되살리면 잡힌다
+  ✓ [상황] `server/villages.js` 를 실제로 읽었다(못 읽으면 아래가 자명 통과다)  villages 1539080
+=== 54 통과 / 0 실패 ===
+  [소요] 2초
+  ✓ RC=0
+##### test-icons.js #####
+  ✓ 배선 31 / 회부 중 0 (표기 전용 — 실패로 세지 않는다)
+결과: PASS
+  [소요] 9초
+  ✓ RC=0
+##### test-lon-day.js #####
+=== 22건 중 PASS 22 · FAIL 0 ===
+  [소요] 0초
+  ✓ RC=0
+##### test-move-soa.js #####
+  ✓ ② ★적중·실패 수까지 같다(메모가 같은 순서로 같은 칸을 채운다)  miss 39923/39923 = 39923/39923
+=== 결과: 287 PASS / 0 FAIL ===
+  ✓ ㉒ ① [자] 읽기만 판정이 멤버 쓰기·넣기를 문다(지역 대입은 통과)
+  ✓ ㉓ⓐ [자명 통과 금지] 차례만 뒤집은 가짜는 문다(같은 집합이어도)  길이 2
+  ✓ ㉓ⓓ [자명 통과 금지] 켬 갈래 차례를 뒤집은 사본은 문다  n2,pl,pl,n1
+=== 결과: 287 PASS / 0 FAIL ===
+  [소요] 75초
+  ✓ RC=0
+##### test-recut.js #####
+=== 결과: 24 PASS / 0 FAIL ===
+=== 결과: 24 PASS / 0 FAIL ===
+  [소요] 113초
+  ✓ RC=0
+##### test-t1187-names.js #####
+=== 27건 중 PASS 27 · FAIL 0 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-t1237-water-deer.js #####
+  · [상황] 켬 판에서 고라니가 섰다(이게 0 이면 아래가 자명 통과)  태어남 9 · 지금 9
+  ✓ ④ (자명 통과 금지) 사람 자리만 옮기면 지문이 갈린다 — 지문이 세계를 실제로 잰다
+=== 38건 중 PASS 38 · FAIL 0 ===
+  [소요] 13초
+  ✓ RC=0
+##### test-t1243-farm-on.js #####
+85 통과 · 0 실패
+  ✓ ② ★자명 통과 금지 — 끈 묶음 + 밭 산출만 켠 판의 작물 없는 수확 = `T100_K` 그대로  5.342 = K 5.342
+85 통과 · 0 실패
+  [소요] 2122초
+  ✓ RC=0
+##### test-t1245-seeds.js #####
+  [찌꺼기] /tmp 에서 죽은 판 이름 DB 3개 지움(3 MB)
+PASS private NPC and player plan share the canonical calculation
+PASS generic berry seed cannot masquerade as a crop seed under farm mode
+PASS typed seed is available to private NPC sowing
+PASS 18 / FAIL 0
+  [소요] 1초
+  ✓ RC=0
+##### test-t1257-seed-handoff.js #####
+=== 5건 중 PASS 5 · FAIL 0 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-t1322-prefilter.js #####
+=== T1322 첫 거름 21 통과 · 0 실패 ===
+=== T1322 첫 거름 21 통과 · 0 실패 ===
+  [소요] 21초
+  ✓ RC=0
+##### test-t1337-wake.js #####
+=== T1337 잠 깨움 11 통과 · 0 실패 ===
+=== T1337 잠 깨움 11 통과 · 0 실패 ===
+  [소요] 32초
+  ✓ RC=0
+##### test-t1348-loop.js #####
+=== T1348 고리 거울 · 걷는 몸 커널 20 통과 · 0 실패 ===
+=== T1348 고리 거울 · 걷는 몸 커널 20 통과 · 0 실패 ===
+  [소요] 127초
+  ✓ RC=0
+##### test-t1365-work.js #####
+=== T1365 일터 깨움 7 통과 · 0 실패 ===
+=== T1365 일터 깨움 7 통과 · 0 실패 ===
+  [소요] 744초
+  ✓ RC=0
+##### test-t1404-bandit-live.js #####
+=== 20/20 통과 ===
+  [소요] 16초
+  ✓ RC=0
+##### test-t1431-raid-battle.js #####
+=== 18/18 통과 ===
+  [소요] 3초
+  ✓ RC=0
+##### test-t766-dissolve.js #####
+  ✓ ② 켬 — 보류는 오는 식량이 문턱을 채운 셋뿐 · 미끼 여섯은 모두 해체(자명 통과 아님 — 갈린다)  보류 3 · 미끼 해체 6/6
+=== 17건 중 PASS 17 · FAIL 0 ===
+  [소요] 1초
+  ✓ RC=0
+
+=== 러너 요약 ===
+  통과 26: test-bandit-all.js test-bandit-camp.js test-bandit-walk.js test-body-fields.js test-coll-grid.js test-crops.js test-econ-fieldyield.js test-fishing.js test-harness-lint.js test-hp-src.js test-icons.js test-lon-day.js test-move-soa.js test-recut.js test-t1187-names.js test-t1237-water-deer.js test-t1243-farm-on.js test-t1245-seeds.js test-t1257-seed-handoff.js test-t1322-prefilter.js test-t1337-wake.js test-t1348-loop.js test-t1365-work.js test-t1404-bandit-live.js test-t1431-raid-battle.js test-t766-dissolve.js
+  실패 0: 없음
+  걸린 시간 상위(초): test-t1243-farm-on.js 2122 · test-t1365-work.js 744 · test-t1348-loop.js 127 · test-recut.js 113 · test-move-soa.js 75 · test-harness-lint.js 70 · test-fishing.js 46 · test-econ-fieldyield.js 37 · test-t1337-wake.js 32 · test-t1322-prefilter.js 21
+  걸린 시간 합: 하네스 3459초 · 러너 전체 3467초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 1번 × 8초 · 건넘 26번(앞 판이 남긴 아이 없음)

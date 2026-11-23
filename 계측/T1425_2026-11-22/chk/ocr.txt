@@ -1,0 +1,3 @@
+# 옛 코드 빨강 — 하네스 = 65b8d7ee4 · 제품(server sim public lab) = 01df9e8f9 · 시한 300초
+빨강 ○ | test-t1425-ruler.js | RC=1 · ✓ 2 · ✗ 2 | (옛 판으로 되돌린 운영 파일: scripts/us-line.js scripts/t646-anatomy.js)   ✗ 틱 ms = 틱 µs × 몸 ÷ 1000 · 몸 µs = 결정 + 커널 준비 + 이동 · 덩이 표 합 = 틱 ms  줄 없음
+# 합: 빨강 1 · 크래시 0 · 초록 0 · 모름 0 · 제품 무관 0

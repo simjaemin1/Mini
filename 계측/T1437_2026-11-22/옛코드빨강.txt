@@ -1,0 +1,3 @@
+# 옛 코드 빨강 — 하네스 = c0d2e3a1 · 제품(server sim public lab) = b9dffb94 · 시한 600초
+빨강 ○ | test-t1437-food-buffer.js | RC=1 · ✓ 0 · ✗ 28 |   ✗ ① `seen` 만 켬 · 없음 · `1` · `SEEN` · `true` = 끔 · `harv` = (가) 그대로  ← [null,null,null,null,null,null]
+# 합: 빨강 1 · 크래시 0 · 초록 0 · 모름 0 · 제품 무관 0

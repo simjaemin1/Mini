@@ -1,0 +1,6 @@
+[
+ {"tag":"AB_WOOD_42","seed":42,"days":360,"probe":1,"ablate":"wood","env":{"T1438_DECAY":"1","T1438_DECAY_SET":"mid"}},
+ {"tag":"AB_HD0_42","seed":42,"days":360,"probe":1,"ablate":"hd0","env":{"T1438_DECAY":"1","T1438_DECAY_SET":"mid"}},
+ {"tag":"OFF_42","seed":42,"days":360,"probe":1,"env":{}},
+ {"tag":"AB_IND_42","seed":42,"days":360,"probe":1,"ablate":"indoor,ded","env":{"T1438_DECAY":"1","T1438_DECAY_SET":"mid"}}
+]

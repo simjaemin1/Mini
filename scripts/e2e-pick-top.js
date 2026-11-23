@@ -19,6 +19,7 @@
 // 실행: node scripts/e2e-pick-top.js [--headed]
 'use strict';
 if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트(존 설정 · central 기본) — 띄우는 동안 이 기계에서 혼자 쥔다(나란히 돌면 줄 선다 · `lib-port.hold`)
+process.env.T1392_FIRST_LOT = process.env.T1392_FIRST_LOT || '0';   // ★[T1428] 이 판은 한 칸 선포를 전제로 쓴다 — 첫 집터(-on 가지에서 돌봄과 같이 켬 기본 후보)는 글자로 끈다(제 하네스 test-t1392-first-lot · e2e-first30 이 잰다)
 const path = require('path');
 const NM = require('./lib-notice-mark');   // [T1367] 표지 뒤 알림 · 조건 기다림("마지막 알림 N줄" 대신)
 const fs = require('fs');

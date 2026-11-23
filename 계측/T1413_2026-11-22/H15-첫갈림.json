@@ -1,0 +1,16 @@
+{
+  "basis": "inherited f654db6a Mac Node22 vs Node18 comparison",
+  "firstCase": "초원",
+  "lifeGM": 438,
+  "input": 1.0244218775948384,
+  "macNode22Recorded": 0.5195929294807451,
+  "macNode18Recorded": 0.519592929480745,
+  "currentNode": "v24.22.1",
+  "currentArch": "x64",
+  "currentNative": 0.519592929480745,
+  "currentDeterministic": 0.519592929480745,
+  "nativeBits": "3fe0a08159eb48c7",
+  "deterministicBits": "3fe0a08159eb48c7",
+  "zeroBasedStepIndex": 5,
+  "elapsedGameMinutes": 6
+}

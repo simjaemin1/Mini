@@ -276,6 +276,7 @@ function deleteMob(id) { stmtDeleteMob.run(id); }
     if (!_do.includes('debt')) db.exec('ALTER TABLE deed_owners ADD COLUMN debt REAL');
     if (!_do.includes('dt')) db.exec('ALTER TABLE deed_owners ADD COLUMN dt INTEGER');
     if (!_do.includes('lost')) db.exec('ALTER TABLE deed_owners ADD COLUMN lost INTEGER');
+    if (!_do.includes('home')) db.exec('ALTER TABLE deed_owners ADD COLUMN home TEXT');   // ★[T1428] 본거지 집(존이 오프라인 주인의 빚 풀림 · 깨어날 자리에 쓴다 · 몸 칸 `deeds.h` 의 존 쪽 사본 — 몸이 정본)
   }
 }
 const stmtGetClaims = db.prepare('SELECT * FROM claims');
@@ -323,6 +324,8 @@ function getDeedOwners() { try { if (!_stmtDoAll) _stmtDoAll = db.prepare('SELEC
 function saveDeedOwner(ownerId, others) { try { if (!_stmtDoPut) _stmtDoPut = db.prepare('INSERT INTO deed_owners (owner_id, others) VALUES (?, ?) ON CONFLICT(owner_id) DO UPDATE SET others = excluded.others'); _stmtDoPut.run(String(ownerId), others | 0); return true; } catch (e) { return false; } }
 let _stmtDdPut = null;
 function saveDeedDebt(ownerId, debt, dt, lost) { try { if (!_stmtDdPut) _stmtDdPut = db.prepare('INSERT INTO deed_owners (owner_id, others, debt, dt, lost) VALUES (?, 0, ?, ?, ?) ON CONFLICT(owner_id) DO UPDATE SET debt = excluded.debt, dt = excluded.dt, lost = excluded.lost'); _stmtDdPut.run(String(ownerId), +debt || 0, dt == null ? null : Math.round(dt), lost | 0); return true; } catch (e) { return false; } }   // ★[T1386] 빚 줄
+let _stmtDhPut = null;
+function saveDeedHome(ownerId, home) { try { if (!_stmtDhPut) _stmtDhPut = db.prepare('INSERT INTO deed_owners (owner_id, others, home) VALUES (?, 0, ?) ON CONFLICT(owner_id) DO UPDATE SET home = excluded.home'); _stmtDhPut.run(String(ownerId), home == null ? null : JSON.stringify(home)); return true; } catch (e) { return false; } }
 function deleteDeedChunk(ownerId, cx, cy) { try { if (!_stmtDcDel) _stmtDcDel = db.prepare('DELETE FROM deed_chunks WHERE owner_id = ? AND cx = ? AND cy = ?'); _stmtDcDel.run(String(ownerId), cx | 0, cy | 0); return true; } catch (e) { return false; } }
 function deleteClaim(dbId) { if (!dbId) return false; try { stmtDeleteClaim.run(dbId); return true; } catch (e) { return false; } }
 
@@ -503,7 +506,8 @@ const stmtVbCells = {
   nongzone: db.prepare("SELECT cx, cy FROM village_buildings WHERE village_id = ? AND type = 'nongzone' ORDER BY id"),
   farm: db.prepare("SELECT cx, cy, type FROM village_buildings WHERE village_id = ? AND type IN ('farmland','dryfield') ORDER BY id"),
   //   도랑 계획(`_ditchPlan` · 부팅 자가치유 때만)이 막는 나머지 행 — 종전엔 `_bRows` 안에 있었다
-  other: db.prepare(`SELECT type, cx, cy FROM village_buildings WHERE village_id = ? AND type NOT IN ('terr','nongzone') AND type NOT IN ${T538_STRUCT_TYPES} ORDER BY id`),
+  //   ★[T1433] 영토 묶음 행(`terrseq`)도 영토다 — 막는 행이 아니다(옛 DB 엔 그 행이 없어 같은 행 · 같은 차례)
+  other: db.prepare(`SELECT type, cx, cy FROM village_buildings WHERE village_id = ? AND type NOT IN ('terr','nongzone','terrseq') AND type NOT IN ${T538_STRUCT_TYPES} ORDER BY id`),
 };
 for (const k in stmtVbCells) { try { stmtVbCells[k].setReturnArrays(true); } catch (e) { /* 옛 node — 객체 행(느리지만 같은 값) */ } }
 const stmtVbStruct = db.prepare(`SELECT * FROM village_buildings WHERE village_id = ? AND type IN ${T538_STRUCT_TYPES} ORDER BY id`);
@@ -619,6 +623,36 @@ function getTradeRoutes(zone, sig) { return stmtGetRoutes.all(zone, String(sig))
 function upsertTradeRoute(zone, pair, sig, ptsJson) { stmtUpsertRoute.run(zone, String(pair), String(sig), ptsJson === null ? null : String(ptsJson)); }
 function clearTradeRoutes(zone) { return stmtClearRoutes.run(zone).changes | 0; }
 function countTradeRoutes(zone) { return (stmtCountRoutes.get(zone) || {}).n | 0; }
+// ★★[T1440] 처음 길(쌍마다 길이 · 줄 — 3배의 기준) · 쌍 하나 지우기 · 사유지 칸 "길이 지나는 칸" — 손잡이 `T1440_ROAD_RULE` 켬에서만 부른다
+//   (표 · 열은 처음 부를 때 — CREATE TABLE IF NOT EXISTS · 열은 T45 규약대로 PRAGMA 로 보고 붙인다 · 구DB 안전 · 끔 = 표 0 · 열 0 · 행 0)
+//   길을 닫는 조각의 표시는 건물 `data` 한 칸(`t1440c` — 행 0 · 표 0).
+let _t1440Q = null;
+function _t1440Db() {
+  if (_t1440Q) return _t1440Q;
+  db.exec('CREATE TABLE IF NOT EXISTS t1440_first (zone TEXT NOT NULL, pair TEXT NOT NULL, len REAL NOT NULL, pts TEXT, PRIMARY KEY (zone, pair))');
+  _t1440Q = {
+    fAll: db.prepare('SELECT pair, len, pts FROM t1440_first WHERE zone = ?'),
+    fPut: db.prepare('INSERT INTO t1440_first (zone, pair, len, pts) VALUES (?, ?, ?, ?) ON CONFLICT(zone, pair) DO NOTHING'),
+    rDel: db.prepare('DELETE FROM trade_routes WHERE zone = ? AND pair = ?'),
+  };
+  return _t1440Q;
+}
+function t1440FirstAll(zone) { return _t1440Db().fAll.all(zone).map((r) => { let pts = null; try { pts = r.pts ? JSON.parse(r.pts) : null; } catch (e) {} return [r.pair, r.len, pts]; }); }
+function t1440FirstPut(zone, pair, len, ptsJson) { _t1440Db().fPut.run(zone, String(pair), +len, ptsJson == null ? null : String(ptsJson)); }
+function deleteTradeRoute(zone, pair) { return _t1440Db().rDel.run(zone, String(pair)).changes | 0; }
+//   사유지 칸 "길이 지나는 칸" — claims 열 하나(`t1440_pass` · 1 | NULL) · 부팅 로드는 `SELECT *` 가 읽는다(zone.js 사유지 로드)
+let _t1440CP = null;
+function t1440ClaimPass(dbId, v) {
+  if (!dbId) return false;
+  try {
+    if (!_t1440CP) {
+      const cc = db.prepare('PRAGMA table_info(claims)').all().map((c) => c.name);
+      if (!cc.includes('t1440_pass')) db.exec('ALTER TABLE claims ADD COLUMN t1440_pass INTEGER');
+      _t1440CP = db.prepare('UPDATE claims SET t1440_pass = ? WHERE id = ?');
+    }
+    _t1440CP.run(v ? 1 : null, dbId); return true;
+  } catch (e) { return false; }
+}
 
 // === [배치 20 B] 동적 토양치 + 지질 플래그(server/soil.js) ===
 // mined_cells 의 lazy 패턴을 그대로 베낀 것: **기준선에서 벗어난 셀만** 행을 갖는다.
@@ -781,6 +815,13 @@ function getVillageStructRows(villageId) { return stmtGetVillageStructRows.all(v
 // ★[T538] 부팅 로드 — 좌표만 한 줄씩(`fn(cx, cy[, type])` · 배열 행 · 쥐지 않는다) · 구조물 행 · 가장 먼 행
 function eachVillageCell(villageId, kind, fn) {
   const st = stmtVbCells[kind]; if (!st) throw new Error('eachVillageCell: 모르는 종류 ' + kind);
+  //   ★[T1433] 영토 묶음 행이 있는 마을 — 두 꼴(`terr` 칸 행 · `terrseq` 묶음 행)을 id 차례로 되읽어 같은 Set 차례로 낸다(없는 마을 = 아래 종전 글자 그대로)
+  if (kind === 'terr' && terrHasSeq(villageId)) {
+    const S = new Set();
+    for (const r of _t1433S().rows.iterate(villageId)) TerrRows.replay([r], S);
+    for (const k of S) { const ci = k.indexOf(','); fn(+k.slice(0, ci), +k.slice(ci + 1)); }
+    return;
+  }
   for (const r of st.iterate(villageId)) { if (Array.isArray(r)) fn(r[0], r[1], r[2]); else fn(r.cx, r.cy, r.type); }
 }
 function getVillageStructAll(villageId) { return stmtVbStruct.all(villageId); }
@@ -790,6 +831,64 @@ function getTerrContestOwners() {
   if (!_stmtTerrContest) _stmtTerrContest = db.prepare(
     "SELECT cx, cy, village_id FROM village_buildings WHERE id IN (SELECT MIN(id) FROM village_buildings WHERE type = 'terr' GROUP BY cx, cy HAVING COUNT(DISTINCT village_id) > 1)");
   return _stmtTerrContest.all();
+}
+// ★★[T1433 2026-11-22] 영토 묶음 행(`terrseq` — 글 꼴은 `server/terr-rows.js`) ===============================================
+//   **읽기는 늘 두 꼴 다**(손잡이와 무관 — 켰다 끈 세계 · 이관한 DB 를 끈 코드로 띄워도 영토를 잃지 않는다).
+//   쓰기(`insertTerrSeq` · `terrCompact`)는 villages.js 손잡이 `T1433_TERR_SEQ` 켬에서만 불린다(끔 = 쓰는 문장 준비 0 · 행 바이트 종전 그대로).
+//   문장은 처음 부를 때 세운다 — 끔 세계도 부팅이 마을마다 `terrHasSeq` 한 번은 묻는다((village_id, type) 색인 한 번 찾기 · 옛 DB = 늘 없음 → 종전 글자).
+const TerrRows = require('./terr-rows');
+let _t1433 = null;
+function _t1433S() {
+  if (_t1433) return _t1433;
+  _t1433 = {
+    has: db.prepare("SELECT 1 AS y FROM village_buildings WHERE village_id = ? AND type = 'terrseq' LIMIT 1"),
+    rows: db.prepare("SELECT id, type, cx, cy, floors, data FROM village_buildings WHERE village_id = ? AND type IN ('terr','terrseq') ORDER BY id"),
+    del: db.prepare("DELETE FROM village_buildings WHERE village_id = ? AND type IN ('terr','terrseq')"),
+    ins: db.prepare("INSERT INTO village_buildings (village_id, type, cx, cy, floors, data, created_at) VALUES (?, 'terrseq', ?, ?, ?, ?, ?)"),
+  };
+  return _t1433;
+}
+function terrHasSeq(villageId) { return !!_t1433S().has.get(villageId); }
+//   마을 하나의 영토 행(두 꼴)을 id 차례로 — fn({id, type, cx, cy, floors, data})
+function eachTerrRow(villageId, fn) { for (const r of _t1433S().rows.iterate(villageId)) fn(r); }
+//   묶음 행 하나 — ops = [[op, x, y], …](차례 그대로 · op 1 더함 · −1 뺌 · 0 증거) · 행 cx,cy = 마을 가운데에서 가장 먼 점(증거 포함 · 뺌 제외)
+function insertTerrSeq(villageId, ccx, ccy, ops) {
+  if (!ops || !ops.length) return null;
+  const pts = []; let n = 0;
+  for (const o of ops) { if (o[0] === TerrRows.ADD) n++; if (o[0] !== TerrRows.DEL) pts.push([o[1], o[2]]); }
+  const w = TerrRows.farthest(pts, ccx, ccy) || [ccx | 0, ccy | 0];   // 뺌만 있는 행 = 가운데(반지름에 안 닿는다 — 부팅 반지름은 4 셀부터)
+  return _t1433S().ins.run(villageId | 0, w[0] | 0, w[1] | 0, n, TerrRows.encode(ops, ccx, ccy), Date.now()).lastInsertRowid;
+}
+//   마을 하나의 영토 행을 **지금 칸 차례 그대로** 묶음 행 하나로 갈아 끼운다(부르는 쪽 거래 안에서) — keys = 그 마을 `_terrSet`(차례)
+//   지우는 행의 가장 먼 점(죽은 행 포함 — 종전 부팅 반지름이 보던 점)이 살아 있는 칸보다 멀면 그 점을 증거(`@`)로 싣는다.
+//   반환 { before: 지운 행 · cells: 실은 칸 · wit: 증거를 실었나 }
+//   ★행을 JS 객체로 올리지 않는다(옛 DB 첫 이관 = 마을마다 칸 행 수만) — 셈 · 가장 먼 행(제곱 거리 큰 것 · 같으면 id 작은 것 = 종전 순회의 첫 최대)은 SQLite 가 C 에서.
+let _t1433Far = null, _t1433Cnt = null, _t1433One = null;
+//   마을 영토 행의 수 · 행이 하나면 그 행(이관이 "이미 한 행"인지 볼 때 — 칸 행 수만을 JS 로 안 올린다)
+function terrHead(villageId) {
+  if (!_t1433Cnt) _t1433Cnt = db.prepare("SELECT COUNT(*) AS n FROM village_buildings WHERE village_id = ? AND type IN ('terr','terrseq')");
+  if (!_t1433One) _t1433One = db.prepare("SELECT id, type, cx, cy, floors, data FROM village_buildings WHERE village_id = ? AND type IN ('terr','terrseq') ORDER BY id LIMIT 1");
+  const n = _t1433Cnt.get(villageId | 0).n;
+  return { n, first: n === 1 ? _t1433One.get(villageId | 0) : null };
+}
+function terrCompact(villageId, ccx, ccy, keys) {
+  const S = _t1433S();
+  if (!_t1433Far) _t1433Far = db.prepare("SELECT cx, cy, ((cx - ?) * (cx - ?) + (cy - ?) * (cy - ?)) AS d FROM village_buildings WHERE village_id = ? AND type IN ('terr','terrseq') ORDER BY d DESC, id ASC LIMIT 1");
+  const vid = villageId | 0, cx = ccx | 0, cy = ccy | 0;
+  const before = terrHead(vid).n;
+  const w = before ? _t1433Far.get(cx, cx, cy, cy, vid) : null;   // [T1176] 같은 번호 되쓰기 0 — 순번 `?` 에 값을 되푼다
+  let ld = -1; for (const k of keys) { const ci = k.indexOf(','), dx = +k.slice(0, ci) - cx, dy = +k.slice(ci + 1) - cy, d = dx * dx + dy * dy; if (d > ld) ld = d; }
+  const wit = (w && w.d > ld) ? [w.cx, w.cy] : null;
+  S.del.run(vid);
+  const E = TerrRows.encodeKeys(keys, cx, cy, wit, cx, cy);
+  if (E.n || wit) S.ins.run(vid, E.far[0] | 0, E.far[1] | 0, E.n, E.data, Date.now());
+  return { before, cells: E.n, wit: !!wit };
+}
+//   거래 하나(SAVEPOINT — 바깥 거래가 열려 있어도 안전) — fn 이 던지면 통째로 되돌린다
+function terrTx(fn) {
+  db.exec('SAVEPOINT t1433_terr');
+  try { const r = fn(); db.exec('RELEASE t1433_terr'); return r; }
+  catch (e) { try { db.exec('ROLLBACK TO t1433_terr'); db.exec('RELEASE t1433_terr'); } catch (x) {} throw e; }
 }
 // ★★[T1238 2026-11-09 · 영토 v2] 표 둘 · 문장 넷 — **처음 부를 때** 세운다(손잡이 `T1238_TERR_V2` 켬에서만 불린다 · 끔 = 표 0 · 문장 0 · main 바이트).
 //   `t1238_use`  — 칸마다 마지막으로 쓴 날(달 단위로만 다시 쓴다 · 묵힘 판정) · cx = cy = −2³¹ 행 = 그 마을이 켬을 처음 본 날
@@ -899,7 +998,7 @@ module.exports = {
   getResources, insertResource, updateResourceHp, deleteResource,
   getBuildings, getBuildingsInRect, insertBuilding, updateBuildingData, deleteBuilding,
   getMobs, insertMob, updateMobState, deleteMob,
-  getClaims, insertClaim, updateClaimState, updateClaimOwner, deleteClaim, getDeedChunks, saveDeedChunk, deleteDeedChunk, getDeedOwners, saveDeedOwner, saveDeedDebt,   // ★[T45] 사유지 v2 — 종류·상태기 영속
+  getClaims, insertClaim, updateClaimState, updateClaimOwner, deleteClaim, getDeedChunks, saveDeedChunk, deleteDeedChunk, getDeedOwners, saveDeedOwner, saveDeedDebt, saveDeedHome,   // ★[T45] 사유지 v2 — 종류·상태기 영속
   insertHarvestedSeed, getAllHarvestedSeeds, promoteHarvestedDays, deleteHarvestedSeed,   // ★[T341] 재생 — 벤 기록을 지우는 문
   upsertMinedCell, getAllMinedCells, deleteMinedCell,
   upsertFishCell, getAllFishCells, deleteFishCell,
@@ -911,6 +1010,7 @@ module.exports = {
   getVillagesByZone, insertVillage, updateVillageState, insertVillageBuilding, getVillageBuildings, updateVillageBuildingData,
   getVillageFarmInCellRect, getVillageStructRows,
   eachVillageCell, getVillageStructAll, getVillageFarthest, getTerrContestOwners,   // ★[T538] 경계 있는 부팅 로드
+  terrHasSeq, eachTerrRow, insertTerrSeq, terrCompact, terrTx, terrHead,   // ★[T1433] 영토 묶음 행(읽기는 늘 · 쓰기는 켬에서만)
   t1238SaveDay, t1238Load, deleteVillageCell,   // ★[T1238] 영토 v2 — 쓰는 날 · 땅에 남은 일 · 묵혀 빠진 칸(켬에서만 불린다 · 표는 처음 부를 때)
   t1321PendPut, t1321PendDel, t1321PendAll, t1321SeenHas, t1321SeenPut, t1321Tx,   // ★[T1321] 짐승 넘김 — 숨김 줄 · 받은 열쇠 · 한 거래(켬에서만 불린다 · 표는 처음 부를 때)
   // [2026-08-25 사건 레이어] 사건 장부·게시판 (events.js / villages.js)
@@ -925,6 +1025,7 @@ module.exports = {
   getSoilCells, upsertSoilCell, deleteSoilCell,
   // [T42] 교역로 캐시 영속 (villages.js getRoute)
   getTradeRoutes, upsertTradeRoute, clearTradeRoutes, countTradeRoutes,
+  t1440FirstAll, t1440FirstPut, deleteTradeRoute, t1440ClaimPass,   // ★[T1440] 처음 길 · 쌍 하나 지우기 · 길이 지나는 칸(켬에서만)
   // [T537] 마을이 짓는 다리 — 진척·완공 영속(villages `_t527*` · 존 부팅 복원)
   getVillageBridges, upsertVillageBridge,
   // [T916] 못 닿은 사람 저장 줄(zone.js `_saveSend` · 손잡이 `T916_SAVE_RETRY`)

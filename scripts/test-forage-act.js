@@ -501,7 +501,8 @@ console.log('\n⑭ [T374] 수요 멈춤 (★[T544 추신 ⓐ] 손잡이 기본 �
   //   관측 갈래 — **퇴근**이다(농부의 "창 밖 = 오늘 휴무" 와 같은 한 줄). `return false` 가 아니다:
   //   레거시 폴스루는 `zone.js` ④ "가까운 자원 채집"이라 멈춤이 아니라 **아무 자원이나** 따는 것이다.
   const stopLine = "if (_t374Done(vil, job)) { _lifeGoHome(npc, '휴식'); return true; }";
-  const iStop = VC.indexOf(stopLine), iJob = VC.indexOf('const job = npc.simJob;'),
+  const iStop = VC.indexOf(stopLine), iJob = Math.max(VC.indexOf('const job = npc.simJob;'), VC.indexOf('const job = _t1422J || npc.simJob;')),   // ★[T1422] 켬 = 그날 남는 시간 직업(끔 = `npc.simJob` · 같은 자리)
+       
         iT325 = VC.indexOf("if (job === 'lumberjack' && vil.econ && _lifeEcon().woodActOn(vil.econ)) {"),
         iLegacy = VC.indexOf("if (job === 'lumberjack' || job === 'miner' || job === 'forager') {");
   ok(iStop > 0 && iJob > 0 && iJob < iStop && iStop < iT325 && iT325 < iLegacy,

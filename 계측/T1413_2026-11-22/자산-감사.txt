@@ -1,0 +1,120 @@
+  ✓ ① 없는 참조 0 — 닿는 표가 가리키는 키마다 파일이 있다  표 7개 · 키 1046 전수 확인
+  ✓ ② 잠금 불일치 0 — 잠긴 1046장의 해시가 표와 같다  ★[T320] 자가 **하나**다 — icons·mountains(webp)·char 전부 정규화 화소 해시[:16]
+  ✓ ②b 안 잠긴 char 시트 1장은 전부 `probeall*`(잠금 대상 밖) — 설명 없는 자산 0  probeall_walk
+
+⑤ 삼자 대조 — 소리 파일 하나를 표 셋이 똑같이 말하나 [T291]
+  ✓ ⑤a 디스크 ↔ 잠금표 — 한쪽에만 있는 파일 0개 (잠기지 않은 소리가 배포되지 않는다)  144장 양방향 일치
+  ✓ ⑤b 디스크 ↔ CREDITS §2-b — 한쪽에만 있는 파일 0개 (출처 없는 소리 0)  크레딧 72줄
+  ✓ ⑤c 매니페스트 출처 ↔ CREDITS 줄 — 어긋난 칸 0개  68키 · URL·라이선스 양쪽 같다
+  ✓ ⓐ 잠금에도 크레딧에도 없는 `.ogg` 한 장을 놓으면 ⑤a·⑤b 가 **하나씩 더** 문다  a 0→1 · b 0→1
+  ✓ ⓑ 크레딧 한 줄(`wind`)을 지우면 ⑤b 만 **둘 더** 문다(.ogg+.m4a) — ⑤a 는 그대로  b 0→2 · a 0→0
+  ✓ ⓒ 크레딧 URL 을 한 글자 바꾸면 ⑤c 만 **하나 더** 문다  c 0→1 · b 0→0
+  ✓ ⓓ ★대조 — 안 건드린 표를 다시 재면 수가 그대로다(자가 아무거나 물지 않는다)  c=0
+  ✓ ⓔ ★크레딧에만 옛 이름이 남으면(`wind` → `wind_stale`) ⑤b 가 **넷 더**(없는 파일 둘 + 크레딧 없는 파일 둘) · ⑤c 가 **하나 더** 문다  b 0→4 · c 0→1
+     · 파일은 있는데 **키가 없다**: swing2 swing3 tiger_growl2 tiger_growl3  — 왜인지는 매니페스트 `_파일없음`
+     · 키는 있는데 **파일이 없다**: 없음  — `state` 가 적혀 있으면 **결정**이고 비어 있으면 대기다
+     ┌ 어느 하네스가 무엇을 지키나 (겹치는 검사는 안 만든다) ─────────────
+     │ `test-audio`(세션9)   매니페스트 **안쪽** — 값·상한·`.m4a` 짝·훅·BGM·리미터·페이드
+     │ 이 하네스 ①②         잠금 해시 · 닿는 표가 가리키는 파일이 있나
+     │ 이 하네스 ⑤ [T291]    디스크 ↔ 잠금 ↔ CREDITS 의 **파일 집합**과 **출처 값**
+     └ 겹침 0: 매니페스트가 가리키는 파일의 존재·크기·길이는 `test-audio ①` 이 본다 — 여기선 안 본다
+  · ③ 고아(사용처 0) **53**장 · 45.5 MB — 빨강 아님(표만 · 지우기는 사람)
+      audio/bgm             48장 45.44 MB
+      sfx                    4장 0.04 MB
+      audio/bgm/samples      1장 0.00 MB
+  · 자산 전수 1753장 · 108.4 MB · 잠긴 것 1046
+
+⑦ 배선은 있는데 파일이 없는 키 — 고아의 반대 [T320]
+  ✓ ⓪ [전제] 표가 실제로 키를 보내고 있다 — 배선된 키 38종  표 resourceHit inventoryWhere mobs mobEvents warBody hpWhy combat npcAct fishState groundDrop work buildAdded resourceNew buildRemoved buildDamaged groundPick buildings ground surface rainSplit waterSplit resourceLoop nightAmbient
+  ✓ ⑦a ★**말없이 무음인 키 0개** — 배선됐는데 파일도 없고 `state` 도 없다  무음 0종이 전부 `state` 를 달고 있다(결정이지 사고가 아니다)
+     · 배선 있고 **무음**: 0개
+     · 배선도 파일도 없음(키만 있다): 없음
+     ⚠빨강이 아니다 — 음원이 오면 **코드 0** 으로 난다. 만드는 것은 사람이다(녹음은 재민 · #34).
+  ✓ ⑦b 자명 통과 금지 — `-` 의 `state` 를 떼면 ⑦a 가 문다  문 키 0개
+
+⑧ 배포 폴더에 바이트코드 0 — `.pyc`·`__pycache__/` [T391]
+  ✓ ⑧a public/ 아래 **추적되는** 바이트코드 0장 — 서버 checkout 에 실리는 것  추적 1816장 중 0
+  ✓ ⑧b `git add -A` 가 주울 **무시 안 된** 바이트코드 0장  미추적·미무시 0장 중 0
+  ✓ ⑧c `.gitignore` 의 `__pycache__/` 가 살아 있다 — 미끼 경로는 무시 · 같은 폴더 `.py` 는 안 무시  pyc 무시 · py 안 무시
+  ✓ ⓐ 미끼 `.pyc` 한 장을 놓으면 ⑧a·⑧b 가 **하나씩 더** 문다  a 0→1 · b 0→1
+  ✓ ⓑ ★대조 — 같은 자리에 `.py` 한 장을 놓으면 수가 그대로다  a=0
+     · 디스크의 바이트코드 0장 — 추적 0 · 무시 안 됨 0 · **무시됨 0**(안 실린다 · 빨강 아님 · 파이썬 하네스가 bgm 모듈을 import 하면 생긴다)
+
+⑨ `legacy/` 는 배포 폴더 밖 — `.dockerignore`(Docker 규칙)로 [T401]
+  ✓ ⑨a `legacy/` 에서 이미지에 실리는 파일 0장  `legacy/` 없음 — T401 ① 이 정본을 못 찾았다(0/11 · 보고/T401)
+  ✓ ⓐ 자 대조 — `bgm/*.py` 줄은 `compose.py` 를 빼고 `bgm.js` 는 안 뺀다 · `*` 는 `/` 를 못 넘어 `legacy/tracks2.py` 는 **안 뺀다**  compose.py 빠짐 · bgm.js 실림 · legacy/tracks2.py 실림
+  ✓ ⓑ 미끼 `public/assets/audio/bgm/legacy/tracks2.py` 를 놓으면 ⑨a 가 **하나 더** 문다 · `public/assets/audio/bgm/legacy/` 한 줄을 더하면 안 문다(세우는 카드가 같이 넣을 줄)  0→1 · 줄 더하면 0
+     · 뿌리에 붙은 줄(`*.zip`·`samples/`)이 못 빼는 bgm 파일 3장 — **이미지에 실린다**(표만 · 회부 — 어디서나 빼려면 `**/`)
+       public/assets/audio/bgm/samples/여기에_음원을_넣으세요.txt
+       public/assets/audio/bgm/코드백업.zip
+       public/assets/audio/bgm/코드백업_최신.zip
+
+⑩ R&D 보관소 `tools/_rnd_archive/` 는 배포 밖 — 이미지는 `COPY` 한 것만 [T422]
+  ✓ ⑩a 보관소 파일 중 이미지에 실리는 것 0장  보관소 59장 · Dockerfile.central: COPY package*.json server public sim / Dockerfile.zone: COPY package*.json server public sim CREDITS.md
+  ✓ ⑩b 정적 폴더 `public/` 아래 `_rnd_archive` 0장  없다
+  ✓ ⓐ 자 대조 — `bgm.js`·`server/` 파일은 **실린다** · `보고/` 는 안 실린다(COPY 읽기가 살아 있다)  Dockerfile 2장 · bgm.js 실림 · server/animals.js 실림
+  ✓ ⓑ 미끼 — `COPY . .` 를 더하면 ⑩a 가 보관소 **전부**를 문다 · `.dockerignore` 에 `tools/` 를 더하면 다시 0  0→59/59 · 줄 더하면 0
+
+⑪ 실리는 것은 닿아야 한다 · 닿는 것은 실려야 한다 — 이미지 전수 [T456]
+  ✓ ⓪ [전제] acorn(레포 의존성) · git 추적 목록 · 이미지마다 CMD 진입 JS 가 있다 — 하나라도 없으면 이 자를 못 잰다(빨강)  acorn 8.18.0 · 추적 20547장 · Dockerfile.central: server/central.js / Dockerfile.zone: server/zone.js
+  ✓ ⑪a 이미지에 실리는데 어디서도 안 닿는 파일 52장 ≤ 기준 52(T456 뒤 수) — 늘면 빨갛다  2.58 MB · 이미지 1966장 120.11 MB
+     · 닿음 갈래: server 126 · npm 2 · game 1746 · board 36 · root 4 · 안 닿음 52
+     · 안 닿는 52장(폴더별): sim/ 45 · server/ 6 · public/vendor/ 1
+  ✓ ⑪b 이미지가 읽는데 그 이미지에 **안 실리는** 파일 0장  Dockerfile.central: server/central.js → 서버 56장 · Dockerfile.zone: server/zone.js → 서버 129장 · 웹 뿌리 4(게임 1 · 판 3)
+  ✓ ⓐ 미끼 — 안 부르는 `public/zz_t456_ghost.bin` 를 실리는 목록에 놓으면 ⑪a 가 **하나 더** 센다  52→53(기준 52 에서 이러면 빨강)
+  ✓ ⓑ ★대조 — 같은 미끼를 게임 JS 한 줄이 글자로 부르면 수가 그대로다(자가 아무거나 물지 않는다)  52→52 · 미끼 game:static
+  ✓ ⓒ 미끼 — `.dockerignore` 의 `sim/out/` 줄을 (가상으로) 빼면 ⑪a 가 그 산물 수만큼 더 센다(T456 ① 을 지킨다)  52→68(+16 = 산물 15 + 미끼 1) · 줄이 있으면 미끼 안 실림
+  ✓ ⓓ 미끼 — 존 COPY 에서 `CREDITS.md` 를 (가상으로) 빼면 ⑪b 가 그 파일을 문다(T446 이 찾은 구멍 · 배포판 `/크레딧` 이 못 읽었다)  0→1 · CREDITS.md
+  ✓ ⓔ⑪ 미끼 — 폴더·끝 꼴(`path.join(__dirname, 'streams', id + '.bin')`)은 그 폴더 바로 안 `.bin` 만 문다(다른 끝 · 하위 폴더 · 다른 폴더 · 빈 이름 0)  server/streams/hanbando.bin server/streams/jungwon_n.bin server/streams/nippon.bin · 꼴 streams.js:241
+  ✓ ⓔ⑪′ 미끼 — 템플릿 꼴(`path.join(__dirname, `village-trees-${id}.json`)`)은 그 폴더 바로 안 그 앞 · 끝 글자만 문다(다른 끝 · 하위 폴더 · 다른 폴더 · 앞 글자 다름 · 빈 이름 0)  server/village-trees-hanbando.json 닿음 · 꼴 chunk.js:641
+     · 동적 접두만(키 없음 · 표만) 34장 · 2.63 MB
+       public/assets/animals/water_deer/body_die.png  ← /assets/animals/… @public/client/40-r2-sprites.js:31 · /assets/animals/… @public/client/40-r2-sprites.js:38
+       public/assets/animals/water_deer/body_die.webp  ← /assets/animals/… @public/client/40-r2-sprites.js:31 · /assets/animals/… @public/client/40-r2-sprites.js:38
+       public/assets/animals/water_deer/body_eat.png  ← /assets/animals/… @public/client/40-r2-sprites.js:31 · /assets/animals/… @public/client/40-r2-sprites.js:38
+       public/assets/animals/water_deer/body_eat.webp  ← /assets/animals/… @public/client/40-r2-sprites.js:31 · /assets/animals/… @public/client/40-r2-sprites.js:38
+       public/assets/animals/water_deer/body_lie.png  ← /assets/animals/… @public/client/40-r2-sprites.js:31 · /assets/animals/… @public/client/40-r2-sprites.js:38
+       public/assets/animals/water_deer/body_lie.webp  ← /assets/animals/… @public/client/40-r2-sprites.js:31 · /assets/animals/… @public/client/40-r2-sprites.js:38
+       public/assets/animals/water_deer/water_deer_meta.json  ← /assets/animals/… @public/client/40-r2-sprites.js:31 · /assets/animals/… @public/client/40-r2-sprites.js:38
+       public/assets/animals/wild_boar/wild_boar_meta.json  ← /assets/animals/… @public/client/40-r2-sprites.js:31 · /assets/animals/… @public/client/40-r2-sprites.js:38
+       public/assets/audio/bgm/.gitignore  ← assets/audio/bgm/… @public/bgm-board.html#inline:6 · assets/audio/bgm/… @public/sfx-board.html#inline:9
+       public/assets/audio/bgm/README-BGM.md  ← assets/audio/bgm/… @public/bgm-board.html#inline:6 · assets/audio/bgm/… @public/sfx-board.html#inline:9
+       public/assets/audio/bgm/gayageum-usage.json  ← assets/audio/bgm/… @public/bgm-board.html#inline:6 · assets/audio/bgm/… @public/sfx-board.html#inline:9
+       public/assets/audio/bgm/samples/여기에_음원을_넣으세요.txt  ← assets/audio/bgm/… @public/bgm-board.html#inline:6 · assets/audio/bgm/… @public/sfx-board.html#inline:9
+       public/assets/audio/bgm/국악기_음원_넣는법.md  ← assets/audio/bgm/… @public/bgm-board.html#inline:6 · assets/audio/bgm/… @public/sfx-board.html#inline:9
+       public/assets/audio/bgm/코드백업.zip  ← assets/audio/bgm/… @public/bgm-board.html#inline:6 · assets/audio/bgm/… @public/sfx-board.html#inline:9
+       public/assets/audio/bgm/코드백업_최신.zip  ← assets/audio/bgm/… @public/bgm-board.html#inline:6 · assets/audio/bgm/… @public/sfx-board.html#inline:9
+       public/assets/buildings/building_anchors.json  ← /assets/buildings/… @public/client/20-r2-visibility.js:152
+       public/assets/char/char_sheets.lock.json  ← /assets/char/… @public/client/42-r2-char.js:55
+       public/assets/char/probeall_walk.png  ← /assets/char/… @public/client/42-r2-char.js:55 · /assets/char/….png @public/client/42-r2-char.js:55
+       public/assets/char3d/char3d.lock.json  ← /assets/char3d/… @public/client3d/char3d.js:451
+       public/assets/char3d/tex/f_alpha.png  ← /assets/char3d/… @public/client3d/char3d.js:451
+       public/assets/char3d/tex/f_fur.jpg  ← /assets/char3d/… @public/client3d/char3d.js:451
+       public/assets/char3d/tex/f_hemp.jpg  ← /assets/char3d/… @public/client3d/char3d.js:451
+       public/assets/char3d/tex/f_leather.jpg  ← /assets/char3d/… @public/client3d/char3d.js:451
+       public/assets/char3d/tex/f_ramie.jpg  ← /assets/char3d/… @public/client3d/char3d.js:451
+       public/assets/char3d/tex/m_alpha.png  ← /assets/char3d/… @public/client3d/char3d.js:451
+       public/assets/char3d/tex/m_fur.jpg  ← /assets/char3d/… @public/client3d/char3d.js:451
+       public/assets/char3d/tex/m_hemp.jpg  ← /assets/char3d/… @public/client3d/char3d.js:451
+       public/assets/char3d/tex/m_leather.jpg  ← /assets/char3d/… @public/client3d/char3d.js:451
+       public/assets/char3d/tex/m_ramie.jpg  ← /assets/char3d/… @public/client3d/char3d.js:451
+       public/ui/oseok/bevel@2x.png  ← ui/oseok/… @public/client/52-u-oseok.js:23
+       public/ui/oseok/fonts/OFL.txt  ← ui/oseok/… @public/client/52-u-oseok.js:23
+       public/ui/oseok/ground@2x.png  ← ui/oseok/… @public/client/52-u-oseok.js:23
+       public/ui/oseok/plate@2x.png  ← ui/oseok/… @public/client/52-u-oseok.js:23
+       public/ui/oseok/shadow@2x.png  ← ui/oseok/… @public/client/52-u-oseok.js:23
+     · 잰 시간 2.4 s(JS 160장 · 동적 접두 게임 25 · 판 4)
+
+⑥ 반례 — 화소 자는 **안 보이는 데만** 둔하다 [T308]
+  ✓ ⓪ 표본 여덟이 서 있다(자산 PNG 둘 · webp 둘 · **시트 넷** · 전부 투명이 실제로 있다)  bridge/bridge_cap0_x 90% · bridge/bridge_cap0_y 90% · bridge/bridge_cap0_x 90% · bridge/bridge_cap0_y 90% · char/back_carrier_aim 98% · char/back_carrier_aim2 98% · char/back_carrier_captive_idle 98% · char/back_carrier_captive_walk 98%
+  ✓ ⓪b ★시트는 투명 비중이 **자산과 다르다** — 넷 다 90% 넘는다(자가 거기서도 서는지가 이 절의 값이다)  98.2% · 98.3% · 98.4% · 98.3%
+  ✓ ⓑ ★**보이는** 화소 하나의 R 을 1 바꾸면 **다른 해시** — 어긋난 표본 0개  8/4 전부 문다(둔해진 게 아니라 **안 보이는 데만** 둔하다)
+  ✓ ⓒ ★투명 아래 RGB 를 전부 뒤엎어도 **같은 해시**(그리고 옛 자로는 **달랐다**) — 어긋난 표본 0개  bridge/bridge_cap0_x.png 59160화소 · bridge/bridge_cap0_y.png 59199화소 · bridge/bridge_cap0_x.webp 59160화소 · bridge/bridge_cap0_y.webp 59199화소 · char/back_carrier_aim.png 154100화소 · char/back_carrier_aim2.png 154321화소 · char/back_carrier_captive_idle.png 77205화소 · char/back_carrier_captive_walk.png 617110화소
+  ✓ ⓐ ★무손실 재압축 effort 0/4/6 — **새 자는 어느 표본에서도 해시 하나**  bridge/bridge_cap0_x.webp 새 1종 · bridge/bridge_cap0_y.webp 새 1종 · char/back_carrier_aim.png 새 1종 · char/back_carrier_aim2.png 새 1종
+  ✓ ⓐ-2 ★대조 — 옛 자는 **적어도 한 표본에서 갈라진다**(안 갈라지면 이 절은 자명 통과다)  bridge/bridge_cap0_x.webp 옛 3종 · 투명아래 채운 화소 [0 8420 7544] · bridge/bridge_cap0_y.webp 옛 3종 · 투명아래 채운 화소 [0 7648 7316] · char/back_carrier_aim.png 옛 1종 · 투명아래 채운 화소 [0 0 0] · char/back_carrier_aim2.png 옛 1종 · 투명아래 채운 화소 [0 0 0]
+     · 읽히는 것 — 옛 자가 무는 것은 **인코더가 채울 게 있을 때**다:
+       bridge/bridge_cap0_x.webp          effort 0/4/6 이 투명 아래에 채운 화소 0 / 8420 / 7544
+       bridge/bridge_cap0_y.webp          effort 0/4/6 이 투명 아래에 채운 화소 0 / 7648 / 7316
+       char/back_carrier_aim.png          effort 0/4/6 이 투명 아래에 채운 화소 0 / 0 / 0
+       char/back_carrier_aim2.png         effort 0/4/6 이 투명 아래에 채운 화소 0 / 0 / 0
+
+결과: PASS
