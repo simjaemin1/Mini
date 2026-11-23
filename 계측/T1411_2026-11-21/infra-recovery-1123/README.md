@@ -10,6 +10,8 @@
 
 복구 후 켬461~465날·끔471~475날의 세 일일 관찰기를 각각5/5날 맞췄다. CPU·프로세스CPU 누계·uptime만 제외하고 가상 시각을 포함했다. `replay-check.json`과 복구 전/후 원자료를 보존했다. 원본/후보100날 의미 보존 지문이나 독립 반복 횟수를 늘리는 자료가 아니다.
 
+복구 후 첫 켬460→470날·끔470→480날 마디가 실제 존 종료 코드0·가상 시계 오류0으로 닫혔다. 종료 메타는 `first-closed-segments.json`에 있다. 이후 판은 계속730날을 향해 진행한다.
+
 ```sh
 python3 scripts/t1411-recovery-check.py --evidence 계측/T1411_2026-11-21/infra-recovery-1123 --runs 계측/T1411_2026-11-21/infra-recovery-1123/replayed --out /tmp/t1411/recovery-check-3.json
 ```

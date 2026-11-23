@@ -8,6 +8,8 @@
 
 이 gzip들은 예전 stop 관측 덤프이며 독립 복구용 DB 체크포인트를 새로 만든 것이 아니다. 정상 복구는 계속 현재 `ck/` 또는 중단 시 별도 보존한 이진 묶음을 쓴다. CPU 비교의 첫100날 원본/후보 실행 이후에 한 저장 공간 관리이며 경제 규칙·몸 상한·시계·계측기는 바꾸지 않았다.
 
+도구 추가 뒤 실제 변경 파일에서 다시 뽑은 하네스 목록은 기존과 같은10종이다(`touched-harness.txt`). 제품 코드는 바뀌지 않았고 기존 게이트 결과를 유지한다. 이후 양팔의 첫 복구 마디도 실제 종료 코드0·시계 오류0으로 닫혔다(`../infra-recovery-1123/first-closed-segments.json`).
+
 ```sh
 python3 scripts/t1411-pack-old-stops.py --runs /tmp/t1411/worlds --out /workspace/scratch/t1411/old-stop-dumps
 ```
