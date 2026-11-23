@@ -1,0 +1,78 @@
+{
+ "observedAt": "2026-11-23T03:28:33.065999+00:00",
+ "packing": [
+  {
+   "case": "ON-1020",
+   "checkpointBoundary": 460,
+   "packed": 45,
+   "sourceBytesRemoved": 1537220103,
+   "gzipBytesAdded": 164105943,
+   "manifest": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/manifest.json"
+  },
+  {
+   "case": "OFF-1020",
+   "checkpointBoundary": 470,
+   "packed": 46,
+   "sourceBytesRemoved": 1309006248,
+   "gzipBytesAdded": 122918838,
+   "manifest": "/workspace/scratch/t1411/old-stop-dumps/OFF-1020/manifest.json"
+  }
+ ],
+ "noOpRepeat": [
+  {
+   "case": "ON-1020",
+   "checkpointBoundary": 460,
+   "packed": 0,
+   "sourceBytesRemoved": 0,
+   "gzipBytesAdded": 0,
+   "manifest": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/manifest.json"
+  },
+  {
+   "case": "OFF-1020",
+   "checkpointBoundary": 470,
+   "packed": 0,
+   "sourceBytesRemoved": 0,
+   "gzipBytesAdded": 0,
+   "manifest": "/workspace/scratch/t1411/old-stop-dumps/OFF-1020/manifest.json"
+  }
+ ],
+ "untouchedBinaryCheckpoints": {
+  "ON-1020": {
+   "day": 460,
+   "binaryCheckpointHashesUnchanged": {
+    "state.json": "f36a3cae147d32aa68ad7d26b240ba61a348cceac54f10c3190340dc351219d5",
+    "w.db-wal": "9a4147c855e64d7817c3e47ecc5ce882b715e802e00f6c56ee0ad259511c7cc6",
+    "w.db": "e984412278dc5abd317be508400e8596ae79346889009477fcb624189d8ea781",
+    "day": "841a05fd378a2c067058585e3691c2a3f5399206fded7a580fdbbc281003168e",
+    "phase-460.json": "0d6073906320810f7ae8c128f833245a13635bb780e08ac5d7f0658d92cd46fc",
+    "w.db-shm": "a345762ae7d8912e52485fe5b88a2770949e380ecfbd53e67fbecb7502c37f2a",
+    "keep-460.json": "753fcbd450b8c030286346ca1ec84be76ff05c53169aca11c52048b333871430",
+    "stop-460.json": "5aec67fd54895d3036188e1ea5c326d3166f4e1ddf9c5b4f246d8443746362db"
+   }
+  },
+  "OFF-1020": {
+   "day": 470,
+   "binaryCheckpointHashesUnchanged": {
+    "state.json": "17257c007d8f98704a509dcf19497dbe820048bcca621ac50c53fc104d464e18",
+    "phase-470.json": "5d7ebe25d75409596fdf40f78695142d9455ed01c5d99abddaf16ba2abbe92f5",
+    "w.db-wal": "be4832d5eaf85ab3799496b081a4e7538873e0368c84fe4cfe154e78258a102c",
+    "w.db": "d7e5acf94eec04686a7176c4dce75ae8bb0fe540012c93494e4992debf2dcbc6",
+    "keep-470.json": "85f01413f30553ee633a8c30097988befa847dc0d363730fb7b1f46374c652f7",
+    "day": "30eec89ddd9c342ef28a87f731d6e50ba977baf12d7caa7045a9d56b0e923f03",
+    "w.db-shm": "7b495f36537c1fc21ba3901b610105d0b80f7b0183bd7851e218295890ffd918",
+    "stop-470.json": "c15841f2c1f43c3083aaa1fc6fb25a6da2beb2615aa01f2621e14494cd4de9d7"
+   }
+  }
+ },
+ "productSourceUnchanged": {
+  "server/villages.js": "ce4d8c7f1f157d64297e93f3b69df3cc7773a62c16bc0e9139d1ff56a589477e",
+  "server/zone.js": "fb89408587a5d2291e9783b203e4c56bf938a8df31153c4821e186d68c523d81",
+  "server/build-haul.js": "deb39bce3f2f53287810e8a0d71f15691dbd39247063c7863853b1417287f0db",
+  "server/terr-body.js": "9c2482d018eb367fcef1534e608631ef58ca5b71705d94d18996b3acfd709188",
+  "server/terr-cost.js": "a8bc781b27c421950c3737c315bce5306bbcc516f377f6d25d813319d106294e",
+  "sim/economy-sim.js": "69d152fc17a733d9dd6de6817062f594b674883bbd66b3059f0c1f6756c8ea9c",
+  "scripts/t1308-long-run.js": "6629ff2af5659f8349f8f8a3ba8d29281a784794be1ba77bdb0cc11644662bd4"
+ },
+ "sourceBytesRemoved": 2846226351,
+ "gzipBytesAdded": 287024781
+}

@@ -1,0 +1,362 @@
+{
+ "stop-10.json": {
+  "sourceSha256": "3690060453b8563da5e5e18119781117b9d23788d34aa8d02f47c0cd0b3cef51",
+  "sourceBytes": 19166174,
+  "gzipBytes": 2153441,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-10.json.gz",
+  "verifiedAt": "2026-11-23T03:26:08.568179+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-100.json": {
+  "sourceSha256": "3af427a61c2a4c006f45d58e8c1640ff9189c0c0f69fc4568854048f278153c8",
+  "sourceBytes": 28730124,
+  "gzipBytes": 2826297,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-100.json.gz",
+  "verifiedAt": "2026-11-23T03:26:09.016766+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-110.json": {
+  "sourceSha256": "64be14a18998a18113a70371a20ebd7897fe98d8c4a0ffa0b29c5b9969e7802d",
+  "sourceBytes": 29227353,
+  "gzipBytes": 2871501,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-110.json.gz",
+  "verifiedAt": "2026-11-23T03:26:09.441774+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-120.json": {
+  "sourceSha256": "7b76694af526204acc36aac452b5df3aab7a62d819cc506e6ca86ad67deed44e",
+  "sourceBytes": 29794949,
+  "gzipBytes": 2969333,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-120.json.gz",
+  "verifiedAt": "2026-11-23T03:26:09.881204+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-130.json": {
+  "sourceSha256": "2d65e004c6fda939af6b33be9903e1373222c44eefadce00e69180bf62022602",
+  "sourceBytes": 30322277,
+  "gzipBytes": 3044405,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-130.json.gz",
+  "verifiedAt": "2026-11-23T03:26:10.324507+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-140.json": {
+  "sourceSha256": "fc0dc7756264420ccbe47318e48b7ffc6da5940767b1a58f25233dc2b00af0c0",
+  "sourceBytes": 30632368,
+  "gzipBytes": 3138003,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-140.json.gz",
+  "verifiedAt": "2026-11-23T03:26:10.807937+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-150.json": {
+  "sourceSha256": "b2f667953ab169e8603c974baf317f3fdbd0ab40386fdc88d4ed1c99f3fa45f1",
+  "sourceBytes": 31268786,
+  "gzipBytes": 3214944,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-150.json.gz",
+  "verifiedAt": "2026-11-23T03:26:11.299555+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-160.json": {
+  "sourceSha256": "fead3e1c806df54f73d0e770787951f283cbf3f4817f910a550be273eccacc91",
+  "sourceBytes": 31708005,
+  "gzipBytes": 3304677,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-160.json.gz",
+  "verifiedAt": "2026-11-23T03:26:11.782919+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-170.json": {
+  "sourceSha256": "fd1fc3803b2c727d6346089c81a4aa1f38519b12f580486ff7394acc3122e0ee",
+  "sourceBytes": 32254968,
+  "gzipBytes": 3403237,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-170.json.gz",
+  "verifiedAt": "2026-11-23T03:26:12.270066+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-180.json": {
+  "sourceSha256": "b6653edf51341e0249c97472c5836df2ebf142b65b8133db6b7fa9a822c09102",
+  "sourceBytes": 32936064,
+  "gzipBytes": 3480462,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-180.json.gz",
+  "verifiedAt": "2026-11-23T03:26:12.788459+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-190.json": {
+  "sourceSha256": "ecf66b7526c716016b6950dec80122280f49e3d8d5090f1cf50181032fd65cbe",
+  "sourceBytes": 33208532,
+  "gzipBytes": 3546906,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-190.json.gz",
+  "verifiedAt": "2026-11-23T03:26:13.329087+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-20.json": {
+  "sourceSha256": "18a9f644507f9a5c9a73ba1e786c1f07ed43a3985cc916324789eaeadd48cfb3",
+  "sourceBytes": 21813746,
+  "gzipBytes": 2279631,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-20.json.gz",
+  "verifiedAt": "2026-11-23T03:26:13.674473+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-200.json": {
+  "sourceSha256": "dfaf1ca7f99faf8f54fe9873135bacd60023d0dd13b10bb6131ae6eda94a0ffe",
+  "sourceBytes": 33669456,
+  "gzipBytes": 3615696,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-200.json.gz",
+  "verifiedAt": "2026-11-23T03:26:14.195230+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-210.json": {
+  "sourceSha256": "5c71e145ab2a06e52bfb0499255013c6d70695403fb6f6c742abbb48472d299b",
+  "sourceBytes": 34092866,
+  "gzipBytes": 3665308,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-210.json.gz",
+  "verifiedAt": "2026-11-23T03:26:14.730792+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-220.json": {
+  "sourceSha256": "902cd60b67718e24c959a4886017bcb5481aef57bcbc64a437a8140d8363f5a6",
+  "sourceBytes": 35198508,
+  "gzipBytes": 3773258,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-220.json.gz",
+  "verifiedAt": "2026-11-23T03:26:15.284103+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-230.json": {
+  "sourceSha256": "746ba13d475b9c2625a83f54212589abb8c2408740d5db044712b5d9d4da222f",
+  "sourceBytes": 36201997,
+  "gzipBytes": 3861361,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-230.json.gz",
+  "verifiedAt": "2026-11-23T03:26:15.872586+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-240.json": {
+  "sourceSha256": "4d9a99c365bcecd2ee0377fb3c11f1200c5836f4a944a7f23f83294e8f57948b",
+  "sourceBytes": 36929312,
+  "gzipBytes": 3931006,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-240.json.gz",
+  "verifiedAt": "2026-11-23T03:26:16.471744+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-250.json": {
+  "sourceSha256": "45b6946e9950ffd27842c5c2aab521bee5f418045e2fc94fdd98bcd8dff7c7dc",
+  "sourceBytes": 37772095,
+  "gzipBytes": 4017111,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-250.json.gz",
+  "verifiedAt": "2026-11-23T03:26:17.079172+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-260.json": {
+  "sourceSha256": "aa18232ed212b05a9b18de79863e72e53b4effab2b23605fa8bce80069248ad6",
+  "sourceBytes": 38417302,
+  "gzipBytes": 4096244,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-260.json.gz",
+  "verifiedAt": "2026-11-23T03:26:17.694900+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-270.json": {
+  "sourceSha256": "6fdd52194bc3482efff737c6f29fbe813f8b9bbd0a26b6cf2c44ca6bec821249",
+  "sourceBytes": 39088575,
+  "gzipBytes": 4161630,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-270.json.gz",
+  "verifiedAt": "2026-11-23T03:26:18.302219+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-280.json": {
+  "sourceSha256": "9f1ad087fa11f7057ab10d054e1bcf9ded99564d3939d427340378ea58b5e8a6",
+  "sourceBytes": 39463136,
+  "gzipBytes": 4212028,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-280.json.gz",
+  "verifiedAt": "2026-11-23T03:26:18.941230+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-290.json": {
+  "sourceSha256": "5abd5aa1e4a062ab069bf6794b5ce4babdcdaf1856291caf5782f3186ce914c4",
+  "sourceBytes": 39350293,
+  "gzipBytes": 4224457,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-290.json.gz",
+  "verifiedAt": "2026-11-23T03:26:19.560538+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-30.json": {
+  "sourceSha256": "875c70fde3c41ccb19919a9b2d21d99d6dd87b8ad2d3b79f656f383e106cf52f",
+  "sourceBytes": 23211938,
+  "gzipBytes": 2368881,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-30.json.gz",
+  "verifiedAt": "2026-11-23T03:26:19.893237+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-300.json": {
+  "sourceSha256": "5954c3684245a31f1f28c7a33723b580da26c1780a384391c580ed179517c573",
+  "sourceBytes": 39344394,
+  "gzipBytes": 4257760,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-300.json.gz",
+  "verifiedAt": "2026-11-23T03:26:20.536271+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-310.json": {
+  "sourceSha256": "8d5c2ed33242fccbee6f8099a9f6c63405cd0dc412ab939c69ca3ca998fa076f",
+  "sourceBytes": 39426798,
+  "gzipBytes": 4286348,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-310.json.gz",
+  "verifiedAt": "2026-11-23T03:26:21.179295+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-320.json": {
+  "sourceSha256": "88c8d20c214ee937496cc762842eafcb91d2bf6e6bcf7633224b3bc3a2fe1044",
+  "sourceBytes": 39371287,
+  "gzipBytes": 4299251,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-320.json.gz",
+  "verifiedAt": "2026-11-23T03:26:21.823962+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-330.json": {
+  "sourceSha256": "3f0a0e2597ff1a12776284e50326d4c4bdf9df2625f1c89f30d300312a5823a6",
+  "sourceBytes": 39612297,
+  "gzipBytes": 4318982,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-330.json.gz",
+  "verifiedAt": "2026-11-23T03:26:22.468502+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-340.json": {
+  "sourceSha256": "10ae61d94d15cf7ccc4e7e5cfe77c46cc9b518ad6681de99f41675d424cad4e4",
+  "sourceBytes": 39458289,
+  "gzipBytes": 4338807,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-340.json.gz",
+  "verifiedAt": "2026-11-23T03:26:23.117561+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-350.json": {
+  "sourceSha256": "aaace8f2f9042e7ef5d5942ebb20cf0eac4d10e5cf3647da9752b7219d8de541",
+  "sourceBytes": 39120498,
+  "gzipBytes": 4346821,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-350.json.gz",
+  "verifiedAt": "2026-11-23T03:26:23.745683+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-360.json": {
+  "sourceSha256": "2844791c01241100bcb86e3d994c879294eecc2a2e7ce97416aaf5afbc02a546",
+  "sourceBytes": 39087187,
+  "gzipBytes": 4364347,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-360.json.gz",
+  "verifiedAt": "2026-11-23T03:26:24.400258+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-370.json": {
+  "sourceSha256": "308e8ad37bddcdfa46c8ea3942ce626706f5e6d6f2a14a40186c979c85982b28",
+  "sourceBytes": 39232431,
+  "gzipBytes": 4399559,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-370.json.gz",
+  "verifiedAt": "2026-11-23T03:26:25.057433+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-380.json": {
+  "sourceSha256": "c71c132309192a7357968f60c137565ed509402fe577364d52288bf4fd901d69",
+  "sourceBytes": 39353963,
+  "gzipBytes": 4365633,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-380.json.gz",
+  "verifiedAt": "2026-11-23T03:26:25.711439+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-390.json": {
+  "sourceSha256": "598f5c5cbc3fa614352c0a983be136eb5f89bceda516549ded51ecf1b217b986",
+  "sourceBytes": 39515443,
+  "gzipBytes": 4400208,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-390.json.gz",
+  "verifiedAt": "2026-11-23T03:26:26.389678+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-40.json": {
+  "sourceSha256": "985cab31eaa61b2630e928f9c94824401b1b8b04e8d0441afdda5ef6b0791ce7",
+  "sourceBytes": 24120835,
+  "gzipBytes": 2441469,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-40.json.gz",
+  "verifiedAt": "2026-11-23T03:26:26.730037+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-400.json": {
+  "sourceSha256": "d512afd0b1cffbcacfbf604f73c9eb1010f3833297b5e58245fce41519530a26",
+  "sourceBytes": 39728168,
+  "gzipBytes": 4434018,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-400.json.gz",
+  "verifiedAt": "2026-11-23T03:26:27.378462+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-410.json": {
+  "sourceSha256": "d31726f79cf902cc98193366b46fadf24c2633a6f69eaa909623c8922e922289",
+  "sourceBytes": 40243735,
+  "gzipBytes": 4468743,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-410.json.gz",
+  "verifiedAt": "2026-11-23T03:26:28.040451+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-420.json": {
+  "sourceSha256": "bc4c1a7f743806684c8dcde83f6d2511a504e4979d0e03e731e932bf58a8543d",
+  "sourceBytes": 40469979,
+  "gzipBytes": 4499196,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-420.json.gz",
+  "verifiedAt": "2026-11-23T03:26:28.860831+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-430.json": {
+  "sourceSha256": "e4a7fda0871b5faa2fd74a1b89794bbed309915c05b48694f4467578d414e596",
+  "sourceBytes": 40615034,
+  "gzipBytes": 4527930,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-430.json.gz",
+  "verifiedAt": "2026-11-23T03:26:29.801973+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-440.json": {
+  "sourceSha256": "f02041f013e9891fd3ba3fdee3cac241ea7ba738b271f71db335826e20fdd400",
+  "sourceBytes": 41052524,
+  "gzipBytes": 4554701,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-440.json.gz",
+  "verifiedAt": "2026-11-23T03:26:30.486679+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-450.json": {
+  "sourceSha256": "b236dd62ea1d4408172e1bc02299564e59ec8c833e10ed611ff2500b1185a983",
+  "sourceBytes": 41167539,
+  "gzipBytes": 4558284,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-450.json.gz",
+  "verifiedAt": "2026-11-23T03:26:31.180905+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-50.json": {
+  "sourceSha256": "0b4f4ce40ca3c5023183c0cb765e82a4d59d38d56bb60ea56a65ee3b7012d5cb",
+  "sourceBytes": 24825441,
+  "gzipBytes": 2493147,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-50.json.gz",
+  "verifiedAt": "2026-11-23T03:26:31.538068+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-60.json": {
+  "sourceSha256": "defaccdb5e0d78b1baa7649444e15e46404a1a84f48435771ace9ab5e7c75670",
+  "sourceBytes": 25684962,
+  "gzipBytes": 2548334,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-60.json.gz",
+  "verifiedAt": "2026-11-23T03:26:31.908143+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-70.json": {
+  "sourceSha256": "b59fd7da6f2066bc6809416a30c0b76f4d3e091eeab15f3ab7424a4cb98a790b",
+  "sourceBytes": 26406564,
+  "gzipBytes": 2625512,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-70.json.gz",
+  "verifiedAt": "2026-11-23T03:26:32.279550+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-80.json": {
+  "sourceSha256": "2a5cd788c3fcf16f7e551791f292e1b2590ec73037632bbed0473e33505d118d",
+  "sourceBytes": 26927002,
+  "gzipBytes": 2672142,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-80.json.gz",
+  "verifiedAt": "2026-11-23T03:26:32.668756+00:00",
+  "checkpointBoundary": 460
+ },
+ "stop-90.json": {
+  "sourceSha256": "29589b8269ca3454ef1df9623470deb640c7b4f7e06ac08402020326aa187ae8",
+  "sourceBytes": 27996909,
+  "gzipBytes": 2744934,
+  "archive": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/stop-90.json.gz",
+  "verifiedAt": "2026-11-23T03:26:33.074670+00:00",
+  "checkpointBoundary": 460
+ }
+}
