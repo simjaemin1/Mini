@@ -35,7 +35,7 @@ const BAITS = {
   noGate: { file: ZFILE, at: ["const T1423_NO_BUILD = process.env.T1423_NO_BUILD === '1';", "const T1423_NO_BUILD = false && process.env.T1423_NO_BUILD === '1';   // 미끼 ㉠ — 지형 문을 뺀다"] },
   allFence: { file: VFILE, at: ['const cut = !rp, ratio = cut ? null : (oldLen > 0 ? newLen / oldLen : 1), block = cut || ratio > T1423_RATIO;', 'const cut = !rp, ratio = cut ? null : (oldLen > 0 ? newLen / oldLen : 1), block = true;   // 미끼 ㉡ — 모든 울타리에 반응한다'] },
   afar: { file: VFILE, at: ['const _t1423A = _t1423h ? _t1423Ahead(body, body.prog, Math.min(body.len, body.prog + CARAVAN_REPAIR_LOOKAHEAD_PX)) : null;', 'const _t1423A = _t1423h ? _t1423Ahead(body, body.prog, body.len) : null;   // 미끼 ㉢ — 길 전체를 안다(멀리서 저절로)'] },
-  instant: { file: VFILE, at: ['if (!alive.every((pid) => _t1423Arrived(state.bodyExits && state.bodyExits.get(pid)))) continue;', 'if (false) continue;   // 미끼 ㉣ — 닿기를 안 기다린다(순간 삭제)'] },
+  instant: { file: VFILE, at: ['if (!alive.every((pid) => _t1423Arrived(state.bodyExits && state.bodyExits.get(pid)))) continue;\n      job.arriveDay = d; S.arrive++; job.hit = [];', 'if (false) continue;   // 미끼 ㉣ — 닿기를 안 기다린다(순간 삭제)\n      job.arriveDay = d; S.arrive++; job.hit = [];'] },   // ★[T1447] 자리 글자를 다음 줄까지 늘렸다 — T1447 토벌 사다리가 같은 걷기 문 줄을 쓴다(뜻 무변)
 };
 function baitHook(name) {
   const bait = name && name !== '-' ? BAITS[name] : null; if (!bait) return;
