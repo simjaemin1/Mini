@@ -439,7 +439,8 @@ function rationMrlW(){ const x=_bcKnob('T295_RATION_MRL'); if(x===null)return 0;
 function _t1462Arms(ctx){ if(ctx._t1462)return ctx._t1462; const x=_bcKnob('T1462_MORALE'); const S={}; if(x)for(const k of String(x).split(','))if(k)S[k.trim()]=true; return (ctx._t1462=S); }
 //   붙기 전 사기 목표(만나는 순간 판단 — `sim/caravan-battle.js decide` 가 이 함수 하나를 읽는다 · 식을 따로 갖지 않는다):
 //     곁 아군 fN · 보이는 적 eN · 편 칸 armyMrl — 교전 · 다친 몫 · 사상률 · 전염 · 대형 항은 0(아직 안 붙었다 · 길 위 행렬). 팔(self)은 손잡이 그대로.
-function preMorale(type,fN,eN,armyMrl){ const A=_t1462Arms({}); let t=(MRL0[type]||0.8)+M_KODDS*((A.self?fN+1:fN)-eN)/(fN+eN+1);
+function _t1462Odds(A,fN,eN){ return M_KODDS*((A.self?fN+1:fN)-eN)/(fN+eN+1); }   // 수 우열 항 — 싸움 안(`updateMorale`) · 붙기 전(`preMorale`)이 같은 한 줄(㉮ self 도 여기)
+function preMorale(type,fN,eN,armyMrl){ const A=_t1462Arms({}); let t=(MRL0[type]||0.8)+_t1462Odds(A,fN,eN);
   if(armyMrl!=null&&armyMrl<1)t*=Math.max(0,armyMrl); return t<0?0:t>1?1:t; }
 function updateMorale(ctx,dt){
   const _ratW=rationMrlW(); const _A=_t1462Arms(ctx);
@@ -453,7 +454,7 @@ function updateMorale(ctx,dt){
     const myRel=u.side==='A'?relA:relB, enRel=u.side==='A'?relB:relA;
     const commit=u.st==='melee'?1:(dMin2<COMMIT_D*COMMIT_D?1-Math.sqrt(dMin2)/COMMIT_D:0);
     const wound=1-u.hp/u.maxHp;
-    let tgt=(MRL0[u.type]||0.8)+M_KODDS*((_A.self?fN+1:fN)-eN)/(fN+eN+1)-M_KCONTAG*rN+M_KCHAMP*champ+M_KRELCAS*(enRel-myRel)-M_KABS*myRel   // ★[T1462 ㉮] self = 제 편에 자기를 센다
+    let tgt=(MRL0[u.type]||0.8)+_t1462Odds(_A,fN,eN)-M_KCONTAG*rN+M_KCHAMP*champ+M_KRELCAS*(enRel-myRel)-M_KABS*myRel   // ★[T1462 ㉮] self = 제 편에 자기를 센다
       +(_A.nocommit?0:M_KCOMMIT*commit)-M_KWOUND*wound*(_A.wound?1:(1-commit))+(_A.nodesp?0:M_KDESP*wound*commit)   // ★[T1462 ㉰ wound · ㉯ nodesp · ㉲ nocommit]
       +(u.form==='wall'?0.30:u.form==='circle'?0.15:u.form==='open'?-0.08:0) - (u.broken?0.18:0);
     if(_ratW>0){ const _r=ctx.sides[u.side].ration; if(_r!=null&&_r<1) tgt-=_ratW*(1-Math.max(0,_r)); }   // ★[T295 ②] 굶은 편은 먼저 흔들린다(손잡이 켤 때만)
