@@ -100,7 +100,7 @@ function spawn(ctx,side,type,x,y,form,quality){const D=UNITS[type];
 //   위치 미주입(units 없음) 진영은 기존 표준 배치 100% 동일 → 전투실험실·골든마스터 비트동일. 화살/돌/지휘관/슬롯/품질은 표준과 동일하게 세팅.
 function buildArmies(ctx,spec){
   spec=spec||{};
-  ctx.units=[]; ctx.arrows=[]; ctx.corpses=[]; ctx.tick=0; ctx.result=null;
+  ctx.units=[]; ctx.arrows=[]; ctx.corpses=[]; ctx.tick=0; ctx.result=null; ctx._t1462=null;   // ★[T1462] 팔은 판마다 새로 읽는다(랩 전역 판이 같은 ctx 를 다시 쓴다)
   ctx.terrain=(spec.terrain!=null)?spec.terrain:'plain';   // ★[T284] 지형 이름만 기록(가짜 지형 생성 제거 — 장애물은 ctx.world)
   ctx.sides={A:{start:0,dead:0,rout:false}, B:{start:0,dead:0,rout:false}};
   ctx.playerMode=!!spec.playerCmd;
@@ -216,7 +216,8 @@ function buildGrid(ctx){ctx._grid.clear(); let ax=0,ay=0,an=0,bxx=0,byy=0,bn=0,a
 //   같은 바꿈 · 같은 멈춤을 그대로 되풀이한다(같은 답 · 하네스 `test-t1235-nearest`).
 function _neDirect(ctx,u,R,los,bx,by){ const gl=ctx._gl; const B=ctx._neB||(ctx._neB=[]);
   for(let r=0;r<=R;r++){ if(B[r])B[r].length=0; else B[r]=[]; }
-  for(let k=0;k<gl.length;k+=3){ const e=gl[k]; if(e.side===u.side||e.hp<=0)continue;
+  const _nc=!!(ctx._t1462&&ctx._t1462.nochase);   // ★[T1462 ㉱] 달아나는 몸을 안 겨눈다
+  for(let k=0;k<gl.length;k+=3){ const e=gl[k]; if(e.side===u.side||e.hp<=0||(_nc&&e.routing))continue;
     const r=Math.max(Math.abs(gl[k+1]-bx),Math.abs(gl[k+2]-by)); if(r>R)continue; B[r].push(k); }
   let best=null,bd=1e18;
   for(let r=0;r<=R;r++){ const L=B[r];
@@ -230,7 +231,7 @@ function _neDirect(ctx,u,R,los,bx,by){ const gl=ctx._gl; const B=ctx._neB||(ctx.
     if(best){const rm=r*BK; if(bd<=rm*rm)break;}
   }
   return best?{e:best,d:Math.sqrt(bd)}:null; }
-function nearestEnemy(ctx,u,maxR,los){const bx=Math.floor(u.x/BK),by=Math.floor(u.y/BK); let best=null,bd=1e18;
+function nearestEnemy(ctx,u,maxR,los){const bx=Math.floor(u.x/BK),by=Math.floor(u.y/BK); let best=null,bd=1e18; const _nc=!!(ctx._t1462&&ctx._t1462.nochase);
   const nG=ctx._gl?ctx._gl.length/3:Infinity;
   for(let r=0;r<=(maxR||80);r++){
     if((2*r+1)*(2*r+1)*16>nG) return _neDirect(ctx,u,(maxR||80),los,bx,by);   // ★[T1235] 훑은 칸 × 16 이 몸 수를 넘으면 몸 줄로(같은 답 · 위 · 칸 하나 Map 묻기 ≈ 몸 줄 열여섯 칸 — 잰 값)
@@ -238,7 +239,7 @@ function nearestEnemy(ctx,u,maxR,los){const bx=Math.floor(u.x/BK),by=Math.floor(
     for(let ix=bx-r;ix<=bx+r;ix++){ const edge=(ix===bx-r||ix===bx+r), st=edge?1:2*r;
     for(let iy=by-r;iy<=by+r;iy+=(st||1)){
       const c=ctx._grid.get(((ix+256)*8192)+(iy+256)); if(!c)continue;
-      for(const e of c){if(e.side===u.side||e.hp<=0)continue; const dx=u.x-e.x,dy=u.y-e.y,d=dx*dx+dy*dy; if(d<bd&&!(los&&ctx.world&&treeBlocks(ctx,u.x,u.y,e.x,e.y))){bd=d;best=e;}}}}
+      for(const e of c){if(e.side===u.side||e.hp<=0||(_nc&&e.routing))continue; const dx=u.x-e.x,dy=u.y-e.y,d=dx*dx+dy*dy; if(d<bd&&!(los&&ctx.world&&treeBlocks(ctx,u.x,u.y,e.x,e.y))){bd=d;best=e;}}}}
     if(best){const rm=r*BK; if(bd<=rm*rm)break;}
   }
   return best?{e:best,d:Math.sqrt(bd)}:null;}
@@ -308,7 +309,7 @@ function stepBattle(ctx,dt){
     const isMain=(u.type==='spear'||u.type==='pike'||u.type==='greataxe'||u.type==='champion');
     const mSpd=isMain?ctx._cen[u.side].march:D.spd;
     u._detCd=(u._detCd||0)-dt;
-    const tgtOk = u.tgt && u.tgt.hp>0 && dist2(u,u.tgt)<25*25 && !(ctx.world&&treeBlocks(ctx,u.x,u.y,u.tgt.x,u.tgt.y));
+    const tgtOk = u.tgt && u.tgt.hp>0 && dist2(u,u.tgt)<25*25 && !(ctx.world&&treeBlocks(ctx,u.x,u.y,u.tgt.x,u.tgt.y)) && !(ctx._t1462&&ctx._t1462.nochase&&u.tgt.routing);   // ★[T1462 ㉱]
     let e;
     if(tgtOk && u._detCd>0) e=u.tgt;
     else { u._detCd=0.35+ctx.rng()*0.12; e=(nearestEnemy(ctx,u,Math.ceil(engR/BK)+1,true)||{}).e; }
@@ -423,8 +424,25 @@ function _bcKnob(name){ const g=(typeof window!=='undefined')?window:null;
   if(typeof process!=='undefined'&&process.env&&process.env[name]!==undefined)return String(process.env[name]);
   return null; }
 function rationMrlW(){ const x=_bcKnob('T295_RATION_MRL'); if(x===null)return 0; const n=parseFloat(x); return Number.isFinite(n)&&n>0?n:0; }
+// ★★[T1462 2026-11-23 · ★재민 11-23 "도적이라고 다르면 안 돼.. 혹시 전투실험실도 문제가 있는 건 아니지..?"] **싸움의 사기 — 고를 수 있는 팔**(손잡이 `T1462_MORALE` · 끔 기본 · 끔 = 이 파일 바이트 같은 동작).
+//   값 = 팔 이름을 쉼표로(브라우저 랩 `window.T1462_MORALE` · 서버 env) · 새 수 0 — 있는 항을 걷거나 세는 법을 고치는 것만:
+//     self   ㉮ 곁 아군에 자기를 센다 — 수 우열 항의 제 편 = 곁 아군 + 1(1 대 1 = 0 · 분모 = 곁 몸 전부 그대로)
+//     nodesp ㉯ 붙어 다치면 사기가 오르는 항(`M_KDESP` × 다친 몫 × 교전)을 걷는다
+//     wound  ㉰ 다친 몫이 붙어 있어도 사기를 깎는다 — `M_KWOUND` × 다친 몫(종전 × (1 − 교전))
+//     nochase ㉱ 달아나는 몸을 겨누지 않는다 — 적 고르기(`nearestEnemy`)가 궤주 중인 몸을 건너뛴다(이긴 편이 쫓아가 베지 않는다 · 자리를 지킨다)
+//   ㉲ 진단에서 찾은 것(T1462 보고 §1 — 붙은 뒤 두 대 · 1초 안에 죽는데 사기는 1초 넘게 늦게 따라온다 · 꺾일 몫도 초당 몇 % 라 꺾이기 전에 죽는다):
+//     nocommit 붙어 있으면 사기가 오르는 항(`M_KCOMMIT` × 교전)을 걷는다
+//     instant  사기가 목표로 곧장 간다(종전 = 초당 `M_RATE` 몫으로 다가감)
+//     breaknow 궤주 문턱 밑이면 그 걸음에 꺾인다(종전 = 초당 (문턱 − 사기) × `M_BREAKRATE` 몫의 확률)
+//     norally  꺾인 몸이 싸움 중에 다시 돌아오지 않는다(종전 = 사기가 `M_RALLY` 위 + 곁 적 0 이면 다시 싸움에 든다)
+//   판(싸움) 하나마다 한 번 읽어 `ctx._t1462` 에 둔다(판 중간에 안 바뀐다 · 랩은 판을 새로 열 때 고른다).
+function _t1462Arms(ctx){ if(ctx._t1462)return ctx._t1462; const x=_bcKnob('T1462_MORALE'); const S={}; if(x)for(const k of String(x).split(','))if(k)S[k.trim()]=true; return (ctx._t1462=S); }
+//   붙기 전 사기 목표(만나는 순간 판단 — `sim/caravan-battle.js decide` 가 이 함수 하나를 읽는다 · 식을 따로 갖지 않는다):
+//     곁 아군 fN · 보이는 적 eN · 편 칸 armyMrl — 교전 · 다친 몫 · 사상률 · 전염 · 대형 항은 0(아직 안 붙었다 · 길 위 행렬). 팔(self)은 손잡이 그대로.
+function preMorale(type,fN,eN,armyMrl){ const A=_t1462Arms({}); let t=(MRL0[type]||0.8)+M_KODDS*((A.self?fN+1:fN)-eN)/(fN+eN+1);
+  if(armyMrl!=null&&armyMrl<1)t*=Math.max(0,armyMrl); return t<0?0:t>1?1:t; }
 function updateMorale(ctx,dt){
-  const _ratW=rationMrlW();
+  const _ratW=rationMrlW(); const _A=_t1462Arms(ctx);
   for(const u of ctx.units)u._rPrev=u.routing;
   const relA=ctx.sides.A.start?ctx.sides.A.dead/ctx.sides.A.start:0, relB=ctx.sides.B.start?ctx.sides.B.dead/ctx.sides.B.start:0;
   const ord=ctx.units.slice(); for(let i=ord.length-1;i>0;i--){const j=(ctx.rng()*(i+1))|0;const t=ord[i];ord[i]=ord[j];ord[j]=t;}
@@ -435,16 +453,16 @@ function updateMorale(ctx,dt){
     const myRel=u.side==='A'?relA:relB, enRel=u.side==='A'?relB:relA;
     const commit=u.st==='melee'?1:(dMin2<COMMIT_D*COMMIT_D?1-Math.sqrt(dMin2)/COMMIT_D:0);
     const wound=1-u.hp/u.maxHp;
-    let tgt=(MRL0[u.type]||0.8)+M_KODDS*(fN-eN)/(fN+eN+1)-M_KCONTAG*rN+M_KCHAMP*champ+M_KRELCAS*(enRel-myRel)-M_KABS*myRel
-      +M_KCOMMIT*commit-M_KWOUND*wound*(1-commit)+M_KDESP*wound*commit
+    let tgt=(MRL0[u.type]||0.8)+M_KODDS*((_A.self?fN+1:fN)-eN)/(fN+eN+1)-M_KCONTAG*rN+M_KCHAMP*champ+M_KRELCAS*(enRel-myRel)-M_KABS*myRel   // ★[T1462 ㉮] self = 제 편에 자기를 센다
+      +(_A.nocommit?0:M_KCOMMIT*commit)-M_KWOUND*wound*(_A.wound?1:(1-commit))+(_A.nodesp?0:M_KDESP*wound*commit)   // ★[T1462 ㉰ wound · ㉯ nodesp · ㉲ nocommit]
       +(u.form==='wall'?0.30:u.form==='circle'?0.15:u.form==='open'?-0.08:0) - (u.broken?0.18:0);
     if(_ratW>0){ const _r=ctx.sides[u.side].ration; if(_r!=null&&_r<1) tgt-=_ratW*(1-Math.max(0,_r)); }   // ★[T295 ②] 굶은 편은 먼저 흔들린다(손잡이 켤 때만)
     { const _am=ctx.sides[u.side].armyMrl; if(_am!=null&&_am<1) tgt*=Math.max(0,_am); }   // ★[T1076] 원정 사기(0~1)가 목표를 누른다 — 호스트가 칸을 실을 때만(켬 · 랩 · 헤드리스는 칸 없음 = 무변)
     if(tgt<0)tgt=0;else if(tgt>1)tgt=1;
-    u.mrl+=(tgt-u.mrl)*Math.min(1,M_RATE*dt);
+    if(_A.instant)u.mrl=tgt; else u.mrl+=(tgt-u.mrl)*Math.min(1,M_RATE*dt);   // ★[T1462 ㉲ instant]
     if(u.mrl<0)u.mrl=0;else if(u.mrl>1)u.mrl=1;
-    if(!u.routing){ if(u.mrl<M_BREAK && ctx.rng()<(M_BREAK-u.mrl)*M_BREAKRATE*dt)u.routing=true; }
-    else if(u.mrl>M_RALLY && eN===0)u.routing=false;
+    if(!u.routing){ if(u.mrl<M_BREAK && (_A.breaknow || ctx.rng()<(M_BREAK-u.mrl)*M_BREAKRATE*dt))u.routing=true; }   // ★[T1462 ㉲ breaknow]
+    else if(!_A.norally && u.mrl>M_RALLY && eN===0)u.routing=false;   // ★[T1462 ㉲ norally]
   }
 }
 // ★유닛 속도 추적(궁수 리드사격용) — 전투실험실 루프의 trackVel
@@ -536,7 +554,7 @@ _defaultCtx.rng=()=>Math.random();
 const BattleCore={
   // 상수
   UNITS, ARROWS_PER, STONES_PER, BREAK_P, MRL0, SIDE_COL, BK,
-  M_BREAK, M_RALLY, M_RATE, M_KODDS, M_KCONTAG, M_KCHAMP, M_KRELCAS, M_KABS,
+  M_BREAK, M_RALLY, M_RATE, M_KODDS, M_KCONTAG, M_KCHAMP, M_KRELCAS, M_KABS, preMorale,   // ★[T1462] 붙기 전 사기 목표
   M_KCOMMIT, M_KWOUND, M_KDESP, COMMIT_D, M_BREAKRATE,
   SUP_ARROW, SUP_DEATH, SUP_R, FORM_SPD, FORM_KO, DEPLOY_W, DEPLOY_H,
   // ── 다중 인스턴스 API ──

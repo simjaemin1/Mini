@@ -64,8 +64,7 @@ function decide({ A, B, qA, qB, happy }) {
   for (const [t, k] of A) {
     if (!(k > 0)) continue;
     const fN = a.n - 1, eN = b.n;
-    let tg = ((BC.MRL0[t] || 0.8) + BC.M_KODDS * (fN - eN) / (fN + eN + 1)) * h;   // battle-core 사기 목표(접촉 · 대형 0 · armyMrl = 행복)
-    tg = tg < 0 ? 0 : tg > 1 ? 1 : tg;
+    const tg = BC.preMorale(t, fN, eN, h);   // battle-core 붙기 전 사기 목표(접촉 · 대형 0 · armyMrl = 행복) — ★[T1462] 식은 battle-core 한 곳(팔 `T1462_MORALE` 도 그대로 따라온다)
     m += tg * k;
   }
   m = a.n > 0 ? m / a.n : 0;
