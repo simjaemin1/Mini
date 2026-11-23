@@ -11,6 +11,11 @@
 //   node scripts/us-line.js run  --dir <판 폴더> --tpl <틀 db> --n 2 --arm main=<커밋> --arm fix=<커밋>[:ENV=1,ENV2=0] ...
 //       ⇒ 차례 main1 fix1 main2 fix2 … (번갈아 · 한 판씩 혼자) · 판 하나 끝날 때마다 <판 폴더>/us-line.log 에 한 줄
 //   node scripts/us-line.js line --dir <판 폴더> [--arm main --arm fix] [--seg]   ★[T1425] 둘째 줄 = 틱 비용 줄(틱 ms = µs × 몸 · 몸 µs · 분위 · gc) · --seg = 덩이 표(ms/틱)
+//   ★★[T1467 · 재민 11-23 판정 80 "사람 한 명에게 쓰는 시간 전부 0.3µs"] **자의 첫 줄 = 틱 µs/사람** — 틱 본문 구간 합 ÷ 틱 ÷ 사람(낮 · 밤 · 최악 = p99 틱 ÷ 사람) · 몸 수 · 표본기 켬/끔을 늘 같이 적는다.
+//       옛 "걸음 µs"(결정 문 안 걸음 몸통 몫 — 건너뛴 몸이 분자에서 빠지고 분모에 남는다)는 둘째 줄(지난 판과 견줌용) · 틱 ms 줄은 셋째 줄.
+//       `--seg` 덩이 표는 µs/사람(합 = 첫 줄)이 먼저 · ms/틱 표(T1425)가 뒤.
+//   node scripts/us-line.js touch --file <t1467 셈 판 touch.json> [--dir <시계 판 폴더> --arm <팔>]   ★[T1467] 덩이마다 만진 몸 수 · 몸 하나 ns · 달라진 것 없이 만진 몫
+//       (셈 판 = `T646_PRELOAD=scripts/t1467-touch-hook.cjs T1467_TOUCH_OUT=…` 로 돈 t646 판 — 감싸기가 시간을 얹으니 ns 는 시계 판 덩이 시간 ÷ 셈 판 만진 수)
 //       ⇒ 팔마다 한 줄: "main n2 · 낮 0.651 [0.623 ~ 0.709] · 밤 닫힘 앞 0.680 [0.555 ~ 0.754] · 밤 창 1.252 [...] · 결정 순회 낮 … · 밤 닫힘 앞 … · 밤 창 … · 틱 p50 낮 2.84"
 //       ★[T1323] 결정 순회 = 결정 문(순회) 구간 µs/사람(몸을 건너는 몫까지 — 걸음 µs 와 같이 적는다 · T1322 회부 3)
 //   틀이 없으면 먼저 굽는다: T368_TMP=<틀 폴더> T368_ARMS=t100 T687_SHARED_BUDGET=0 node scripts/t368-farm-day.js a  (기준 커밋 트리에서)
@@ -75,10 +80,25 @@ if (cmd === 'run' || cmd === 'line') {
     const segs = [...new Set(R.flatMap((x) => Object.keys(x.segUs)))];
     out.push({ arm: nm, n: day.length, day: med(dv), pre: med(pv), win: med(wv), decDay: med(dd), decPre: med(pd), decWin: med(wd), dayBand: [Math.min(...dv), Math.max(...dv)], preBand: [Math.min(...pv), Math.max(...pv)], flags: fl,
       tick: { day: TD, night: TN, segDay: Object.fromEntries(segs.map((k) => [k, segMs(day, k)])), segNight: Object.fromEntries(segs.map((k) => [k, segMs(night, k)])) } });
-    console.log(ln);
-    console.log(ln2);
+    //   ★★[T1467] 첫 줄 = 틱 µs/사람(틱 본문 구간 합 ÷ 틱 ÷ 사람) · 최악 = 조각 p99 틱 ÷ 사람(낮 · 밤 가운데 큰 쪽) · 몸 수 · 표본기
+    const W1 = (R2) => R2.filter((x) => x.tq && x.pop).map((x) => x.tq.p99 * 1000 / x.pop);
+    const wD = med(W1(day)), wN = med(W1(night)), worst = Math.max(wD || 0, wN || 0), prof = R.some((x) => x.prof), popM = Math.round(med(R.map((x) => x.pop)));
+    const ln0 = `${nm} 틱 µs/사람 낮 ${band(day.map((x) => x.segSumUs))} · 밤 ${band(night.map((x) => x.segSumUs))} · 최악 ${f3(worst)}(p99 틱 ÷ 사람 · ${(wN || 0) > (wD || 0) ? '밤' : '낮'}) · 몸 ${popM} · 표본기 ${prof ? '켬 ⚠(틈을 만든다 — T1425 ㉢)' : '끔'} · n${day.length}`;
+    out[out.length - 1].first = { day: TD.us, night: TN.us, worst, worstDay: wD, worstNight: wN, pop: popM, prof, segDayUs: Object.fromEntries(segs.map((k) => [k, med(day.map((x) => x.segUs[k] || 0))])), segNightUs: Object.fromEntries(segs.map((k) => [k, med(night.map((x) => x.segUs[k] || 0))])) };
+    console.log(ln0);
+    console.log('  둘째 줄(옛 걸음 µs — 지난 판과 견줌용) ' + ln);
+    console.log('  셋째 줄(틱 ms) ' + ln2);
   }
-  if (A.includes('--seg')) {   // ★[T1425] 덩이 표(ms/틱 · 판 가운데) — 낮 · 밤
+  if (A.includes('--seg')) {   // ★[T1467] 덩이 표 = µs/사람(판 가운데 · 합 = 첫 줄) — 낮 · 밤
+    for (const W of ['segDayUs', 'segNightUs']) {
+      const ks = [...new Set(out.flatMap((o) => Object.keys(o.first[W])))];
+      console.log(`\n| 덩이(${W === 'segDayUs' ? '낮' : '밤'} · µs/사람) | ${out.map((o) => o.arm + ' (몸 ' + o.first.pop + ')').join(' | ')} |\n|---|${out.map(() => '---').join('|')}|`);
+      for (const k of ks) console.log(`| ${k} | ${out.map((o) => f3(o.first[W][k])).join(' | ')} |`);
+      console.log(`| 덩이 가운데들의 합 | ${out.map((o) => f3(Object.values(o.first[W]).reduce((t, v) => t + v, 0))).join(' | ')} |`);
+      console.log(`| **첫 줄(판마다 덩이 합 = 그 판 틱 µs/사람 · 판들의 가운데)** | ${out.map((o) => '**' + f3(o.first[W === 'segDayUs' ? 'day' : 'night']) + '**').join(' | ')} |`);
+    }
+  }
+  if (A.includes('--seg')) {   // ★[T1425] 덩이 표(ms/틱 · 판 가운데) — 낮 · 밤 · ★[T1467] µs/사람 표 뒤에(지난 판과 견줌용)
     for (const W of ['segDay', 'segNight']) {
       const ks = [...new Set(out.flatMap((o) => Object.keys(o.tick[W])))];
       console.log(`\n| 덩이(${W === 'segDay' ? '낮' : '밤'} · ms/틱) | ${out.map((o) => o.arm).join(' | ')} |\n|---|${out.map(() => '---').join('|')}|`);
@@ -87,4 +107,33 @@ if (cmd === 'run' || cmd === 'line') {
     }
   }
   fs.writeFileSync(path.join(DIR, 'us-line.json'), JSON.stringify(out, null, 1));
+}
+
+if (cmd === 'touch') {   // ★[T1467] 덩이마다 만진 몸 · 몸 하나 ns · 달라진 것 없이 만진 몫(셈 판 + 시계 판)
+  const TJ = JSON.parse(fs.readFileSync(path.resolve(opt('--file')), 'utf8'));
+  let L = null; try { L = JSON.parse(fs.readFileSync(path.join(DIR, 'us-line.json'), 'utf8')); } catch (e) {}
+  const arm = opt('--arm', L && L[0] && L[0].arm), LA = L && L.find((o) => o.arm === arm);
+  const res = {};
+  for (const W of ['day', 'night']) {
+    const B = TJ.win[W]; if (!B) continue; const t = B.ticks, pop = B.popN / t, T = B.tick;
+    const xyN = Math.max(T.keys.x || 0, T.keys.y || 0), rows = [];
+    console.log(`\n| 덩이(${W === 'day' ? '낮' : '밤'} · 셈 판 틱 ${t} · 표본 틱 ${B.sTicks} · 사람 ${Math.round(pop)}) | 만진 몸/틱 | 걷는 | 서 있는 | 몸 하나 ns(시계 판) | 달라진 것 없이 만진 몫 | 걷는 몸 | 서 있는 몸 |\n|---|---|---|---|---|---|---|---|`);
+    let tN = 0, tU = 0, tT = 0, tTU = 0;
+    for (const [k, S] of Object.entries(B.seg)) {
+      const by = S.by || {}, nw = (by['걷는'] || {}).n || 0, ns = (by['서 있는'] || {}).n || 0;
+      const un = S.sn ? 1 - S.chg / S.sn : (k.startsWith('공간 색인') && T.n ? 1 - xyN / T.n : null);   // 공간 색인 = 그 틱에 자리가 안 바뀐 몸 몫(재구축이 다시 넣는다)
+      const u = (c) => (c && c.sn ? ((1 - c.chg / c.sn) * 100).toFixed(1) + ' %' : '—');
+      const segUs = LA && LA.first ? LA.first[W === 'day' ? 'segDayUs' : 'segNightUs'][k] : null, per = S.n / t;
+      const nsBody = segUs != null && per ? segUs * LA.first.pop / per * 1000 : null;
+      rows.push({ seg: k, perTick: per, walk: nw / t, stand: ns / t, nsBody, unchanged: un, segUs });
+      if (un != null) { tN += per; tU += per * un; if (segUs != null) { tT += segUs; tTU += segUs * un; } }
+      console.log(`| ${k} | ${Math.round(per)} | ${Math.round(nw / t)} | ${Math.round(ns / t)} | ${nsBody == null ? '—' : nsBody.toFixed(0)} | ${un == null ? '—' : (un * 100).toFixed(1) + ' %'} | ${u(by['걷는'])} | ${u(by['서 있는'])} |`);
+    }
+    const all = tN ? tU / tN : null, allT = tT ? tTU / tT : null;
+    console.log(`| **몸 덩이 합** | ${Math.round(tN)} | | | | **${all == null ? '—' : (all * 100).toFixed(1) + ' %'}**(만진 수) · ${allT == null ? '—' : (allT * 100).toFixed(1) + ' %'}(시간) | | |`);
+    console.log(`  틱 전체: 표본 몸 ${T.n} · 아무것도 안 달라진 몸 ${(T.same / T.n * 100).toFixed(1)} % · 자리(x · y) 그대로 ${((1 - xyN / T.n) * 100).toFixed(1)} % · 틱 머리 갈래 ${JSON.stringify(B.cls)}`);
+    console.log(`  자리 그대로인데 달라진 칸(위 15): ${Object.entries(T.keysXY).sort((a, b) => b[1] - a[1]).slice(0, 15).map(([k, v]) => k + ' ' + v).join(' · ')}`);
+    res[W] = { rows, unchangedTouch: all, unchangedTime: allT, tickSame: T.same / T.n, xySame: 1 - xyN / T.n, cls: B.cls, pop };
+  }
+  fs.writeFileSync(path.join(DIR, 'us-touch.json'), JSON.stringify(res, null, 1));
 }

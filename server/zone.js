@@ -2021,6 +2021,7 @@ function walkPerf(reset) {
       if (reset) { _wwTC.hit = 0; _wwTC.miss = 0; _wwTC.treeBad = 0; _wwTC.still = 0; _wwTC.stillBad = 0; } }
     if (reset) { _wwStat.ticks = 0; _wwStat.steps = 0; _wwStat.bad = 0; _wwStat.badTicks = 0; _wwStat.gateBad = 0; _wwStat.sample.length = 0; } }   // ★[T461]
   if (T774_ACTIVE_COL) o.t774 = Object.assign({}, _t774Stat);   // ★[T774] 열에서 읽은 수 · 술어로 간 수
+  if (T1467_STILL) { o.t1467 = Object.assign({}, _t67st); if (reset) { _t67st.ticks = 0; _t67st.skip = 0; _t67st.sweep = 0; } }   // ★[T1467] 건넌 서 있는 몸 · 건넌 계단·HP 몸(켬 판만 — 끔 = 칸 없음)
   if (T676_STAMP || T676_VERIFY) { o.t676 = Object.assign({ mode: T676_STAMP ? 'on' : 'verify' }, _t676Stat); if (reset) { _t676Stat.ipaN = 0; _t676Stat.ipaBad = 0; _t676Stat.pvN = 0; _t676Stat.pvBad = 0; } }   // ★[T676] 견줌 셈
   if (_t678o) o.t678 = _t678o;   // ★[T1138] 부팅 미리 굽기(청크 수 · 걸린 ms · 다 굽기 전 칸 A*)
   if (_t678o) o.t678.t1138 = Object.assign({}, _t1138);   // ★[T678] 문 그래프 관측(끔이면 칸 없음)
@@ -17574,15 +17575,36 @@ if ((_wwOn || _wwVerify) && !ZONE.isOcean) {
 //   ★거름은 **한 번만** 한다 — 갈래를 적어 두고 이동 문은 그 적은 것을 읽는다(잠든 몸의 청크 물음을 두 번 안 한다 ·
 //     T461 첫 판이 26존 판에서 걷는 몸이 적을 때 **더 무거워진** 까닭이 그 두 번이었다 — 보고 §3).
 let _wwCut = false;   // ★[T689] `_wwPreOne` 이 읽는 그 틱의 `cut`(forEach 콜백은 인자를 몸 하나만 받는다)
+// ★★[T1467 시범 · µs 열두째 길 ㉮ "서 있는 몸은 틱이 안 만지게" 의 결정 문 밖 몫] 손잡이 `T1467_STILL`(끔 기본 · `=1` 켬 · 끔 = 아래 자리 넷이 무동작 = 종전 바이트)
+//   서 있는 몸(갈래 3 — 속도 +0 · 위층 · 계단 아님 · 구운 지형 안 막힘)은 커널 준비 · 이동 문에서 하는 일이 둘뿐이다 — 개울 배율 칸 기억(`_streamWalkMul` · 같은 칸이면 무동작)과
+//   길 도장(`Roads.stampEntityPx` · 같은 칸이면 무동작). 지난 틱 커널 준비가 이 몸을 갈래 3 으로 본 그 자리(x · y) · 그 지형 세대 그대로면 둘 다 무동작이다 ⇒
+//   커널 준비가 몸을 모으지 않고(차례 칸 · 서 있는 몸 줄에 안 넣는다) 이동 문도 건넌다(건넌 몸 줄 `_t67Q` — players 차례 그대로 · 이동 문이 같은 차례로 짚는다).
+//   걸음 셈(`_walk` · `_wwTC.still`)은 건넌 몸도 종전처럼 센다(서 있던 자리의 칸이 그 사이 잠들면 종전은 갈래 0 으로 셈에서 뺀다 — 그 몸만 셈이 다르다 · 관측 셈 · 세계 무관). ★몸에 칸을 안 붙인다 — 기억은 슬롯(T774 · players 차례) 열에만(`_t67R` · X · Y · 세대):
+//     첫 판(몸에 `_t67*` 칸을 붙였다)은 몸 모양(숨은 클래스)이 서 있는 몸 · 걷는 몸으로 갈려 몸을 읽는 덩이가 다 느려졌다(색인 +0.19 µs/사람 · 보고 §4).
+//   계단·낙하·게이지·HP 바퀴는 마을 몸의 다섯 걸음이 다 무동작인 몸(계단 없는 존 · 0층 · 안 떨어짐 · 허기 · 갈증 꽉 · 몸 허기 손잡이 끔)을 건넌다(슬롯 번호는 센다).
+//   결정 문 몫(서 있는 몸 첫 거름)은 T1415 깨움 줄(`T1415_WAKEQ`)이 한다 — 이 손잡이는 결정 문 밖 세 덩이.
+//   안 서는 판: 커널 끔 · 견줌 · 서 있는 몸 거름 끔 · 열 칸(T1145) · 사건 갈래(T1241) · 몸 시계(T1316) — 그 판엔 무동작. 판 시계 밭 몸(`t1295S` > 1 — 이동 문이 길을 걷는 몸)은 늘 종전 길.
+const T1467_STILL = process.env.T1467_STILL === '1' && _wwOn && T672_WALK_CUT && T774_ACTIVE_COL && !T1145_XY_COLS && !T1241_DES && process.env.T1316_BODY_CLOCK !== '1';
+const _t67Q = [], _t67R = [];
+let _t67Qi = 0, _t67X = T1467_STILL ? new Float64Array(1024) : null, _t67Y = T1467_STILL ? new Float64Array(1024) : null, _t67G = T1467_STILL ? new Float64Array(1024) : null;
+function _t67Put(i, p) {   // 슬롯 i 의 몸이 갈래 3 으로 본 자리 · 지형 세대
+  if (i >= _t67X.length) { const n = Math.max(i + 1, _t67X.length * 2), X = new Float64Array(n), Y = new Float64Array(n), G = new Float64Array(n); X.set(_t67X); Y.set(_t67Y); G.set(_t67G); _t67X = X; _t67Y = Y; _t67G = G; }
+  _t67R[i] = p; _t67X[i] = p.x; _t67Y[i] = p.y; _t67G[i] = _wwTbGen;
+}
+const _t67st = { ticks: 0, skip: 0, sweep: 0 };   // 관측(`/perf` walk.t1467 — 켬 판만)
+if (T1467_STILL) { console.log(`[${ZONE_ID}] 🧍 T1467 서 있는 몸 건넘 켬 — 커널 준비 · 이동 문 · 계단·HP 바퀴`); process.on('exit', () => { try { console.log(`[${ZONE_ID}] 🧍 T1467 건넘 셈 ${JSON.stringify(_t67st)}`); } catch (e) {} }); }   // 켬 판만(끔 = 이 줄 무동작)
 function _wwPreOne(p) {   // 종전 `_wwPre` 고리 몸통 글자 그대로(`continue` → `return`) — 끔이면 고리가, 켬이면 `forEach` 가 부른다
   const _si = T774_ACTIVE_COL ? _t774I++ : 0;   // ★[T774] 슬롯 번호(players 차례 — 공간 색인과 같은 차례)
   if (p.handingOff || !p.isNpc || p.simCaravan || p.simWar) return;
   if (T1241_DES && p._des) return;   // ★[T1241] 사건 갈래가 쥔 몸은 걸음 문 밖(아래 `_moveOne` 과 같은 거름)
   const cut = _wwCut;
+  if (T1467_STILL && cut && _t67R[_si] === p && _t67G[_si] === _wwTbGen && _t67X[_si] === p.x && _t67Y[_si] === p.y && p.vx === 0 && p.vy === 0 && !p.floor && !p.onStairId && !p._t1393Own &&
+      (p.simJob !== 'farmer' || !(SimVillages.t1295S && SimVillages.t1295S(p) > 1))) { _t67Q.push(p); return; }   // 활성 술어는 안 부른다 — 그 사이 칸이 잠들면 종전은 갈래 0(이동 문 무동작) · 갈래 3 도 무동작이라 세계가 같다(서 있는 몸 셈만 그 틱 다를 수 있다 · 관측)   // ★[T1467] 지난 틱 갈래 3 그 자리 · 그 세대 — 이번 틱도 갈래 3 · 뒷일 무동작
   let c = 1;
   if (!p.canadiaVillage && !_t316WalkAlways(p) && !(T774_ACTIVE_COL ? _t774Act(p, _si) : isPositionActive(p.x, p.y))) c = 0;   // 이동 문의 그 거름(몸이 안 움직인 자리에서)
   else if (p.floor || p.onStairId) c = 2;                                                // 위층·계단 = JS 정본
-  else if (cut && p.vx === 0 && p.vy === 0 && _wwIsStill(p, T774_ACTIVE_COL ? _si : undefined)) { c = 3; _streamWalkMul(p); }   // ★[T1278] 슬롯 = T774 슬롯(끔이면 기억 없음)   // ★[T672 ⓑ] 서 있는 몸 = 뒷일만(개울 메모는 종전처럼 갱신)
+  else if (cut && p.vx === 0 && p.vy === 0 && _wwIsStill(p, T774_ACTIVE_COL ? _si : undefined)) { c = 3; _streamWalkMul(p); if (T1467_STILL && Roads.isReady()) _t67Put(_si, p); }   // ★[T1467] 길 도장이 서 있는 판만 기억(안 선 판은 뒤에 도장이 칸을 쓴다)   // ★[T1278] 슬롯 = T774 슬롯(끔이면 기억 없음)   // ★[T672 ⓑ] 서 있는 몸 = 뒷일만(개울 메모는 종전처럼 갱신)
+  if (T1467_STILL && c !== 3 && _t67R[_si] !== undefined) _t67R[_si] = null;   // ★[T1467] 갈래 3 이 아니면 그 슬롯 기억을 지운다(다음에 갈래 3 으로 볼 때 다시 적는다)
   _wwSeq.push(p); _wwCode.push(c);
   if (c === 1) _wwList.push(p);
   else if (c === 3) { _wwStill.push(p); if (!_wwOn) _wwStill0.push(p.x, p.y, p.vx, p.vy); }
@@ -17593,9 +17615,11 @@ function _wwPre(moveDt) {
   const cut = T672_WALK_CUT && Number.isFinite(moveDt);                                    // ★[T672 ⓑ] 서 있는 몸 거름(끔이면 안 열린다)
   _wwCut = cut;
   _wwStill.length = 0; _wwStill0.length = 0;
+  if (T1467_STILL) { _t67Q.length = 0; _t67Qi = 0; }   // ★[T1467] 그 틱 건넌 몸 줄
   if (T689_GC) { _wwCut = cut; players.forEach(_wwPreOne); }   // ★[T689] 같은 차례 · 같은 몸통(아래) — 반복 결과 객체 0
   else for (const p of players.values()) _wwPreOne(p);
-  const n = _wwList.length, S = cut ? _wwStill.length : 0;
+  const n = _wwList.length, S = cut ? _wwStill.length + (T1467_STILL ? _t67Q.length : 0) : 0;   // ★[T1467] 건넌 서 있는 몸도 종전처럼 센다(끔 = + 0 없음 · 종전 식)
+  if (T1467_STILL) { _t67st.ticks++; _t67st.skip += _t67Q.length; }
   _wwStat.ticks++; _wwStat.steps += n + S;
   if (S) { _wwTC.still += S; if (_wwOn) { _walk.steps += S; _walk.terrQ += 4 * S; _walk.wallQ += 3 * S; } }   // ★[T672 ⓑ] 커널이 그 몸에 셀 수 그대로
   if (!n) return 0;                                                                        // 걷는 몸이 없으면 나무·커널도 안 부른다
@@ -18385,6 +18409,7 @@ setInterval(() => {
     if (p.isNpc) {
       if (p.simCaravan) continue; // §4-4 Stage 4B: 캐러밴 실체 NPC — 이동은 villages.js 페이싱(경로 보간+벽 판정)이 전담(이중 이동 방지)
       if (p.simWar || (T1241_DES && p._des)) continue;     // ★[T1241] 사건 갈래가 쥔 몸도(자리는 결정 문에서 보간했다 · 끔 = 앞 항 그대로) · §4-4 P3: 출정(징발) 병사 — 이동은 villages.js 실체 전쟁(행군 대형 페이싱·전투유닛 미러)이 전담(이중 이동 방지)
+      if (T1467_STILL && p === _t67Q[_t67Qi]) { _t67Qi++; continue; }   // ★[T1467] 커널 준비가 건넌 서 있는 몸(같은 차례) — 뒷일(개울 칸 · 길 도장)이 무동작인 몸
       if (p.simVillageId && _t1295Walk(p, moveDt)) {   // ★[T1295] 밭 세계 판 시계 농부 몸 = 그 몸의 길을 게임 분 축 걸음으로(끔 · 운영 시계 = 거짓 — 아래 종전 그대로)
         if (_wwOn && p === _wwSeq[_wwCur]) { if (_wwCode[_wwCur++] === 1) _wwK++; }   // 걸음 커널 차례는 그대로 넘긴다(커널이 잰 걸음은 안 쓴다 — 이 몸은 위에서 걸었다)
         continue;
@@ -18831,6 +18856,8 @@ setInterval(() => {
     if (T774_ACTIVE_COL) _t774I = 0;
     const _sweepOne = (p) => {
       const _si = T774_ACTIVE_COL ? _t774I++ : 0;   // ★[T774] 슬롯 번호(players 차례)
+      if (T1467_STILL && _stairNone && p.isNpc && p.simVillageId != null && !p.canadiaVillage && !p.floor && !p.onStairId && !p.falling && !((p.z || 0) > 0) &&
+          p.hunger === HUNGER_MAX && p.thirst === THIRST_MAX && !T1197_BODY && !p.handingOff) { _t67st.sweep++; return; }   // ★[T1467] 마을 몸 다섯 걸음이 다 무동작(계단 없는 존 · 0층 · 허기 · 갈증 꽉)
       const act = _needAct(p) ? (T774_ACTIVE_COL ? _t774Act(p, _si) : isPositionActive(p.x, p.y)) : true;
       _stairStepP(p);
       _fallStepP(p, act);

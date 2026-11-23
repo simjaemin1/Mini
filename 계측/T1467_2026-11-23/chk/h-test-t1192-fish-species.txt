@@ -1,0 +1,34 @@
+PASS default undefined
+PASS default 0
+PASS default 1
+PASS default 
+[econ-sim-v2] specialty.js 통합: 276종 → 총 296 TRADABLE
+PASS new species goods keep calorie support when the older tidy handle is rolled back
+PASS species exactly follows fishing registry, no new species
+PASS all fresh/sea weights and calories use the same body function
+PASS hand harvest and disabled sea candidates retain their existing masses
+PASS carp is one 2.5kg body and 1600kcal
+PASS unsourced trout keeps current 0.8kg, audit marks unknown
+PASS player plan and NPC table read same kg, RNG consumption remains stable
+PASS hand credit is exactly body kcal, no old parcel value
+PASS species-preserved weights retain existing dry/pickle mass ratios
+PASS every preserved species is a concrete tradable and identity deposit
+PASS deposit and withdrawal keep exact preserved item counts
+PASS NPC processing preserves two actual species and exact counts
+PASS NPC processing carries freshness instead of resetting it
+PASS NPC can pickle the same species using the canonical recipe salt and preserving counts/freshness
+PASS anonymous historical fish is not assigned an invented species
+PASS count-normalized preserved goods conserve total food energy
+PASS preserved consumption eats actual calorie equivalent
+PASS reserve budget is divided by observed catches, unknown ratio stays zero
+PASS catch-share cache invalidates on new catches and restore without exposing a mutable cached map
+PASS zero consumption cannot create a useful stock target per species
+PASS canonical fish receipt rebases old skill-boosted bag credit
+PASS whole body capacity includes existing non-fish cargo
+PASS NPC mixed ore uses its existing kg convention without changing player chunk counts
+PASS a fractional NPC ore remainder is included before accepting the next fish
+PASS zero demand preserves both fish count and kg for next return
+PASS observer mass sampling cannot create or normalize the real body ledgers
+PASS mutant mass is caught
+PASS mutant species is caught
+PASS 32 / FAIL 0

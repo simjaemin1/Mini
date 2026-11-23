@@ -516,7 +516,7 @@ async function run(conf, tag, probe) {
     }
     windows.push({ W: 'boot', slices });
   }
-  const WINS = [['day', 0.10, 0.62], ['night', 0.72, 0.97]];
+  const WINS = [['day', 0.10, 0.62], ['night', 0.72, 0.97]].filter(([w]) => !process.env.T646_WINS || process.env.T646_WINS.split(',').includes(w));   // ★[T1467] `T646_WINS=day` = 낮 창만(바닥 · 몸 수 기울기 판 — 판 하나 ≈ 9분)
   let days0 = null;   // ★[T945] 밤 창 머리(무효화 순간)의 `econTick.days`
   for (const [W, lo, hi] of WINS) {
     let ph = null, inv = null;
@@ -607,7 +607,7 @@ function table() {
     const pop = A.popN / A.n, us = (ms) => +(ms / A.n * 1000 / pop).toFixed(3);
     const p50s = w.slices.map((s) => s.p50).filter((x) => x != null), p95s = w.slices.map((s) => s.p95).filter((x) => x != null);
     const tqs = []; for (const sl of w.slices) for (const x of sl.ana) if (x.tq) tqs.push(x.tq);   // ★[T1140] 조각마다 틱 본문 분위(구간 시계)
-    const r = { conf: j.conf, tag: j.tag, probe: j.probe, ref: j.ref || null, W: w.W, pop: Math.round(pop), ticks: A.n, step: A.step || null, stepBr: A.stepBr || null, tickP50: R.median(p50s), tickP95: R.median(p95s), totUs: us(A.tot),
+    const r = { conf: j.conf, tag: j.tag, probe: j.probe, ref: j.ref || null, prof: !!(j.lines && j.lines.file), W: w.W, pop: Math.round(pop), ticks: A.n, step: A.step || null, stepBr: A.stepBr || null, tickP50: R.median(p50s), tickP95: R.median(p95s), totUs: us(A.tot),
       tq: tqs.length ? { n: tqs.length, p50: R.median(tqs.map((x) => x.p50)), p95: R.median(tqs.map((x) => x.p95)), p99: R.median(tqs.map((x) => x.p99)), max: Math.max(...tqs.map((x) => x.max)) } : null,
       segUs: Object.fromEntries(Object.entries(A.seg).map(([k, v]) => [k, us(v)])), segSumUs: us(Object.values(A.seg).reduce((s, v) => s + v, 0)),
       subUs: Object.fromEntries(Object.entries(A.sub).map(([k, v]) => [k, us(v)])), subN: Object.fromEntries(Object.entries(A.subN).map(([k, v]) => [k, +(v / A.n).toFixed(1)])),
