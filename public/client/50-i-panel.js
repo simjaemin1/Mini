@@ -1254,6 +1254,9 @@ function itemKo(k) {
     if (!F.near.mine) { el.innerHTML = `<div class="hint">${F.near.ko}은(는) 내 것이 아닙니다. 남의 시설은 아직 쓸 수 없습니다.</div>`; return; }
     const secs = Math.round((F.near.craftMs || 0) / 1000);
     let h = `<div class="hint" style="margin-bottom:8px"><b>${F.near.ko}</b> — 여기서 만들 수 있는 것만 보입니다 · 한 개 ${secs}초</div>`;
+    //   ★[T1454] 낡은 시설 — 걸리는 시간 배수(서버가 셈) · 고장이면 왜 못 쓰는지
+    if (F.near.slow && F.near.slow.broken) h += `<div class="hint" style="margin-bottom:8px">${F.near.ko}이(가) 고장 났습니다 — 우클릭 "손질…"로 고쳐야 씁니다.</div>`;
+    else if (F.near.slow && F.near.slow.mult > 1.0005) h += `<div class="hint" style="margin-bottom:8px">낡음 ${Math.round((1 - F.near.slow.x) * 100)}% — 걸리는 시간 ${F.near.slow.mult.toFixed(2)}배(나오는 양은 같습니다)</div>`;
     // ── 대기열 ──
     const q = (F.queue || []).find((x) => x.bid === F.near.bid);
     if (q && q.jobs.length) {

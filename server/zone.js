@@ -120,6 +120,8 @@ const PlayerItems = require('./player-items'); // 플레이어 아이템 인스�
 const Spoil = require('./spoil');
 // ★★[T1438 2026-11-22] 구조물 낡음 정본(재료 빠르기 · 부위 · 한 값 · 수리 몫 — `decay.js`) · 손잡이 `T1438_DECAY`(끔 기본 · 끔이면 아래 `_t1438*` 줄이 하나도 안 돈다)
 const Decay = require('./decay');
+const T1454_SLOW = Decay.SLOW_ON;   // ★[T1454] 낡은 시설은 느려진다(`T1438_DECAY` 켬 안에서만 · 끔 기본) — 머리에 둔다(TDZ · 아래 T1454 절)
+const _t1454S = { slow: 0, broken: 0, multSum: 0, n: 0, wellOff: 0, razeBack: 0, back: 0 };
 // ★★[작물 층 2026-08-31] 작물 정본 — 재민의 `한국작물_카탈로그.xlsx` 34종이 여기로 들어온다.
 //   보관일·포만감·무게·성장일·파종철·수확량이 전부 그 표에서 파생된다(이 파일에 표를 안 적는다).
 const Crops = require('./crops');
@@ -6379,6 +6381,9 @@ if (T990_ECON_DAY && Roads.setEconDay) Roads.setEconDay(() => { const d = SimVil
 //   유도: 자연물 전리품 정본(`lootOfResource`)에서 맨손(덤불 · 약초) · 조잡한 도구(벌목 = 조잡한 돌도끼 · 채석 = 조잡한 돌괭이 — `T1065_NEED` 의 make)로 여는 자연물(나무 · 묘목 · 바위)의 몫
 //   + 맨손 줍기(`forage.sourceAt` 의 뭍 갈래 — 갈대 풀 · 숲 바닥 잔가지 · 자갈). 광맥(`ore`) · 운철은 금속 길이라 뺀다. 사본 0 — 표를 다시 적지 않고 정본 함수를 부른다.
 const _T1368_NEWBIE = (() => { const out = new Set(['fiber', 'twig', 'pebble']); for (const t of ['tree', 'sapling', 'rock', 'berry_bush', 'herb']) { try { for (const k of Object.keys(lootOfResource({ type: t, x: 0, y: 0, r: 8 }) || {})) out.add(k); } catch (e) {} } return [...out]; })();
+// 마을 장인 몸의 작업 자리(T1196 · 존 시설 목록 — 반경 안 가장 가까운 그 창의 시설) // ★[T1454] 켬 — 고장 난 시설은 고르지 않는다 · 고른 시설의 걸리는 시간 배수(m — 몸이 그 자리에서 머무는 제작 시간에 곱한다 · 같은 식)
+const _t1454Safe = (f, d) => { try { return f(); } catch (e) { return d; } };   // ★[T1454] 마을 init 안(낡음 표가 서기 전)에 불려도 종전 값
+function _facilityNearDep(kind, x, y, r) { const ty = Facility.KIND_TYPES[kind] || []; let best = null, bd = Infinity; for (const b of _facilities()) { if (!ty.includes(b.type) || (b.floor | 0) !== 0) continue; if (T1454_SLOW && !(_t1454Safe(() => _t1454X(b), 1) > 0)) continue; const d = Math.hypot(b.x - x, b.y - y); if (d <= r && d < bd) { bd = d; best = b; } } return best ? Object.assign({ x: best.x, y: best.y, type: best.type, id: best.id }, T1454_SLOW ? { m: _t1454Safe(() => (_t1454Slow(best) || {}).mult || 1, 1) } : {}) : null; }
 SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, isWaterTileLocal, isPositionActive, isBlockedByWall, anyViewerNear, perfMark, newbieItems: _T1368_NEWBIE,
   elevKmAt,   // ★[T856] 지형 정본 고도(몸 기온이 쓰는 그 함수) — 생활층이 econ 마을 `land.elev` 를 이것으로 채운다(손잡이 `T856_LAND_ELEV` 끔이면 안 읽는다)
   ...(Streams.ON && Streams.load(ZONE_ID) ? { isStreamLocal } : {}),   // ★★[T585] 개울 술어 — 생활층 지형 어댑터가 `ta.isStream` 으로 묻는다(집터·밭·곳간·큰집 마당 · 시딩 `generate`). 끔이면 키 자체가 없다(종전 그대로)
@@ -6389,7 +6394,7 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   //   **직접** 불러 메모를 지나쳤다(T324 프로파일: 남은 지형 시간의 9.6%). 같은 양자화(셀 중심)라 답은 같다.
   isRockTileLocal,
   // ★[T1196] 장인 작업 자리 — 그 창(kind: tool · smelt · cook)을 여는 가장 가까운 시설(작업대 · 노 · 숯가마 · 모닥불 · 움집 화덕) · 반경 안 · 없으면 null(시설 목록 · 창 표는 정본 하나 — `_facilities` · `Facility.KIND_TYPES`)
-  facilityNear: (kind, x, y, r) => { const ty = Facility.KIND_TYPES[kind] || []; let best = null, bd = Infinity; for (const b of _facilities()) { if (!ty.includes(b.type) || (b.floor | 0) !== 0) continue; const d = Math.hypot(b.x - x, b.y - y); if (d <= r && d < bd) { bd = d; best = b; } } return best ? { x: best.x, y: best.y, type: best.type, id: best.id } : null; },
+  facilityNear: _facilityNearDep,   // 마을 장인 몸의 작업 자리(T1196) — 아래 함수(하네스가 같은 함수를 부른다)
   isSeaTileLocal,   // ★[T593 ④] 바다 술어 — NPC 어부가 선 물가가 바다 칸 곁인지(`villages._t593SeaBank` · 손잡이 `T593_SEA` 끔이면 안 읽는다)
   standCellNear: _standCellNear,   // ★[T541 ⓑ] 설 수 있는 가장 가까운 칸 — 나선은 한 자리(T83) · 전쟁 대형 슬롯이 막혔을 때 부른다(술어는 호출측)
   npcReachBegin, npcReachStep, npcReachHas, collGenAround, collGenAll, decBudgetOver,   // ★★[T562] 집마다 닿는 칸 집합(같은 술어·같은 반경) · 그 기억의 도장 · 사람 안의 결정 예산
@@ -8226,6 +8231,7 @@ async function _acceptConnection(ws, req, C) {
   //   여기 두는 이유: 부재 배치는 30분에 한 번 도는데, 사람은 접속한 그 순간 자기 땅을 본다.
   try { const _rc = Claims.onPlayerActive(player); if (_rc) console.log(`[${ZONE_ID}] 🏠 ${name} 복귀 — 맡겨 둔 사유지 ${_rc}칸 반환`); } catch (e) {}
   if (Deeds.ON) { try { _t1305Day(player, _t1332Clock(), true); } catch (e) {} }   // ★[T1305] 오늘 처음 들어왔으면 하루를 센다 · 이 존 칸은 늘 다시 잰다(사유지 낡음)
+  if (T1454_SLOW) { try { _t1454Back(player); } catch (e) {} }   // ★[T1454 덧붙임 하나] 비운 사이 0 · 절반 밑으로 내려간 제 구조물 한 줄(고칠 재료 수)
 
   // 활성 청크 즉시 갱신 — 이 player 주변 청크의 시드 자원 spawn → welcome.resources에 포함됨
   updateActiveChunks();
@@ -10088,7 +10094,13 @@ function doDismantleBuilding(player, buildingId) {
   // 소유자 체크 (자기 길드 영지 안이면 OK)
   // — 일단 누구든 가능 (PZ 스타일). 추후 chest 등은 잠금 체크 필요할 수도.
   const itemType = BUILDING_TYPE_TO_ITEM[b.type];
-  if (itemType) {
+  //   ★[T1454 · 정해진 것 5 — PM 결정 · 재민 거부권] 켬이면 헐어도 낡음은 안 지워진다 — 남은 몫이 1 밑이면 물건 하나 대신
+  //   지을 때 든 재료 × 남은 몫(낱개 내림 — 수리가 올림으로 받는 것과 같은 쪽: 끝수는 사람에게 안 간다 · 헐고 다시 세워 새것 0). 새것(1)은 종전 그대로 물건 하나.
+  const _rz = (T1454_SLOW && itemType) ? _t1454RazeBack(b) : null;
+  if (_rz) {
+    for (const [k, n] of Object.entries(_rz.items)) if (n > 0) player.inventory[k] = (player.inventory[k] || 0) + n;
+    send(player.ws, { type: 'notice', text: `${_t1438Name(b.type)}을(를) 헐었습니다 — 낡아(남은 몫 ${Math.round(_rz.x * 100)}%) 재료만 일부 돌아옵니다: ${Object.entries(_rz.items).filter(([, n]) => n > 0).map(([k, n]) => `${ITEM_LABEL_SERVER[k] || k} ${n}`).join(' · ') || '없음'}.` });
+  } else if (itemType) {
     player.inventory[itemType] = (player.inventory[itemType] || 0) + 1;
   }
   // chest는 내용물도 반환 (간단히 inventory로 합침)
@@ -11824,7 +11836,7 @@ function sendFacility(player) {
   const mine = near ? _facilityMine(player, near.b) : false;
   send(player.ws, { type: 'facility',
     near: near ? { bid: near.b.id, btype: near.b.type, ko: near.ko, kind: near.kind, mine,
-                   craftMs: Facility.CRAFT_MS[near.kind] || 0, ...(near.b.hearth ? { hearth: near.b.hearth } : {}) } : null,   // ★[T1066] 움집 화덕이면 그 자리(마당 · 실내) — 클라가 창을 저절로 안 연다(마을을 지날 때마다 뜨지 않게)
+                   craftMs: _t1454CraftMs(near.b, Facility.CRAFT_MS[near.kind] || 0), ...(_t1454Panel(near.b)), ...(near.b.hearth ? { hearth: near.b.hearth } : {}) } : null,   // ★[T1066] 움집 화덕이면 그 자리(마당 · 실내) — 클라가 창을 저절로 안 연다(마을을 지날 때마다 뜨지 않게)
     recipes: near && mine ? _facilityRecipes(player, near.kind, near.b) : [],
     queue: craftQueuePayload(player) });
 }
@@ -12933,6 +12945,7 @@ function _t1438Boot() {
   _t1438Meta = m; _t1438S.boots = m.boots.length;
   try { if (db.upsertWorldMeta) db.upsertWorldMeta(_T1438_KEY, JSON.stringify(m), 0); } catch (e) {}
   Decay.init({ cost: BUILDING_COST, maxHp: BUILDING_MAX_HP, extra: _t1438Extra() });
+  if (T1454_SLOW) Facility.setSlow(_t1454Slow);   // ★[T1454] 시설 대기열 — 넣을 때 배수로 시간을 정한다(고장이면 거절)
 }
 //   벽 시각 → 그때까지 서버가 켜져 있던 ms — 꺼진 합은 부팅 때만 바뀐다(그 시각 앞 마지막 부팅의 값)
 function _t1438Up(wall) {
@@ -13166,6 +13179,63 @@ function _t1438Target(b, now) {
 }
 //   이름 — 짓기 표의 이름표(괄호 앞) · 없으면 품목 이름표 · 시설 이름 · 종류 글자(새 표 0)
 const _T1438_KO = { granary: '곳간', guild_granary: '곳간', well: '우물', charcoal_kiln: '숯가마', furnace: '노', village_hall: '회관', shelter: '쉼터', hut: '움집' };
+// ★★[T1454 · ★재민 11-22 판정 69] 낡은 시설은 느려진다 — 그 시설에서 하는 일에 걸리는 시간 × `Decay.t1454Slow(x)`(식 한 자리 — decay.js)
+//   x = 한 값 ÷ 최대(T1438 그 값 — 시간 · 공격이 깎고 수리가 올린다) · 0 이면 고장(못 씀 · 부서짐 표지 그대로) · 낡지 않는 것(불 자리 · 표 밖) = 1.
+//   손잡이 `T1454_SLOW`(낡음 `T1438_DECAY` 켬 안에서만 · ★끔 기본 = 종전: 쓰임 그대로). 시간을 정하는 자리 셋이 이것을 부른다:
+//   ① 시설 대기열(`Facility.enqueue` — 작업대 · 건조대 · 소금가마 · 모닥불) ② 노 녹이기(`_smeltDurationMs`) ③ 숯가마 굽기 — 넣을 때 정한 시간 그대로 끝난다.
+//   (손잡이 상수 `T1454_SLOW` · 셈 칸 `_t1454S` 는 파일 머리 — 마을 몸 복원이 `SimVillages.init` 안에서 시설 자리를 물을 수 있다(TDZ))
+function _t1454X(b) {   // 남은 몫(0..1) = 한 값 ÷ 최대 — 0 이면 고장 · 낡지 않는 것(불 자리 · 표 밖)이면 1
+  if (!b) return 1;
+  //   부서짐 표지(`damaged`)는 안 본다 — 그 표지는 울 · 벽이 "절반 넘게 차야 다시 선다"(종전 수리 문)의 것이고, 시설은 한 값이 0 을 벗어나는 순간
+  //   다시 쓴다(가장 느린 배수부터 — 카드 할 일 3). 공격 · 낡음으로 0 이 된 것은 한 값이 0 이라 그대로 고장이다.
+  const H = _t1438Hp(b); if (!H || !(H.max > 0)) return 1;
+  return H.hp / H.max;
+}
+function _t1454Slow(b, peek) {   // → { mult, x } · 고장이면 { broken, x: 0, err } (끔이면 null — 부르는 쪽이 종전 그대로) · peek = 우클릭 보기(셈 칸 안 셈)
+  if (!T1454_SLOW) return null;
+  const x = _t1454X(b);
+  if (!(x > 0)) { if (!peek) _t1454S.broken++; return { broken: true, x: 0, err: `${_t1438Name(b.type)}이(가) 고장 났습니다 — 고쳐야 쓸 수 있습니다(우클릭 "손질…").` }; }
+  const m = Decay.t1454Slow(x);
+  if (!peek) { _t1454S.n++; _t1454S.multSum += m; if (m > 1) _t1454S.slow++; }
+  return { mult: m, x };
+}
+//   ★[T1454 덧붙임 하나 — 판정 70 · PM 결정 · 재민 거부권] 돌아온 사람에게 한 줄 — 제 구조물(이 존 메모리에 선 것) 가운데 지난번 나간 날 뒤로
+//     0 이 됐거나 절반 밑으로 내려간 부위 · 다 고치는 데 드는 재료 수(그 부위가 받는 재료 가운데 하나에 가장 많은 몫을 주는 것으로 셈).
+//     지난번 값 = 같은 셈을 (지금 − 비운 게임 날)에서 읽은 값(낡음 시계와 게임 날은 같은 하루 · 서버가 꺼진 동안 둘 다 멈춘다 · 그 뒤 고쳤으면 적은 값부터).
+function _t1454Back(player) {
+  if (!T1438_DECAY || !player || !Number.isFinite(player.lastSeenDay)) return 0;
+  const dd = (gameDayNow() | 0) - (player.lastSeenDay | 0); if (!(dd > 0)) return 0;
+  const now = _t1438Now(), then = now - dd, lines = [];
+  const need = (p, v) => { let best = null; for (const it of Object.keys(p.items || {})) { const sh = Decay.shareOf(p, it, 1); if (sh > 0 && (!best || sh > best.sh)) best = { it, sh }; } return best ? `${ITEM_LABEL_SERVER[best.it] || best.it} ${Math.ceil((1 - v) / best.sh - 1e-9)}` : ''; };
+  for (const b of buildings.values()) {
+    if (!b || b.ownerId !== player.playerId) continue;
+    const k = _t1438Kind(b); if (!k) continue;
+    const t0 = _t1438T0(b), nm = _t1438Name(b.type);
+    const pairs = k.multi
+      ? k.parts.map((p) => [p, Decay.readParts(k, b.data && b.data.dk, now, t0)[p.k], Decay.readParts(k, b.data && b.data.dk, then, t0)[p.k]])
+      : [[k.parts[0], (b.data && b.data.damaged) ? 0 : Decay.readHp(k, Number.isFinite(b.data && b.data.hp) ? b.data.hp : k.maxHp, t0, now) / k.maxHp, Decay.readHp(k, Number.isFinite(b.data && b.data.hp) ? b.data.hp : k.maxHp, t0, then) / k.maxHp]];
+    for (const [p, vNow, vThen] of pairs) {
+      if (vThen > 0 && vNow <= 0) lines.push(`${nm} ${k.multi ? p.ko + '이(가) 다 삭았습니다' : '이(가) 다 낡아 못 씁니다'} — ${need(p, 0)}`);
+      else if (vThen >= 0.5 && vNow < 0.5) lines.push(`${nm} ${k.multi ? p.ko + ' ' : ''}${Math.round(vNow * 100)}% — ${need(p, vNow)}`);
+    }
+  }
+  if (lines.length) send(player.ws, { type: 'notice', text: `🏚️ 비운 사이(${dd}날) 낡은 것 — ${lines.slice(0, 6).join(' · ')}${lines.length > 6 ? ` 외 ${lines.length - 6}` : ''}. 고치려면 우클릭 "손질…"입니다.` });
+  _t1454S.back = (_t1454S.back || 0) + lines.length;
+  return lines.length;
+}
+//   제작 창 머리 "한 개 ○초" — 켬이면 지금 배수를 곱해 보인다(서버 셈 · 클라 사본 0) · 고장이면 창에 한 줄
+function _t1454CraftMs(b, ms) { const sl = _t1454Slow(b, true); return sl && !sl.broken ? Math.round(ms * sl.mult) : ms; }
+function _t1454Panel(b) { const sl = _t1454Slow(b, true); return sl ? { slow: sl.broken ? { broken: true } : { x: +sl.x.toFixed(3), mult: +sl.mult.toFixed(3) } } : {}; }
+//   헐 때 돌아오는 것(켬) — 남은 몫 x < 1 이면 { items: 재료 × x(낱개 내림), x } · 새것 · 낡지 않는 것 · 표에 재료가 없는 것 = null(종전 물건 하나)
+function _t1454RazeBack(b) {
+  const x = _t1454X(b); if (!(x < 1)) return null;
+  const c = Decay.costOf(b.type); if (!c) return null;
+  const items = {}; let any = false;
+  for (const [k, n] of Object.entries(c)) { if (k.startsWith('_') || !(n > 0)) continue; items[k] = Math.floor(n * x + 1e-9); any = true; }
+  if (!any) return null;
+  _t1454S.razeBack++;
+  return { items, x };
+}
 function _t1438Name(type) {
   const r = BUILDING_RECIPES['item_' + type];
   if (r && r.label) return String(r.label).replace(/\s*\(.*$/, '');
@@ -13176,7 +13246,8 @@ function _t1438Peek(player, id) {
   const T = _t1438Target(b, _t1438Now());
   //   부위마다: 지금 값 · 지을 때 든 품목(이름표 = 서버) · 내 짐에서 넣을 수 있는 것(낱개 하나의 몫 — 클라 셈 0 · 고르는 줄만 짓는다)
   const inv = player.inventory || {};
-  send(player.ws, { type: 't1438_info', id, name: T ? T.name : null,
+  const _sl = (T1454_SLOW && Facility.FACILITIES[b.type] || (T1454_SLOW && (b.type === 'well' || b.type === 'furnace' || b.type === 'charcoal_kiln'))) ? _t1454Slow(b, true) : null;   // ★[T1454] 시설이면 걸리는 시간 배수 · 고장
+  send(player.ws, { type: 't1438_info', id, name: T ? T.name : null, ...(_sl ? { slow: { x: +(_sl.x || 0).toFixed(4), mult: _sl.broken ? null : +_sl.mult.toFixed(3), broken: !!_sl.broken } } : {}),
     parts: T ? T.parts.map((e) => ({ k: e.p.k, ko: e.p.ko, v: +e.cur.toFixed(4), items: Object.keys(e.p.items).map((k) => ITEM_LABEL_SERVER[k] || k),
       have: Object.keys(inv).filter((it) => (inv[it] || 0) > 0 && Decay.acceptsItem(e.p, it)).map((it) => ({ it, ko: ITEM_LABEL_SERVER[it] || it, n: inv[it] | 0, one: +Decay.shareOf(e.p, it, 1).toFixed(4) })) })) : [] });
 }
@@ -15173,7 +15244,10 @@ function _wellCellAt(px, py) {
   for (const b of near) {
     if (!b || b.type !== 'well' || !b.data) continue;
     const x0 = b.data.x0, y0 = b.data.y0;
-    if (tx >= x0 && tx <= x0 + 1 && ty >= y0 && ty <= y0 + 1) return true;
+    if (tx >= x0 && tx <= x0 + 1 && ty >= y0 && ty <= y0 + 1) {
+      if (T1454_SLOW && !(_t1454X(b) > 0)) { _t1454S.wellOff++; continue; }   // ★[T1454] 고장 난 우물은 물이 안 나온다(긷기는 시간이 없는 일 — 느려질 것이 없고 0 에서만 멈춘다)
+      return true;
+    }
   }
   return false;
 }
@@ -15906,10 +15980,12 @@ function tryKilnBurn(player, buildingId) {
   //   ⚠상한(KILN_BATCH_MAX)은 UI 폭주 방지용이지 가마 용량이 아니다. 용량 개념을 넣으려면 회부 대상.
   //   ★[2026-08-02e] 시간도 같은 원칙이다 — n회분을 한 번에 넣으면 **그만큼 오래 걸린다**.
   //     안 그러면 "가득 채우기"가 시간을 공짜로 압축하는 치트가 된다.
+  const _sl = _t1454Slow(b);   // ★[T1454] 고장이면 통나무를 넣기 전에 거절 · 아니면 넣을 때의 배수로 굽는 시간을 정한다(끔 = null · 종전)
+  if (_sl && _sl.broken) { send(player.ws, { type: 'notice', text: _sl.err }); return; }
   const n = Math.max(1, Math.min(KILN_BATCH_MAX, Math.floor((player.inventory.wood || 0) / CHARCOAL_KILN_WOOD)));
   player.inventory.wood -= CHARCOAL_KILN_WOOD * n;
   {
-    const dur = KILN_BURN_MS + KILN_BATCH_MS_PER * (n - 1);
+    const dur = Math.round((KILN_BURN_MS + KILN_BATCH_MS_PER * (n - 1)) * (_sl ? _sl.mult : 1));
     b.data.job = { kind: 'kiln', startedAt: nowK, until: nowK + dur, n, by: player.playerId };
     if (b.dbId) { try { db.updateBuildingData(b.dbId, JSON.stringify(b.data)); } catch (e) {} }
     broadcast({ type: 'building_updated', building: { id: b.id, data: b.data } });
@@ -15964,11 +16040,13 @@ function tryFurnaceSmelt(player, buildingId) {
   const setup = { furnace: kind, fuel: 'charcoal', bellows: true };
   const y = Era.smeltYield('iron', setup);
   if (!(y > 0)) { send(player.ws, { type: 'notice', text: '이 노로는 쇠가 나오지 않습니다.' }); return; }
+  const _sl = _t1454Slow(b);   // ★[T1454] 고장이면 재료를 넣기 전에 거절 · 아니면 넣을 때의 배수로 시간을 정한다(끔 = null · 종전)
+  if (_sl && _sl.broken) { send(player.ws, { type: 'notice', text: _sl.err }); return; }
   player.inventory.iron_ore -= 1;
   player.inventory.charcoal -= fuelNeed;
   // ── 장입 — 재료는 **지금** 들어가고(불 속에 넣은 것은 돌려받지 못한다), 산출은 시간 뒤에 나온다
   {
-    const dur = _smeltDurationMs(kind);
+    const dur = _sl ? Math.round(_smeltDurationMs(kind) * _sl.mult) : _smeltDurationMs(kind);
     b.data.job = { kind: 'smelt', startedAt: now, until: now + dur, yield: y, by: player.playerId };
     if (b.dbId) { try { db.updateBuildingData(b.dbId, JSON.stringify(b.data)); } catch (e) {} }
     broadcast({ type: 'building_updated', building: { id: b.id, data: b.data } });
@@ -16135,6 +16213,7 @@ function __testBind() {
     _t1238StealCheck, _t1238StealApply, _t1238Trap, _t1238TrapWaiver, _t1238FenceCost, _t1238FenceApply, _t1238TrapVillage, _t1238BuiltCells, _t1238VilOf, _t1238Work,
     tryT1238Pick, tryT1238Cancel, tryT1238Pull, tryT1238Info, tryHarvest, t1238ZoneStat, findCellFence,
     // ★[T1438] 구조물 낡음 존 몫 — 하네스(`test-t1438-decay`)가 정본 함수를 그대로 부른다
+    T1454_SLOW, Facility, _facilityNearDep, _t1454X, _t1454Slow, _t1454RazeBack, _t1454Back, _t1454CraftMs, _t1454S, doDismantleBuilding,   // ★[T1454]
     T1438_DECAY, Decay, _t1438Boot, _t1438Now, _t1438Up, _t1438T0, _t1438Hp, _t1438Parts, _t1438Eval, _t1438Slice, _t1438OnHit, _t1438Repair, _t1438Target, _t1438Roof,
     _t1438PlaceFields, _t1438AnchorOf, _t1438RemoveTag, _t1438Collapse, _t1438Stat, _t1438Ruin, _t1438Clear, _t1438ClearRuinsIn, _t1438Wear, _rowToBuilding, _t1438Peek, _t1438DayMs, _t1438Meta: () => _t1438Meta, BUILDING_MAX_HP, BUILDING_COST, _tryBuildAt, tryHutAdvance, isIndoorAt, consumeItem,
     weatherFor, _placeKeyOfBuilding,

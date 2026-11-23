@@ -122,7 +122,7 @@ function costOf(type) {
 }
 // 낡지 않는 것(표에 까닭을 적는다) — 불 자리(땔감 정본) · 밭(작물 정본) · 마을 마당 칸 · 짓는 중인 터(단계 칸 — 회부)
 const EXCLUDE = { campfire: '불 자리 — 땔감 · 불씨 정본 밖', farmland: '밭 — 작물 정본(`crops.js`) 밖', vtile: '마을 마당 · 텃밭 칸 — 땅',
-  hut_site: '짓는 중(단계 칸) — 회부', furnace_site: '짓는 중 — 회부', kiln_site: '짓는 중 — 회부', well_site: '짓는 중 — 회부', village_site: '짓는 중 — 회부', shelter_site: '짓는 중 — 회부',
+  hut_site: '짓는 중(단계 칸) — 안 낡는다(판정 74)', furnace_site: '짓는 중 — 안 낡는다(판정 74)', kiln_site: '짓는 중 — 안 낡는다(판정 74)', well_site: '짓는 중 — 안 낡는다(판정 74)', village_site: '짓는 중 — 안 낡는다(판정 74)', shelter_site: '짓는 중 — 안 낡는다(판정 74)',
   ruin: '무너진 자리 — 낡음의 끝(치우는 것)' };
 const _kind = new Map();
 function kindOf(type, data) {
@@ -169,6 +169,21 @@ function readHp(kind, hp0, t0, now, set) {
   const f = readFrac((Number.isFinite(hp0) ? hp0 : max) / max, partRate(p, set), t0, now);
   return f * max;
 }
+// ── 낡은 시설은 느려진다 [T1454 · ★재민 11-22 판정 69] ─────────────────────────────────────────────
+//   재민 글자: "좋은데, 1/(x+a) 꼴로, 0 근처에서 발산하지 않게 하자.. 0이면 고장으로 살짝의 문턱처럼 보이지만 경계가 있으면 좋을 듯".
+//   그 시설에서 하는 일에 걸리는 시간 = 원래 × m(x) · m(x) = (1 + a) ÷ (x + a) · x = 남은 내구 몫(0 초과 ~ 1 · 한 값 ÷ 최대).
+//   (1 + a)를 곱한 것은 PM 읽기(새것이면 1배) · x ≤ 0 = 고장(못 씀 — `Infinity`) · 0 바로 위는 (1 + a) ÷ a 배에서 멎는다.
+//   ★a = 0.25 — 재민 11-22 꼴 · PM 시작값(출처 없는 수 · 재민 거부권): 절반 1.67배 · ¼ 2.5배 · 0 바로 위 5배. 시설마다 a 가 다르지 않다(한 자리).
+//   손잡이 `T1454_SLOW`('1' — `T1438_DECAY` 켬 안에서만 뜻이 있다 · ★끔 기본 = 종전: 낡아도 쓰임 그대로 · 0 이면 부서짐 표지만).
+//   줄어드는 것은 시간뿐 — 나오는 양 · 드는 재료 · 품질은 안 바뀐다(재민 10-15).
+const SLOW_ON = ON && typeof process !== 'undefined' && process.env && process.env.T1454_SLOW === '1';
+const SLOW_A = 0.25;
+function t1454Slow(x) {
+  if (!(x > 0)) return Infinity;
+  const v = x < 1 ? x : 1;
+  return (1 + SLOW_A) / (v + SLOW_A);
+}
+
 // ── 수리 = 넣은 재료만큼(카드 정해진 것 4) ──────────────────────────────────────────────────────────
 //   그 부위를 지을 때 든 원자재(세 재료) 낱개 합 가운데 넣은 품목의 원자재 낱개 몫만큼 오른다(지붕 이엉 8 = 풀 32 가운데 이엉 2 = 풀 8 → ¼).
 //   "한 번에 몇 %"라는 새 수 0 · 그 부위에 안 든 재료(지붕에 통나무 · 판자 울에 돌)는 안 받는다(재료 없이 오르지 않는다).
@@ -205,6 +220,6 @@ function typesList() {
   const names = new Set([...HUT_TYPES, 'granary', 'guild_granary', 'well', 'charcoal_kiln', ...Object.keys(_Z.cost || {}), ...Object.keys(_Z.extra || {})]);
   return [...names].filter((t) => !!kindOf(t, null)).sort();
 }
-const api = { ON, SET, SETS, MAT, ITEM_MAT, EXCLUDE, yearDays, perDay, recipes, rawOf, matsOf, part, partRate, init, kindOf, hutParts, costOf, typesList,
+const api = { ON, SET, SETS, SLOW_ON, SLOW_A, t1454Slow, MAT, ITEM_MAT, EXCLUDE, yearDays, perDay, recipes, rawOf, matsOf, part, partRate, init, kindOf, hutParts, costOf, typesList,
   readFrac, readParts, readHp, acceptsItem, shareOf, qtyFor, scalePlace, indoorMult, HUT_TYPES };
 module.exports = api;

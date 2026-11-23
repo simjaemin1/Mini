@@ -14523,8 +14523,8 @@ function _t1365Art(vil, npc, now0, job) {
   if (W.ph === 'go' && !(W.tx || W.ty)) return _z('A5');
   if (Math.hypot(npc.x - W.tx, npc.y - W.ty) > 44) { if (_hzOn) _hzP(W.tx, W.ty, 44, true); return (W.at === 0 && W.ph === 'go' && _t1365Same(npc, W.tx, W.ty, '운반')) ? 2 : _z('A6'); }   // 작업 자리로 가는 중
   if (!W.at || npc._lifeAct !== '제작') return _z('A6b');
-  if (_hzOn) { _hzP(W.tx, W.ty, 44, false); const d = W.at + _t1196CraftMs(T1196_KIND[job]) - 1; if (T1258_ARTISAN_CLOCK) _hzD2(d); else _hzD(d); }
-  return now - W.at < _t1196CraftMs(T1196_KIND[job]) ? 1 : _z('A8');
+  if (_hzOn) { _hzP(W.tx, W.ty, 44, false); const d = W.at + _t1196CraftMs(T1196_KIND[job]) * (W.m || 1) - 1; if (T1258_ARTISAN_CLOCK) _hzD2(d); else _hzD(d); }
+  return now - W.at < _t1196CraftMs(T1196_KIND[job]) * (W.m || 1) ? 1 : _z('A8');
 }
 function t1295Ph(now) { const t = (now - state.epoch) / state.dayMs; return t - Math.floor(t); }   // ★[T1322] 판 하루 축 해 몫(몸 안 짚기 — `t1295Wp` 의 몸 칸 문 뒤 그 식 · 존 첫 거름이 판 시계 몸 표에 쓴다)
 function t1295S(npc) {
@@ -20030,7 +20030,7 @@ function _t1196Ladder(vil, npc) {
 function _t1196Spot(vil, npc, job) {
   const kind = T1196_KIND[job], cx = vil.ccx * SZ + SZ / 2, cy = vil.ccy * SZ + SZ / 2;
   const f = state.deps.facilityNear ? state.deps.facilityNear(kind, cx, cy, T325_R * SZ) : null;
-  if (f) return { x: f.x, y: f.y, fac: f.type };
+  if (f) return { x: f.x, y: f.y, fac: f.type, ...(f.m != null ? { m: f.m } : {}) };   // ★[T1454] m = 그 시설의 걸리는 시간 배수(켬일 때만 · 끔 = 종전 꼴)
   //   요리 — 시설 목록이 켜진 청크 것만 보므로(안 켜진 마을 집은 메모리에 없다) 움집 마당 화덕 자리를 집 칸에서 바로 짓는다(`hut-hearth.js` 정본 · 움집 발자국 `_vbFootprint` · T1066 이 모닥불로 치는 그 자리)
   if (kind === 'cook' && vil._houseCells && vil._houseCells.length) {
     const HH = _t1196Hut(); let best = null, bd = Infinity;
@@ -20075,18 +20075,18 @@ function _t1196Step(vil, npc, now0, job) {
       if (!(f > 0)) { E.artisanGive(e, t.id); npc._t1196J = null; npc._t1196W = null; return true; }   // 재료가 하나도 없었다 — 빈손 작업표를 닫는다(넣을 것 0)
       const sp = _t1196Spot(vil, npc, job); if (sp.fac) _t1196Stat.fac++; else _t1196Stat.hall++;
       { const A = _t1196Stat.at || (_t1196Stat.at = {}); const k = job + ':' + (sp.fac || 'hall'); A[k] = (A[k] || 0) + 1; }   // 계측 전용 — 직업 × 작업 자리
-      W.ph = 'go'; W.at = 0; W.tx = sp.x; W.ty = sp.y; W.fac = sp.fac;
+      W.ph = 'go'; W.at = 0; W.tx = sp.x; W.ty = sp.y; W.fac = sp.fac; if (sp.m != null) W.m = sp.m;   // ★[T1454] 그 시설의 걸리는 시간 배수(켬)
       return true;
     }
     E.artisanGive(e, t.id); _t1196Stat.give++;
     npc._t1196J = null; npc._t1196W = null;
     return true;
   }
-  if (W.ph === 'go' && !(W.tx || W.ty)) { const sp = _t1196Spot(vil, npc, job); W.tx = sp.x; W.ty = sp.y; W.fac = sp.fac; }   // 이어서 집은 작업표(재료는 이미 손에)
+  if (W.ph === 'go' && !(W.tx || W.ty)) { const sp = _t1196Spot(vil, npc, job); W.tx = sp.x; W.ty = sp.y; W.fac = sp.fac; if (sp.m != null) W.m = sp.m; }   // 이어서 집은 작업표(재료는 이미 손에) · ★[T1454] 배수는 자리를 고를 때 정한다
   if (Math.hypot(npc.x - W.tx, npc.y - W.ty) > 44) { W.at = 0; go(W.tx, W.ty, '운반'); W.ph = 'go'; return true; }
   if (!W.at) { W.at = now; W.ph = 'work'; }
   _lifeAct(npc, '제작');
-  if (now - W.at < _t1196CraftMs(T1196_KIND[job])) return true;
+  if (now - W.at < _t1196CraftMs(T1196_KIND[job]) * (W.m || 1)) return true;   // ★[T1454] 낡은 시설이면 그 배수만큼 오래 머문다(끔 = W.m 없음 = 종전)
   W.ph = 'back'; W.at = 0;
   return true;
 }
