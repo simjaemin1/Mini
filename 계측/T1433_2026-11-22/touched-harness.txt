@@ -1,0 +1,17 @@
+# 손댄 하네스(touched-harness.js origin/main --list · 14종) — 러너(`touched-harness.js origin/main --run -j 1` = run-regress.sh)로 하나씩 · 내용 커밋 1f1227fb 나무
+test-body-fields.js RC=0 1s :: === 14 통과 / 0 실패 ===
+test-coll-grid.js RC=0 11s :: === 결과: 20 PASS / 0 FAIL ===
+test-harness-lint.js RC=0 805s :: === 102건 중 PASS 102 · FAIL 0 ===
+test-hp-src.js RC=0 1s :: === 54 통과 / 0 실패 ===
+test-lon-day.js RC=0 1s :: === 22건 중 PASS 22 · FAIL 0 ===
+test-psite-server.js RC=0 17s :: 결과: PASS
+test-recut.js RC=0 91s :: === 결과: 24 PASS / 0 FAIL ===
+test-regrow-block.js RC=0 1s :: === 결과: 24 PASS / 0 FAIL ===
+test-site-memo.js RC=0 533s :: === 21 통과 / 0 실패 ===
+test-t1238-terr-v2.js RC=0 4s :: === T1238: 117건 중 PASS 117 · FAIL 0 ===
+test-t1243-farm-on.js RC=0 1302s :: 85 통과 · 0 실패
+test-t1358-terr-stake.js RC=0 1s :: 결과 8 통과 / 0 실패
+test-t1433-terr-rows.js RC=0 131s :: === 25 통과 / 0 실패 ===
+test-village-boot-mem.js RC=0 73s :: === 10 통과 / 0 실패 ===
+  통과 14: test-body-fields.js test-coll-grid.js test-harness-lint.js test-hp-src.js test-lon-day.js test-psite-server.js test-recut.js test-regrow-block.js test-site-memo.js test-t1238-terr-v2.js test-t1243-farm-on.js test-t1358-terr-stake.js test-t1433-terr-rows.js test-village-boot-mem.js
+  실패 0: 없음

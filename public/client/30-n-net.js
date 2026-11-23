@@ -1002,6 +1002,11 @@
           c.bridges.add(k);
           _bridgeAbs.add(((msg.zone.worldOffsetX / CL_BUILDING_SIZE) + msg.bridges[i]) + ',' + (((msg.zone.worldOffsetY || 0) / CL_BUILDING_SIZE) + msg.bridges[i + 1]));
         }
+        if (msg.t1440) _t1440P.on = true;   // ★[T1440] 짓기 미리보기가 서버에 길을 묻는다(켬인 존만)
+        if (msg.t1423NoBuild) {   // ★[T1423 ⓐ] 못 놓는 다리 칸 · 다리 머리(서버 ㉮ 칸 줄 — 다리 미러와 같은 셈으로 절대 칸에) · 켬인 존만 보낸다
+          _t1423NoAbs.on = true;
+          for (let i = 0; i + 1 < msg.t1423NoBuild.length; i += 2) _t1423NoAbs.add(((msg.zone.worldOffsetX / CL_BUILDING_SIZE) + msg.t1423NoBuild[i]) + ',' + (((msg.zone.worldOffsetY || 0) / CL_BUILDING_SIZE) + msg.t1423NoBuild[i + 1]));
+        }
         // ★[11차 T3 환호] 도랑 셀 flat [cx,cy,…] — 서버 콜라이더 미러 + 타일 렌더 원천(마을 소유 사물, welcome 1회)
         c.ditches = new Set();
         if (msg.ditches) for (let i = 0; i + 1 < msg.ditches.length; i += 2) {
@@ -1337,6 +1342,17 @@
     } else if (msg.type === 'claim_updated') {
       // Phase 4d-16-a: 영토 cell sub-type 변경 (예: NPC personal 분배)
       c.claims.set(msg.claim.id, msg.claim);
+    } else if (msg.type === 't1440_peek') {
+      // ★[T1440] 짓기 미리보기의 서버 답(그 조각 열쇠 그대로 — 고스트가 지금 열쇠와 같을 때만 그린다)
+      _t1440P.st = msg.st; _t1440P.stKey = msg.key;
+    } else if (msg.type === 't1440_confirm') {
+      // ★[T1440] 길을 닫는 조각 — 서버가 준 한 줄로 묻고(종전 `unclaim_confirm` 꼴 · 새 창 0) 예면 같은 메시지에 다짐(조각 서명)을 붙여 다시 보낸다
+      if (confirm(String(msg.text || '길이 막힙니다. 그래도 놓으시겠습니까?'))) sendPrimary(Object.assign({}, msg.msg || {}, { t1440ok: msg.sig }));
+    } else if (msg.type === 't1440_choose') {
+      // ★[T1440 판정 51] 길 위 칸 선포 — 그 순간 한 번만 고른다(기본 = 비켜 가게 · 나중에 못 바꾼다). 서버가 준 두 줄로 묻는다(새 창 0):
+      //   첫 물음 확인 = 비켜 가게 · 취소면 둘째 물음 — 확인 = 길을 그대로 둠 · 취소 = 선포하지 않음. 고름은 같은 메시지에 붙여(조각 서명) 다시 보낸다
+      if (confirm(String(msg.text || ''))) sendPrimary(Object.assign({}, msg.msg || {}, { t1440road: 'avoid:' + msg.sig }));
+      else if (confirm(String(msg.text2 || ''))) sendPrimary(Object.assign({}, msg.msg || {}, { t1440road: 'keep:' + msg.sig }));
     } else if (msg.type === 'unclaim_confirm') {
       // ★[T1402 판정 21] 켬 — 내놓으면 땅이 갈라지는 칸 · 서버가 준 한 줄로 묻고(새 창 0 · 종전 내놓기 확인과 같은 `confirm`) 예면 갈라짐 확인을 붙여 다시 보낸다
       if (confirm(String(msg.text || '내놓으시겠습니까?'))) sendPrimary({ type: 'unclaim', claimId: msg.claimId, split: 1 });
@@ -1480,6 +1496,11 @@
         b.data.hp = msg.hp;
         b.data.damaged = msg.damaged;
       }
+    } else if (msg.type === 't1438_wear') {   // ★[T1438] 움집 부위 값(서버가 5% 걸음마다 알린다 · 그림 · 이름표가 읽는다 · 클라 셈 0)
+      const b = c.buildings.get(msg.id);
+      if (b) b.wear = msg.wear;
+    } else if (msg.type === 't1438_info') {   // ★[T1438] 손질 — 부위별 내구 · 넣을 재료(우클릭 "손질…" 의 답 · 고르는 줄은 46-h-verbs)
+      if (typeof t1438OnInfo === 'function') t1438OnInfo(msg);
     } else if (msg.type === 'arrow_spawn') {
       // Phase 5-I: 화살 발사체 — 절대좌표로 저장, 클라가 등속 외삽 (서버는 spawn/remove만 보냄)
       if (!window._arrows) window._arrows = new Map();

@@ -19,7 +19,7 @@ const DBP = opt('--db', null), CEN = opt('--central', null), OUT = opt('--out', 
 if (!DBP) { console.error('쓰는 법: <차분.json> --db <존 DB 사본> [--central <central DB>] [--out <표.json>]'); process.exit(2); }
 const Database = require(path.join(__dirname, '..', 'node_modules', 'better-sqlite3'));
 const W = DIFF.W, H = DIFF.H, ZONE = DIFF.zone, SZ = 32, CHUNK = 1024;
-const dec = (b64) => new Uint32Array(Buffer.from(b64 || '', 'base64').buffer.slice(0));
+const dec = (b64) => { const b = Buffer.from(b64 || '', 'base64'); return new Uint32Array(b.buffer.slice(b.byteOffset, b.byteOffset + (b.length & ~3))); };   // ★[T1433] 작은 Buffer 는 풀(8 KB) 조각이다 — `.buffer` 통째(풀 전체 2,048칸)가 아니라 제 바이트만
 const SET = {}; for (const [k, v] of Object.entries(DIFF.cells)) SET[k] = new Set(dec(v));
 for (const k of ['통행→막힘', '다리 빠짐', '다리가 뭍 위로']) if (!SET[k]) SET[k] = new Set();
 const blocked = new Set([...SET['통행→막힘']]);

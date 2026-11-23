@@ -209,7 +209,7 @@ const meta = fs.readFileSync(path.join(B, 'meta.txt'), 'utf8');
 ok(/orig\.PLAYER_CAP=150/.test(meta) && /orig\.T565_MAP_LIVE=-/.test(meta) && /image_id=sha256:a{64}/.test(meta), 'meta.txt = 옛 값·옛 이미지(비밀 아닌 칸만)');
 ok(st().images['durango-zone:pre-reset'] && st().images['durango-zone:pre-reset'].id === 'sha256:' + 'a'.repeat(64), '옛 이미지에 `:pre-reset` 태그(되돌리기용)');
 const stopIdx = st().argv.findIndex((l) => /^stop /.test(l));
-ok(stopIdx >= 0 && /-t 30/.test(st().argv[stopIdx]), '멈춤 = `docker stop -t 30`(SIGTERM — 존이 몸·짐승을 저장하고 내린다 · rm -f 아님)');
+ok(stopIdx >= 0 && /-t 60/.test(st().argv[stopIdx]), '멈춤 = `docker stop -t 60`(SIGTERM — 존이 몸·짐승을 저장하고 내린다 · rm -f 아님 · ★[T1443 ④] 잰 값 35.7초 → 60)');
 
 console.log('\n⑥ --up — 닫힌 채 띄움');
 r = run(['hanbando', '--up']);

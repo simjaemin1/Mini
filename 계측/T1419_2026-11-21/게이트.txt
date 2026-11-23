@@ -1,0 +1,5 @@
+# 게이트 셋(랩 다시 굽기)
+build-econ-bundle --check: [check] 회귀검증 16 일치 / 0 불일치 ✅
+inline-engine: 마을실험실.html · 전쟁실험실.html 기존 엔진 블록 교체 · 완료
+lab-wiring-check: === 배선 검사: 실패 0 · 경고 2 === (경고 둘 다 종전 — 서버 세계 칸 늘음 · lab-diff-ok 허락 줄 20 — T1395 후보)
+CI 표: ci-class --static(바꾼 하네스 8종) · --measure --runs 5 --only test-t1419-food-need.js → 나 38.5 · 38.5 · 34.5 · 36.3 · 36.2초 → core · --write-yml --shards 5 --srv-shards 2 · test-ci-list 16/0

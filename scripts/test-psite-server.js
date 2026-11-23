@@ -62,7 +62,7 @@ console.log('\n[③ ★마을이 굶지 않는다 — 여유 크루만(포화점
   chk(iVil > 0 && iP > iVil, `배정 순서: 마을 집터(${iVil}) → 의뢰 집터(${iP}) — 마을이 먼저`);
   chk(/vil\._psiteCrew \|\| 0\) < LIFE_CREW/.test(VIL), '의뢰 집터도 크루 상한 LIFE_CREW(서버의 하루 진척 포화점)');
   // 반일 오후 징발도 마을 우선
-  const half = VIL.slice(VIL.indexOf('if (npc._half && dayFrac >= SCH_HALF_R)'), VIL.indexOf('// ══ 진행 중 작업'));
+  const half = VIL.slice(VIL.indexOf('if (npc._half && dayFrac >= SCH_HALF_R'), VIL.indexOf('// ══ 진행 중 작업'));   // ★[land1091 · PM] T1422 가 이 줄에 `&& !(_T1422_K && …)` 를 덧붙였다(끔 = 뒤 항 거짓) — 표지를 닫는 괄호 앞까지만 찾는다
   //   ★[T400] 마을 집터 갈래에 손잡이 가드(`&& !_lifeEcon().T400_BUILD_ACT` — 켬이면 징발 0)가 붙었다 — 순서(마을 → 의뢰)는 그대로다.
   chk(/if \(vil\._site(?: && !_lifeEcon\(\)\.T400_BUILD_ACT)?\)[\s\S]{0,400}else if \(vil\._psite\)/.test(half), '반일 오후 징발도 마을 집터 우선 → 없을 때만 의뢰');
   // 무상 진척(빨리감기 일괄) 금지

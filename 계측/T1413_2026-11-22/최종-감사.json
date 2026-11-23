@@ -1,0 +1,22 @@
+{
+  "complete": true,
+  "totalSeedRows": 1152,
+  "uniqueSeedRows": 1152,
+  "inheritedRows": 419,
+  "newMeasuredRows": 733,
+  "csvRows": 1152,
+  "matchedCapSeedRows": 288,
+  "physicsHashesUnchanged": {
+    "scripts/t1413-hunt-year.js": "1fef4d856fa5d8572a050f24f4179fe888dd16f4e366b18f8f60d322ebc06232",
+    "lab/사냥실험실.html": "219e4871e911f4632b8da0f0d4c84f67612e346f66d45fa512a1965e0199103d",
+    "sim/det-math.js": "5aad3afb2382bb76fa1745273efb8055cdc5e55b9129c9a012ba14b1f2a417c0"
+  },
+  "thresholdCheckedBeforeRoundingForNewRows": true,
+  "baselineAndWildlifeUnchangedFromMain": true,
+  "blackboxEdits": 0,
+  "peakLocalSimultaneous": 2,
+  "simulationFailures": 0,
+  "ownSimulationTempCleaned": true,
+  "newReferralCount": 1,
+  "newReferral": "shared CI guest immediate rejoin position loss; unchanged product/harness trees; original+retry failed"
+}

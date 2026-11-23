@@ -1,0 +1,45 @@
+# 손댄 하네스(touched-harness.js origin/main --list) — 하나씩 · 존 띄우는 것은 차례로
+test-armor-cap rc=0 0s :: 결과: PASS
+test-body-fields rc=0 2s :: === 14 통과 / 0 실패 ===
+test-coll-grid rc=0 18s :: === 결과: 20 PASS / 0 FAIL ===
+test-floor-stone rc=0 37s :: === 10건 중 PASS 10 · FAIL 0 ===
+test-food-floor rc=0 15s :: === 8건 중 PASS 8 · FAIL 0 ===
+test-food-hunger rc=0 17s :: === 8건 중 PASS 8 · FAIL 0 ===
+test-hp-src rc=0 2s :: === 54 통과 / 0 실패 ===
+test-lon-day rc=0 1s :: === 22건 중 PASS 22 · FAIL 0 ===
+test-one-target rc=0 34s :: === 결과: 24 PASS / 0 FAIL ===
+test-picker-tables rc=0 0s :: 결과: PASS
+test-t1046-wood-share rc=0 1s :: === 12건 중 PASS 12 · FAIL 0 ===
+test-t1148-fuel-job rc=0 1s :: 18 통과 · 0 실패
+test-t1152-market rc=0 14s :: === 32건 중 PASS 32 · FAIL 0 ===
+test-t1156-specialty-job rc=0 1s :: === 결과: 6 PASS / 0 FAIL ===
+test-t1161-two-prices rc=0 56s :: 10/10 통과
+test-t1198-birth-body rc=1 4s :: === T1198 결과: 46 통과 · 1 실패 ===
+test-t1226-job-flex rc=1 5s :: 결과: 58 통과 / 1 실패
+test-t1260-food-reads rc=0 5s :: === T1260 식량 한 품목 읽는 문: 통과 41 · 실패 0 ===
+test-t1266-ore-body rc=0 11s :: === 63 통과 / 0 실패 ===
+test-t1325-one-rot rc=0 3s :: ✓ test-t1325-one-rot 13/0
+test-t1333-alloy-order rc=0 15s :: === 69/69 ✓ (미끼 8/8) ===
+test-t1363-famine-tools rc=0 1s :: ✓ test-t1363-famine-tools 18/18
+test-t1384-mine-food rc=0 8s :: 통과 55/55
+test-t860-catch-dry rc=1 37s :: === 24/25 통과 ===
+test-t877-dry-fix rc=0 59s :: === 28/28 통과 ===
+test-valuechain rc=0 1s :: 결과: PASS
+test-wood-flow rc=0 1s :: === 결과: 18 PASS / 0 FAIL ===
+test-wood-step1 rc=0 2s :: === 결과: 25 PASS / 0 FAIL ===
+test-t1419-food-need rc=0 26s :: 결과: 20 통과 / 0 실패
+## 핀 고친 뒤 다시(세 하네스 — 기근 블록 · 빠르기 · 갈무리 글자가 한 함수를 읽는다)
+test-t1198-birth-body :: === T1198 결과: 47 통과 · 0 실패 ===
+test-t1226-job-flex :: 결과: 59 통과 / 0 실패
+test-t860-catch-dry :: === 25/25 통과 ===
+## 존 띄우는 것
+test-harness-lint rc=0 1314s :: === 102건 중 PASS 102 · FAIL 0 ===
+test-t1374-farm-winter rc=0 1018s :: 5 통과 · 0 실패
+test-t1342-gate-home rc=0 200s :: === T1342 문 앞에서 집으로: 통과 15 · 실패 0 ===
+test-t1306-migrate-food rc=0 402s :: === T1306 이주 문 + T1312 무리 절 + T1319 절: 통과 30 · 실패 0 ===
+test-t1238-terr-v2 rc=0 13s :: === T1238: 117건 중 PASS 117 · FAIL 0 ===
+test-t1334-bundle rc=0 315s :: === T1334 묶음 손잡이: 통과 19 · 실패 0 ===
+test-t1346-birth-flow :: ✓ test-t1346-birth-flow 22/22
+## 랩 연기
+lab-smoke 마을실험실 ::   콘솔 에러 0건 ✅
+lab-smoke 전쟁실험실 ::   콘솔 에러 0건 ✅

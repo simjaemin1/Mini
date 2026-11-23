@@ -125,7 +125,7 @@ async function serverArm(on) {
   const RUN = fs.mkdtempSync(`/tmp/t1392-${on ? 'on' : 'off'}-`); tmp.push(RUN); require('./lib-tmp').own(RUN);   // [PM land1086 · lint ㉑] lib-tmp — 판 끝(빨강 · 상한 포함)에 지운다
   const procs = [];
   //   두 판 다 사유지 돌봄 켬(`T1305_DEEDS=1` — 개인 칸 숫자 상한 0 · 끈 돌봄 판은 첫 집터가 슬롯 9 를 다 쓴다 — 보고 T1392 회부) · 바뀐 칸은 `T1392_FIRST_LOT` 하나
-  const env = Object.assign({}, process.env, { T1341_OWN_HOUSE: '1', T1305_DEEDS: '1' }); delete env.T1392_FIRST_LOT; if (on) env.T1392_FIRST_LOT = '1';
+  const env = Object.assign({}, process.env, { T1341_OWN_HOUSE: '1', T1305_DEEDS: '1' }); env.T1392_FIRST_LOT = on ? '1' : '0';   // ★[T1428] 끔 판은 글자로 끈다(-on 가지는 돌봄과 같이 켬 기본 후보)
   const boot = (file, e, db) => { const p = spawn(process.execPath, [path.join(ROOT, 'server', file)], { cwd: ROOT, env: Object.assign({}, env, e, { DB_PATH: db }), stdio: ['ignore', 'pipe', 'pipe'] }); p.stdout.on('data', () => {}); p.stderr.on('data', () => {}); procs.push(p); return p; };
   const down = async () => { for (const p of procs) { try { p.kill('SIGTERM'); } catch (e) {} } await sleep(800); for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} } };
   const out = {};

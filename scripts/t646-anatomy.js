@@ -36,7 +36,7 @@ const TPL = process.env.T646_TPL || '/tmp/t646/tpl/tpl-t100.db';
 const SLICE_S = parseInt(process.env.T646_SLICE_S || '30', 10), SLICES = parseInt(process.env.T646_SLICES || '6', 10);
 const LEAD_S = parseInt(process.env.T646_LEAD_S || '150', 10);
 const DAY = 1440000;
-const CONF = { cap40: { VILLAGE_NPC_CAP: '40' }, inf: {} };   // 종전 상한 기본(40 · T538 추신3 의 되돌림 값) ↔ 지금 기본(무제한)
+const CONF = { cap40: { VILLAGE_NPC_CAP: '40' }, inf: {}, cap16: { VILLAGE_NPC_CAP: '16' } };   // ★[T1425] cap16 = 마을당 몸 16(틀 세계 ≈ 800 몸 — 몸 수에 따른 덩이 기울기)   // 종전 상한 기본(40 · T538 추신3 의 되돌림 값) ↔ 지금 기본(무제한)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const rmdb = (f) => { for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + s); } catch (e) {} } };
 fs.mkdirSync(DIR, { recursive: true });

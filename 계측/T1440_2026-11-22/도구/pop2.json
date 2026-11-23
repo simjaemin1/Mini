@@ -1,0 +1,6 @@
+[
+ {"tag":"POP_ON_7f","seed":7,"days":400,"env":{"T400_BUILD_ACT":"1","T1440_ROAD_RULE":"1","T1423_NO_BUILD":"1"}},
+ {"tag":"POP_OFF_42","seed":42,"days":400,"env":{"T400_BUILD_ACT":"1"}},
+ {"tag":"POP_ON_42f","seed":42,"days":400,"env":{"T400_BUILD_ACT":"1","T1440_ROAD_RULE":"1","T1423_NO_BUILD":"1"}},
+ {"tag":"POP_ON_1020f","seed":1020,"days":400,"env":{"T400_BUILD_ACT":"1","T1440_ROAD_RULE":"1","T1423_NO_BUILD":"1"}}
+]
