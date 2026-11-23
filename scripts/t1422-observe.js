@@ -22,7 +22,7 @@ const HN = [];
   Module.prototype._compile = function (c, f) {
     if (f === VS) {
       for (const [a, b] of HOOKS) { const n = c.split(a).length - 1; HN.push(n); if (n === 1) c = c.replace(a, b); }
-      c += '\n;globalThis.__t1422VS = { needClear: (v) => _lifeNeedClear(v), lifeEcon: () => _lifeEcon(), state, stat: () => (typeof t1422Stat === \'function\' ? t1422Stat() : null), stat51: () => (typeof _t1451St !== \'undefined\' ? JSON.parse(JSON.stringify(_t1451St)) : null) };\n';
+      c += '\n;globalThis.__t1422VS = { needClear: (v) => _lifeNeedClear(v), lifeEcon: () => _lifeEcon(), state, stat: () => (typeof t1422Stat === \'function\' ? t1422Stat() : null), stat51: () => (typeof _t1451St !== \'undefined\' ? JSON.parse(JSON.stringify(_t1451St)) : null), voc: (x, y) => villageOfCell(x, y) };\n';
     }
     return _c.call(this, c, f);
   }; }
@@ -55,7 +55,12 @@ globalThis.__t1422T = (npc, now, owned) => {
         const deps = VS.state.deps || {}, snap = [];
         for (const v of V) { const e = v.econ; if (!e) continue; const T = v._t325Trees || {}; const rr = [0, 0, 0];
           const RR = [10, 20, 40, 80, 120]; rr.length = RR.length; rr.fill(0); if (deps.t325TreesAtCell && v.ccx != null) { const M = RR[RR.length - 1]; for (let dy = -M; dy <= M; dy++) for (let dx = -M; dx <= M; dx++) { const r2 = dx * dx + dy * dy; if (r2 > M * M) continue; let a = null; try { a = deps.t325TreesAtCell(v.ccx + dx, v.ccy + dy); } catch (_) {} const n = a ? a.length : 0; if (!n) continue; for (let i = 0; i < RR.length; i++) if (r2 <= RR[i] * RR[i]) rr[i] += n; } }
-          snap.push([v.name, (e.npcs || []).length, T.N || 0, T.K || 0, ...rr, (v._farmSet ? v._farmSet.size : 0) + (v._potSet ? v._potSet.size : 0), v._terrSet ? v._terrSet.size : 0, (e.storage && e.storage.wood) || 0]); }
+          const bt = RR.map(() => 0), br = RR.map(() => 0); let RD = null; try { RD = require(require('path').join(process.cwd(), 'server', 'roads.js')); } catch (_) {}
+          if (v.ccx != null) { const M = RR[RR.length - 1]; for (let dy = -M; dy <= M; dy++) for (let dx = -M; dx <= M; dx++) { const r2 = dx * dx + dy * dy; if (r2 > M * M) continue; const x = v.ccx + dx, y = v.ccy + dy; let k = 0;
+            try { if (VS.voc && VS.voc(x, y)) k = 1; else if (RD && RD.pavedNear && RD.pavedNear(x, y, 2)) k = 2; } catch (_) {} if (!k) continue; for (let i = 0; i < RR.length; i++) if (r2 <= RR[i] * RR[i]) (k === 1 ? bt : br)[i]++; } }
+          let VLm = null; try { VLm = require(require('path').join(process.cwd(), 'server', 'village-layout.js')); } catch (_) {}
+          const lsz = (e.land && e.land.size) || 0, hz = +e.housing || 0, tt = VLm ? VLm.territoryTarget(lsz, hz) : null, np = (e.npcs || []).length, cap = VLm ? Math.ceil(np / (VLm.HOUSE_CAP_PER_FLOOR * VLm.HOUSE_MAX_FLOORS)) * VLm.TERR_PER_LOT + VLm.TERR_CORE : 0;
+          snap.push([v.name, (e.npcs || []).length, T.N || 0, T.K || 0, ...rr, (v._farmSet ? v._farmSet.size : 0) + (v._potSet ? v._potSet.size : 0), v._terrSet ? v._terrSet.size : 0, (e.storage && e.storage.wood) || 0, bt, br, [lsz, +hz.toFixed(1), tt ? tt.target : 0, tt ? tt.econ : 0, cap]]); }
         (rec.snap || (rec.snap = {}))[rec.days] = snap; }
       { let tN = 0; for (const v of V) tN += (v._t325Trees && v._t325Trees.N) || 0; (rec.tn || (rec.tn = [])).push(tN); }
       rec.cpu = process.cpuUsage(); }

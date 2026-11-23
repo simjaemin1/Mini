@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(표 없으면 안 돈다)
-// @bait 4   ← [T1356] 미끼 판정 줄 수(파일 안 · `test-harness-lint` ⑲b 가 센다)
+// @bait 5   ← [T1356] 미끼 판정 줄 수(파일 안 · `test-harness-lint` ⑲b 가 센다)
 // === scripts/test-t1451-farm-side-wood.js — 농부의 한 해: 부업 벌목 · 판 세계 현장(T1451) =====================================
 //
 // 지키는 것(서버 0 · 몇 초 · 운영 문 그대로 부른다):
@@ -10,8 +10,8 @@
 //   ③ 두 번 셈 0 — 나무 몸 행위 층이 선 마을(식 닫힘)에선 econ 남는 시간 몫(숙련 0 일꾼)이 나무를 안 낸다 · 몸이 벤 것만 곳간에 든다(정본)
 //   ④ 밭이 안 부르는 날 — `T1451_FARM_CALL` 켬 · 그날 부름 0 이면 농부 1인 값 0(나눗수 ∞) · 부름 1 · 끔 = 종전 값
 //   ⑤ 밭이 부르는 날엔 밭이 먼저 — 남는 시간 문은 '휴식' 앞 자리에서만 불린다(부르는 자리 글자 수 · 농부 아침 창 · 일감 없음 · 반일 · 몫 참 자리)
-//   ⑥ 미끼(이 파일 안 · 넷) — ⓐ 색인 칸 0 문 뺌(현장 없이 장부만) → ② 빨강 · ⓑ 식 닫힘 문 뺌 → ③ 빨강(두 번 셈) ·
-//                            ⓒ 부름 0 문 뺌 → ④ 빨강 · ⓓ 채집 색인도 현장으로 → ② 빨강
+//   ⑥ 미끼(이 파일 안 · 다섯) — ⓐ 색인 칸 0 문 뺌(현장 없이 장부만) → ② 빨강 · ⓑ 식 닫힘 문 뺌 → ③ 빨강(두 번 셈) ·
+//                            ⓒ 부름 0 문 뺌 → ④ 빨강 · ⓓ 채집 색인도 현장으로 → ② 빨강 · ⓔ 남는 시간 문을 밭 일감 문 앞으로 → ⑤ 빨강
 //   날짜 · 벽시계를 쓰지 않는다.
 'use strict';
 const path = require('path');
@@ -64,11 +64,13 @@ const fOk = (on, off) => !on.err && on.c0 === 0 && on.c1 > 0 && on.cu === on.c1 
 ok(fOk(F1, F0), '④ 밭이 안 부르는 날 — 켬 · 부름 0 = 농부 값 0 · 부름 1 · 칸 없음 = 종전 값 · 끔 = 부름과 무관', JSON.stringify({ on: F1, off: F0 }));
 // ── ⑤ 밭이 부르는 날엔 밭이 먼저 ──
 const VS = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
-const calls = (VS.match(/_t1422Side\(vil, npc, now, '/g) || []).length, whys = [...VS.matchAll(/_t1422Side\(vil, npc, now, '(\w+)'\)/g)].map((m) => m[1]);
-const tick = VS.slice(VS.indexOf('function npcLifeTick(npc, now) {'));
-const iWin = tick.indexOf("if (dayFrac > SCH_FARMW_R && npc._fOutD !== bday) { if (_t1422Side(vil, npc, now, 'farmW')) return true; _lifeGoHome(npc, '휴식'); return true; }"), iCell = tick.indexOf('const k2 = _lifeNextFarmCell(vil, npc, _farmDay(vil, day));'), iIdle = tick.indexOf("if (_t1422Side(vil, npc, now, 'farmIdle')) return true;");
-ok(calls === 8 && new Set(whys).size === 5 && [...new Set(whys)].every((w) => ['half', 'farmW', 'farmIdle', 'quota', 'none'].includes(w)) && iWin > 0 && iCell > 0 && iIdle > iCell,
-  '⑤ 남는 시간 문은 \'휴식\' 앞 자리에서만(여덟 자리 · 까닭 다섯) · 밭 일감 문(`_lifeNextFarmCell`)이 먼저 · 그 뒤 일감 없음에서만', JSON.stringify({ calls, whys: [...new Set(whys)], iWin, iCell, iIdle }));
+const ORD = (src) => { const calls = (src.match(/_t1422Side\(vil, npc, now, '/g) || []).length, whys = [...src.matchAll(/_t1422Side\(vil, npc, now, '(\w+)'\)/g)].map((m) => m[1]);
+  const tick = src.slice(src.indexOf('function npcLifeTick(npc, now) {'));
+  const iWin = tick.indexOf("if (dayFrac > SCH_FARMW_R && npc._fOutD !== bday) { if (_t1422Side(vil, npc, now, 'farmW')) return true; _lifeGoHome(npc, '휴식'); return true; }"), iCell = tick.indexOf('const k2 = _lifeNextFarmCell(vil, npc, _farmDay(vil, day));'), iIdle = tick.indexOf("if (_t1422Side(vil, npc, now, 'farmIdle')) return true;");
+  return { calls, whys: [...new Set(whys)], iWin, iCell, iIdle }; };
+const oOk = (o) => o.calls === 8 && o.whys.length === 5 && o.whys.every((w) => ['half', 'farmW', 'farmIdle', 'quota', 'none'].includes(w)) && o.iWin > 0 && o.iCell > 0 && o.iIdle > o.iCell;
+const O0 = ORD(VS);
+ok(oOk(O0), '⑤ 남는 시간 문은 \'휴식\' 앞 자리에서만(여덟 자리 · 까닭 다섯) · 밭 일감 문(`_lifeNextFarmCell`)이 먼저 · 그 뒤 일감 없음에서만', JSON.stringify(O0));
 // ── ⑥ 미끼 ──
 const pa = BAIT('server/villages.js', "(T1451_SITES && j === 'lumberjack' && E.woodActOn(e));", "(T1451_SITES && j === 'lumberjack');");
 const Ba1 = run({ ...ACT, T1451_SITES: '1' }, SIDE(pa, 5)), Ba0 = run(ACT, SIDE(pa, 5)), Baz = run({ ...ACT, T1451_SITES: '1' }, SIDE(pa, 0));
@@ -80,5 +82,8 @@ ok(Bc1.baitN === 1 && !Bc1.err && !fOk(Bc1, F0), '⑥ 미끼 ⓒ — 바꾼 자�
 const pd = BAIT('server/villages.js', "(T1451_SITES && j === 'lumberjack' && E.woodActOn(e));", "(T1451_SITES && ((j === 'lumberjack' && E.woodActOn(e)) || (j === 'forager' && E.forageActOn(e))));");
 const Bd1 = run({ ...ACT, T1451_SITES: '1' }, SIDE(pd, 5));
 ok(Bd1.baitN === 1 && !Bd1.err && !sOk(Bd1, S0, Sz), '⑥ 미끼 ⓓ — 바꾼 자리 1곳(채집 색인도 현장 — 채집 몸 갈래는 색인을 안 읽는다)인 villages 사본은 ② 빨강', JSON.stringify({ fr: Bd1.fr, fj: Bd1.fj, baitN: Bd1.baitN }));
+const KK2 = "    const k2 = _lifeNextFarmCell(vil, npc, _farmDay(vil, day));", I2 = "    if (_t1422Side(vil, npc, now, 'farmIdle')) return true;";
+const VSe = VS.includes(KK2) && VS.includes(I2) ? VS.replace(I2 + '\n', '').replace(KK2, I2 + "\n" + KK2) : VS;
+ok(VSe !== VS && !oOk(ORD(VSe)), '⑥ 미끼 ⓔ — 바꾼 자리 1곳(남는 시간 문을 밭 일감 문 앞으로 — 밭이 부르는 날 벌목 간다)인 글자 사본은 ⑤ 빨강', JSON.stringify(ORD(VSe)));
 console.log(`\n${pass} 통과 · ${fail} 실패`);
 process.exit(fail ? 1 : 0);

@@ -14059,8 +14059,8 @@ function _t1451CallDay(vil) {   // 선 칸의 그날 일(거둠 · 방제 · 물
   vil.econ._t1451Call = (w > 0 || sow) ? 1 : 0; _t1451St[vil.econ._t1451Call ? 'call' : 'noCall']++;
 }
 function _lifeHeadlessDay(vil) {
-  if (T1451_FARM_CALL) _t1451CallDay(vil);   // ★[T1451] 그날 밭이 일을 부르나(끔 = 이 줄 안 선다)
   _t1276Stand(vil);   // ★[T1276] 하루 한 번(라이브 · 판 자 — 몸 갈래여도 선다)
+  if (T1451_FARM_CALL) _t1451CallDay(vil);   // ★[T1451] 그날 밭이 일을 부르나(끔 = 이 줄 안 선다)
   _t1374Next(vil);   // ★[T1374 ②] 다음 거둠 날(출생 문 · 끔 = 무동작)
   _t1388Other(vil);   // ★[T1388 ⓒ] 다른 식량 몫(끔 = 무동작)
   _lifeVL();   // lazy 로드 방어(단독 호출 경로 — 5e8d5f5 'is not defined' 클래스 재발 금지)
