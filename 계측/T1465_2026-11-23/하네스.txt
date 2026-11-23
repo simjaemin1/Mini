@@ -1,0 +1,13 @@
+PASS product value wiring
+PASS native production and whole-world resume
+PASS native body host and immediate player depletion
+PASS bundle ON mapped/shared-cell parity
+✓ 미끼 차감 누락 · 바꾼 자리 1 → 재고 보존 assertion 빨강
+✓ 미끼 마을별 공유 장부 · 바꾼 자리 1 → 이웃 잔량 assertion 빨강
+✓ 미끼 몸 이중 차감 · 바꾼 자리 1 → 몸 뒤 장부 assertion 빨강
+✓ 미끼 되참 K 초과 · 바꾼 자리 1 → 정본 상한 assertion 빨강
+✓ 미끼 복원 시 만재 · 바꾼 자리 1 → 저장 잔량 assertion 빨강
+✓ 미끼 끔 상태 변경 · 바꾼 자리 1 → 끔 바이트 assertion 빨강
+✓ 미끼 비옥도 변경 · 바꾼 자리 1 → 비광종 보존 assertion 빨강
+✓ 미끼 미리보기 쓰기 · 바꾼 자리 1 → 읽기 전용 assertion 빨강
+=== test-t1465-ore-stock 결과: 12 통과 / 0 실패 · 미끼 8 ===

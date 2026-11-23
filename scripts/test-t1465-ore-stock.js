@@ -89,6 +89,9 @@ const body=spawnSync(process.execPath,['-e',`
 `],{cwd:ROOT,env:process.env,encoding:'utf8'});
 assert.strictEqual(body.status,0,'native body host\n'+body.stdout+body.stderr);
 console.log('PASS native body host and immediate player depletion');
+const bundled=spawnSync(process.execPath,[path.join(__dirname,'t1465-bundle-check.js')],{cwd:ROOT,env:process.env,encoding:'utf8'});
+assert.strictEqual(bundled.status,0,'bundle ON parity\n'+bundled.stdout+bundled.stderr);
+console.log('PASS bundle ON mapped/shared-cell parity');
 let count=0;
 function check(name,label){
  for(const mutant of ['',name]){
@@ -106,4 +109,4 @@ check('restore','미끼 복원 시 만재 · 바꾼 자리 1 → 저장 잔량 a
 check('off','미끼 끔 상태 변경 · 바꾼 자리 1 → 끔 바이트 assertion 빨강');
 check('fertility','미끼 비옥도 변경 · 바꾼 자리 1 → 비광종 보존 assertion 빨강');
 check('preview','미끼 미리보기 쓰기 · 바꾼 자리 1 → 읽기 전용 assertion 빨강');
-console.log(`=== test-t1465-ore-stock 결과: ${count+3} 통과 / 0 실패 · 미끼 ${count} ===`);
+console.log(`=== test-t1465-ore-stock 결과: ${count+4} 통과 / 0 실패 · 미끼 ${count} ===`);

@@ -1,0 +1,31 @@
+{
+  "feature": "T1465_ORE_STOCK default OFF",
+  "implementationCommit": "5d8c5e849ee95510a4dfc5225e3153659f546771",
+  "base": "38deb9b4",
+  "mainMerged": "5ed13b79",
+  "matrixNode": "v24.22.1",
+  "serverBaselineNode": "v22.23.4",
+  "equilibriumAndLongNode": "v22.23.4",
+  "inheritedOffScope": "Actual T1427 new-map 800-day OFF and bronze-bundle runs, seeds1020/7/42; server400-day OFF daily and per-village byte parity separately revalidated after implementation; t1407 observer day tags lag final world by one tick, final population uses world.json.base.pop",
+  "inherited": {
+    "계측/T1427_2026-11-22/runs/new-lab-off-1020/world.json.gz": "ba2bc612f16196ae1870304b67a1d91aa8bc56a6edb8d772573ca96ca4b77daf",
+    "계측/T1427_2026-11-22/runs/new-lab-off-1020/probe.json.gz": "ff6ed6062de280f44f25cbcca12e64d4beefc950965f0166d557ade2e8cdf164",
+    "계측/T1427_2026-11-22/runs/new-lab-off-1020/t1407.json.gz": "8f28a1c6f0e746eef2b32008b564df3ce6f0d25b0f8ac9340626c05615ee1cf8",
+    "계측/T1427_2026-11-22/runs/new-lab-off-7/world.json.gz": "910299948c4a90f493dd4901afe38e059f5b43ecd08d7a8206bd60357f4982cd",
+    "계측/T1427_2026-11-22/runs/new-lab-off-7/probe.json.gz": "4c314b80ac887409acc97cabbf427a1a965ea4ccd72b7600ff9539b0783d8df9",
+    "계측/T1427_2026-11-22/runs/new-lab-off-7/t1407.json.gz": "0fdd903e55c55b92aa0dddf0725904de111d5a348460f72a24c12d3413fc3f8b",
+    "계측/T1427_2026-11-22/runs/new-lab-off-42/world.json.gz": "eaee9240555df8de20e68e6a865e863393d5dc9b289a6cbb0aa06f97be59cc06",
+    "계측/T1427_2026-11-22/runs/new-lab-off-42/probe.json.gz": "1d5626b198487d27ac8a06103cab69f0e81946b06d8fce3d41043a4c0e10c6cb",
+    "계측/T1427_2026-11-22/runs/new-lab-off-42/t1407.json.gz": "ceafa8568ea5e261706219b135b72803a80b9e66ca9f36eef2288e9b51d7c8d9",
+    "계측/T1427_2026-11-22/runs/new-lab-bundle-1020/world.json.gz": "5cd00cbf3edc0dfe1bb0f1682a586b5b94231475d70619952bcac09416a881c9",
+    "계측/T1427_2026-11-22/runs/new-lab-bundle-1020/probe.json.gz": "547aac6412edd2853ee04d34cde290f9ad1e5eb6d5b98726a310298d1e4a61b9",
+    "계측/T1427_2026-11-22/runs/new-lab-bundle-1020/t1407.json.gz": "9ed0eff445c03f5581ba40853f40908e1e11af810dd14c25373fa54da202fbb9",
+    "계측/T1427_2026-11-22/runs/new-lab-bundle-7/world.json.gz": "d18eb112724f0d798b48d75a730e3bae1488f830ed587c03b52d95fb723a4558",
+    "계측/T1427_2026-11-22/runs/new-lab-bundle-7/probe.json.gz": "62236e1dbff6bf53c87550402b64cecab382a1bcb802b5ec6ddad8a065e04f33",
+    "계측/T1427_2026-11-22/runs/new-lab-bundle-7/t1407.json.gz": "0ed9bdb12ae92f8f2b908f4c0167918d69e3e4410276c785b59ac617e87bd2ef",
+    "계측/T1427_2026-11-22/runs/new-lab-bundle-42/world.json.gz": "5672395ce408a2884063a24e090dfc9c00deeae82c16593a62e441092b5d58af",
+    "계측/T1427_2026-11-22/runs/new-lab-bundle-42/probe.json.gz": "7e608232c373756d834773aefe60a6ee984780817c222506021c855948fd8e8e",
+    "계측/T1427_2026-11-22/runs/new-lab-bundle-42/t1407.json.gz": "5f22505f2f095888af8f2867996f44d5e0cdd1c9fbb9d8cd73f2c33b518c5061"
+  },
+  "excluded": "Pre-navigation and pre-value-alignment exploratory/partial runs moved to /workspace/scratch/t1465-invalid-runs; excluded from reported results"
+}

@@ -7,7 +7,7 @@ for SEED in 1020 7 42; do
  for ARM in off bundle; do
   DIR="$CARD/runs/lab-$ARM-$SEED"; mkdir -p "$DIR"
   if [ -f "$DIR/done" ]; then continue; fi
-  export T1465_ORE_STOCK=1 T1465_OBS="$DIR/stock.json" T1407_LAB_OUT="$DIR/t1407.json" T1385_LAB_OUT="$DIR/probe.json" T1398_OUT="$DIR/band.json"
+  export T1465_ORE_STOCK=1 T1465_EMPTY_WATCH=1 T1465_OBS="$DIR/stock.json" T1407_LAB_OUT="$DIR/t1407.json" T1385_LAB_OUT="$DIR/probe.json" T1398_OUT="$DIR/band.json"
   export T17_JSON="$DIR/world.json" T176_JSON="$DIR/farm.json" LAB_SEEDCACHE=/workspace/scratch/t1465-seeds-on.json
   unset T1385_BRONZE_NOCAP T1398_BRONZE_BAND
   if [ "$ARM" = bundle ]; then export T1385_BRONZE_NOCAP=1 T1398_BRONZE_BAND=1; fi

@@ -1,0 +1,16 @@
+[
+  {
+    "id": "R03",
+    "previousHash": "567e6eaf71764e49fb9073a6d7d506325086b16446eabfa2d0d6a6338335af1c",
+    "newHash": "cebe0e9edd10981dac1b69daec1f11abc04819177b00b3c4287c6716be9373b1",
+    "onlyChange": "flag-guarded canonical ore-cell topology field; deleting that one added line restores prior rule hash exactly",
+    "priorRuleIdentical": true
+  },
+  {
+    "id": "R04",
+    "previousHash": "567e6eaf71764e49fb9073a6d7d506325086b16446eabfa2d0d6a6338335af1c",
+    "newHash": "cebe0e9edd10981dac1b69daec1f11abc04819177b00b3c4287c6716be9373b1",
+    "onlyChange": "flag-guarded canonical ore-cell topology field; deleting that one added line restores prior rule hash exactly",
+    "priorRuleIdentical": true
+  }
+]

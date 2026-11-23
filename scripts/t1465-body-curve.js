@@ -6,7 +6,7 @@
 // Terrain A* and the runtime-read canonical followNpcPath drive walking.
 // Market-induced rest is excluded to measure physical capacity. The residual bag
 // is delivered through the canonical entrance after work; overnight return is not timed.
-Object.assign(process.env,{ENABLE_VILLAGES:'0',T1266_ORE_BODY:'1',T1188_ORE_SPLIT:'1',T724_MINE_ACT:'1',T427_WORK_REACH:'1',T1295_BODY_CLOCK:'0'});
+Object.assign(process.env,{ENABLE_VILLAGES:'0',T1465_ORE_STOCK:'0',T1266_ORE_BODY:'1',T1188_ORE_SPLIT:'1',T724_MINE_ACT:'1',T427_WORK_REACH:'1',T1295_BODY_CLOCK:'0'});
 const fs=require('fs'),crypto=require('crypto');
 const V=require('../server/villages'),E=require('../sim/economy-sim'),S=require('../server/specialty');
 const src=fs.readFileSync(require.resolve('../server/zone'),'utf8');
@@ -23,7 +23,8 @@ const blocked=(x,y)=>T.isWaterCellLocal('hanbando',Math.floor(x/32)*32+16,Math.f
 const paths=new Map();
 function route(a,b){const key=a.x+','+a.y+'>'+b.x+','+b.y;if(!paths.has(key))paths.set(key,PF.findPath(a.x,a.y,b.x,b.y,{isWaterFn:blocked,maxCells:(R*2+1)**2,searchRadiusCells:R*2}));return paths.get(key);}
 const rows=[];
-for(const depletedPrefix of [0,1-.5,1-.1])for(const fraction of [1,.5,.1]){
+const fractions=[1,.5,.1,.1*.1,2/S.ORE_K,(1+.1)/S.ORE_K,(1+1/S.MINE_SWINGS_PER)/S.ORE_K,1/S.ORE_K];
+for(const depletedPrefix of [0,1-.5,1-.1])for(const fraction of fractions){
  const w={day:1};E.bindProductionActs(w);
  const v={name:m.name,ccx:m.ccx,ccy:m.ccy,_oreCells:m.cells,_granList:[{cx:m.ccx,cy:m.ccy}],npcPids:['miner'],_mineLvl:5,
  econ:{_world:w,storage:{food:1000},treasury:{},land:{ore:1,oreMix:m.land?.oreMix||{tin:1}},counts:{miner:1},npcs:[]}};
@@ -55,4 +56,4 @@ for(const depletedPrefix of [0,1-.5,1-.1])for(const fraction of [1,.5,.1]){
 for(const r of rows)r.relativeOutput=r.chunksPerMinerDay/rows[0].chunksPerMinerDay;
 const files=['server/villages.js','server/specialty.js','server/zone.js'];
 const result={method:'controlled physical body calibration; daily uniform-stock reset, central test granary, one skill5 miner, unlimited demand (canonical missing-value fallback), actual terrain A* / canonical followNpcPath, daily uniform-stock reset; controlled physical calibration, NOT market equilibrium',daysPerPoint:days,stepMs:100,depletedPrefixControls:[0,1-.5,1-.1],speedReadFromZone:speed,sourceHashes:Object.fromEntries(files.map(f=>[f,crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex')])),rows};
-const i=process.argv.indexOf('--out');if(i>=0)fs.writeFileSync(process.argv[i+1],JSON.stringify(result,null,2));console.log(JSON.stringify(result,null,2));
+const i=process.argv.indexOf('--out');if(i>=0)fs.writeFileSync(process.argv[i+1],JSON.stringify(result,null,2));const ci=process.argv.indexOf('--curve-out');if(ci>=0){const profiles=[...new Set(rows.map(r=>r.depletedPrefix))].map(depletedPrefix=>({depletedPrefix,rows:[{fraction:0,relativeOutput:0},...rows.filter(r=>r.depletedPrefix===depletedPrefix).slice().sort((a,b)=>a.fraction-b.fraction).map(({fraction,relativeOutput})=>({fraction,relativeOutput}))]}));fs.writeFileSync(process.argv[ci+1],JSON.stringify({method:result.method,source:'scripts/t1465-body-curve.js',rows:profiles[0].rows,profiles},null,2)+'\n');}console.log(JSON.stringify(result,null,2));

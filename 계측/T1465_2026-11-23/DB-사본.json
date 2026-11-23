@@ -1,0 +1,7 @@
+{
+  "kind": "fresh synthetic old-map DB copy; canonical old-map ore fields; sentinel unrelated fields",
+  "rows": 51,
+  "dbPath": "/workspace/scratch/t1465-db/old-map-copy.db",
+  "sha256": "b1cc392fc976c69adcb38a5c851daf7d494cd8084afa8023d8e3c0b426846df3",
+  "oldTerrainSha256": "8b42bb561f89dd593d6b5ebeee408146d314aa00c6350d7069d0c60483a11c41"
+}

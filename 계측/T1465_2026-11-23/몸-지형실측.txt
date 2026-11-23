@@ -1,0 +1,282 @@
+{
+  "method": "controlled physical body calibration; daily uniform-stock reset, central test granary, one skill5 miner, unlimited demand (canonical missing-value fallback), actual terrain A* / canonical followNpcPath, daily uniform-stock reset; controlled physical calibration, NOT market equilibrium",
+  "daysPerPoint": 30,
+  "stepMs": 100,
+  "depletedPrefixControls": [
+    0,
+    0.5,
+    0.9
+  ],
+  "speedReadFromZone": 64,
+  "sourceHashes": {
+    "server/villages.js": "90400b111615b53e54b5a088c33208f32f4b0c09a5991197ed6dcf63d3efd4d1",
+    "server/specialty.js": "a230b921fc23470570b494f13f345143be477e4202d2232c83abd096bd64f90e",
+    "server/zone.js": "12f14f1893e0a90e8e40d229f878ac45a58f8f5da048f7b2c648b6ff9297eb3c"
+  },
+  "rows": [
+    {
+      "depletedPrefix": 0,
+      "fraction": 1,
+      "days": 30,
+      "chunksPerMinerDay": 14.524400811764478,
+      "walkFractionOfWork": 0.1156746031746032,
+      "selectedDistancePx": 1147.1006930518345,
+      "pathPxPerDay": 7462.39999999555,
+      "selections": 30,
+      "relativeOutput": 1
+    },
+    {
+      "depletedPrefix": 0,
+      "fraction": 0.5,
+      "days": 30,
+      "chunksPerMinerDay": 8.44940187613009,
+      "walkFractionOfWork": 0.06944444444444445,
+      "selectedDistancePx": 1147.1006930518345,
+      "pathPxPerDay": 4479.999999998263,
+      "selections": 30,
+      "relativeOutput": 0.5817384128704463
+    },
+    {
+      "depletedPrefix": 0,
+      "fraction": 0.1,
+      "days": 30,
+      "chunksPerMinerDay": 6.207170775602735,
+      "walkFractionOfWork": 0.06944444444444445,
+      "selectedDistancePx": 1147.1006930518345,
+      "pathPxPerDay": 4479.999999998263,
+      "selections": 30,
+      "relativeOutput": 0.4273615728488468
+    },
+    {
+      "depletedPrefix": 0,
+      "fraction": 0.010000000000000002,
+      "days": 30,
+      "chunksPerMinerDay": 5.857147983427086,
+      "walkFractionOfWork": 0.06944444444444445,
+      "selectedDistancePx": 1147.1006930518345,
+      "pathPxPerDay": 4479.999999998263,
+      "selections": 30,
+      "relativeOutput": 0.4032626240032506
+    },
+    {
+      "depletedPrefix": 0,
+      "fraction": 0.002,
+      "days": 30,
+      "chunksPerMinerDay": 5.78673817685364,
+      "walkFractionOfWork": 0.0757936507936508,
+      "selectedDistancePx": 1154.2623447869905,
+      "pathPxPerDay": 4889.59999999789,
+      "selections": 180,
+      "relativeOutput": 0.39841493303919956
+    },
+    {
+      "depletedPrefix": 0,
+      "fraction": 0.0011,
+      "days": 30,
+      "chunksPerMinerDay": 5.190916919817399,
+      "walkFractionOfWork": 0.15595238095238098,
+      "selectedDistancePx": 1160.355045662956,
+      "pathPxPerDay": 10060.7999999992,
+      "selections": 1560,
+      "relativeOutput": 0.3573928444340959
+    },
+    {
+      "depletedPrefix": 0,
+      "fraction": 0.0010166666666666666,
+      "days": 30,
+      "chunksPerMinerDay": 2.0450414599365003,
+      "walkFractionOfWork": 0.6302579365079366,
+      "selectedDistancePx": 1230.965697817759,
+      "pathPxPerDay": 40659.20000000671,
+      "selections": 3300,
+      "relativeOutput": 0.14080040109331443
+    },
+    {
+      "depletedPrefix": 0,
+      "fraction": 0.001,
+      "days": 30,
+      "chunksPerMinerDay": 0.7567229518449347,
+      "walkFractionOfWork": 0.8295634920634921,
+      "selectedDistancePx": 1295.3988587842566,
+      "pathPxPerDay": 53516.79999981961,
+      "selections": 3660,
+      "relativeOutput": 0.052100114948081304
+    },
+    {
+      "depletedPrefix": 0.5,
+      "fraction": 1,
+      "days": 30,
+      "chunksPerMinerDay": 13.759095029560095,
+      "walkFractionOfWork": 0.16279761904761908,
+      "selectedDistancePx": 1659.6867174259119,
+      "pathPxPerDay": 10502.400000000807,
+      "selections": 30,
+      "relativeOutput": 0.9473089601338666
+    },
+    {
+      "depletedPrefix": 0.5,
+      "fraction": 0.5,
+      "days": 30,
+      "chunksPerMinerDay": 8.196766932708137,
+      "walkFractionOfWork": 0.09771825396825398,
+      "selectedDistancePx": 1659.6867174259119,
+      "pathPxPerDay": 6303.999999996604,
+      "selections": 30,
+      "relativeOutput": 0.5643445839135007
+    },
+    {
+      "depletedPrefix": 0.5,
+      "fraction": 0.1,
+      "days": 30,
+      "chunksPerMinerDay": 6.021261490514027,
+      "walkFractionOfWork": 0.09771825396825398,
+      "selectedDistancePx": 1659.6867174259119,
+      "pathPxPerDay": 6303.999999996604,
+      "selections": 30,
+      "relativeOutput": 0.41456178251683357
+    },
+    {
+      "depletedPrefix": 0.5,
+      "fraction": 0.010000000000000002,
+      "days": 30,
+      "chunksPerMinerDay": 5.719284807286271,
+      "walkFractionOfWork": 0.09146825396825398,
+      "selectedDistancePx": 1659.6867174259119,
+      "pathPxPerDay": 5900.799999996971,
+      "selections": 30,
+      "relativeOutput": 0.39377079174610513
+    },
+    {
+      "depletedPrefix": 0.5,
+      "fraction": 0.002,
+      "days": 30,
+      "chunksPerMinerDay": 5.004700220251092,
+      "walkFractionOfWork": 0.2037698412698413,
+      "selectedDistancePx": 2122.3833225366952,
+      "pathPxPerDay": 13145.600000010423,
+      "selections": 180,
+      "relativeOutput": 0.34457188872103994
+    },
+    {
+      "depletedPrefix": 0.5,
+      "fraction": 0.0011,
+      "days": 30,
+      "chunksPerMinerDay": 2.101383096373966,
+      "walkFractionOfWork": 0.6575396825396826,
+      "selectedDistancePx": 2093.2486748377028,
+      "pathPxPerDay": 42419.1999999811,
+      "selections": 660,
+      "relativeOutput": 0.14467950338246569
+    },
+    {
+      "depletedPrefix": 0.5,
+      "fraction": 0.0010166666666666666,
+      "days": 30,
+      "chunksPerMinerDay": 0.5065699029200602,
+      "walkFractionOfWork": 0.9084325396825398,
+      "selectedDistancePx": 2081.7902786399895,
+      "pathPxPerDay": 58604.79999974557,
+      "selections": 840,
+      "relativeOutput": 0.03487716357357397
+    },
+    {
+      "depletedPrefix": 0.5,
+      "fraction": 0.001,
+      "days": 30,
+      "chunksPerMinerDay": 0.18136335209506113,
+      "walkFractionOfWork": 0.9591269841269843,
+      "selectedDistancePx": 2077.7649096683913,
+      "pathPxPerDay": 61875.19999969798,
+      "selections": 900,
+      "relativeOutput": 0.012486804409043876
+    },
+    {
+      "depletedPrefix": 0.9,
+      "fraction": 1,
+      "days": 30,
+      "chunksPerMinerDay": 12.486902702285768,
+      "walkFractionOfWork": 0.23968253968253972,
+      "selectedDistancePx": 2349.113875485818,
+      "pathPxPerDay": 15462.400000018852,
+      "selections": 30,
+      "relativeOutput": 0.8597189559910535
+    },
+    {
+      "depletedPrefix": 0.9,
+      "fraction": 0.5,
+      "days": 30,
+      "chunksPerMinerDay": 7.772571610057908,
+      "walkFractionOfWork": 0.14384920634920637,
+      "selectedDistancePx": 2349.113875485818,
+      "pathPxPerDay": 9279.99999999636,
+      "selections": 30,
+      "relativeOutput": 0.5351388818575069
+    },
+    {
+      "depletedPrefix": 0.9,
+      "fraction": 0.1,
+      "days": 30,
+      "chunksPerMinerDay": 5.715789262013933,
+      "walkFractionOfWork": 0.14305555555555557,
+      "selectedDistancePx": 2349.113875485818,
+      "pathPxPerDay": 9228.799999996174,
+      "selections": 30,
+      "relativeOutput": 0.393530124656451
+    },
+    {
+      "depletedPrefix": 0.9,
+      "fraction": 0.010000000000000002,
+      "days": 30,
+      "chunksPerMinerDay": 5.719284807286271,
+      "walkFractionOfWork": 0.09593253968253969,
+      "selectedDistancePx": 2349.113875485818,
+      "pathPxPerDay": 6188.799999996709,
+      "selections": 30,
+      "relativeOutput": 0.39377079174610513
+    },
+    {
+      "depletedPrefix": 0.9,
+      "fraction": 0.002,
+      "days": 30,
+      "chunksPerMinerDay": 5.004700220251092,
+      "walkFractionOfWork": 0.20386904761904764,
+      "selectedDistancePx": 2116.06784229114,
+      "pathPxPerDay": 13152.000000010446,
+      "selections": 180,
+      "relativeOutput": 0.34457188872103994
+    },
+    {
+      "depletedPrefix": 0.9,
+      "fraction": 0.0011,
+      "days": 30,
+      "chunksPerMinerDay": 1.688611759194324,
+      "walkFractionOfWork": 0.7253968253968255,
+      "selectedDistancePx": 2182.941668588856,
+      "pathPxPerDay": 46796.7999999174,
+      "selections": 510,
+      "relativeOutput": 0.11626033879666704
+    },
+    {
+      "depletedPrefix": 0.9,
+      "fraction": 0.0010166666666666666,
+      "days": 30,
+      "chunksPerMinerDay": 0.4878080546637617,
+      "walkFractionOfWork": 0.9120039682539683,
+      "selectedDistancePx": 2044.4654665289102,
+      "pathPxPerDay": 58835.19999974222,
+      "selections": 780,
+      "relativeOutput": 0.033585416774552714
+    },
+    {
+      "depletedPrefix": 0.9,
+      "fraction": 0.001,
+      "days": 30,
+      "chunksPerMinerDay": 0.17510944340212772,
+      "walkFractionOfWork": 0.9605158730158732,
+      "selectedDistancePx": 1983.6264584810692,
+      "pathPxPerDay": 61964.799999696676,
+      "selections": 870,
+      "relativeOutput": 0.012056224946663033
+    }
+  ]
+}

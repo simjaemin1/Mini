@@ -1,0 +1,60 @@
+veins 0 / 787 unique cells 2372
+veins 100 / 787 unique cells 284745
+veins 200 / 787 unique cells 299625
+veins 300 / 787 unique cells 315561
+veins 400 / 787 unique cells 330755
+veins 500 / 787 unique cells 346784
+veins 600 / 787 unique cells 362776
+veins 700 / 787 unique cells 378695
+{
+  "veins": 787,
+  "totals": {
+    "cells": 395675,
+    "chunks": 395675000,
+    "referenceKg": 1384862500,
+    "mineralsKg": {
+      "sulfur": 40389182.19357781,
+      "lead": 360874277.7655469,
+      "silver": 134027961.68495215,
+      "iron": 111437875.51862454,
+      "copper": 249143764.33996662,
+      "gold": 239853101.71138805,
+      "obsidian": 136343102.31323963,
+      "tin": 17024185.417893708,
+      "jade_raw": 95769049.05481061
+    },
+    "regenMaxKgPer365Days": {
+      "sulfur": 294841.03001305315,
+      "lead": 2634382.2276857463,
+      "silver": 978404.1202992428,
+      "iron": 813496.4912863175,
+      "copper": 1818749.479685312,
+      "gold": 1750927.642494215,
+      "obsidian": 995304.6468873434,
+      "tin": 124276.55355063356,
+      "jade_raw": 699114.0581002365
+    },
+    "npcAccessibleCells": 26921,
+    "npcAccessibleMineralsKg": {
+      "lead": 12835307.94257148,
+      "silver": 4475277.966481784,
+      "copper": 14357225.226150932,
+      "gold": 6448023.623675052,
+      "obsidian": 25655000,
+      "tin": 9769027.526498975,
+      "sulfur": 20408960.14598595,
+      "iron": 274677.5686358372
+    },
+    "npcRegenMaxKgPer365Days": {
+      "lead": 93697.74798076804,
+      "silver": 32669.529155320237,
+      "copper": 104807.74415089721,
+      "gold": 47070.57245282691,
+      "obsidian": 187281.49999998492,
+      "tin": 71313.90094344602,
+      "sulfur": 148985.4090656997,
+      "iron": 2005.1462510416118
+    },
+    "sharedNpcCells": 440
+  }
+}
