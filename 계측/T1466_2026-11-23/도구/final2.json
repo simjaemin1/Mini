@@ -1,0 +1,60 @@
+[
+{
+"tag": "TICKOFF_1020",
+"seed": 1020,
+"days": 2,
+"env": {
+"T400_BUILD_ACT": "0",
+"T1440_ROAD_RULE": "1",
+"T1423_NO_BUILD": "1",
+"T577_BODY": "1"
+}
+},
+{
+"tag": "TICKON_1020",
+"seed": 1020,
+"days": 2,
+"env": {
+"T400_BUILD_ACT": "0",
+"T1440_ROAD_RULE": "1",
+"T1423_NO_BUILD": "1",
+"T577_BODY": "1",
+"T1466_ROAD_FAST": "1"
+}
+},
+{
+"tag": "ST2OFF_1020",
+"seed": 1020,
+"days": 3,
+"jp": false,
+"pre": [
+"scripts/t1466-stress-probe.js"
+],
+"env": {
+"T400_BUILD_ACT": "0",
+"T1440_ROAD_RULE": "1",
+"T1423_NO_BUILD": "1",
+"T577_BODY": "1",
+"T1466_ST_OUT": "/tmp/claude-0/-home-claude/a4d76bf5-a61f-5918-b7a1-202d531aae76/scratchpad/t1466/runs/ST2OFF_1020/st.json",
+"T1466_ST_DAY": "1"
+}
+},
+{
+"tag": "ST2ON_1020",
+"seed": 1020,
+"days": 3,
+"jp": false,
+"pre": [
+"scripts/t1466-stress-probe.js"
+],
+"env": {
+"T400_BUILD_ACT": "0",
+"T1440_ROAD_RULE": "1",
+"T1423_NO_BUILD": "1",
+"T577_BODY": "1",
+"T1466_ST_OUT": "/tmp/claude-0/-home-claude/a4d76bf5-a61f-5918-b7a1-202d531aae76/scratchpad/t1466/runs/ST2ON_1020/st.json",
+"T1466_ST_DAY": "1",
+"T1466_ROAD_FAST": "1"
+}
+}
+]

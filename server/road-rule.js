@@ -321,6 +321,50 @@ function _pullWin(P, lo, hi, blk, step4) {
 }
 //   막힌 이음 고치기 — 꺾은 줄의 마디가 막혔으면(칸 · 변) 그 두 끝 사이 칸 A*(상자를 넓혀 가며) + 줄 당기기로 갈아 끼운다 · 못 고치면 그 마디 그대로(셈)
 //   (교역로 A* 의 몸 칸 잇기 `_t1327Finish` 가 못 이은 이음 — 코스 격자 마디가 긴 담 건너편에 붙은 끝 · 켬에서만 부른다)
+//   ★[T1466] 막힌 이음 고치기 앞 — `_fine` 이 받을 가장 큰 상자(FIX_PAD 큰 차례 · 칸 수 문턱 그대로) 안에서 두 끝을 양쪽에서 번갈아 넓힌다(같은 걸음 술어 — 막힌 칸 · 대각 모서리 · 변).
+//     한쪽이 다 돌도록 못 만나면 끊김 = 그보다 작은 상자도 다 끊김(작은 상자 ⊂ 큰 상자) · 받을 상자가 없거나 끝 칸이 막혔으면 `_fine` 이 늘 null. 만나면 종전 차례 그대로 고친다.
+let FAST_FIX = false;
+function setFastFix(v) { FAST_FIX = !!v; }
+function _fixCut(ax, ay, bx, by, blk, step8) {
+  let pad = -1; for (let k = FIX_PAD.length - 1; k >= 0; k--) { const p = FIX_PAD[k], W = Math.abs(ax - bx) + 2 * p + 1, H = Math.abs(ay - by) + 2 * p + 1; if (W * H <= REPAIR_MAX_NODES * 4) { pad = p; break; } }
+  if (pad < 0 || blk(ax, ay) || blk(bx, by)) return true;
+  const x0 = Math.min(ax, bx) - pad, y0 = Math.min(ay, by) - pad, x1 = Math.max(ax, bx) + pad, y1 = Math.max(ay, by) + pad, W = x1 - x0 + 1, N = W * (y1 - y0 + 1);
+  const mk = new Uint8Array(N), QA = [ax, ay], QB = [bx, by];
+  mk[(ay - y0) * W + (ax - x0)] = 1; mk[(by - y0) * W + (bx - x0)] = 2;
+  let ha = 0, hb = 0;
+  const go = (fx, fy, tx, ty) => { const dx = tx - fx, dy = ty - fy; if (blk(tx, ty)) return false; if (dx && dy && (blk(fx + dx, fy) || blk(fx, fy + dy))) return false; return !step8(fx, fy, tx, ty); };   // = `_fine` 이웃 술어(fx,fy → tx,ty)
+  const grow = (Q, h, side) => {   // 한 칸 넓힌다 — 돌려줌: 0 이어 감 · 1 만났다
+    const x = Q[h], y = Q[h + 1];
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (!dx && !dy) continue;
+      const nx = x + dx, ny = y + dy; if (nx < x0 || ny < y0 || nx > x1 || ny > y1) continue;
+      if (side === 1 ? !go(x, y, nx, ny) : !go(nx, ny, x, y)) continue;   // 뒤쪽(b)은 그 칸으로 드는 걸음
+      const j = (ny - y0) * W + (nx - x0), m = mk[j];
+      if (m === side) continue; if (m) return 1;
+      mk[j] = side; Q.push(nx, ny);
+    }
+    return 0;
+  };
+  for (;;) {
+    if (ha >= QA.length || hb >= QB.length) return true;   // 한쪽이 다 돌았다 — 끊김
+    if (grow(QA, ha, 1)) return false; ha += 2;
+    if (grow(QB, hb, 2)) return false; hb += 2;
+  }
+}
+//   ★[T1466] 고치기 전에 — 고쳐도 줄 검사(`clearRoute(·, M)`)에서 떨어질 것이 뻔한가: 막힌 이음 가운데 가장 큰 상자에서도 끊긴(`_fixCut`) 것이 있고, 그 곧은 줄(고치기가 그대로 남긴다)이
+//     그 걸음의 막힘을 지난다 = 다른 이음을 어떻게 고쳐도 그 길은 줄 검사에서 떨어진다(같은 답 · 칸 A* 를 안 돌린다)
+function fixDoomed(pts, blk, step4, M) {
+  if (!pts || pts.length < 2) return false;
+  const e8 = (fx, fy, tx, ty) => { const sx = tx - fx, sy = ty - fy; if (sx && sy) { const a = !step4(fx, fy, fx + sx, fy) && !step4(fx + sx, fy, tx, ty); const b = !step4(fx, fy, fx, fy + sy) && !step4(fx, fy + sy, tx, ty); return !(a || b); } return step4(fx, fy, tx, ty); };
+  const cb = (x, y) => cellBlkM(x, y, M), eb = (fx, fy, tx, ty) => edgeStepM(fx, fy, tx, ty, M);
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i];
+    if (clearLine(R.cellsOf, a, b, blk, step4)) continue;
+    if (clearLine(R.cellsOf, a, b, cb, eb)) continue;
+    if (_fixCut(Math.floor(a.x / SZ), Math.floor(a.y / SZ), Math.floor(b.x / SZ), Math.floor(b.y / SZ), blk, e8)) { st.fixDoom = (st.fixDoom | 0) + 1; return true; }
+  }
+  return false;
+}
 function fixRoute(pts, blk, step4) {
   if (!pts || pts.length < 2) return pts;
   const e8 = (fx, fy, tx, ty) => { const sx = tx - fx, sy = ty - fy; if (sx && sy) { const a = !step4(fx, fy, fx + sx, fy) && !step4(fx + sx, fy, tx, ty); const b = !step4(fx, fy, fx, fy + sy) && !step4(fx, fy + sy, tx, ty); return !(a || b); } return step4(fx, fy, tx, ty); };
@@ -329,6 +373,7 @@ function fixRoute(pts, blk, step4) {
     const a = pts[i - 1], b = pts[i];
     if (clearLine(R.cellsOf, a, b, blk, step4)) { if (out) out.push(b); continue; }
     if (!out) out = pts.slice(0, i);
+    if (FAST_FIX && _fixCut(Math.floor(a.x / SZ), Math.floor(a.y / SZ), Math.floor(b.x / SZ), Math.floor(b.y / SZ), blk, e8)) { st.fixFail = (st.fixFail | 0) + 1; st.fixCut = (st.fixCut | 0) + 1; out.push(b); continue; }   // ★[T1466] 가장 큰 상자 안에서도 두 끝이 안 이어진다 = 상자마다 칸 A* 가 다 못 찾는다(같은 답 · 먼저 안다)
     let cells = null; for (const pad of FIX_PAD) { cells = _fine(Math.floor(a.x / SZ), Math.floor(a.y / SZ), Math.floor(b.x / SZ), Math.floor(b.y / SZ), blk, e8, pad); if (cells) break; }
     if (!cells) { st.fixFail = (st.fixFail | 0) + 1; out.push(b); continue; }
     const mid = _pull(cells, a, b, blk, step4); for (let k = 1; k < mid.length; k++) out.push(mid[k]);
@@ -373,7 +418,7 @@ function bindJudge(ctx) { J = ctx; }
 function judgeBegin(piece, meta) {
   if (S.claimsDirty) _claimsBuild();   // 판 번호를 잡기 앞에 사유지 표를 세운다(안 그러면 판정 첫 물음이 표를 세우며 판을 올려 막 시작한 판정이 낡는다)
   const m = Object.assign({ cls: 4, max: 5, early: false }, meta || {});
-  return { piece, meta: m, phase: 'pairs', touch: null, groups: null, q: null, res: new Map(), stepOf: new Map(), passBy: new Map(), fail: [], ratios: [], verdict: null, cpu: 0, n: { rep: 0, seg: 0, full: 0, s3: 0, s4: 0, s5: 0, hit: 0 }, tm: { rep: 0, seg: 0, full: 0, s3: 0, s4: 0, s5: 0 }, cache: new Map(), Ms: new Map(), sVer: S.ver, t0: Date.now() };
+  return { piece, meta: m, phase: 'pairs', touch: null, groups: null, q: null, res: new Map(), stepOf: new Map(), passBy: new Map(), fail: [], ratios: [], verdict: null, cpu: 0, n: { rep: 0, seg: 0, full: 0, s3: 0, s4: 0, s5: 0, hit: 0 }, tm: { rep: 0, seg: 0, full: 0, s3: 0, s4: 0, s5: 0 }, cache: new Map(), Ms: new Map(), sVer: S.ver, t0: Date.now(), fs: null };   // fs = ★[T1466] 한 번 훑기 판정의 일 칸(끔 = null)
 }
 //   긴 마디에 창 — 첫 닿는 마디에서 조각 투영점 WIN 앞 · 끝 닿는 마디에서 WIN 뒤에 꼭짓점을 넣는다(같은 줄 위 — 길은 그대로 · 사본)
 function _window(m, pc) {
@@ -401,6 +446,52 @@ function _claimCand(m, lvl) {
   L.sort((a, b) => b.t - a.t || _idNum(b.id) - _idNum(a.id) || String(b.id).localeCompare(String(a.id)));   // 같은 시각이면 나중에 선 행(존 사유지 id 의 수)
   return L;
 }
+// ═══ ★★[T1466 2026-11-23] 떠나는 마을마다 한 번 훑기(㉮ · 손잡이 `T1466_ROAD_FAST` — 마을 시뮬이 `job.fast` 를 단다 · 끔 = 아래를 아무도 안 부른다) ═══
+//   쌍 전체를 다시 구해야 하는 쌍(줄기 고쳐 잇기가 못 한 쌍 — T1440 의 마디 다시 구하기 · 쌍 전체 자리)을 끝 마을로 묶는다:
+//     떠나는 마을 = 그 판정이 닿은 쌍 가운데 더 많은 쌍에 끼인 끝(같으면 열쇠 앞) · 그 마을에서 그 마을이 끼인 아직 안 끝난 쌍의 목적 마을 전부까지 한 번에(J.multiBegin · J.multiStep).
+//   쌍 하나의 답 = 그 훑기의 길(같은 3배 · 같은 당기기 · 같은 걸음 내림 — T1440 'full' 줄 그대로). 걸음 3 · 4 · 5 는 T1440 그대로(걸음마다 사유지 허락이 쌍마다 다르다).
+//   한 칸 조각(또는 끝까지 다 보는 판정)이면 차수 큰 쌍부터 본다 — 답은 같다(한 칸이면 내준 쌍이 누구든 길이 지나는 칸은 그 칸 · 보호면 쌍마다 따로) · 처음 내줌을 빨리 만난다.
+function _fastPairs(job) {
+  const deg = new Map();
+  for (const m of job.touch) { const ab = String(m.key).split('_'); m.a = ab[0]; m.b = ab[1]; for (const v of ab) deg.set(v, (deg.get(v) || 0) + 1); }
+  job.fs = { deg, S: new Map(), runs: 0, pops: 0, cpu: 0, keys: new Set(), cur: null };
+  const free = !(job.meta.early && job.piece.cells.length > 1);   // 여러 칸 조각 · 처음 내줌에서 끝 = 내준 쌍이 길이 지나는 칸을 정한다 — T1440 차례 그대로
+  if (free) {
+    const src = (m) => { const da = deg.get(m.a) || 0, db = deg.get(m.b) || 0; return da >= db ? da : db; };
+    for (const g of job.groups) g.dmax = Math.max(...g.members.map(src));
+    job.groups.sort((x, y) => y.dmax - x.dmax);   // 안정 정렬 — 같은 차수는 T1440 차례
+  }
+}
+function _fastQ(job, pend, s) { for (let i = pend.length - 1; i >= 0; i--) if (!job.res.has(pend[i].key)) job.q.unshift({ k: 'mfull', m: pend[i], s }); }
+//   그 쌍의 훑기(떠나는 마을 · 걸음) — 없으면 세운다(목적 = 그 마을이 끼인 쌍 가운데 아직 안 끝난 쌍의 다른 끝 전부)
+function _fastSearch(job, m, s, M) {
+  const F = job.fs, da = F.deg.get(m.a) || 0, db = F.deg.get(m.b) || 0, vid = da >= db ? m.a : m.b;
+  const sk = s + '|' + vid; let SS = F.S.get(sk);
+  if (SS) return SS;
+  if (s === 2 && !S.cell.U.size && !S.edge.U.size && F.S.has('1|' + vid)) { SS = F.S.get('1|' + vid); F.S.set(sk, SS); F.same = (F.same | 0) + 1; return SS; }   // 주인 없는 구조물이 하나도 없다 = 걸음 2 그래프 = 걸음 1 그래프(같은 답)
+  const e = J.ends(m.key); if (!e) return null;
+  const src = vid === m.a ? { x: e[0], y: e[1] } : { x: e[2], y: e[3] }, seen = new Set(), tg = [];
+  for (const o of job.touch) {
+    if (job.res.has(o.key) || (o.a !== vid && o.b !== vid)) continue;
+    const other = o.a === vid ? o.b : o.a; if (seen.has(other)) continue;
+    const eo = J.ends(o.key); if (!eo) continue;
+    seen.add(other); const eb = MULT * _base(o.key, o.pts); tg.push(o.a === vid ? { id: other, x: eo[2], y: eo[3], rev: false, eb } : { id: other, x: eo[0], y: eo[1], rev: true, eb });   // eb = T1440 쌍 전체 다시 구하기의 3배 타원(같은 두 끝 · 같은 문턱)
+  }
+  SS = J.multiBegin(job.piece, M, src, tg, job.fast); SS.vid = vid; F.S.set(sk, SS); F.cur = SS;
+  return SS;
+}
+//   마디 훑기 — 창 앞 끝(px 그대로)에서 같은 앞 끝 · 같은 걸음의 무리 뒤 끝 전부까지(길은 앞 끝 → 뒤 끝 · T1440 `routeTemp(a → b)` 차례)
+const _gbId = (g) => 'gb:' + g.b.x + ',' + g.b.y;
+function _segSearch(job, g, s, M) {
+  const F = job.fs, sk = 's' + s + '|' + g.a.x + ',' + g.a.y; let SS = F.S.get(sk);
+  if (SS) return SS;
+  const seen = new Set(), tg = [];
+  for (const o of job.groups) { if (o.a.x !== g.a.x || o.a.y !== g.a.y) continue; const id = _gbId(o); if (seen.has(id)) continue; seen.add(id); let eb = 0; for (const m of o.members) eb = Math.max(eb, MULT * _base(m.key, m.pts) - (plen(m.pts) - _spanLen(m))); if (eb > 0) tg.push({ id, x: o.b.x, y: o.b.y, rev: false, eb }); }   // eb = 그 무리 마디 문턱(쌍마다 3배 − 마디 밖 길이 · 가장 너그러운 것 — T1440 은 아직 못 비킨 쌍만으로 잰다 · 이것은 그 위)
+  SS = J.multiBegin(job.piece, M, { x: g.a.x, y: g.a.y }, tg, job.fast); SS.vid = null; F.S.set(sk, SS); F.cur = SS;
+  return SS;
+}
+//   판정을 버리거나 다시 세울 때 — 쥔 버퍼를 놓는다
+function fastFree(job) { if (!job || !job.fs || !J || !J.multiFree) return; for (const SS of job.fs.S.values()) J.multiFree(SS); }
 function judgeStep(job, budgetMs) {
   const c0 = cpu();
   const over = () => budgetMs > 0 && cpu() - c0 >= budgetMs;   // 몫 = CPU 시간(가상 시계 판에서도 닳는다)
@@ -437,6 +528,7 @@ function judgeStep(job, budgetMs) {
         const g = G.get(gk); if (g) g.members.push(m); else G.set(gk, { a, b, members: [m], pend: [] });
       }
       job.groups = [...G.values()]; job.q = job.groups.map((g) => ({ k: 'rep', g, s: 1 })); job.phase = 'run';
+      if (job.fast) { _fastPairs(job); const at = new Map(job.groups.map((g, i) => [g, i])); job.q.sort((x, y) => at.get(x.g) - at.get(y.g)); }   // ★[T1466] 떠나는 마을 차수 · (한 칸 조각이면) 차수 큰 무리부터 — 줄을 그 차례로(일은 그대로)
     }
     //   일 줄(깊이 먼저) — 걸음 1: 줄기 고쳐 잇기 → 마디 다시 구하기 → 쌍 전체 · 못 하면 그 쌍은 걸음 2(쌍 전체) → 3 → 4 → 5 를 그 자리에서 내려간다
     let did = 0;
@@ -464,14 +556,24 @@ function judgeStep(job, budgetMs) {
         if (g.pend.length) job.q.unshift({ k: 'seg', g, s: t.s });
       } else if (t.k === 'seg') {
         const g = t.g, M = MS[t.s], blk = blkOf(M), e4 = e4Of(M);
-        job.n.seg++; st.seg++;
         let sb = 0; for (const m of g.pend) sb = Math.max(sb, MULT * _base(m.key, m.pts) - (plen(m.pts) - _spanLen(m)));   // 그 마디가 쓸 수 있는 길이(쌍마다 3배 − 마디 밖 길이 · 가장 너그러운 것)
         const ck = 'g' + t.s + '|' + g.a.x + ',' + g.a.y + ',' + g.b.x + ',' + g.b.y, c = job.cache.get(ck);   // 같은 두 끝 · 같은 걸음 = 같은 답(못 찾았으면 그 길이 문턱 안에서는 없다)
         const c1 = t.s === 2 ? job.cache.get('g1|' + g.a.x + ',' + g.a.y + ',' + g.b.x + ',' + g.b.y) : null;
         let mid;
         if (c && (c.mid || c.sb >= sb)) { mid = c.mid; job.n.hit++; }
         else if (c1 && !c1.mid && c1.sb >= sb && !uIn(..._ellBox(g.a.x, g.a.y, g.b.x, g.b.y, sb))) { mid = null; job.n.same = (job.n.same | 0) + 1; }   // 걸음 1 이 못 찾았고 그 타원에 U 없음 = 같은 답
+        else if (job.fast && sb > 0) {   // ★[T1466] 마디 다시 구하기 = 창 앞 끝에서 한 번 훑기(같은 앞 끝을 쓰는 무리의 뒤 끝 전부 · 재개형) — 그 길이 3배 문턱(sb)을 넘으면 T1440 타원 안에서는 못 찾은 길이다
+          const SS = _segSearch(job, g, t.s, M);
+          if (SS.ph !== 3) {
+            const left = budgetMs > 0 ? Math.max(0.5, budgetMs - (cpu() - c0)) : 0;
+            if (!J.multiStep(SS, left, job.head)) { job.q.unshift(t); return false; }
+            job.fs.runs++; job.fs.pops += SS.pops; job.fs.cpu += SS.cpu; job.fs.seg = (job.fs.seg | 0) + 1;
+          }
+          mid = SS.out.get(_gbId(g)) || null; if (mid && plen(mid) > sb) mid = null;
+          job.cache.set(ck, { mid, sb });
+        }
         else { mid = sb > 0 ? J.routeTemp(piece, g.a.x, g.a.y, g.b.x, g.b.y, M, sb) : null; job.cache.set(ck, { mid, sb }); }
+        job.n.seg++; st.seg++;
         let keep = g.pend;
         if (!mid || mid.length < 2) st.segFail++;
         else {
@@ -482,7 +584,8 @@ function judgeStep(job, budgetMs) {
             else keep.push(m);
           }
         }
-        for (let i = keep.length - 1; i >= 0; i--) if (!job.res.has(keep[i].key)) job.q.unshift({ k: 'full', m: keep[i], s: t.s });
+        if (job.fast) _fastQ(job, keep, t.s);   // ★[T1466] 켬 = 쌍 전체는 떠나는 마을마다 한 번 훑기
+        else for (let i = keep.length - 1; i >= 0; i--) if (!job.res.has(keep[i].key)) job.q.unshift({ k: 'full', m: keep[i], s: t.s });
       } else if (t.k === 'full') {   // 걸음 1 · 2 — 쌍 전체 다시 구하기(3배 안)
         const m = t.m; if (job.res.has(m.key)) continue;
         const M = MS[t.s], blk = blkOf(M), e4 = e4Of(M);
@@ -495,6 +598,24 @@ function judgeStep(job, budgetMs) {
         if (p2 && plen(p2) > MULT * base) { const pp = _pullWin(p2, 0, p2.length - 1, blk, e4); if (plen(pp) < plen(p2)) p2 = pp; }   // 문턱 위면 코스 격자 길을 당겨 본다(고쳐 잇기와 같은 자로)
         if (t.s === 2 && p2) m._p2 = p2;   // 걸음 5 가 다시 쓴다(같은 막힘 · 그 길이 3배 상자 안에서 찾은 가장 짧은 길 — 없으면 걸음 5 가 상자 없이 다시 판다)
         if (p2 && plen(p2) <= MULT * base) ok(m, t.s, p2, M);
+        else { st.fullFail++; next(m, t.s); }
+      } else if (t.k === 'mfull') {   // ★[T1466] 걸음 1 · 2 — 쌍 전체(떠나는 마을마다 한 번 훑기 · 재개형 — 몫이 다하면 이 일을 줄 머리에 되돌려 두고 나간다)
+        const m = t.m; if (job.res.has(m.key)) continue;
+        const M = MS[t.s], blk = blkOf(M), e4 = e4Of(M);
+        const SS = _fastSearch(job, m, t.s, M);
+        if (!SS) { job.n.full++; st.full++; st.fullFail++; next(m, t.s); continue; }
+        if (SS.ph !== 3) {
+          const left = budgetMs > 0 ? Math.max(0.5, budgetMs - (cpu() - c0)) : 0;
+          if (!J.multiStep(SS, left, job.head)) { job.q.unshift(t); return false; }
+          job.fs.runs++; job.fs.pops += SS.pops; job.fs.cpu += SS.cpu;
+        }
+        job.n.full++; st.full++;
+        const base = _base(m.key, m.pts), other = SS.vid === m.a ? m.b : m.a;
+        let p2 = SS.out.has(other) ? SS.out.get(other) : null;
+        if (t.s === 1) { m._f1 = p2 && plen(p2) <= MULT * base ? p2 : null; m._f1raw = p2 || null; }
+        if (p2 && plen(p2) > MULT * base) { const pp = _pullWin(p2, 0, p2.length - 1, blk, e4); if (plen(pp) < plen(p2)) p2 = pp; }   // = T1440 'full' 그 줄(문턱 위면 당겨 본다)
+        if (t.s === 2 && p2) m._p2 = p2;
+        if (p2 && plen(p2) <= MULT * base) { ok(m, t.s, p2, M); job.fs.keys.add(m.key); }
         else { st.fullFail++; next(m, t.s); }
       } else if (t.k === 's3' || t.k === 's4') {   // 걸음 3 · 4 — 그 급 사유지를 나중 선포부터 내주게 한다(문턱을 좁혀 가장 적게)
         const m = t.m; if (job.res.has(m.key)) continue;
@@ -549,6 +670,16 @@ function stale(job) {
   if (job.touch && R.routeOf) for (const m of job.touch) if (R.routeOf(m.key) !== (m.ref || m.pts)) return true;
   return false;
 }
+//   ★[T1466] 기억한 답을 다시 써도 되나(존 판정 메모) — T1440 낡음(표 판 · 닿은 쌍의 길 물건) 더하기: 그 조각에 새로 닿은 쌍(쌍 열쇠 모음) · 세계 판(칸 값 판 · 지형 판 — 마을 시뮬이 준다)
+function staleMemo(job) {
+  if (stale(job)) return true;
+  if (!job.fast) return false;
+  if (J && J.wver && job.wv !== undefined && job.wv !== J.wver()) return true;
+  const now = rTouching(job.piece), had = job.touch || [];
+  if (now.length !== had.length) return true;
+  const ks = new Set(had.map((m) => m.key)); for (const m of now) if (!ks.has(m.key)) return true;
+  return false;
+}
 function stats() {
   if (S.claimsDirty) _claimsBuild();
   let pass = 0; for (const o of S.claimIds.values()) if (o.pass) pass++;
@@ -560,8 +691,8 @@ module.exports = {
   ON, MULT, K, EK, KX, KY, plen, M1, M2,
   init, sAdd, sDel, sGet, claimsUse, claimsDirty, claimAt, cellBlkM, edgeStepM, cellBlk, edgeStep, stepBlk, stepBlk8, stepPhys8, uAtCell, uAtEdge, hasAny,
   pieceCell, pieceEdge, pieceRect, pieceCells, pieceBox, edgeCells, mark, unmark, isMarked,
-  bindRoutes, rIndex, rUnindex, rClear, rTouching, rNear, rStats, clearLine, clearRoute, claimsOn, fixRoute, sig,
+  bindRoutes, rIndex, rUnindex, rClear, rTouching, rNear, rStats, clearLine, clearRoute, claimsOn, fixRoute, fixDoomed, setFastFix, sig,
   firstUse, firstGet, firstSet, firstCount,
-  bindJudge, judgeBegin, judgeStep, judgeNow, stale, stats, cpuList,
+  bindJudge, judgeBegin, judgeStep, judgeNow, stale, staleMemo, stats, cpuList, fastFree,
   _S: S, _R: R, _F: F, _st: st,
 };

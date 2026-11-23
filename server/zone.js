@@ -6563,7 +6563,7 @@ function _t1440ZoneBoot() {
 function _t1440Job(piece, sig, meta) {
   const key = sig + '#' + (meta ? `${meta.cls}:${meta.max}:${meta.early ? 1 : 0}` : '');
   let job = _t1440Jc.get(key);
-  if (job && job.phase === 'done' && RoadRule.stale(job)) { _t1440Jc.delete(key); job = null; }
+  if (job && job.phase === 'done' && (SimVillages.T1466_ROAD_FAST ? RoadRule.staleMemo(job) : RoadRule.stale(job))) { _t1440Jc.delete(key); job = null; }   // ★[T1466] 켬 = 기억한 답을 버리는 때가 더 넓다(새로 닿은 쌍 · 칸 값 판 · 지형 판)
   if (!job) {
     job = SimVillages.t1440Judge(piece, Object.assign({ sig }, meta || {})); job.sig = sig; _t1440Jc.set(key, job);
     if (_t1440Jc.size > 512) _t1440Jc.delete(_t1440Jc.keys().next().value);
@@ -6574,7 +6574,7 @@ function _t1440Job(piece, sig, meta) {
 function _t1440Run(player, job, how) {
   if (job.phase !== 'done') SimVillages.t1440Step(job, _t1440Budget());
   if (job.phase === 'done') return job;
-  for (let i = _t1440Q.length - 1; i >= 0; i--) if (_t1440Q[i].pid === player.playerId && !_t1440Q[i].peek) _t1440Q.splice(i, 1);   // 마지막 손짓만
+  for (let i = _t1440Q.length - 1; i >= 0; i--) if (_t1440Q[i].pid === player.playerId && !_t1440Q[i].peek) { if (SimVillages.T1466_ROAD_FAST && _t1440Q[i].job !== job) RoadRule.fastFree(_t1440Q[i].job); _t1440Q.splice(i, 1); }   // 마지막 손짓만   // ★[T1466] 켬 = 버린 손짓의 훑기 버퍼를 놓는다
   _t1440Q.push({ pid: player.playerId, player, sig: job.sig, job, raw: player._t1440Raw || null, t0: _t1440TickN, how });
   _t1440Zs.pend++;
   send(player.ws, { type: 'notice', text: '길을 확인하고 있습니다. 확인이 끝나면 놓습니다.' });
@@ -6701,10 +6701,11 @@ function _t1440Tick() {
       try { if (SimVillages.t1440VilJob(tc.vil, id, e.px, e.py, tc.why !== 'passCell')) _t1440Zs.vilJob++; } catch (x) {}
     }
   }
-  if (!_t1440Q.length) return;
+  if (!_t1440Q.length) { if (SimVillages.T1466_ROAD_FAST) { try { SimVillages.t1466LandStep(_t1440Budget()); } catch (e) {} } return; }   // ★[T1466 ㉱] 줄이 비었을 때만 — 길잡이 표 굽기(몫 안 · 다 구웠으면 바로 나온다)
   const B = _t1440Budget(); let used = 0;
   while (_t1440Q.length) {
     const q = _t1440Q[0];
+    if (SimVillages.T1466_ROAD_FAST) q.job.head = true;   // ★[T1466] 줄 머리 — 이 틱에 안 민 다른 판정이 쥔 훑기 버퍼를 되찾는다
     if (q.job.phase !== 'done') { const c0 = _t1440Cpu(); SimVillages.t1440Step(q.job, B > 0 ? Math.max(0.5, B - used) : 0); used += _t1440Cpu() - c0; }
     if (q.job.phase !== 'done') break;
     _t1440Q.shift();
