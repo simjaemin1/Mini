@@ -1,0 +1,11 @@
+{
+  "run": 45121115416,
+  "job": 137514870310,
+  "conclusion": "success",
+  "source": "635d10baceba14d1600f5f7bef927dc986b5bfef",
+  "artifact": 14796932098,
+  "artifactSha256": "4d1f3aeddf2fce719c613f20ec6531cd3f3dc7b8e130517bbc646eb16339a01d",
+  "node": "v22.23.4",
+  "completedDays": 10950,
+  "annualRows": 30
+}

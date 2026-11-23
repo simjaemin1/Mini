@@ -1,0 +1,25 @@
+{
+ "v": 1,
+ "card": "T1420",
+ "sig": "842eb789be7676b9",
+ "day": 10585,
+ "knobs": {
+  "ENABLE_RUNNER_TRACING": "true",
+  "ENABLE_VILLAGES": "0",
+  "T1385_BRONZE_NOCAP": "1",
+  "T1398_BRONZE_BAND": "1",
+  "T1465_OBS": "/home/runner/work/Mini/Mini/계측/T1465_2026-11-23/long/bundle-off-42/stock.json"
+ },
+ "fns": [
+  "priceFn",
+  "netExportFn",
+  "forageTakeFn"
+ ],
+ "node": "v22.23.4",
+ "made": "T1465 completed-day checkpoint",
+ "seed": 42,
+ "zone": "hanbando",
+ "bytes": 810963,
+ "raw": 9934382,
+ "sha": "b45cc3d7d7553fe3"
+}

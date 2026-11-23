@@ -1,0 +1,48 @@
+{
+  "complete": true,
+  "definition": "10/29/30-year retained full-world snapshots; expected overlap attribution, canonical lazy refill, untouched full. OFF has no finite extraction ledger, so its full stock is a counterfactual reference, not a measured physical remainder. Annual mineral totals are separately in 결과.json; this CSV does not invent unretained annual per-vein history.",
+  "checks": [
+    {
+      "stock": "off",
+      "day": 3650,
+      "physicalDeficitReferenceKg": 0,
+      "attributedDeficitReferenceKg": 0,
+      "worldMineralSummaryMatched": true
+    },
+    {
+      "stock": "off",
+      "day": 10585,
+      "physicalDeficitReferenceKg": 0,
+      "attributedDeficitReferenceKg": 0,
+      "worldMineralSummaryMatched": true
+    },
+    {
+      "stock": "off",
+      "day": 10950,
+      "physicalDeficitReferenceKg": 0,
+      "attributedDeficitReferenceKg": 0,
+      "worldMineralSummaryMatched": true
+    },
+    {
+      "stock": "on",
+      "day": 3650,
+      "physicalDeficitReferenceKg": 413963.6897397347,
+      "attributedDeficitReferenceKg": 413963.68973973475,
+      "worldMineralSummaryMatched": true
+    },
+    {
+      "stock": "on",
+      "day": 10585,
+      "physicalDeficitReferenceKg": 1193038.7983983147,
+      "attributedDeficitReferenceKg": 1193038.7983983157,
+      "worldMineralSummaryMatched": true
+    },
+    {
+      "stock": "on",
+      "day": 10950,
+      "physicalDeficitReferenceKg": 1238587.0879939182,
+      "attributedDeficitReferenceKg": 1238587.0879939173,
+      "worldMineralSummaryMatched": true
+    }
+  ]
+}

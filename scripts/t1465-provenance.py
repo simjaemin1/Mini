@@ -12,6 +12,7 @@ assert read('결과.json')['complete']
 assert read('하네스-집계.json')['complete']
 assert len(read('자연물-대조-결과.json')) == 2
 assert len(read('슬롯-대조-결과.json')) == 2
+assert len(read('존주소-대조-결과.json')['controls']) == 2
 assert len(read('광맥별-장기-합계검증.json')['checks']) == 6
 provenance = read('출처.json')
 provenance['remoteLong']['completion'] = 'Both OFF/ON completed10950days,30annualrows; ON daily exhaustion witness10950days; retained3650/10585/10950 canonical snapshots independently checked.'

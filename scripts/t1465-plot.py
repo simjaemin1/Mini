@@ -25,7 +25,8 @@ for stock, color in [('off', '#64748b'), ('on', '#2563eb')]:
     flow = []
     for r in rows:
         value = r['production']['bronze']
-        flow.append(max(0, value - prior))
+        assert value >= prior, 'Native bronze production counter decreased'
+        flow.append(value - prior)
         prior = value
     axes[1, 0].plot(years, flow, label=stock.upper(), color=color)
     axes[1, 1].plot(years, [r['pop'] for r in rows], label=stock.upper(), color=color)

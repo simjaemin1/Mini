@@ -27,7 +27,7 @@
     "계측/T1427_2026-11-22/runs/new-lab-bundle-42/probe.json.gz": "7e608232c373756d834773aefe60a6ee984780817c222506021c855948fd8e8e",
     "계측/T1427_2026-11-22/runs/new-lab-bundle-42/t1407.json.gz": "5f22505f2f095888af8f2867996f44d5e0cdd1c9fbb9d8cd73f2c33b518c5061"
   },
-  "excluded": "Pre-navigation and pre-value-alignment exploratory/partial runs moved to /workspace/scratch/t1465-invalid-runs; excluded from reported results",
+  "excluded": "Pre-navigation and pre-value-alignment exploratory/partial runs moved to /workspace/scratch/t1465-invalid-runs; excluded from reported results; 중단-장기판 is explicitly incomplete, never accepted as30years.",
   "gameFilesLastChanged": "59d760f8",
   "sameGameFilesAtLongRunSource": "635d10ba",
   "identifierEquivalenceEvidence": "식별자-동치.json",
@@ -66,8 +66,25 @@
     "run": 45121115416,
     "source": "635d10ba",
     "node": "v22.23.4",
-    "protocol": "Two independent VMs, same image/runtime/cache/flags/code, NOT same physical host. Native counters and canonical full-world yearly checkpoints, retain day3650 +last2. Completion validation pending."
+    "protocol": "Two independent VMs, same image/runtime/cache/flags/code, NOT same physical host. Native counters and canonical full-world yearly checkpoints, retain day3650 +last2.",
+    "conclusion": "success",
+    "artifacts": {
+      "off": 14796932098,
+      "on": 14797930096
+    },
+    "artifactSha256": {
+      "off": "4d1f3aeddf2fce719c613f20ec6531cd3f3dc7b8e130517bbc646eb16339a01d",
+      "on": "c1f4c4db4033285605c7ad83fd27e06be4551e522a6589b26e72cda436e8fe73"
+    },
+    "completion": "Both OFF/ON completed10950days,30annualrows; ON daily exhaustion witness10950days; retained3650/10585/10950 canonical snapshots independently checked."
   },
   "resumeProof": "장기-채굴후-재개검증.json: actual ore produced in8touchedcells, ON60continuousdays versus day30checkpoint+30days, all overlap world fingerprints, full metrics and exhaustion witnesses equal.",
-  "localTouchedRuntime": "Original105 verified cases use Node22.23.4;54-case continuation uses Node24.22.1. Unchanged nature harness spawns node from PATH. Shared better-sqlite3 module targets Node24; firstjoin direct Node24 rerun82/82. Detailed initial failures and controlled reruns retained."
+  "localTouchedRuntime": "Original105 verified cases use Node22.23.4;54-case continuation uses Node24.22.1. Unchanged nature harness spawns node from PATH. Shared better-sqlite3 module targets Node24; firstjoin direct Node24 rerun82/82. Detailed initial failures and controlled reruns retained. Final initial-red and controlled-rerun counts are in 하네스-집계.json; no failed initial result was replaced.",
+  "evidenceAssembledAtCommit": "a6336bf1c1c21b90406f1e53945f09aeac1eb5cd",
+  "acceptedResult": "결과.json",
+  "evidenceHashManifest": {
+    "file": "자료-해시.json",
+    "sha256": "a0cab77f950c7072928d910dc7b49a142ed89c9251513df8bee745591c2e0787",
+    "files": 534
+  }
 }
