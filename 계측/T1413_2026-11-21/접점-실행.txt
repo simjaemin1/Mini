@@ -1,0 +1,56 @@
+# 만진 함수 → 하네스 (touched-harness · base origin/main · 갈림점 61ea8d623)
+· 바뀐 코드 파일 4 · 이름 3(물린 것 2 · 흔한 이름 뺌 0) · 바뀐 하네스 1 · 규약 다섯 · **돌릴 하네스 6**
+  scripts/t1396-hunt-lab.js: t1396-hunt-lab
+  scripts/t1413-h15-trace.js: t1413-h15-trace
+  sim/_hunt-trace.js: HUNTLAB_HTML
+  sim/hunt-check.js: HUNTLAB_HTML
+· 이름 → 하네스 수: HUNTLAB_HTML 1 · t1396-hunt-lab 1
+· 바뀐 하네스: test-t1396-hunt-lab.js
+· 돌릴 하네스: test-body-fields.js test-coll-grid.js test-harness-lint.js test-hp-src.js test-lon-day.js test-t1396-hunt-lab.js
+##### test-body-fields.js #####
+=== 14 통과 / 0 실패 ===
+  ✓ ★자명 통과 금지 — `??=` 꼴도 문다 · 읽기(`==`)는 안 문다  zone.js:20234 npc._t673Bait2
+  ✓ ★[T1140 ③-가] 자명 통과 금지 — 값 하나(`nextDecisionAt: 1`)를 바꾸면 문다
+  ✓ ⑳ 판정 칸 쓰기 자리를 다 셌다(자명 통과 아님)  전체 462 · 걸음 문 안 260 · 문 밖 202(표 내림 75 · 까닭 127)
+=== 14 통과 / 0 실패 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-coll-grid.js #####
+=== 결과: 20 PASS / 0 FAIL ===
+  ✓ ② [전제 · 자명 통과 금지] 걸음이 **실제로 막힌다** · 옛 격자 질의의 셋에 하나 넘게에 **밭·마당이 섞였다**  막힘 10476/40000 · 밭 섞임 4525/10000
+=== 결과: 20 PASS / 0 FAIL ===
+  [소요] 12초
+  ✓ RC=0
+##### test-harness-lint.js #####
+  ✓ ⑳ [전제] `@harness-only` 표지를 단 하네스가 실제로 있다(0 이면 아래가 자명 통과다)  test-ci-changes.js test-ci-list.js test-harness-bite.js test-notice-mark.js
+  ✓ ★⑳ 자명 통과 금지 — 제품 부름 셋은 물고 · 주석 · scripts 자리는 보낸다  req=hit,join=hit,rel=hit,cmt=none,scr=none
+  ✓ ★㉑ 자명 통과 금지 — 안 지우는 셋은 물고 · 지우는 넷은 보낸다  mk=hit,anon=hit,pidJson=hit,rm=none,lib=none,pidDb=none,own=none
+=== 102건 중 PASS 102 · FAIL 0 ===
+  [소요] 30초
+  ✓ RC=0
+##### test-hp-src.js #####
+=== 54 통과 / 0 실패 ===
+  ✓ [상황] 세 파일을 실제로 읽었다(못 읽으면 아래가 자명 통과다)  zone 1236711 · net 109161 · wildlife 111078
+  ✓ ★⓪ 자명 통과 금지 — 직접 대입 한 줄을 되살리면 잡힌다
+  ✓ [상황] `server/villages.js` 를 실제로 읽었다(못 읽으면 아래가 자명 통과다)  villages 1524622
+=== 54 통과 / 0 실패 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-lon-day.js #####
+=== 22건 중 PASS 22 · FAIL 0 ===
+  [소요] 0초
+  ✓ RC=0
+##### test-t1396-hunt-lab.js #####
+  ✗ ② hunt-check 전부 ✅(H1~H15 · 카드의 "12 불변")  rc 1 · ✅ 14 · ❌ 1 ·   14/15 — ❌ 실패 있음
+  ✓ ★미끼 ⓐ — 바꾼 자리 1곳(`hdr+pre+blk`) · 그 사본으로 구운 랩에선 ② 'H1 크래시 없음' 이 ❌  n 1 · rc 1 ·   9/15 — ❌ 실패 있음
+✗ test-t1396-hunt-lab 6/7
+  ✓ ③ 씨를 바꾸면 다른 표(자명 통과 금지 — 난수가 판을 실제로 움직인다)
+  [소요] 9초
+  ✗ RC=1 · 결과줄 11개 → **실패로 센다**
+
+=== 러너 요약 ===
+  통과 5: test-body-fields.js test-coll-grid.js test-harness-lint.js test-hp-src.js test-lon-day.js
+  실패 1: test-t1396-hunt-lab.js(rc=1)
+  걸린 시간 상위(초): test-harness-lint.js 30 · test-coll-grid.js 12 · test-t1396-hunt-lab.js 9 · test-body-fields.js 1 · test-hp-src.js 1 · test-lon-day.js 0
+  걸린 시간 합: 하네스 53초 · 러너 전체 61초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 1번 × 8초 · 건넘 6번(앞 판이 남긴 아이 없음)

@@ -1,0 +1,122 @@
+[
+  {
+    "label": "번들",
+    "command": [
+      "node",
+      "sim/build-econ-bundle.js",
+      "--check"
+    ],
+    "rc": 0
+  },
+  {
+    "label": "인라인",
+    "command": [
+      "node",
+      "sim/inline-engine.js",
+      "--check"
+    ],
+    "rc": 0
+  },
+  {
+    "label": "배선",
+    "command": [
+      "node",
+      "scripts/lab-wiring-check.js"
+    ],
+    "rc": 0
+  },
+  {
+    "label": "접점-목록",
+    "command": [
+      "node",
+      "scripts/touched-harness.js",
+      "origin/main",
+      "--list"
+    ],
+    "rc": 0
+  },
+  {
+    "label": "접점-실행",
+    "command": [
+      "node",
+      "scripts/touched-harness.js",
+      "origin/main",
+      "--run"
+    ],
+    "rc": 0
+  },
+  {
+    "label": "CI-분류",
+    "command": [
+      "node",
+      "scripts/ci-class.js",
+      "--static"
+    ],
+    "rc": 0
+  },
+  {
+    "label": "CI-실측",
+    "command": [
+      "node",
+      "scripts/ci-class.js",
+      "--measure",
+      "--only",
+      "test-t1396-hunt-lab.js,test-t1413-hunt-year.js"
+    ],
+    "rc": 0
+  },
+  {
+    "label": "CI-생성",
+    "command": [
+      "node",
+      "scripts/ci-class.js",
+      "--write-yml",
+      "--shards",
+      "5",
+      "--srv-shards",
+      "2"
+    ],
+    "rc": 0
+  },
+  {
+    "label": "CI-목록",
+    "command": [
+      "node",
+      "scripts/test-ci-list.js"
+    ],
+    "rc": 0
+  },
+  {
+    "label": "옛코드-빨강",
+    "command": [
+      "bash",
+      "scripts/pm-old-code-red.sh",
+      "origin/main",
+      "test-t1396-hunt-lab.js",
+      "test-t1413-hunt-year.js"
+    ],
+    "rc": 0
+  },
+  {
+    "label": "서버-기준선",
+    "command": [
+      "node",
+      "scripts/server-baseline-check.js",
+      "계측/서버기준선_2026-11-18.json",
+      "--vclock",
+      "--plan",
+      "1020:400"
+    ],
+    "rc": 75
+  },
+  {
+    "label": "t17",
+    "command": [
+      "node",
+      "scripts/t17-metrics.js",
+      "800",
+      "1020"
+    ],
+    "rc": 0
+  }
+]
