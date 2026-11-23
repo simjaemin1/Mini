@@ -15849,7 +15849,19 @@
    "runs": [
     {
      "rc": 0,
-     "secs": 16.4,
+     "secs": 17,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 16.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 16.9,
      "green": true,
      "fails": []
     },
@@ -15861,19 +15873,7 @@
     },
     {
      "rc": 0,
-     "secs": 15.6,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 16.4,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 16.3,
+     "secs": 18.3,
      "green": true,
      "fails": []
     }
@@ -15883,7 +15883,7 @@
     "spawnSync node"
    ],
    "cls": "다",
-   "maxSec": 16.4,
+   "maxSec": 18.3,
    "same5": true,
    "srv": true,
    "core": false,
