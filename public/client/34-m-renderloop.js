@@ -132,7 +132,7 @@
       // 답압(길)도 방송과 **같은 입구**로 넣는다 — 하네스가 우회로를 쓰지 않게.
       window.__roadFeed = (flat) => {
         if (!_c) return 0;
-        if (!_c.roads) _c.roads = new Map();
+        if (!_c.roads) _c.roads = _t1446NewRoads();   // ★[T1446]
         for (let i = 0; i + 2 < flat.length; i += 3) {
           const k = flat[i] + ',' + flat[i + 1];
           if (flat[i + 2]) _c.roads.set(k, flat[i + 2]); else _c.roads.delete(k);
@@ -405,6 +405,9 @@
     //   큰 물(진한 파랑 #2a5a8a + 물결 셰이더 · 가장 가는 강도 3셀)과 **다르게** 보이게: 색이 연하고 물결·둑·프리즘이 없다(건너는 얕은 물).
     //   지면 뒤 · 엔티티 앞(사람이 개울을 밟고 선다). 칸 = 서버 래스터 비트(`isStreamAtAbs`) — 화면에 걸친 칸만 훑는다.
     let _nStream = 0;
+    // ★★[T1446] "그 밖 렌더" 쪼갠 층 — 프레임 캡처 중(`__fcOn`)에만 잰다(끄면 performance.now() 를 한 번도 더 안 읽는다 · `__frameCapture` · `__lagReport`)
+    const _fcS = !!window.__fcOn;
+    const _strmT0 = _fcS ? performance.now() : 0;
     if (typeof isStreamAtAbs === 'function' && _streamZ.size) {
       let mnx = Infinity, mxx = -Infinity, mny = Infinity, mxy = -Infinity;
       for (const [ix2, iy2] of [[camX - W / 2, camY - H / 2], [camX + W / 2, camY - H / 2], [camX - W / 2, camY + H / 2], [camX + W / 2, camY + H / 2]]) {
@@ -439,6 +442,7 @@
       }
     }
     window.__streamDrawn = _nStream;
+    if (_fcS) window._strmAcc = (window._strmAcc || 0) + (performance.now() - _strmT0);   // ★[T1446] 개울
     // === 2) 엔티티 수집 (depth sort용) ===
     const renderables = [];
     const renderT = performance.now() - INTERP_DELAY_MS;
@@ -709,6 +713,8 @@
                         chunks: _natChunk.size, pending: _natPending, blocked: _natBlockSet ? _natBlockSet.size : 0,
                         trees: _treeSpritesLoaded, treeDraw: { n: _treeDraw.n, h: _treeDraw.h, px: _treeDraw.px, aspect: _treeDraw.aspect } };
 
+    const _lsT0 = _fcS ? performance.now() : 0;   // ★[T1446] 모으기(존마다 목록) — 길 훑기 · 건물 훑기 · 그 밖 목록
+    let _rdMs = 0, _bdMs = 0;
     for (const c of conns.values()) {
       if (!c.meta) continue;
       const ox = c.meta.worldOffsetX, oy = c.meta.worldOffsetY || 0;
@@ -735,6 +741,18 @@
         renderables.push({ z: w2i(cax, cay).y + baseZ, kind: 'claim', cl, off: ox, offY: oy, wx: cax, wy: cay });
       }
       // §16 답압 길: 등급 셀 바닥 틴트(베이크 무접촉 오버레이 — 흙길/다져진 길). 시야 내만 push.
+      const _rdT0 = _fcS ? performance.now() : 0;
+      // ★★[T1446] 켬 — 화면 상자에 걸친 상자의 칸만, **종전과 같은 컬링 식**(`_t1446Cells` 안 — |칸 가운데 − 화면 가운데| > VIEW_RADIUS 면 버림)을 지난 것을
+      //   넣은 차례로 꺼내 종전과 같은 값으로 민다. 존 전체 길을 프레임마다 돌며 칸마다 글자 키를 쪼개던 것이 화면 안 칸만 도는 것으로 준다(라이브 456,479칸).
+      //   끔(손잡이 · 색인 없음 · 어긋남 · 넘침)이면 아래 종전 고리 글자 그대로.
+      const _rQ = (c.roads && c.roads.size && _t1446Use(c.roads)) ? _t1446Cells(c.roads, ox, oy, worldCx, worldCy, VIEW_RADIUS) : null;
+      if (_rQ) {
+        for (let _ri = 0; _ri < _rQ.n; _ri++) {
+          const _rj = _rQ.sk[_ri] % 16384, rcx = _rQ.cx[_rj], rcy = _rQ.cy[_rj], lv = _rQ.lv[_rj];
+          const rax = ox + rcx * CL_BUILDING_SIZE + 16, ray = oy + rcy * CL_BUILDING_SIZE + 16;
+          renderables.push({ z: w2i(rax, ray).y - 950, kind: 'road', rcx: rax - 16, rcy: ray - 16, lv, wx: rax, wy: ray });
+        }
+      } else
       if (c.roads && c.roads.size) {
         for (const [rk, lv] of c.roads) {
           const ci = rk.indexOf(','); const rcx = +rk.slice(0, ci), rcy = +rk.slice(ci + 1);
@@ -743,6 +761,7 @@
           renderables.push({ z: w2i(rax, ray).y - 950, kind: 'road', rcx: rax - 16, rcy: ray - 16, lv, wx: rax, wy: ray });
         }
       }
+      if (_fcS) _rdMs += performance.now() - _rdT0;   // ★[T1446] 길 훑기
       // ★[다리 층] 통나무 널다리 상판 — 길(-950)보다 위, 건물보다 아래(-930). 물 위 정적 사물.
       if (c.bridges && c.bridges.size) {
         for (const bk of c.bridges) {
@@ -824,6 +843,7 @@
           renderables.push({ z: w2i(bx, by).y - 300, kind: 'banditcamp', bc, off: ox, offY: oy, wx: bx, wy: by });
         }
       }
+      const _bdT0 = _fcS ? performance.now() : 0;
       const _hutRs = [], _hutSeen = new Set();   // ★[침대 진입] 이번 프레임 움집 렉트+지붕 표시 여부 — 실내 NPC 가림 판정(others 루프 소비)
       // ★★[2026-08-04c 배치 17 ①] **실내 컷어웨이가 한 번도 안 먹던 원인 — 좌표계 불일치.**
       //   `data.hut`·`data.bld` 렉트는 **존 로컬 셀**이다(서버가 b.cx 로 굽는다). 그런데 실내 판정은
@@ -834,7 +854,12 @@
       //   ⇒ 이 존의 **로컬 셀**로 바꾼다. 존을 여러 개 캐시해도 각자 제 원점으로 재므로 안전하다.
       const _myLcx = Math.floor((myAbsPredicted.x - ox) / CL_BUILDING_SIZE);
       const _myLcy = Math.floor((myAbsPredicted.y - oy) / CL_BUILDING_SIZE);
-      for (const b of c.buildings.values()) {
+      // ★★[T1446] 켬 — 자리가 화면 상자 + `T1446_BPAD`(400px) 안인 건물만 넣은 차례로 꺼낸다. 아래 몸통은 한 글자도 안 바뀐다 —
+      //   몸통이 화면 밖으로 뻗어 하는 일(지붕 캐리어 +300 · 마당 소품 · 계단 · 벽 · 움집 렉트 → 실내 NPC 가림)은 전부 그 여유 안이다(00-const 머리말).
+      //   ⓘ `__cutawayDbg.rects` 는 그 상자 안 움집만 적는다(하네스가 찾는 내 집 · 옆 집은 늘 든다). 끔이면 종전 `values()` 그대로.
+      const _bQ = _t1446Use(c.buildings)
+        ? _t1446Blds(c.buildings, ox, oy, worldCx - VIEW_RADIUS - T1446_BPAD, worldCx + VIEW_RADIUS + T1446_BPAD, worldCy - VIEW_RADIUS - T1446_BPAD, worldCy + VIEW_RADIUS + T1446_BPAD) : null;
+      for (const b of (_bQ || c.buildings.values())) {
         // ★움집 지붕: 서버 태그 data.hut=[x0,y0,x1,y1] — 지붕은 벽 유닛(64px) '위에' 얹힌 스프라이트[사용자 확정: 유닛 문법].
         //   벽은 항상 그대로 렌더(통나무 스킨·문=벽 개구·콜라이더 불변). 바닥만 밖에서 억제(지붕에 가림) + 캐리어 1셀이 지붕 합성.
         //   플레이어가 발자국 안/문 앞 1셀(0층)이면 지붕만 걷힘(컷어웨이) → 실내 바닥·가구 노출.
@@ -971,6 +996,7 @@
       //   화면 픽셀 비교와 **둘 다** 봐야 자명 통과를 막는다(계약만 보면 렌더가 틀려도 통과한다).
       if (_hutRs.length) window.__cutawayDbg = { lcx: _myLcx, lcy: _myLcy, zone: (c.meta && c.meta.id) || null,
         rects: _hutRs.map((h) => ({ r: h.r.slice(), roofOn: !!h.roofOn })) };
+      if (_fcS) _bdMs += performance.now() - _bdT0;   // ★[T1446] 건물 훑기(움집 렉트 · 컷어웨이 훅 포함)
       for (const m of c.mobs.values()) {
         const pos = sampleAt(m.buf, renderT, m.x, m.y);
         const ax = ox + pos.x, ay = oy + pos.y;
@@ -1016,6 +1042,8 @@
         renderables.push({ z: (ax + ay) * 0.5 + oFloor * 0.5 + 500, kind: 'player', wx: ax, wy: ay, pid: o.pid, name: displayName, color: o.color || '#5a9ae0', hp: o.hp, maxHp: o.maxHp, iso: isoF, ax, ay, floor: oFloor, lastAttackAt: o.lastAttackAt, vx: o.vx, vy: o.vy, _fvx: o._fvx, _fvy: o._fvy, npc: o.npc, simJob: o.simJob, _war: o._war, bt: o.bt, bs: o.bs, bc: o.bc, br: o.br, cap: o.cap, act: o.act, clothes: o.clothes, tool: o.tool, carrier: o.carrier });
       }
     }
+    if (_fcS) { const _lsMs = performance.now() - _lsT0;   // ★[T1446] 모으기 = 길 훑기 + 건물 훑기 + 그 밖 목록(자원 · 바닥 · 사유지 · 다리 · 도랑 · 곳간 · 장마당 · 영토 · 도적 · 짐승 · 사체 · 사람)
+      window._rdAcc = (window._rdAcc || 0) + _rdMs; window._bdAcc = (window._bdAcc || 0) + _bdMs; window._lsAcc = (window._lsAcc || 0) + (_lsMs - _rdMs - _bdMs); }
     {
       // 본인 스프라이트도 카메라(보간) 위치 사용 → 항상 화면 중앙 + 60fps 부드러운 스크롤.
       const myDisplay = myTribeName ? `[${myTribeName}] ${myName}` : myName;
@@ -1030,6 +1058,7 @@
     //   z 는 그 렉트의 남동 끝 칸 기준 +64 — 제 벽 4면을 전부 상회한다(움집 +64 논리 동형).
     //   컷어웨이: 내가 **그 방 안**이면 지붕을 아예 안 그린다(투명이 아니라 미표시 — 좀보이드 문법).
     const _roomRoofDbg = [];
+    const _rmT0 = _fcS ? performance.now() : 0;
     {
       const _mrx = Math.floor(myAbsPredicted.x / CL_BUILDING_SIZE), _mry = Math.floor(myAbsPredicted.y / CL_BUILDING_SIZE);
       const _mrRoom = cellRoomCache.get(`${_mrx}_${_mry}_${myFloor}`) || null;
@@ -1064,8 +1093,13 @@
       }
       window.__roomRoofDbg = { myRoom: _mrRoom ? _mrRoom.id : null, floor: myFloor, roofs: _roomRoofDbg };
     }
+    if (_fcS) window._rmAcc = (window._rmAcc || 0) + (performance.now() - _rmT0);   // ★[T1446] 방·지붕
 
+    const _soT0 = _fcS ? performance.now() : 0;
     renderables.sort((a, b) => a.z - b.z);
+    if (_fcS) window._soAcc = (window._soAcc || 0) + (performance.now() - _soT0);   // ★[T1446] 정렬
+    if (_t1446CapReq) { _t1446CapReq = 0; _t1446CapOut = _t1446Sig(renderables); }   // ★[T1446] 시험 손잡이 `__t1446.cap()` — 이 프레임의 정렬된 목록 서명(같음 대조)
+    const _preT0 = _fcS ? performance.now() : 0;   // ★[T1446] 그리기 앞(소리 훅 · 산 가림 · 층 · 자연물 그림 · 원경 · 안개 판 얹기 · 게이트 준비)
     window.__sfx && window.__sfx.scan(renderables, worldCx, worldCy);   // ★[T261] 소리 훅 한 줄(무엇이 우는지는 48-a-audio 가 고른다)
 
     // ★[재민 2026-08-07] 산 가림 뚫기 기준점 — 내 화면 좌표와 내 z 를 프레임당 1회만 잡는다.
@@ -1275,6 +1309,7 @@
 
     // === 3) 엔티티 그리기 ===
     _mtStage(ctx, 'C_루프전');
+    if (_fcS) window._preAcc = (window._preAcc || 0) + (performance.now() - _preT0);   // ★[T1446] 그리기 앞
     const _entT0 = window.__fcOn ? performance.now() : 0;   // ★[T913] 프레임 캡처 중에만 — 엔티티 그리기 몫(산 띠 · 건물 · 사람 · 짐승 · 자연물 그림)
     const _peopleNow = [];   // ★[T1059] 이 프레임에 그린 사람(그리는 차례 그대로) — 루프 뒤 `_lastPeopleDrawn`
     for (const item of renderables) {
@@ -1835,6 +1870,8 @@
       }
     }
     if (window.__fcOn) window._entAcc = (window._entAcc || 0) + (performance.now() - _entT0);   // ★[T913]
+    const _postT0 = _fcS ? performance.now() : 0;   // ★[T1446] 몸 뒤(안개 밖 나머지) — 안개는 따로(`_fogAcc`)
+    let _fogMs = 0;
     _lastPeopleDrawn = _peopleNow;   // ★[T1059] 다 그린 뒤에 건다(덜 그린 목록을 보이지 않는다)
     _mtStage(ctx, 'D_루프후');
     _mtFlushFade(ctx);   // ★흐린 산 한 겹을 여기서 한 번에 덮는다(겹침 누적 방지)
@@ -1913,6 +1950,7 @@
     // 3) 각 ray와 가장 가까운 wall 교점
     // 4) 교점 각도순 정렬 → visibility polygon
     // 5) 화면 dark fill → destination-out으로 polygon 안 투명하게
+    const _fogT0 = _fcS ? performance.now() : 0;   // ★[T1446] 안개(벽지도 · 시야 다각형 · 본 칸 · 판)
     {
       // K21: fog도 카메라와 같은 보간 위치(_camAbs=myAbsRender) 기준. myAbsPredicted(30Hz 계단)을 쓰면
       //   땅은 myAbsRender로 매끄럽게 흐르는데 부채꼴만 30Hz로 어긋나 경계가 떨림. 같은 기준으로 묶어 떨림 제거.
@@ -2300,6 +2338,7 @@
       // ★[재민 확정 2026-08-06] 합성은 **이 블록 아래**, 화살까지 다 그린 뒤에 한다.
       //   (옛 주석: "다음 frame entity render 전에 합성" — 그 배치가 미탐사 위 누출의 원인이었다.)
     }
+    if (_fcS) _fogMs = performance.now() - _fogT0;   // ★[T1446] 안개
 
     // === Phase 5-I: 화살 발사체 렌더 (절대좌표 → 등속 외삽 → iso 화면) ===
     if (window._arrows && window._arrows.size) {
@@ -2476,6 +2515,7 @@
     window.__followArrowN = drawFollowArrow();   // ★[T147] 따라가기 화살 — 외침과 같이 뜬다
     // === 5b) §4-4 P4: 진행 전투 지시자(화면 안=교전 마커, 화면 밖=방향 화살) ===
     drawBattleIndicators(toScreen);
+    if (_fcS) { window._fogAcc = (window._fogAcc || 0) + _fogMs; window._postAcc = (window._postAcc || 0) + (performance.now() - _postT0 - _fogMs); }   // ★[T1446] 안개 · 몸 뒤
   }
 
   // ★★[T110 2026-09-05] 화살 몸통을 **함수 하나로** 뽑았다 — 인접 존 화살과 쓰러짐 화살이

@@ -1,0 +1,371 @@
+{
+ "at": "2026-11-22T16:12:12.710Z",
+ "L": {
+  "bridges": 850,
+  "ditches": 698,
+  "granStock": 100,
+  "claims": 40,
+  "simVillages": 51,
+  "banditCamps": 10,
+  "mobs": 300,
+  "corpses": 10,
+  "groundItems": 20,
+  "src": "로컬 새 세계(마을 켬 · 11-22 이 가지) 수 · 라이브 미상"
+ },
+ "res": {
+  "webkit": [
+   {
+    "list": "resources",
+    "n": 109,
+    "src": "이 판 존(라이브 103)",
+    "ms": 0.0007,
+    "note": ""
+   },
+   {
+    "list": "groundItems",
+    "n": 20,
+    "src": "로컬 새 세계(마을 켬 · 11-22 이 가지) 수 · 라이브 미상",
+    "ms": 0,
+    "note": ""
+   },
+   {
+    "list": "claims",
+    "n": 40,
+    "src": "로컬 새 세계(마을 켬 · 11-22 이 가지) 수 · 라이브 미상",
+    "ms": 0.0002,
+    "note": ""
+   },
+   {
+    "list": "roads(종전 고리)",
+    "n": 456479,
+    "src": "실은 목록(라이브 456,479)",
+    "ms": 32,
+    "note": "화면 밖도 돈다(칸마다 글자 쪼개기)"
+   },
+   {
+    "list": "roads(색인 · 켬)",
+    "n": 456479,
+    "src": "실은 목록",
+    "ms": 0.1484,
+    "note": "화면 상자만"
+   },
+   {
+    "list": "bridges",
+    "n": 850,
+    "src": "로컬 새 세계(마을 켬 · 11-22 이 가지) 수 · 라이브 미상",
+    "ms": 0.0723,
+    "note": ""
+   },
+   {
+    "list": "ditches",
+    "n": 698,
+    "src": "로컬 새 세계(마을 켬 · 11-22 이 가지) 수 · 라이브 미상",
+    "ms": 0.0605,
+    "note": ""
+   },
+   {
+    "list": "granStock",
+    "n": 100,
+    "src": "로컬 새 세계(마을 켬 · 11-22 이 가지) 수 · 라이브 미상",
+    "ms": 0.0081,
+    "note": ""
+   },
+   {
+    "list": "simVillages",
+    "n": 51,
+    "src": "로컬 새 세계(마을 켬 · 11-22 이 가지) 수 · 라이브 미상",
+    "ms": 0.0002,
+    "note": ""
+   },
+   {
+    "list": "banditCamps",
+    "n": 10,
+    "src": "로컬 새 세계(마을 켬 · 11-22 이 가지) 수 · 라이브 미상",
+    "ms": 0,
+    "note": ""
+   },
+   {
+    "list": "buildings(종전 고리 · 컬링만)",
+    "n": 5806,
+    "src": "실은 목록(라이브 5,806)",
+    "ms": 0.0156,
+    "note": "몸통의 태그 · 움집 렉트 몫은 프레임 캡처 \"건물 훑기\""
+   },
+   {
+    "list": "buildings(색인 · 켬)",
+    "n": 5806,
+    "src": "실은 목록",
+    "ms": 0.0137,
+    "note": "화면 상자 + 400px"
+   },
+   {
+    "list": "mobs",
+    "n": 300,
+    "src": "로컬 새 세계(마을 켬 · 11-22 이 가지) 수 · 라이브 미상",
+    "ms": 0.0032,
+    "note": ""
+   },
+   {
+    "list": "corpses",
+    "n": 10,
+    "src": "로컬 새 세계(마을 켬 · 11-22 이 가지) 수 · 라이브 미상",
+    "ms": 0,
+    "note": ""
+   },
+   {
+    "list": "others",
+    "n": 0,
+    "src": "이 판 존(라이브 1)",
+    "ms": 0,
+    "note": ""
+   },
+   {
+    "list": "rooms(srvRooms)",
+    "n": 0,
+    "src": "이 판(라이브 미상 — 플레이어가 지은 방)",
+    "ms": 0,
+    "note": ""
+   },
+   {
+    "list": "자연물 막음 다시 굽기(_natBlocked · 길 + 건물 3×3)",
+    "n": 462285,
+    "when": "길 · 건물 수가 바뀔 때(road_cells 날마다 · buildings_*)",
+    "ms": 248,
+    "once": true
+   },
+   {
+    "list": "벽지도 다시 굽기(clRebuildWallCellMap)",
+    "n": 5806,
+    "when": "5초마다 + 건물 바뀜(ensureWallMap · 안개 블록)",
+    "ms": 0.375,
+    "once": true
+   },
+   {
+    "list": "계단 칸 다시 굽기(clRebuildStairCellCache)",
+    "n": 5806,
+    "when": "0.5초마다(clFindStairForCell 을 부를 때 — 걸음 예측)",
+    "ms": 0.0127,
+    "once": true
+   },
+   {
+    "list": "경작지 칸(_tsFarmSet)",
+    "n": 5806,
+    "when": "건물 수가 바뀔 때(지면 타일 굽기)",
+    "ms": 0.125,
+    "once": true
+   },
+   {
+    "list": "안개 벽 모으기(clWallCellMap 전부 split)",
+    "n": 656,
+    "when": "내 칸 · 층이 바뀔 때마다(달리면 0.25 ~ 0.5초마다) + 벽지도 5초",
+    "ms": 0.082,
+    "once": true
+   },
+   {
+    "list": "가까운 문(findNearestDoor)",
+    "n": 5806,
+    "when": "문 여닫기 키",
+    "ms": 0.0239,
+    "once": true
+   },
+   {
+    "list": "우물(isWellAtAbs)",
+    "n": 5806,
+    "when": "우클릭",
+    "ms": 0.0117,
+    "once": true
+   },
+   {
+    "list": "곳간 · 상자(nearbyContainers)",
+    "n": 5806,
+    "when": "짐 창 그릴 때",
+    "ms": 0.0117,
+    "once": true
+   },
+   {
+    "list": "온보딩 내 집(onbMyHome)",
+    "n": 5806,
+    "when": "온보딩 판 상태를 만들 때",
+    "ms": 0.0127,
+    "once": true
+   }
+  ],
+  "chromium": [
+   {
+    "list": "resources",
+    "n": 109,
+    "src": "이 판 존(라이브 103)",
+    "ms": 0.0017,
+    "note": ""
+   },
+   {
+    "list": "groundItems",
+    "n": 20,
+    "src": "로컬 새 세계(마을 켬 · 11-22 이 가지) 수 · 라이브 미상",
+    "ms": 0,
+    "note": ""
+   },
+   {
+    "list": "claims",
+    "n": 40,
+    "src": "로컬 새 세계(마을 켬 · 11-22 이 가지) 수 · 라이브 미상",
+    "ms": 0.0001,
+    "note": ""
+   },
+   {
+    "list": "roads(종전 고리)",
+    "n": 456479,
+    "src": "실은 목록(라이브 456,479)",
+    "ms": 29.6,
+    "note": "화면 밖도 돈다(칸마다 글자 쪼개기)"
+   },
+   {
+    "list": "roads(색인 · 켬)",
+    "n": 456479,
+    "src": "실은 목록",
+    "ms": 0.2141,
+    "note": "화면 상자만"
+   },
+   {
+    "list": "bridges",
+    "n": 850,
+    "src": "로컬 새 세계(마을 켬 · 11-22 이 가지) 수 · 라이브 미상",
+    "ms": 0.0369,
+    "note": ""
+   },
+   {
+    "list": "ditches",
+    "n": 698,
+    "src": "로컬 새 세계(마을 켬 · 11-22 이 가지) 수 · 라이브 미상",
+    "ms": 0.0303,
+    "note": ""
+   },
+   {
+    "list": "granStock",
+    "n": 100,
+    "src": "로컬 새 세계(마을 켬 · 11-22 이 가지) 수 · 라이브 미상",
+    "ms": 0.0046,
+    "note": ""
+   },
+   {
+    "list": "simVillages",
+    "n": 51,
+    "src": "로컬 새 세계(마을 켬 · 11-22 이 가지) 수 · 라이브 미상",
+    "ms": 0.0004,
+    "note": ""
+   },
+   {
+    "list": "banditCamps",
+    "n": 10,
+    "src": "로컬 새 세계(마을 켬 · 11-22 이 가지) 수 · 라이브 미상",
+    "ms": 0.0001,
+    "note": ""
+   },
+   {
+    "list": "buildings(종전 고리 · 컬링만)",
+    "n": 5806,
+    "src": "실은 목록(라이브 5,806)",
+    "ms": 0.016,
+    "note": "몸통의 태그 · 움집 렉트 몫은 프레임 캡처 \"건물 훑기\""
+   },
+   {
+    "list": "buildings(색인 · 켬)",
+    "n": 5806,
+    "src": "실은 목록",
+    "ms": 0.0353,
+    "note": "화면 상자 + 400px"
+   },
+   {
+    "list": "mobs",
+    "n": 300,
+    "src": "로컬 새 세계(마을 켬 · 11-22 이 가지) 수 · 라이브 미상",
+    "ms": 0.0053,
+    "note": ""
+   },
+   {
+    "list": "corpses",
+    "n": 10,
+    "src": "로컬 새 세계(마을 켬 · 11-22 이 가지) 수 · 라이브 미상",
+    "ms": 0.0001,
+    "note": ""
+   },
+   {
+    "list": "others",
+    "n": 0,
+    "src": "이 판 존(라이브 1)",
+    "ms": 0,
+    "note": ""
+   },
+   {
+    "list": "rooms(srvRooms)",
+    "n": 0,
+    "src": "이 판(라이브 미상 — 플레이어가 지은 방)",
+    "ms": 0,
+    "note": ""
+   },
+   {
+    "list": "자연물 막음 다시 굽기(_natBlocked · 길 + 건물 3×3)",
+    "n": 462285,
+    "when": "길 · 건물 수가 바뀔 때(road_cells 날마다 · buildings_*)",
+    "ms": 165.9,
+    "once": true
+   },
+   {
+    "list": "벽지도 다시 굽기(clRebuildWallCellMap)",
+    "n": 5806,
+    "when": "5초마다 + 건물 바뀜(ensureWallMap · 안개 블록)",
+    "ms": 0.4531,
+    "once": true
+   },
+   {
+    "list": "계단 칸 다시 굽기(clRebuildStairCellCache)",
+    "n": 5806,
+    "when": "0.5초마다(clFindStairForCell 을 부를 때 — 걸음 예측)",
+    "ms": 0.0245,
+    "once": true
+   },
+   {
+    "list": "경작지 칸(_tsFarmSet)",
+    "n": 5806,
+    "when": "건물 수가 바뀔 때(지면 타일 굽기)",
+    "ms": 0.0498,
+    "once": true
+   },
+   {
+    "list": "안개 벽 모으기(clWallCellMap 전부 split)",
+    "n": 656,
+    "when": "내 칸 · 층이 바뀔 때마다(달리면 0.25 ~ 0.5초마다) + 벽지도 5초",
+    "ms": 0.1047,
+    "once": true
+   },
+   {
+    "list": "가까운 문(findNearestDoor)",
+    "n": 5806,
+    "when": "문 여닫기 키",
+    "ms": 0.0167,
+    "once": true
+   },
+   {
+    "list": "우물(isWellAtAbs)",
+    "n": 5806,
+    "when": "우클릭",
+    "ms": 0.017,
+    "once": true
+   },
+   {
+    "list": "곳간 · 상자(nearbyContainers)",
+    "n": 5806,
+    "when": "짐 창 그릴 때",
+    "ms": 0.0276,
+    "once": true
+   },
+   {
+    "list": "온보딩 내 집(onbMyHome)",
+    "n": 5806,
+    "when": "온보딩 판 상태를 만들 때",
+    "ms": 0.0265,
+    "once": true
+   }
+  ]
+ }
+}

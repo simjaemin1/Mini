@@ -806,7 +806,7 @@
       meta: null,
       resources: new Map(),
       claims: new Map(),
-      buildings: new Map(),
+      buildings: _t1446NewBlds(),   // ★[T1446] 켬 = 화면 상자 색인을 같이 고치는 Map(끔 = 종전 `new Map()`)
       mobs: new Map(),
       groundItems: new Map(), // Phase 14.23 — 바닥 떨어진 아이템
       others: new Map(),
@@ -983,8 +983,9 @@
         // §11 도적: 소굴·야영 마커(welcome 1회, 이후 bandit_camps가 변경분 방송)
         c.banditCamps = (msg.banditCamps && msg.banditCamps.length) ? msg.banditCamps : null;
         // §16 답압 길: 등급 셀 flat [cx,cy,lv,...](welcome 1회, 이후 road_cells가 변경분 방송)
-        c.roads = new Map();
-        if (msg.roads) for (let i = 0; i < msg.roads.length; i += 3) c.roads.set(msg.roads[i] + ',' + msg.roads[i + 1], msg.roads[i + 2]);
+        c.roads = _t1446NewRoads();   // ★[T1446] 켬 = 화면 상자 색인을 같이 세우는 Map(끔 = 종전 `new Map()`)
+        if (msg.roads && c.roads._load) c.roads._load(msg.roads);   // ★[T1446] 켬 — 같은 키 · 같은 차례 · 색인은 수로 바로(끔이면 아래 종전 한 줄)
+        else if (msg.roads) for (let i = 0; i < msg.roads.length; i += 3) c.roads.set(msg.roads[i] + ',' + msg.roads[i + 1], msg.roads[i + 2]);
         // ★[배치 20 B] 타일 상태: 기준선에서 **벗어난 셀만** flat [cx,cy,qv,geo,ore,...](welcome 1회,
         //   이후 tile_state 가 변경분 방송). 손 안 댄 셀은 여기 없고 `SoilBase.baseAt` 로 계산한다.
         c.soil = new Map();
@@ -1381,7 +1382,7 @@
       c.banditCamps = (msg.camps && msg.camps.length) ? msg.camps : null;
     } else if (msg.type === 'road_cells') {
       // §16 답압 길: 게임일 1회 변경분(등급 전이 셀만) — lv 0=풀 복귀(삭제)
-      if (!c.roads) c.roads = new Map();
+      if (!c.roads) c.roads = _t1446NewRoads();   // ★[T1446]
       const rc = msg.cells || [];
       for (let i = 0; i < rc.length; i += 3) { const k = rc[i] + ',' + rc[i + 1]; if (rc[i + 2]) c.roads.set(k, rc[i + 2]); else c.roads.delete(k); }
       _gtInvalidateCells(c, rc, 3);

@@ -15799,6 +15799,15 @@
    "core": false,
    "why": "srv"
   },
+  "test-t1446-view-index.js": {
+   "cls0": "라",
+   "why0": "playwright · browser-driver",
+   "cls": "라",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "브라우저(글자) — CI 밖(야간 · 전수)"
+  },
   "test-t721-apply.js": {
    "cls0": "나",
    "why0": "child_process",
