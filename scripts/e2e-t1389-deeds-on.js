@@ -13,6 +13,7 @@
 //   ★미끼(파일 안 · 1): 먼 차례를 뒤집은 `deeds.js` 사본 + 그 사본을 싣는 존 사본(`server/_t1389bait-*` · 판 끝에 지움)으로 ① ~ ② 를 다시 돈다 → ② "먼 칸이 먼저 · 집은 남는다" 빨강.
 //   node scripts/e2e-t1389-deeds-on.js     (약 6분 · 판 둘)
 if (require.main === module) require('./lib-port').hold(3010, 3020);   // [T1288] 제품 고정 포트 — 띄우는 동안 혼자 쥔다
+process.env.T1392_FIRST_LOT = process.env.T1392_FIRST_LOT || '0';   // ★[T1428] 이 판은 한 칸 선포를 전제로 쓴다 — 첫 집터(-on 가지에서 돌봄과 같이 켬 기본 후보)는 글자로 끈다(제 하네스 test-t1392-first-lot · e2e-first30 이 잰다)
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');

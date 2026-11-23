@@ -27,7 +27,7 @@ const DAYMS = 24 * 60 * 60 * 1000;
 
 // ──────────────────────────── 아이 ① 셈만(deeds.js — 정본 또는 미끼 사본) ────────────────────────────
 if (MODE === 'deeds') {
-  process.env.T1305_DEEDS = '1';
+  process.env.T1305_DEEDS = '1'; process.env.T1402_SPLIT_OK = '0';   // ★[T1428] 이 판은 ㉠(목은 건너뜀)을 잰다 — 갈라짐(-on 켬 기본 후보)은 글자로 끈다
   const D = require(process.env.__T1386_DEEDS || path.join(ROOT, 'server', 'deeds.js'));
   const comps = require(path.join(ROOT, 'server', 'claims.js')).components;
   const F = D.CFG, PT = F.PT, DAY = F.DAY_MS, R = {};
@@ -81,7 +81,7 @@ if (MODE === 'deeds') {
 if (MODE.startsWith('zone')) {
   process.env.ZONE_ID = 'hanbando';
   process.env.ENABLE_VILLAGES = '0'; process.env.ENABLE_WILDLIFE = '0'; process.env.ENABLE_BANDITS = '0'; process.env.ENABLE_ROADS = '0';
-  process.env.CLAIM_ABSENCE = '0'; process.env.T1305_DEEDS = '1'; process.env.T1305_CARE_S = '1';
+  process.env.CLAIM_ABSENCE = '0'; process.env.T1305_DEEDS = '1'; process.env.T1305_CARE_S = '1'; process.env.T1402_SPLIT_OK = '0'; process.env.T1392_FIRST_LOT = '0';   // ★[T1428] -on 켬 기본 후보 둘은 글자로 끈다
   const _l = console.log, _w = console.warn, _e = console.error;
   console.log = () => {}; console.warn = () => {}; console.error = () => {};
   const Zone = require(path.join(ROOT, 'server', 'zone.js'));
