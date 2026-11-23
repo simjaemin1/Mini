@@ -1,0 +1,3 @@
+# 옛 코드 빨강 — 하네스 = 90ed76ba3 · 제품(server sim public lab) = b0a83aaa0 · 시한 900초
+빨강 ○ | test-t1453-load.js | RC=1 · ✓ 2 · ✗ 1 |   ✗ Ⓒ1 칸 · 등급 같다(감쇠 문턱 근처 값 · 상자 안 줄 차례 · 읽기만)  못 잼 — R.clientRoadsIn is not a function
+# 합: 빨강 1 · 크래시 0 · 초록 0 · 모름 0 · 제품 무관 0
