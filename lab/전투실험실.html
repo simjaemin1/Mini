@@ -895,7 +895,7 @@ function deploy(){
   BC.buildArmies(spec);
   BC._defaultCtx.world=(trees.length||buildings.length)?LAB_WORLD:null;
   armyMoraleDeploy();
-  { const h=+document.getElementById('t1462h').value; if(h<1)BC.sides.A.armyMrl=Math.min(BC.sides.A.armyMrl!=null?BC.sides.A.armyMrl:1,h); }   // ★[T1462] A 행복 = 편 칸(서버 캐러밴과 같은 칸)
+  { const _he=document.getElementById('t1462h'), h=(_he&&_he.value!==''&&_he.value!=null)?+_he.value:1; if(Number.isFinite(h)&&h>0&&h<1)BC.sides.A.armyMrl=Math.min(BC.sides.A.armyMrl!=null?BC.sides.A.armyMrl:1,h); }   // ★[T1462] A 행복 = 편 칸(서버 캐러밴과 같은 칸)
   fitView(); draw(); updStat();
 }
 // ═══════════ ★[T1100] 원정 사기 · 군량 빚(T1076 식 = sim/army-morale.js 인라인 · 사본 0) ═══════════
