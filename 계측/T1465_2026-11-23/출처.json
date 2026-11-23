@@ -6,7 +6,7 @@
   "matrixNode": "v24.22.1",
   "serverBaselineNode": "v22.23.4",
   "equilibriumAndLongNode": "v22.23.4",
-  "inheritedOffScope": "Actual T1427 new-map 800-day OFF and bronze-bundle runs, seeds1020/7/42; server400-day OFF daily and per-village byte parity separately revalidated after implementation; t1407 observer day tags lag final world by one tick, final population uses world.json.base.pop",
+  "inheritedOffScope": "Historical T1427 new-map800-day runs retained for historical flow diagnosis; not mixed with current primary ON comparisons. Separate canonical server400-day OFF daily and per-village byte parity revalidated after implementation, pop3468.",
   "inherited": {
     "계측/T1427_2026-11-22/runs/new-lab-off-1020/world.json.gz": "ba2bc612f16196ae1870304b67a1d91aa8bc56a6edb8d772573ca96ca4b77daf",
     "계측/T1427_2026-11-22/runs/new-lab-off-1020/probe.json.gz": "ff6ed6062de280f44f25cbcca12e64d4beefc950965f0166d557ade2e8cdf164",
@@ -27,5 +27,47 @@
     "계측/T1427_2026-11-22/runs/new-lab-bundle-42/probe.json.gz": "7e608232c373756d834773aefe60a6ee984780817c222506021c855948fd8e8e",
     "계측/T1427_2026-11-22/runs/new-lab-bundle-42/t1407.json.gz": "5f22505f2f095888af8f2867996f44d5e0cdd1c9fbb9d8cd73f2c33b518c5061"
   },
-  "excluded": "Pre-navigation and pre-value-alignment exploratory/partial runs moved to /workspace/scratch/t1465-invalid-runs; excluded from reported results"
+  "excluded": "Pre-navigation and pre-value-alignment exploratory/partial runs moved to /workspace/scratch/t1465-invalid-runs; excluded from reported results",
+  "gameFilesLastChanged": "59d760f8",
+  "sameGameFilesAtLongRunSource": "635d10ba",
+  "identifierEquivalenceEvidence": "식별자-동치.json",
+  "primary800DayScope": "Six same-host triples: preimplementation34b1978a OFF / current OFF / current ON, each800days, seeds1020/7/42 x basic/bronze-bundle. Both world and probe bytes equal6/6. Historical T1427 runs are diagnostic history, not the final ON control.",
+  "rulers": {
+    "matrix800": "t176-ab.js, attached life/farm probes; T1243_FARM_ON default OFF",
+    "equilibriumAndLong": "t17-metrics.js; T1243_FARM_ON and T100_CLEAR default OFF",
+    "interpretation": "Compare OFF/ON within each ruler; fresh-versus-aged outcomes also differ in ruler and must not be interpreted as an isolated stock or age effect."
+  },
+  "remoteMatrix": {
+    "run": 45116645414,
+    "source": "988ee4d2",
+    "artifacts": {
+      "off42": 14791859761,
+      "off1020": 14792163427,
+      "off7": 14792347937,
+      "bundle42": 14792631618,
+      "bundle7": 14792078996,
+      "bundle1020AndAblation": 14792935541
+    },
+    "sameHostOldNewOffByteParity": "6 world +6 probe; read baseline-off/출처-읽는법.json for original raw metadata commit field limitation"
+  },
+  "remoteEquilibrium": {
+    "run": 45115738750,
+    "source": "a1064b07",
+    "acceptedJobs": "Only four EQ jobs succeeded; six failed historical OFF comparisons are excluded and retained in 원격-옛자료-차이.json",
+    "artifacts": {
+      "off7": 14791988906,
+      "off42": 14792895662,
+      "bundle42": 14792881008,
+      "bundle7": 14792747952
+    },
+    "local": "basic1020 paired-status.json retry + bundle1020 eq-run.json; each730days OFF/ON"
+  },
+  "remoteLong": {
+    "run": 45121115416,
+    "source": "635d10ba",
+    "node": "v22.23.4",
+    "protocol": "Two independent VMs, same image/runtime/cache/flags/code, NOT same physical host. Native counters and canonical full-world yearly checkpoints, retain day3650 +last2. Completion validation pending."
+  },
+  "resumeProof": "장기-채굴후-재개검증.json: actual ore produced in8touchedcells, ON60continuousdays versus day30checkpoint+30days, all overlap world fingerprints, full metrics and exhaustion witnesses equal.",
+  "localTouchedRuntime": "Original105 verified cases use Node22.23.4;54-case continuation uses Node24.22.1. Unchanged nature harness spawns node from PATH. Shared better-sqlite3 module targets Node24; firstjoin direct Node24 rerun82/82. Detailed initial failures and controlled reruns retained."
 }

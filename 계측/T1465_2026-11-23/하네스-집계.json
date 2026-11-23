@@ -1,0 +1,1073 @@
+{
+  "complete": true,
+  "planned": 159,
+  "completed": 159,
+  "initialPassingCases": 154,
+  "initialFailures": [
+    {
+      "name": "e2e-nature.js",
+      "initialCode": 1,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-lab-mining.js",
+      "initialCode": 1,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1086-first-join.js",
+      "initialCode": 1,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-slot-keep.js",
+      "initialCode": 1,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-xhost-env.js",
+      "initialCode": 1,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    }
+  ],
+  "notCompleted": [],
+  "interruptedUncountedBlocks": [
+    "test-t1243-farm-on.js"
+  ],
+  "controls": {
+    "슬롯-대조-결과.json": [
+      {
+        "case": "base-node24",
+        "code": 0,
+        "product": "34b1978a",
+        "blackBoxHarnessUnchanged": true
+      },
+      {
+        "case": "current-node22",
+        "code": 0,
+        "product": "59d760f8 (unchanged game files)",
+        "blackBoxHarnessUnchanged": true
+      }
+    ],
+    "자연물-대조-결과.json": [
+      {
+        "case": "base",
+        "code": 0,
+        "product": "34b1978a",
+        "parentNode": "v22.23.4",
+        "serverNode": "v24.22.1 via unmodified harness spawn(node)",
+        "blackBoxHarnessUnchanged": true
+      },
+      {
+        "case": "current",
+        "code": 0,
+        "product": "59d760f8 (unchanged game files)",
+        "parentNode": "v22.23.4",
+        "serverNode": "v24.22.1 via unmodified harness spawn(node)",
+        "blackBoxHarnessUnchanged": true
+      }
+    ],
+    "존주소-대조-결과.json": {
+      "controls": [
+        {
+          "case": "base",
+          "node": "v22.23.4",
+          "pass": 28,
+          "fail": 5,
+          "code": 1,
+          "log": "존주소-대조-base.txt"
+        },
+        {
+          "case": "current",
+          "node": "v22.23.4",
+          "pass": 28,
+          "fail": 5,
+          "code": 1,
+          "log": "존주소-대조-current.txt"
+        }
+      ],
+      "unchangedToPreimplementation": {
+        "scripts/test-xhost-env.js": "350b1f54827137247f5b9c10eda3f6cb4b0fc0b6cf3836248b64192be83fad95",
+        "scripts/redeploy-light.sh": "48fde5afff6b69ce7c3e58f45dbb3e3c3e1324702cef45ac64b740302ba91580",
+        "scripts/update-live.sh": "52ef938da44cdadc0d752bb0192b08d24b3f7fa1a8bb74c129413f1853f0baef"
+      },
+      "environment": {
+        "uid": 1000,
+        "requiredFixture": "/srv/durango/hanbando",
+        "firstExistingAncestor": "/srv",
+        "ancestorWritable": false,
+        "scriptGate": "redeploy-light.sh mkdir -p /srv/durango/$ID precedes env carry and Docker stubs",
+        "scope": "Identical baseline/current five failures under missing filesystem fixture permission; not a T1465 product change. No real deployment performed."
+      }
+    },
+    "firstJoinCompatibleNativeModule": {
+      "node": "v24.22.1",
+      "pass": 82,
+      "fail": 0,
+      "harnessChanged": false,
+      "initialFailure": "ERR_DLOPEN_FAILED under Node22 against shared Node24 better-sqlite3 binary"
+    }
+  },
+  "cases": [
+    {
+      "name": "e2e-audio-probe.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "e2e-charsprite.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "e2e-downed.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "e2e-forage-village.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "e2e-inv.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "e2e-metallurgy.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "e2e-nature.js",
+      "initialCode": 1,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "e2e-npc-walk.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "e2e-onboarding.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "e2e-preserve.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "e2e-salt.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "e2e-spoil2.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "e2e-tidal.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-alloy.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-arms-body.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-arms-keep.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-assault-miss.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-audio.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-bandit-all.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-bandit-body.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-bandit-camp.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-bandit-walk.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-body-exit.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-body-fields.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-body-seed-restart.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-cand-walk.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-coll-grid.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-day-deaths.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-deeds-blackbox.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-distmatrix.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-draft-famine.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-dusk-stamp.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-econ-diet.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-econ-fieldyield.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-econ-rawgrain.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-farm-act.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-fell-loot.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-fish-act.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-fishing.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-forage-act.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-frontier-iron.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-happy-converge.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-harness-bite.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-harness-lint.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-hp-src.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-lab-mining.js",
+      "initialCode": 1,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-lab-stone.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-local-midnight-window.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-local-midnight.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-lon-day.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-loot-body.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-moment-lot.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-no-shield.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-onboarding.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-one-decay.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-one-target.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-oremix.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-physical-forage-plan.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-psite-server.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-relic.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-seam-walk.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-seed-reserve.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-smelt-return.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-sortie-miss.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-stone-planning.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-streams.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1044-scram-walk.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1046-wood-share.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1054-decay-wood.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1060-scram-hold.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1064-next-step.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1074-food-debt.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1075-happy-eq.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1080-road-life.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1085-assign-job.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1086-first-join.js",
+      "initialCode": 1,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1089-ret-walk.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1094-arms-trip.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1094-carry-cap.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1095-mine-demand.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1113-low-happy.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1126-rock-yield.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1130-hosted.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1136-basket.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1146-stone-rule.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1149-winter.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1152-market.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1156-specialty-job.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1159-home-n.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1167-war-persist.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1168-sortie-ammo.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1179-crop-season.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1183-surrender-loss.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1187-names.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1188-ore-split.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1192-fish-species.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1197-meal-body.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1198-birth-body.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1205-happy.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1206-natural-death.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1207-terr-real.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1213-terr-supply.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1217-margin.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1226-job-flex.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-t1238-terr-v2.js",
+      "initialCode": 0,
+      "log": "touched-실행.txt.gz",
+      "parentNode": "v22.23.4"
+    },
+    {
+      "name": "test-handoff-body.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-live-lag-net.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-map-editor.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-resume-slice.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-route-persist.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-slot-keep.js",
+      "initialCode": 1,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1180-produce-defaults.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1181-build-defaults.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1243-farm-on.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1245-lot-clock.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1245-seeds.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1246-food-price.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1249-ore-fix.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1266-ore-body.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1273-clock-rest.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1315-war-corpse.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1325-one-rot.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1333-alloy-order.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1334-bundle.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1341-own-house.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1344-bronze-mix.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1346-birth-flow.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1347-fetch.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1358-terr-stake.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1363-famine-tools.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1373-home-cap.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1377-onb-guide.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1384-mine-food.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1385-bronze-nocap.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1389-deeds-on.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1391-unhappy-bandit.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1395-lab-diff.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1398-bronze-band.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1401-walk-map.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1404-bandit-live.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1405-leave-rare.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1407-tin-world.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1409-shared-rules.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1414-ocr-tmpdir.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1415-wakeq.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1427-tin-map.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t1465-ore-stock.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t762-sync.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t924-debt-cap.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t931-slotk-ema.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-t958-house-real.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-touched-harness.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-village-found.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-war-world.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-weight.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-wood-act.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-wood-flow.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-wood-step1.js",
+      "initialCode": 0,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    },
+    {
+      "name": "test-xhost-env.js",
+      "initialCode": 1,
+      "log": "touched-재개실행.txt",
+      "parentNode": "v24.22.1"
+    }
+  ],
+  "interpretation": "Initial failures are preserved even when controlled reruns pass. Mixed local Node runtimes are explicit. No black-box harness modified."
+}

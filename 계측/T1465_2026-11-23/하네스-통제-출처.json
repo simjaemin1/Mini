@@ -1,0 +1,24 @@
+{
+  "harnesses": {
+    "scripts/e2e-nature.js": {
+      "byteEqualToPreimplementation": true,
+      "sha256": "7fb971d0dda196c030d746e6547ba8bf0b62d0b1ab4216e3524e19d7c2e99213"
+    },
+    "scripts/test-slot-keep.js": {
+      "byteEqualToPreimplementation": true,
+      "sha256": "74ced7bef03778d731c49f63ab62b099b2c22c30af2b0ec38ff1fe5c3dd84c80"
+    },
+    "scripts/test-t1086-first-join.js": {
+      "byteEqualToPreimplementation": true,
+      "sha256": "042592196a8fde9c38cc84425f4dc79d599c95b6b2959003137ac24fba150afb"
+    },
+    "scripts/test-lab-mining.js": {
+      "byteEqualToPreimplementation": true,
+      "sha256": "fc9154ee694b89fbeb53e790b5f27f734b6991331fdd1b7a701615745b4e524c"
+    }
+  },
+  "nature": "Initial145pass/1fail; controlled baseline146/0 and current146/0, parentNode22/serverNode24. Cause not established; initial red retained.",
+  "slot": "Initial8pass/1fail: contention precondition; controlled baselineNode24 and currentNode22 each9/0. Cause not established; initial red retained.",
+  "firstJoin": "InitialNode22 ERR_DLOPEN_FAILED against shared Node24 better-sqlite3; unchanged harness Node24 PASS82/FAIL0.",
+  "labMining": "Same2assertion failures documented at baseT1427; see 기존실패-근거.json. Not hidden or changed."
+}

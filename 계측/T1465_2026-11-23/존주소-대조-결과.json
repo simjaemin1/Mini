@@ -1,0 +1,33 @@
+{
+  "controls": [
+    {
+      "case": "base",
+      "node": "v22.23.4",
+      "pass": 28,
+      "fail": 5,
+      "code": 1,
+      "log": "존주소-대조-base.txt"
+    },
+    {
+      "case": "current",
+      "node": "v22.23.4",
+      "pass": 28,
+      "fail": 5,
+      "code": 1,
+      "log": "존주소-대조-current.txt"
+    }
+  ],
+  "unchangedToPreimplementation": {
+    "scripts/test-xhost-env.js": "350b1f54827137247f5b9c10eda3f6cb4b0fc0b6cf3836248b64192be83fad95",
+    "scripts/redeploy-light.sh": "48fde5afff6b69ce7c3e58f45dbb3e3c3e1324702cef45ac64b740302ba91580",
+    "scripts/update-live.sh": "52ef938da44cdadc0d752bb0192b08d24b3f7fa1a8bb74c129413f1853f0baef"
+  },
+  "environment": {
+    "uid": 1000,
+    "requiredFixture": "/srv/durango/hanbando",
+    "firstExistingAncestor": "/srv",
+    "ancestorWritable": false,
+    "scriptGate": "redeploy-light.sh mkdir -p /srv/durango/$ID precedes env carry and Docker stubs",
+    "scope": "Identical baseline/current five failures under missing filesystem fixture permission; not a T1465 product change. No real deployment performed."
+  }
+}

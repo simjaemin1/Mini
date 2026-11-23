@@ -1,0 +1,18 @@
+[
+  {
+    "case": "base",
+    "code": 0,
+    "product": "34b1978a",
+    "parentNode": "v22.23.4",
+    "serverNode": "v24.22.1 via unmodified harness spawn(node)",
+    "blackBoxHarnessUnchanged": true
+  },
+  {
+    "case": "current",
+    "code": 0,
+    "product": "59d760f8 (unchanged game files)",
+    "parentNode": "v22.23.4",
+    "serverNode": "v24.22.1 via unmodified harness spawn(node)",
+    "blackBoxHarnessUnchanged": true
+  }
+]
