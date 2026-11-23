@@ -13209,13 +13209,19 @@ function _t1454Back(player) {
   const need = (p, v) => { let best = null; for (const it of Object.keys(p.items || {})) { const sh = Decay.shareOf(p, it, 1); if (sh > 0 && (!best || sh > best.sh)) best = { it, sh }; } return best ? `${ITEM_LABEL_SERVER[best.it] || best.it} ${Math.ceil((1 - v) / best.sh - 1e-9)}` : ''; };
   for (const b of buildings.values()) {
     if (!b || b.ownerId !== player.playerId) continue;
+    //   무너진 움집 — 폐허 행(`_t1438Ruin` · 무너진 낡음 시각 `data.t`)이 비운 사이에 선 것(움집 앵커는 걷혀 아래 셈에 없다)
+    if (b.type === 'ruin') { const d = b.data || {}; if (Number.isFinite(d.t) && d.t > then) lines.push(`${d.was === 'house' ? '집' : '움집'}이 무너졌습니다 — 폐허(우클릭 "치우기")${d.left > 0 ? ` · 남은 재료 ${d.left} 바닥에` : ''}`); continue; }
     const k = _t1438Kind(b); if (!k) continue;
     const t0 = _t1438T0(b), nm = _t1438Name(b.type);
+    //   한 값 — 쓰인 값(`data.hp` · `dkT`)에서 읽는다(부서짐 표지는 안 본다 — 나무 하나로 고친 시설은 표지가 있어도 쓰인다 · `_t1454X` 와 같은 읽기).
+    //     비운 사이 날마다 바퀴(`_t1438Eval`)가 0 을 적었으면(`_t1438Break` — hp 0 · dkT = 그 시각) 지난번 값이 안 남는다 → 적힌 시각이 지난번 뒤면 "그때는 살아 있었다".
+    const d = b.data || {}, hp0 = Number.isFinite(d.hp) ? d.hp : k.maxHp;
+    const brokeAway = !k.multi && d.damaged && !(hp0 > 0) && Number.isFinite(d.dkT) && d.dkT > then;
     const pairs = k.multi
-      ? k.parts.map((p) => [p, Decay.readParts(k, b.data && b.data.dk, now, t0)[p.k], Decay.readParts(k, b.data && b.data.dk, then, t0)[p.k]])
-      : [[k.parts[0], (b.data && b.data.damaged) ? 0 : Decay.readHp(k, Number.isFinite(b.data && b.data.hp) ? b.data.hp : k.maxHp, t0, now) / k.maxHp, Decay.readHp(k, Number.isFinite(b.data && b.data.hp) ? b.data.hp : k.maxHp, t0, then) / k.maxHp]];
+      ? k.parts.map((p) => [p, Decay.readParts(k, d.dk, now, t0)[p.k], Decay.readParts(k, d.dk, then, t0)[p.k]])
+      : [[k.parts[0], Decay.readHp(k, hp0, t0, now) / k.maxHp, brokeAway ? 1 : Decay.readHp(k, hp0, t0, then) / k.maxHp]];
     for (const [p, vNow, vThen] of pairs) {
-      if (vThen > 0 && vNow <= 0) lines.push(`${nm} ${k.multi ? p.ko + '이(가) 다 삭았습니다' : '이(가) 다 낡아 못 씁니다'} — ${need(p, 0)}`);
+      if (vThen > 0 && vNow <= 0) lines.push(`${nm}${k.multi ? ' ' + p.ko + '이(가) 다 삭았습니다' : '이(가) 다 낡아 못 씁니다'} — ${need(p, 0)}`);
       else if (vThen >= 0.5 && vNow < 0.5) lines.push(`${nm} ${k.multi ? p.ko + ' ' : ''}${Math.round(vNow * 100)}% — ${need(p, vNow)}`);
     }
   }

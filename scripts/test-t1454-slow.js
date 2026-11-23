@@ -1,5 +1,5 @@
 // @regress
-// @bait 8
+// @bait 11
 // === scripts/test-t1454-slow.js — T1454 낡은 시설은 느려진다(★재민 11-22 판정 69 · 70 · 74 · 손잡이 `T1454_SLOW` — `T1438_DECAY` 켬 안에서만) ==================
 // 판(운영 함수 그대로 · 사본 0):
 //   ㉮ 셈(`server/decay.js` 순수) — ①a 식 m(x) = (1 + a) ÷ (x + a) · a = 0.25 — 새것 1배 · 절반 1.67 · ¼ 2.5 · 0 바로 위 5배에서 멎음 · 0 = 고장(Infinity)
@@ -8,9 +8,10 @@
 //      ②a 작업대 대기열 — 남은 몫 ½ 이면 1.67배 · ¼ 2.5배 · 새것 1배 · 나오는 것 그대로 ②b 고장(0) — 대기열 거절 · 숯가마는 통나무를 안 삼키고 거절
 //      ②c 진행 중 일은 넣을 때 정한 시간 그대로 끝난다(도중에 더 낡아도 안 늘어남) ②d 노 녹이기 · 숯가마 굽기도 같은 식(시설마다 a 같음)
 //      ②e 헐기 — 낡았으면 재료 × 남은 몫(낱개 내림) · 새것은 종전 물건 하나 ②f 고장 난 우물은 물이 안 나온다 ②g 우클릭 "손질…" 줄 · 제작 창 머리 시간 = 배수
-//      ②h 돌아온 사람 한 줄(비운 사이 절반 밑으로 내려간 제 구조물 · 고칠 재료 수) ②i 마을 장인 몸의 작업 자리 — 고장이면 안 고른다 · 고른 시설의 배수(같은 식)
+//      ②h 돌아온 사람 한 줄(비운 사이 절반 밑으로 내려간 제 구조물 · 고칠 재료 수) ②h2 고쳐 표지가 남은 시설은 안 뜸 ②h3 바퀴가 0 을 적은 시설도 뜸 ②h4 비운 사이 무너진 움집(폐허)
+//      ②i 마을 장인 몸의 작업 자리 — 고장이면 안 고른다 · 고른 시설의 배수(같은 식)
 //   ㉰ 존 끔(`T1454_SLOW` 없음 · 낡음은 켬) — 종전: 낡아도 1배 · 0 이어도 쓴다 · 헐면 물건 하나 · 우클릭 줄에 배수 칸 없음
-//   미끼(이 파일 안 · 자리 꼭 한 번 · 빨강 줄 단언) 여덟 — 카드 할 일 8 의 일곱 + 덧붙임 둘(짓는 중인 터가 낡는 사본).
+//   미끼(이 파일 안 · 자리 꼭 한 번 · 빨강 줄 단언) 열하나 — 카드 할 일 8 의 일곱 + 덧붙임 둘(짓는 중인 터가 낡는 사본) + 덧붙임 하나 셋(돌아온 사람 한 줄 — 표지로 읽기 · 바퀴가 적은 0 · 무너진 움집).
 // 실행: node scripts/test-t1454-slow.js
 'use strict';
 if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다
@@ -28,6 +29,9 @@ const BAITS = {
   mid: { file: FFILE, at: ['  while (q.length && q[0].doneAt <= now) {', '  while (q.length && q[0].startAt + q[0].ms * ((_slow && _slow(b) && _slow(b).mult) || 1) / (q[0].mult || 1) <= now) {   // 미끼 — 진행 중 일이 도중에 다시 셈'] },
   raze: { file: ZFILE, at: ['  const _rz = (T1454_SLOW && itemType) ? _t1454RazeBack(b) : null;', '  const _rz = null;   // 미끼 — 헐고 다시 세우면 새것'] },
   perA: { file: ZFILE, at: ['    const dur = _sl ? Math.round(_smeltDurationMs(kind) * _sl.mult) : _smeltDurationMs(kind);', '    const dur = _sl ? Math.round(_smeltDurationMs(kind) * (1.5 / (_sl.x + 0.5))) : _smeltDurationMs(kind);   // 미끼 — 노만 a 가 다르다(0.5)'] },
+  flag: { file: ZFILE, at: ['      : [[k.parts[0], Decay.readHp(k, hp0, t0, now) / k.maxHp,', '      : [[k.parts[0], d.damaged ? 0 : Decay.readHp(k, hp0, t0, now) / k.maxHp,   /* 미끼 — 부서짐 표지면 0 으로 읽는다(고친 시설이 "못 씁니다"로 뜬다) */'] },
+  away: { file: ZFILE, at: ['    const brokeAway = !k.multi && d.damaged && !(hp0 > 0) && Number.isFinite(d.dkT) && d.dkT > then;', '    const brokeAway = false;   // 미끼 — 날마다 바퀴가 적은 0 을 못 읽는다'] },
+  ruin: { file: ZFILE, at: ['if (Number.isFinite(d.t) && d.t > then) lines.push(', 'if (false) lines.push(   /* 미끼 — 무너진 움집을 안 센다 */'] },
 };
 function baitHook(name) {
   const bait = name && name !== '-' ? BAITS[name] : null; if (!bait) return;
@@ -134,15 +138,21 @@ function zoneChild(mode, bait) {
   // ②h 돌아온 사람 — 비운 사이 절반 밑으로 내려간 제 작업대 한 줄
   if (mode !== 'zoff') {
     const WB8 = mk('workbench', 'p9'); setX(WB8, 0.6);
+    const SK = mk('salt_kiln', 'p9'); setX(SK, 1 / 3); SK.data.damaged = true;   // 0 에서 ⅓ 로 고친 것(표지는 종전 수리 문대로 절반까지 남는다) — 비운 사이 0 에 안 닿는다 → 한 줄 밖
+    const KB = mk('charcoal_kiln', 'p9', { owner: 'p9' }); setX(KB, 0.1);   // 비운 사이 0 에 닿고 날마다 바퀴가 0 을 적는다 → 한 줄
+    H._t1438Ruin([2000, 1000, 2002, 1002], 'p9', 'p9', 'hut', 3);   // 나가기 전에 무너진 움집 → 한 줄 밖
     const P9 = mkP('p9', WB8, {}); H.players.set(P9.playerId, P9);
     const rate = D.partRate(D.kindOf('workbench', null).parts[0]), dd = Math.ceil(0.2 / rate) + 2;
     H.handlePlayerInput(P9, JSON.stringify({ type: '__e2e_clock', day: 300, quiet: true }));
     P9.lastSeenDay = 300;
     DAY(dd + 1);   // 낡음 시계도 같은 날만큼(꺼진 시간 0 · 판은 낡음 날 0 에서 시작했다)
     H.handlePlayerInput(P9, JSON.stringify({ type: '__e2e_clock', day: 300 + dd, quiet: true }));
+    H._t1438Eval(KB, H._t1438Now(), 'day');   // 날마다 바퀴 — 0 에 닿은 숯가마를 부숨으로 적는다(hp 0 · dkT = 지금 · 지난번 값이 안 남는다)
+    H._t1438Ruin([2010, 1000, 2012, 1002], 'p9', 'p9', 'hut', 5);   // 비운 사이 무너진 움집(폐허 행 — 앵커는 걷혔다)
     notes.length = 0;
     const n = H._t1454Back(P9);
-    out.h = { n, x: xOf(WB8), dd, text: note(), gd: H.gameDayNow ? H.gameDayNow() : null, seen: P9.lastSeenDay };
+    out.h = { n, x: xOf(WB8), dd, text: note(), gd: H.gameDayNow ? H.gameDayNow() : null, seen: P9.lastSeenDay,
+      sk: xOf(SK), skDmg: !!SK.data.damaged, kb: xOf(KB), kbDmg: !!KB.data.damaged };
   }
   // ②i 마을 장인 몸의 작업 자리
   const WB9 = mk('workbench', 'p10'); setX(WB9, 0.5);
@@ -199,6 +209,12 @@ else {
     '②g 우클릭 "손질…" 줄에 남은 몫 · 걸리는 시간 배수 · 제작 창 머리 시간 = 배수(서버 셈)', JSON.stringify(Z.g));
   ok(!!Z.h && Z.h.n >= 1 && Z.h.x < 0.5 && /비운 사이/.test(Z.h.text || '') && /작업대/.test(Z.h.text || '') && /나무|돌/.test(Z.h.text || ''),
     '②h 돌아온 사람 — 비운 사이 절반 밑으로 내려간 제 작업대 한 줄 · 고칠 재료 수', Z.h ? `${Z.h.dd}날 · ${Z.h.text}` : '-');
+  ok(!!Z.h && Z.h.sk > 0 && Z.h.sk < 0.5 && Z.h.skDmg && !/소금가마/.test(Z.h.text || ''),
+    '②h2 돌아온 사람 — 0 에서 고쳐 표지가 남은 시설(⅓ · 쓰인다)은 "다 낡아 못 씁니다"로 안 뜬다(표지 아닌 한 값으로 읽는다)', Z.h ? `소금가마 ${(+Z.h.sk).toFixed(3)} · 표지 ${Z.h.skDmg}` : '-');
+  ok(!!Z.h && Z.h.kb === 0 && Z.h.kbDmg && /숯가마이\(가\) 다 낡아 못 씁니다/.test(Z.h.text || ''),
+    '②h3 돌아온 사람 — 비운 사이 0 에 닿아 날마다 바퀴가 부숨으로 적은 시설(지난번 값이 안 남는다)도 뜬다', Z.h ? `숯가마 ${Z.h.kb} · 표지 ${Z.h.kbDmg}` : '-');
+  ok(!!Z.h && ((Z.h.text || '').match(/무너졌습니다/g) || []).length === 1 && /남은 재료 5/.test(Z.h.text || ''),
+    '②h4 돌아온 사람 — 비운 사이 무너진 움집(폐허 행)이 뜬다 · 나가기 전에 무너진 것은 안 뜬다', Z.h ? (Z.h.text || '').replace(/^.*?—\s*/, '').slice(0, 160) : '-');
   ok(!!Z.i.f1 && near(Z.i.f1.m, m(0.5), 1e-3) && Z.i.f2 === null, '②i 마을 장인 몸의 작업 자리 — 고른 시설의 배수(같은 식) · 고장이면 안 고른다', JSON.stringify(Z.i));
 }
 
@@ -225,6 +241,9 @@ b = B('output', 'zone', (r) => !(r.a.got1.length === 1 && r.a.got1[0].axe === 1)
 b = B('mid', 'zone', (r) => r.c.got !== 1); ok(b.red, '미끼 진행 중 일이 도중에 늘어나는 사본 → ②c 빨강', `바꾼 자리 ${b.n}${b.why}`);
 b = B('raze', 'zone', (r) => r.e.worn.item_workbench === 1); ok(b.red, '미끼 헐고 다시 세우면 새것이 되는 사본(= 지금) → ②e 빨강', `바꾼 자리 ${b.n}${b.why}`);
 b = B('perA', 'zone', (r) => r.d.smelt !== Math.round(r.d.smeltBase * m(r.d.fx))); ok(b.red, '미끼 시설마다 a 가 다른 사본(노만 0.5) → ②d 빨강', `바꾼 자리 ${b.n}${b.why}`);
+b = B('flag', 'zone', (r) => /소금가마/.test(r.h.text || '')); ok(b.red, '미끼 부서짐 표지로 읽는 사본(고친 시설이 "못 씁니다") → ②h2 빨강', `바꾼 자리 ${b.n}${b.why}`);
+b = B('away', 'zone', (r) => !/숯가마/.test(r.h.text || '')); ok(b.red, '미끼 바퀴가 적은 0 을 못 읽는 사본 → ②h3 빨강', `바꾼 자리 ${b.n}${b.why}`);
+b = B('ruin', 'zone', (r) => !/무너졌습니다/.test(r.h.text || '')); ok(b.red, '미끼 무너진 움집을 안 세는 사본 → ②h4 빨강', `바꾼 자리 ${b.n}${b.why}`);
 
 console.log(`\n결과: ${pass} 통과 · ${fail} 실패`);
 process.exit(fail ? 1 : 0);
