@@ -9,6 +9,7 @@
 //   ③ 몸-ms → 사람-날 — 낮 둘(현장) · 낮 하나(걸음) → { site 2 · walk 1 } · 몸 틱이 없던 날 = 칸 없음(일괄 장부만 일한 시간 0) · 넘기고 비운다
 //   ④ 남는 시간 일만 센다 — 생활층 셈 자리는 남는 시간 일감(`t.side`) · 그날 남는 시간 직업(`_t1422J`) 두 곳뿐(본업 · '귀가' 0 · 글자)
 //   ⑤ 행복이 내려간다 — 같은 마을 · 같은 날 `all` 의 행복 < `idle`(여가 항 무게 그대로)
+//   ⑦ 보이는 것 — 마을 보기 구성원 판 한 줄(`members.rest` · 칸이 설 때만)
 //   ⑥ 미끼(이 파일 안 · 다섯) — ⓐ 뺌 줄 지움 → ② · ⓑ 사람 수 대신 1 로 나눔 → ② · ⓒ 바닥 0 뺌 → ② · ⓓ 일감 표지 문 뺌(본업도 셈) → ④ · ⓔ 몸 틱 없는 날도 칸 → ③
 //   날짜 · 벽시계를 쓰지 않는다.
 'use strict';
@@ -53,6 +54,10 @@ const seeOk = (src) => /if \(_T1444 && t\.side\) _t1444Note\(vil, npc, now, Math
 ok(seeOk(VS) && /if \(_T1444\) \{ t\.side = 1; npc\._t1444At = now; \}/.test(VS), '④ 남는 시간 일만 센다 — 셈 자리 둘(남는 시간 일감 · 남는 시간 직업) · 일감 표지는 남는 시간 문만 단다(본업 · 귀가 0)', `셈 자리 ${noteCalls}`);
 // ── ⑤ 행복 ──
 ok(L.all.a && L.idle.a && L.all.a.h < L.idle.a.h, '⑤ 행복이 내려간다 — 같은 마을 · 같은 날 `all` < `idle`', JSON.stringify({ all: L.all.a && L.all.a.h, idle: L.idle.a && L.idle.a.h }));
+// ── ⑦ 보이는 것(마을 보기 구성원 판 한 줄) ──
+const VV = fs.readFileSync(path.join(ROOT, 'server', 'village-view.js'), 'utf8'), VC = fs.readFileSync(path.join(ROOT, 'public', 'client', '52-v-village-view.js'), 'utf8');
+ok(/const R = vil\.econ && vil\.econ\._t1444Rest;\n  if \(R\) out\.rest = \{ site:/.test(VV) && /rest: mem\.rest \? \{/.test(VC) && /if \(M\.rest\) h \+= /.test(VC),
+  '⑦ 보이는 것 — 구성원 판에 "어제 남는 시간에 일함 · 쉼" 한 줄(서버는 `_t1444Rest` 칸이 설 때만 `members.rest` · 끔 = 키 없음 · 새 그림 0)', '');
 // ── ⑥ 미끼 ──
 const NEED = "Math.max(0, _leis - ((_rs.site || 0) + (T1422_LEISURE === 'all' ? (_rs.walk || 0) : 0)) / pop)";
 const bait2 = (needle, rep) => { const R = {}; for (const [n, v] of Object.entries({ all: 'all', site: 'allsite', idle: 'idle' })) R[n] = run({ T1422_SIDE_WORK: '1', T1422_LEISURE: v }, LS(BAIT('sim/economy-sim.js', needle, rep))); return R; };

@@ -91,6 +91,7 @@ function vvAdapt(raw) {
     projects: { active: (pj.now || []).map(proj).filter(Boolean), next: Array.isArray(pj.next) ? pj.next : null, done: (pj.done || []).map((d) => ({ when: ago(d.ago), text: d.line || '' })).filter((d) => d.text) },
     members: { total: num(mem.n), delta: num(mem.delta), jobs: (mem.byJob || []).map((j) => ({ job: j.ko || j.job, n: j.n | 0 })),
       people: (mem.people || []).map((p) => ({ name: vvNm(p.name), job: p.jobKo || null, chief: !!p.chief, act: p.act || '' })),
+      rest: mem.rest ? { site: num(mem.rest.site) || 0, walk: num(mem.rest.walk) || 0, leisure: num(mem.rest.leisure) || 0 } : null,   // ★[T1444 ⑥] 남는 시간 일 한 줄(서버가 실을 때만)
       //   ★[T1169 · K18] 촌장 「일 맡기기」 명부(서버 `members.assign` — 게시판 판 T1085 와 같은 `assignRoster` · 촌장에게만 · 없으면 칸을 안 그린다)
       assign: (mem.assign && Array.isArray(mem.assign.rows)) ? { cooldown: num(mem.assign.cooldown),
         jobs: (mem.assign.jobs || []).map((j) => ({ job: j.job, ko: j.ko || j.job, open: !!j.open })),
@@ -369,6 +370,7 @@ function vvMem(D) {
   let h = `<div class="vv-plate vv-grow" style="display:flex;flex-direction:column"><div style="display:flex;align-items:center;gap:32px;flex-wrap:wrap;margin-bottom:16px">${vvT('함께 사는 사람', 32, 'serif')}`
     + `${M.total != null ? vvT(`${M.total}명${M.delta ? ` · 이번 철에 ${Math.abs(M.delta)}명 ${M.delta > 0 ? '늘었습니다' : '줄었습니다'}` : ''}`, 20, 'sansm', 'vvMemN') : ''}`
     + `<div style="display:flex;gap:12px;flex-wrap:wrap;margin-left:auto">${(M.jobs || []).map((j) => `<span class="vv-chip">${vvFr}${vvT(`${j.job} ${j.n}`, 18)}</span>`).join('')}</div></div>`;
+  if (M.rest) h += `<div style="margin:-4px 0 16px">${vvT(`어제 남는 시간에 일함 ${(M.rest.site + M.rest.walk).toFixed(1)}사람-날(현장 ${M.rest.site.toFixed(1)} · 걸음 ${M.rest.walk.toFixed(1)}) · 쉼 ${Math.round((M.rest.leisure || 0) * 100)}%`, 18, 'sansm')}</div>`;   // ★[T1444 ⑥] 새 그림 0 — 글 한 줄
   h += `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">${show.map((p) => `<div class="vv-card vv-person">${vvFr}<div style="display:flex;gap:16px;align-items:center">${vvSvgMan}`
     + `<div class="vv-col">${vvT(p.name, 28, 'serif')}${vvT([p.chief ? '촌장' : null, p.job].filter(Boolean).join(' · '), 18)}</div></div>`
     + `${p.act ? `<div style="margin-top:14px">${vvT(p.act, 18)}</div>` : ''}</div>`).join('')}</div>`;

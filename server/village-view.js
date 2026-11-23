@@ -184,7 +184,12 @@ function _members(vil, chiefId) {
     if (job) tally.set(job, (tally.get(job) || 0) + 1);
   }
   const byJob = [...tally].map(([job, n]) => ({ job, ko: (H.jobKo && H.jobKo[job]) || null, n })).sort((a, b) => (b.n - a.n) || (a.job < b.job ? -1 : 1));
-  return { n: people.length, byJob, people };
+  const out = { n: people.length, byJob, people };
+  //   ★[T1444 ⑥] 남는 시간 일 한 줄 — 어제 이 마을이 남는 시간 일에 쓴 사람-날(현장 · 가는 걸음 · 생활층 `_t1444In` 이 econ 틱 앞에 넘긴 그 칸) · 그날 여가(econ `lastStats.leisure`).
+  //     `T1422_LEISURE` 가 `all` · `allsite` 인 판에서만 칸이 선다(끔 = 키 없음 — 옛 바이트) · 몸이 하루를 안 산 날(칸 null)도 키 없음.
+  const R = vil.econ && vil.econ._t1444Rest;
+  if (R) out.rest = { site: _r(R.site || 0, 2), walk: _r(R.walk || 0, 2), leisure: _r((vil.econ.lastStats && +vil.econ.lastStats.leisure) || 0, 3) };
+  return out;
 }
 // ★[T1169 · K18 · T1115 회부 2] 촌장 「일 맡기기」 명부 — 게시판 판(T1085 `_t1085Members`)이 싣던 **그 자료 그대로**(`SimVillages.assignRoster` 하나 · 사본 0).
 //   싣는 때도 같다: 사람이 세운 마을(`econ.founder`) · 이 사람이 촌장(`me.chief` = `membership.publicState().chief` = `chiefCached` — 게시판과 같은 술어).

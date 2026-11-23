@@ -61,6 +61,11 @@ globalThis.__t1422T = (npc, now, owned) => {
     if (!nd.half && npc._half && npc._hd != null) { nd.half = 1; nd.row[2]++; }
     if (!nd.side && npc._t1422D != null && npc._t1422D === npc._hd) { nd.side = 1; nd.row[3]++; }
     const isRest = lab === '휴식';
+    {   // ★[T1444] 남는 시간 일 몸-ms — 철 × 직업 × 일(개간 · 집 · 식량 · 땔감) × (현장 · 걸음) — 일감 표지(`t.side`) · 그날 남는 시간 직업(`_t1422J`)만
+      let k = null, w = 0; const t = npc._lifeTask;
+      if (t && t.side) { k = t.k === 'clear' ? '개간' : t.k === 'build' ? '집' : t.k; w = (Math.hypot(npc.x - t.px, npc.y - t.py) > 44) ? 1 : 0; }
+      else if (npc._t1422J && npc._t1422J.day === npc._hd) { k = npc._t1422J.j === 'forager' ? '식량' : '땔감'; w = lab === '출근' ? 1 : 0; }
+      if (k && dt > 0) { const SW = rec.sw || (rec.sw = {}), a1 = SW[S] || (SW[S] = {}), a2 = a1[j] || (a1[j] = {}), a3 = a2[k] || (a2[k] = [0, 0, 0]); a3[w] += dt; if (isRest) a3[2] += dt; } }
     {   // ★[T1444] 마을마다 몸 '휴식' ms · 몸 ms(econ 여가와 견줌)
       const vv = VBY.get(npc.simVillageId); if (vv) { const VL = rec.vl || (rec.vl = {}), x = VL[vv.name] || (VL[vv.name] = [0, 0, 0, 0, 0]); x[3] += dt; if (isRest) x[2] += dt; } }
     if (isRest && !nd.rest) { nd.rest = 1; nd.row[1]++; }
