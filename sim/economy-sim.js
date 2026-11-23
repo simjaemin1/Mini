@@ -997,6 +997,17 @@ const LAND_Q_BETA = 0.105;                // ★리카도 한계지 감쇠(실�
 const EXPAND_PAYBACK_DAYS = 365;          // ★확장 투자 회수기간(할인율 역수) — 개간 투자는 ~1년 내 회수돼야 실행(보즈럽: 개간=노동투자).
                                           //   임의 천장이 아니라 경제 표준 상수(이자율): 낮추면 s*↓, 높이면 s*↑ — 균형 '수준'은 지형·비옥도가 결정.
 const EXPAND_PRICE_FOODEQ = { wood: 1.67, stone: 2.14 };   // 투자판단용 정적 환산(food=1) — v2 BASE 상대가와 일치
+// ★★[T1426 ④ 2026-11-22 · 판정 33 ⓑ "무엇이 인구를 묶나" · 재민 11-21 "상한 좀 두지 말라니까"] 손잡이 `T1426_EXPAND_PRICE`(끔 기본 · `'1'` 만 켬 · 끔 = 종전 바이트 · 판만 — 켬 판정 안 함)
+//   T1426 진단: 랩 인구의 여섯째 해 뒤 해마다 +1 ~ +3 % 는 **영토 확장**(길드가 셀을 사 땅 → 식량 자리 → K)에서 나오고, 확장을 멈추는 문은 MB/MC 하나다.
+//     그 MC 의 나무 · 돌 → 식량 환산은 손으로 적은 정적 값(위 `EXPAND_PRICE_FOODEQ` — 2026-07-03 · "v2 BASE 상대가와 일치")이라
+//     세계가 부유해져 식량 값이 내리고(0.3) 나무 값이 올라도(1.3) 땅값 셈이 그걸 모른다.
+//   켬 — MC 의 환산을 **그 마을의 그날 그림자 값**(v2 `_priceCache` — 교역이 쓰는 그 값 · 나무 ÷ 식량 · 돌 ÷ 식량)으로. 값이 없으면(v1 홀로 · 첫날) 종전 정적 값. 새 수 0.
+const T1426_EXPAND_PRICE = (typeof process !== 'undefined' && process.env && process.env.T1426_EXPAND_PRICE === '1');
+function t1426ExpandPx(v) {   // 나무 · 돌의 식량 환산(그날 그림자 값) · 없으면 null(종전 정적 값)
+  const p = v._priceCache;
+  if (!p || !(p.food > 0) || !(p.wood > 0) || !(p.stone > 0)) return null;
+  return { wood: p.wood / p.food, stone: p.stone / p.food };
+}
 // ★위신재(사치) → 인구 소폭 보너스. prestige는 need 아닌 순보너스(없어도 페널티X, 있으면 생활수준↑→매력↑).
 //   사치 수입을 정당화(진짜 수요 근거). cap+작은 계수로 과성장 방지(주거게이트가 추가 안전장치).
 const PRESTIGE_GROWTH_W = 0.2;            // prestige 1당 성장보너스 계수
@@ -3898,7 +3909,8 @@ function tryExpandTerritory(v, day) {
                        + 0.25 * (L.water || 0) * (1.2 * (L.water || 0))
                        + 0.30 * (L.game || 0) * (0.7 * (L.game || 0))
                        + 0.30 * 0.5 * 0.8);                            // 채집(식량가중 0.5, ~0.8/일)
-    const mcFoodEq = cost.food + cost.wood * EXPAND_PRICE_FOODEQ.wood + cost.stone * EXPAND_PRICE_FOODEQ.stone;
+    const _px = (T1426_EXPAND_PRICE && t1426ExpandPx(v)) || EXPAND_PRICE_FOODEQ;   // ★[T1426 ④] 켬 = 그날 그림자 값 환산(끔 = 종전 정적 값)
+    const mcFoodEq = cost.food + cost.wood * _px.wood + cost.stone * _px.stone;
     v._expandMBMC = { mb: Math.round(mbDaily * EXPAND_PAYBACK_DAYS), mc: Math.round(mcFoodEq) };   // 진단용(슬롯 단위 유지)
     if (mbDaily * EXPAND_PAYBACK_DAYS < mcFoodEq) return;   // 한계지가 투자가치 없음 → 확장 정지(하드캡 아님: 지형·가격이 결정)
     const cellFood  = cost.food  / EXPAND_CELLS_PER_SLOT;
@@ -8163,6 +8175,7 @@ module.exports = {
   T1283_WOOD_DEMAND, t1283Wood,   // ★[T1283] 나무 모자람 → 직업 고르기(끔 기본 · `'1'` 켬)
   T1148_FUEL_JOB, t1148Cold,   // ★[T1148] 추위 빚(끔 기본 · `'1'` 켬)
   T1135_FUEL_EQ, FIREWOOD_PC_SRC, woodShareD, woodFormulaOff,   // ★[T1135] 땔감 평형(끔 기본 · `'1'` 켬) · 고증 d · 나무꾼 분자 · 수식 목재 걷어냄
+  T1426_EXPAND_PRICE, t1426ExpandPx, EXPAND_PRICE_FOODEQ,   // ★[T1426 ④] 땅값 셈을 그날 그림자 값으로(끔 기본) — 하네스
   T1046_WOOD_SHARE,   // ★[T1046] 나무꾼 안전망 = 출생 문과 같은 주거 상한(끔 기본 · `'1'` 켬)
   T932_SMELT_CONT, t932Stat,   // ★[T932] 제련 날 마을 하루 결함 손잡이(켬 기본) + 계측 칸(관찰기 `t932-smelt-probe` 가 읽는다 — 행동 무관)
   T924_DEBT_CAP, _computeVillageStats,   // ★[T924] 빚 손잡이 + 마을 stat 함수(관찰기 `t924-observe` 가 건강 · 행복 항을 가른다 — 읽기만 · 사본 0 · 동작 무변)

@@ -7,7 +7,10 @@
 //
 // 쓰는 법:
 //   node scripts/eq-run.js --seed <n> --from <저장본 | make:<날> | new> --days <N> [--arm 이름=ENV=값[,ENV=값…] …] [--server] [--out <폴더>] [--par 2] [--every 50]
-//     --from make:800   캐시(`${TMPDIR:-/tmp}/durango-eq-cache/<코드 지문>/`)의 800날 저장본 — 없으면 만든다 · 다른 코드 지문 폴더에 같은 이름이 있으면 "낡음"이라 말하고 다시 만든다
+//     --from make:1900  (기본 · ★T1426 판정 33) 캐시(`${TMPDIR:-/tmp}/durango-eq-cache/<코드 지문>/`)의 1,900날 저장본 = **평형 판의 출발** — 없으면 만든다 ·
+//                       다른 코드 지문 폴더에 같은 이름이 있으면 "낡음"이라 말하고 다시 만든다. `make:800` 은 **성장 판**(T1420 — 랩 800날 6,198 은 성장 구간의 한 점)
+//     --grow · --fp-days 1901-2000  (★T1426) 팔마다 성장 길 관측 · 지문 날 창
+//     --crit c1=0.05,c3=0.1  "평형에 닿았나" 한 줄의 문턱(기본 = 판정 33: C1 ≤ 0.05 ∧ C3 ≤ 0.1 ∧ C2 = 0 · `lib-eq-crit.DEF`) — 후보 표는 그대로 다 찍는다
 //     --from <파일|폴더> 그 저장본(랩 = .v8.gz · 서버 = t1308 체크포인트 폴더) — 코드 지문이 다르면 멈춘다(코드 3 · `--allow-stale` 이면 쓴다)
 //     --from new        새 세계(날 0)에서 — 성장 판(견줌 · 카드 T1420 할 일 6 ⓐ)
 //     --arm             끔 팔은 늘 돈다(env 없음). 켬 팔은 이름=ENV=값 — 저장본을 되살린 **뒤** 그 env 로 돈다
@@ -23,12 +26,17 @@ const ROOT = path.join(__dirname, '..');
 const Lq = require('./lib-eq-lab');
 const Cr = require('./lib-eq-crit');
 
+const DEF_DAY = 1900;   // ★[T1426 · 판정 33] 평형 판의 출발 날(C1 ≤ 0.05 ∧ C3 ≤ 0.1 — 세 시드 1,860 ~ 1,880날 + 넉넉히) · 800 = 성장 판
 const A = process.argv.slice(2);
 const opt = (k, d) => { const i = A.indexOf('--' + k); return i >= 0 ? A[i + 1] : d; };
-const SEED = parseInt(opt('seed', ''), 10), FROM = opt('from', 'make:800'), DAYS = parseInt(opt('days', '400'), 10);
+const SEED = parseInt(opt('seed', ''), 10), FROM = opt('from', 'make:' + DEF_DAY), DAYS = parseInt(opt('days', '400'), 10);
 const SERVER = A.includes('--server'), PAR = parseInt(opt('par', '2'), 10), EVERY = parseInt(opt('every', '50'), 10), STALE_OK = A.includes('--allow-stale');
 const ZONE = opt('zone', 'hanbando');
-if (!(SEED > 0) || !(DAYS > 0)) { console.error('쓰는 법: eq-run.js --seed <n> --from <저장본|make:<날>|new> --days <N> [--arm 이름=ENV=값 …] [--server]'); process.exit(2); }
+const GROW = A.includes('--grow');   // ★[T1426] 팔마다 성장 길 관측(`<팔>.grow.json` — `lib-eq-grow`)
+const FPWIN = opt('fp-days', '') ? opt('fp-days', '').split('-') : null;   // ★[T1426] 지문 날 창(예: 1901-2000 — 긴 판의 지문 파일을 줄인다)
+if (A.includes('--print-defaults')) { console.log(JSON.stringify({ defDay: DEF_DAY, from: FROM, crit: Cr.DEF, obsCols: Lq.OBS_COLS })); process.exit(0); }   // ★[T1426] 하네스 · 사람이 기본을 본다
+const CRIT = (() => { const c = opt('crit', ''); if (!c) return Cr.DEF; const o = Object.assign({}, Cr.DEF); for (const kv of c.split(',')) { const [k, v] = kv.split('='); o[k] = +v; } return o; })();
+if (!A.includes('--print-defaults') && (!(SEED > 0) || !(DAYS > 0))) { console.error('쓰는 법: eq-run.js --seed <n> --from <저장본|make:<날>|new> --days <N> [--arm 이름=ENV=값 …] [--server]'); process.exit(2); }
 const ARMS = A.includes('--no-off') ? [] : [{ name: 'off', env: {} }];   // --no-off = 끔 팔을 이미 돌린 폴더에 켬 팔만 더한다(표는 그 폴더의 off.obs 를 읽지 않는다 — 견줌은 부르는 쪽)
 for (let i = 0; i < A.length; i++) if (A[i] === '--arm') {
   const s = A[i + 1], k = s.indexOf('='); const name = s.slice(0, k), env = {};
@@ -70,7 +78,8 @@ async function labMake(day) {
   return f;
 }
 async function labArm(arm, file) {
-  const env = labEnv(Object.assign({}, arm.env, { T1420_OBS: path.join(OUT, `${arm.name}.obs.json`), T1420_FP: path.join(OUT, `${arm.name}.fp.json`) }, file ? { T1420_LOAD: file } : {}, STALE_OK ? { T1420_ALLOW_STALE: '1' } : {}));
+  const env = labEnv(Object.assign({}, arm.env, { T1420_OBS: path.join(OUT, `${arm.name}.obs.json`), T1420_FP: path.join(OUT, `${arm.name}.fp.json`) }, GROW ? { T1426_GROW: path.join(OUT, `${arm.name}.grow.json`) } : {}, FPWIN ? { T1420_FP_FROM: FPWIN[0], T1420_FP_TO: FPWIN[1] } : {}, file ? { T1420_LOAD: file } : {}, STALE_OK ? { T1420_ALLOW_STALE: '1' } : {}));
+  env.NODE_OPTIONS = require('./lib-heap').withHeap(env.NODE_OPTIONS || process.env.NODE_OPTIONS);   // ★[T1426] 긴 랩 팔(10,000날 — 인구 1만 넘음)
   const r = await run([path.join(__dirname, 't17-metrics.js'), String(DAYS), String(SEED)], env, path.join(OUT, `${arm.name}.log`));
   const lg = fs.readFileSync(path.join(OUT, `${arm.name}.log`), 'utf8');
   if (/낡은 저장본/.test(lg)) { console.error(`  ✗ ${arm.name}: 낡은 저장본 — ${(lg.match(/\[T1420\] 낡은[^\n]*/) || [''])[0]}`); return { arm, code: 3, sec: r.sec, stale: true }; }
@@ -146,8 +155,8 @@ function blocks(rows, n) {
   if (res.some((r) => r.stale)) process.exit(3);
   const NV = 51;
   const W = Math.min(365, Math.floor(DAYS / 2));
-  const tab = res.map((r) => ({ arm: r.arm.name, env: r.arm.env, code: r.code, sec: +r.sec.toFixed(1), days: (r.rows || []).length, blocks: blocks(r.rows, NV), crit: Cr.table(r.rows || [], W) }));
-  const J = { card: 'T1420', seed: SEED, from: FROM, startDay, days: DAYS, server: SERVER, sig: Lq.codeSig(), src, srcSha: { before, after, same: before === after }, arms: tab, sec: +((Date.now() - t0) / 1000).toFixed(1) };
+  const tab = res.map((r) => ({ arm: r.arm.name, env: r.arm.env, code: r.code, sec: +r.sec.toFixed(1), days: (r.rows || []).length, blocks: blocks(r.rows, NV), crit: Cr.table(r.rows || [], W), eq: Cr.reached(r.rows || [], W, CRIT) }));
+  const J = { card: 'T1420', defDay: DEF_DAY, crit: CRIT, seed: SEED, from: FROM, startDay, days: DAYS, server: SERVER, sig: Lq.codeSig(), src, srcSha: { before, after, same: before === after }, arms: tab, sec: +((Date.now() - t0) / 1000).toFixed(1) };
   fs.writeFileSync(path.join(OUT, 'eq-run.json'), JSON.stringify(J, null, 1));
   const L = [`# eq-run 시드 ${SEED} · ${SERVER ? '서버' : '랩'} · 시작 ${FROM}(날 ${startDay}) · +${DAYS}날 · 코드 지문 ${J.sig}`, ''];
   L.push(`저장본 sha 앞 ${before || '—'} · 뒤 ${after || '—'} · ${src ? (J.srcSha.same ? '같음(판이 저장본을 안 바꿨다)' : '**다름**') : '새 세계'}`, '');
@@ -155,6 +164,7 @@ function blocks(rows, n) {
     L.push(`## 팔 ${t.arm} ${Object.keys(t.env).length ? '(' + Object.entries(t.env).map(([k, v]) => `${k}=${v}`).join(' ') + ')' : '(env 없음)'} · 코드 ${t.code} · ${t.sec}초 · 관측 ${t.days}날`, '');
     L.push('| 날 | 인구 | 굶어 죽음(구간) | 빈 마을 | 떠난 사람(구간) | 식량 날치 | 값 식량 · 나무 · 돌 · 도구 | 직업 몫 위 셋 | CPU 초/날 |', '|---|---|---|---|---|---|---|---|---|');
     for (const b of t.blocks) L.push(`| ${b.d} | ${b.pop} | ${b.fdDead ?? '—'} | ${b.empty} | ${b.left ?? '—'} | ${b.foodDays ?? '—'} | ${b.price ? ['food', 'wood', 'stone', 'tool'].map((k) => b.price[k] ?? '—').join(' · ') : '—'} | ${b.jobs} | ${b.cpuPerDay ?? '—'} |`);
+    L.push('', `**평형에 닿았나**(C1 ≤ ${t.eq.th.c1} ∧ C3 ≤ ${t.eq.th.c3} ∧ C2 ≤ ${t.eq.th.c2} · 창 ${W}날): ${t.eq.day == null ? '안 닿음' : t.eq.day + (t.eq.onlyLast ? '(끝 한 점뿐)' : '')}`);
     L.push('', `기준 후보(창 ${t.crit.W}날 · 든 날 = 처음 참이 되고 끝까지 참): ` + Object.entries(t.crit.enter).map(([k, v]) => `${k} → ${v ?? '안 듦'}`).join(' · '), '');
   }
   fs.writeFileSync(path.join(OUT, 'eq-run.md'), L.join('\n'));
