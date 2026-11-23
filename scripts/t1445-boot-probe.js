@@ -43,6 +43,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await sleep(15000);
     try { const r = await fetch(`http://localhost:${ZP}/perf`, { headers: { 'x-zone-secret': SECRET }, signal: AbortSignal.timeout(5000) }); const p = await r.json(); const t = p.tick && p.tick.ms; perf.push({ s: Math.round((Date.now() - t0) / 1000), p50: t && t.p50, p99: t && t.p99, max: t && t.max }); } catch (e) { perf.push({ s: Math.round((Date.now() - t0) / 1000), err: 1 }); }
   }
+  const endedByUs = !died;   // 판 끝까지 살았다 — 아래 SIGTERM · SIGKILL 은 죽음이 아니다
   let termAt = null;
   if (!died && has('--term')) { termAt = Date.now(); z.kill('SIGTERM'); for (let i = 0; i < 180 && !died; i++) await sleep(1000); }
   if (!died) { z.kill('SIGKILL'); await sleep(1000); }
@@ -50,7 +51,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   fs.writeFileSync(path.join(OUTD, 'perf.txt'), perf.map((x) => JSON.stringify(x)).join('\n') + '\n');
   // 요약 — GC 줄(앞 = 그때 힙 · 뒤 = Mark-Compact 면 산 몫) · 10초 창 · 종료 저장(SIGTERM 줄 뒤)
   const L = fs.readFileSync(path.join(OUTD, 'zone.log'), 'utf8').split('\n');
-  const S = { died: died && !termAt ? died : null, ref: REF || 'tree', limit: LIMIT || 'node 기본', off: OFF || null, gcMaxPre: 0, gcMaxLive: 0, win: {}, term: termAt ? { maxPre: 0, maxLive: 0 } : null, t566: null, jump: null, perfLast: perf[perf.length - 1] || null };
+  const S = { died: !endedByUs ? died : null, ref: REF || 'tree', limit: LIMIT || 'node 기본', off: OFF || null, gcMaxPre: 0, gcMaxLive: 0, win: {}, term: termAt ? { maxPre: 0, maxLive: 0 } : null, t566: null, jump: null, perfLast: perf[perf.length - 1] || null };
   let sd = false;
   for (const l of L) {
     if (/SIGTERM 받음/.test(l)) sd = true;
@@ -63,7 +64,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     k = /날 뜀 (\d+)/.exec(l); if (k) S.jump = +k[1];
     if (/FATAL ERROR|heap out of memory/.test(l)) S.fatal = l.slice(0, 160);
   }
-  if (died && !termAt) S.diedAtS = Math.round((died.at - t0) / 1000);
+  if (!endedByUs && died) S.diedAtS = Math.round((died.at - t0) / 1000);
   fs.writeFileSync(path.join(OUTD, 'summary.json'), JSON.stringify(S, null, 1));
   console.log(JSON.stringify({ out: OUTD, died: S.died ? S.diedAtS : null, fatal: !!S.fatal, gcMaxPre: S.gcMaxPre, gcMaxLive: S.gcMaxLive, term: S.term, t566: S.t566, jump: S.jump, perfLast: S.perfLast }));
   if (wt && !has('--keep')) { try { execFileSync('git', ['worktree', 'remove', '--force', wt], { cwd: ROOT, stdio: 'ignore' }); } catch (e) {} }
