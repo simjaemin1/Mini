@@ -15844,6 +15844,51 @@
    "core": false,
    "why": "srv"
   },
+  "test-t1447-grudge.js": {
+   "cls0": "다",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 16.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 16.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 15.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 16.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 16.3,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "다",
+   "child": [
+    "spawnSync node"
+   ],
+   "cls": "다",
+   "maxSec": 16.4,
+   "same5": true,
+   "srv": true,
+   "core": false,
+   "why": "srv"
+  },
   "test-t721-apply.js": {
    "cls0": "나",
    "why0": "child_process",
@@ -18152,5 +18197,5 @@
    "srv": true
   }
  },
- "at": "2026-11-22"
+ "at": "2026-11-23"
 }

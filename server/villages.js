@@ -7704,6 +7704,7 @@ function _t1207CanTake(vil, x, y, extra, near) {
   if (!adj) return false;
   //   ★[T1238 ⑤] 켬 = 바둑식 — 이 칸 때문에 맞닿은 다른 마을이 빈 땅과 끊기면 아니다(끔 = 이 줄 없음 · `extra` 도 끔에서는 안 온다)
   if (T1238_TERR_V2 && !_t1238GoOk(vil, x, y, extra, near)) return false;
+  if (T1447_GRUDGE) { const g = _t1447Gate(); const o = g && g(x, y); if (o && o.vid !== vil.dbId) return false; }   // ★[T1447] 소속이 아닌 사람의 사유지 칸은 못 가진다(일괄 · 몸 · 플레이어 넓히기가 같은 문을 지난다)
   return true;
 }
 //   말뚝을 꺼내는 자리 — 곳간 사다리 중 마을 중심에 가장 가까운 것(없으면 회관 · T400 `_t400From` 과 같은 폴백)
@@ -8169,7 +8170,10 @@ function _t1423Day(now) {
       S.learned++; k.knownDay = d;
       if (T1423_REACT_MEET) { k.st = 'meet'; continue; }
       const owners = new Map(); for (const e of live) if (!owners.has(e.ownerId)) owners.set(e.ownerId, e.ownerName);
-      k.hostile = []; if (!k.noHostile) for (const [o, n] of owners) { k.hostile.push([o, dp.t1423Hostile(o, n, vil.name)]); S.hostile++; }
+      k.hostile = []; if (!k.noHostile) for (const [o, n] of owners) {
+        if (T1447_GRUDGE && dp.t1447Hostile) { const onC = live.some((e) => e.ownerId === o && dp.t1447OnClaim(o, e.cx, e.cy)); k.hostile.push([o, dp.t1447Hostile(o, n, vil.dbId, onC), onC ? 'claim' : 'free']); S.hostile++; continue; }   // ★[T1447] 피해자가 마을 — 그 마을의 해코지 원한(벌점 0 · 주인 없는 땅의 것은 조금만 · 판정 55 · 61)
+        k.hostile.push([o, dp.t1423Hostile(o, n, vil.name)]); S.hostile++;
+      }
     }
     if (_t1423Jobs.some((j) => j.st !== 'done' && j.ids.some((id) => k.ids.includes(id)))) { k.st = 'job'; continue; }   // 이미 다른 소식으로 나선 몸이 있다
     const bodies = _t1423Draft(vil, live.length);
@@ -8730,6 +8734,231 @@ function t1238Stat() {
   for (const v of (state.villages || [])) { out.vils++; out.terr += v._terrSet ? v._terrSet.size : 0; out.gone += (v._t1238Stat && v._t1238Stat.gone) || 0; out.pend += (v._t1238Pend && v._t1238Pend.length) || 0; out.picks += (v._t1238Pick && v._t1238Pick.size) || 0; }
   return out;
 }
+// ═══ ★★[T1447 2026-11-23 · ★재민 판정 54 · 56 · 58] 넓힘이 사유지를 만나면 — 그 마을 사람 것이면 덮고 · 아니면 못 가진다 · 못 가진 칸 = 막힌 칸(땅 원한) ═══
+//   손잡이 `T1447_PERSON_GRUDGE`(server/grudge.js · 끔 기본 · 끔 = 아래 줄이 하나도 안 돈다). 표 · 셈 = grudge.js · 사유지 칸 표 = 존(`t1447ClaimIdx` — 하루 한 번 · 칸 수가 바뀌면 다시).
+//   막힌 칸 — 그날 넓힘이 고른 위 `want` 칸(사유지 칸도 후보로 넣고 같은 값 · 같은 차례로 줄 세움) 가운데 그 사람 사유지 칸. 한 번 센 칸은 다시 안 센다(econ `_grudgeLand`).
+//   T1441 덧붙임 넷(`T1441_TERR_CLAIM` · S5)이 아직 가지가 없어 "못 가진다" 문을 이 손잡이가 먼저 세운다 — 같은 술어 한 자리(`o.vid !== vil.dbId`).
+const Grudge = require('./grudge');
+const T1447_GRUDGE = Grudge.ON;
+const _t1447S = { gate: 0, blkDays: 0, blkCells: 0, newCells: 0, firsts: 0, log: [] };
+function _t1447Gate() {
+  const dp = state.deps; if (!dp || !dp.t1447ClaimIdx) return null;
+  const CI = dp.t1447ClaimIdx(); if (!CI || !CI.at.size) return null;
+  _t1447S.gate++;
+  return Grudge.ciAt;
+}
+function _t1447Blocked(vil, cand, gB, want) {
+  const all = [];
+  for (const [k, s] of cand) all.push([k, s, null]);
+  for (const [k, [s, o]] of gB) all.push([k, s, o]);
+  const B = Grudge.pickBlocked(all, want); if (!B.length) return 0;
+  const d = (state.world && state.world.day) | 0, S = _t1447S;
+  S.blkDays++; S.blkCells += B.length;
+  let fresh = 0;
+  for (const [k, o] of B) {
+    const first = !Grudge.landOf(vil.econ, o.pid);
+    if (!Grudge.landAdd(vil.econ, o.pid, k, d)) continue;
+    fresh++; S.newCells++;
+    if (first) {
+      S.firsts++; if (S.log.length < 200) S.log.push(`d${d} ${vil.name} 넓히려다 처음 막힘 — ${o.name || o.pid} 사유지 칸 ${k}`);
+      //   판정 56 차례 ① — 처음 막힌 순간 마을이 그 주인에게 가입을 권한다(NPC 마을 · 플레이어 마을은 촌장에게 알린다 — 판정 59)
+      const dp = state.deps;
+      if (vil.econ.founder) { if (dp && dp.t1447ChiefSay) dp.t1447ChiefSay(vil, `${o.name || '어떤 사람'}의 땅이 우리 마을이 넓어지는 길을 막고 있습니다.`); }
+      else if (dp && dp.t1447Offer) { Grudge.landOf(vil.econ, o.pid).off = d; dp.t1447Offer(o.pid, vil.dbId); }
+    }
+  }
+  return fresh;
+}
+//   해코지 원한 — 쌓기(값 없는 것 = 원한 그대로 · 값 있는 것 = 값 ÷ 원한 1 의 값)
+//   원한 1 의 값 = 그 마을 한 사람의 `VALUE_DAYS` 날 식량 = VALUE_DAYS × 그 마을 식량 값.
+//   값 축(판정 58 "그 마을에서의 값" — 있는 마을별 값 축 · 새 값표 0) 둘 — `T1447_VALUE`:
+//     'quote'(기본) = 마을 시세 `computeVillagePrices`(기준가 × 곳간 형편 배수 0.3 ~ 5 — central 마을 시세 패널이 보이는 그 값)
+//     'shadow' = 거래소 그림자 값 `shadowPricesOf`(거래소 견적 · 실행이 쓰는 그 값 — 판 PRICE 에서 통나무 가운데 280 ~ 700 · 열매 0.015 · 식량 상한 1,000 까지 출렁여 나무 한 그루가 바로 문턱을 넘는다 — 보고 §2)
+const T1447_VALUE = process.env.T1447_VALUE === 'shadow' ? 'shadow' : 'quote';
+function _t1447Price(vil, res) {
+  if (!vil || !vil.econ) return 0;
+  if (T1447_VALUE === 'quote') {   // 시세에 칸이 없는 재화(밀 · 벼 · 보리 — 시세 표는 비축 재화만 잰다)는 기준가(`BASE_VALUE` → 특산 표 `baseValue` — econ `_matPrice` 의 물러남 차례 그대로)
+    try { const E = _lifeEcon(), Q = E.computeVillagePrices(vil.econ); let v = +(Q && Q[res]);
+      if (!(v > 0)) v = +(E.BASE_VALUE && E.BASE_VALUE[res]) || 0;
+      if (!(v > 0)) { const SP = _spec(), b = SP && SP.RESOURCES && SP.RESOURCES[res] && SP.RESOURCES[res].baseValue; v = b > 0 ? +b : 0; }
+      return v > 0 ? v : 0; } catch (e) { return 0; }
+  }
+  const E2 = state.econV2; if (!E2) return 0;
+  try { const P = (typeof E2.shadowPricesOf === 'function') ? E2.shadowPricesOf(vil.econ, [res]) : E2.computeShadowPrices(vil.econ); const v = +(P && P[res]); return v > 0 ? v : 0; } catch (e) { return 0; }
+}
+function t1447Unit(vil) { const f = _t1447Price(vil, 'food'); return f > 0 ? Grudge.VALUE_DAYS * f : 0; }
+function t1447Value(vil, raw) {   // raw = { 곳간 대응표 품목: 수 } → 그 마을 값(그림자 값 × 곳간 단위)
+  const M = PV_DEPOSIT_MAP; let v = 0;
+  for (const [it, n] of Object.entries(raw || {})) { const r = M[it]; if (!r || !(n > 0)) continue; v += _t1447Price(vil, r) * n * PV_DEPOSIT_RATE; }
+  return v;
+}
+function t1447Harm(vil, pid, g, why) {
+  if (!T1447_GRUDGE || !vil || !vil.econ || !(g > 0)) return 0;
+  const d = Grudge.harmAdd(vil.econ, pid, g);
+  _t1447S.harm = (_t1447S.harm || 0) + 1; _t1447S.harmG = (_t1447S.harmG || 0) + d;
+  if (_t1447S.log.length < 200) _t1447S.log.push(`d${(state.world && state.world.day) | 0} ${vil.name} 해코지 원한 +${d.toFixed(3)}(${why}) → ${Grudge.harmOf(vil.econ, pid).toFixed(3)} · ${pid}`);
+  return d;
+}
+function t1447HarmValue(vil, pid, raw, why) {
+  if (!T1447_GRUDGE || !vil || !vil.econ) return 0;
+  const val = t1447Value(vil, raw), u = t1447Unit(vil), g = Grudge.gOfValue(val, u);
+  _t1447S.harmVal = (_t1447S.harmVal || 0) + val;
+  return t1447Harm(vil, pid, g, why + ` 값 ${val.toFixed(2)} ÷ ${u.toFixed(2)}`);
+}
+// ═══ ★★[T1447 할 일 6 · 7 · 덧붙임 셋 · 넷 · 다섯] 토벌 — 명분(땅)이 서고 비용이 맞으면 마을 몸이 걸어가 그 사유지의 건물을 다 친다 · 가까운 쪽 30 % 를 푼다 · 해코지 원한이 있으면 짐을 값만큼 지고 온다 ═══
+//   결단(NPC 마을 · 하루 한 번 · PM 시작값 = 도적 토벌 꼴 T1104 — 판정 59: 명분 없이는 0):
+//     ① 명분 = 땅(`Grudge.casus` — 막힌 칸 ≥ min(⌈사유지 × ½⌉, N)) ② 마을이 지금 땅이 모자라다(넓힘 목표 − 영토 > 0 — 안 넓히는 마을은 안 간다)
+//     ③ 몸 = 전사 · 사냥꾼(`_t1104Draft` — 3 이상 · 6 까지) ④ 거리 ≤ 400칸(도적 토벌 그 수) ⑤ 같은 사람에게 40날 쿨(도적 토벌 그 수)
+//     ⑥ 비용 — 가는 날(걸음 장부 하루 걸음 `_t1079Ppd`) × 2 + 치는 날 1 = 빠지는 일손(사람-날) · 그 동안 먹을 것(× `WAR_RATION`)을 덜고도 한 사람 식량이 `WAR_FOOD_CRISIS` 날 넘게 남아야 간다(전쟁 동원과 같은 문턱)
+//   플레이어 마을(`econ.founder`)은 촌장이 누른다(판정 59 — 저절로 안 간다 · 단추는 명분이 선 상대에게만 · 서버도 같은 술어로 거절).
+const T1447_FIGHT_MIN = 3, T1447_FIGHT_MAX = 6, T1447_RANGE = 400, T1447_COOL = 40;   // 도적 토벌(T1104 · `bandits.js`)의 그 수 — 새 수 0
+const T1447_NO_RAID = T1447_GRUDGE && process.env.T1447_NO_RAID === '1';   // 판 대조 전용(끔 기본) — 막힌 칸만 센다 · 토벌 결단 0(그림 실험 · T1423_REACT_MEET 꼴)
+const _t1447Jobs = [];
+let _t1447JobN = 0;
+const _t1447T = { casus: 0, noNeed: 0, noFight: 0, far: 0, cool: 0, food: 0, busy: 0, go: 0, chief: 0, arrive: 0, razed: 0, drops: 0, unclaimed: 0, split: 0, looted: 0, lootVal: 0, lootKg: 0, paid: 0, home: 0, lost: 0, rows: [], log: [] };
+function _t1447Target(vil) {
+  const e = vil.econ; if (!e || !e.land) return 0;
+  const VL = _lifeVL(); let t = VL.territoryTarget(e.land.size, _t966TerrHousing(e)).target;
+  if (T538_TERR_CAP && !e.founder) t = Math.min(t, _terrCap(vil));
+  return t;
+}
+//   그 사유지에서 그 마을에 가장 가까운 칸(몸이 서는 자리 — 칸 가운데 px)
+function _t1447Stand(vil, cells) {
+  let best = null, bd = Infinity;
+  for (const k of cells) { const i = k.indexOf(','), x = +k.slice(0, i), y = +k.slice(i + 1), d = Math.hypot(x - vil.ccx, y - vil.ccy); if (d < bd || (d === bd && k < best.k)) { bd = d; best = { k, x, y }; } }
+  return best ? { x: best.x * SZ + SZ / 2, y: best.y * SZ + SZ / 2, cells: bd } : null;
+}
+//   결단 한 줄(촌장 화면 · 계측이 같이 쓴다) — 명분 · 비용 줄
+function t1447Plan(vil, pid) {
+  const e = vil && vil.econ; if (!e) return { ok: false, why: 'novil' };
+  const dp = state.deps; if (dp && dp.t1447ClaimIdx) dp.t1447ClaimIdx();
+  const c = Grudge.casus(e, pid);
+  const out = { pid, casus: c.ok, n: c.n, size: c.size, need: c.need };
+  const st = (c.cells && c.cells.length) ? _t1447Stand(vil, c.cells) : null; if (!st) return Object.assign(out, { ok: false, why: c.ok ? 'stand' : 'casus' });
+  out.dist = +st.cells.toFixed(1);
+  const sv = dp && dp.t1447Survey ? dp.t1447Survey(pid, c.cells) : { bld: 0, hits: 0 };
+  out.bld = sv.bld; out.hits = sv.hits;
+  const ppd = _t1079Ppd() || 1, walk = Math.max(1, Math.ceil(st.cells * SZ * 1.3 / ppd));   // 걸음 길 ≈ 곧은 줄 × 1.3(길 굽음 — 판에서 잰 몸 길이와 견줌은 보고)
+  out.walkDays = walk;
+  const short = _t1447Target(vil) - vil._terrSet.size; out.short = short;
+  const bodies = _t1104Draft(vil, T1447_FIGHT_MAX).filter((p) => p._t1423W == null && !p.simCaravan);
+  out.fighters = bodies.length;
+  out.labor = bodies.length * (walk * 2 + 1);
+  const K = state.warCore, R = (K && K.WAR_RATION) || 1, CR = (K && K.WAR_FOOD_CRISIS) || 18;
+  const fe = (K && K.warFE) ? K.warFE(e) : (((e.storage || {}).food) || 0), N = Math.max(1, (e.npcs && e.npcs.length) || 1);
+  out.food = +(out.labor * R).toFixed(2); out.feAfter = +((fe - out.food) / N).toFixed(2);
+  out.freed = Math.max(1, Math.ceil(c.size * Grudge.UNCLAIM_FRAC));
+  out.harm = +Grudge.harmOf(e, pid).toFixed(3);
+  out.stand = st; out.cells = c.cells; out.bodies = bodies;
+  if (!c.ok) return Object.assign(out, { ok: false, why: 'casus' });   // 판정 59 — 명분 없이는 0(비용 줄은 촌장 화면이 같이 보인다)
+  if (e.founder) return Object.assign(out, { ok: true, why: 'chief' });
+  if (!(short > 0)) return Object.assign(out, { ok: false, why: 'noNeed' });
+  if (bodies.length < T1447_FIGHT_MIN) return Object.assign(out, { ok: false, why: 'noFight' });
+  if (st.cells > T1447_RANGE) return Object.assign(out, { ok: false, why: 'far' });
+  const g = Grudge.landOf(e, pid); if (g && g.raid != null && (state.world.day | 0) < g.raid + T1447_COOL) return Object.assign(out, { ok: false, why: 'cool' });
+  if (out.feAfter < CR) return Object.assign(out, { ok: false, why: 'food' });
+  return Object.assign(out, { ok: true, why: 'go' });
+}
+function _t1447Go(vil, pid, P, by) {
+  const d = state.world.day | 0, e = vil.econ;
+  const job = { id: 't1447_' + (++_t1447JobN), vid: vil.dbId, vname: vil.name, pid, cells: P.cells, stand: { x: Math.round(P.stand.x), y: Math.round(P.stand.y) }, pids: [], st: 'go', d0: d, len: [], plan: { n: P.n, size: P.size, need: P.need, dist: P.dist, walkDays: P.walkDays, bld: P.bld, hits: P.hits, labor: P.labor, food: P.food, feAfter: P.feAfter, freed: P.freed, harm: P.harm, short: P.short }, by: by || 'npc' };
+  for (const p of P.bodies.slice(0, T1447_FIGHT_MAX)) { const r = _t1423Walk(p, job.stand.x, job.stand.y, job.id, vil); if (!r) continue; job.pids.push(p.pid); job.len.push(Math.round(r.len)); }
+  if (!job.pids.length) return null;
+  const g = Grudge.landOf(e, pid); if (g) g.raid = d;
+  _t1447Jobs.push(job); _t1447T.go++;
+  if (_t1447T.rows.length < 64) _t1447T.rows.push(Object.assign({ d, vil: vil.name, pid, bodies: job.pids.length, by: job.by }, job.plan));
+  if (_t1447T.log.length < 200) _t1447T.log.push(`d${d} ${vil.name} 토벌 나섬(${job.by}) — ${pid} 사유지 ${P.size}칸 · 막힌 칸 ${P.n}/${P.need} · 몸 ${job.pids.length} · ${P.dist}칸 · 가는 날 ${P.walkDays}`);
+  const dp = state.deps; if (dp && dp.t1447Depart) dp.t1447Depart(pid, vil, job);
+  return job;
+}
+//   촌장이 누른다(플레이어 마을 · 판정 59) — 명분이 선 상대에게만 · 같은 술어 · 비용 줄을 돌려준다(촌장이 보고 정한다)
+function t1447ChiefRaid(vid, pid, go) {
+  if (!T1447_GRUDGE) return { ok: false, err: '토벌이 꺼져 있습니다.' };
+  const vil = villageByDbId(vid); if (!vil || !vil.econ || !vil.econ.founder) return { ok: false, err: '촌장이 정하는 마을이 아닙니다.' };
+  const P = t1447Plan(vil, pid);
+  if (!P.casus) return { ok: false, err: '명분이 없습니다. 그 땅이 우리 넓힘을 충분히 막고 있지 않습니다.', plan: P };
+  if (!go) return { ok: true, plan: P };
+  if (P.fighters < 1) return { ok: false, err: '나설 사람이 없습니다.', plan: P };
+  if (_t1447Jobs.some((j) => j.st !== 'done' && j.vid === vil.dbId && j.pid === pid)) return { ok: false, err: '이미 토벌대가 나섰습니다.', plan: P };
+  const job = _t1447Go(vil, pid, P, 'chief'); _t1447T.chief++;
+  return job ? { ok: true, job: job.id, plan: P } : { ok: false, err: '나설 사람이 없습니다.', plan: P };
+}
+function _t1447Day(now) {
+  if (!T1447_GRUDGE) return;
+  const dp = state.deps; if (!dp) return;
+  if (dp.t1447Day) { try { dp.t1447Day(); } catch (x) {} }   // 존 — 그 자리에 온 주인에게 권유
+  const d = state.world.day | 0, S = _t1447T, players = dp.players;
+  if (dp.t1447ClaimIdx) dp.t1447ClaimIdx();
+  //   ① 결단 — NPC 마을(플레이어 마을은 촌장이 누른다)
+  if (!T1447_NO_RAID) for (const vil of state.villages || []) {
+    const e = vil.econ; if (!e || !e._grudgeLand || e.founder) continue;
+    for (const pid of Object.keys(e._grudgeLand)) {
+      if (_t1447Jobs.some((j) => j.st !== 'done' && j.vid === vil.dbId && j.pid === pid)) { S.busy++; continue; }
+      const P = t1447Plan(vil, pid);
+      if (!P.casus) continue;
+      S.casus++;
+      if (!P.ok) { S[P.why] = (S[P.why] || 0) + 1; continue; }
+      _t1447Go(vil, pid, P, 'npc');
+    }
+  }
+  //   ② 일감 사다리 — 걷기 → 닿으면 친다(건물 전부) · 푼다(가까운 쪽 30 %) · 해코지 원한이 있으면 짐(값만큼 · 질 수 있는 만큼) → 집으로 → 곳간
+  for (const job of _t1447Jobs) {
+    if (job.st === 'done') continue;
+    const alive = job.pids.filter((pid) => { const p = players.get(pid); return p && p.hp > 0 && !p.isDown; });
+    if (!alive.length) { job.st = 'done'; job.lost = true; S.lost++; continue; }
+    const vil = villageByDbId(job.vid);
+    if (job.st === 'go') {
+      if (!alive.every((pid) => _t1423Arrived(state.bodyExits && state.bodyExits.get(pid)))) continue;
+      job.arriveDay = d; S.arrive++;
+      for (const pid of alive) { const r = state.bodyExits && state.bodyExits.get(pid), p = players.get(pid); if (!r || !p) continue; const q = caravanPointAt(r, T681_ON ? r.L : r.prog, { segIdx: 0 }); _t1323Touch(p); if (T1145_XY_COLS) BC.w(p, q.x, q.y); else { p.x = q.x; p.y = q.y; } }
+      //   닿은 날 다시 센다 — 그 사이 주인이 그 마을에 들었거나(덮인다) 사유지를 옮겨 명분이 사라졌으면 치지 않고 돌아간다(코너 케이스 · 판정 59 "누르는 순간 다시 센다"와 같은 술어)
+      if (dp.t1447ClaimIdx) dp.t1447ClaimIdx();
+      const _o = job.cells.map((k) => { const i = k.indexOf(','); return Grudge.ciAt(+k.slice(0, i), +k.slice(i + 1)); }).find((o) => o && o.pid === String(job.pid));
+      if (!_o || _o.vid === job.vid) {
+        job.st = 'home'; job.abort = !_o ? 'gone' : 'joined'; S.abort = (S.abort || 0) + 1;
+        if (S.log.length < 200) S.log.push(`d${d} ${job.vname} 토벌대 닿음 — ${job.abort === 'joined' ? '주인이 우리 마을에 들었다' : '사유지가 없어졌다'} · 치지 않고 돌아감`);
+        for (const pid of alive) { const p = players.get(pid); if (vil) _t1423Walk(p, vil.ccx * SZ + SZ / 2, vil.ccy * SZ + SZ / 2, job.id, vil); else _t1423Release(p); }
+        continue;
+      }
+      const rz = dp.t1447Raze ? dp.t1447Raze(job.pid, job.cells, job.vname, alive.map((pid) => players.get(pid))) : { razed: 0, drops: 0 };
+      job.razed = rz.razed; job.hits = rz.hits; S.razed += rz.razed; S.drops += rz.drops || 0;
+      const terr = vil ? vil._terrSet : new Set(), pick = Grudge.unclaimPick(job.cells, terr, vil ? vil.ccx : 0, vil ? vil.ccy : 0);
+      const uc = dp.t1447Unclaim ? dp.t1447Unclaim(job.pid, pick) : { n: 0 };
+      job.unclaimed = uc.n; job.split = uc.split; S.unclaimed += uc.n; if (uc.split) S.split++;
+      if (vil && vil.econ) Grudge.landClear(vil.econ, job.pid);   // 판정 57 PM 결정 — 땅 원한 0(남은 사유지가 또 막으면 처음부터 · 권유는 다시 안 한다)
+      if (vil && vil.econ) { const g0 = Grudge.landOf(vil.econ, job.pid); if (!g0) { vil.econ._grudgeLand = vil.econ._grudgeLand || {}; vil.econ._grudgeLand[job.pid] = { c: [], d0: d, raid: job.d0, off: d }; } }
+      //   해코지 원한이 있으면 짐(판정 57 · 58) — 값 = 그 원한 × 원한 1 의 값 · 무게 = 몸마다 질 수 있는 kg
+      job.carry = null;
+      const harm = vil && vil.econ ? Grudge.harmOf(vil.econ, job.pid) : 0;
+      if (harm > 0 && dp.t1447Loot) {
+        const unit = t1447Unit(vil), cap = harm * unit;
+        const L = dp.t1447Loot(job.pid, job.cells, vil, cap, alive.map((pid) => players.get(pid)));
+        job.carry = L.items; job.carryVal = L.value; job.carryKg = L.kg; S.looted++; S.lootVal += L.value || 0; S.lootKg += L.kg || 0;
+      }
+      job.breakDay = d; job.st = 'home';
+      if (S.log.length < 200) S.log.push(`d${d} ${job.vname} 토벌 닿음 — 건물 ${job.razed} · 푼 칸 ${job.unclaimed}${job.split ? ' (남은 땅 갈라짐)' : ''} · 짐 ${job.carry ? Object.keys(job.carry).length + '가지 값 ' + (job.carryVal || 0).toFixed(2) : '0'}`);
+      if (dp.t1447Done) dp.t1447Done(job.pid, vil, job);
+      for (const pid of alive) { const p = players.get(pid); if (vil) _t1423Walk(p, vil.ccx * SZ + SZ / 2, vil.ccy * SZ + SZ / 2, job.id, vil); else _t1423Release(p); }
+      continue;
+    }
+    if (job.st === 'home') {
+      if (!alive.every((pid) => { const r = state.bodyExits && state.bodyExits.get(pid); return !r || _t1423Arrived(r); })) continue;
+      for (const pid of alive) _t1423Release(players.get(pid));
+      if (vil && vil.econ && job.carry && Object.keys(job.carry).length) {   // 지고 온 짐 → 곳간(곳간 넣기와 같은 표) · 그 값만큼 해코지 원한을 푼다(판정 58)
+        const inv = Object.assign({}, job.carry), r = playerVillageDeposit(vil, inv, job.carry);
+        const val = t1447Value(vil, r && r.taken ? r.taken : {}), u = t1447Unit(vil);
+        job.paid = Grudge.harmPay(vil.econ, job.pid, Grudge.gOfValue(val, u)); job.paidVal = val; S.paid += job.paid;
+      }
+      job.st = 'done'; job.homeDay = d; S.home++;
+    }
+  }
+}
+function t1447Stat() {
+  const out = Object.assign({ on: T1447_GRUDGE }, _t1447S, { log: _t1447S.log.slice(), raid: Object.assign({}, _t1447T, { rows: _t1447T.rows.slice(), log: _t1447T.log.slice() }), jobs: _t1447Jobs.map((j) => Object.assign({}, j, { cells: j.cells.length })) });
+  out.land = [];
+  for (const v of state.villages || []) { const L = v.econ && v.econ._grudgeLand; if (!L) continue; for (const pid in L) out.land.push({ vid: v.dbId, vname: v.name, pid, c: L[pid].c.length, now: Grudge.landCount(v.econ, pid), d0: L[pid].d0, dl: L[pid].dl }); }
+  return out;
+}
 function _terrGrow(vil) {
   if (!T1207_TERR_REAL) return _terrGrowCore(vil);   // 끔(기본) = 종전 그대로(재는 칸도 없다)
   const t0 = process.cpuUsage();                      // ★[T1238 µs] T1207 켬이면 마을 하루의 영토 일을 잰다(T1207 단독 ↔ T1238 켬 같은 자 · 세계 0 · CPU 시계 — 가상 시계 판에서도 흐른다)
@@ -8763,6 +8992,7 @@ function _terrGrowCore(vil) {
   const cand = new Map();
   const near = T569_OVERLAP ? _t569Near(vil) : null;   // ★[T569 ①] 남의 영토 셀은 후보가 아니다
   let _t1238Near = near;                                // ★[T1238] 바둑식도 같은 이웃 목록(후보마다 다시 재지 않는다)
+  const _gA = T1447_GRUDGE ? _t1447Gate() : null, _gB = _gA ? new Map() : null;   // ★[T1447] 켬 — 소속이 아닌 사람의 사유지 칸은 못 가진다(T1441 덧붙임 넷 · 판정 54) · 못 가진 칸은 따로 담아 센다(막힌 칸 — 판정 58)
   for (const k of own) {
     const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1);
     for (const [dx, dy] of N4) {
@@ -8772,9 +9002,11 @@ function _terrGrowCore(vil) {
       if (T1406_KEEP_PATHS && _t1406PathCell(nx, ny, null)) continue;   // ★[T1406 ㉮] 다리 칸 · 다리 머리는 영토 후보가 아니다(켬만 · 교역로 칸은 뺀다 — 길 한 줄이 4방 넓히기를 가로막아 400날 영토 −11% · 인구 −14% · T1406 §2 둘째 판 · 영토가 덮어도 걸음은 열림 T569)
       if (near && near.length && _t569OwnedBy(near, nk)) continue;
       if (T1238_TERR_V2 && !_t1238GoOk(vil, nx, ny, null, _t1238Near || (_t1238Near = _t569Near(vil)))) continue;   // ★[T1238 ⑤] 켬 = 바둑식(이 칸이 이웃 마을의 마지막 숨 자리면 후보가 아니다 · 일괄이 오늘 더하는 칸끼리는 `_t1238Batch` 가 다시 본다)
+      if (_gA) { const o = _gA(nx, ny); if (o && o.vid !== vil.dbId) { if (!_gB.has(nk)) _gB.set(nk, [score(nx, ny), o]); continue; } }   // ★[T1447] 그 마을 사람 것이면 덮는다(종전 — 후보) · 아니면 못 가진다
       cand.set(nk, score(nx, ny));
     }
   }
+  if (_gB && _gB.size) _t1447Blocked(vil, cand, _gB, Math.min(target - own.size, TERR_GROW_MAX_PER_DAY));   // ★[T1447] 사유지가 없었다면 오늘 가졌을 칸 가운데 사유지 칸 = 막힌 칸(한 번만 센다)
   if (!cand.size) return 0;
   const want = Math.min(target - own.size, TERR_GROW_MAX_PER_DAY);
   const picked = [...cand.entries()].sort((a, b) => b[1] - a[1]).slice(0, want).map((e) => e[0]);
@@ -11634,6 +11866,7 @@ function _t681Day(now) {
     }
   }
   if (T1423_BLOCK_REACT || T1440_ROAD_RULE) _t1423Day(now);   // ★[T1440] 켬 — 마을 땅 위 길이 지나는 칸 일감도 · ★[T1423 ②~⑤] 몸 장부가 오늘 자리가 된 뒤 — 닿은 소식 · 치우러 간 몸(끔 = 이 줄 무동작)
+  if (T1447_GRUDGE) _t1447Day(now);   // ★[T1447] 토벌 결단 · 걸어가 침 · 풂 · 짐(끔 = 이 줄 무동작)
 }
 // ★[T681 ①] 행군 지휘관 장부 — 그날(d)까지 간 자리(진 끝 `campProg` 까지 · 답압 · 지휘관 자리 · 방향). `_t681Day` 의 행군 갈래 몸통 글자 그대로 옮겼다.
 //   ★[T703] 교전 들기(`_warEngage`)도 먼저 부른다 — 도착 날엔 하루 마감(war-core `daily` → 결단 뒤 `_warAfterDaily` → `_warEngage`)이 `_t681Day` 보다 **앞**이라,
@@ -21783,7 +22016,8 @@ module.exports = { T1440_ROAD_RULE, t1440Touch, t1440Judge, t1440Step, t1440Appl
   artisanPerf,   // ★[T1196] 장인 작업장 관측
   __t740: () => state,   // ★[T1287 · T1280 회부 1] 생활층 지문 훅(`scripts/t740-side-hook.js`)의 공식 자리 — 읽기만 · 세계 0. 종전엔 훅이 컴파일 때 이 한 줄을 덧붙여서, 관찰기가 villages 를 먼저 실으면 훅이 못 붙었다(생활층 0일)
   _t1259WoodRadius, _t1259WoodCells,
-  t1243FieldClearMinAt, T1207_TERR_REAL, terrQuote, terrPlayerAdd, t1207Stat, villageById, _t1207CellCost, _t1207Batch, _t1207Queue, _t1207BodyDone, _t1283BodyHaul, _t1207LogIn, _t1207Flush, _t1207CanTake, _terrAdd, _terrGrow,   // ★[T1207] 영토 확장 실물화 — 존(우클릭)과 하네스가 같은 함수를 부른다(사본 0)
+  t1243FieldClearMinAt, T1207_TERR_REAL, terrQuote, terrPlayerAdd, t1207Stat, T1447_GRUDGE, t1447Stat, t1447Harm, t1447HarmValue, t1447Value, t1447Unit, t1447Plan, t1447ChiefRaid, t1447Villages: () => state.villages || [], __t1447: { day: (now) => _t1447Day(now), jobs: _t1447Jobs, T: _t1447T, S: _t1447S, blocked: (...a) => _t1447Blocked(...a), plan: (v, p) => t1447Plan(v, p), grow: (v) => _terrGrowCore(v), canTake: (v, x, y) => _t1207CanTake(v, x, y), ppd: () => _t1079Ppd(),
+    setup: (o) => { const K = ['deps', 'villages', 'byDbId', 'byEcon', 'econV2', 'ta', 'world', 'zoneId', 'warCore', 'bodyExits', 'dayMs']; const k = {}; for (const n of K) k[n] = state[n]; if (o) for (const n of K) if (n in o) state[n] = o[n]; return k; } },   // ★[T1447] 하네스 · 판 계측(읽기 · 주입만) villageById, _t1207CellCost, _t1207Batch, _t1207Queue, _t1207BodyDone, _t1283BodyHaul, _t1207LogIn, _t1207Flush, _t1207CanTake, _terrAdd, _terrGrow,   // ★[T1207] 영토 확장 실물화 — 존(우클릭)과 하네스가 같은 함수를 부른다(사본 0)
   T1238_TERR_V2, T1302_TERR_BODY, T1329_TERR_CREW, t1238Pick, t1238Go, t1238CellNeed, t1238Drop, t1238Clear, t1238Place, t1238Cancel, t1238PullNeed, t1238Pull, t1238Info, t1238Stat, t1238StructAt, t1238LandAt, t1238MarkUse,   // ★[T1238] 영토 v2 — 존 · 클라 · 하네스가 같은 함수를 부른다
   t1238TakeVillageCrop, t1238PeekVillageCrop, t1238RegrowBlocked, t1238VilRadius,
   _t1238Batch, _t1238DayPre, _t1238DayPost, _t1238GoOk, _t1238Use, _t1238Remove, _t1238Boot, _t1238JobToLand, _t1238JobFromLand, _t1238JobsOf, landSizeOfCells, _t1238Struct, _t1238Land, _t1238St,
