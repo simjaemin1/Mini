@@ -2,7 +2,10 @@
 set -eu
 ROOT=$(cd "$(dirname "$0")/.." && pwd);cd "$ROOT"
 STOCK=${1:?off or on};INPUT="$ROOT/계측/T1465_2026-11-23"
-DIR="${T1465_LONG_OUT:-$INPUT/long/bundle-$STOCK-42}";mkdir -p "$DIR/checkpoints"
+DIR="${T1465_LONG_OUT:-$INPUT/long/bundle-$STOCK-42}"
+case "$STOCK" in off|on) ;; *) echo 'Expected off or on' >&2;exit 2;; esac
+if [ -d "$DIR" ] && [ -n "$(ls -A "$DIR")" ];then echo "Refusing to overwrite measurement evidence: $DIR" >&2;exit 2;fi
+mkdir -p "$DIR/checkpoints"
 CACHE="${RUNNER_TEMP:-/tmp}/t1465-long-seeds.json"
 gzip -dc "$INPUT/재현캐시/seeds.json.gz" > "$CACHE"
 gzip -dc "$INPUT/재현캐시/seeds.json.t1047dist.json.gz" > "$CACHE.t1047dist.json"

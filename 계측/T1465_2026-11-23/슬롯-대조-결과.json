@@ -1,0 +1,14 @@
+[
+  {
+    "case": "base-node24",
+    "code": 0,
+    "product": "34b1978a",
+    "blackBoxHarnessUnchanged": true
+  },
+  {
+    "case": "current-node22",
+    "code": 0,
+    "product": "59d760f8 (unchanged game files)",
+    "blackBoxHarnessUnchanged": true
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "diagnosticSHA256": "2c0794f0be6553fea85a3edacda710f4d34e23ee12fe488b5b950dc1b1e0f60f",
+  "veins": 787,
+  "uniquePhysicalCells": 395675,
+  "worldReferenceKg": 1384862500,
+  "sumAttributedVeinReferenceKg": 1384862500.0000002,
+  "worldMassDifferenceKg": 2.384185791015625e-07,
+  "allMineralSumsMatch": true,
+  "npcUnionMineralSumsMatch": true,
+  "flowBoundRows": 4722,
+  "flowBoundActualAttribution": "All rows explicitly say not identifiable; rights-holder flow upper allocations cannot be summed across veins."
+}

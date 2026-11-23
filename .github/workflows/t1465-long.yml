@@ -1,8 +1,5 @@
 name: T1465 checkpointed thirty-year pair
 on:
-  push:
-    branches: [batch/ore-stock-1123]
-    paths: [.github/workflows/t1465-long.yml]
   workflow_dispatch:
 permissions:
   contents: read
@@ -21,9 +18,11 @@ jobs:
           node-version: 22.23.4
       - run: npm ci --omit=dev
       - run: bash scripts/t1465-long-remote.sh '${{ matrix.stock }}'
+        env:
+          T1465_LONG_OUT: ${{ runner.temp }}/t1465-long-${{ matrix.stock }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: t1465-long-${{ matrix.stock }}-42
-          path: 계측/T1465_2026-11-23/long/bundle-${{ matrix.stock }}-42/
+          path: ${{ runner.temp }}/t1465-long-${{ matrix.stock }}/
           retention-days: 7
