@@ -251,8 +251,9 @@ function cropSprite(stage, crop) {
         const ci = k.indexOf(','), cx = +k.slice(0, ci), cy = +k.slice(ci + 1);
         const bk = _t1446Bk(Math.floor(cx / T1446_BOX), Math.floor(cy / T1446_BOX)), B = this._ix.get(bk);
         const i = B ? B.k.indexOf((cx & 31) * 32 + (cy & 31)) : -1;
+        if (i >= 0) B.m[B.k[i]] = 0;   // ★[T1453] 자리표 — 지운 칸(아래 종전 줄 그대로 — T1446 하네스 미끼 ② 자리)
         if (i < 0) this._bad = true;
-        else { B.m[B.k[i]] = 0; B.k.splice(i, 1); B.s.splice(i, 1); if (!B.k.length) this._ix.delete(bk); }
+        else { B.k.splice(i, 1); B.s.splice(i, 1); if (!B.k.length) this._ix.delete(bk); }
       }
       return super.delete(k);
     }

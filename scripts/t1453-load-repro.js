@@ -11,8 +11,8 @@
 //     ⓑ 걷기: 마을 북쪽 1.3 km 줄을 서 → 동으로 청크 열 개(10,240px · S+D 키 · 걸음 64px/s) — 프레임 캡처(긴 프레임 · 층) · 그 사이 받은 짐(road_cells ·
 //        buildings_spawn · buildings_removed 바이트 · 청크마다) · 막혀 멈추면 96px 순간 이동으로 민다(센다)
 //     ⓒ 존 CPU — 존 아이 프리로드(`t1453-srv-meter.cjs`): 큰 JSON 글자 짓기 · `clientRoads` · `clientRoadsIn` ms(판 시각으로 가른다)
-//   `--mem` — 존 메모리(뜬 뒤 7분): T1445 계측기(`t1445-boot-mem.cjs` — S4 가지 `batch/boot-flood-1122` · **읽기만** — `--mem-pre <파일>`로 그 글자를 준다)를
-//     존 아이에 얹고 vs0 · vs1 을 띄워 한 사람이 30초에 들어와 머문다 → 5초마다 rss · 힙.
+//   `--mem` — 존 메모리(뜬 뒤 9분 — `--mem-min`): T1445 계측기(`t1445-boot-mem.cjs` — S4 가지 `batch/boot-flood-1122` · **읽기만** — `--mem-pre <파일>`로 그 글자를 준다)를
+//     존 아이에 얹고 vs0 · vs1 을 띄워 한 사람이 들어와 1 · 2 · 3분에 다시 붙고(welcome 넷) 머문다 → 5초마다 rss · 힙.
 // ⚠헤드리스는 GPU 가 없다(그리기가 소프트웨어 — 프레임 dt 의 "브라우저 몫"이 맥보다 크다). 긴 프레임은 **JS 몫(렌더 + 메시지) > 50ms** 로도 센다.
 // 실행: node scripts/t1453-load-repro.js [--arms vs0nat0,vs0nat1,vs1nat1] [--browsers webkit] [--walk-chunks 10] [--out 계측/T1453_<날짜>] [--mem --mem-pre <t1445-boot-mem.cjs>]
 'use strict';
@@ -35,6 +35,7 @@ const OUT = path.resolve(ROOT, arg('--out', '계측/T1453_' + new Date().toISOSt
 const VIEW = { width: +arg('--w', 1580), height: +arg('--h', 790) };
 const MEM = process.argv.includes('--mem');
 const MEM_PRE = arg('--mem-pre', '');
+const MEM_MIN = +arg('--mem-min', 9);   // 뜬 뒤 몇 분까지(T1445 봉우리 — 뜬 뒤 6분 남짓 — 를 지나게)
 const METER = path.join(__dirname, 't1453-srv-meter.cjs');
 fs.mkdirSync(OUT, { recursive: true });
 
@@ -260,20 +261,21 @@ async function memRuns() {
     for (let i = 0; i < 3; i++) { await sleep(60000); await page.reload(); await page.waitForFunction(() => { const b = document.getElementById('enter'); return !!(b && b.onclick && !b.disabled); }, null, { timeout: 60000 }).catch(() => {});
       await page.waitForFunction(() => { const s = document.getElementById('startZone'); const o = s && [...s.options].find((x) => x.value === 'hanbando' && !x.disabled); if (o) s.value = 'hanbando'; return !!o; }, null, { timeout: 60000, polling: 250 }).catch(() => {});
       try { await page.click('#enter'); } catch (e) {} }
-    const left = 7 * 60000 - (Date.now() - Z.t0); if (left > 0) await sleep(left);
+    const left = MEM_MIN * 60000 - (Date.now() - Z.t0); if (left > 0) await sleep(left);
     await browser.close().catch(() => {});
     killAll(); await sleep(1500);
     const f = fs.readdirSync(OUT).filter((n) => n.startsWith(`mem-vs${vs}-`) && n.endsWith('.jsonl')).map((n) => path.join(OUT, n));
     const rows = f.length ? fs.readFileSync(f[0], 'utf8').trim().split('\n').map((l) => JSON.parse(l)) : [];
     const pk = (k, a, b) => rows.filter((r) => r.t >= a && r.t <= b).reduce((m, r) => Math.max(m, r[k]), 0);
-    res['vs' + vs] = { rows: rows.length, rssMax: pk('rss', 0, 1e9), heapMax: pk('heap', 0, 1e9), rss6: pk('rss', 330000, 390000), heap6: pk('heap', 330000, 390000), last: rows[rows.length - 1] || null };
-    say(`  메모리 vs${vs}: 표본 ${rows.length} · rss 최대 ${res['vs' + vs].rssMax} MB · 힙 최대 ${res['vs' + vs].heapMax} MB · 6분(5.5 ~ 6.5) rss ${res['vs' + vs].rss6} · 힙 ${res['vs' + vs].heap6}`);
+    res['vs' + vs] = { rows: rows.length, rssMax: pk('rss', 0, 1e9), heapMax: pk('heap', 0, 1e9), rss6: pk('rss', 330000, 390000), heap6: pk('heap', 330000, 390000),
+      rssLate: pk('rss', 360000, 1e9), heapLate: pk('heap', 360000, 1e9), rssBoot: pk('rss', 0, 120000), heapBoot: pk('heap', 0, 120000), series: rows.map((r) => [r.t, r.rss, r.heap]) };
+    say(`  메모리 vs${vs}: 표본 ${rows.length} · rss 최대 ${res['vs' + vs].rssMax} MB · 힙 최대 ${res['vs' + vs].heapMax} MB · 부팅 2분 rss ${res['vs' + vs].rssBoot} · 힙 ${res['vs' + vs].heapBoot} · 6분(5.5 ~ 6.5) rss ${res['vs' + vs].rss6} · 힙 ${res['vs' + vs].heap6} · 6분 뒤 봉우리 rss ${res['vs' + vs].rssLate} · 힙 ${res['vs' + vs].heapLate}`);
   }
   fs.writeFileSync(path.join(OUT, 'mem.json'), JSON.stringify({ at: new Date().toISOString(), body: BODY, res }, null, 1));
 }
 
 (async () => {
-  if (MEM) { fs.writeFileSync(path.join(OUT, 'mem-log.txt'), ''); say(`=== T1453 존 메모리(뜬 뒤 7분 · T1445 계측기 · 읽기만) — 몸 청크 ${BODY} ===`); await memRuns(); killAll(); say('끝'); process.exit(0); }
+  if (MEM) { fs.writeFileSync(path.join(OUT, 'mem-log.txt'), ''); say(`=== T1453 존 메모리(뜬 뒤 ${MEM_MIN}분 · T1445 계측기 · 읽기만) — 몸 청크 ${BODY} ===`); await memRuns(); killAll(); say('끝'); process.exit(0); }
   fs.writeFileSync(path.join(OUT, 'repro-log.txt'), '');
   say(`=== T1453 재현 틀 — 존 DB 길 ${SY.synthRoads({}).flat.length / 3}칸 · 마을 켬 · 몸 청크 ${BODY} · 걷는 줄 (${WALK.x0} → ${WALK.x1}, ${WALK.y}) 청크 ${WALK_CH} · 팔 ${ARMS.map((a) => a.tag).join('·')} · ${BROWSERS.join('·')} · 화면 ${VIEW.width}×${VIEW.height} ×2 ===`);
   const PW = require('playwright');
