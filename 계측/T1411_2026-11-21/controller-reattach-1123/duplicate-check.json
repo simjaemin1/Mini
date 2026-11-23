@@ -1,0 +1,7 @@
+{
+ "exit": 1,
+ "expectedRejection": "existing controller",
+ "campaignBytesUnchanged": true,
+ "worldsLaunched": 0,
+ "campaignSha256": "89ce09e3f99a6d1adfa9cf1c6118db57106a69fd96480fb4ad44b84532b089cb"
+}

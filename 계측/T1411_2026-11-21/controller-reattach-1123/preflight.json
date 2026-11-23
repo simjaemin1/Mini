@@ -1,0 +1,1 @@
+{"at": "2026-11-23T05:56:22.771296+00:00", "wrappers": {"ON-1020": {"pid": 32793, "start": "2895480"}, "OFF-1020": {"pid": 32794, "start": "2895480"}}, "zones": [{"pid": 44982, "start": "3788871", "wrapper": 32794}, {"pid": 45193, "start": "3806814", "wrapper": 32793}], "worldsReplayed": 0, "actualWorldExitsUsed": true}
