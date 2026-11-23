@@ -1,0 +1,220 @@
+{
+ "note": "할 일 0 — 서버 자 400날 · 가상 시계 · VILLAGE_CARAVAN_MAX=0 T400_BUILD_ACT=0 · 흔들림 = 첫 장부 날 끝 곳간 한 칸 +1(scripts/t1449-vil-curve.cjs T1449_NUDGE)",
+ "runs": {
+  "srv-new-1020-base": {
+   "pop": 3468,
+   "empty": 1,
+   "emptyDay": {
+    "농촌20": 336
+   },
+   "le5": {
+    "농촌11": 4,
+    "농촌18": 5,
+    "농촌20": 0
+   },
+   "bodyExit": {
+    "bandit": 0,
+    "desert": 6,
+    "move": 575
+   },
+   "nudge": []
+  },
+  "srv-new-7-base": {
+   "pop": 3194,
+   "empty": 4,
+   "emptyDay": {
+    "농촌9": 316,
+    "농촌11": 274,
+    "농촌18": 375,
+    "농촌21": 348
+   },
+   "le5": {
+    "광산2": 5,
+    "광산3": 3,
+    "어촌3": 5,
+    "어촌8": 5,
+    "농촌9": 0,
+    "농촌10": 2,
+    "농촌11": 0,
+    "농촌18": 0,
+    "농촌20": 4,
+    "농촌21": 0
+   },
+   "bodyExit": {
+    "bandit": 0,
+    "desert": 6,
+    "move": 768
+   },
+   "nudge": []
+  },
+  "srv-new-7-n1": {
+   "pop": 3698,
+   "empty": 0,
+   "emptyDay": {},
+   "le5": {
+    "광산1": 4,
+    "농촌18": 3
+   },
+   "bodyExit": {
+    "bandit": 0,
+    "desert": 6,
+    "move": 470
+   },
+   "nudge": [
+    {
+     "v": "광산5",
+     "k": "tin",
+     "d": 1
+    }
+   ]
+  },
+  "srv-new-7-n2": {
+   "pop": 3169,
+   "empty": 6,
+   "emptyDay": {
+    "어촌8": 363,
+    "농촌9": 323,
+    "농촌11": 274,
+    "농촌18": 358,
+    "농촌20": 307,
+    "농촌21": 338
+   },
+   "le5": {
+    "광산3": 4,
+    "광산7": 5,
+    "어촌8": 0,
+    "농촌9": 0,
+    "농촌11": 0,
+    "농촌18": 0,
+    "농촌20": 0,
+    "농촌21": 0
+   },
+   "bodyExit": {
+    "bandit": 0,
+    "desert": 6,
+    "move": 733
+   },
+   "nudge": [
+    {
+     "v": "농촌1",
+     "k": "food",
+     "d": 1
+    }
+   ]
+  },
+  "srv-new-7-n3": {
+   "pop": 3727,
+   "empty": 0,
+   "emptyDay": {},
+   "le5": {},
+   "bodyExit": {
+    "bandit": 0,
+    "desert": 6,
+    "move": 283
+   },
+   "nudge": [
+    {
+     "v": "어촌8",
+     "k": "copper",
+     "d": 1
+    }
+   ]
+  },
+  "srv-old-1020-base": {
+   "pop": 3345,
+   "empty": 0,
+   "emptyDay": {},
+   "le5": {
+    "어촌8": 3,
+    "어촌14": 4,
+    "농촌9": 4,
+    "농촌10": 5,
+    "농촌14": 5
+   },
+   "bodyExit": {
+    "bandit": 0,
+    "desert": 6,
+    "move": 404
+   },
+   "nudge": []
+  },
+  "srv-old-7-base": {
+   "pop": 3582,
+   "empty": 0,
+   "emptyDay": {},
+   "le5": {
+    "광산2": 4,
+    "농촌9": 1,
+    "농촌10": 2,
+    "농촌18": 2
+   },
+   "bodyExit": {
+    "bandit": 0,
+    "desert": 6,
+    "move": 500
+   },
+   "nudge": []
+  },
+  "srv-old-7-n1": {
+   "pop": 3848,
+   "empty": 0,
+   "emptyDay": {},
+   "le5": {},
+   "bodyExit": {
+    "bandit": 0,
+    "desert": 6,
+    "move": 224
+   },
+   "nudge": [
+    {
+     "v": "광산5",
+     "k": "tin",
+     "d": 1
+    }
+   ]
+  },
+  "srv-old-7-n2": {
+   "pop": 3758,
+   "empty": 1,
+   "emptyDay": {
+    "농촌20": 332
+   },
+   "le5": {
+    "농촌18": 4,
+    "농촌20": 0
+   },
+   "bodyExit": {
+    "bandit": 0,
+    "desert": 6,
+    "move": 388
+   },
+   "nudge": [
+    {
+     "v": "농촌1",
+     "k": "food",
+     "d": 1
+    }
+   ]
+  },
+  "srv-old-7-n3": {
+   "pop": 3267,
+   "empty": 0,
+   "emptyDay": {},
+   "le5": {
+    "광산6": 3
+   },
+   "bodyExit": {
+    "bandit": 0,
+    "desert": 6,
+    "move": 335
+   },
+   "nudge": [
+    {
+     "v": "어촌8",
+     "k": "copper",
+     "d": 1
+    }
+   ]
+  }
+ }
+}

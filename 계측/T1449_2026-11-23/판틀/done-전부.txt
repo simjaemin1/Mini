@@ -1,0 +1,44 @@
+2026-11-23T07:23:13Z srv-old-7-base rc=0 1117s days=400 nudge= extra=
+2026-11-23T07:23:36Z srv-new-7-base rc=0 1140s days=400 nudge= extra=
+2026-11-23T07:40:39Z srv-new-1020-base rc=1 907s days=400 nudge= extra=
+2026-11-23T07:41:16Z srv-old-1020-base rc=0 944s days=400 nudge= extra=
+2026-11-23T08:00:19Z srv-new-1020-base rc=0 820s days=400 nudge= extra=
+2026-11-23T08:00:37Z srv-old-7-n1 rc=0 837s days=400 nudge=광산5:tin:1 extra=
+2026-11-23T08:14:38Z srv-old-7-n3 rc=0 841s days=400 nudge=어촌8:copper:1 extra=
+2026-11-23T08:16:57Z srv-old-7-n2 rc=0 998s days=400 nudge=농촌1:food:1 extra=
+2026-11-23T08:24:26Z lab-new/lab-off-1020 rc=0 588s
+2026-11-23T08:38:48Z srv-new-7-n1 rc=0 862s days=400 nudge=광산5:tin:1 extra=
+2026-11-23T08:52:39Z core rc=0 2142s
+2026-11-23T08:54:00Z srv-new-7-n2 rc=0 912s days=400 nudge=농촌1:food:1 extra=
+2026-11-23T08:59:42Z lab-base/lab-off-1020 rc=0 342s
+2026-11-23T09:07:04Z srv-new-7-n3 rc=0 865s days=400 nudge=어촌8:copper:1 extra=
+2026-11-23T09:16:04Z srvoff/server-off-7 rc=0 982s
+2026-11-23T09:16:52Z lab-new/lab-off-7 rc=0 588s
+2026-11-23T09:22:53Z lab-new/lab-bundle-1020 rc=0 361s
+2026-11-23T09:25:43Z lab-new/lab-off-42 rc=0 579s
+2026-11-23T09:29:37Z lab-new/lab-wab-1020 rc=0 403s
+2026-11-23T09:31:39Z lab-new/lab-bundle-7 rc=0 356s
+2026-11-23T09:35:53Z lab-new/lab-wab-7 rc=0 376s
+2026-11-23T09:37:39Z lab-new/lab-bundle-42 rc=0 360s
+2026-11-23T09:45:05Z lab-new/lab-wab-42 rc=0 552s
+2026-11-23T09:47:58Z lab-new/lab-wa-1020 rc=0 619s
+2026-11-23T09:57:14Z lab-new/lab-wa-7 rc=0 729s
+2026-11-23T10:00:21Z lab-new/lab-wa-42 rc=0 743s
+2026-11-23T10:06:29Z lab-new/lab-wab-1020 rc=0 555s
+2026-11-23T10:07:15Z lab-new/lab-wab-7 rc=0 414s
+2026-11-23T10:13:59Z lab-new/lab-wab-42 rc=0 450s
+2026-11-23T10:14:07Z lab-new/lab-wabs-1020 rc=0 412s
+2026-11-23T10:20:36Z lab-new/lab-wabs-7 rc=0 397s
+2026-11-23T10:20:52Z lab-new/lab-wabs-42 rc=0 405s
+2026-11-23T10:28:04Z lab-new/lab-wabo-1020 rc=0 448s
+2026-11-23T10:30:31Z lab-old/lab-off-1020 rc=0 579s
+2026-11-23T10:33:49Z lab-old/lab-bundle-1020 rc=0 345s
+2026-11-23T10:37:08Z lab-old/lab-wab-1020 rc=0 397s
+2026-11-23T10:42:44Z lab-old/lab-off-7 rc=0 535s
+2026-11-23T10:45:49Z lab-old/lab-bundle-7 rc=0 521s
+2026-11-23T10:49:58Z lab-old/lab-wab-7 rc=0 434s
+2026-11-23T10:55:15Z lab-old/lab-off-42 rc=0 566s
+2026-11-23T10:55:56Z lab-old/lab-bundle-42 rc=0 358s
+2026-11-23T11:01:44Z lab-old/lab-wab-42 rc=0 389s
+2026-11-23T11:08:48Z srvarm/server-bundle-1020 rc=0 772s
+2026-11-23T11:18:06Z srvarm/server-wab-1020 rc=0 982s

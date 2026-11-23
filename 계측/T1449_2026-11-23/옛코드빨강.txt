@@ -1,0 +1,30 @@
+✗ K 손잡이 — '1' 만 켬 {"on":{"worth":false,"buy":false,"size":false,"band":true},"truth":{"worth":false,"buy":false,"size":false,"band":true},"zero":{"worth":false,"buy":false,"size":false,"band":true}}
+✗ A1 쥘 사람 0 = 값 0 · 안 붓는다 {"on":{"w":null,"cw":null,"t":{"casts":1,"takeTin":0.027,"dTin":0.027,"made":0.17274,"dWeap":0.167557}},"off":{"w":null,"cw":null,"t":{"casts":1,"takeTin":0.027,"dTin":0.027,"made":0.17274,"dWeap":0.167557}},"bundle":{"w":null,"cw":null,"t":{"casts":1,"takeTin":0.027,"dTin":0.027,"made":0.17274,"dWeap":0.167557}},"buy":{"w":null,"cw":null,"t":{"casts":1,"takeTin":0.027,"dTin":0.027,"made":0.17274,
+✗ A2 쥘 사람이 남으면 값 > 0 · 붓는다 {"on":{"w":null,"cw":null,"t":{"casts":1,"takeTin":0.027,"dTin":0.027,"made":0.17274,"dWeap":0.167557}},"off":{"w":null,"cw":null,"t":{"casts":1,"takeTin":0.027,"dTin":0.027,"made":0.17274,"dWeap":0.167557}},"bundle":{"w":null,"cw":null,"t":{"casts":1,"takeTin":0.027,"dTin":0.027,"made":0.17274,"dWeap":0.167557}},"buy":{"w":null,"cw":null,"t":{"casts":1,"takeTin":0.027,"dTin":0.027,"made":0.17274,
+✗ A3 전사 수만큼 쥐었으면 값 0 {"on":{"w":null,"cw":null},"off":{"w":null,"cw":null},"bundle":{"w":null,"cw":null},"buy":{"w":null,"cw":null},"buyonly":{"w":null,"cw":null}}
+✗ A4 싸움 값 비 = battle-core 표 {"on":{"r":null,"want":2.5801282051282053},"off":{"r":null,"want":2.5801282051282053},"bundle":{"r":null,"want":2.5801282051282053},"buy":{"r":null,"want":2.5801282051282053},"buyonly":{"r":null,"want":2.5801282051282053}}
+✗ A5 굶는 날 = 식량 손으로 잰다 {"on":{"hungry":false,"cw":null,"handFood":null,"handPlain":null,"w":null},"off":{"hungry":false,"cw":null,"handFood":null,"handPlain":null,"w":null},"bundle":{"hungry":false,"cw":null,"handFood":null,"handPlain":null,"w":null},"buy":{"hungry":false,"cw":null,"handFood":null,"handPlain":null,"w":null},"buyonly":{"hungry":false,"cw":null,"handFood":null,"handPlain":null,"w":null}}
+✗ A6 병기고 몫 상한을 안 읽는다 {"on":{"w":null,"cw":null},"off":{"w":null,"cw":null},"bundle":{"w":null,"cw":null},"buy":{"w":null,"cw":null},"buyonly":{"w":null,"cw":null}}
+✗ B2 안 붓는 날 석공이 석검을 간다 {"on":{"t":{"casts":1,"takeTin":0.027,"dTin":0.027,"made":0.17274,"dWeap":0.167557},"weapon":0.1676},"off":{"t":{"casts":1,"takeTin":0.027,"dTin":0.027,"made":0.17274,"dWeap":0.167557},"weapon":0.1676},"bundle":{"t":{"casts":1,"takeTin":0.027,"dTin":0.027,"made":0.17274,"dWeap":0.167557},"weapon":0.1676},"buy":{"t":{"casts":1,"takeTin":0.027,"dTin":0.027,"made":0.17274,"dWeap":0.167557},"weapon":0
+✗ B3 주조 한 번 = 재료 한 번 {"on":{"cw":null,"t":{"casts":1,"takeTin":0.027,"dTin":0.027,"made":0.17274,"dWeap":0.167557}},"off":{"cw":null,"t":{"casts":1,"takeTin":0.027,"dTin":0.027,"made":0.17274,"dWeap":0.167557}},"bundle":{"cw":null,"t":{"casts":1,"takeTin":0.027,"dTin":0.027,"made":0.17274,"dWeap":0.167557}},"buy":{"cw":null,"t":{"casts":1,"takeTin":0.027,"dTin":0.027,"made":0.17274,"dWeap":0.167557}},"buyonly":{"cw":n
+✗ C1 쥘 사람 술어 = warChampSlots {"on":[[0,null,null],[1,null,null],[2.4,null,null],[2.6,null,null],[5,null,null],[7.5,null,null]],"off":[[0,null,null],[1,null,null],[2.4,null,null],[2.6,null,null],[5,null,null],[7.5,null,null]],"bundle":[[0,null,null],[1,null,null],[2.4,null,null],[2.6,null,null],[5,null,null],[7.5,null,null]],"buy":[[0,null,null],[1,null,null],[2.4,null,null],[2.6,null,null],[5,null,null],[7.5,null,null]],"buyo
+✗ C2 편성 — 남는 청동은 단검(켬) · 끔 = 종전 {"on":{"champion":1,"dagger":0,"militia":5,"slinger":0},"off":{"champion":1,"dagger":1,"militia":4,"slinger":0},"bundle":{"champion":1,"dagger":0,"militia":5,"slinger":0},"buy":{"champion":1,"dagger":0,"militia":5,"slinger":0},"buyonly":{"champion":1,"dagger":0,"militia":5,"slinger":0}}
+✗ D1 사 모으는 문 — 찬 병기고는 안 싣는다 {"on":{"full":false,"empty":false,"sFull":null,"sEmpty":null},"off":{"full":true,"empty":false,"sFull":null,"sEmpty":null},"bundle":{"full":false,"empty":false,"sFull":null,"sEmpty":null},"buy":{"full":false,"empty":false,"sFull":null,"sEmpty":null},"buyonly":{"full":false,"empty":false,"sFull":null,"sEmpty":null}}
+✗ D2 수출 주조 순수출가 — 칼 값 0 인 이웃은 안 센다 {"on":{"full":7.41744,"empty":268.163273,"sFull":null},"off":{"full":7.41744,"empty":268.163273,"sFull":null},"bundle":{"full":7.41744,"empty":268.163273,"sFull":null},"buy":{"full":7.41744,"empty":268.163273,"sFull":null},"buyonly":{"full":7.41744,"empty":268.163273,"sFull":null}}
+✓ K 'true' · '0' = 묶음 판 그대로
+✓ 종전 묶음 줄(대조) — 전사 0 마을도 재료로 붓는다(값 문이 고치는 자리) {"casts":1,"takeTin":0.027,"dTin":0.027,"made":0.17274,"dWeap":0.167557}
+✗ E1 병기고 크기 — 끔 = 사람 × 0.72 · 켬 = 전사 × 1.2(바닥 2) {"off":{"t":null,"n":20},"size":{"t":null,"n":20}}
+✗ G 새 상한 0 · 새 수 0 — 값 블록에 병기고 몫 · 굶는 몫 문턱 · 새 _PC 가 없다 · 사 모으는 문 = 정의 하나 + 자리 셋(귀로 고르기 · 귀로 닫개 · 순수출가) {"blk":0,"noBuy":0}
+✗ 미끼 matonly — 재료만 있으면 붓는 사본(= 지금 코드) → A1 빨강 · 바꾼 자리 0 "바꿀 자리 0"
+✗ 미끼 cap — 병기고 몫 상한(0.45)을 되살린 사본 → A6 빨강 · 바꾼 자리 0 "바꿀 자리 0"
+✗ 미끼 noholder — 쥘 사람 0 인데 값이 양수인 사본(㉮) → A1 빨강 · 바꾼 자리 0 "바꿀 자리 0"
+✗ 미끼 hungry — 굶는 날에도 붓는 사본 → A5 빨강 · 바꾼 자리 0 "바꿀 자리 0"
+✗ 미끼 twice — 수출 주조와 병기고가 같은 주석을 두 번 쓰는 사본 → B3 빨강 · 바꾼 자리 0 "바꿀 자리 0"
+✗ 미끼 nostone — 청동을 안 부은 날 석검도 안 갈아 무장이 0 이 되는 사본 → B2 빨강 · 바꾼 자리 0 "바꿀 자리 0"
+✗ 미끼 overchamp — 전사 수를 넘는 청동검에 정예 값을 주는 사본 → A3 빨강 · 바꾼 자리 0 "바꿀 자리 0"
+✗ 미끼 unheld — 남는 청동검을 아무도 안 쥐는 사본(= 지금 편성) → C2 빨강 · 바꾼 자리 0 "바꿀 자리 0"
+✗ 미끼 pred — 값 함수가 편성과 다른 술어로 쥘 사람을 세는 사본 → C1 빨강 · 바꾼 자리 0 "바꿀 자리 0"
+✗ 미끼 nobuy — 사 모으는 문이 값을 안 읽는 사본 → D1 빨강 · 바꾼 자리 0 "바꿀 자리 0"
+✗ 미끼 표(10)와 빨강이 선 미끼(0) 수가 다르다
+미끼 0/10
+T1449 2/28 FAIL · 미끼 10
