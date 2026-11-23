@@ -22,7 +22,7 @@ const HN = [];
   Module.prototype._compile = function (c, f) {
     if (f === VS) {
       for (const [a, b] of HOOKS) { const n = c.split(a).length - 1; HN.push(n); if (n === 1) c = c.replace(a, b); }
-      c += '\n;globalThis.__t1422VS = { needClear: (v) => _lifeNeedClear(v), lifeEcon: () => _lifeEcon(), state, stat: () => (typeof t1422Stat === \'function\' ? t1422Stat() : null) };\n';
+      c += '\n;globalThis.__t1422VS = { needClear: (v) => _lifeNeedClear(v), lifeEcon: () => _lifeEcon(), state, stat: () => (typeof t1422Stat === \'function\' ? t1422Stat() : null), stat44: () => (typeof t1444Stat === \'function\' ? t1444Stat() : null) };\n';
     }
     return _c.call(this, c, f);
   }; }
@@ -50,6 +50,7 @@ globalThis.__t1422T = (npc, now, owned) => {
       for (const v of V) { const e = v.econ; if (!e || !e.npcs) continue; const n = e.npcs.length; pop += n; terr += (v._terrSet && v._terrSet.size) || 0; house += +e.housing || 0;
         if (n > 0) { live++; if (!((e.counts && e.counts.lumberjack) > 0)) lj0++; if (!((e.storage && e.storage.wood) >= 1)) w0++; const h = e.lastStats && e.lastStats.happiness; if (typeof h === 'number') { hs += h * n; hv.push(+h.toFixed(3)); } } }
       (rec.w || (rec.w = [])).push([d, pop, live, lj0, w0, terr, +house.toFixed(1), pop ? +(hs / pop).toFixed(4) : 0, rec.days % 30 === 0 ? hv : null]);
+      { const VL = rec.vl || (rec.vl = {}); for (const v of V) { const e = v.econ; if (!e || !e.npcs || !e.npcs.length || !e.lastStats) continue; const x = VL[v.name] || (VL[v.name] = [0, 0, 0, 0, 0]); x[0] += +e.lastStats.leisure || 0; x[1]++; x[4] += +e.lastStats.happiness || 0; } }   // ★[T1444] 그날 econ 여가 · 행복(마을마다 합)
       rec.cpu = process.cpuUsage(); }
     const S = curS, j = npc.simJob, lab = npc._lifeAct || '(없음)';
     const l = LAST.get(npc); LAST.set(npc, now);
@@ -60,6 +61,8 @@ globalThis.__t1422T = (npc, now, owned) => {
     if (!nd.half && npc._half && npc._hd != null) { nd.half = 1; nd.row[2]++; }
     if (!nd.side && npc._t1422D != null && npc._t1422D === npc._hd) { nd.side = 1; nd.row[3]++; }
     const isRest = lab === '휴식';
+    {   // ★[T1444] 마을마다 몸 '휴식' ms · 몸 ms(econ 여가와 견줌)
+      const vv = VBY.get(npc.simVillageId); if (vv) { const VL = rec.vl || (rec.vl = {}), x = VL[vv.name] || (VL[vv.name] = [0, 0, 0, 0, 0]); x[3] += dt; if (isRest) x[2] += dt; } }
     if (isRest && !nd.rest) { nd.rest = 1; nd.row[1]++; }
     // 마을-날
     let vil = VBY.get(npc.simVillageId); if (vil === undefined) { vil = vilOf(npc); VBY.set(npc.simVillageId, vil); }
@@ -77,6 +80,6 @@ globalThis.__t1422T = (npc, now, owned) => {
     if (isRest && !vd.rest) { vd.rest = 1; const R = vd.row; R[1]++; if (vd.site || vd.clear || vd.food || vd.wood) R[2]++; R[3] += vd.site; R[4] += vd.clear; R[5] += vd.food; R[6] += vd.wood; }
   } catch (e) { rec.err = String(e && e.stack || e).slice(0, 400); }
 };
-function dump() { try { const VS = globalThis.__t1422VS; if (VS && VS.state && VS.state.deps) { /* 손잡이 계측(있으면) */ } rec.side = (VS && VS.stat) ? VS.stat() : null; fs.writeFileSync(OUT, JSON.stringify(rec)); } catch (e) {} }
+function dump() { try { const VS = globalThis.__t1422VS; if (VS && VS.state && VS.state.deps) { /* 손잡이 계측(있으면) */ } rec.side = (VS && VS.stat) ? VS.stat() : null; rec.s44 = (VS && VS.stat44) ? VS.stat44() : null; fs.writeFileSync(OUT, JSON.stringify(rec)); } catch (e) {} }
 process.on('exit', () => dump());
 process.on('SIGTERM', () => { dump(); process.exit(0); });

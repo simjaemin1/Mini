@@ -124,7 +124,9 @@ function _computeVillageStats(v, N) {
   //   "쉬는 대신 교역"의 비용이 행복 회계에 실재. 문턱엔 안 넣음(실측: 캐러밴 이익/일이 개인 mv를 3~4자릿수 압도 → 영원히 안 물림.
   //   교역 vs 휴식의 실배분 노브는 TRADE_SPARE_UTIL=0.11 — 여유노동의 11%만 원정, 89%는 쉼).
   const _leis = Math.max(0, ((T1217_MARGIN || T1266_ORE_BODY) ? t1217IdleFrac(v, pop) : (v._idleFrac || 0)) - (v._tradingN || 0) / pop);   // ★[T1217] 켬 = 행위 어부의 실제 쉰 시간까지(아래 함수 · 끔 = 종전 글자) · ★[T1271] `T1266_ORE_BODY` 켬 = 행위 광부의 쉰 시간도 같은 함수로
-  const _leisS = (T1422_LEISURE === 'side' && v._t1422PD > 0) ? Math.max(0, _leis - v._t1422PD / pop) : _leis;   // ★[T1422 ⑤ 쉼의 값 후보 ㉡] 켬 = 남는 시간 일한 사람-날만큼 여가가 준다(끔 = 종전 여가 · 후보 ㉠)
+  const _rs = v._t1444Rest;   // ★[T1444 ㉢] 그날 남는 시간 일에 쓴 사람-날(현장 · 가는 걸음 — 생활층)
+  const _leisS = (T1422_LEISURE === 'side' && v._t1422PD > 0) ? Math.max(0, _leis - v._t1422PD / pop)
+    : ((T1422_LEISURE === 'all' || T1422_LEISURE === 'allsite') && _rs) ? Math.max(0, _leis - ((_rs.site || 0) + (T1422_LEISURE === 'all' ? (_rs.walk || 0) : 0)) / pop) : _leis;   // ★[T1422 ⑤ 쉼의 값 후보 ㉡] 켬 = 남는 시간 일한 사람-날만큼 여가가 준다(끔 = 종전 여가 · 후보 ㉠)
   stats.happiness += LEISURE_HAPPY_W * _leisS;
   stats.leisure = _leisS;
   // ★땔감 부족 → 건강 페널티(비례). fuelCov=1이면 0, 0이면 -FUEL_HEALTH_W. 큰/숲빈약 마을이 연료를 못 대면 건강↓→인구 억제.
@@ -2568,7 +2570,10 @@ const T1297_FAMINE_DAYS = 30;   // 피커 기근 블록 `foodEquiv < N * 30` 의
 const T1422_SIDE_WORK = (typeof process !== 'undefined' && process.env) ? !!(process.env.T1422_SIDE_WORK && process.env.T1422_SIDE_WORK !== '0') : false;
 //   ⑤ 쉼의 값(재민 판정 앞 후보 — 새 수 0): ㉠ 끔 = 종전 여가 식(포만 여유노동 `_idleFrac` — 남는 시간 일은 여유노동에 안 들어 행복이 그대로) ·
 //     ㉡ `T1422_LEISURE=side` = 그날 남는 시간 일한 사람-날 ÷ 사람만큼 여가를 뺀다(쉬는 대신 일한 몫이 행복에서 빠진다 — 교역 원정 `_tradingN` 과 같은 꼴).
-const T1422_LEISURE = (typeof process !== 'undefined' && process.env && process.env.T1422_LEISURE === 'side') ? 'side' : '';
+//     ㉢ [T1444 · 판정 44] `T1422_LEISURE=all` = 남는 시간 문이 일을 준 몸이 그 일에 쓴 낮 전부(집 · 개간 · 식량 · 땔감 · 현장 + 가는 걸음 — 생활층 `_t1444Rest`) ÷ 사람만큼 여가를 뺀다 ·
+//        `allsite` = 현장만 · `T1422_SIDE_WORK` 켬 판에서 값이 비면 `all`(카드) · `idle`(또는 `0`) = ㉠ 종전.
+const _T1422_LV = (typeof process !== 'undefined' && process.env) ? process.env.T1422_LEISURE : undefined;
+const T1422_LEISURE = _T1422_LV === 'side' ? 'side' : (_T1422_LV === 'all' || _T1422_LV === 'allsite') ? _T1422_LV : (T1422_SIDE_WORK && (_T1422_LV === undefined || _T1422_LV === '')) ? 'all' : '';
 function t1422SideVal(v, job) {   // 그 일의 하루 값(1인 · 숙련 0) = 식 하루 산출 × 그림자 값 — 실현 배분이 직업을 견주는 그 축(값 표 · 사본 0)
   const J = JOBS[job]; if (!J || !v || !v.land) return 0;
   const P = (v._world && typeof v._world.priceFn === 'function') ? (v._world.priceFn(v) || {}) : {};
