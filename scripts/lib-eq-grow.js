@@ -49,10 +49,10 @@ function growDay(world) {
   return r;
 }
 // ★[T1457] 마을마다 한 줄(`T1426_GROW_VILS=<파일>`) — [N, K, slot, prod, fuel, 곳간 날치, 누계 죽음, 자연사, 굶음, 행복, 떠남] · 한 마을 그림 · 200 명 넘는 마을 표
-const VCOLS = ['N', 'K', 'slot', 'prod', 'fuel', 'foodDays', 'dead', 'natDead', 'fdDead', 'h', 'emig'];
+const VCOLS = ['N', 'K', 'slot', 'prod', 'fuel', 'foodDays', 'dead', 'natDead', 'fdDead', 'h', 'emig', 'land'];
 function vilDay(world) {
   return world.villages.map((v) => { const N = v.npcs ? v.npcs.length : 0, kd = v._kDbg || {}, dd = v._dpDebug || {};
     return [N, +(dd.K || 0).toFixed(1), +(kd.slot || 0).toFixed(1), +(kd.prod || 0).toFixed(1), +(kd.fuel || 0).toFixed(1), N ? +(((v.storage && v.storage.food) || 0) / N).toFixed(1) : 0,
-      v._deadTot || 0, v._natDeadTot || 0, v._fdDeadTot || 0, v.lastStats ? +(v.lastStats.happiness || 0).toFixed(3) : null, v._emigTot || 0]; });
+      v._deadTot || 0, v._natDeadTot || 0, v._fdDeadTot || 0, v.lastStats ? +(v.lastStats.happiness || 0).toFixed(3) : null, v._emigTot || 0, +((v.land && v.land.size) || 0).toFixed(2)]; });
 }
 module.exports = { COLS, growDay, VCOLS, vilDay };
