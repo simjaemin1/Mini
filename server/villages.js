@@ -2350,6 +2350,47 @@ function _t1197DieBody(vil, id, k) {   // ★[T1198] `k` = 까닭(없으면 굶�
 //   늙음 = 나이 칸(econ `age` — 날마다 1/365 · 로지스틱 음수가 고르는 가장 늙은 이) · 몸 칸 `age` 는 그 거울(따로 늙지 않는다).
 function _t1198On() { if (T1302_TERR_BODY) return true; const E = _lifeEcon(); return !!(E.T1198_BIRTH_BODY && _t1197On()); }
 const _t1198Stat = { born: 0, bornBeside: 0, bornHome: 0, spawned: 0, orphan: 0, oldDied: 0, oldLone: 0, jobs: 0 };
+// ═══ ★★[T1432 2026-11-22 · 재민 11-22 판정 36 "ㄱ"] **쓰러진 NPC 는 진짜 죽는다** — 존 손잡이 `T1432_NPC_DEATH`(★끔 기본 · `'1'` 만 · 끔 = 이 문을 안 부른다 = 종전 30초 되살림) ═══
+//   종전: 마을 몸이 HP 0 이면 존 `damagePlayer` 가 30초 뒤 같은 몸을 마을 회관에 되살렸다(econ 명부 무접촉 · 아주 옛 임시 규칙) — 랩 `reapDead` 는 진짜 인구 감소다.
+//   켬: 그 몸 = 그 자리에 눕는 주검(`_bxDie` — 굶어 · 늙어 죽은 몸 · 전장 몸의 그 문 · 누운 시간 `corpseMs` 뒤 거둠) · 명부(`npcPids`)에서 뺀다 ·
+//       그 사람 = econ 명부에서 뺀다 — 몸의 짝(`_econId` · T1197)이 있으면 그 사람 · 없으면 랩 `reapDead` 의 차례(같은 직업 첫 사람 · 없으면 맨 앞 — 랩은 무작위 · 결정론 위해 맨 앞 · 회부) ·
+//       직업 수 `counts` 를 같이 줄인다(T311 줄 · T1414 회부 2) · 짐승이면 econ 야생 누계 `_wildDeadTot`(T1315 — 랩 `reapDead` 그 칸)를 올린다.
+//   몸과 사람을 같이 빼므로 다음 날 몸 동기(`syncVillagePop` · `_t1198Sync`)가 다른 몸을 또 줄이지 않는다(명부 ≤ econ · 야생 누계 몫은 까닭 줄 버림 자리에서 버린다).
+//   그 몸의 짐 = 낙하 문(`_bxDie` → `deathDrop` · 플레이어 죽음 캐논의 그 문) · 집 · 사유지 = 마을 것(몸 칸이 아니다 — 그대로 · 빈 침상은 다음 사람) · 촌장 = 명부 맨 앞(`_t529Chief` — 다음 사람이 잇는다).
+//   빼는 몸: 출정 중(`_muster` — 전쟁 실체가 쥔다) · 이미 나가는 몸(`_bxExit`) · 명부에 없는 몸(캐러밴 · 도적 단원 · 마을 밖)은 false(부르는 쪽이 종전 길) — 회부.
+const _t1432Stat = { died: 0, wild: 0, other: 0, person: 0, paired: 0, sameJob: 0, first: 0, lone: 0, skip: 0, events: [] };
+function t1432Die(p, source) {
+  const vil = p && p.isNpc && p.simVillageId != null ? villageByDbId(p.simVillageId) : null;
+  if (!vil || !vil.npcPids || p._muster || p._bxExit) { _t1432Stat.skip++; return false; }
+  const i = vil.npcPids.indexOf(p.pid);
+  if (i < 0) { _t1432Stat.skip++; return false; }
+  const src = String(source || ''), wild = /^(wild|mob):/.test(src), k = wild ? 'wild' : 'slain';
+  // ⓐ 사람 — econ 명부에서 뺀다
+  const e = vil.econ;
+  if (e && Array.isArray(e.npcs) && e.npcs.length) {
+    let j = -1;
+    if (p._econId != null) { j = e.npcs.findIndex((q) => q.id === p._econId); if (j >= 0) _t1432Stat.paired++; }
+    if (j < 0) { j = e.npcs.findIndex((q) => q.currentJob === p.simJob); if (j >= 0) _t1432Stat.sameJob++; }
+    if (j < 0) { j = 0; _t1432Stat.first++; }
+    const rd = e.npcs.splice(j, 1)[0];
+    if (e.counts && rd && rd.currentJob) e.counts[rd.currentJob] = Math.max(0, (e.counts[rd.currentJob] || 0) - 1);   // ★T311 줄(랩 `reapDead` 그 식)
+    if (wild) e._wildDeadTot = (e._wildDeadTot || 0) + 1;   // ★[T1315] 랩 `reapDead` 그 칸
+    delete e._t1197Ix;   // 사람 색인(T1197)을 다시 굽게
+    _t1432Stat.person++;
+  } else _t1432Stat.lone++;
+  // ⓑ 몸 — 명부에서 빼고 그 자리에 눕는다(주검)
+  vil.npcPids.splice(i, 1); t1399Bump(vil);
+  if (T822_BODY_SEED) _t822Rekey(vil, i);
+  _bxDie(vil, p, { k });
+  _t1432Stat.died++; _t1432Stat[wild ? 'wild' : 'other']++;
+  if (_evSlain.length < 256) _evSlain.push({ vid: vil.dbId | 0, by: wild ? 'wild' : 'other' });   // 연표 한 줄(그 마을 그 철 첫 몸 — 장부가 거른다)
+  console.log(`[${state.zoneId || 'zone'}] ☠️ NPC ${p.name || p.pid} 죽음(by ${src || '?'}) — ${vil.name || vil.dbId} · ${p.simJob || '?'} · 주검 · 명부 −1 [T1432]`);   // 사망 로그(종전 되살림 로그 자리 · 판 자가 센다)
+  if (_t1432Stat.events.length < 400) _t1432Stat.events.push({ vid: vil.dbId | 0, k, src: src.slice(0, 24), job: p.simJob || null, day: state.world ? state.world.day : null });
+  return true;
+}
+const _evSlain = [];
+function _slainToday() { const out = _evSlain.slice(); _evSlain.length = 0; return out; }
+function t1432Stat() { return Object.assign({}, _t1432Stat, { events: _t1432Stat.events.slice() }); }
 function _t1198Sync(vil, cap) {
   const players = state.deps.players, v = vil.econ, m = _t1197Ix(v);
   // ⓐ 짝 잃은 몸
@@ -20383,7 +20424,7 @@ function* _scanEventsSteps() {
   try { _noteTradeDays(state.world); } catch (e) {}   // ★[T577 ④] 마지막 교역일 — 장부와 같은 하루 경계
   const _x = { caravanDelays: _caravanDelaysToday(), builds: _buildsToday(),
     rescues: _rescuesToday(),                                      // ★[T119] 구조 — 완공과 같은 자리
-    starved: _starvedToday() };                                    // ★[T590] 굶어 죽음 — 구조와 같은 자리 · ★[T779] 겨울나기 칸(`winter`)은 걷었다
+    starved: _starvedToday(), slain: _slainToday() };   // ★[T1432] 쓰러져 죽은 몸(끔 = 늘 빈 줄)                                    // ★[T590] 굶어 죽음 — 구조와 같은 자리 · ★[T779] 겨울나기 칸(`winter`)은 걷었다
   let evs;
   if (T698_BOUNDARY_SLICE) {   // ★[T698] 장부 발생기를 쉼표마다 넘긴다 — 꼬리만 감싼 `scanDay` 문으로(아래)
     const lg = state.ledger.scanSteps(state.world, state.world.day, _x);   // 앞(도착 절 · 마을 하나씩)은 안 감싼 문
@@ -21331,7 +21372,8 @@ function __rumorProbe() {
     rumor: Object.assign({}, L.rumorStats) };
 }
 
-module.exports = { t1406PathCell: (cx, cy, vil) => _t1406PathCell(cx, cy, vil || null), T1406_KEEP_PATHS, artisanPerf,   // ★[T1196] 장인 작업장 관측
+module.exports = { t1432Die, t1432Stat, t1432Sync: (vil, n) => syncVillagePop(vil, n),   // ★[T1432] 쓰러진 NPC 진짜 죽음(존 손잡이 `T1432_NPC_DEATH` 켬에서만 부른다) · 몸 동기 문(하네스가 운영 그 문을 부른다 · 내보내기만)
+  t1406PathCell: (cx, cy, vil) => _t1406PathCell(cx, cy, vil || null), T1406_KEEP_PATHS, artisanPerf,   // ★[T1196] 장인 작업장 관측
   T1433_TERR_SEQ, _t1433Contest, _t1433CompactAll, _t1433Stat, _t1433SeqV,   // ★[T1433] 영토 행 묶기 — 하네스가 같은 함수를 부른다(사본 0)
   __t740: () => state,   // ★[T1287 · T1280 회부 1] 생활층 지문 훅(`scripts/t740-side-hook.js`)의 공식 자리 — 읽기만 · 세계 0. 종전엔 훅이 컴파일 때 이 한 줄을 덧붙여서, 관찰기가 villages 를 먼저 실으면 훅이 못 붙었다(생활층 0일)
   _t1259WoodRadius, _t1259WoodCells,

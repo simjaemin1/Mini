@@ -18215,6 +18215,28 @@
    "core": false,
    "why": "서버(글자) — CI 밖(야간 · 전수)",
    "logSec": 147
+  },
+  "test-t1432-npc-death.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "다",
+   "maxSec": 120.1,
+   "same5": null,
+   "core": false,
+   "why": "서버 120.1초 > 60초 — CI 밖(야간 · 전수)",
+   "runs": [
+    {
+     "rc": 124,
+     "secs": 120.1,
+     "green": false,
+     "fails": []
+    }
+   ],
+   "dyn": "다",
+   "child": [
+    "spawnSync node",
+    "spawn node"
+   ]
   }
  },
  "at": "2026-11-22"

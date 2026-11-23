@@ -69,6 +69,8 @@ const CHRON_TYPE_EMO = {
   DISSOLVED: 'warn', EMPTIED: 'close',
   // ★[T590 2026-10-03] 굶어 죽음 — 사람 한 몸(`body`). 아직 임자 없는 그림(④ — `people` 은 POP_COLLAPSE · `heart` 는 TRADER_KILLED).
   STARVED: 'body',
+  // ★[T1432 2026-11-22] 쓰러져 죽음(짐승 · 사람 손) — 아직 임자 없는 그림(④ — `body` 는 STARVED · `heart` 는 TRADER_KILLED).
+  SLAIN: 'drop',
 };
 function chronIcon(it) { return uiIcon((it && CHRON_TYPE_EMO[it.type]) || 'scroll', 16); }
 
