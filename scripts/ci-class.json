@@ -86,6 +86,50 @@
    ],
    "dyn": "가"
   },
+  "test-armory-worth.js": {
+   "cls0": "나",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 7.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 7.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 7.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 7.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 7.8,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawnSync node"
+   ],
+   "cls": "나",
+   "maxSec": 7.9,
+   "same5": true,
+   "core": true,
+   "why": "core"
+  },
   "test-arms-body.js": {
    "cls0": "나",
    "why0": "child_process",
