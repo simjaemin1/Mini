@@ -239,9 +239,9 @@ function cropSprite(stage, crop) {
         else {
           const bk = _t1446Bk(Math.floor(cx / T1446_BOX), Math.floor(cy / T1446_BOX)), ik = (cx & 31) * 32 + (cy & 31);
           let B = this._ix.get(bk);
-          if (!B) this._ix.set(bk, (B = { k: [], s: [] }));
+          if (!B) this._ix.set(bk, (B = { k: [], s: [], m: new Uint8Array(1024) }));
           if (super.has(k)) { const i = B.k.indexOf(ik); if (i < 0) this._bad = true; else B.s[i] = B.s[i] - (B.s[i] % 8) + v; }   // 있던 칸 — 자리(seq) 그대로 · 등급만
-          else { B.k.push(ik); B.s.push(++this._seq * 8 + v); }
+          else { B.k.push(ik); B.s.push(++this._seq * 8 + v); B.m[ik] = 1; }
         }
       }
       return super.set(k, v);
@@ -252,11 +252,17 @@ function cropSprite(stage, crop) {
         const bk = _t1446Bk(Math.floor(cx / T1446_BOX), Math.floor(cy / T1446_BOX)), B = this._ix.get(bk);
         const i = B ? B.k.indexOf((cx & 31) * 32 + (cy & 31)) : -1;
         if (i < 0) this._bad = true;
-        else { B.k.splice(i, 1); B.s.splice(i, 1); if (!B.k.length) this._ix.delete(bk); }
+        else { B.m[B.k[i]] = 0; B.k.splice(i, 1); B.s.splice(i, 1); if (!B.k.length) this._ix.delete(bk); }
       }
       return super.delete(k);
     }
     clear() { this._ix.clear(); this._bad = false; return super.clear(); }
+    //   ★[T1453] 칸 (cx, cy) 에 길이 있나 — 상자 하나 · 자리표(`m` — 상자 안 1,024칸 · 넣고 지울 때 같이 고친다) 한 칸(글자 0)
+    _has(cx, cy) {
+      if (!(cx > -16384 && cx < 16384 && cy > -16384 && cy < 16384)) return false;
+      const B = this._ix.get(_t1446Bk(Math.floor(cx / T1446_BOX), Math.floor(cy / T1446_BOX)));
+      return !!B && B.m[(cx & 31) * 32 + (cy & 31)] === 1;
+    }
     //   welcome 한 번에 — flat [cx, cy, lv, …] 를 종전 고리와 **같은 키 · 같은 차례**로 넣고 색인은 수로 바로 세운다(키를 다시 쪼개지 않는다).
     //   같은 칸이 두 번 온 판(Map 은 첫 자리 · 끝 값)은 다 넣은 뒤 Map 차례로 색인을 다시 세운다(`_rebuild` — 서버는 칸마다 한 번 보낸다).
     _load(flat) {
@@ -269,8 +275,8 @@ function cropSprite(stage, crop) {
         if (!(_t1446Ok(cx) && _t1446Ok(cy) && v >= 1 && v <= 7 && v === Math.floor(v))) { this._bad = true; continue; }
         const bk = _t1446Bk(Math.floor(cx / T1446_BOX), Math.floor(cy / T1446_BOX));
         let B = this._ix.get(bk);
-        if (!B) this._ix.set(bk, (B = { k: [], s: [] }));
-        B.k.push((cx & 31) * 32 + (cy & 31)); B.s.push(++this._seq * 8 + v); n++;
+        if (!B) this._ix.set(bk, (B = { k: [], s: [], m: new Uint8Array(1024) }));
+        const ik = (cx & 31) * 32 + (cy & 31); B.k.push(ik); B.s.push(++this._seq * 8 + v); B.m[ik] = 1; n++;
       }
       if (!this._bad && n !== this.size) this._rebuild();
       return this;
@@ -282,15 +288,46 @@ function cropSprite(stage, crop) {
         if (ci < 0 || !_t1446Ok(cx) || !_t1446Ok(cy) || !(v >= 1 && v <= 7 && v === Math.floor(v))) { this._bad = true; return; }
         const bk = _t1446Bk(Math.floor(cx / T1446_BOX), Math.floor(cy / T1446_BOX));
         let B = this._ix.get(bk);
-        if (!B) this._ix.set(bk, (B = { k: [], s: [] }));
-        B.k.push((cx & 31) * 32 + (cy & 31)); B.s.push(++this._seq * 8 + v);
+        if (!B) this._ix.set(bk, (B = { k: [], s: [], m: new Uint8Array(1024) }));
+        const ik = (cx & 31) * 32 + (cy & 31); B.k.push(ik); B.s.push(++this._seq * 8 + v); B.m[ik] = 1;
       }
     }
   }
   // 건물 — 키 id → 건물(자리 b.x · b.y = 존 로컬 px). 상자마다 세 배열 { s: seq · b: 건물 · id }(seq 차례) · `_at`(id → 상자 열쇠).
+  //   ★[T1453] 막음 칸 셈표 `_cc` — **종전 Set 과 같은 식**으로 월드 칸을 센다: 건물마다 floor((ox + b.x)/32) ± 1 × floor((oy + b.y)/32) ± 1 아홉 칸 → 그 칸을 덮는 건물 수.
+  //     ox · oy(존 원점)는 목록이 모르므로 처음 물을 때 받아 통째로 한 번 세우고(`_ccBuild` — 존마다 한 번) 그 뒤로는 넣고 지울 때 아홉 칸씩 고친다.
+  //     `_cell` = id → 가운데 칸 [bx, by] · 칸이 수가 아니면(종전 Set 도 'NaN' 열쇠라 수인 칸은 안 막았다) 안 센다 · 건물이 객체가 아니거나 범위 밖이면 `_ccBad`(종전 Set 길).
+  function _t1453Ck(cx, cy) { return (cx + 16384) * 32768 + (cy + 16384); }   // 칸 열쇠(작은 정수) — |cx| · |cy| < 16,384
   class _T1446BldMap extends Map {
-    constructor() { super(); this._ix = new Map(); this._at = new Map(); this._seq = 0; this._bad = false; }
+    constructor() { super(); this._ix = new Map(); this._at = new Map(); this._seq = 0; this._bad = false; this._cc = null; this._cell = null; this._ccOx = 0; this._ccOy = 0; this._ccBad = false; }
+    _ccBuild(ox, oy) {
+      this._cc = new Map(); this._cell = new Map(); this._ccOx = ox; this._ccOy = oy; this._ccBad = false;
+      for (const [id, b] of super.entries()) this._ccAdd(id, b);
+    }
+    _ccBump(bx, by, d) {
+      for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
+        const k = _t1453Ck(bx + i, by + j), n = (this._cc.get(k) || 0) + d;
+        if (n > 0) this._cc.set(k, n); else this._cc.delete(k);
+      }
+    }
+    _ccAdd(id, b) {
+      if (!this._cc) return;
+      this._ccDel(id);
+      if (b == null) { this._ccBad = true; return; }
+      const bx = Math.floor((this._ccOx + b.x) / 32), by = Math.floor((this._ccOy + b.y) / 32);   // 종전 `_natBlocked` 와 같은 식
+      if (!Number.isFinite(bx) || !Number.isFinite(by)) return;
+      if (!(bx > -16380 && bx < 16380 && by > -16380 && by < 16380)) { this._ccBad = true; return; }
+      this._cell.set(id, [bx, by]); this._ccBump(bx, by, 1);
+    }
+    _ccDel(id) {
+      if (!this._cc) return;
+      const o = this._cell.get(id);
+      if (o) { this._cell.delete(id); this._ccBump(o[0], o[1], -1); }
+    }
+    //   월드 칸 (acx, acy) 가 어느 건물의 3×3 안인가(종전 Set 의 건물 몫과 같은 답 · 칸 하나)
+    _near(acx, acy) { return acx > -16384 && acx < 16384 && acy > -16384 && acy < 16384 && this._cc.has(_t1453Ck(acx, acy)); }
     set(id, b) {
+      this._ccAdd(id, b);
       if (!this._bad) {
         const P = T1446_BOX * 32, bx = Math.floor((b ? b.x : NaN) / P), by = Math.floor((b ? b.y : NaN) / P);
         const bk = (bx >= -512 && bx < 512 && by >= -512 && by < 512) ? _t1446Bk(bx, by) : _t1446Odd;
@@ -313,6 +350,7 @@ function cropSprite(stage, crop) {
       return super.set(id, b);
     }
     delete(id) {
+      this._ccDel(id);
       if (!this._bad) {
         const ok = this._at.get(id);
         if (ok !== undefined) {
@@ -323,12 +361,47 @@ function cropSprite(stage, crop) {
       }
       return super.delete(id);
     }
-    clear() { this._ix.clear(); this._at.clear(); this._bad = false; return super.clear(); }
+    clear() { this._ix.clear(); this._at.clear(); this._bad = false; this._cc = null; this._cell = null; this._ccBad = false; return super.clear(); }
   }
   function _t1446NewRoads() { return T1446_ON ? new _T1446CellMap() : new Map(); }
   function _t1446NewBlds() { return T1446_ON ? new _T1446BldMap() : new Map(); }
   //   그리는 길이 색인을 쓰나 — 켬이고 색인 갈래이고 어긋남이 없을 때만(아니면 종전 고리)
   function _t1446Use(m) { return T1446_ON && !!m && !!m._ix && !m._bad; }
+  // ★★[T1453 2026-11-23 · ★재민 11-22 "핑이 너무 심한데..?" · 판정 68] **자연물 막음을 칸으로 묻는다** — 손잡이 `T1453_NAT_QUERY`(켬 기본 · 끔 = 종전 글자).
+  //   종전 `_natBlocked`(11-r1-mountain): 길 · 건물 수 서명이 바뀔 때마다 존 전체 길(라이브 456,479칸) + 건물 3×3 을 글자 Set 으로 통째로 다시 굽고
+  //   (WebKit 248 ms · Chromium 166 ms 한 판 — T1446 §5), 소품 하나 물을 때마다 서명 글자를 새로 지었다.
+  //   켬: 그 Set 대신 T1446 색인에 그 칸을 묻는다 — 길 = 상자 자리표 한 칸(`_has`) · 건물 3×3 = 칸 셈표 아홉 칸(`_near`). 다시 굽기 0 · 서명 0.
+  //     ⓐ 같은 뜻 — 종전 Set 열쇠는 길 = (round(ox/32) + 칸) · 건물 = floor((ox + b.x)/32) ± 1 이다. 같은 식을 그대로 쓴다(길은 거꾸로 빼고 · 건물은 같은 식으로 센다).
+  //        색인 없는 목록(T1446 끔) · 어긋남(`_bad`) · 칸 범위 밖 · 자리가 수가 아닌 물음은 null — 부른 쪽이 종전 Set 길로 간다(같음이 먼저).
+  //     ⓑ 종전 Set 은 수 서명이 안 바뀌면(같은 수만큼 생기고 사라진 판) 옛 길을 그대로 썼다 — 켬은 늘 지금 길을 본다(그 판만 다르다 · 보고 T1453).
+  //   주소 `?T1453_NAT_QUERY=0`(짧게 `?t1453n=0`) = 끔 · 시험 손잡이 `__t1453.setNat(false|true)`(99-main).
+  const _t1453Q = (() => { try { const q = new URLSearchParams(location.search); const v = q.has('T1453_NAT_QUERY') ? q.get('T1453_NAT_QUERY') : q.get('t1453n');
+    return v === '0' ? false : v === '1' ? true : null; } catch (e) { return null; } })();
+  let T1453_NAT_ON = _t1453Q !== false;
+  let _t1453NatN = 0;                               // 물은 칸 수(누적 · `__t1453.stat()`)
+  function _t1453NatCells(ax, ay) {   // true = 길 칸이거나 건물 3×3 안 · false = 아님 · null = 못 묻는다(종전 Set 길)
+    const acx = Math.floor(ax / 32), acy = Math.floor(ay / 32);
+    if (!Number.isFinite(acx) || !Number.isFinite(acy)) return null;
+    let hit = false;
+    for (const c of conns.values()) {
+      if (!c.meta) continue;
+      const ox = c.meta.worldOffsetX, oy = c.meta.worldOffsetY || 0;
+      if (!Number.isFinite(ox) || !Number.isFinite(oy)) return null;
+      const R = c.roads, B = c.buildings;
+      if (R && R.size && !(R._ix && !R._bad)) return null;
+      if (B && B.size) {
+        if (!B._ix) return null;
+        if (!B._cc || B._ccOx !== ox || B._ccOy !== oy) B._ccBuild(ox, oy);   // 존마다 처음 한 번(건물 수 × 아홉)
+        if (B._ccBad) return null;
+      }
+      if (hit) continue;
+      //   길 — 종전 열쇠 (round(ox/32) + cx) 를 거꾸로: 로컬 칸 = 월드 칸 − round(ox/32)
+      if (R && R.size && R._has(acx - Math.round(ox / 32), acy - Math.round(oy / 32))) hit = true;
+      else if (B && B.size && B._near(acx, acy)) hit = true;
+    }
+    _t1453NatN++;
+    return hit;
+  }
   // 화면 상자 안 길 — 칸 가운데(ax = ox + cx·32 + 16)가 화면 상자 안인 칸(**종전 컬링 식 그대로**: `Math.abs(ax − wcx) > R` 면 버린다)을
   //   **넣은 차례**로 `_t1446RQ` 에 담는다. 훑는 상자는 화면 상자 ± 1px(부동소수 여유)에 걸친 것만 · 넘치면 null(부른 쪽이 종전 고리).
   const _t1446RQ = { n: 0, cx: new Int32Array(1 << 14), cy: new Int32Array(1 << 14), lv: new Int8Array(1 << 14), sk: new Float64Array(1 << 14) };
