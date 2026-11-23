@@ -1,0 +1,7 @@
+[
+ {"tag":"ON_MID_1020","seed":1020,"days":730,"probe":1,"env":{"T1438_DECAY":"1","T1438_DECAY_SET":"mid"}},
+ {"tag":"ON_MID_7","seed":7,"days":400,"probe":1,"env":{"T1438_DECAY":"1","T1438_DECAY_SET":"mid"}},
+ {"tag":"ON_MID_42","seed":42,"days":400,"probe":1,"env":{"T1438_DECAY":"1","T1438_DECAY_SET":"mid"}},
+ {"tag":"ON_LO_1020","seed":1020,"days":400,"probe":1,"env":{"T1438_DECAY":"1","T1438_DECAY_SET":"lo"}},
+ {"tag":"ON_HI_1020","seed":1020,"days":400,"probe":1,"env":{"T1438_DECAY":"1","T1438_DECAY_SET":"hi"}}
+]

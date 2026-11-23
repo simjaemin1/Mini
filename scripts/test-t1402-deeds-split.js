@@ -13,7 +13,7 @@
 //   ⑥ 본거지를 B 로 옮기면(뜸 뒤) 먼 덩이 옆이 되고 집 덩이 옆이 거절된다
 //   ⑦ 손으로 내놓기도 갈라져도 된다 — 목 칸은 먼저 확인 한 줄(`unclaim_confirm` · 땅 그대로) · 확인을 붙이면 내놓아지고 "갈라졌습니다"
 //   ⑧ 재시작 뒤 그대로 — 몸(`serializeBody`)에 실린 본거지로 같은 DB 를 다시 띄우면 본거지 · 넓히기 문이 그대로(집 청크가 아직 안 켜진 판 — 집 행은 DB 에서 읽는다)
-//   ★미끼 다섯(이 파일 안 · 사본은 `server/_t1402sbait-*` · 판 끝에 지움): ① 고른 본거지를 안 보는 존(집이 둘이면 종전 한 덩이 규칙 = 자동) → ⑤ 빨강 ·
+//   ★미끼 다섯(이 파일 안 · 사본은 `server/_t1402sbait-*` · 판 끝에 지움): ① 고른 본거지를 안 보는 존(★T1428 기본 = 먼저 지은 집의 덩이) → ⑥ 빨강 ·
 //     ② 뜸 0 존 → ③ 빨강 · ③ 풀림에 갈라짐 판정이 남은 deeds → ④ 빨강 · ④ 떨어진 조각에 이어 붙는 존 → ⑤ 빨강 · ⑤ 켬인데 내놓기 거절이 남은 존 → ⑦ 빨강
 // ★박힌 날짜 0 — 시계는 주입(사유지 `_t1332SetClock` · 뜸 `_t1402SetWall`) · "지금"에서 더하기만.
 //   node scripts/test-t1402-deeds-split.js   (아이 판 열둘 · 약 1분)
@@ -28,7 +28,7 @@ const HOUR = 3600000, DAYMS = 24 * HOUR;
 const put = (R, k, c, x) => { R[k] = !!c; if (x !== undefined) R[k + '#'] = String(x).slice(0, 260); };
 
 if (MODE) {
-  Object.assign(process.env, { ZONE_ID: 'hanbando', ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', CLAIM_ABSENCE: '0', T1305_DEEDS: '1', T1402_SPLIT_OK: '1' });
+  Object.assign(process.env, { ZONE_ID: 'hanbando', ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', CLAIM_ABSENCE: '0', T1305_DEEDS: '1', T1402_SPLIT_OK: '1', T1392_FIRST_LOT: '0' });   // ★[T1428] 첫 집터(-on 켬 기본 후보)는 글자로 끈다 — 땅 꼴은 한 칸 선포로 짓는다
   const _l = console.log, _w = console.warn, _e = console.error; console.log = () => {}; console.warn = () => {}; console.error = () => {};
   const H = require(process.env.__T1402S_ZONE || path.join(ROOT, 'server', 'zone.js')).__testBind();
   console.log = _l; console.warn = _w; console.error = _e;
@@ -144,8 +144,8 @@ if (MODE) {
     } finally { for (const q of [f, fz]) { try { fs.unlinkSync(q); } catch (e) {} } }
     return { k, RB: RB || {} };
   };
-  { const { k, RB } = bait('auto', 'zone', '  let home = _t1402Home(player), auto = false;', '  let home = null, auto = false;');
-    ok(k === 1 && RB.p5_grow === false, '★미끼 ① — 고른 본거지를 안 보는 존(집이 둘이면 종전 한 덩이 규칙) → ⑤ 빨강', `바꾼 자리 ${k} · p5_grow=${RB.p5_grow} · ${RB['p5_grow#'] || RB.err || ''}`); }
+  { const { k, RB } = bait('auto', 'zone', "function _t1402HomeRec(player) { const d = Deeds.bodyOf(player); return d && d.h && typeof d.h === 'object' ? d.h : null; }", 'function _t1402HomeRec(player) { return null; }');
+    ok(k === 1 && RB.p6_move === false, '★미끼 ① — 고른 본거지를 안 보는 존(★T1428 본거지 없음 기본 = 먼저 지은 집 A 의 덩이) → ⑥ 빨강(B 로 옮겨도 먼 덩이 옆이 안 된다)', `바꾼 자리 ${k} · p6_move=${RB.p6_move} · ${RB['p6_move#'] || RB.err || ''}`); }
   { const { k, RB } = bait('cool', 'zone', '  if (h && Number.isFinite(+h.at) && now - h.at < T1402_HOME_COOL_MS) {', '  if (false) {');
     ok(k === 1 && RB.p3_cool === false, '★미끼 ② — 뜸 0 존 → ③ 빨강', `바꾼 자리 ${k} · p3_cool=${RB.p3_cool} · ${RB['p3_cool#'] || RB.err || ''}`); }
   { const { k, RB } = bait('neck', 'deeds', '    if (P._splitOk || deg <= 1 || !G.splitsInt(P._S, k)) return c;', '    if (deg <= 1 || !G.splitsInt(P._S, k)) return c;');

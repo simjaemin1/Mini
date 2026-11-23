@@ -48,7 +48,7 @@ const ok = (c, m, extra) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '
 
 // ★[T1305] 아이 판(⑨) — 켬 손잡이 · 손보는 시간 1초 · 존 파일은 정본 또는 미끼 사본(`__T1305_ZONE`)
 const T1305_SUB = process.env.__T1305_SUB === '1';
-if (T1305_SUB) { process.env.T1305_DEEDS = '1'; process.env.T1305_CARE_S = '1'; }
+if (T1305_SUB) { process.env.T1305_DEEDS = '1'; process.env.T1305_CARE_S = '1'; process.env.T1392_FIRST_LOT = process.env.T1392_FIRST_LOT || '0'; process.env.T1402_SPLIT_OK = process.env.T1402_SPLIT_OK || '0'; }   // ★[T1428] ⑨ 는 돌봄 셈을 잰다 — 첫 집터 · 갈라짐(-on 켬 기본 후보)은 글자로 끈다(제 하네스가 잰다)
 else process.env.T1305_DEEDS = '0';   // ★[T1389] 이 판(①~⑧ · ⑨ 끔 줄)은 끔 판 — 켬 기본 가지(-on)에서도 끔을 글자로 준다
 const _l = console.log, _w = console.warn, _e = console.error;
 console.log = () => {}; console.warn = () => {}; console.error = () => {};

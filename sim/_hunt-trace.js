@@ -1,7 +1,7 @@
 // sim/_hunt-trace.js — 사냥실험실 행동 트레이스 분석기: 시뮬을 직접 돌리고 로그로 병리 검출
 // 사용: node sim/_hunt-trace.js [종이모지] [일수]   (기본 🦌 10일)
 const fs=require('fs'),path=require('path');
-const SRC=fs.readFileSync(path.join(__dirname,'..','..','사냥실험실.html'),'utf8');
+const SRC=fs.readFileSync(process.env.HUNTLAB_HTML||path.join(__dirname,'..','lab','사냥실험실.html'),'utf8')/*★T1396: 레포 자리(07-07 판은 레포 밖 ../../) · HUNTLAB_HTML 로 다른 판*/;
 let js=/<script>([\s\S]*?)<\/script>/.exec(SRC)[1].replace("'use strict';","");
 const els={};
 global.document={getElementById:id=>els[id]||(els[id]={value:{nh:'3',cap:'24',spd:'36',terr:(process.argv[4]||'초원')}[id]||'0',textContent:'',innerHTML:''}),querySelectorAll:()=>[]};
