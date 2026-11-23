@@ -1,0 +1,550 @@
+{
+ "db": "w1109.db",
+ "made": "T1448",
+ "probes": {
+  "base": {
+   "probe": "base",
+   "cellsW": 2188,
+   "cellsH": 4063,
+   "day": 1245985,
+   "rows": 680359,
+   "heapBase": 4.9,
+   "gcMs": 9.561874
+  },
+  "cells": {
+   "probe": "cells",
+   "cellsW": 2188,
+   "cellsH": 4063,
+   "day": 1245985,
+   "rows": 680359,
+   "heapBase": 4.9,
+   "buildMs": 544,
+   "cellsMB": 64.4,
+   "n": 680359,
+   "gcMs": 71.979865,
+   "cellsGoneMB": 0.1
+  },
+  "noi": {
+   "probe": "noi",
+   "cellsW": 2188,
+   "cellsH": 4063,
+   "day": 1245985,
+   "rows": 680359,
+   "heapBase": 4.9,
+   "initMs": 2405,
+   "n": {
+    "cells": 680359,
+    "paved": 175999,
+    "coarse": 36219,
+    "bootUnpaved": 1747,
+    "g1": 104546,
+    "g2": 175999
+   },
+   "heapInit": 76.1,
+   "initMB": 71.2,
+   "initAB": 0,
+   "boot": null,
+   "mem": null
+  },
+  "full": {
+   "probe": "full",
+   "cellsW": 2188,
+   "cellsH": 4063,
+   "day": 1245985,
+   "rows": 680359,
+   "heapBase": 4.9,
+   "initMs": 2652,
+   "n": {
+    "cells": 680359,
+    "paved": 175999,
+    "coarse": 36219,
+    "bootUnpaved": 1747,
+    "g1": 104546,
+    "g2": 175999,
+    "sent": 280545
+   },
+   "heapInit": 111.5,
+   "initMB": 106.6,
+   "initAB": 1.6,
+   "boot": null,
+   "mem": null,
+   "sentMB": 14,
+   "sentAB": 0,
+   "totalMB": 122.2,
+   "gcMs": 99.816681,
+   "clientMs": 76,
+   "clientCells": 280545,
+   "clientJsonMB": 2.9,
+   "dumpMs": 678,
+   "dumpMB": 31.9,
+   "dumpParts": {
+    "cells": 19.7,
+    "coarse": 0.4,
+    "paved": 1.3,
+    "dirty": 0,
+    "lastDay": 0,
+    "coarseGen": 0,
+    "stats": 0,
+    "bootUnpaved": 0,
+    "chgOn": 0,
+    "chg": 0,
+    "I": 10.5
+   },
+   "dumpHeldMB": 136.5,
+   "loadMs": 1272,
+   "boxMs": 11,
+   "box": {
+    "gx": 13,
+    "gy": 6,
+    "cells": 4606,
+    "jsonKB": 45
+   },
+   "stampUs": 2.264,
+   "levelUs": 0.696,
+   "levelAcc": 161959,
+   "dayRollMs": 13.4,
+   "day1": {
+    "stamped": 38000,
+    "ticks": 51797,
+    "flushMs": 944.1,
+    "maxTickMs": 101.89,
+    "batches": 51797,
+    "flMaxMs": 101.08,
+    "flMaxRows": 1,
+    "snap": 0,
+    "incMs": 12.629534000000604,
+    "incMaxMs": 12.629534000000604,
+    "line": "[hanbando] 🛤️ 답압 길 day 1245986: 셀 680359(등급 280491) · 저장 51796행 · 클라 변경 378셀 · 오늘 스탬프 38000 · 묶음 51797"
+   },
+   "dbRows": {
+    "cell": 680359,
+    "chunk": 0
+   },
+   "parts": [
+    [
+     "sent",
+     14,
+     0
+    ],
+    [
+     "coarse",
+     1.7,
+     0
+    ],
+    [
+     "paved",
+     5,
+     0
+    ],
+    [
+     "dirty",
+     0,
+     0
+    ],
+    [
+     "bootUnpaved",
+     0,
+     0
+    ],
+    [
+     "cells",
+     81.7,
+     0
+    ]
+   ],
+   "heapFull": 145.3,
+   "afterAll": 37.9,
+   "gcMsAfterClear": 14.726459
+  },
+  "grid": {
+   "probe": "grid",
+   "cellsW": 2188,
+   "cellsH": 4063,
+   "day": 1245985,
+   "rows": 680359,
+   "heapBase": 4.9,
+   "buildMs": 362,
+   "gridHeapMB": 5.2,
+   "gridBufMB": 52.7,
+   "gridMB": 57.9,
+   "chunks": 4108,
+   "dueDays": 291,
+   "gcMs": 8.98617,
+   "keep": 564806
+  },
+  "gfull": {
+   "probe": "gfull",
+   "cellsW": 2188,
+   "cellsH": 4063,
+   "day": 1245985,
+   "rows": 680359,
+   "heapBase": 4.9,
+   "initMs": 3696,
+   "n": {
+    "cells": 680359,
+    "paved": 175999,
+    "coarse": 36219,
+    "bootUnpaved": 1747,
+    "g1": 104546,
+    "g2": 175999,
+    "sent": 280545
+   },
+   "heapInit": 15.2,
+   "initMB": 10.2,
+   "initAB": 52,
+   "boot": {
+    "chunkRows": 0,
+    "cellRows": 680359,
+    "readMs": 3240,
+    "mig": {
+     "cellRows": 680359,
+     "chunkRows": 12297,
+     "ms": 1166
+    },
+    "outside": 0
+   },
+   "mem": {
+    "cells": 37776384,
+    "sent": 0,
+    "paved": 160992,
+    "lvl": 1443840,
+    "sched": 11550720,
+    "due": 1531904,
+    "coarse": 555752,
+    "chunks": 12297,
+    "size": 680359
+   },
+   "sentMB": 1.1,
+   "sentAB": 1.4,
+   "totalMB": 64.7,
+   "gcMs": 20.259956,
+   "clientMs": 72,
+   "clientCells": 280545,
+   "clientJsonMB": 2.9,
+   "dumpMs": 532,
+   "dumpMB": 24.7,
+   "dumpParts": {
+    "cells": 0,
+    "cellsG": 12.5,
+    "coarse": 0.4,
+    "paved": 1.3,
+    "dirty": 0,
+    "lastDay": 0,
+    "coarseGen": 0,
+    "stats": 0,
+    "bootUnpaved": 0,
+    "chgOn": 0,
+    "chg": 0,
+    "I": 10.5
+   },
+   "dumpHeldMB": 91,
+   "loadMs": 506,
+   "boxMs": 9,
+   "box": {
+    "gx": 13,
+    "gy": 6,
+    "cells": 4606,
+    "jsonKB": 45
+   },
+   "stampUs": 1.572,
+   "levelUs": 0.535,
+   "levelAcc": 161959,
+   "dayRollMs": 1.53,
+   "day1": {
+    "stamped": 38000,
+    "ticks": 1330,
+    "flushMs": 150.5,
+    "maxTickMs": 9.65,
+    "batches": 1330,
+    "flMaxMs": 6.18,
+    "flMaxRows": 39,
+    "snap": 0,
+    "incMs": 0.9345830000002024,
+    "incMaxMs": 0.9345830000002024,
+    "line": "[hanbando] 🛤️ 답압 길 day 1245986: 셀 680359(등급 280491) · 저장 51796행 · 클라 변경 378셀 · 오늘 스탬프 38000 · 묶음 1330"
+   },
+   "dbRows": {
+    "cell": 0,
+    "chunk": 12297,
+    "chunkMB": 9.3
+   },
+   "parts": [
+    [
+     "sent",
+     1.1,
+     1.4
+    ],
+    [
+     "coarse",
+     0,
+     0
+    ],
+    [
+     "paved",
+     1.2,
+     0
+    ],
+    [
+     "dirty",
+     0,
+     0
+    ],
+    [
+     "bootUnpaved",
+     0,
+     0
+    ],
+    [
+     "cells",
+     5.1,
+     36
+    ]
+   ],
+   "heapFull": 20.9,
+   "afterAll": 8.5,
+   "gcMsAfterClear": 10.835795
+  },
+  "gboot2": {
+   "probe": "gboot2",
+   "cellsW": 2188,
+   "cellsH": 4063,
+   "day": 1245985,
+   "rows": 680359,
+   "heapBase": 5,
+   "initMs": 789,
+   "n": {
+    "cells": 680359,
+    "paved": 176377,
+    "coarse": 36219,
+    "bootUnpaved": 1572,
+    "g1": 104168,
+    "g2": 176377
+   },
+   "heapInit": 15.2,
+   "initMB": 10.2,
+   "initAB": 52.1,
+   "boot": {
+    "chunkRows": 12297,
+    "cellRows": 0,
+    "readMs": 334,
+    "mig": null,
+    "outside": 0
+   },
+   "mem": {
+    "cells": 37776384,
+    "sent": 0,
+    "paved": 161408,
+    "lvl": 1443840,
+    "sched": 11550720,
+    "due": 1588992,
+    "coarse": 555752,
+    "chunks": 12297,
+    "size": 680359
+   }
+  },
+  "fall": {
+   "probe": "fall",
+   "cellsW": 2188,
+   "cellsH": 4063,
+   "day": 1246385,
+   "rows": 680359,
+   "heapBase": 4.9,
+   "initMs": 2722,
+   "n": {
+    "cells": 680359,
+    "paved": 0,
+    "coarse": 21080,
+    "bootUnpaved": 177746,
+    "g1": 128064,
+    "g2": 0
+   },
+   "heapInit": 82.3,
+   "initMB": 77.4,
+   "initAB": 1.6,
+   "boot": null,
+   "mem": null
+  },
+  "gfall": {
+   "probe": "gfall",
+   "cellsW": 2188,
+   "cellsH": 4063,
+   "day": 1246385,
+   "rows": 680359,
+   "heapBase": 4.9,
+   "initMs": 3633,
+   "n": {
+    "cells": 680359,
+    "paved": 0,
+    "coarse": 21080,
+    "bootUnpaved": 177746,
+    "g1": 128064,
+    "g2": 0
+   },
+   "heapInit": 15.3,
+   "initMB": 10.4,
+   "initAB": 48.1,
+   "boot": {
+    "chunkRows": 0,
+    "cellRows": 680359,
+    "readMs": 3312,
+    "mig": {
+     "cellRows": 680359,
+     "chunkRows": 12297,
+     "ms": 1086
+    },
+    "outside": 0
+   },
+   "mem": {
+    "cells": 37776384,
+    "sent": 0,
+    "paved": 0,
+    "lvl": 1083904,
+    "sched": 8671232,
+    "due": 635904,
+    "coarse": 555752,
+    "chunks": 12297,
+    "size": 680359
+   }
+  },
+  "gfall2": {
+   "probe": "gfall2",
+   "cellsW": 2188,
+   "cellsH": 4063,
+   "day": 1246385,
+   "rows": 680359,
+   "heapBase": 5,
+   "initMs": 686,
+   "n": {
+    "cells": 680359,
+    "paved": 0,
+    "coarse": 21080,
+    "bootUnpaved": 177746,
+    "g1": 128064,
+    "g2": 0
+   },
+   "heapInit": 15.3,
+   "initMB": 10.3,
+   "initAB": 48.1,
+   "boot": {
+    "chunkRows": 12297,
+    "cellRows": 0,
+    "readMs": 252,
+    "mig": null,
+    "outside": 0
+   },
+   "mem": {
+    "cells": 37776384,
+    "sent": 0,
+    "paved": 0,
+    "lvl": 1083904,
+    "sched": 8671232,
+    "due": 635904,
+    "coarse": 555752,
+    "chunks": 12297,
+    "size": 680359
+   }
+  }
+ },
+ "spread": {
+  "16": {
+   "chunks": 12297,
+   "gradedChunks": 5640,
+   "area": 256,
+   "fill": {
+    "p10": 9,
+    "p50": 31,
+    "p90": 153,
+    "max": 256
+   },
+   "hist": {
+    "<1%": 280,
+    "1-5%": 1505,
+    "5-20%": 6697,
+    "20-50%": 2381,
+    "50%+": 1434
+   },
+   "arrayMB": 36,
+   "arrayMBf32": 24,
+   "cellsPerChunk": 55
+  },
+  "32": {
+   "chunks": 4108,
+   "gradedChunks": 2338,
+   "area": 1024,
+   "fill": {
+    "p10": 23,
+    "p50": 85,
+    "p90": 412,
+    "max": 1024
+   },
+   "hist": {
+    "<1%": 193,
+    "1-5%": 1177,
+    "5-20%": 1846,
+    "20-50%": 561,
+    "50%+": 331
+   },
+   "arrayMB": 48.1,
+   "arrayMBf32": 32.1,
+   "cellsPerChunk": 166
+  },
+  "64": {
+   "chunks": 1298,
+   "gradedChunks": 941,
+   "area": 4096,
+   "fill": {
+    "p10": 64,
+    "p50": 276,
+    "p90": 1221,
+    "max": 4069
+   },
+   "hist": {
+    "<1%": 84,
+    "1-5%": 444,
+    "5-20%": 547,
+    "20-50%": 151,
+    "50%+": 72
+   },
+   "arrayMB": 60.8,
+   "arrayMBf32": 40.6,
+   "cellsPerChunk": 524
+  },
+  "128": {
+   "chunks": 396,
+   "gradedChunks": 341,
+   "area": 16384,
+   "fill": {
+    "p10": 168,
+    "p50": 934,
+    "p90": 4827,
+    "max": 9114
+   },
+   "hist": {
+    "<1%": 38,
+    "1-5%": 146,
+    "5-20%": 140,
+    "20-50%": 71,
+    "50%+": 1
+   },
+   "arrayMB": 74.3,
+   "arrayMBf32": 49.5,
+   "cellsPerChunk": 1718
+  }
+ },
+ "zoneCells": 8889844,
+ "grades": {
+  "rows": 680359,
+  "g1": 104546,
+  "g2": 175999,
+  "under8": 399814,
+  "deadAtDay": 268142,
+  "ageDays": {
+   "2-7": 193966,
+   "0-1": 179507,
+   "540+": 188317,
+   "8-30": 49585,
+   "31-138": 17488,
+   "139-540": 51496
+  }
+ }
+}
