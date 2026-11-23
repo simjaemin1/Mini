@@ -1,0 +1,17 @@
+# 만진 함수 → 하네스 (touched-harness · base origin/main · 갈림점 4693fcfe0)
+· 바뀐 코드 파일 7 · 이름 20(물린 것 5 · 흔한 이름 뺌 0) · 바뀐 하네스 1 · 규약 다섯 · **돌릴 하네스 11**
+  public/client/00-const.js: T1446_BOX T1446_BPAD T1446_ON _load _rebuild _t1446Bk _t1446Blds _t1446Cells _t1446Check _t1446NewBlds _t1446NewRoads _t1446Ok _t1446Sig _t1446Stat _t1446Use constructor cropSprite
+  public/client/30-n-net.js: (이름 없음)
+  public/client/34-m-renderloop.js: (이름 없음)
+  public/client/99-main.js: (이름 없음)
+  scripts/t1446-synth.js: t1446-synth
+  scripts/t1446-table.js: t1446-table
+  scripts/t1446-view-repro.js: t1446-view-repro
+· 이름 → 하네스 수: _t1446Cells 1 · _t1446Use 1 · constructor 2 · cropSprite 3 · t1446-synth 1
+· 바뀐 하네스: test-t1446-view-index.js
+· 돌릴 하네스: test-body-fields.js test-coll-grid.js test-crops-world.js test-crops.js test-harness-lint.js test-hp-src.js test-lon-day.js test-move-soa.js test-props.js test-t1161-two-prices.js test-t1446-view-index.js
+test-crops-world.js RC 0 1s 결과: PASS
+test-crops.js RC 0 4s === 결과: 170 PASS / 0 FAIL ===
+test-move-soa.js RC 0 95s === 결과: 287 PASS / 0 FAIL ===
+test-props.js RC 0 1s 결과: PASS
+test-t1161-two-prices.js RC 0 39s 10/10 통과
