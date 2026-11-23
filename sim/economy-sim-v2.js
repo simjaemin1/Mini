@@ -3660,6 +3660,7 @@ module.exports = {
   tickRecovery, recoveryFoodThreshold, recoveryFoodHave,
   // ★[T299] 둘째 화물·관문의 문 — 하네스와 `lab-wiring-check [H]` 가 엔진 **기본이 끔인지** 실측한다(사본 0)
   cargoTwoOn, cargoTwoGateOn, _legProfitPerUnit,
+  killTrader,   // ★[T1461] 행상 피살과 같은 문(짐승에게 쓰러진 캐러반 상인 — 서버가 같은 함수를 부른다 · 사본 0)
   // ★★[T525] 존 경계 넘기 뼈대 — 호스트(존 서버·자)가 **같은 두 함수**로 스텁을 만든다(답하는 쪽 스냅 · 받는 쪽 스텁 · 사본 0)
   T525_CROSS_ZONE, xzoneSnapshot, xzoneStub,
   T1030_XZ_MARKET,   // ★[T1030] 교차 존 장(팔 켬일 때만 · 끔 기본) — 서버(재기동 메타가 이웃 존 캐러밴을 잇는다)가 같은 손잡이를 읽는다

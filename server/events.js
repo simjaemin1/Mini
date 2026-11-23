@@ -885,7 +885,7 @@ function createLedger(opts) {
       const s = st(r.vid), c = calendarOf(day), k = day - (c.dayOfSeason - 1);
       if (s.slainK === k) continue;
       s.slainK = k;
-      commit(s, [{ day, vid: r.vid | 0, type: 'SLAIN', item: r.by === 'wild' ? 'wild' : 'other', mag: 1, meta: null }], out);
+      commit(s, [{ day, vid: r.vid | 0, type: 'SLAIN', item: r.by === 'wild' ? 'wild' : 'other', mag: 1, meta: (r.b || r.n) ? { n: r.n || null, b: r.b || null } : null }], out);   // ★[T1461] 켬 = 누가 · 무엇에게(끔 = 칸 없음 = null 그대로)
     }
 
     // ⑦ 의뢰 — 부족 **래치**가 서 있으면 걸려 있고, 회복하면 거둔다(사건 에지가 아니라 상태)
@@ -1476,7 +1476,7 @@ const LINES = {
   EMPTIED: () => '마을에 사람이 하나도 안 남았다네. 빈 움집만 서 있네.',
   // ── ★[T590 2026-10-03] 굶어 죽음 — 다섯 필드로만(㉝) · 누가 몇이 아니라 일이 났다는 것(그 철 첫 몸)
   STARVED: () => '끝내 굶어 죽은 이가 나왔다네.',
-  SLAIN: (ev) => (ev.item === 'wild' ? '짐승에게 물려 죽은 이가 나왔다네.' : '쓰러져 끝내 일어나지 못한 이가 나왔다네.'),   // ★[T1432]
+  SLAIN: (ev) => (ev.item === 'wild' && ev.meta && ev.meta.b ? `${ev.meta.n || '마을 사람'}${josa(ev.meta.n || '마을 사람', '이', '가')} ${ev.meta.b}에게 당했네.` : (ev.item === 'wild' ? '짐승에게 물려 죽은 이가 나왔다네.' : '쓰러져 끝내 일어나지 못한 이가 나왔다네.')),   // ★[T1432] · ★[T1461] 켬 = "○○가 범에게 당했네"
   RESCUED: (ev) => {
     const who = String(ev.item || '');
     if (!who || who === 'village') return '쓰러진 이를 마을 사람들이 쉼터로 옮겼다네.';
@@ -1520,7 +1520,7 @@ const NEWS_LINES = {
   DISSOLVED: () => '굶주림 끝에 남은 사람들이 마을을 버리고 도적이 되었습니다.',
   EMPTIED: () => '마을에 사람이 하나도 남지 않았습니다.',
   STARVED: () => '굶어 죽은 사람이 나왔습니다.',
-  SLAIN: (ev) => (ev.item === 'wild' ? '짐승에게 물려 죽은 사람이 나왔습니다.' : '쓰러져 끝내 일어나지 못한 사람이 나왔습니다.'),   // ★[T1432]
+  SLAIN: (ev) => (ev.item === 'wild' && ev.meta && ev.meta.b ? `${ev.meta.n || '마을 사람'}${josa(ev.meta.n || '마을 사람', '이', '가')} ${ev.meta.b}에게 당했습니다.` : (ev.item === 'wild' ? '짐승에게 물려 죽은 사람이 나왔습니다.' : '쓰러져 끝내 일어나지 못한 사람이 나왔습니다.')),   // ★[T1432] · ★[T1461]
   RESCUED: (ev) => {
     const who = String(ev.item || '');
     if (!who || who === 'village') return '쓰러진 사람을 마을 사람들이 쉼터로 옮겼습니다.';

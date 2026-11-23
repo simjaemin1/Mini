@@ -3909,6 +3909,11 @@ const NPC_RESPAWN_MS = 30 * 1000;
 //   켬 = `damagePlayer` NPC 갈래가 마을 몸을 `SimVillages.t1432Die`(그 자리 주검 · 명부 · econ 명부 · 직업 수 · 야생 누계 · 연표 한 줄)로 보낸다.
 //   마을 명부 밖 몸(캐러밴 · 출정 · 마을 없는 NPC)은 그 문이 false 를 내고 종전 되살림을 탄다(회부).
 const T1432_NPC_DEATH = process.env.T1432_NPC_DEATH === '1';
+// ★★[T1461 2026-11-23 · T1432 회부 1 · 2 · 3] 보는 사람이 없어도 짐승은 사람을 친다 — 손잡이 `T1461_BEAST_UNSEEN`('1' 만 켬 · `T1432_NPC_DEATH` 안 · 끔 = 아래 세 줄 무동작):
+//   ① 야생 층(사냥판)이 마을 밖 NPC 몸을 깨우는 이로 받는다(`wildlife.js` T1461 · 마을 밖 = 마을이 답한다 `t1461Out`)
+//   ② 마을 명부 밖 몸(캐러밴 상인 · 호위 · 마을 없는 몸)도 같은 죽음 길(주검 · 낙하 · econ 사람 −1 — `SimVillages.t1461Die`) — 30초 되살림 0
+//   ③ 낙하로 HP 0 인 NPC — 종전 `setHp` 만(쓰러짐도 되살림도 없이 남음)을 같은 문(`damagePlayer`)으로
+const T1461_BEAST_UNSEEN = T1432_NPC_DEATH && process.env.T1461_BEAST_UNSEEN === '1';
 const NPC_FLEE_RANGE = 250;        // 늑대 시야 안이면 도망
 const NPC_CLAIM_SIZE = 192;
 
@@ -6544,6 +6549,7 @@ Wildlife.init({
   ZONE_ID, ZONE, TICK_HZ, chunkManager, mobs, players,
   isTerrainBlockedLocal, isRockTileLocal, terrainMod: _terrain,
   getActiveChunkKeys: () => activeChunkKeys, isPositionActive,
+  ...(T1461_BEAST_UNSEEN ? { t1461Out: (p) => SimVillages.t1461Out(p) } : {}),   // ★[T1461] 마을 밖에 선 NPC 몸인가(마을이 답한다 · 끔 = 칸 없음)
   spawnCorpse, damagePlayer, broadcast, WORLD,
   setMobHp,   // ★[T954] 짐승 HP 문 — 랩 → 존 몹 그림자 동기가 이 문으로 쓴다(사본 0)
   simVillages: () => SimVillages.clientVillages(), legacyVillages: VILLAGES,
@@ -16447,6 +16453,7 @@ function damagePlayer(p, dmg, source) {
     if (p.isNpc) {
       if (p._bdtGid != null && Bandits.t1078Died && Bandits.t1078Died(p, source)) return;   // ★[T1078] 도적 단원 몸 — 그 자리에 쓰러진다 · 단 n −1(되살림 0 · 끔 = `_bdtGid` 가 안 서서 이 줄 무동작)
       if (T1432_NPC_DEATH && SimVillages.t1432Die && SimVillages.t1432Die(p, source)) { for (const m of mobs.values()) if (m.aggroTarget === p.pid) m.aggroTarget = null; return; }   // ★[T1432] 켬 — 마을 몸은 진짜 죽는다(되살림 0)
+      if (T1461_BEAST_UNSEEN && SimVillages.t1461Die && SimVillages.t1461Die(p, source)) { for (const m of mobs.values()) if (m.aggroTarget === p.pid) m.aggroTarget = null; return; }   // ★[T1461] 켬 — 명부 밖 몸(캐러밴 · 마을 없는 몸)도 같은 죽음 길
       // NPC: 30초 후 자기 사유지 중심에 부활 (기존 로직 유지)
       console.log(`[${ZONE_ID}] 🤖 NPC ${p.name} 사망 (by ${source}) — ${NPC_RESPAWN_MS/1000}초 후 부활`);
       let respawnX = ZONE.zoneWidth/2, respawnY = ZONE.zoneHeight/2;
@@ -18645,7 +18652,8 @@ setInterval(() => {
         if (entity.ws) {
           damagePlayer(entity, dmg, 'fall');
         } else {
-          setHp(entity, entity.hp - dmg, 'fall');   // NPC — ws 가 없어 아무 데도 안 간다(종전 그대로)
+          if (typeof T1461_BEAST_UNSEEN !== 'undefined' && T1461_BEAST_UNSEEN && entity.isNpc) damagePlayer(entity, dmg, 'fall');   // ★[T1461] 켬 — NPC 낙하도 같은 문(HP 0 이면 쓰러짐 → 죽음 길 · 종전 = 아래 줄)
+          else setHp(entity, entity.hp - dmg, 'fall');   // NPC — ws 가 없어 아무 데도 안 간다(종전 그대로)
         }
       }
       entity.fallStartFloor = 0;

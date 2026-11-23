@@ -2381,12 +2381,60 @@ function t1432Die(p, source) {
   if (T822_BODY_SEED) _t822Rekey(vil, i);
   _bxDie(vil, p, { k });
   _t1432Stat.died++; _t1432Stat[wild ? 'wild' : 'other']++;
-  if (_evSlain.length < 256) _evSlain.push({ vid: vil.dbId | 0, by: wild ? 'wild' : 'other' });   // 연표 한 줄(그 마을 그 철 첫 몸 — 장부가 거른다)
+  if (_evSlain.length < 256) _evSlain.push(T1461_BEAST_UNSEEN ? { vid: vil.dbId | 0, by: wild ? 'wild' : 'other', n: p.name || null, b: wild ? _t1461Beast(src) : null } : { vid: vil.dbId | 0, by: wild ? 'wild' : 'other' });   // ★[T1461] 켬 = 누가 · 무엇에게(소식 한 줄)   // 연표 한 줄(그 마을 그 철 첫 몸 — 장부가 거른다)
   console.log(`[${state.zoneId || 'zone'}] ☠️ NPC ${p.name || p.pid} 죽음(by ${src || '?'}) — ${vil.name || vil.dbId} · ${p.simJob || '?'} · 주검 · 명부 −1 [T1432]`);   // 사망 로그(종전 되살림 로그 자리 · 판 자가 센다)
   if (_t1432Stat.events.length < 400) _t1432Stat.events.push({ vid: vil.dbId | 0, k, src: src.slice(0, 24), job: p.simJob || null, day: state.world ? state.world.day : null });
   return true;
 }
 const _evSlain = [];
+// ═══ ★★[T1461 2026-11-23 · T1432 회부 1 · 2 · 3] 보는 사람이 없어도 짐승은 사람을 친다 — 마을 쪽 두 문(손잡이 `T1461_BEAST_UNSEEN` · `T1432_NPC_DEATH` 안 · 끔 = 안 불린다) ═══
+//   ① `t1461Out(p)` — 그 NPC 몸이 마을 밖에 섰나(제 마을 영토 칸 `_terrSet` 밖 · 마을 없는 몸 · 캐러밴 몸은 늘 밖) — 야생 층(사냥판)이 깨우는 이로 받는다. 칸이 바뀔 때만 다시 묻는다.
+//   ② `t1461Die(p, source)` — 마을 명부 밖 몸의 죽음(T1432 길 그대로 — 주검 · 짐 낙하 `_bxDie` · econ 사람 −1):
+//      캐러밴 상인 = econ 정본 `killTrader`(행상 피살과 같은 문 — 짐 전손 · 그 캐러밴 끝) · 호위 = 출발 마을 econ 전사 −1 · 그 캐러밴 호위 수 −1 ·
+//      마을 없는 몸 = 몸만(econ 사람 없음). 출정 몸(`_muster`)은 전투 층 소유(야생 층이 과녁에서 뺀다 — `wildlife.js` simWar 줄) — 여기 안 온다.
+const T1461_BEAST_UNSEEN = process.env.T1432_NPC_DEATH === '1' && process.env.T1461_BEAST_UNSEEN === '1';
+const _t1461Stat = { outQ: 0, outY: 0, died: 0, car: 0, esc: 0, lone: 0, skip: 0, events: [] };
+function t1461Out(p) {
+  if (!T1461_BEAST_UNSEEN || !p || !p.isNpc) return false;
+  if (p.simCaravan) return !p._bxExit;   // 캐러밴 몸(상인 · 호위) — 길 위
+  const cx = Math.floor(p.x / SZ), cy = Math.floor(p.y / SZ);
+  if (p._t1461Cx === cx && p._t1461Cy === cy) return p._t1461O;
+  _t1461Stat.outQ++;
+  const vil = p.simVillageId != null ? villageByDbId(p.simVillageId) : null;
+  const o = !vil || !vil._terrSet || !vil._terrSet.has(cx + ',' + cy);
+  p._t1461Cx = cx; p._t1461Cy = cy; p._t1461O = o; if (o) _t1461Stat.outY++;
+  return o;
+}
+const _T1461_BEAST = { '🐯': '범', '🐺': '늑대', '🐗': '멧돼지' };
+function _t1461Beast(src) { const m = /^wild:(\S)/u.exec(String(src || '')); const k = m ? [...String(src).slice(5)][0] : null; return (k && _T1461_BEAST[k]) || '짐승'; }
+function t1461Die(p, source) {
+  if (!T1461_BEAST_UNSEEN || !p || !p.isNpc || p._bxExit || p._muster) { _t1461Stat.skip++; return false; }
+  const src = String(source || ''), wild = /^(wild|mob):/.test(src), k = wild ? 'wild' : 'slain';
+  if (p.simCaravan) {   // 캐러밴 몸
+    const B = state.caravanBodies; let body = null, cid = null, esc = false;
+    if (B) for (const [id, b] of B) { if (b.pid === p.pid) { body = b; cid = id; break; } if (b.escorts && b.escorts.some((e) => e.pid === p.pid)) { body = b; cid = id; esc = true; break; } }
+    const c = cid != null && state.world ? (state.world.caravans || []).find((x) => x.id === cid) : null;
+    const home = c && c.from ? c.from : null;
+    if (!esc) {
+      if (c && home && state.econV2 && state.econV2.killTrader) { try { state.econV2.killTrader(c, home); } catch (e) {} }
+      if (body) body.pid = '__t1461_' + p.pid;   // 주검은 그 자리에 남는다(캐러밴 끝 — 몸 정리 문이 주검을 안 지우게)
+      _t1461Stat.car++;
+    } else {
+      if (c) c.escort = Math.max(0, (c.escort | 0) - 1);
+      if (home && Array.isArray(home.npcs)) { const j = home.npcs.findIndex((q) => q.currentJob === 'warrior'); if (j >= 0) { const rd = home.npcs.splice(j, 1)[0]; if (home.counts) home.counts.warrior = Math.max(0, (home.counts.warrior || 0) - 1); if (wild) home._wildDeadTot = (home._wildDeadTot || 0) + 1; delete home._t1197Ix; void rd; } }
+      if (body) body.escorts = body.escorts.filter((e) => e.pid !== p.pid);
+      _t1461Stat.esc++;
+    }
+    _bxDie(null, p, { k });
+  } else if (p.simVillageId == null || !villageByDbId(p.simVillageId)) {   // 마을 없는 몸
+    _bxDie(null, p, { k }); _t1461Stat.lone++;
+  } else { _t1461Stat.skip++; return false; }   // 마을 명부 몸은 T1432 문이 먼저 받는다(여기 오면 명부 밖 — 걸어 나가는 몸 등)
+  _t1461Stat.died++;
+  if (_t1461Stat.events.length < 400) _t1461Stat.events.push({ k, src: src.slice(0, 24), job: p.simJob || null, car: !!p.simCaravan, day: state.world ? state.world.day : null });
+  console.log(`[${state.zoneId || 'zone'}] ☠️ NPC ${p.name || p.pid} 죽음(by ${src || '?'}) — 명부 밖 몸(${p.simCaravan ? '캐러밴' : '마을 없음'}) · 주검 [T1461]`);
+  return true;
+}
+function t1461Stat() { return Object.assign({}, _t1461Stat, { events: _t1461Stat.events.slice() }); }
 function _slainToday() { const out = _evSlain.slice(); _evSlain.length = 0; return out; }
 function t1432Stat() { return Object.assign({}, _t1432Stat, { events: _t1432Stat.events.slice() }); }
 function _t1198Sync(vil, cap) {
@@ -21266,7 +21314,8 @@ function __rumorProbe() {
     rumor: Object.assign({}, L.rumorStats) };
 }
 
-module.exports = { t1432Die, t1432Stat, t1432Sync: (vil, n) => syncVillagePop(vil, n),   // ★[T1432] 쓰러진 NPC 진짜 죽음(존 손잡이 `T1432_NPC_DEATH` 켬에서만 부른다) · 몸 동기 문(하네스가 운영 그 문을 부른다 · 내보내기만)
+module.exports = { t1461Die, t1461Out, t1461Stat, T1461_BEAST_UNSEEN, __t1461: { st: () => state },   // ★[T1461] 명부 밖 몸 죽음 · 마을 밖 몸(존 손잡이 `T1461_BEAST_UNSEEN` 켬에서만 부른다)
+  t1432Die, t1432Stat, t1432Sync: (vil, n) => syncVillagePop(vil, n),   // ★[T1432] 쓰러진 NPC 진짜 죽음(존 손잡이 `T1432_NPC_DEATH` 켬에서만 부른다) · 몸 동기 문(하네스가 운영 그 문을 부른다 · 내보내기만)
   t1406PathCell: (cx, cy, vil) => _t1406PathCell(cx, cy, vil || null), T1406_KEEP_PATHS, artisanPerf,   // ★[T1196] 장인 작업장 관측
   __t740: () => state,   // ★[T1287 · T1280 회부 1] 생활층 지문 훅(`scripts/t740-side-hook.js`)의 공식 자리 — 읽기만 · 세계 0. 종전엔 훅이 컴파일 때 이 한 줄을 덧붙여서, 관찰기가 villages 를 먼저 실으면 훅이 못 붙었다(생활층 0일)
   _t1259WoodRadius, _t1259WoodCells,

@@ -1,0 +1,65 @@
+# 손댄 하네스 56종 — 하나씩 따로(timeout 900 · 몸 세계 판과 같은 상자 · 동시 부하)
+e2e-audio-probe.js rc=0 132s === PASS 107 / FAIL 0 ===
+e2e-terrain.js rc=0 304s === 지형 실장 E2E: 33 통과 / 0 실패 ✅ ===
+test-audio.js rc=0 6s === PASS 208 / FAIL 0 ===
+test-bandit-all.js rc=0 5s 결과: PASS (32 통과 · 0 실패)
+test-body-exit.js rc=0 1s === 49건 중 PASS 49 · FAIL 0 ===
+test-body-fields.js rc=0 2s === 14 통과 / 0 실패 ===
+test-body.js rc=0 20s === 324건 중 PASS 324 · FAIL 0 ===
+test-coll-grid.js rc=0 33s === 결과: 20 PASS / 0 FAIL ===
+test-donate.js rc=0 52s === 42건 중 PASS 42 · FAIL 0 ===
+test-downed.js rc=0 366s === 180건 중 PASS 180 · FAIL 0 ===
+test-econ-fast.js rc=124 900s   ✓ ★자명 통과 금지 — 끔 판은 부팅 복원 직후 econ 객체가 전부 사전 모드(종전)  51/51
+test-events.js rc=0 251s === 305건 중 PASS 305 · FAIL 0 ===
+test-food-sick.js rc=0 17s === 42건 중 PASS 42 · FAIL 0 ===
+test-game-meat.js rc=0 8s === 54건 중 PASS 54 · FAIL 0 ===
+test-granary-age.js rc=0 48s === 31건 중 PASS 31 · FAIL 0 ===
+test-granary-item.js rc=0 17s === 42건 중 PASS 42 · FAIL 0 ===
+test-granary-rot.js rc=0 16s === 28건 중 PASS 28 · FAIL 0 ===
+test-hall-units.js rc=0 26s === 23건 중 PASS 23 · FAIL 0 ===
+test-harness-lint.js rc=0 50s === 102건 중 PASS 102 · FAIL 0 ===
+test-hp-src.js rc=0 2s === 54 통과 / 0 실패 ===
+test-hunt-vis.js rc=0 73s === 32건 중 PASS 32 · FAIL 0 ===
+test-lab-stone.js rc=0 311s === T299 둘째 화물 기본 끔(정정) 포함: 통과 133 · 실패 0 ===
+test-lon-day.js rc=0 0s === 22건 중 PASS 22 · FAIL 0 ===
+test-member-open.js rc=0 32s   ✓ [상황] 한 개를 내도 한 개 이상 받는 짝이 있다(자명 통과 금지)  {"it":"berry","res":"fruit","take":"food"}
+test-membership.js rc=0 8s === PASS 90 / FAIL 0 ===
+test-mob-hp-door.js rc=0 4s === 19건 중 PASS 19 · FAIL 0 ===
+test-moment-lot.js rc=0 115s === 107건 중 PASS 107 · FAIL 0 ===
+test-move-soa.js rc=1 4s   ✓ ★⑧ 자명 통과 금지 — 손잡이를 `true` 로 비틀면 **끔 칸이 갈린다**(자가 손잡이를 실제로 본다)
+test-npc-wild-sync.js rc=0 4s === 10건 중 PASS 10 · FAIL 0 ===
+test-onboarding.js rc=0 83s === PASS 38 / FAIL 0 ===  (총 83초)
+test-t1128-kcal-tidy.js rc=0 7s === 24건 중 PASS 24 · FAIL 0 ===
+test-t1132-hall-view.js rc=0 17s === 18건 중 PASS 18 · FAIL 0 ===
+test-t1161-two-prices.js rc=0 40s 10/10 통과
+test-t1188-ore-split.js rc=0 3s PASS 29 / FAIL 0
+test-t1192-fish-species.js rc=0 2s PASS 32 / FAIL 0
+test-t1237-water-deer.js rc=0 14s === 38건 중 PASS 38 · FAIL 0 ===
+test-t1331-beast-body.js rc=0 40s PASS 미끼 keepledger 빨강 — 바꾼 자리 1 · FAIL 2건 · 첫 ② 장부를 버렸다(_gameRich null · _gameNone 1) · 뒤로 다시 안 섰다 — [[f
+test-t1345-body-day.js rc=0 419s === 12건 중 PASS 12 · FAIL 0 ===
+test-t1353-onb-on-prep.js rc=0 28s === 15건 중 PASS 15 · FAIL 0 ===
+test-t1368-onb-newbie.js rc=0 15s === 15건 중 PASS 15 · FAIL 0 ===
+test-t1393-hunt-chase.js rc=0 4s 10 통과 · 0 실패
+test-t1414-ocr-tmpdir.js rc=1 15s === 13건 중 PASS 12 · FAIL 1 ===
+test-t1416-hunt-body2.js rc=0 215s 13 통과 · 0 실패
+test-t1432-npc-death.js rc=0 161s === 18건 중 PASS 18 · FAIL 0 ===
+test-t1461-beast-unseen.js rc=0 216s === 23건 중 PASS 23 · FAIL 0 ===
+test-t807-quote-exec.js rc=0 36s === 24건 중 PASS 24 · FAIL 0 ===
+test-t835-quote-weight.js rc=0 16s === 16건 중 PASS 16 · FAIL 0 ===
+test-t965-want-start.js rc=0 6s === 15건 중 PASS 15 · FAIL 0 ===
+test-t976-want-capped.js rc=0 4s === 27건 중 PASS 27 · FAIL 0 ===
+test-t988-trade-words.js rc=0 35s === 35건 중 PASS 35 · FAIL 0 ===
+test-t999-trade-cap.js rc=0 22s === 22건 중 PASS 22 · FAIL 0 ===
+test-vil-fast.js rc=0 529s === 10 통과 / 0 실패 ===
+test-village-view.js rc=0 35s 결과: PASS 132 · FAIL 0
+test-wild-door.js rc=0 10s === 26건 중 PASS 26 · FAIL 0 ===
+test-winter.js rc=0 25s === 46건 중 PASS 46 · FAIL 0 ===
+test-zone-fauna.js rc=0 57s === 39건 중 PASS 39 · FAIL 0 ===
+DONE
+
+# 다시 — 혼자 돌림(부하 · /tmp 공유로 빨강이던 셋 + 제 하네스)
+test-move-soa.js rc=0 === 결과: 287 PASS / 0 FAIL ===  (typeof 문 뒤)
+test-t1414-ocr-tmpdir.js rc=0 14s === 13건 중 PASS 13 · FAIL 0 ===
+test-t1461-beast-unseen.js rc=0 202s === 23건 중 PASS 23 · FAIL 0 ===
+test-econ-fast.js rc=0 1116s === 19 통과 / 0 실패 ===
+DONE
