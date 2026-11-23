@@ -1,0 +1,73 @@
+{
+  "run": 45118251210,
+  "url": "https://github.com/simjaemin1/Mini/actions/runs/45118251210",
+  "source": "59d760f8",
+  "allJobsGreen": true,
+  "jobs": [
+    {
+      "id": 137506028565,
+      "name": "바뀐 자리 (문서만이면 아래 잡 건너뜀)",
+      "conclusion": "success"
+    },
+    {
+      "id": 137506264784,
+      "name": "러너 자가 검사 · 게이트 셋 · 하네스 규약",
+      "conclusion": "success"
+    },
+    {
+      "id": 137506264813,
+      "name": "긴 판 (만진 것만 · 차례로)",
+      "conclusion": "success"
+    },
+    {
+      "id": 137506264834,
+      "name": "서버 하네스 2/2 (차례로 · 반드시 초록)",
+      "conclusion": "success"
+    },
+    {
+      "id": 137506264839,
+      "name": "서버 하네스 1/2 (차례로 · 반드시 초록)",
+      "conclusion": "success"
+    },
+    {
+      "id": 137506264848,
+      "name": "지켜보는 하나 (배지 안 깸)",
+      "conclusion": "success"
+    },
+    {
+      "id": 137506264885,
+      "name": "단위 회귀 5/5 (반드시 초록)",
+      "conclusion": "success"
+    },
+    {
+      "id": 137506264917,
+      "name": "단위 회귀 3/5 (반드시 초록)",
+      "conclusion": "success"
+    },
+    {
+      "id": 137506264929,
+      "name": "단위 회귀 2/5 (반드시 초록)",
+      "conclusion": "success"
+    },
+    {
+      "id": 137506264932,
+      "name": "옛 코드 빨강 (새 하네스는 옛 제품 위에서 빨강)",
+      "conclusion": "success"
+    },
+    {
+      "id": 137506264971,
+      "name": "단위 회귀 1/5 (반드시 초록)",
+      "conclusion": "success"
+    },
+    {
+      "id": 137506264979,
+      "name": "단위 회귀 4/5 (반드시 초록)",
+      "conclusion": "success"
+    },
+    {
+      "id": 137508572363,
+      "name": "CI 문 (필수 체크 하나)",
+      "conclusion": "success"
+    }
+  ]
+}

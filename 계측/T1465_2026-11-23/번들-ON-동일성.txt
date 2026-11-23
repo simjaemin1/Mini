@@ -1,0 +1,2 @@
+[econ-sim-v2] specialty.js 통합: 276종 → 총 296 TRADABLE
+PASS T1465 bundle ON: 20 days, 3 mapped villages, shared finite cells

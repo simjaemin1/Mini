@@ -1,0 +1,5 @@
+{
+  "sameHostBaseline": "For GitHub run45116645414 the baseline-off product is explicitly checked out at34b1978a97b232323da53e177451ba30377049c6 by scripts/t1465-remote-matrix.sh.",
+  "metadataClarification": "Initial remote-source.json commit field was captured from parent runner checkout988ee4d2 even for baseline sub-worktree. Treat it as observerRunnerCommit; baselineProduct in each parity.json and the executed script specify the actual pre-implementation product. Later script fixes the metadata by reading git -C sim_root. Original artifact metadata retained unchanged.",
+  "acceptedConditions": "Only completed800day stock records with done marker and separately recomputed same-host world/probe byte equality are imported. No failed initial cross-environment OFF condition is accepted."
+}

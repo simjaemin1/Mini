@@ -1,0 +1,25 @@
+{
+ "v": 1,
+ "card": "T1420",
+ "sig": "abe72fba4617e973",
+ "day": 1900,
+ "knobs": {
+  "ENABLE_VILLAGES": "0",
+  "T1385_BRONZE_NOCAP": "1",
+  "T1398_BRONZE_BAND": "1",
+  "T1465_OBS": "/workspace/Mini-T1465/계측/T1465_2026-11-23/eq/bundle-1020/make-stock.json"
+ },
+ "fns": [
+  "priceFn",
+  "netExportFn",
+  "forageTakeFn"
+ ],
+ "node": "v22.23.4",
+ "zone": "hanbando",
+ "seed": 1020,
+ "made": "t17-metrics",
+ "loadedFrom": null,
+ "bytes": 718824,
+ "raw": 7993407,
+ "sha": "b27b708b820033f2"
+}

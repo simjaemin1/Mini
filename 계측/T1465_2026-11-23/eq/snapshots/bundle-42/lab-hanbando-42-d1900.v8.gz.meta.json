@@ -1,0 +1,26 @@
+{
+ "v": 1,
+ "card": "T1420",
+ "sig": "d0622ef2c5198c31",
+ "day": 1900,
+ "knobs": {
+  "ENABLE_RUNNER_TRACING": "true",
+  "ENABLE_VILLAGES": "0",
+  "T1385_BRONZE_NOCAP": "1",
+  "T1398_BRONZE_BAND": "1",
+  "T1465_OBS": "/home/runner/work/Mini/Mini/계측/T1465_2026-11-23/eq/bundle-42/make-stock.json"
+ },
+ "fns": [
+  "priceFn",
+  "netExportFn",
+  "forageTakeFn"
+ ],
+ "node": "v22.23.4",
+ "zone": "hanbando",
+ "seed": 42,
+ "made": "t17-metrics",
+ "loadedFrom": null,
+ "bytes": 709320,
+ "raw": 7892818,
+ "sha": "f42c1bd17053187a"
+}

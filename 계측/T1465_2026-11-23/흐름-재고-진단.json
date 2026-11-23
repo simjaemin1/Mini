@@ -1,0 +1,1552 @@
+{
+  "units": "reference raw chunk kg (CHUNK_KG), actual produced ore item kg for flow; skill-dependent chunk mass means reserve/flow is a reference-scale gross estimate, not a depletion forecast",
+  "refill": "empty-cell instantaneous upper bound maintained by extraction; not an idle one-year refill; aggregate flow below this bound does not guarantee grade-first local cells stay full",
+  "attribution": "Old econ did not select physical cells. Per-vein measured extraction is not identifiable; per-village actual flows and per-vein labour rights are provided separately, without inventing an allocation.",
+  "swords": "conditional conversion using each actual run refined-tin kg / bronze-sword count and canonical SMELT_YIELD, not a new fixed recipe",
+  "old800DayTinCopper": [
+    {
+      "arm": "off",
+      "seed": 1020,
+      "source": "계측/T1427_2026-11-22/runs/new-lab-off-1020/t1407.json.gz",
+      "observedDays": 799,
+      "perVillageAnnualRawKg": {
+        "광산1": {
+          "tin": 0,
+          "copper": 0
+        },
+        "광산2": {
+          "tin": 0,
+          "copper": 0
+        },
+        "광산3": {
+          "tin": 0,
+          "copper": 0
+        },
+        "광산4": {
+          "tin": 0,
+          "copper": 59.3339705882353
+        },
+        "어촌1": {
+          "tin": 0,
+          "copper": 127.83999374217778
+        },
+        "광산5": {
+          "tin": 1.2788704630788488,
+          "copper": 342.10024718398034
+        },
+        "광산6": {
+          "tin": 0,
+          "copper": 235.96907384230292
+        },
+        "광산7": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌2": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업1": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업2": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업3": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌1": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업4": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업5": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌3": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업6": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌2": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌3": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌4": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌4": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌5": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌5": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌6": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌7": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌8": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌9": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌10": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌11": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌12": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌13": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌14": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌15": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌6": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌16": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌7": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌8": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌9": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌10": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌11": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌12": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌13": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌14": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌15": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌16": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌17": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌18": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌19": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌20": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌21": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌22": {
+          "tin": 0,
+          "copper": 0
+        }
+      },
+      "worldTinRawKgYear": 1.2788704630788488,
+      "npcTinReserveReferenceKg": 9769027.526498975,
+      "npcTinRefillUpperKgYear": 71313.90094344602,
+      "flowOverRefillUpper": 0.000017932975845663387,
+      "grossReserveYearsIgnoringRefill": 7638793.613999251,
+      "observedRefinedTinKgPerBronzeSword": 0.45319534041861953,
+      "sustainableSwordsIfObservedRecipeAndLabourHold": 31156.879004447474
+    },
+    {
+      "arm": "bundle",
+      "seed": 1020,
+      "source": "계측/T1427_2026-11-22/runs/new-lab-bundle-1020/t1407.json.gz",
+      "observedDays": 799,
+      "perVillageAnnualRawKg": {
+        "광산1": {
+          "tin": 0,
+          "copper": 0
+        },
+        "광산2": {
+          "tin": 0,
+          "copper": 0
+        },
+        "광산3": {
+          "tin": 0,
+          "copper": 0
+        },
+        "광산4": {
+          "tin": 0,
+          "copper": 1661.6442271589476
+        },
+        "어촌1": {
+          "tin": 0,
+          "copper": 7255.540807259078
+        },
+        "광산5": {
+          "tin": 2015.3534386733415,
+          "copper": 1008.0557665832295
+        },
+        "광산6": {
+          "tin": 0,
+          "copper": 1692.0385857321646
+        },
+        "광산7": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌2": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업1": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업2": {
+          "tin": 305.9657040050063,
+          "copper": 2530.13568836045
+        },
+        "임업3": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌1": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업4": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업5": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌3": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업6": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌2": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌3": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌4": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌4": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌5": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌5": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌6": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌7": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌8": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌9": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌10": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌11": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌12": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌13": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌14": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌15": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌6": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌16": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌7": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌8": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌9": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌10": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌11": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌12": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌13": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌14": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌15": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌16": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌17": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌18": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌19": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌20": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌21": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌22": {
+          "tin": 0,
+          "copper": 0
+        }
+      },
+      "worldTinRawKgYear": 2321.3191426783474,
+      "npcTinReserveReferenceKg": 9769027.526498975,
+      "npcTinRefillUpperKgYear": 71313.90094344602,
+      "flowOverRefillUpper": 0.032550724500672326,
+      "grossReserveYearsIgnoringRefill": 4208.394850536334,
+      "observedRefinedTinKgPerBronzeSword": 0.4550136889822249,
+      "sustainableSwordsIfObservedRecipeAndLabourHold": 31032.368319261524
+    },
+    {
+      "arm": "off",
+      "seed": 7,
+      "source": "계측/T1427_2026-11-22/runs/new-lab-off-7/t1407.json.gz",
+      "observedDays": 799,
+      "perVillageAnnualRawKg": {
+        "광산1": {
+          "tin": 0,
+          "copper": 0
+        },
+        "광산2": {
+          "tin": 0,
+          "copper": 0
+        },
+        "광산3": {
+          "tin": 0,
+          "copper": 0
+        },
+        "광산4": {
+          "tin": 0,
+          "copper": 72.89241864831043
+        },
+        "어촌1": {
+          "tin": 0,
+          "copper": 95.83054443053814
+        },
+        "광산5": {
+          "tin": 672.0931382978728,
+          "copper": 749.666602002503
+        },
+        "광산6": {
+          "tin": 0,
+          "copper": 223.47981539424282
+        },
+        "광산7": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌2": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업1": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업2": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업3": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌1": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업4": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업5": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌3": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업6": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌2": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌3": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌4": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌4": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌5": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌5": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌6": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌7": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌8": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌9": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌10": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌11": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌12": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌13": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌14": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌15": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌6": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌16": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌7": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌8": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌9": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌10": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌11": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌12": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌13": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌14": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌15": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌16": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌17": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌18": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌19": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌20": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌21": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌22": {
+          "tin": 0,
+          "copper": 0
+        }
+      },
+      "worldTinRawKgYear": 672.0931382978732,
+      "npcTinReserveReferenceKg": 9769027.526498975,
+      "npcTinRefillUpperKgYear": 71313.90094344602,
+      "flowOverRefillUpper": 0.009424433797708843,
+      "grossReserveYearsIgnoringRefill": 14535.228779808373,
+      "observedRefinedTinKgPerBronzeSword": 0.4719075682577224,
+      "sustainableSwordsIfObservedRecipeAndLabourHold": 29921.43660448965
+    },
+    {
+      "arm": "bundle",
+      "seed": 7,
+      "source": "계측/T1427_2026-11-22/runs/new-lab-bundle-7/t1407.json.gz",
+      "observedDays": 799,
+      "perVillageAnnualRawKg": {
+        "광산1": {
+          "tin": 0,
+          "copper": 0
+        },
+        "광산2": {
+          "tin": 0,
+          "copper": 0
+        },
+        "광산3": {
+          "tin": 0,
+          "copper": 0
+        },
+        "광산4": {
+          "tin": 0,
+          "copper": 2743.205694618272
+        },
+        "어촌1": {
+          "tin": 0,
+          "copper": 7055.462105757197
+        },
+        "광산5": {
+          "tin": 127.17349186483104,
+          "copper": 1241.5685137672092
+        },
+        "광산6": {
+          "tin": 0,
+          "copper": 4924.987712765955
+        },
+        "광산7": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌2": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업1": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업2": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업3": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌1": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업4": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업5": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌3": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업6": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌2": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌3": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌4": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌4": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌5": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌5": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌6": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌7": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌8": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌9": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌10": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌11": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌12": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌13": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌14": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌15": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌6": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌16": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌7": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌8": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌9": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌10": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌11": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌12": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌13": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌14": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌15": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌16": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌17": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌18": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌19": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌20": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌21": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌22": {
+          "tin": 0,
+          "copper": 0
+        }
+      },
+      "worldTinRawKgYear": 127.17349186483094,
+      "npcTinReserveReferenceKg": 9769027.526498975,
+      "npcTinRefillUpperKgYear": 71313.90094344602,
+      "flowOverRefillUpper": 0.001783291759143609,
+      "grossReserveYearsIgnoringRefill": 76816.53922723295,
+      "observedRefinedTinKgPerBronzeSword": 0.37523479690068096,
+      "sustainableSwordsIfObservedRecipeAndLabourHold": 37630.17850004914
+    },
+    {
+      "arm": "off",
+      "seed": 42,
+      "source": "계측/T1427_2026-11-22/runs/new-lab-off-42/t1407.json.gz",
+      "observedDays": 799,
+      "perVillageAnnualRawKg": {
+        "광산1": {
+          "tin": 0,
+          "copper": 0
+        },
+        "광산2": {
+          "tin": 0,
+          "copper": 0
+        },
+        "광산3": {
+          "tin": 0,
+          "copper": 0
+        },
+        "광산4": {
+          "tin": 0,
+          "copper": 264.1439674593242
+        },
+        "어촌1": {
+          "tin": 0,
+          "copper": 152.644233416771
+        },
+        "광산5": {
+          "tin": 1290.634746558197,
+          "copper": 940.1648529411771
+        },
+        "광산6": {
+          "tin": 0,
+          "copper": 107.7526595744681
+        },
+        "광산7": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌2": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업1": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업2": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업3": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌1": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업4": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업5": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌3": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업6": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌2": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌3": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌4": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌4": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌5": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌5": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌6": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌7": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌8": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌9": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌10": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌11": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌12": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌13": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌14": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌15": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌6": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌16": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌7": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌8": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌9": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌10": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌11": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌12": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌13": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌14": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌15": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌16": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌17": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌18": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌19": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌20": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌21": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌22": {
+          "tin": 0,
+          "copper": 0
+        }
+      },
+      "worldTinRawKgYear": 1290.6347465581969,
+      "npcTinReserveReferenceKg": 9769027.526498975,
+      "npcTinRefillUpperKgYear": 71313.90094344602,
+      "flowOverRefillUpper": 0.018097940646686926,
+      "grossReserveYearsIgnoringRefill": 7569.165135643954,
+      "observedRefinedTinKgPerBronzeSword": 0.50432224254745,
+      "sustainableSwordsIfObservedRecipeAndLabourHold": 27998.27411037457
+    },
+    {
+      "arm": "bundle",
+      "seed": 42,
+      "source": "계측/T1427_2026-11-22/runs/new-lab-bundle-42/t1407.json.gz",
+      "observedDays": 799,
+      "perVillageAnnualRawKg": {
+        "광산1": {
+          "tin": 0,
+          "copper": 0
+        },
+        "광산2": {
+          "tin": 0,
+          "copper": 0
+        },
+        "광산3": {
+          "tin": 0,
+          "copper": 0
+        },
+        "광산4": {
+          "tin": 0,
+          "copper": 3407.3814392991244
+        },
+        "어촌1": {
+          "tin": 0,
+          "copper": 4510.495037546932
+        },
+        "광산5": {
+          "tin": 3421.9343867334164,
+          "copper": 1886.872068210262
+        },
+        "광산6": {
+          "tin": 0,
+          "copper": 1044.674083229037
+        },
+        "광산7": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌2": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업1": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업2": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업3": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌1": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업4": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업5": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌3": {
+          "tin": 0,
+          "copper": 0
+        },
+        "임업6": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌2": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌3": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌4": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌4": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌5": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌5": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌6": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌7": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌8": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌9": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌10": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌11": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌12": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌13": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌14": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌15": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌6": {
+          "tin": 0,
+          "copper": 0
+        },
+        "어촌16": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌7": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌8": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌9": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌10": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌11": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌12": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌13": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌14": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌15": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌16": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌17": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌18": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌19": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌20": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌21": {
+          "tin": 0,
+          "copper": 0
+        },
+        "농촌22": {
+          "tin": 0,
+          "copper": 0
+        }
+      },
+      "worldTinRawKgYear": 3421.9343867334187,
+      "npcTinReserveReferenceKg": 9769027.526498975,
+      "npcTinRefillUpperKgYear": 71313.90094344602,
+      "flowOverRefillUpper": 0.04798411447786472,
+      "grossReserveYearsIgnoringRefill": 2854.8260785983384,
+      "observedRefinedTinKgPerBronzeSword": 0.44386029346904465,
+      "sustainableSwordsIfObservedRecipeAndLabourHold": 31812.15484819452
+    }
+  ],
+  "observedAllFourMinerals": [
+    {
+      "arm": "off",
+      "seed": 1020,
+      "source": "계측/T1465_2026-11-23/runs-stock-off/lab-off-1020/stock.json",
+      "spanDays": 800,
+      "swords": {
+        "source": "계측/T1465_2026-11-23/runs-stock-off/lab-off-1020/t1407.json.gz",
+        "observedRefinedTinKgPerBronzeSword": 0.45319534041861953,
+        "npcSustainableSwordsIfObservedRecipeAndLabourHold": 31156.879004447474,
+        "worldSustainableSwordsIfObservedRecipeAndLabourHold": 54296.139894765955
+      },
+      "minerals": {
+        "tin": {
+          "annualRawKg": 1.2772475981448792,
+          "npcReferenceStockKg": 9769027.526498975,
+          "npcRefillUpperKgYear": 71313.90094344602,
+          "grossReserveYearsIgnoringRefill": 7648499.430093167
+        },
+        "copper": {
+          "annualRawKg": 764.9191510899342,
+          "npcReferenceStockKg": 14357225.226150932,
+          "npcRefillUpperKgYear": 104807.74415089721,
+          "grossReserveYearsIgnoringRefill": 18769.598336887375
+        },
+        "gold": {
+          "annualRawKg": 782.349358129979,
+          "npcReferenceStockKg": 6448023.623675052,
+          "npcRefillUpperKgYear": 47070.57245282691,
+          "grossReserveYearsIgnoringRefill": 8241.872453359618
+        },
+        "iron": {
+          "annualRawKg": 0,
+          "npcReferenceStockKg": 274677.5686358372,
+          "npcRefillUpperKgYear": 2005.1462510416118,
+          "grossReserveYearsIgnoringRefill": null
+        }
+      }
+    },
+    {
+      "arm": "off",
+      "seed": 7,
+      "source": "계측/T1465_2026-11-23/runs-stock-off/lab-off-7/stock.json",
+      "spanDays": 800,
+      "swords": {
+        "source": "계측/T1465_2026-11-23/runs-stock-off/lab-off-7/t1407.json.gz",
+        "observedRefinedTinKgPerBronzeSword": 0.4719075682577224,
+        "npcSustainableSwordsIfObservedRecipeAndLabourHold": 29921.43660448965,
+        "worldSustainableSwordsIfObservedRecipeAndLabourHold": 52143.17221881676
+      },
+      "minerals": {
+        "tin": {
+          "annualRawKg": 673.7458842682074,
+          "npcReferenceStockKg": 9769027.526498975,
+          "npcRefillUpperKgYear": 71313.90094344602,
+          "grossReserveYearsIgnoringRefill": 14499.572842822861
+        },
+        "copper": {
+          "annualRawKg": 1141.5506577285194,
+          "npcReferenceStockKg": 14357225.226150932,
+          "npcRefillUpperKgYear": 104807.74415089721,
+          "grossReserveYearsIgnoringRefill": 12576.94972093418
+        },
+        "gold": {
+          "annualRawKg": 866.351813420207,
+          "npcReferenceStockKg": 6448023.623675052,
+          "npcRefillUpperKgYear": 47070.57245282691,
+          "grossReserveYearsIgnoringRefill": 7442.731144313499
+        },
+        "iron": {
+          "annualRawKg": 0,
+          "npcReferenceStockKg": 274677.5686358372,
+          "npcRefillUpperKgYear": 2005.1462510416118,
+          "grossReserveYearsIgnoringRefill": null
+        }
+      }
+    },
+    {
+      "arm": "off",
+      "seed": 42,
+      "source": "계측/T1465_2026-11-23/runs-stock-off/lab-off-42/stock.json",
+      "spanDays": 800,
+      "swords": {
+        "source": "계측/T1465_2026-11-23/runs-stock-off/lab-off-42/t1407.json.gz",
+        "observedRefinedTinKgPerBronzeSword": 0.50432224254745,
+        "npcSustainableSwordsIfObservedRecipeAndLabourHold": 27998.27411037457,
+        "worldSustainableSwordsIfObservedRecipeAndLabourHold": 48791.73577340341
+      },
+      "minerals": {
+        "tin": {
+          "annualRawKg": 1289.7164919258344,
+          "npcReferenceStockKg": 9769027.526498975,
+          "npcRefillUpperKgYear": 71313.90094344602,
+          "grossReserveYearsIgnoringRefill": 7574.554243244295
+        },
+        "copper": {
+          "annualRawKg": 1465.8913203432521,
+          "npcReferenceStockKg": 14357225.226150932,
+          "npcRefillUpperKgYear": 104807.74415089721,
+          "grossReserveYearsIgnoringRefill": 9794.194853946645
+        },
+        "gold": {
+          "annualRawKg": 1548.4830264299608,
+          "npcReferenceStockKg": 6448023.623675052,
+          "npcRefillUpperKgYear": 47070.57245282691,
+          "grossReserveYearsIgnoringRefill": 4164.0906058499195
+        },
+        "iron": {
+          "annualRawKg": 0,
+          "npcReferenceStockKg": 274677.5686358372,
+          "npcRefillUpperKgYear": 2005.1462510416118,
+          "grossReserveYearsIgnoringRefill": null
+        }
+      }
+    },
+    {
+      "arm": "bundle",
+      "seed": 1020,
+      "source": "계측/T1465_2026-11-23/runs-stock-off/lab-bundle-1020/stock.json",
+      "spanDays": 800,
+      "swords": {
+        "source": "계측/T1465_2026-11-23/runs-stock-off/lab-bundle-1020/t1407.json.gz",
+        "observedRefinedTinKgPerBronzeSword": 0.42642159918771166,
+        "npcSustainableSwordsIfObservedRecipeAndLabourHold": 33113.12657168333,
+        "worldSustainableSwordsIfObservedRecipeAndLabourHold": 57705.23268497359
+      },
+      "minerals": {
+        "tin": {
+          "annualRawKg": 3404.470089733963,
+          "npcReferenceStockKg": 9769027.526498975,
+          "npcRefillUpperKgYear": 71313.90094344602,
+          "grossReserveYearsIgnoringRefill": 2869.47080426909
+        },
+        "copper": {
+          "annualRawKg": 15904.954755245371,
+          "npcReferenceStockKg": 14357225.226150932,
+          "npcRefillUpperKgYear": 104807.74415089721,
+          "grossReserveYearsIgnoringRefill": 902.6888442682299
+        },
+        "gold": {
+          "annualRawKg": 1799.904416817356,
+          "npcReferenceStockKg": 6448023.623675052,
+          "npcRefillUpperKgYear": 47070.57245282691,
+          "grossReserveYearsIgnoringRefill": 3582.425579618632
+        },
+        "iron": {
+          "annualRawKg": 0,
+          "npcReferenceStockKg": 274677.5686358372,
+          "npcRefillUpperKgYear": 2005.1462510416118,
+          "grossReserveYearsIgnoringRefill": null
+        }
+      }
+    },
+    {
+      "arm": "bundle",
+      "seed": 7,
+      "source": "계측/T1465_2026-11-23/runs-stock-off/lab-bundle-7/stock.json",
+      "spanDays": 800,
+      "swords": {
+        "source": "계측/T1465_2026-11-23/runs-stock-off/lab-bundle-7/t1407.json.gz",
+        "observedRefinedTinKgPerBronzeSword": 0.4267562785047687,
+        "npcSustainableSwordsIfObservedRecipeAndLabourHold": 33087.15793538003,
+        "worldSustainableSwordsIfObservedRecipeAndLabourHold": 57659.977936916235
+      },
+      "minerals": {
+        "tin": {
+          "annualRawKg": 5224.239545894016,
+          "npcReferenceStockKg": 9769027.526498975,
+          "npcRefillUpperKgYear": 71313.90094344602,
+          "grossReserveYearsIgnoringRefill": 1869.9424941524605
+        },
+        "copper": {
+          "annualRawKg": 17773.450691296624,
+          "npcReferenceStockKg": 14357225.226150932,
+          "npcRefillUpperKgYear": 104807.74415089721,
+          "grossReserveYearsIgnoringRefill": 807.7905340678407
+        },
+        "gold": {
+          "annualRawKg": 961.3870435583896,
+          "npcReferenceStockKg": 6448023.623675052,
+          "npcRefillUpperKgYear": 47070.57245282691,
+          "grossReserveYearsIgnoringRefill": 6707.00075154844
+        },
+        "iron": {
+          "annualRawKg": 0,
+          "npcReferenceStockKg": 274677.5686358372,
+          "npcRefillUpperKgYear": 2005.1462510416118,
+          "grossReserveYearsIgnoringRefill": null
+        }
+      }
+    },
+    {
+      "arm": "bundle",
+      "seed": 42,
+      "source": "계측/T1465_2026-11-23/runs-stock-off/lab-bundle-42/stock.json",
+      "spanDays": 800,
+      "swords": {
+        "source": "계측/T1465_2026-11-23/runs-stock-off/lab-bundle-42/t1407.json.gz",
+        "observedRefinedTinKgPerBronzeSword": 0.4356560451964565,
+        "npcSustainableSwordsIfObservedRecipeAndLabourHold": 32411.239422684732,
+        "worldSustainableSwordsIfObservedRecipeAndLabourHold": 56482.075422433714
+      },
+      "minerals": {
+        "tin": {
+          "annualRawKg": 3032.5064806160462,
+          "npcReferenceStockKg": 9769027.526498975,
+          "npcRefillUpperKgYear": 71313.90094344602,
+          "grossReserveYearsIgnoringRefill": 3221.4366527963434
+        },
+        "copper": {
+          "annualRawKg": 10837.330487378726,
+          "npcReferenceStockKg": 14357225.226150932,
+          "npcRefillUpperKgYear": 104807.74415089721,
+          "grossReserveYearsIgnoringRefill": 1324.7935220644524
+        },
+        "gold": {
+          "annualRawKg": 720.2156798900625,
+          "npcReferenceStockKg": 6448023.623675052,
+          "npcRefillUpperKgYear": 47070.57245282691,
+          "grossReserveYearsIgnoringRefill": 8952.90647470951
+        },
+        "iron": {
+          "annualRawKg": 0,
+          "npcReferenceStockKg": 274677.5686358372,
+          "npcRefillUpperKgYear": 2005.1462510416118,
+          "grossReserveYearsIgnoringRefill": null
+        }
+      }
+    }
+  ]
+}

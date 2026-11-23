@@ -1,0 +1,6 @@
+[inline] 마을실험실.html: 기존 엔진 블록 교체
+[inline] 완료: /workspace/Mini-T1465/lab/마을실험실.html (2553675 bytes)
+[inline] 전쟁실험실.html: 기존 엔진 블록 교체
+[inline] 완료: /workspace/Mini-T1465/lab/전쟁실험실.html (2966656 bytes)
+[inline] 마을실험실.html: 최신 ✅
+[inline] 전쟁실험실.html: 최신 ✅

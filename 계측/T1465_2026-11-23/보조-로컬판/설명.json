@@ -1,0 +1,5 @@
+{
+  "primaryComparison": "Final report uses paired same-runner old OFF/new OFF/ON matrix from GitHub run45116645414. These earlier local ON worlds and no-decrement diagnostic are supplementary independent trajectories, never mixed with remote OFF.",
+  "curve": "24-point final response; first three default-world runs predate lower-tail expansion but conservative per-cell output bound proves no access to changed below10% bins.",
+  "notTests": "No-decrement world is a deliberately modified diagnostic; not a normal passing candidate."
+}

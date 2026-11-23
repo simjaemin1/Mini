@@ -1,0 +1,80 @@
+[
+  {
+    "run": "lab-bundle-1020",
+    "days": 800,
+    "maximumPossibleChunksExtractedFromAnyOneCell": 2630.2476101838715,
+    "worstCell": {
+      "key": "223,3078",
+      "owners": [
+        "광산6"
+      ]
+    },
+    "neverBelowTenPercentProven": false,
+    "proof": "Sum ALL actual raw outputs of EVERY village with access to a cell, divided by minimum canonical chunk mass; allocate all of it to that cell and ignore refill. If total < 90% of ORE_K, no cell could have entered the changed below10% empirical bins at any prior day."
+  },
+  {
+    "run": "lab-bundle-42",
+    "days": 800,
+    "maximumPossibleChunksExtractedFromAnyOneCell": 2610.3356840649894,
+    "worstCell": {
+      "key": "1295,2357",
+      "owners": [
+        "어촌1"
+      ]
+    },
+    "neverBelowTenPercentProven": false,
+    "proof": "Sum ALL actual raw outputs of EVERY village with access to a cell, divided by minimum canonical chunk mass; allocate all of it to that cell and ignore refill. If total < 90% of ORE_K, no cell could have entered the changed below10% empirical bins at any prior day."
+  },
+  {
+    "run": "lab-bundle-7",
+    "days": 800,
+    "maximumPossibleChunksExtractedFromAnyOneCell": 3067.585472739419,
+    "worstCell": {
+      "key": "1295,2357",
+      "owners": [
+        "어촌1"
+      ]
+    },
+    "neverBelowTenPercentProven": false,
+    "proof": "Sum ALL actual raw outputs of EVERY village with access to a cell, divided by minimum canonical chunk mass; allocate all of it to that cell and ignore refill. If total < 90% of ORE_K, no cell could have entered the changed below10% empirical bins at any prior day."
+  },
+  {
+    "run": "lab-off-1020",
+    "days": 800,
+    "maximumPossibleChunksExtractedFromAnyOneCell": 447.5699824986067,
+    "worstCell": {
+      "key": "1980,336",
+      "owners": [
+        "광산2"
+      ]
+    },
+    "neverBelowTenPercentProven": true,
+    "proof": "Sum ALL actual raw outputs of EVERY village with access to a cell, divided by minimum canonical chunk mass; allocate all of it to that cell and ignore refill. If total < 90% of ORE_K, no cell could have entered the changed below10% empirical bins at any prior day."
+  },
+  {
+    "run": "lab-off-42",
+    "days": 800,
+    "maximumPossibleChunksExtractedFromAnyOneCell": 696.6716339360636,
+    "worstCell": {
+      "key": "1295,2357",
+      "owners": [
+        "어촌1"
+      ]
+    },
+    "neverBelowTenPercentProven": true,
+    "proof": "Sum ALL actual raw outputs of EVERY village with access to a cell, divided by minimum canonical chunk mass; allocate all of it to that cell and ignore refill. If total < 90% of ORE_K, no cell could have entered the changed below10% empirical bins at any prior day."
+  },
+  {
+    "run": "lab-off-7",
+    "days": 800,
+    "maximumPossibleChunksExtractedFromAnyOneCell": 526.6736691816923,
+    "worstCell": {
+      "key": "223,3078",
+      "owners": [
+        "광산6"
+      ]
+    },
+    "neverBelowTenPercentProven": true,
+    "proof": "Sum ALL actual raw outputs of EVERY village with access to a cell, divided by minimum canonical chunk mass; allocate all of it to that cell and ignore refill. If total < 90% of ORE_K, no cell could have entered the changed below10% empirical bins at any prior day."
+  }
+]

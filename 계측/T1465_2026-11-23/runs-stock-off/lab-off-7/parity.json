@@ -1,0 +1,7 @@
+{
+  "source": "baseline-off/lab-off-7",
+  "baselineProduct": "34b1978a97b232323da53e177451ba30377049c6",
+  "sameHost": true,
+  "worldByteEqual": true,
+  "probeByteEqual": true
+}

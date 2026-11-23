@@ -1,0 +1,321 @@
+{
+ "card": "T1420",
+ "seed": 1020,
+ "from": "/workspace/Mini-T1465/계측/T1465_2026-11-23/eq/snapshots/off-1020/lab-hanbando-1020-d1900.v8.gz",
+ "startDay": 1900,
+ "days": 730,
+ "server": false,
+ "sig": "abe72fba4617e973",
+ "src": "/workspace/Mini-T1465/계측/T1465_2026-11-23/eq/snapshots/off-1020/lab-hanbando-1020-d1900.v8.gz",
+ "srcSha": {
+  "before": "aae73a93a98aefc1",
+  "after": "aae73a93a98aefc1",
+  "same": true
+ },
+ "arms": [
+  {
+   "arm": "off",
+   "env": {},
+   "code": 0,
+   "sec": 958,
+   "days": 730,
+   "blocks": [
+    {
+     "d": 1950,
+     "pop": 8473,
+     "fdDead": 0,
+     "empty": 1,
+     "left": 0,
+     "foodDays": 70.58,
+     "price": {
+      "food": 0.377,
+      "wood": 1.005,
+      "stone": 0.41,
+      "tool": 1.521
+     },
+     "jobs": "farmer 23% · forager 22% · hunter 16%",
+     "cpuPerDay": 0.8
+    },
+    {
+     "d": 2000,
+     "pop": 8495,
+     "fdDead": 0,
+     "empty": 1,
+     "left": 0,
+     "foodDays": 69.84,
+     "price": {
+      "food": 0.374,
+      "wood": 0.88,
+      "stone": 0.39,
+      "tool": 1.536
+     },
+     "jobs": "farmer 23% · forager 23% · hunter 16%",
+     "cpuPerDay": 0.64
+    },
+    {
+     "d": 2050,
+     "pop": 8567,
+     "fdDead": 0,
+     "empty": 1,
+     "left": 0,
+     "foodDays": 80.8,
+     "price": {
+      "food": 0.335,
+      "wood": 0.8,
+      "stone": 0.394,
+      "tool": 1.529
+     },
+     "jobs": "farmer 23% · forager 22% · hunter 17%",
+     "cpuPerDay": 0.64
+    },
+    {
+     "d": 2100,
+     "pop": 8636,
+     "fdDead": 0,
+     "empty": 1,
+     "left": 0,
+     "foodDays": 88.31,
+     "price": {
+      "food": 0.281,
+      "wood": 1.004,
+      "stone": 0.4,
+      "tool": 1.524
+     },
+     "jobs": "farmer 23% · forager 22% · hunter 17%",
+     "cpuPerDay": 0.75
+    },
+    {
+     "d": 2150,
+     "pop": 8580,
+     "fdDead": 0,
+     "empty": 1,
+     "left": 0,
+     "foodDays": 63.68,
+     "price": {
+      "food": 0.417,
+      "wood": 1.243,
+      "stone": 0.396,
+      "tool": 1.523
+     },
+     "jobs": "farmer 23% · forager 22% · hunter 17%",
+     "cpuPerDay": 0.69
+    },
+    {
+     "d": 2200,
+     "pop": 8461,
+     "fdDead": 0,
+     "empty": 1,
+     "left": 0,
+     "foodDays": 66.18,
+     "price": {
+      "food": 0.429,
+      "wood": 2.311,
+      "stone": 0.419,
+      "tool": 1.513
+     },
+     "jobs": "farmer 22% · forager 22% · hunter 17%",
+     "cpuPerDay": 0.71
+    },
+    {
+     "d": 2250,
+     "pop": 8564,
+     "fdDead": 0,
+     "empty": 1,
+     "left": 0,
+     "foodDays": 75.62,
+     "price": {
+      "food": 0.354,
+      "wood": 1.019,
+      "stone": 0.395,
+      "tool": 1.513
+     },
+     "jobs": "forager 22% · farmer 22% · hunter 18%",
+     "cpuPerDay": 0.61
+    },
+    {
+     "d": 2300,
+     "pop": 8675,
+     "fdDead": 0,
+     "empty": 1,
+     "left": 0,
+     "foodDays": 76.54,
+     "price": {
+      "food": 0.332,
+      "wood": 1.054,
+      "stone": 0.408,
+      "tool": 1.498
+     },
+     "jobs": "forager 22% · farmer 22% · hunter 18%",
+     "cpuPerDay": 0.6
+    },
+    {
+     "d": 2350,
+     "pop": 8684,
+     "fdDead": 0,
+     "empty": 1,
+     "left": 0,
+     "foodDays": 71.24,
+     "price": {
+      "food": 0.448,
+      "wood": 0.992,
+      "stone": 0.353,
+      "tool": 1.489
+     },
+     "jobs": "forager 22% · farmer 21% · hunter 18%",
+     "cpuPerDay": 0.64
+    },
+    {
+     "d": 2400,
+     "pop": 8728,
+     "fdDead": 0,
+     "empty": 1,
+     "left": 0,
+     "foodDays": 77.08,
+     "price": {
+      "food": 0.334,
+      "wood": 0.801,
+      "stone": 0.378,
+      "tool": 1.489
+     },
+     "jobs": "forager 22% · farmer 21% · hunter 18%",
+     "cpuPerDay": 0.56
+    },
+    {
+     "d": 2450,
+     "pop": 8773,
+     "fdDead": 0,
+     "empty": 1,
+     "left": 0,
+     "foodDays": 82.13,
+     "price": {
+      "food": 0.314,
+      "wood": 0.788,
+      "stone": 0.381,
+      "tool": 1.474
+     },
+     "jobs": "forager 22% · farmer 21% · hunter 18%",
+     "cpuPerDay": 0.57
+    },
+    {
+     "d": 2500,
+     "pop": 8732,
+     "fdDead": 0,
+     "empty": 1,
+     "left": 0,
+     "foodDays": 74.16,
+     "price": {
+      "food": 0.342,
+      "wood": 1.135,
+      "stone": 0.424,
+      "tool": 1.475
+     },
+     "jobs": "forager 22% · farmer 21% · hunter 19%",
+     "cpuPerDay": 0.55
+    },
+    {
+     "d": 2550,
+     "pop": 8633,
+     "fdDead": 0,
+     "empty": 1,
+     "left": 0,
+     "foodDays": 59.98,
+     "price": {
+      "food": 0.445,
+      "wood": 2.109,
+      "stone": 0.4,
+      "tool": 1.478
+     },
+     "jobs": "forager 22% · farmer 21% · hunter 19%",
+     "cpuPerDay": 0.56
+    },
+    {
+     "d": 2600,
+     "pop": 8750,
+     "fdDead": 0,
+     "empty": 1,
+     "left": 0,
+     "foodDays": 65.5,
+     "price": {
+      "food": 0.413,
+      "wood": 0.969,
+      "stone": 0.364,
+      "tool": 1.48
+     },
+     "jobs": "forager 22% · farmer 21% · hunter 19%",
+     "cpuPerDay": 0.6
+    },
+    {
+     "d": 2630,
+     "pop": 8854,
+     "fdDead": 0,
+     "empty": 1,
+     "left": 0,
+     "foodDays": 66.23,
+     "price": {
+      "food": 0.404,
+      "wood": 0.88,
+      "stone": 0.379,
+      "tool": 1.473
+     },
+     "jobs": "forager 22% · farmer 21% · hunter 19%",
+     "cpuPerDay": 0.57
+    }
+   ],
+   "crit": {
+    "W": 365,
+    "n": 730,
+    "last": {
+     "d": 2630,
+     "c1": 0.021406941974187577,
+     "c2": 0,
+     "c3": 0.00504031274189054,
+     "c4": 0.006874846067299791,
+     "popMean": 8711.758904109589,
+     "popAmp": 0.028237696050559282,
+     "fdMean": 73.35202739726027,
+     "fdAmp": 0.3620895146654397
+    },
+    "enter": {
+     "c1≤0.01": null,
+     "c1≤0.02": null,
+     "c1≤0.05": "2630(끝 한 점뿐)",
+     "c2≤0": "2630(끝 한 점뿐)",
+     "c3≤0.02": "2630(끝 한 점뿐)",
+     "c3≤0.05": "2630(끝 한 점뿐)",
+     "c3≤0.1": "2630(끝 한 점뿐)",
+     "c4≤0.01": "2630(끝 한 점뿐)",
+     "c4≤0.02": "2630(끝 한 점뿐)",
+     "c4≤0.05": "2630(끝 한 점뿐)"
+    }
+   }
+  },
+  {
+   "arm": "stock",
+   "env": {
+    "T1465_ORE_STOCK": "1"
+   },
+   "code": 1,
+   "sec": 4.2,
+   "days": 0,
+   "blocks": [],
+   "crit": {
+    "W": 365,
+    "n": 0,
+    "last": null,
+    "enter": {
+     "c1≤0.01": "창 모자람",
+     "c1≤0.02": "창 모자람",
+     "c1≤0.05": "창 모자람",
+     "c2≤0": "창 모자람",
+     "c3≤0.02": "창 모자람",
+     "c3≤0.05": "창 모자람",
+     "c3≤0.1": "창 모자람",
+     "c4≤0.01": "창 모자람",
+     "c4≤0.02": "창 모자람",
+     "c4≤0.05": "창 모자람"
+    }
+   }
+  }
+ ],
+ "sec": 962.4
+}

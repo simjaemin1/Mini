@@ -9,6 +9,13 @@ const D=read(path.join(ROOT,'광맥-진단.json')),pending=[];
 const done=(f,why)=>{if(!fs.existsSync(f)){pending.push(why);return false;}return true;};
 const mean=a=>a.length?a.reduce((n,x)=>n+x,0)/a.length:null;
 const median=a=>{const s=a.filter(x=>x>0).sort((a,b)=>a-b);return s.length?s[Math.floor(s.length/2)]:null;};
+function composition(m,p){
+ if(!p)return;
+ const key=Object.keys(p.snaps).map(Number).sort((a,b)=>a-b).at(-1),rows=p.snaps[key]||[],c=p.vcols.indexOf('bronzeS');
+ m.legacyShadowHolderProxy={day:key,names:rows.filter(a=>a[c]>=1).map(a=>a[0]),warning:'Legacy observer callback stack can multiply shadow stock; do not use this proxy as native bundle stock or compare different preload stacks.'};
+ m.nativeCompositionTracking=p.knobs?.t1344===true;
+ if(!m.nativeCompositionTracking){m.bronzeHolders=null;m.holderMeaning='Native composition tracking is OFF, so actual final bronze ownership is unknown. Legacy shadow proxy is separately labelled with its observed day.';}
+}
 function metrics(r,baseStarved=0,at){
  const f=at||r.final,days=f.elapsedDays??f.day,startDay=f.startDay??1,production={stone:f.stoneMadeSinceStart??f.stoneMade,bronze:f.bronzeMadeSinceStart??f.bronzeMade};
  const perVillageAnnualRawKg=Object.fromEntries(Object.entries(f.perVillage).map(([name,v])=>[name,Object.fromEntries(Object.entries(v.minedKg).map(([id,kg])=>[id,kg*365/days]))]));
@@ -31,8 +38,9 @@ function loadRun(dir,name,days,baseStarved=0){
  else if(r.stockOn){const bounds=read(path.join(ROOT,'단기-전체광맥-고갈상한.json')),bound=bounds?.find(b=>b.run===path.basename(dir));assert(bound&&bound.unknown.length===0,name+' missing no-exhaustion proof');m.exhaustion={firstDepletedVeinDay:{},proof:'단기-전체광맥-고갈상한.json: conservative extraction bound for every vein; cell-level first date was not recorded'};}
  else m.exhaustion={firstDepletedVeinDay:{},definition:'Feature OFF has no finite abstract extraction book; remaining full values are counterfactual reference values.'};
  const t=read(path.join(dir,'t1407.json'));if(t){const cols=Object.fromEntries(t.lcols.map((c,i)=>[c,i])),trade={};for(const leg of t.legs){const id=leg[cols.res];if(!['tin','ore_tin'].includes(id))continue;const a=trade[id]||(trade[id]={legs:0,kg:0});a.legs++;a.kg+=leg[cols.amt]*W.kgOf(id);}m.legacyRecordedTinCaravan=trade;}
- const p=read(path.join(dir,'probe.json'));if(p){const key=Object.keys(p.snaps).map(Number).sort((a,b)=>a-b).at(-1),rows=p.snaps[key]||[],c=p.vcols.indexOf('bronzeS');m.legacyShadowHolderProxy={day:key,names:rows.filter(a=>a[c]>=1).map(a=>a[0]),warning:'Legacy observer callback stack can multiply shadow stock; do not use this proxy as native bundle stock or compare different preload stacks.'};}
- return {metrics:m,annual:r.annual.map(a=>metrics(r,baseStarved,a))};
+ const p=read(path.join(dir,'probe.json'));composition(m,p);
+ const annual=r.annual.map(a=>metrics(r,baseStarved,a));if(p&&p.knobs?.t1344!==true)for(const a of annual){a.bronzeHolders=null;a.nativeCompositionTracking=false;}
+ return {metrics:m,annual};
 }
 const matrix=[];
 for(const arm of ['off','bundle'])for(const seed of [1020,7,42]){
@@ -46,7 +54,7 @@ for(const arm of ['off','bundle'])for(const seed of [1020,7,42]){
  const snap=path.join(ROOT,'eq/snapshots',`${arm}-${seed}`,`lab-hanbando-${seed}-d1900.v8.gz`),body=v8.deserialize(z.gunzipSync(fs.readFileSync(snap))),baseStarved=body.world.villages.reduce((n,v)=>n+(v._fdDeadTot||0),0);
  const status=read(path.join(dir,'continuation',arm==='off'&&seed===1020?'paired-status.json':'eq-run.json'));
  if(status?.arms)assert(status.arms.length===2&&status.arms.every(a=>a.code===0&&a.days===730),'EQ child failed');else assert(status?.complete&&status.daysPerArm===730,'EQ retry failed');
- const arms={};for(const key of ['off','stock']){const r=read(path.join(dir,'continuation',key+'.obs.stock.json'));assert(r&&r.partial!==true&&r.final.day===2630&&r.final.elapsedDays===730,'EQ short result');arms[key]={metrics:metrics(r,baseStarved),annual:r.annual.map(a=>metrics(r,baseStarved,a))};if(key==='stock'){const watch=read(path.join(dir,'continuation',key+'.obs.stock.json.empty-events.json'));assert(watch?.scannedDays===730,'EQ missing daily witness');arms[key].metrics.exhaustion=watch;}}
+ const arms={};for(const key of ['off','stock']){const r=read(path.join(dir,'continuation',key+'.obs.stock.json'));assert(r&&r.partial!==true&&r.final.day===2630&&r.final.elapsedDays===730,'EQ short result');arms[key]={metrics:metrics(r,baseStarved),annual:r.annual.map(a=>metrics(r,baseStarved,a))};const probe=read(path.join(dir,'continuation',key+'.obs.probe.json'));composition(arms[key].metrics,probe);if(probe&&probe.knobs?.t1344!==true)for(const a of arms[key].annual){a.bronzeHolders=null;a.nativeCompositionTracking=false;}if(key==='stock'){const watch=read(path.join(dir,'continuation',key+'.obs.stock.json.empty-events.json'));assert(watch?.scannedDays===730,'EQ missing daily witness');arms[key].metrics.exhaustion=watch;}}
  equilibrium.push({arm,seed,snapshot:{file:snap,day:body.world.day,meta:body.meta,initialStarved:baseStarved},off:arms.off,on:arms.stock,popOffRatio:arms.stock.metrics.pop/arms.off.metrics.pop});
 }
 const long=[];

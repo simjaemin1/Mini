@@ -1,0 +1,7 @@
+{
+  "complete": true,
+  "daysPerArm": 730,
+  "providerRetry": true,
+  "lowTailTableExpanded": true,
+  "history": "Initial provider failure and prior low-tail attempt preserved separately; current stock arm rerun directly with identical snapshot and final table."
+}
