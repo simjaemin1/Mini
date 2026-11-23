@@ -71,7 +71,7 @@ L.push('');
 L.push('| 판 | 시드 | 힙 | 끝 / 죽은 날 | 까닭 | rc | 걸린 시간 |');
 L.push('|---|---|---|---|---|---|---|');
 for (const r of runs) {
-  const end = r.running ? `(도는 중 · ${r.lastDay}날)` : r.full ? `끝 ${r.days}날` : `**죽음 ${r.lastDay}날**`;
+  const end = r.running ? `(도는 중 · ${r.lastDay}날)` : r.full ? `끝 ${r.days}날` : `**죽음 ${r.lastDay + 1}날**(${r.lastDay}날 마침)`;
   L.push(`| ${r.id} | ${r.seed} | ${r.heap === 'def' ? '기본' : r.heap + ' MB'} | ${end} | ${r.cause || '—'} | ${r.rc == null ? '—' : r.rc} | ${r.sec == null ? '—' : (r.sec / 3600).toFixed(2) + '시간'} |`);
 }
 L.push('');
@@ -91,9 +91,15 @@ L.push('');
 const dead = runs.filter((r) => r.rc != null && !r.full);
 if (!dead.length) L.push('없음');
 for (const r of dead) {
-  L.push(`- **${r.id}** · 죽은 날 ${r.lastDay} · ${r.cause} · rc ${r.rc} · 그날 RSS ${r.last ? r.last.rssMB : '?'} MB · 힙 ${r.last ? r.last.heapMB : '?'} MB`);
+  L.push(`- **${r.id}** · 죽은 날 ${r.lastDay + 1}(${r.lastDay}날 마침 — last-<시드>.json 은 마친 날을 적는다) · ${r.cause} · rc ${r.rc} · 그날 RSS ${r.last ? r.last.rssMB : '?'} MB · 힙 ${r.last ? r.last.heapMB : '?'} MB`);
   const NO = `${r.heap === 'def' ? '' : `--max-old-space-size=${r.heap} `}-r 계측/T1434_2026-11-22/t1434-observe.js`;
   L.push(`  - 다시: \`T400_BUILD_ACT=0 VILLAGE_CARAVAN_MAX=0 T745_VCLOCK=1 T1434_OBS=/tmp/o NODE_OPTIONS="${NO}" node scripts/t1308-long-run.js ${r.days} ${r.seed} --every ${r.days}${r.cuts ? ` --cuts ${r.cuts}` : ''} --dir /tmp/r --tag ${r.tag}\``);
+  // 같은 시드 · 같은 힙의 다른 판과 견줌(결정적인가 — 죽은 날 · 100날 칸 인구)
+  for (const o of runs.filter((x) => x !== r && x.seed === r.seed && x.heap === r.heap)) {
+    const same = r.obs.filter((x) => { const y = at(o, x.day); return y && y.pop === x.pop; }).length;
+    const both = r.obs.filter((x) => at(o, x.day)).length;
+    L.push(`  - 견줌 ${o.id}: ${o.full ? `끝 ${o.days}날` : o.rc == null ? '도는 중' : `죽음 ${o.lastDay + 1}날`} · 100날 칸 인구 같음 ${same}/${both}${o.cuts ? ` · (${o.cuts}날 저장본에서 다시 띄운 판)` : ''}`);
+  }
   if (r.stack) { L.push(`  - ${r.stack.file} ${r.stack.at}줄부터 15줄:`); L.push('  ```'); for (const t of r.stack.lines) L.push('  ' + t); L.push('  ```'); }
 }
 L.push('');

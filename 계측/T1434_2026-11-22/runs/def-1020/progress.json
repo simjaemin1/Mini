@@ -1,0 +1,20 @@
+{
+ "v": 1,
+ "tag": "def",
+ "seed": 1020,
+ "days": 1460,
+ "every": 1460,
+ "dir": "/home/user/t1434/run/def-1020",
+ "ck": 0,
+ "segs": [],
+ "done": false,
+ "env": {
+  "NODE_OPTIONS": "-r /home/user/Mini/계측/T1434_2026-11-22/t1434-observe.js",
+  "T400_BUILD_ACT": "0",
+  "VILLAGE_CARAVAN_MAX": "0",
+  "T745_VCLOCK": "1",
+  "T1434_OBS": "/home/user/t1434/run/def-1020/obs"
+ },
+ "started": "2026-11-23T16:32:09.185Z",
+ "tries": 1
+}
