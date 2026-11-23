@@ -466,7 +466,7 @@ function _t1324Cand(vil, h0, day) {
     if (h0 == null || row.h == null || !(row.h > h0)) { _t1324Why.h++; continue; }
     const pk = _t1324Picked.get(vil.dbId + '|' + k) || 0, nk = (row.n | 0) + pk;
     if (row.beds != null && !(row.beds > nk)) { _t1324Why.beds++; continue; }
-    const per = _t1306On() ? E1.DAILY_FOOD_CONSUMPTION * E1.t1297NeedDays(day) : 3;
+    const per = _t1306On() ? E1.DAILY_FOOD_CONSUMPTION * E1.t1297NeedDays(day, vil.econ, 'mig') : 3;   // ★[T1419] 켬 = 한 함수(들은 줄엔 흐름이 없다 — 떠나는 마을의 버틸 날 · 끔 = 종전)
     if (!(row.fe >= (nk + 1) * per)) { _t1324Why.food++; continue; }
     _t1324Stat.cand++;
     if (!best || row.h > best.h || (row.h === best.h && dist < best.dist)) best = { h: row.h, dist, dest: { _t1324: true, zone: row.zone, name: row.name, key: k, sp, ...(KN ? { t1352: HH[k] } : {}) } };
@@ -2918,7 +2918,7 @@ function _t1306Pass(fromVil, toVil, day) {   // 이주 문 — 들은 곳간이 
   _t1306Stat.seen++;
   if (!k) { _t1306Stat.unknown++; return false; }
   _t1306Stat.lagSum += k.lag;
-  if (!(k.fe >= (k.n + 1) * E1.DAILY_FOOD_CONSUMPTION * (E1.t1319MigNeedDays || E1.t1297NeedDays)(day))) { _t1306Stat.thin++; return false; }
+  if (!(k.fe >= (k.n + 1) * E1.DAILY_FOOD_CONSUMPTION * (E1.t1319MigNeedDays || E1.t1297NeedDays)(day, toVil.econ))) { _t1306Stat.thin++; return false; }   // ★[T1419] 켬 = 가는 마을의 버틸 날(한 함수 · 끔 = 종전)
   _t1306Stat.ok++;
   return true;
 }
@@ -2957,7 +2957,7 @@ function _t1312Pass(fromVil, toVil, day, h0) {   // 이주 문(켬) — 들은 �
   if (E1.T1405_RECV && toVil.econ && !E1.t1405RecvOk(toVil.econ, pk + 1, k.h, k.n)) { _t1405Stat.fullHeard++; return null; }   // ★[T1405 ㉠] 켬 = 들은 행복 − (들은 인구 + 무리 셈 + 이 사람의 부담 − 들은 인구의 부담) < 0.25 면 안 간다(영토 = 눈에 보이는 땅 · 끔 = 이 줄 무동작)
   if (!(beds > nk)) { _t1312Stat.beds++; return null; }
   if (_t1319KOn() && k.K != null && nk + 1 > k.K) { _t1319Stat.overK++; return null; }   // ★[T1319] 켬 = 들은 인구 + 앞서 고른 수 + 이 사람이 들은 K 를 넘으면 안 간다(들은 K 없으면 이 문은 안 선다)
-  const per = E1.DAILY_FOOD_CONSUMPTION * (E1.t1319MigNeedDays || E1.t1297NeedDays)(day);
+  const per = E1.DAILY_FOOD_CONSUMPTION * (E1.t1319MigNeedDays || E1.t1297NeedDays)(day, toVil.econ);   // ★[T1419] 켬 = 가는 마을의 버틸 날(한 함수 · 끔 = 종전)
   if (!(k.fe >= (nk + 1) * per)) { _t1312Stat.thin++; if (pk > 0 && k.fe >= (k.n + 1) * per) _t1312Stat.herdCut++; return null; }
   _t1312Stat.ok++;
   return k.h;
