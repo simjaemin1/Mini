@@ -1,0 +1,129 @@
+{
+ "kind": "daily-observation-replay-check",
+ "complete": true,
+ "scope": "All retained daily observation fields except the three named CPU/uptime fields; not a full-state fingerprint or an independent world.",
+ "cases": {
+  "ON-1020/t1274-days": {
+   "expectedDays": [
+    461,
+    462,
+    463,
+    464,
+    465
+   ],
+   "matchedDays": [
+    461,
+    462,
+    463,
+    464,
+    465
+   ],
+   "excludedTimingFields": [
+    "cpuSeconds",
+    "processCPUSeconds",
+    "uptimeSeconds"
+   ],
+   "differences": [],
+   "archivedFileSha256": "43a48cfe98708e5011d6aa5e07f4e00a3a77e152f84f19de67fd4ecd814a113e"
+  },
+  "ON-1020/t1302-days": {
+   "expectedDays": [
+    461,
+    462,
+    463,
+    464,
+    465
+   ],
+   "matchedDays": [
+    461,
+    462,
+    463,
+    464,
+    465
+   ],
+   "excludedTimingFields": [],
+   "differences": [],
+   "archivedFileSha256": "f7fe12dc28a9e0513b1b65078b30e586362efda7f718dfad3cda0d260233e4ae"
+  },
+  "ON-1020/t1411-census": {
+   "expectedDays": [
+    461,
+    462,
+    463,
+    464,
+    465
+   ],
+   "matchedDays": [
+    461,
+    462,
+    463,
+    464,
+    465
+   ],
+   "excludedTimingFields": [],
+   "differences": [],
+   "archivedFileSha256": "39ee0f5db9e587523d0cd5ebc2983de4164acc5a756c809a4762cf5b07073c2d"
+  },
+  "OFF-1020/t1274-days": {
+   "expectedDays": [
+    471,
+    472,
+    473,
+    474,
+    475
+   ],
+   "matchedDays": [
+    471,
+    472,
+    473,
+    474,
+    475
+   ],
+   "excludedTimingFields": [
+    "cpuSeconds",
+    "processCPUSeconds",
+    "uptimeSeconds"
+   ],
+   "differences": [],
+   "archivedFileSha256": "de00cfbf6f62e8970c65901da03d3cb2cb1511427b947d59ca5d55db797ef36e"
+  },
+  "OFF-1020/t1302-days": {
+   "expectedDays": [
+    471,
+    472,
+    473,
+    474,
+    475
+   ],
+   "matchedDays": [
+    471,
+    472,
+    473,
+    474,
+    475
+   ],
+   "excludedTimingFields": [],
+   "differences": [],
+   "archivedFileSha256": "6dd8f795cd508e134fb7afd880eb16fcab23b238fc49ef7eb1903dfae0633cd5"
+  },
+  "OFF-1020/t1411-census": {
+   "expectedDays": [
+    471,
+    472,
+    473,
+    474,
+    475
+   ],
+   "matchedDays": [
+    471,
+    472,
+    473,
+    474,
+    475
+   ],
+   "excludedTimingFields": [],
+   "differences": [],
+   "archivedFileSha256": "f40a987ef18bf0ef7a9c7a86b220ebac179e6ce300c23a25b84074cc29cc3b08"
+  }
+ }
+}

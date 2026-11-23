@@ -8,8 +8,8 @@
 
 버린 부분 장부의 관측 CPU는 켬461~465날2,192.370204초·끔471~475날2,150.911160초다. 이번 합계4,343.281364초이며, 앞선 두 중단의 관측 하한4,147.421898초를 더하면8,490.703262초다. 미완성 기동·마지막 미완성 날의 미측정 소모를 포함한 정확한 총량은 알 수 없다. 최종 CPU 표에는 복구 뒤 채택한 마디를 한 번씩 넣고 이 비용은 따로 둔다.
 
-복구 후 같은 각5날의 세 일일 관찰기를 비교한다. CPU·프로세스CPU 누계·uptime만 제외하고 가상 시각은 포함한다. 완료 전에는 일치를 주장하지 않는다. 원본/후보100날 의미 보존 지문이나 독립 반복 횟수를 늘리는 자료가 아니다.
+복구 후 켬461~465날·끔471~475날의 세 일일 관찰기를 각각5/5날 맞췄다. CPU·프로세스CPU 누계·uptime만 제외하고 가상 시각을 포함했다. `replay-check.json`과 복구 전/후 원자료를 보존했다. 원본/후보100날 의미 보존 지문이나 독립 반복 횟수를 늘리는 자료가 아니다.
 
 ```sh
-python3 scripts/t1411-recovery-check.py --evidence 계측/T1411_2026-11-21/infra-recovery-1123 --runs /tmp/t1411/worlds --out /tmp/t1411/recovery-check-3.json
+python3 scripts/t1411-recovery-check.py --evidence 계측/T1411_2026-11-21/infra-recovery-1123 --runs 계측/T1411_2026-11-21/infra-recovery-1123/replayed --out /tmp/t1411/recovery-check-3.json
 ```
