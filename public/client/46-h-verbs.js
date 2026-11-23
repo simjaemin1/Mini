@@ -159,7 +159,61 @@
     // ④ ★★[T124 2026-09-06] **빈 땅** — 아무것도 안 맞으면 그 자리 자체가 대상이다.
     //   ⚠메뉴가 아무 데서나 뜨지는 않는다: `verbsFor` 가 빈 배열이면 부르는 쪽이 안 연다
     //     (`if (!verbs.length) return;` — 종전 그대로다). 그래서 여기서 대상을 내도 안전하다.
-    return { kind: 'ground', id: null, obj: null, absX: wx, absY: wy };
+    const _g = { kind: 'ground', id: null, obj: null, absX: wx, absY: wy };
+    if (t1438On()) t1438Attach(_g, wx, wy);   // ★[T1438] 빈 땅 대상에 그 자리의 무너진 자리 · 구조물을 곁들인다(빈 땅 동사는 그대로)
+    return _g;
+  }
+  // ══ ★★[T1438 2026-11-22 · 재민 판정 38 · 39] 구조물은 낡는다 — 우클릭 한 줄(새 창 0) ══════════════════════════════
+  //   손잡이 = welcome `uiCfg.t1438`(서버 `T1438_DECAY` — 끔이면 칸이 없어 아래가 하나도 안 선다 = 종전 화면).
+  //   ① 무너진 자리(`ruin` — 발자국 안) → "치우기" · ② 구조물(낡는 종류 = 서버 표 `uiCfg.t1438.types` · 집 · 곳간 발자국 칸 `hut` · `gran`) → "손질…"
+  //   "손질…" 은 서버에 묻고(`t1438_peek`) 답(`t1438_info` — 부위별 내구 · 내 짐에서 넣을 수 있는 것 · 낱개 하나의 몫)으로 같은 자리에 줄을 한 번 더 연다.
+  //   넣을 재료를 고르면 `repair_building { buildingId, part, item }` — 몇 개를 쓸지는 서버가 정한다(모자란 몫까지 · 클라 셈 0).
+  function t1438On() { return !!(typeof uiCfg !== 'undefined' && uiCfg && uiCfg.t1438); }
+  function t1438Decays(b) {
+    const T = (uiCfg.t1438 && uiCfg.t1438.types) || [];
+    return T.indexOf(b.type) >= 0 || !!(b.data && (Array.isArray(b.data.hut) || Array.isArray(b.data.gran)));
+  }
+  function t1438Attach(g, wx, wy) {
+    const S = (typeof CL_BUILDING_SIZE !== 'undefined') ? CL_BUILDING_SIZE : 32;
+    let bd = Infinity;
+    for (const c of conns.values()) {
+      if (!c.meta) continue;
+      const ox = c.meta.worldOffsetX || 0, oy = c.meta.worldOffsetY || 0;
+      for (const b of c.buildings.values()) {
+        if (b.type === 'ruin') {
+          const R = b.data && b.data.ruin;
+          if (Array.isArray(R) && wx >= ox + R[0] * S && wx < ox + (R[2] + 1) * S && wy >= oy + R[1] * S && wy < oy + (R[3] + 1) * S) g.ruin = b;
+          continue;
+        }
+        if (!t1438Decays(b)) continue;
+        const d = Math.hypot(ox + b.x - wx, oy + b.y - wy);
+        if (d < bd && d <= S * 0.75) { bd = d; g.struct = b; }
+      }
+    }
+    return g;
+  }
+  let _t1438Want = null;
+  function t1438Peek(b) {
+    _t1438Want = { id: b.id, x: _lastMenuX, y: _lastMenuY };
+    sendPrimary({ type: 't1438_peek', buildingId: b.id });
+  }
+  function t1438OnInfo(msg) {   // 서버 답(`t1438_info`) — 30-n-net 이 부른다(최상위 실행문 0 · 선언만)
+    const W = _t1438Want; if (!W || W.id !== msg.id) return;
+    _t1438Want = null;
+    const name = msg.name || '이것';
+    if (!msg.parts || !msg.parts.length) { showNotice(`${name}은(는) 낡지 않습니다.`); return; }
+    const lines = [];
+    for (const p of msg.parts) {
+      const pct = Math.round((p.v || 0) * 100);
+      lines.push({ label: `${p.ko} ${pct}%`, onClick: () => showNotice(`${name} ${p.ko} ${pct}% — 지을 때 든 것: ${(p.items || []).join(' · ')}`) });
+      if (pct >= 100) continue;
+      for (const h of (p.have || [])) {
+        lines.push({ label: `　└ ${h.ko} 넣기 (가진 것 ${h.n} · 하나 ${Math.max(1, Math.round(h.one * 100))}%)`,
+          onClick: () => sendPrimary({ type: 'repair_building', buildingId: msg.id, part: p.k, item: h.it }) });
+      }
+      if (!(p.have && p.have.length)) lines.push({ label: `　└ 넣을 것 없음 — ${(p.items || []).join(' · ')}`, onClick: () => showNotice(`${p.ko}에 넣을 것이 없습니다(${(p.items || []).join(' · ')}).`) });
+    }
+    showContextMenu(W.x, W.y, lines);
   }
 
   // ── verbsFor — 이 대상 위에 뜰 동사들 ─────────────────────────────────────
@@ -232,6 +286,8 @@
       //   ★[T1238] 켬 = 메뉴는 **제 영토와 맞닿은 칸 · 고른 칸 · 말뚝 박힌 칸에서만** 뜬다(칸 목록은 서버 `terr_info` — 클라는 들고 보일 뿐)
       if (t1238On()) { for (const it of t1238Verbs(t.absX, t.absY)) out.push(it); }
       else if (t1207On()) out.push({ label: '영토 넓히기', send: () => verbTerrQuote(t.absX, t.absY) });
+      if (t.ruin) out.push({ label: `치우기 — 무너진 ${t.ruin.data && t.ruin.data.was === 'house' ? '집' : '움집'}`, send: () => sendPrimary({ type: 't1438_clear', id: t.ruin.id }) });   // ★[T1438]
+      if (t.struct) out.push({ label: '손질…', send: () => t1438Peek(t.struct) });   // ★[T1438]
       return out;
     }
     if (t.kind === 'nature') {
@@ -320,11 +376,13 @@
         out.push({ label: b.type === 'guild_granary' ? '열기 — 마을 곳간' : '열기 — 상자',
                    send: () => openInvWithContainer(b.id) });
       }
+      if (t1438On() && t1438Decays(b)) out.push({ label: '손질…', send: () => t1438Peek(b) });   // ★[T1438]
     }
     if (t.kind === 'home') {   // ★[T1402 판정 22 · 23] 본거지 — 지금 본거지면 표지 한 줄 · 아니면 삼기(뜸 · 땅 문은 서버가 본다)
       const M = window.__deedsMeter || null;
       if (M && M.home === t.id) out.push({ label: '본거지(지금 이 집)', send: () => showNotice('이 집이 본거지입니다. 이 집이 선 땅덩이에만 새 칸을 붙일 수 있습니다.') });
       else out.push({ label: '본거지로 삼기', send: () => sendPrimary({ type: 'deeds_home', buildingId: t.id }) });
+      if (t1438On()) out.push({ label: '손질…', send: () => t1438Peek(t.obj) });   // ★[T1438] 내 움집
       return out;
     }
     // 해체 — 건축 모드에서 좌클릭이 하던 그 일. 모드 밖에서는 안 뜬다(종전엔 길이 없었다).

@@ -217,11 +217,14 @@ const TYPES = ['STOCK_SHORTAGE', 'STOCK_GLUT', 'PRICE_SPIKE', 'PRICE_DROP', 'CAR
   //   구조(`RESCUED`)와 같은 자리·같은 문법(호스트가 넘긴 것만 · 랩엔 몸이 없어 구조적으로 0 건 — 각본 0).
   //   ★에지 = **그 마을 그 계절의 첫 몸 하나**(계절 = 연표의 축 · 새 수 0). 몸마다 적으면 기근 한 철이 연표 다섯 칸을 덮어
   //     같은 철의 `EMPTIED`·`DISSOLVED` 가 잘린다(`CHRON_PER_SEASON` · 일 유형은 sev 로 견준다 — 보고/T590 §2).
-  'STARVED'];
+  'STARVED',
+  // ★[T1432 2026-11-22 · 재민 판정 36] **쓰러져 죽음** — 몸 층(`villages.js t1432Die` · 존 손잡이 `T1432_NPC_DEATH`)이 짐승 · 사람 손에 쓰러진 마을 몸을 넘긴다(끔 = 0 건).
+  //   굶어 죽음(`STARVED`)과 같은 자리 · 같은 문법 · 같은 에지(그 마을 그 철 첫 몸) — `item` = 'wild'(짐승) · 'other'(그 밖).
+  'SLAIN'];
 // ★★[T50] **"일" 유형** — 값의 이탈이 아니라 일어난 일. 정렬에서 먼저 서고, 연표 sev 문턱을 면제받는다.
 //   면제의 근거는 **드묾**이다(실측 3.3%). 이 목록에 흔한 유형을 넣으면 그 순간 연표가 그것으로 덮인다.
 const DEED_TYPES = String(process.env.EV_DEED_TYPES
-  || 'HARVEST_BOON,HARVEST_BLIGHT,WEATHER,POP_COLLAPSE,CARAVAN_RAIDED,TRADER_KILLED,BUILT,FIRST_GOODS,WINTER_KEPT,WINTER_SHORT,RESCUED,DISSOLVED,EMPTIED,STARVED')
+  || 'HARVEST_BOON,HARVEST_BLIGHT,WEATHER,POP_COLLAPSE,CARAVAN_RAIDED,TRADER_KILLED,BUILT,FIRST_GOODS,WINTER_KEPT,WINTER_SHORT,RESCUED,DISSOLVED,EMPTIED,STARVED,SLAIN')   // ★[T1432] SLAIN — 일 유형(끔 = 0 건)
   .split(',').map((x) => x.trim()).filter(Boolean);
 // ★이웃 마을에서 **여기까지 회자되는** 일. 날씨(573건 — 국지적이고 일주일이면 끝난다)·완공(남의 집)·
 //   첫 물건(남의 곳간)은 빠진다. 남는 것은 그 마을의 운과 사람과 길의 안부다.
@@ -876,6 +879,15 @@ function createLedger(opts) {
       commit(s, [{ day, vid: r.vid | 0, type: 'STARVED', item: null, mag: 1, meta: null }], out);
     }
 
+    // ⑬ ★[T1432] **쓰러져 죽음** — 굶어 죽음(⑫)과 같은 자리 · 같은 에지(그 마을 그 철 첫 몸 · 상태 `s.slainK`)
+    for (const r of ((!cfg.DEEDS_OFF && extra && extra.slain) || [])) {
+      if (r == null || r.vid == null) continue;
+      const s = st(r.vid), c = calendarOf(day), k = day - (c.dayOfSeason - 1);
+      if (s.slainK === k) continue;
+      s.slainK = k;
+      commit(s, [{ day, vid: r.vid | 0, type: 'SLAIN', item: r.by === 'wild' ? 'wild' : 'other', mag: 1, meta: null }], out);
+    }
+
     // ⑦ 의뢰 — 부족 **래치**가 서 있으면 걸려 있고, 회복하면 거둔다(사건 에지가 아니라 상태)
     syncRequests(world, day);
 
@@ -1464,6 +1476,7 @@ const LINES = {
   EMPTIED: () => '마을에 사람이 하나도 안 남았다네. 빈 움집만 서 있네.',
   // ── ★[T590 2026-10-03] 굶어 죽음 — 다섯 필드로만(㉝) · 누가 몇이 아니라 일이 났다는 것(그 철 첫 몸)
   STARVED: () => '끝내 굶어 죽은 이가 나왔다네.',
+  SLAIN: (ev) => (ev.item === 'wild' ? '짐승에게 물려 죽은 이가 나왔다네.' : '쓰러져 끝내 일어나지 못한 이가 나왔다네.'),   // ★[T1432]
   RESCUED: (ev) => {
     const who = String(ev.item || '');
     if (!who || who === 'village') return '쓰러진 이를 마을 사람들이 쉼터로 옮겼다네.';
@@ -1507,6 +1520,7 @@ const NEWS_LINES = {
   DISSOLVED: () => '굶주림 끝에 남은 사람들이 마을을 버리고 도적이 되었습니다.',
   EMPTIED: () => '마을에 사람이 하나도 남지 않았습니다.',
   STARVED: () => '굶어 죽은 사람이 나왔습니다.',
+  SLAIN: (ev) => (ev.item === 'wild' ? '짐승에게 물려 죽은 사람이 나왔습니다.' : '쓰러져 끝내 일어나지 못한 사람이 나왔습니다.'),   // ★[T1432]
   RESCUED: (ev) => {
     const who = String(ev.item || '');
     if (!who || who === 'village') return '쓰러진 사람을 마을 사람들이 쉼터로 옮겼습니다.';

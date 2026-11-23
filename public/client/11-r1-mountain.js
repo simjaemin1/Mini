@@ -2068,6 +2068,10 @@
   // 지형 차단 통합 (물+바위) — 이동 예측용
   // ★[다리 층] 절대 셀 좌표 다리 집합(존 welcome에서 누적) — 서버 BRIDGE_CELLS 미러.
   const _bridgeAbs = new Set();
+  // ★[T1423 ⓐ] 못 놓는 다리 칸 · 다리 머리(서버 T1406 ㉮ 칸 줄 그대로 — welcome `t1423NoBuild` · 켬에서만 차고 `.on` 이 선다) — 짓기 미리보기(`_t1423NoAt`)가 읽는다
+  const _t1423NoAbs = new Set();
+  // ★[T1440] 짓기 미리보기 — 서버의 답(그 조각 열쇠 · 'free' | 'road' | 'closing' | 'protected' | 'others' | 'refuse' | 'checking') · 켬인 존만(welcome `t1440`) · 클라 재계산 0
+  const _t1440P = { on: false, key: null, at: 0, st: null, stKey: null };
   // ★[11차 T3 환호] 도랑 절대 셀 집합 — 서버 DITCH_CELLS 미러. 다리와 **같은 이유로** 미러가 필수다:
   //   서버 isTerrainBlockedLocal이 도랑에서 막는데 클라 예측이 안 막으면 도랑 위로 걸어 들어갔다가
   //   서버 위치로 튕겨 나오는 러버밴딩이 난다(좌표 단일 작성자 원칙 — 예측은 서버와 같은 판정이어야 함).

@@ -87,9 +87,9 @@ if (MODE === 'pure') {
 
 // ── 아이 ③ 숫자 상한(S0 = 9) 문구 — 켬 · 끔 둘 다(부모가 `T1305_DEEDS` 를 준다) ──
 if (MODE === 'cap') {
-  Object.assign(process.env, { ZONE_ID: 'hanbando', ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', CLAIM_ABSENCE: '0' });
+  Object.assign(process.env, { ZONE_ID: 'hanbando', ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', CLAIM_ABSENCE: '0', T1392_FIRST_LOT: '0' });   // ★[T1428] 첫 집터(-on 켬 기본 후보)는 글자로 끈다 — 이 판은 숫자 한도만 잰다
   const _l = console.log, _w = console.warn, _e = console.error; console.log = () => {}; console.warn = () => {}; console.error = () => {};
-  const Zone = require(path.join(ROOT, 'server', 'zone.js'));
+  const Zone = require(process.env.__T1389_ZONE || path.join(ROOT, 'server', 'zone.js'));
   console.log = _l; console.warn = _w; console.error = _e;
   const H = Zone.__testBind(), SZ = H.BUILDING_SIZE, R = {};
   try {
@@ -111,7 +111,7 @@ if (MODE === 'cap') {
 
 // ── 아이 ② 존(정본 경로 · 켬) ──
 if (MODE === 'zone') {
-  Object.assign(process.env, { ZONE_ID: 'hanbando', ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', CLAIM_ABSENCE: '1', T1305_DEEDS: '1', T1305_CARE_S: '1' });
+  Object.assign(process.env, { ZONE_ID: 'hanbando', ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', CLAIM_ABSENCE: '1', T1305_DEEDS: '1', T1305_CARE_S: '1', T1392_FIRST_LOT: '0', T1402_SPLIT_OK: '0' });   // ★[T1428] 첫 집터 · 갈라짐(-on 에서 켬 기본 후보)은 글자로 끈다 — 이 판의 땅 꼴은 한 칸 선포로 짓는다
   const _l = console.log, _w = console.warn, _e = console.error; console.log = () => {}; console.warn = () => {}; console.error = () => {};
   const Zone = require(process.env.__T1389_ZONE || path.join(ROOT, 'server', 'zone.js'));
   console.log = _l; console.warn = _w; console.error = _e;

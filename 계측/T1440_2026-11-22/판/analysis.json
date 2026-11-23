@@ -1,0 +1,4968 @@
+{
+ "pop": {
+  "7": {
+   "ON": {
+    "tag": "POP_ON_7g",
+    "pop": 4311,
+    "dead": 663,
+    "war": 189,
+    "move": 118,
+    "empty": 0,
+    "fd": 158,
+    "iso": 0,
+    "tick": {
+     "n": 2998,
+     "kept": 2998,
+     "p50": 57.665,
+     "p90": 890.726,
+     "p99": 2039.3,
+     "p999": 24499.584,
+     "max": 45576.92,
+     "mean": 306.682
+    },
+    "t": {
+     "flush": 1089,
+     "drop": 1581,
+     "keep": 19895,
+     "reopen": 1533,
+     "reroute": 0,
+     "rerouteFail": 0,
+     "stepHit": 16,
+     "siteClose": 0,
+     "siteProt": 337,
+     "route1": 2029,
+     "route2": 2,
+     "judgeCpu": 1698,
+     "cpu": {
+      "n": 840,
+      "p50": 0.202,
+      "p90": 6.598,
+      "p99": 19.426,
+      "max": 29.965
+     },
+     "pairs": {
+      "n": 840,
+      "p50": 0,
+      "p99": 65,
+      "max": 128
+     },
+     "applied": 3616,
+     "walkRedo": 32,
+     "chainRedo": 0,
+     "claimThru": 0
+    }
+   },
+   "OFF": {
+    "tag": "POP_OFF_7",
+    "pop": 4162,
+    "dead": 392,
+    "war": 108,
+    "move": 13,
+    "empty": 0,
+    "fd": 0,
+    "iso": 0,
+    "tick": {
+     "n": 2998,
+     "kept": 2998,
+     "p50": 59.057,
+     "p90": 679.224,
+     "p99": 1452.868,
+     "p999": 8105.97,
+     "max": 22522.33,
+     "mean": 208.981
+    },
+    "t": {
+     "flush": 0,
+     "drop": 0,
+     "keep": 0,
+     "reopen": 0,
+     "reroute": 0,
+     "rerouteFail": 0,
+     "stepHit": 0,
+     "siteClose": 0,
+     "siteProt": 0,
+     "judgeCpu": 0,
+     "cpu": {
+      "n": 0,
+      "p50": null,
+      "p90": null,
+      "p99": null,
+      "max": null
+     },
+     "pairs": {
+      "n": 0,
+      "p50": null,
+      "p99": null,
+      "max": null
+     },
+     "applied": 0,
+     "walkRedo": 0,
+     "chainRedo": 0,
+     "claimThru": 0
+    }
+   },
+   "ratio": 1.036
+  },
+  "42": {
+   "ON": {
+    "tag": "POP_ON_42g",
+    "pop": 3893,
+    "dead": 587,
+    "war": 133,
+    "move": 175,
+    "empty": 0,
+    "fd": 154,
+    "iso": 0,
+    "tick": {
+     "n": 2998,
+     "kept": 2998,
+     "p50": 61.155,
+     "p90": 819.283,
+     "p99": 2064.596,
+     "p999": 30338.342,
+     "max": 67716.18,
+     "mean": 321.345
+    },
+    "t": {
+     "flush": 1011,
+     "drop": 1624,
+     "keep": 18214,
+     "reopen": 1589,
+     "reroute": 2,
+     "rerouteFail": 0,
+     "stepHit": 19,
+     "siteClose": 0,
+     "siteProt": 320,
+     "route1": 1952,
+     "route2": 2,
+     "judgeCpu": 1555,
+     "cpu": {
+      "n": 766,
+      "p50": 0.18,
+      "p90": 6.759,
+      "p99": 20.031,
+      "max": 32.878
+     },
+     "pairs": {
+      "n": 766,
+      "p50": 0,
+      "p99": 67,
+      "max": 128
+     },
+     "applied": 3461,
+     "walkRedo": 23,
+     "chainRedo": 0,
+     "claimThru": 0
+    }
+   },
+   "OFF": {
+    "tag": "POP_OFF_42",
+    "pop": 4237,
+    "dead": 381,
+    "war": 228,
+    "move": 24,
+    "empty": 0,
+    "fd": 1,
+    "iso": 0,
+    "tick": {
+     "n": 2998,
+     "kept": 2998,
+     "p50": 60.766,
+     "p90": 736.992,
+     "p99": 3733.714,
+     "p999": 5917.851,
+     "max": 54354.27,
+     "mean": 259.043
+    },
+    "t": {
+     "flush": 0,
+     "drop": 0,
+     "keep": 0,
+     "reopen": 0,
+     "reroute": 0,
+     "rerouteFail": 0,
+     "stepHit": 0,
+     "siteClose": 0,
+     "siteProt": 0,
+     "judgeCpu": 0,
+     "cpu": {
+      "n": 0,
+      "p50": null,
+      "p90": null,
+      "p99": null,
+      "max": null
+     },
+     "pairs": {
+      "n": 0,
+      "p50": null,
+      "p99": null,
+      "max": null
+     },
+     "applied": 0,
+     "walkRedo": 0,
+     "chainRedo": 0,
+     "claimThru": 0
+    }
+   },
+   "ratio": 0.919
+  },
+  "1020": {
+   "ON": {
+    "tag": "POP_ON_1020g",
+    "pop": 4075,
+    "dead": 402,
+    "war": 181,
+    "move": 12,
+    "empty": 0,
+    "fd": 0,
+    "iso": 0,
+    "tick": {
+     "n": 2998,
+     "kept": 2998,
+     "p50": 56.778,
+     "p90": 739.899,
+     "p99": 1917.915,
+     "p999": 31106.12,
+     "max": 51317.3,
+     "mean": 303.05
+    },
+    "t": {
+     "flush": 990,
+     "drop": 1582,
+     "keep": 19220,
+     "reopen": 1554,
+     "reroute": 0,
+     "rerouteFail": 0,
+     "stepHit": 10,
+     "siteClose": 0,
+     "siteProt": 322,
+     "route1": 1927,
+     "route2": 1,
+     "judgeCpu": 1811,
+     "cpu": {
+      "n": 772,
+      "p50": 0.252,
+      "p90": 7.554,
+      "p99": 20.442,
+      "max": 38.195
+     },
+     "pairs": {
+      "n": 772,
+      "p50": 0,
+      "p99": 72,
+      "max": 128
+     },
+     "applied": 3752,
+     "walkRedo": 27,
+     "chainRedo": 0,
+     "claimThru": 0
+    }
+   },
+   "OFF": {
+    "tag": "POP_OFF_1020",
+    "pop": 4110,
+    "dead": 256,
+    "war": 99,
+    "move": 16,
+    "empty": 0,
+    "fd": 0,
+    "iso": 0,
+    "tick": {
+     "n": 2998,
+     "kept": 2998,
+     "p50": 59.731,
+     "p90": 658.813,
+     "p99": 1425.764,
+     "p999": 8499.899,
+     "max": 8964.19,
+     "mean": 202.043
+    },
+    "t": {
+     "flush": 0,
+     "drop": 0,
+     "keep": 0,
+     "reopen": 0,
+     "reroute": 0,
+     "rerouteFail": 0,
+     "stepHit": 0,
+     "siteClose": 0,
+     "siteProt": 0,
+     "judgeCpu": 0,
+     "cpu": {
+      "n": 0,
+      "p50": null,
+      "p90": null,
+      "p99": null,
+      "max": null
+     },
+     "pairs": {
+      "n": 0,
+      "p50": null,
+      "p99": null,
+      "max": null
+     },
+     "applied": 0,
+     "walkRedo": 0,
+     "chainRedo": 0,
+     "claimThru": 0
+    }
+   },
+   "ratio": 0.991
+  }
+ },
+ "bot": {
+  "7": {
+   "ON": {
+    "tag": "BOT_ON_7g",
+    "pop": 2273,
+    "iso": 0,
+    "isoLog": 0,
+    "z": {
+     "breaks": 50,
+     "breakU": 29,
+     "breakMark": 21,
+     "breakPass": 0,
+     "vilBreak": 0,
+     "vpOff": 400,
+     "vpOn": 0,
+     "pend": 118,
+     "roadNote": 38,
+     "close": 22,
+     "closeVil": 0,
+     "passOther": 1,
+     "passVil": 0,
+     "vilJob": 0,
+     "freeBreak": 0,
+     "ask": 0
+    },
+    "viol": 0,
+    "passed": 1,
+    "claimCpu": {
+     "n": 45,
+     "p50": 24.5,
+     "p90": 116.3,
+     "p99": 58933.7,
+     "max": 58933.7
+    },
+    "placeCpu": 173825.4,
+    "pickCpu": 35242,
+    "vp": 400,
+    "width": {
+     "bodies": 4001,
+     "esc": 2799,
+     "offCell": 0,
+     "cells": 2799,
+     "d": {
+      "n": 2799,
+      "p50": 0,
+      "p90": 0,
+      "p99": 0,
+      "max": 0
+     },
+     "m": {
+      "n": 4001,
+      "p50": 0,
+      "p99": 0,
+      "max": 0
+     }
+    },
+    "tick": {
+     "n": 526,
+     "kept": 526,
+     "p50": 77.944,
+     "p90": 1348.525,
+     "p99": 5359.192,
+     "p999": 174046.294,
+     "max": 174046.29,
+     "mean": 856.76
+    },
+    "tickPre": {
+     "n": 72,
+     "kept": 72,
+     "p50": 14.509,
+     "p90": 1041.156,
+     "p99": 9145.25,
+     "p999": 9145.25,
+     "max": 9145.25,
+     "mean": 342.161
+    },
+    "groups": {
+     "wingsU": {
+      "at": [
+       1198,
+       819
+      ],
+      "routes": 170,
+      "want": 11,
+      "verdicts": {
+       "road": 3,
+       "?": 8
+      },
+      "cpuMs": 48,
+      "claimCpuMax": null,
+      "pieces": 11,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       6,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "wingsP": {
+      "at": [
+       214,
+       3022
+      ],
+      "routes": 243,
+      "want": 10,
+      "verdicts": {
+       "protected": 9,
+       "yield": 1
+      },
+      "cpuMs": 3951,
+      "claimCpuMax": 3145.5,
+      "pieces": 0,
+      "claims": 10,
+      "passN": 1,
+      "last": [
+       0,
+       0,
+       1,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": [
+       [
+        214,
+        3022,
+        "protected",
+        243,
+        20,
+        {
+         "1": 243
+        },
+        0
+       ],
+       [
+        215,
+        3022,
+        "protected",
+        95,
+        20,
+        {
+         "1": 95
+        },
+        0
+       ],
+       [
+        213,
+        3022,
+        "protected",
+        78,
+        9,
+        {
+         "1": 78
+        },
+        0
+       ],
+       [
+        216,
+        3022,
+        "protected",
+        165,
+        20,
+        {
+         "1": 165
+        },
+        0
+       ],
+       [
+        212,
+        3022,
+        "protected",
+        78,
+        10,
+        {
+         "1": 78
+        },
+        0
+       ],
+       [
+        217,
+        3022,
+        "protected",
+        243,
+        24,
+        {
+         "1": 243
+        },
+        0
+       ],
+       [
+        211,
+        3022,
+        "protected",
+        243,
+        33,
+        {
+         "1": 243
+        },
+        0
+       ],
+       [
+        210,
+        3022,
+        "protected",
+        258,
+        29,
+        {
+         "1": 258
+        },
+        0
+       ],
+       [
+        209,
+        3022,
+        "protected",
+        254,
+        34,
+        {
+         "1": 254
+        },
+        0
+       ],
+       [
+        208,
+        3022,
+        "yield",
+        258,
+        3128,
+        {},
+        4
+       ]
+      ]
+     },
+     "thick": {
+      "at": [
+       838,
+       1408
+      ],
+      "routes": 150,
+      "want": 11,
+      "verdicts": {
+       "?": 67,
+       "road": 32
+      },
+      "cpuMs": 318,
+      "claimCpuMax": null,
+      "pieces": 99,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       77,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "houseF": {
+      "at": [
+       214,
+       2901
+      ],
+      "routes": 145,
+      "want": 1,
+      "verdicts": {
+       "protected": 1,
+       "?": 9
+      },
+      "cpuMs": 82,
+      "claimCpuMax": 60.3,
+      "pieces": 9,
+      "claims": 1,
+      "passN": 0,
+      "last": [
+       9,
+       0,
+       0,
+       1.983
+      ],
+      "steps": null,
+      "again": null,
+      "j": [
+       [
+        214,
+        2901,
+        "protected",
+        145,
+        9,
+        {
+         "1": 145
+        },
+        0
+       ]
+      ]
+     },
+     "houseN": {
+      "at": [
+       1482,
+       3217
+      ],
+      "routes": 76,
+      "want": 10,
+      "verdicts": {
+       "free": 1,
+       "protected": 4,
+       "?": 4,
+       "road": 1
+      },
+      "cpuMs": 44259,
+      "claimCpuMax": 44144,
+      "pieces": 5,
+      "claims": 5,
+      "passN": 0,
+      "last": [
+       5,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": [
+       [
+        1480,
+        3217,
+        "protected",
+        19,
+        3,
+        {
+         "1": 19
+        },
+        0
+       ],
+       [
+        1482,
+        3217,
+        "protected",
+        76,
+        17,
+        {
+         "1": 76
+        },
+        0
+       ],
+       [
+        1483,
+        3217,
+        "protected",
+        76,
+        7,
+        {
+         "1": 76
+        },
+        0
+       ],
+       [
+        1485,
+        3217,
+        "protected",
+        76,
+        44106,
+        {
+         "1": 60,
+         "2": 16
+        },
+        76
+       ]
+      ]
+     },
+     "vilpush": {
+      "at": [
+       2018,
+       3126
+      ],
+      "routes": 23,
+      "want": 14,
+      "verdicts": {
+       "protected": 1
+      },
+      "cpuMs": 58988,
+      "claimCpuMax": 58933.7,
+      "pieces": 0,
+      "claims": 14,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       1,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": [
+       [
+        2018,
+        3126,
+        "protected",
+        23,
+        58926,
+        {
+         "3": 23
+        },
+        46
+       ],
+       [
+        2017,
+        3126,
+        "protected",
+        7,
+        0,
+        {
+         "1": 7
+        },
+        0
+       ],
+       [
+        2019,
+        3126,
+        "protected",
+        16,
+        1,
+        {
+         "1": 16
+        },
+        0
+       ],
+       [
+        2021,
+        3126,
+        "protected",
+        13,
+        1,
+        {
+         "1": 13
+        },
+        0
+       ],
+       [
+        2022,
+        3126,
+        "protected",
+        20,
+        2,
+        {
+         "1": 20
+        },
+        0
+       ],
+       [
+        2023,
+        3126,
+        "protected",
+        20,
+        5,
+        {
+         "1": 20
+        },
+        0
+       ]
+      ]
+     },
+     "neck": {
+      "at": [
+       842,
+       1367
+      ],
+      "routes": 188,
+      "want": 10,
+      "verdicts": {
+       "protected": 9,
+       "yield": 1,
+       "close": 1
+      },
+      "cpuMs": 19609,
+      "claimCpuMax": 19017.4,
+      "pieces": 1,
+      "claims": 10,
+      "passN": 1,
+      "last": [
+       1,
+       1,
+       1,
+       null
+      ],
+      "steps": null,
+      "again": [
+       [
+        12,
+        1,
+        8
+       ],
+       [
+        14,
+        1,
+        16
+       ],
+       [
+        20,
+        1,
+        24
+       ],
+       [
+        22,
+        1,
+        32
+       ],
+       [
+        24,
+        1,
+        40
+       ],
+       [
+        26,
+        1,
+        48
+       ],
+       [
+        28,
+        1,
+        56
+       ],
+       [
+        31,
+        1,
+        64
+       ],
+       [
+        41,
+        1,
+        72
+       ],
+       [
+        46,
+        1,
+        80
+       ],
+       [
+        47,
+        1,
+        88
+       ],
+       [
+        48,
+        1,
+        96
+       ],
+       [
+        49,
+        1,
+        104
+       ],
+       [
+        50,
+        1,
+        112
+       ],
+       [
+        69,
+        1,
+        120
+       ],
+       [
+        71,
+        1,
+        128
+       ],
+       [
+        75,
+        1,
+        136
+       ],
+       [
+        76,
+        1,
+        144
+       ],
+       [
+        78,
+        1,
+        152
+       ],
+       [
+        79,
+        1,
+        160
+       ],
+       [
+        80,
+        1,
+        168
+       ]
+      ],
+      "j": [
+       [
+        842,
+        1367,
+        "protected",
+        184,
+        9,
+        {
+         "1": 184
+        },
+        0
+       ],
+       [
+        843,
+        1367,
+        "protected",
+        4,
+        2,
+        {
+         "1": 4
+        },
+        0
+       ],
+       [
+        841,
+        1367,
+        "protected",
+        3,
+        2,
+        {
+         "1": 3
+        },
+        0
+       ],
+       [
+        844,
+        1367,
+        "protected",
+        140,
+        12,
+        {
+         "1": 140
+        },
+        0
+       ],
+       [
+        840,
+        1367,
+        "protected",
+        34,
+        5,
+        {
+         "1": 34
+        },
+        0
+       ],
+       [
+        845,
+        1367,
+        "protected",
+        150,
+        19,
+        {
+         "1": 150
+        },
+        0
+       ],
+       [
+        839,
+        1367,
+        "protected",
+        184,
+        23,
+        {
+         "1": 184
+        },
+        0
+       ],
+       [
+        838,
+        1367,
+        "protected",
+        184,
+        38,
+        {
+         "1": 184
+        },
+        0
+       ],
+       [
+        837,
+        1367,
+        "protected",
+        184,
+        40,
+        {
+         "1": 184
+        },
+        0
+       ],
+       [
+        836,
+        1367,
+        "yield",
+        184,
+        18994,
+        {},
+        42
+       ]
+      ]
+     },
+     "grad": {
+      "at": [
+       214,
+       2969
+      ],
+      "routes": 147,
+      "want": 1,
+      "verdicts": {},
+      "cpuMs": 10701,
+      "claimCpuMax": null,
+      "pieces": 0,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       0,
+       1.983
+      ],
+      "maxProt": 1.386,
+      "steps": 160,
+      "again": null,
+      "j": []
+     },
+     "door": {
+      "at": [
+       1174,
+       3002
+      ],
+      "routes": 99,
+      "want": 11,
+      "verdicts": {
+       "?": 9,
+       "road": 2
+      },
+      "cpuMs": 57,
+      "claimCpuMax": null,
+      "pieces": 11,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       9,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "shop": {
+      "at": [
+       851,
+       552
+      ],
+      "routes": 32,
+      "want": 1,
+      "verdicts": {
+       "protected": 2
+      },
+      "cpuMs": 327,
+      "claimCpuMax": 22.4,
+      "pieces": 0,
+      "claims": 3,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       0,
+       1.049
+      ],
+      "steps": 2,
+      "again": null,
+      "j": [
+       [
+        852,
+        553,
+        "protected",
+        32,
+        2,
+        {
+         "1": 32
+        },
+        0
+       ],
+       [
+        852,
+        552,
+        "protected",
+        32,
+        3,
+        {
+         "1": 32
+        },
+        0
+       ]
+      ]
+     },
+     "shopK": {
+      "at": [
+       1489,
+       182
+      ],
+      "routes": 28,
+      "want": 1,
+      "verdicts": {
+       "protected": 1
+      },
+      "cpuMs": 241,
+      "claimCpuMax": 24.5,
+      "pieces": 0,
+      "claims": 2,
+      "passN": 1,
+      "last": [
+       0,
+       0,
+       1,
+       1.007
+      ],
+      "steps": 1,
+      "again": null,
+      "j": [
+       [
+        1490,
+        181,
+        "protected",
+        28,
+        7,
+        {
+         "1": 28
+        },
+        0
+       ]
+      ]
+     }
+    },
+    "err": null,
+    "t1440": {
+     "route1": 573,
+     "route2": 27,
+     "reroute": 2,
+     "rerouteFail": 1,
+     "claimStop": 2,
+     "claimThru": 1,
+     "walkRedo": 8,
+     "chainRedo": 0,
+     "markHit": 50,
+     "stepHit": 13,
+     "cpu": {
+      "n": 549,
+      "p50": 0.951,
+      "p90": 33.764,
+      "p99": 102.936,
+      "max": 58925.867
+     },
+     "drop": 1031,
+     "keep": 32233,
+     "tTemp": 124171.63300000018
+    }
+   },
+   "OFF": {
+    "tag": "BOT_OFF_7",
+    "pop": 2244,
+    "iso": 0,
+    "isoLog": 0,
+    "z": {
+     "breaks": 0,
+     "breakU": 0,
+     "breakMark": 0,
+     "breakPass": 0,
+     "vilBreak": 0,
+     "vpOff": 0,
+     "vpOn": 0,
+     "pend": 0,
+     "roadNote": 0,
+     "close": 0,
+     "closeVil": 0,
+     "passOther": 0,
+     "passVil": 0,
+     "vilJob": 0,
+     "freeBreak": 0,
+     "ask": 0
+    },
+    "viol": 0,
+    "passed": 0,
+    "claimCpu": {
+     "n": 40,
+     "p50": 0.7,
+     "p90": 2.9,
+     "p99": 6.6,
+     "max": 6.6
+    },
+    "placeCpu": 5345.1,
+    "pickCpu": 4599,
+    "vp": 0,
+    "width": {
+     "bodies": 4001,
+     "esc": 2841,
+     "offCell": 0,
+     "cells": 2841,
+     "d": {
+      "n": 2841,
+      "p50": 0,
+      "p90": 0,
+      "p99": 0,
+      "max": 0
+     },
+     "m": {
+      "n": 4001,
+      "p50": 0,
+      "p99": 0,
+      "max": 0
+     }
+    },
+    "tick": {
+     "n": 526,
+     "kept": 526,
+     "p50": 57.125,
+     "p90": 1043.084,
+     "p99": 2307.599,
+     "p999": 102748.636,
+     "max": 102748.64,
+     "mean": 470.287
+    },
+    "tickPre": {
+     "n": 72,
+     "kept": 72,
+     "p50": 16.599,
+     "p90": 682.357,
+     "p99": 9740.058,
+     "p999": 9740.058,
+     "max": 9740.06,
+     "mean": 316.178
+    },
+    "groups": {
+     "wingsU": {
+      "at": [
+       1198,
+       819
+      ],
+      "routes": 205,
+      "want": 11,
+      "verdicts": {
+       "?": 11
+      },
+      "cpuMs": 58,
+      "claimCpuMax": null,
+      "pieces": 11,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       11,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "wingsP": {
+      "at": [
+       214,
+       3022
+      ],
+      "routes": 289,
+      "want": 10,
+      "verdicts": {
+       "?": 10
+      },
+      "cpuMs": 10,
+      "claimCpuMax": 2.2,
+      "pieces": 0,
+      "claims": 10,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "thick": {
+      "at": [
+       838,
+       1408
+      ],
+      "routes": 192,
+      "want": 11,
+      "verdicts": {
+       "?": 99
+      },
+      "cpuMs": 235,
+      "claimCpuMax": null,
+      "pieces": 99,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       99,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "houseF": {
+      "at": [
+       877,
+       1326
+      ],
+      "routes": 174,
+      "want": 1,
+      "verdicts": {
+       "?": 10
+      },
+      "cpuMs": 23,
+      "claimCpuMax": 1.1,
+      "pieces": 9,
+      "claims": 1,
+      "passN": 0,
+      "last": [
+       9,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "houseN": {
+      "at": [
+       1482,
+       3217
+      ],
+      "routes": 84,
+      "want": 10,
+      "verdicts": {
+       "?": 10
+      },
+      "cpuMs": 15,
+      "claimCpuMax": 1,
+      "pieces": 5,
+      "claims": 5,
+      "passN": 0,
+      "last": [
+       5,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "vilpush": {
+      "at": [
+       2018,
+       3126
+      ],
+      "routes": 48,
+      "want": 14,
+      "verdicts": {
+       "?": 1
+      },
+      "cpuMs": 15,
+      "claimCpuMax": 3.4,
+      "pieces": 0,
+      "claims": 14,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "neck": {
+      "at": [
+       842,
+       1367
+      ],
+      "routes": 240,
+      "want": 10,
+      "verdicts": {
+       "?": 10
+      },
+      "cpuMs": 21,
+      "claimCpuMax": 6.6,
+      "pieces": 0,
+      "claims": 10,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": [],
+      "j": []
+     },
+     "grad": {
+      "at": [
+       921,
+       1282
+      ],
+      "routes": 178,
+      "want": 1,
+      "verdicts": {},
+      "cpuMs": 315,
+      "claimCpuMax": null,
+      "pieces": 0,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       0,
+       null
+      ],
+      "maxProt": 0,
+      "steps": 160,
+      "again": null,
+      "j": []
+     },
+     "door": {
+      "at": [
+       1174,
+       3002
+      ],
+      "routes": 144,
+      "want": 11,
+      "verdicts": {
+       "?": 11
+      },
+      "cpuMs": 53,
+      "claimCpuMax": null,
+      "pieces": 11,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       11,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     }
+    },
+    "err": null,
+    "t1440": {
+     "reroute": 0,
+     "rerouteFail": 0,
+     "claimThru": 0,
+     "walkRedo": 0,
+     "chainRedo": 0,
+     "markHit": 0,
+     "stepHit": 0,
+     "cpu": {
+      "n": 0,
+      "p50": null,
+      "p90": null,
+      "p99": null,
+      "max": null
+     },
+     "drop": 0,
+     "keep": 0
+    }
+   },
+   "CTL": {
+    "tag": "BOT_CTL_7",
+    "pop": 2268,
+    "iso": 231,
+    "isoLog": 231,
+    "z": {
+     "breaks": 0,
+     "breakU": 0,
+     "breakMark": 0,
+     "breakPass": 0,
+     "vilBreak": 0,
+     "vpOff": 0,
+     "vpOn": 0,
+     "pend": 0,
+     "roadNote": 0,
+     "close": 0,
+     "closeVil": 0,
+     "passOther": 0,
+     "passVil": 0,
+     "vilJob": 0,
+     "freeBreak": 0,
+     "ask": 0
+    },
+    "viol": 0,
+    "passed": 0,
+    "claimCpu": {
+     "n": 40,
+     "p50": 0.7,
+     "p90": 2.1,
+     "p99": 7.9,
+     "max": 7.9
+    },
+    "placeCpu": 5518.8,
+    "pickCpu": 4619,
+    "vp": 0,
+    "width": {
+     "bodies": 4001,
+     "esc": 2702,
+     "offCell": 0,
+     "cells": 2702,
+     "d": {
+      "n": 2702,
+      "p50": 0,
+      "p90": 0,
+      "p99": 0,
+      "max": 0
+     },
+     "m": {
+      "n": 4001,
+      "p50": 0,
+      "p99": 0,
+      "max": 0
+     }
+    },
+    "tick": {
+     "n": 526,
+     "kept": 526,
+     "p50": 57.095,
+     "p90": 894.297,
+     "p99": 1870.657,
+     "p999": 91433.308,
+     "max": 91433.31,
+     "mean": 432.848
+    },
+    "tickPre": {
+     "n": 72,
+     "kept": 72,
+     "p50": 12.917,
+     "p90": 713.443,
+     "p99": 8783.341,
+     "p999": 8783.341,
+     "max": 8783.34,
+     "mean": 293.628
+    },
+    "groups": {
+     "wingsU": {
+      "at": [
+       1198,
+       819
+      ],
+      "routes": 205,
+      "want": 11,
+      "verdicts": {
+       "?": 11
+      },
+      "cpuMs": 53,
+      "claimCpuMax": null,
+      "pieces": 11,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       11,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "wingsP": {
+      "at": [
+       214,
+       3022
+      ],
+      "routes": 289,
+      "want": 10,
+      "verdicts": {
+       "?": 10
+      },
+      "cpuMs": 9,
+      "claimCpuMax": 2.1,
+      "pieces": 0,
+      "claims": 10,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "thick": {
+      "at": [
+       838,
+       1408
+      ],
+      "routes": 192,
+      "want": 11,
+      "verdicts": {
+       "?": 99
+      },
+      "cpuMs": 241,
+      "claimCpuMax": null,
+      "pieces": 99,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       99,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "houseF": {
+      "at": [
+       877,
+       1326
+      ],
+      "routes": 174,
+      "want": 1,
+      "verdicts": {
+       "?": 10
+      },
+      "cpuMs": 24,
+      "claimCpuMax": 1.2,
+      "pieces": 9,
+      "claims": 1,
+      "passN": 0,
+      "last": [
+       9,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "houseN": {
+      "at": [
+       1482,
+       3217
+      ],
+      "routes": 84,
+      "want": 10,
+      "verdicts": {
+       "?": 10
+      },
+      "cpuMs": 18,
+      "claimCpuMax": 1,
+      "pieces": 5,
+      "claims": 5,
+      "passN": 0,
+      "last": [
+       5,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "vilpush": {
+      "at": [
+       2018,
+       3126
+      ],
+      "routes": 48,
+      "want": 14,
+      "verdicts": {
+       "?": 1
+      },
+      "cpuMs": 24,
+      "claimCpuMax": 7.9,
+      "pieces": 0,
+      "claims": 14,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "neck": {
+      "at": [
+       842,
+       1367
+      ],
+      "routes": 240,
+      "want": 10,
+      "verdicts": {
+       "?": 10
+      },
+      "cpuMs": 18,
+      "claimCpuMax": 4.8,
+      "pieces": 0,
+      "claims": 10,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": [],
+      "j": []
+     },
+     "grad": {
+      "at": [
+       921,
+       1282
+      ],
+      "routes": 178,
+      "want": 1,
+      "verdicts": {},
+      "cpuMs": 436,
+      "claimCpuMax": null,
+      "pieces": 0,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       0,
+       null
+      ],
+      "maxProt": 0,
+      "steps": 160,
+      "again": null,
+      "j": []
+     },
+     "door": {
+      "at": [
+       1174,
+       3002
+      ],
+      "routes": 144,
+      "want": 11,
+      "verdicts": {
+       "?": 11
+      },
+      "cpuMs": 75,
+      "claimCpuMax": null,
+      "pieces": 11,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       11,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     }
+    },
+    "err": null,
+    "t1440": {
+     "reroute": 0,
+     "rerouteFail": 0,
+     "claimThru": 0,
+     "walkRedo": 0,
+     "chainRedo": 0,
+     "markHit": 0,
+     "stepHit": 0,
+     "cpu": {
+      "n": 0,
+      "p50": null,
+      "p90": null,
+      "p99": null,
+      "max": null
+     },
+     "drop": 0,
+     "keep": 0
+    }
+   }
+  },
+  "42": {
+   "ON": {
+    "tag": "BOT_ON_42g",
+    "pop": 2274,
+    "iso": 0,
+    "isoLog": 0,
+    "z": {
+     "breaks": 53,
+     "breakU": 28,
+     "breakMark": 25,
+     "breakPass": 0,
+     "vilBreak": 0,
+     "vpOff": 424,
+     "vpOn": 0,
+     "pend": 119,
+     "roadNote": 38,
+     "close": 26,
+     "closeVil": 0,
+     "passOther": 1,
+     "passVil": 0,
+     "vilJob": 0,
+     "freeBreak": 0,
+     "ask": 0
+    },
+    "viol": 0,
+    "passed": 1,
+    "claimCpu": {
+     "n": 45,
+     "p50": 25.7,
+     "p90": 187.6,
+     "p99": 64037.1,
+     "max": 64037.1
+    },
+    "placeCpu": 189050.8,
+    "pickCpu": 38279,
+    "vp": 424,
+    "width": {
+     "bodies": 4001,
+     "esc": 2822,
+     "offCell": 0,
+     "cells": 2822,
+     "d": {
+      "n": 2822,
+      "p50": 0,
+      "p90": 0,
+      "p99": 0,
+      "max": 0
+     },
+     "m": {
+      "n": 4001,
+      "p50": 0,
+      "p99": 0,
+      "max": 0
+     }
+    },
+    "tick": {
+     "n": 526,
+     "kept": 526,
+     "p50": 74.117,
+     "p90": 1515.846,
+     "p99": 9173.135,
+     "p999": 189291.156,
+     "max": 189291.16,
+     "mean": 1110.708
+    },
+    "tickPre": {
+     "n": 72,
+     "kept": 72,
+     "p50": 16.922,
+     "p90": 974.23,
+     "p99": 9185.363,
+     "p999": 9185.363,
+     "max": 9185.36,
+     "mean": 375.784
+    },
+    "groups": {
+     "wingsU": {
+      "at": [
+       1198,
+       819
+      ],
+      "routes": 170,
+      "want": 11,
+      "verdicts": {
+       "road": 3,
+       "?": 8
+      },
+      "cpuMs": 62,
+      "claimCpuMax": null,
+      "pieces": 11,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       7,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "wingsP": {
+      "at": [
+       214,
+       3022
+      ],
+      "routes": 243,
+      "want": 10,
+      "verdicts": {
+       "protected": 9,
+       "yield": 1
+      },
+      "cpuMs": 3686,
+      "claimCpuMax": 2736.1,
+      "pieces": 0,
+      "claims": 10,
+      "passN": 1,
+      "last": [
+       0,
+       0,
+       1,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": [
+       [
+        214,
+        3022,
+        "protected",
+        243,
+        24,
+        {
+         "1": 243
+        },
+        0
+       ],
+       [
+        215,
+        3022,
+        "protected",
+        95,
+        19,
+        {
+         "1": 95
+        },
+        0
+       ],
+       [
+        213,
+        3022,
+        "protected",
+        78,
+        10,
+        {
+         "1": 78
+        },
+        0
+       ],
+       [
+        216,
+        3022,
+        "protected",
+        165,
+        24,
+        {
+         "1": 165
+        },
+        0
+       ],
+       [
+        212,
+        3022,
+        "protected",
+        78,
+        9,
+        {
+         "1": 78
+        },
+        0
+       ],
+       [
+        217,
+        3022,
+        "protected",
+        243,
+        26,
+        {
+         "1": 243
+        },
+        0
+       ],
+       [
+        211,
+        3022,
+        "protected",
+        243,
+        36,
+        {
+         "1": 243
+        },
+        0
+       ],
+       [
+        210,
+        3022,
+        "protected",
+        258,
+        39,
+        {
+         "1": 258
+        },
+        0
+       ],
+       [
+        209,
+        3022,
+        "protected",
+        254,
+        52,
+        {
+         "1": 254
+        },
+        0
+       ],
+       [
+        208,
+        3022,
+        "yield",
+        258,
+        2715,
+        {},
+        4
+       ]
+      ]
+     },
+     "thick": {
+      "at": [
+       838,
+       1408
+      ],
+      "routes": 150,
+      "want": 11,
+      "verdicts": {
+       "?": 67,
+       "road": 32
+      },
+      "cpuMs": 222,
+      "claimCpuMax": null,
+      "pieces": 99,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       77,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "houseF": {
+      "at": [
+       214,
+       2901
+      ],
+      "routes": 145,
+      "want": 1,
+      "verdicts": {
+       "protected": 1,
+       "?": 9
+      },
+      "cpuMs": 64,
+      "claimCpuMax": 50.7,
+      "pieces": 9,
+      "claims": 1,
+      "passN": 0,
+      "last": [
+       9,
+       0,
+       0,
+       2.26
+      ],
+      "steps": null,
+      "again": null,
+      "j": [
+       [
+        214,
+        2901,
+        "protected",
+        145,
+        8,
+        {
+         "1": 145
+        },
+        0
+       ]
+      ]
+     },
+     "houseN": {
+      "at": [
+       1482,
+       3217
+      ],
+      "routes": 76,
+      "want": 10,
+      "verdicts": {
+       "free": 1,
+       "protected": 4,
+       "?": 4,
+       "road": 1
+      },
+      "cpuMs": 49710,
+      "claimCpuMax": 49595.8,
+      "pieces": 5,
+      "claims": 5,
+      "passN": 0,
+      "last": [
+       5,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": [
+       [
+        1480,
+        3217,
+        "protected",
+        19,
+        1,
+        {
+         "1": 19
+        },
+        0
+       ],
+       [
+        1482,
+        3217,
+        "protected",
+        76,
+        5,
+        {
+         "1": 76
+        },
+        0
+       ],
+       [
+        1483,
+        3217,
+        "protected",
+        76,
+        10,
+        {
+         "1": 76
+        },
+        0
+       ],
+       [
+        1485,
+        3217,
+        "protected",
+        76,
+        49549,
+        {
+         "1": 60,
+         "2": 16
+        },
+        76
+       ]
+      ]
+     },
+     "vilpush": {
+      "at": [
+       2018,
+       3126
+      ],
+      "routes": 23,
+      "want": 14,
+      "verdicts": {
+       "protected": 1
+      },
+      "cpuMs": 64087,
+      "claimCpuMax": 64037.1,
+      "pieces": 0,
+      "claims": 14,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       1,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": [
+       [
+        2018,
+        3126,
+        "protected",
+        23,
+        64023,
+        {
+         "3": 23
+        },
+        46
+       ],
+       [
+        2017,
+        3126,
+        "protected",
+        7,
+        0,
+        {
+         "1": 7
+        },
+        0
+       ],
+       [
+        2019,
+        3126,
+        "protected",
+        16,
+        1,
+        {
+         "1": 16
+        },
+        0
+       ],
+       [
+        2021,
+        3126,
+        "protected",
+        13,
+        1,
+        {
+         "1": 13
+        },
+        0
+       ],
+       [
+        2022,
+        3126,
+        "protected",
+        20,
+        2,
+        {
+         "1": 20
+        },
+        0
+       ],
+       [
+        2023,
+        3126,
+        "protected",
+        20,
+        5,
+        {
+         "1": 20
+        },
+        0
+       ]
+      ]
+     },
+     "neck": {
+      "at": [
+       842,
+       1367
+      ],
+      "routes": 188,
+      "want": 10,
+      "verdicts": {
+       "protected": 9,
+       "yield": 1,
+       "close": 1
+      },
+      "cpuMs": 20327,
+      "claimCpuMax": 19613.7,
+      "pieces": 1,
+      "claims": 10,
+      "passN": 1,
+      "last": [
+       1,
+       1,
+       1,
+       null
+      ],
+      "steps": null,
+      "again": [
+       [
+        11,
+        1,
+        8
+       ],
+       [
+        12,
+        1,
+        16
+       ],
+       [
+        13,
+        1,
+        24
+       ],
+       [
+        16,
+        1,
+        32
+       ],
+       [
+        19,
+        1,
+        40
+       ],
+       [
+        20,
+        1,
+        48
+       ],
+       [
+        21,
+        1,
+        56
+       ],
+       [
+        22,
+        1,
+        64
+       ],
+       [
+        24,
+        1,
+        72
+       ],
+       [
+        25,
+        1,
+        80
+       ],
+       [
+        26,
+        1,
+        88
+       ],
+       [
+        38,
+        1,
+        96
+       ],
+       [
+        39,
+        1,
+        104
+       ],
+       [
+        40,
+        1,
+        112
+       ],
+       [
+        41,
+        1,
+        120
+       ],
+       [
+        42,
+        1,
+        128
+       ],
+       [
+        43,
+        1,
+        136
+       ],
+       [
+        53,
+        1,
+        144
+       ],
+       [
+        55,
+        1,
+        152
+       ],
+       [
+        57,
+        1,
+        160
+       ],
+       [
+        59,
+        1,
+        168
+       ],
+       [
+        64,
+        1,
+        176
+       ],
+       [
+        69,
+        1,
+        184
+       ],
+       [
+        71,
+        1,
+        192
+       ],
+       [
+        73,
+        1,
+        200
+       ]
+      ],
+      "j": [
+       [
+        842,
+        1367,
+        "protected",
+        184,
+        13,
+        {
+         "1": 184
+        },
+        0
+       ],
+       [
+        843,
+        1367,
+        "protected",
+        4,
+        4,
+        {
+         "1": 4
+        },
+        0
+       ],
+       [
+        841,
+        1367,
+        "protected",
+        3,
+        3,
+        {
+         "1": 3
+        },
+        0
+       ],
+       [
+        844,
+        1367,
+        "protected",
+        140,
+        14,
+        {
+         "1": 140
+        },
+        0
+       ],
+       [
+        840,
+        1367,
+        "protected",
+        34,
+        5,
+        {
+         "1": 34
+        },
+        0
+       ],
+       [
+        845,
+        1367,
+        "protected",
+        150,
+        25,
+        {
+         "1": 150
+        },
+        0
+       ],
+       [
+        839,
+        1367,
+        "protected",
+        184,
+        25,
+        {
+         "1": 184
+        },
+        0
+       ],
+       [
+        838,
+        1367,
+        "protected",
+        184,
+        52,
+        {
+         "1": 184
+        },
+        0
+       ],
+       [
+        837,
+        1367,
+        "protected",
+        184,
+        44,
+        {
+         "1": 184
+        },
+        0
+       ],
+       [
+        836,
+        1367,
+        "yield",
+        184,
+        19595,
+        {},
+        42
+       ]
+      ]
+     },
+     "grad": {
+      "at": [
+       214,
+       2969
+      ],
+      "routes": 147,
+      "want": 1,
+      "verdicts": {},
+      "cpuMs": 11984,
+      "claimCpuMax": null,
+      "pieces": 0,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       0,
+       2.26
+      ],
+      "maxProt": 1.386,
+      "steps": 160,
+      "again": null,
+      "j": []
+     },
+     "door": {
+      "at": [
+       1174,
+       3002
+      ],
+      "routes": 99,
+      "want": 11,
+      "verdicts": {
+       "?": 9,
+       "road": 2
+      },
+      "cpuMs": 76,
+      "claimCpuMax": null,
+      "pieces": 11,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       9,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "shop": {
+      "at": [
+       851,
+       552
+      ],
+      "routes": 32,
+      "want": 1,
+      "verdicts": {
+       "protected": 2
+      },
+      "cpuMs": 314,
+      "claimCpuMax": 16.5,
+      "pieces": 0,
+      "claims": 3,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       0,
+       1.013
+      ],
+      "steps": 2,
+      "again": null,
+      "j": [
+       [
+        852,
+        553,
+        "protected",
+        32,
+        7,
+        {
+         "1": 32
+        },
+        0
+       ],
+       [
+        852,
+        552,
+        "protected",
+        32,
+        2,
+        {
+         "1": 32
+        },
+        0
+       ]
+      ]
+     },
+     "shopK": {
+      "at": [
+       1489,
+       182
+      ],
+      "routes": 28,
+      "want": 1,
+      "verdicts": {
+       "protected": 1
+      },
+      "cpuMs": 239,
+      "claimCpuMax": 25.3,
+      "pieces": 0,
+      "claims": 2,
+      "passN": 1,
+      "last": [
+       0,
+       0,
+       1,
+       1.004
+      ],
+      "steps": 1,
+      "again": null,
+      "j": [
+       [
+        1490,
+        181,
+        "protected",
+        28,
+        2,
+        {
+         "1": 28
+        },
+        0
+       ]
+      ]
+     }
+    },
+    "err": null,
+    "t1440": {
+     "route1": 678,
+     "route2": 26,
+     "reroute": 2,
+     "rerouteFail": 0,
+     "claimStop": 2,
+     "claimThru": 0,
+     "walkRedo": 8,
+     "chainRedo": 0,
+     "markHit": 53,
+     "stepHit": 7,
+     "cpu": {
+      "n": 553,
+      "p50": 0.861,
+      "p90": 40.453,
+      "p99": 504.668,
+      "max": 64022.752
+     },
+     "drop": 1079,
+     "keep": 32044,
+     "tTemp": 136384.66700000022
+    }
+   },
+   "OFF": {
+    "tag": "BOT_OFF_42",
+    "pop": 2256,
+    "iso": 0,
+    "isoLog": 0,
+    "z": {
+     "breaks": 0,
+     "breakU": 0,
+     "breakMark": 0,
+     "breakPass": 0,
+     "vilBreak": 0,
+     "vpOff": 0,
+     "vpOn": 0,
+     "pend": 0,
+     "roadNote": 0,
+     "close": 0,
+     "closeVil": 0,
+     "passOther": 0,
+     "passVil": 0,
+     "vilJob": 0,
+     "freeBreak": 0,
+     "ask": 0
+    },
+    "viol": 0,
+    "passed": 0,
+    "claimCpu": {
+     "n": 40,
+     "p50": 0.6,
+     "p90": 1.6,
+     "p99": 4.3,
+     "max": 4.3
+    },
+    "placeCpu": 4643.8,
+    "pickCpu": 3973,
+    "vp": 0,
+    "width": {
+     "bodies": 4001,
+     "esc": 2763,
+     "offCell": 0,
+     "cells": 2763,
+     "d": {
+      "n": 2763,
+      "p50": 0,
+      "p90": 0,
+      "p99": 0,
+      "max": 0
+     },
+     "m": {
+      "n": 4001,
+      "p50": 0,
+      "p99": 0,
+      "max": 0
+     }
+    },
+    "tick": {
+     "n": 526,
+     "kept": 526,
+     "p50": 50.704,
+     "p90": 895.017,
+     "p99": 2525.659,
+     "p999": 83102.086,
+     "max": 83102.09,
+     "mean": 407.807
+    },
+    "tickPre": {
+     "n": 72,
+     "kept": 72,
+     "p50": 12.53,
+     "p90": 725.879,
+     "p99": 8546.452,
+     "p999": 8546.452,
+     "max": 8546.45,
+     "mean": 296.943
+    },
+    "groups": {
+     "wingsU": {
+      "at": [
+       1198,
+       819
+      ],
+      "routes": 205,
+      "want": 11,
+      "verdicts": {
+       "?": 11
+      },
+      "cpuMs": 44,
+      "claimCpuMax": null,
+      "pieces": 11,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       11,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "wingsP": {
+      "at": [
+       214,
+       3022
+      ],
+      "routes": 289,
+      "want": 10,
+      "verdicts": {
+       "?": 10
+      },
+      "cpuMs": 6,
+      "claimCpuMax": 1.6,
+      "pieces": 0,
+      "claims": 10,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "thick": {
+      "at": [
+       838,
+       1408
+      ],
+      "routes": 192,
+      "want": 11,
+      "verdicts": {
+       "?": 99
+      },
+      "cpuMs": 194,
+      "claimCpuMax": null,
+      "pieces": 99,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       99,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "houseF": {
+      "at": [
+       877,
+       1326
+      ],
+      "routes": 174,
+      "want": 1,
+      "verdicts": {
+       "?": 10
+      },
+      "cpuMs": 21,
+      "claimCpuMax": 1,
+      "pieces": 9,
+      "claims": 1,
+      "passN": 0,
+      "last": [
+       9,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "houseN": {
+      "at": [
+       1482,
+       3217
+      ],
+      "routes": 84,
+      "want": 10,
+      "verdicts": {
+       "?": 10
+      },
+      "cpuMs": 15,
+      "claimCpuMax": 0.9,
+      "pieces": 5,
+      "claims": 5,
+      "passN": 0,
+      "last": [
+       5,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "vilpush": {
+      "at": [
+       2018,
+       3126
+      ],
+      "routes": 48,
+      "want": 14,
+      "verdicts": {
+       "?": 1
+      },
+      "cpuMs": 18,
+      "claimCpuMax": 3.4,
+      "pieces": 0,
+      "claims": 14,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "neck": {
+      "at": [
+       842,
+       1367
+      ],
+      "routes": 240,
+      "want": 10,
+      "verdicts": {
+       "?": 10
+      },
+      "cpuMs": 16,
+      "claimCpuMax": 4.3,
+      "pieces": 0,
+      "claims": 10,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": [],
+      "j": []
+     },
+     "grad": {
+      "at": [
+       921,
+       1282
+      ],
+      "routes": 178,
+      "want": 1,
+      "verdicts": {},
+      "cpuMs": 303,
+      "claimCpuMax": null,
+      "pieces": 0,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       0,
+       null
+      ],
+      "maxProt": 0,
+      "steps": 160,
+      "again": null,
+      "j": []
+     },
+     "door": {
+      "at": [
+       1174,
+       3002
+      ],
+      "routes": 144,
+      "want": 11,
+      "verdicts": {
+       "?": 11
+      },
+      "cpuMs": 54,
+      "claimCpuMax": null,
+      "pieces": 11,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       11,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     }
+    },
+    "err": null,
+    "t1440": {
+     "reroute": 0,
+     "rerouteFail": 0,
+     "claimThru": 0,
+     "walkRedo": 0,
+     "chainRedo": 0,
+     "markHit": 0,
+     "stepHit": 0,
+     "cpu": {
+      "n": 0,
+      "p50": null,
+      "p90": null,
+      "p99": null,
+      "max": null
+     },
+     "drop": 0,
+     "keep": 0
+    }
+   },
+   "CTL": {
+    "tag": "BOT_CTL_42",
+    "pop": 2131,
+    "iso": 219,
+    "isoLog": 219,
+    "z": {
+     "breaks": 0,
+     "breakU": 0,
+     "breakMark": 0,
+     "breakPass": 0,
+     "vilBreak": 0,
+     "vpOff": 0,
+     "vpOn": 0,
+     "pend": 0,
+     "roadNote": 0,
+     "close": 0,
+     "closeVil": 0,
+     "passOther": 0,
+     "passVil": 0,
+     "vilJob": 0,
+     "freeBreak": 0,
+     "ask": 0
+    },
+    "viol": 0,
+    "passed": 0,
+    "claimCpu": {
+     "n": 40,
+     "p50": 0.6,
+     "p90": 1.5,
+     "p99": 3.4,
+     "max": 3.4
+    },
+    "placeCpu": 5124.4,
+    "pickCpu": 4399,
+    "vp": 0,
+    "width": {
+     "bodies": 4001,
+     "esc": 2777,
+     "offCell": 0,
+     "cells": 2777,
+     "d": {
+      "n": 2777,
+      "p50": 0,
+      "p90": 0,
+      "p99": 0,
+      "max": 0
+     },
+     "m": {
+      "n": 4001,
+      "p50": 0,
+      "p99": 0,
+      "max": 0
+     }
+    },
+    "tick": {
+     "n": 526,
+     "kept": 526,
+     "p50": 51.891,
+     "p90": 866.855,
+     "p99": 1743.009,
+     "p999": 96102.214,
+     "max": 96102.21,
+     "mean": 422.126
+    },
+    "tickPre": {
+     "n": 72,
+     "kept": 72,
+     "p50": 11.327,
+     "p90": 826.499,
+     "p99": 10609.741,
+     "p999": 10609.741,
+     "max": 10609.74,
+     "mean": 340.835
+    },
+    "groups": {
+     "wingsU": {
+      "at": [
+       1198,
+       819
+      ],
+      "routes": 205,
+      "want": 11,
+      "verdicts": {
+       "?": 11
+      },
+      "cpuMs": 49,
+      "claimCpuMax": null,
+      "pieces": 11,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       11,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "wingsP": {
+      "at": [
+       214,
+       3022
+      ],
+      "routes": 289,
+      "want": 10,
+      "verdicts": {
+       "?": 10
+      },
+      "cpuMs": 9,
+      "claimCpuMax": 2,
+      "pieces": 0,
+      "claims": 10,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "thick": {
+      "at": [
+       838,
+       1408
+      ],
+      "routes": 192,
+      "want": 11,
+      "verdicts": {
+       "?": 99
+      },
+      "cpuMs": 222,
+      "claimCpuMax": null,
+      "pieces": 99,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       99,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "houseF": {
+      "at": [
+       877,
+       1326
+      ],
+      "routes": 174,
+      "want": 1,
+      "verdicts": {
+       "?": 10
+      },
+      "cpuMs": 21,
+      "claimCpuMax": 1,
+      "pieces": 9,
+      "claims": 1,
+      "passN": 0,
+      "last": [
+       9,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "houseN": {
+      "at": [
+       1482,
+       3217
+      ],
+      "routes": 84,
+      "want": 10,
+      "verdicts": {
+       "?": 10
+      },
+      "cpuMs": 15,
+      "claimCpuMax": 0.9,
+      "pieces": 5,
+      "claims": 5,
+      "passN": 0,
+      "last": [
+       5,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "vilpush": {
+      "at": [
+       2018,
+       3126
+      ],
+      "routes": 48,
+      "want": 14,
+      "verdicts": {
+       "?": 1
+      },
+      "cpuMs": 11,
+      "claimCpuMax": 2.4,
+      "pieces": 0,
+      "claims": 14,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "neck": {
+      "at": [
+       842,
+       1367
+      ],
+      "routes": 240,
+      "want": 10,
+      "verdicts": {
+       "?": 10
+      },
+      "cpuMs": 21,
+      "claimCpuMax": 3.4,
+      "pieces": 0,
+      "claims": 10,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": [],
+      "j": []
+     },
+     "grad": {
+      "at": [
+       921,
+       1282
+      ],
+      "routes": 178,
+      "want": 1,
+      "verdicts": {},
+      "cpuMs": 320,
+      "claimCpuMax": null,
+      "pieces": 0,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       0,
+       null
+      ],
+      "maxProt": 0,
+      "steps": 160,
+      "again": null,
+      "j": []
+     },
+     "door": {
+      "at": [
+       1174,
+       3002
+      ],
+      "routes": 144,
+      "want": 11,
+      "verdicts": {
+       "?": 11
+      },
+      "cpuMs": 56,
+      "claimCpuMax": null,
+      "pieces": 11,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       11,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     }
+    },
+    "err": null,
+    "t1440": {
+     "reroute": 0,
+     "rerouteFail": 0,
+     "claimThru": 0,
+     "walkRedo": 0,
+     "chainRedo": 0,
+     "markHit": 0,
+     "stepHit": 0,
+     "cpu": {
+      "n": 0,
+      "p50": null,
+      "p90": null,
+      "p99": null,
+      "max": null
+     },
+     "drop": 0,
+     "keep": 0
+    }
+   }
+  },
+  "1020": {
+   "ON": {
+    "tag": "BOT_ON_1020g",
+    "pop": 2225,
+    "iso": 0,
+    "isoLog": 0,
+    "z": {
+     "breaks": 60,
+     "breakU": 36,
+     "breakMark": 24,
+     "breakPass": 0,
+     "vilBreak": 0,
+     "vpOff": 480,
+     "vpOn": 0,
+     "pend": 118,
+     "roadNote": 38,
+     "close": 25,
+     "closeVil": 0,
+     "passOther": 1,
+     "passVil": 0,
+     "vilJob": 0,
+     "freeBreak": 0,
+     "ask": 0
+    },
+    "viol": 0,
+    "passed": 1,
+    "claimCpu": {
+     "n": 45,
+     "p50": 25,
+     "p90": 138.2,
+     "p99": 60852.7,
+     "max": 60852.7
+    },
+    "placeCpu": 180467.6,
+    "pickCpu": 36310,
+    "vp": 480,
+    "width": {
+     "bodies": 4001,
+     "esc": 2875,
+     "offCell": 0,
+     "cells": 2875,
+     "d": {
+      "n": 2875,
+      "p50": 0,
+      "p90": 0,
+      "p99": 0,
+      "max": 0
+     },
+     "m": {
+      "n": 4001,
+      "p50": 0,
+      "p99": 0,
+      "max": 0
+     }
+    },
+    "tick": {
+     "n": 526,
+     "kept": 526,
+     "p50": 79.152,
+     "p90": 1325.914,
+     "p99": 4285.622,
+     "p999": 180721.356,
+     "max": 180721.36,
+     "mean": 925.31
+    },
+    "tickPre": {
+     "n": 72,
+     "kept": 72,
+     "p50": 17.231,
+     "p90": 1174.536,
+     "p99": 10135.951,
+     "p999": 10135.951,
+     "max": 10135.95,
+     "mean": 373.338
+    },
+    "groups": {
+     "wingsU": {
+      "at": [
+       1198,
+       819
+      ],
+      "routes": 170,
+      "want": 11,
+      "verdicts": {
+       "road": 3,
+       "?": 8
+      },
+      "cpuMs": 66,
+      "claimCpuMax": null,
+      "pieces": 11,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       7,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "wingsP": {
+      "at": [
+       214,
+       3022
+      ],
+      "routes": 243,
+      "want": 10,
+      "verdicts": {
+       "protected": 9,
+       "yield": 1
+      },
+      "cpuMs": 3490,
+      "claimCpuMax": 2679.2,
+      "pieces": 0,
+      "claims": 10,
+      "passN": 1,
+      "last": [
+       0,
+       0,
+       1,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": [
+       [
+        214,
+        3022,
+        "protected",
+        243,
+        31,
+        {
+         "1": 243
+        },
+        0
+       ],
+       [
+        215,
+        3022,
+        "protected",
+        95,
+        18,
+        {
+         "1": 95
+        },
+        0
+       ],
+       [
+        213,
+        3022,
+        "protected",
+        78,
+        7,
+        {
+         "1": 78
+        },
+        0
+       ],
+       [
+        216,
+        3022,
+        "protected",
+        165,
+        23,
+        {
+         "1": 165
+        },
+        0
+       ],
+       [
+        212,
+        3022,
+        "protected",
+        78,
+        10,
+        {
+         "1": 78
+        },
+        0
+       ],
+       [
+        217,
+        3022,
+        "protected",
+        243,
+        24,
+        {
+         "1": 243
+        },
+        0
+       ],
+       [
+        211,
+        3022,
+        "protected",
+        243,
+        35,
+        {
+         "1": 243
+        },
+        0
+       ],
+       [
+        210,
+        3022,
+        "protected",
+        258,
+        29,
+        {
+         "1": 258
+        },
+        0
+       ],
+       [
+        209,
+        3022,
+        "protected",
+        254,
+        32,
+        {
+         "1": 254
+        },
+        0
+       ],
+       [
+        208,
+        3022,
+        "yield",
+        258,
+        2667,
+        {},
+        4
+       ]
+      ]
+     },
+     "thick": {
+      "at": [
+       838,
+       1408
+      ],
+      "routes": 150,
+      "want": 11,
+      "verdicts": {
+       "?": 67,
+       "road": 32
+      },
+      "cpuMs": 231,
+      "claimCpuMax": null,
+      "pieces": 99,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       69,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "houseF": {
+      "at": [
+       214,
+       2901
+      ],
+      "routes": 145,
+      "want": 1,
+      "verdicts": {
+       "protected": 1,
+       "?": 9
+      },
+      "cpuMs": 69,
+      "claimCpuMax": 54.9,
+      "pieces": 9,
+      "claims": 1,
+      "passN": 0,
+      "last": [
+       9,
+       0,
+       0,
+       1.984
+      ],
+      "steps": null,
+      "again": null,
+      "j": [
+       [
+        214,
+        2901,
+        "protected",
+        145,
+        7,
+        {
+         "1": 145
+        },
+        0
+       ]
+      ]
+     },
+     "houseN": {
+      "at": [
+       1482,
+       3217
+      ],
+      "routes": 76,
+      "want": 10,
+      "verdicts": {
+       "free": 1,
+       "protected": 4,
+       "?": 4,
+       "road": 1
+      },
+      "cpuMs": 47147,
+      "claimCpuMax": 47056.3,
+      "pieces": 5,
+      "claims": 5,
+      "passN": 0,
+      "last": [
+       5,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": [
+       [
+        1480,
+        3217,
+        "protected",
+        19,
+        2,
+        {
+         "1": 19
+        },
+        0
+       ],
+       [
+        1482,
+        3217,
+        "protected",
+        76,
+        6,
+        {
+         "1": 76
+        },
+        0
+       ],
+       [
+        1483,
+        3217,
+        "protected",
+        76,
+        9,
+        {
+         "1": 76
+        },
+        0
+       ],
+       [
+        1485,
+        3217,
+        "protected",
+        76,
+        47020,
+        {
+         "1": 60,
+         "2": 16
+        },
+        76
+       ]
+      ]
+     },
+     "vilpush": {
+      "at": [
+       2018,
+       3126
+      ],
+      "routes": 23,
+      "want": 14,
+      "verdicts": {
+       "protected": 1
+      },
+      "cpuMs": 60899,
+      "claimCpuMax": 60852.7,
+      "pieces": 0,
+      "claims": 14,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       1,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": [
+       [
+        2018,
+        3126,
+        "protected",
+        23,
+        60842,
+        {
+         "3": 23
+        },
+        46
+       ],
+       [
+        2017,
+        3126,
+        "protected",
+        7,
+        0,
+        {
+         "1": 7
+        },
+        0
+       ],
+       [
+        2019,
+        3126,
+        "protected",
+        16,
+        1,
+        {
+         "1": 16
+        },
+        0
+       ],
+       [
+        2021,
+        3126,
+        "protected",
+        13,
+        1,
+        {
+         "1": 13
+        },
+        0
+       ],
+       [
+        2022,
+        3126,
+        "protected",
+        20,
+        2,
+        {
+         "1": 20
+        },
+        0
+       ],
+       [
+        2023,
+        3126,
+        "protected",
+        20,
+        5,
+        {
+         "1": 20
+        },
+        0
+       ]
+      ]
+     },
+     "neck": {
+      "at": [
+       842,
+       1367
+      ],
+      "routes": 188,
+      "want": 10,
+      "verdicts": {
+       "protected": 9,
+       "yield": 1,
+       "close": 1
+      },
+      "cpuMs": 20011,
+      "claimCpuMax": 19389.5,
+      "pieces": 1,
+      "claims": 10,
+      "passN": 1,
+      "last": [
+       1,
+       1,
+       1,
+       null
+      ],
+      "steps": null,
+      "again": [
+       [
+        11,
+        1,
+        8
+       ],
+       [
+        12,
+        1,
+        16
+       ],
+       [
+        13,
+        1,
+        24
+       ],
+       [
+        19,
+        1,
+        32
+       ],
+       [
+        20,
+        1,
+        40
+       ],
+       [
+        21,
+        1,
+        48
+       ],
+       [
+        22,
+        1,
+        56
+       ],
+       [
+        23,
+        1,
+        64
+       ],
+       [
+        24,
+        1,
+        72
+       ],
+       [
+        36,
+        1,
+        80
+       ],
+       [
+        37,
+        1,
+        88
+       ],
+       [
+        38,
+        1,
+        96
+       ],
+       [
+        45,
+        1,
+        104
+       ],
+       [
+        47,
+        1,
+        112
+       ],
+       [
+        49,
+        1,
+        120
+       ],
+       [
+        51,
+        1,
+        128
+       ],
+       [
+        52,
+        1,
+        136
+       ],
+       [
+        53,
+        1,
+        144
+       ],
+       [
+        55,
+        1,
+        152
+       ],
+       [
+        62,
+        1,
+        160
+       ],
+       [
+        65,
+        1,
+        168
+       ],
+       [
+        69,
+        1,
+        176
+       ],
+       [
+        77,
+        1,
+        184
+       ],
+       [
+        79,
+        1,
+        192
+       ]
+      ],
+      "j": [
+       [
+        842,
+        1367,
+        "protected",
+        184,
+        10,
+        {
+         "1": 184
+        },
+        0
+       ],
+       [
+        843,
+        1367,
+        "protected",
+        4,
+        2,
+        {
+         "1": 4
+        },
+        0
+       ],
+       [
+        841,
+        1367,
+        "protected",
+        3,
+        3,
+        {
+         "1": 3
+        },
+        0
+       ],
+       [
+        844,
+        1367,
+        "protected",
+        140,
+        15,
+        {
+         "1": 140
+        },
+        0
+       ],
+       [
+        840,
+        1367,
+        "protected",
+        34,
+        4,
+        {
+         "1": 34
+        },
+        0
+       ],
+       [
+        845,
+        1367,
+        "protected",
+        150,
+        15,
+        {
+         "1": 150
+        },
+        0
+       ],
+       [
+        839,
+        1367,
+        "protected",
+        184,
+        24,
+        {
+         "1": 184
+        },
+        0
+       ],
+       [
+        838,
+        1367,
+        "protected",
+        184,
+        37,
+        {
+         "1": 184
+        },
+        0
+       ],
+       [
+        837,
+        1367,
+        "protected",
+        184,
+        43,
+        {
+         "1": 184
+        },
+        0
+       ],
+       [
+        836,
+        1367,
+        "yield",
+        184,
+        19369,
+        {},
+        42
+       ]
+      ]
+     },
+     "grad": {
+      "at": [
+       214,
+       2969
+      ],
+      "routes": 147,
+      "want": 1,
+      "verdicts": {},
+      "cpuMs": 11522,
+      "claimCpuMax": null,
+      "pieces": 0,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       0,
+       1.984
+      ],
+      "maxProt": 1.386,
+      "steps": 160,
+      "again": null,
+      "j": []
+     },
+     "door": {
+      "at": [
+       1174,
+       3002
+      ],
+      "routes": 99,
+      "want": 11,
+      "verdicts": {
+       "?": 9,
+       "road": 2
+      },
+      "cpuMs": 68,
+      "claimCpuMax": null,
+      "pieces": 11,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       9,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "shop": {
+      "at": [
+       851,
+       552
+      ],
+      "routes": 32,
+      "want": 1,
+      "verdicts": {
+       "protected": 2
+      },
+      "cpuMs": 343,
+      "claimCpuMax": 12.3,
+      "pieces": 0,
+      "claims": 3,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       0,
+       1.032
+      ],
+      "steps": 2,
+      "again": null,
+      "j": [
+       [
+        852,
+        553,
+        "protected",
+        32,
+        3,
+        {
+         "1": 32
+        },
+        0
+       ],
+       [
+        852,
+        552,
+        "protected",
+        32,
+        2,
+        {
+         "1": 32
+        },
+        0
+       ]
+      ]
+     },
+     "shopK": {
+      "at": [
+       1489,
+       182
+      ],
+      "routes": 28,
+      "want": 1,
+      "verdicts": {
+       "protected": 1
+      },
+      "cpuMs": 310,
+      "claimCpuMax": 25,
+      "pieces": 0,
+      "claims": 2,
+      "passN": 1,
+      "last": [
+       0,
+       0,
+       1,
+       1.005
+      ],
+      "steps": 1,
+      "again": null,
+      "j": [
+       [
+        1490,
+        181,
+        "protected",
+        28,
+        2,
+        {
+         "1": 28
+        },
+        0
+       ]
+      ]
+     }
+    },
+    "err": null,
+    "t1440": {
+     "route1": 627,
+     "route2": 27,
+     "reroute": 2,
+     "rerouteFail": 1,
+     "claimStop": 2,
+     "claimThru": 1,
+     "walkRedo": 7,
+     "chainRedo": 0,
+     "markHit": 60,
+     "stepHit": 12,
+     "cpu": {
+      "n": 541,
+      "p50": 1.223,
+      "p90": 35.681,
+      "p99": 107.46,
+      "max": 60842.458
+     },
+     "drop": 1057,
+     "keep": 31642,
+     "tTemp": 128572.94899999972
+    }
+   },
+   "OFF": {
+    "tag": "BOT_OFF_1020",
+    "pop": 2172,
+    "iso": 0,
+    "isoLog": 0,
+    "z": {
+     "breaks": 0,
+     "breakU": 0,
+     "breakMark": 0,
+     "breakPass": 0,
+     "vilBreak": 0,
+     "vpOff": 0,
+     "vpOn": 0,
+     "pend": 0,
+     "roadNote": 0,
+     "close": 0,
+     "closeVil": 0,
+     "passOther": 0,
+     "passVil": 0,
+     "vilJob": 0,
+     "freeBreak": 0,
+     "ask": 0
+    },
+    "viol": 0,
+    "passed": 0,
+    "claimCpu": {
+     "n": 40,
+     "p50": 0.8,
+     "p90": 4.3,
+     "p99": 10.4,
+     "max": 10.4
+    },
+    "placeCpu": 6863.8,
+    "pickCpu": 5194,
+    "vp": 0,
+    "width": {
+     "bodies": 4001,
+     "esc": 2869,
+     "offCell": 0,
+     "cells": 2869,
+     "d": {
+      "n": 2869,
+      "p50": 0,
+      "p90": 0,
+      "p99": 0,
+      "max": 0
+     },
+     "m": {
+      "n": 4001,
+      "p50": 0,
+      "p99": 0,
+      "max": 0
+     }
+    },
+    "tick": {
+     "n": 526,
+     "kept": 526,
+     "p50": 54.763,
+     "p90": 809.937,
+     "p99": 2307,
+     "p999": 90276.247,
+     "max": 90276.25,
+     "mean": 436.508
+    },
+    "tickPre": {
+     "n": 72,
+     "kept": 72,
+     "p50": 10.398,
+     "p90": 655.377,
+     "p99": 10807.258,
+     "p999": 10807.258,
+     "max": 10807.26,
+     "mean": 330.576
+    },
+    "groups": {
+     "wingsU": {
+      "at": [
+       1198,
+       819
+      ],
+      "routes": 205,
+      "want": 11,
+      "verdicts": {
+       "?": 11
+      },
+      "cpuMs": 76,
+      "claimCpuMax": null,
+      "pieces": 11,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       11,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "wingsP": {
+      "at": [
+       214,
+       3022
+      ],
+      "routes": 289,
+      "want": 10,
+      "verdicts": {
+       "?": 10
+      },
+      "cpuMs": 24,
+      "claimCpuMax": 4.3,
+      "pieces": 0,
+      "claims": 10,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "thick": {
+      "at": [
+       838,
+       1408
+      ],
+      "routes": 192,
+      "want": 11,
+      "verdicts": {
+       "?": 99
+      },
+      "cpuMs": 670,
+      "claimCpuMax": null,
+      "pieces": 99,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       99,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "houseF": {
+      "at": [
+       877,
+       1326
+      ],
+      "routes": 174,
+      "want": 1,
+      "verdicts": {
+       "?": 10
+      },
+      "cpuMs": 23,
+      "claimCpuMax": 1.2,
+      "pieces": 9,
+      "claims": 1,
+      "passN": 0,
+      "last": [
+       9,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "houseN": {
+      "at": [
+       1482,
+       3217
+      ],
+      "routes": 84,
+      "want": 10,
+      "verdicts": {
+       "?": 10
+      },
+      "cpuMs": 16,
+      "claimCpuMax": 1.3,
+      "pieces": 5,
+      "claims": 5,
+      "passN": 0,
+      "last": [
+       5,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "vilpush": {
+      "at": [
+       2018,
+       3126
+      ],
+      "routes": 48,
+      "want": 14,
+      "verdicts": {
+       "?": 1
+      },
+      "cpuMs": 16,
+      "claimCpuMax": 2.8,
+      "pieces": 0,
+      "claims": 14,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "neck": {
+      "at": [
+       842,
+       1367
+      ],
+      "routes": 240,
+      "want": 10,
+      "verdicts": {
+       "?": 10
+      },
+      "cpuMs": 34,
+      "claimCpuMax": 10.4,
+      "pieces": 0,
+      "claims": 10,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": [],
+      "j": []
+     },
+     "grad": {
+      "at": [
+       921,
+       1282
+      ],
+      "routes": 178,
+      "want": 1,
+      "verdicts": {},
+      "cpuMs": 687,
+      "claimCpuMax": null,
+      "pieces": 0,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       0,
+       null
+      ],
+      "maxProt": 0,
+      "steps": 160,
+      "again": null,
+      "j": []
+     },
+     "door": {
+      "at": [
+       1174,
+       3002
+      ],
+      "routes": 144,
+      "want": 11,
+      "verdicts": {
+       "?": 11
+      },
+      "cpuMs": 123,
+      "claimCpuMax": null,
+      "pieces": 11,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       11,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     }
+    },
+    "err": null,
+    "t1440": {
+     "reroute": 0,
+     "rerouteFail": 0,
+     "claimThru": 0,
+     "walkRedo": 0,
+     "chainRedo": 0,
+     "markHit": 0,
+     "stepHit": 0,
+     "cpu": {
+      "n": 0,
+      "p50": null,
+      "p90": null,
+      "p99": null,
+      "max": null
+     },
+     "drop": 0,
+     "keep": 0
+    }
+   },
+   "CTL": {
+    "tag": "BOT_CTL_1020",
+    "pop": 2176,
+    "iso": 222,
+    "isoLog": 222,
+    "z": {
+     "breaks": 0,
+     "breakU": 0,
+     "breakMark": 0,
+     "breakPass": 0,
+     "vilBreak": 0,
+     "vpOff": 0,
+     "vpOn": 0,
+     "pend": 0,
+     "roadNote": 0,
+     "close": 0,
+     "closeVil": 0,
+     "passOther": 0,
+     "passVil": 0,
+     "vilJob": 0,
+     "freeBreak": 0,
+     "ask": 0
+    },
+    "viol": 0,
+    "passed": 0,
+    "claimCpu": {
+     "n": 40,
+     "p50": 0.5,
+     "p90": 2.3,
+     "p99": 4.3,
+     "max": 4.3
+    },
+    "placeCpu": 4339.9,
+    "pickCpu": 3679,
+    "vp": 0,
+    "width": {
+     "bodies": 4001,
+     "esc": 2752,
+     "offCell": 0,
+     "cells": 2752,
+     "d": {
+      "n": 2752,
+      "p50": 0,
+      "p90": 0,
+      "p99": 0,
+      "max": 0
+     },
+     "m": {
+      "n": 4001,
+      "p50": 0,
+      "p99": 0,
+      "max": 0
+     }
+    },
+    "tick": {
+     "n": 526,
+     "kept": 526,
+     "p50": 61.581,
+     "p90": 832.733,
+     "p99": 2258.097,
+     "p999": 99068.087,
+     "max": 99068.09,
+     "mean": 445.861
+    },
+    "tickPre": {
+     "n": 72,
+     "kept": 72,
+     "p50": 12.29,
+     "p90": 702.416,
+     "p99": 9622.205,
+     "p999": 9622.205,
+     "max": 9622.21,
+     "mean": 309.431
+    },
+    "groups": {
+     "wingsU": {
+      "at": [
+       1198,
+       819
+      ],
+      "routes": 205,
+      "want": 11,
+      "verdicts": {
+       "?": 11
+      },
+      "cpuMs": 50,
+      "claimCpuMax": null,
+      "pieces": 11,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       11,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "wingsP": {
+      "at": [
+       214,
+       3022
+      ],
+      "routes": 289,
+      "want": 10,
+      "verdicts": {
+       "?": 10
+      },
+      "cpuMs": 9,
+      "claimCpuMax": 2.5,
+      "pieces": 0,
+      "claims": 10,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "thick": {
+      "at": [
+       838,
+       1408
+      ],
+      "routes": 192,
+      "want": 11,
+      "verdicts": {
+       "?": 99
+      },
+      "cpuMs": 203,
+      "claimCpuMax": null,
+      "pieces": 99,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       99,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "houseF": {
+      "at": [
+       877,
+       1326
+      ],
+      "routes": 174,
+      "want": 1,
+      "verdicts": {
+       "?": 10
+      },
+      "cpuMs": 19,
+      "claimCpuMax": 0.8,
+      "pieces": 9,
+      "claims": 1,
+      "passN": 0,
+      "last": [
+       9,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "houseN": {
+      "at": [
+       1482,
+       3217
+      ],
+      "routes": 84,
+      "want": 10,
+      "verdicts": {
+       "?": 10
+      },
+      "cpuMs": 12,
+      "claimCpuMax": 0.7,
+      "pieces": 5,
+      "claims": 5,
+      "passN": 0,
+      "last": [
+       5,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "vilpush": {
+      "at": [
+       2018,
+       3126
+      ],
+      "routes": 48,
+      "want": 14,
+      "verdicts": {
+       "?": 1
+      },
+      "cpuMs": 15,
+      "claimCpuMax": 4.3,
+      "pieces": 0,
+      "claims": 14,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     },
+     "neck": {
+      "at": [
+       842,
+       1367
+      ],
+      "routes": 240,
+      "want": 10,
+      "verdicts": {
+       "?": 10
+      },
+      "cpuMs": 16,
+      "claimCpuMax": 3,
+      "pieces": 0,
+      "claims": 10,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": [],
+      "j": []
+     },
+     "grad": {
+      "at": [
+       921,
+       1282
+      ],
+      "routes": 178,
+      "want": 1,
+      "verdicts": {},
+      "cpuMs": 282,
+      "claimCpuMax": null,
+      "pieces": 0,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       0,
+       0,
+       0,
+       null
+      ],
+      "maxProt": 0,
+      "steps": 160,
+      "again": null,
+      "j": []
+     },
+     "door": {
+      "at": [
+       1174,
+       3002
+      ],
+      "routes": 144,
+      "want": 11,
+      "verdicts": {
+       "?": 11
+      },
+      "cpuMs": 52,
+      "claimCpuMax": null,
+      "pieces": 11,
+      "claims": 0,
+      "passN": 0,
+      "last": [
+       11,
+       0,
+       0,
+       null
+      ],
+      "steps": null,
+      "again": null,
+      "j": []
+     }
+    },
+    "err": null,
+    "t1440": {
+     "reroute": 0,
+     "rerouteFail": 0,
+     "claimThru": 0,
+     "walkRedo": 0,
+     "chainRedo": 0,
+     "markHit": 0,
+     "stepHit": 0,
+     "cpu": {
+      "n": 0,
+      "p50": null,
+      "p90": null,
+      "p99": null,
+      "max": null
+     },
+     "drop": 0,
+     "keep": 0
+    }
+   }
+  }
+ },
+ "tick": {
+  "ON": {
+   "tick": {
+    "n": 47867,
+    "kept": 47867,
+    "p50": 0.334,
+    "p90": 0.539,
+    "p99": 1.958,
+    "p999": 32.459,
+    "max": 256777.76,
+    "mean": 5.874
+   },
+   "tickPre": {
+    "n": 30958,
+    "kept": 30958,
+    "p50": 0.33,
+    "p90": 0.647,
+    "p99": 1.775,
+    "p999": 13.593,
+    "max": 9310.74,
+    "mean": 0.737
+   },
+   "err": null,
+   "placeCpu": 256628.3,
+   "width": {
+    "bodies": 25,
+    "esc": 0,
+    "offCell": 0,
+    "cells": 0,
+    "d": {
+     "n": 0,
+     "p50": null,
+     "p90": null,
+     "p99": null,
+     "max": null
+    },
+    "m": {
+     "n": 25,
+     "p50": 0,
+     "p99": 0,
+     "max": 0
+    }
+   }
+  },
+  "OFF": {
+   "tick": {
+    "n": 47867,
+    "kept": 47867,
+    "p50": 0.286,
+    "p90": 0.593,
+    "p99": 12.011,
+    "p999": 75.37,
+    "max": 61304.23,
+    "mean": 2.069
+   },
+   "tickPre": {
+    "n": 30958,
+    "kept": 30958,
+    "p50": 0.324,
+    "p90": 0.51,
+    "p99": 1.7,
+    "p999": 13.16,
+    "max": 8150.47,
+    "mean": 0.671
+   },
+   "err": null,
+   "placeCpu": 54227.7,
+   "width": {
+    "bodies": 25,
+    "esc": 0,
+    "offCell": 0,
+    "cells": 0,
+    "d": {
+     "n": 0,
+     "p50": null,
+     "p90": null,
+     "p99": null,
+     "max": null
+    },
+    "m": {
+     "n": 25,
+     "p50": 0,
+     "p99": 0,
+     "max": 0
+    }
+   }
+  }
+ }
+}

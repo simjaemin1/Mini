@@ -93,7 +93,10 @@ function _now() { return Lots.nowMs(); }
 function _kNow() { return _tickK != null ? _tickK : _now(); }   // 새 로트의 열쇠 — 마감 중이면 마감의 순간
 function _day() { return Lots.dayMs() || 1; }
 function _nowFrac() { return (T789 && _tickK != null ? _tickK : _now()) / _day(); }   // ★[T803] 켬(T789)이면 마감 동안의 "지금" = 마감의 순간 하나(정산 · 옮김 도장까지 — 벽시계가 판마다 다른 몫 0)
-function _rec(k, u) { const g = _gran(); return { k, u, f0: 1, e: 0, t: k / _day(), m: g.m, w: g.w }; }
+function _rec(k, u, g0) { const g = g0 || _gran(); return { k, u, f0: 1, e: 0, t: k / _day(), m: g.m, w: g.w }; }
+// ★[T1438] 곳간이 낡으면 새로 드는 로트의 자리 칸(밀폐 · 완충)이 남은 값만큼(`decay.scalePlace` — 존 상자 · 곳간과 같은 식 · 든 순간에 잰다) ·
+//   마을이 하루 한 번 적는 그 마을 곳간 몫 `v._t1438GranF`(손잡이 `T1438_DECAY` 켬만 적는다 — 끔 = 칸 없음 = 종전 `_gran()` 그대로 · main 바이트)
+function _granV(v) { const f = v && v._t1438GranF; return (f >= 0 && f < 1) ? require('./decay').scalePlace(_gran(), f) : _gran(); }
 // 정산 — 그 레코드의 자리 배율로 지금까지(소수 날 · `spoil.exposureAt` 정본)
 function _settle(r, nf, e) { const t0 = (r.t == null) ? r.k / _day() : +r.t; if (t0 < nf) { r.e = +Spoil.exposureAt(r, nf, e || 0).toFixed(6); r.t = nf; } return r; }   // ★[T856] e = 그 구간 자리의 고도(km · 없으면 0 = 종전)
 // ★★[T856 2026-10-22 · 손잡이 `T856_LAND_ELEV`('1' 만 켬 · 끔 = 곳간 구간 고도 0 = main 바이트)] **곳간 구간도 마을 고도로.**
@@ -217,7 +220,7 @@ function _in(v, res, du) {
   if (q && q.length) {                                   // 옮김 — 넘겨받는 레코드(무게 비율대로 나눠 받는다)
     const W = q.reduce((a, r) => a + (+r.u || 0), 0);
     if (W > EPS) {
-      const nf = _nowFrac(), g = _gran();
+      const nf = _nowFrac(), g = _granV(v);
       for (const r of q) { const u = left * (+r.u || 0) / W; if (u > EPS) { arr.push(_restamp(_copy(r, u), g, nf)); _itIn(v, r.it, u); } }   // ★[T768] 든 품목 셈
       q.length = 0; delete P[res];
       ST.moved++;
@@ -225,10 +228,10 @@ function _in(v, res, du) {
       return;
     }
   }
-  const k = _kNow(), g = _gran();                       // 얻음 — 지금 순간의 새 로트(같은 순간 · 같은 자리 · 갓 난 것이면 합친다)
+  const k = _kNow(), g = _granV(v);                     // 얻음 — 지금 순간의 새 로트(같은 순간 · 같은 자리 · 갓 난 것이면 합친다)
   const last = arr.length ? arr[arr.length - 1] : null;
   if (last && last.k === k && last.m === g.m && last.w === g.w && !(+last.e > 0) && (last.f0 == null || last.f0 === 1) && last.it == null && last.h == null) last.u += left;   // ★[T768] 품목 실은 레코드엔 안 합친다(econ 이 만든 몫 = 대표 품목)
-  else { arr.push(_rec(k, left)); ST.newLots++; if (last && last.k > k) _sortK(arr); }
+  else { arr.push(_rec(k, left, g)); ST.newLots++; if (last && last.k > k) _sortK(arr); }
 }
 function _out(v, res, du) {
   const L = LED.get(v); if (!L) return;

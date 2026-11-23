@@ -1,0 +1,6 @@
+# T1433 라이브 — 존 DB 행 수를 읽기만 하는 한 줄(재민이 돌린다 · 쓰기 0 · WAL 이라 도는 존을 안 막는다)
+# 서울(한반도):
+docker exec durango-zone-hanbando node --no-warnings --experimental-sqlite -e 'const d=new (require("node:sqlite").DatabaseSync)(process.env.DB_PATH||"/data/world.db",{readOnly:true}),n=s=>d.prepare(s).get().n,T=["village_buildings","roads","buildings","harvested_seeds","village_chronicle"];const o={day:n("SELECT MAX(day) n FROM villages")};for(const t of T)o[t]=n("SELECT COUNT(*) n FROM "+t);o.terr=n("SELECT COUNT(*) n FROM village_buildings WHERE type=\x27terr\x27");o.terrseq=n("SELECT COUNT(*) n FROM village_buildings WHERE type=\x27terrseq\x27");o.usedMB=+((n("SELECT page_count n FROM pragma_page_count")-n("SELECT freelist_count n FROM pragma_freelist_count"))*n("SELECT page_size n FROM pragma_page_size")/1048576).toFixed(1);console.log(JSON.stringify(o))'
+# 도쿄(닛폰): 컨테이너 이름만 durango-zone-nippon
+# 800날 끔 사본에 같은 줄(DB_PATH=사본):
+# {"day":800,"village_buildings":948408,"roads":436037,"buildings":64108,"harvested_seeds":35945,"village_chronicle":12350,"terr":748080,"terrseq":0,"usedMB":134}
