@@ -8231,7 +8231,6 @@ async function _acceptConnection(ws, req, C) {
   //   여기 두는 이유: 부재 배치는 30분에 한 번 도는데, 사람은 접속한 그 순간 자기 땅을 본다.
   try { const _rc = Claims.onPlayerActive(player); if (_rc) console.log(`[${ZONE_ID}] 🏠 ${name} 복귀 — 맡겨 둔 사유지 ${_rc}칸 반환`); } catch (e) {}
   if (Deeds.ON) { try { _t1305Day(player, _t1332Clock(), true); } catch (e) {} }   // ★[T1305] 오늘 처음 들어왔으면 하루를 센다 · 이 존 칸은 늘 다시 잰다(사유지 낡음)
-  if (T1454_SLOW) { try { _t1454Back(player); } catch (e) {} }   // ★[T1454 덧붙임 하나] 비운 사이 0 · 절반 밑으로 내려간 제 구조물 한 줄(고칠 재료 수)
 
   // 활성 청크 즉시 갱신 — 이 player 주변 청크의 시드 자원 spawn → welcome.resources에 포함됨
   updateActiveChunks();
@@ -8448,6 +8447,9 @@ async function _acceptConnection(ws, req, C) {
       for (const L of lines) send(ws, { type: 'notice', text: L.text, kind: L.kind });
     } catch (e) { /* 못 물어봤다 — 막지 않는다(다음 접속에 다시 센다) */ }
   })();
+  //   ★[T1454 덧붙임 하나] 비운 사이 0 · 절반 밑으로 내려간 제 구조물 한 줄(고칠 재료 수) — welcome 뒤(화면이 먼저 서고 말이 따라온다 · 위 T139 꼴)이고
+  //     접속 자리 둘레 청크가 켜진 뒤다(`updateActiveChunks` — 잠든 동안 0 에 닿은 것을 깨는 순간 부숨 · 무너짐으로 적는다 · 그 적은 것을 읽는다).
+  if (T1454_SLOW) { try { _t1454Back(player); } catch (e) {} }
 
   // ws에 player input/close 핸들러 attach
   C.stage = 'handlers';
@@ -13202,9 +13204,14 @@ function _t1454Slow(b, peek) {   // → { mult, x } · 고장이면 { broken, x:
 //   ★[T1454 덧붙임 하나 — 판정 70 · PM 결정 · 재민 거부권] 돌아온 사람에게 한 줄 — 제 구조물(이 존 메모리에 선 것) 가운데 지난번 나간 날 뒤로
 //     0 이 됐거나 절반 밑으로 내려간 부위 · 다 고치는 데 드는 재료 수(그 부위가 받는 재료 가운데 하나에 가장 많은 몫을 주는 것으로 셈).
 //     지난번 값 = 같은 셈을 (지금 − 비운 게임 날)에서 읽은 값(낡음 시계와 게임 날은 같은 하루 · 서버가 꺼진 동안 둘 다 멈춘다 · 그 뒤 고쳤으면 적은 값부터).
+//     알린 날은 서버 메모리에 둔다(`_t1454Told` — 사람마다 그 게임 날) — 지난번 날(`lastSeenDay`)은 촌장 복귀 브리핑이 나가야 넘어가므로(T7)
+//     그것만 보면 브리핑 전까지 접속마다 같은 줄이 다시 뜬다. 서버가 다시 뜨면 한 번 더 뜰 수 있다(메모리).
+const _t1454Told = new Map();
 function _t1454Back(player) {
   if (!T1438_DECAY || !player || !Number.isFinite(player.lastSeenDay)) return 0;
-  const dd = (gameDayNow() | 0) - (player.lastSeenDay | 0); if (!(dd > 0)) return 0;
+  const _td = _t1454Told.get(player.playerId), _since = Math.max(player.lastSeenDay | 0, Number.isFinite(_td) ? _td : -Infinity);
+  _t1454Told.set(player.playerId, gameDayNow() | 0);
+  const dd = (gameDayNow() | 0) - _since; if (!(dd > 0)) return 0;
   const now = _t1438Now(), then = now - dd, lines = [];
   const need = (p, v) => { let best = null; for (const it of Object.keys(p.items || {})) { const sh = Decay.shareOf(p, it, 1); if (sh > 0 && (!best || sh > best.sh)) best = { it, sh }; } return best ? `${ITEM_LABEL_SERVER[best.it] || best.it} ${Math.ceil((1 - v) / best.sh - 1e-9)}` : ''; };
   for (const b of buildings.values()) {
