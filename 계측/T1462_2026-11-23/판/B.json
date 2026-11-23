@@ -1,0 +1,46 @@
+[
+ {
+  "tag": "B_off",
+  "seed": 1020,
+  "days": 730,
+  "env": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1",
+   "T1431_RAID_BATTLE": "1"
+  },
+  "kind": "sbc",
+  "root": "/root/wt/b1462"
+ },
+ {
+  "tag": "B_ga",
+  "seed": 1020,
+  "days": 730,
+  "env": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1",
+   "T1431_RAID_BATTLE": "1",
+   "T1462_MORALE": "nocommit,instant,breaknow"
+  },
+  "kind": "sbc",
+  "root": "/root/wt/b1462"
+ },
+ {
+  "tag": "B_da",
+  "seed": 1020,
+  "days": 730,
+  "env": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1",
+   "T1431_RAID_BATTLE": "1",
+   "T1462_MORALE": "self,nodesp,wound,nocommit,instant,breaknow"
+  },
+  "kind": "sbc",
+  "root": "/root/wt/b1462"
+ }
+]

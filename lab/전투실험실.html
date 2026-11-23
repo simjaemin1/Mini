@@ -75,11 +75,11 @@
 
     <div class="row" style="margin-top:6px"><label style="min-width:auto"><input type="checkbox" id="t1076"> 원정 사기 · 군량 빚(T1076)</label> <span style="color:#7a8494;font-size:11px">끔 = 종전 판 그대로</span></div>
     <div class="row" style="margin-top:6px;flex-wrap:wrap"><label style="min-width:auto">사기 팔(T1462)</label>
-      <select id="t1462p" onchange="t1462Preset()"><option value="">끔(지금 그대로)</option><option value="nocommit,instant,breaknow">후보 가 — 붙어도 안 오름 · 곧장 · 문턱에서 꺾임</option><option value="nodesp,nocommit,instant,breaknow">후보 나 — 가 + 다쳐도 안 오름</option><option value="self,nodesp,wound,nocommit,instant,breaknow">후보 다 — 나 + 자기 셈 · 다치면 깎임</option><option value="self,nodesp,wound,nocommit,instant,breaknow,nochase">후보 라 — 다 + 달아나면 안 쫓음</option></select>
+      <select id="t1462p" onchange="t1462Preset()"><option value="">끔(지금 그대로)</option><option value="nocommit,instant,breaknow">후보 가 — 붙어도 안 오름 · 곧장 · 문턱에서 꺾임</option><option value="nodesp,nocommit,instant,breaknow">후보 나 — 가 + 다쳐도 안 오름</option><option value="self,nodesp,wound,nocommit,instant,breaknow">후보 다 — 나 + 자기 셈 · 다치면 깎임</option><option value="self,nodesp,wound,nocommit,instant,breaknow,nochase">후보 라 — 다 + 달아나면 안 쫓음</option><option value="self,nodesp,nocommit,instant,breaknow">후보 마 — 나 + 자기 셈(다에서 다침 깎임 뺌)</option></select>
       <span id="t1462box" style="font-size:11px;color:#aeb8c4"></span></div>
     <div class="row" style="margin-top:4px"><label>A 행복</label><input type="range" id="t1462h" min="0.2" max="1" step="0.05" value="1"><b id="t1462h_v">1</b> <span style="color:#7a8494;font-size:11px">A 편 사기 칸(캐러밴 = 집 마을 행복 · 1 = 안 누름)</span></div>
     <div class="row" style="margin-top:4px;flex-wrap:wrap"><label style="min-width:auto">볼 장면</label>
-      <button onclick="t1462Scene(0)" style="padding:2px 6px">혼자 ↔ 도적(행복 0.9)</button> <button onclick="t1462Scene(1)" style="padding:2px 6px">혼자 ↔ 도적(행복 0.5)</button>
+      <button onclick="t1462Scene(0)" style="padding:2px 6px">혼자 ↔ 도적(행복 0.9)</button> <button onclick="t1462Scene(1)" style="padding:2px 6px">혼자 ↔ 도적(행복 0.55)</button>
       <button onclick="t1462Scene(2)" style="padding:2px 6px">호위 둘 ↔ 도적 셋</button> <button onclick="t1462Scene(3)" style="padding:2px 6px">민병 20 ↔ 석검 20</button>
       <button onclick="t1462Scene(4)" style="padding:2px 6px">창 20 ↔ 창 20</button> <button onclick="t1462Scene(5)" style="padding:2px 6px">창 40 ↔ 창 20</button></div>
     <div class="stat" id="stat">배치하고 전투 시작.</div>
@@ -867,7 +867,7 @@ const T1462_ARMS=[['self','자기 셈(1 대 1 = 0)'],['nodesp','붙어 다치면
   const hv=document.getElementById('t1462h'); hv.addEventListener('input',()=>{document.getElementById('t1462h_v').textContent=hv.value;}); })();
 function t1462Preset(){ const v=document.getElementById('t1462p').value.split(','); for(const [k] of T1462_ARMS)document.getElementById('t1462_'+k).checked=v.includes(k); deploy(); }
 function t1462Knob(){ const on=T1462_ARMS.map(([k])=>k).filter(k=>{const el=document.getElementById('t1462_'+k); return el&&el.checked;}); window.T1462_MORALE=on.length?on.join(','):null; }
-const T1462_SCENES=[ {a:{militia:1},b:{dagger:1},h:0.9}, {a:{militia:1},b:{dagger:1},h:0.5}, {a:{spear:2},af:'circle',b:{dagger:3},h:1},
+const T1462_SCENES=[ {a:{militia:1},b:{dagger:1},h:0.9}, {a:{militia:1},b:{dagger:1},h:0.55}, {a:{spear:2},af:'circle',b:{dagger:3},h:1},
   {a:{militia:20},b:{dagger:20},h:1}, {a:{spear:20},b:{spear:20},h:1}, {a:{spear:40},b:{spear:20},h:1} ];
 function t1462Scene(i){ const S=T1462_SCENES[i]; if(!S)return;
   for(const [s,c,f] of [['a',S.a,S.af||'line'],['b',S.b,'line']]){ for(const k of KEYS){ const el=document.getElementById(s+'_'+k), n=c[SPEC_KEY[k]]||c[k]||0; el.value=n; const vb=document.getElementById(s+'_'+k+'_v'); if(vb)vb.textContent=n; } document.getElementById(s+'_form').value=f; }

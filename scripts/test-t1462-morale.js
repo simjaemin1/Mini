@@ -11,7 +11,7 @@
 //   ② 팔 하나씩 — ㉮ self: 1 대 1 의 붙기 전 수 우열 = 0(`preMorale` = 병종 기본 × 행복) · 끔은 −0.225 ·
 //      ㉯ nodesp · ㉰ wound · nocommit · instant · breaknow · norally · nochase 가 각자 판을 바꾼다(지문이 끔과 다르다 — 자명 통과 금지)
 //   ③ 한 곳 — 만나는 순간 판단(`caravan-battle decide`)의 사기 = battle-core `preMorale` 의 몸 평균(팔 켬에서도 같은 값 · 식을 따로 안 갖는다)
-//   ④ 과녁 — 후보 가(nocommit,instant,breaknow): ⓐ 행복 0.3 인 우세 편은 붙기 전에 달아난다(창 30 ↔ 20 · 죽음 0) · ⓑ 행복 1 인 약간 열세 편은 싸운다
+//   ④ 과녁 — 후보 가(nocommit,instant,breaknow) · ④b 같은 과녁 — 후보 다(self,nodesp,wound,nocommit,instant,breaknow · 보고가 권하는 팔): ⓐ 행복 0.3 인 우세 편은 붙기 전에 달아난다(창 30 ↔ 20 · 죽음 0) · ⓑ 행복 1 인 약간 열세 편은 싸운다
 //      (창 18 ↔ 22 · 진 편 죽음 20 ~ 70 %) · ⓒ 진 편이 꺾여 달아나 산다(민병 20 ↔ 석검 20 · 창 40 ↔ 20 — 진 편 살아 달아남 ≥ 30 %) · 끔은 ⓒ 가 안 선다
 //   ⑤ 사기는 늘 0 ~ 1(팔 전부 켬 · 걸음마다) · ⑥ 달아나는 몸은 벽을 지나지 않는다(어댑터 벽 · 궤주 걸음 클램프 · 팔 전부 켬)
 //   미끼(이 파일 안 · 자리 꼭 한 번 · 빨강 줄 단언): 끔에서 한 칸 다른 사본 · 1 대 1 이 열세인 사본(㉮ 켬에서) · 캐러밴만 다른 식 사본 · 달아난 몸이 벽을 지나는 사본 · 사기가 0 ~ 1 밖 사본
@@ -30,7 +30,7 @@ const BAITS = {
   fleeWall: { f: BCF, at: ['      u.x+=dx/dd*D.spd*1.25*dt; sep(ctx,u,dt); continue;}', '      u.x+=dx/dd*D.spd*1.25*dt; continue;}   // 미끼 — 달아나는 걸음이 벽 클램프를 안 탄다\n'] },
   mrlOut: { f: BCF, at: ['    if(tgt<0)tgt=0;else if(tgt>1)tgt=1;\n    if(_A.instant)u.mrl=tgt; else u.mrl+=(tgt-u.mrl)*Math.min(1,M_RATE*dt);   // ★[T1462 ㉲ instant]\n    if(u.mrl<0)u.mrl=0;else if(u.mrl>1)u.mrl=1;', '    // 미끼 — 사기를 0 ~ 1 로 안 자른다\n    if(_A.instant)u.mrl=tgt; else u.mrl+=(tgt-u.mrl)*Math.min(1,M_RATE*dt);'] },
 };
-const ALL = 'self,nodesp,wound,nocommit,instant,breaknow,nochase,norally', GA = 'nocommit,instant,breaknow';
+const ALL = 'self,nodesp,wound,nocommit,instant,breaknow,nochase,norally', GA = 'nocommit,instant,breaknow', DA = 'self,nodesp,wound,nocommit,instant,breaknow';
 const FP_OFF = '9c44cd2ec5c5027e';   // T1462 전 코어(main `01df9e8f9` · `origin/batch/raid-battle-1122` 같은 글자)의 판 지문 — 이 파일 ① 의 셈 그대로
 const short = (x) => JSON.stringify(x).slice(0, 380);
 
@@ -89,11 +89,11 @@ if (process.argv[2] === '--child') {
       if (Math.abs(d.mrl - want) > 1e-12) ok = false; out.push([a || '끔', E, G, h, +d.mrl.toFixed(4), +want.toFixed(4)]); } }
     arm(null);
     L.push(['③', ok, '③ 한 곳 — 만나는 순간 판단(`decide`)의 사기 = battle-core `preMorale` 의 몸 평균(끔 · self · 팔 전부 켬 — 식을 따로 안 갖는다)', short(out)]); }
-  // ④ 과녁 — 후보 가
-  { arm(GA); const a = many({ spear: 30 }, { spear: 20 }, 20, 0.3), b = many({ spear: 18 }, { spear: 22 }, 20, 1), c1 = many({ militia: 20 }, { dagger: 20 }, 20, null), c2 = many({ spear: 40 }, { spear: 20 }, 20, null);
+  // ④ 과녁 — 후보 가 · ④b 후보 다(보고가 권하는 팔)
+  for (const [K, AR, NM] of [['④', GA, '후보 가 ' + GA], ['④b', DA, '후보 다 ' + DA]]) { arm(AR); const a = many({ spear: 30 }, { spear: 20 }, 20, 0.3), b = many({ spear: 18 }, { spear: 22 }, 20, 1), c1 = many({ militia: 20 }, { dagger: 20 }, 20, null), c2 = many({ spear: 40 }, { spear: 20 }, 20, null);
     arm(null); const o1 = many({ militia: 20 }, { dagger: 20 }, 20, null), o2 = many({ spear: 40 }, { spear: 20 }, 20, null);
-    L.push(['④', a.aDead <= 0.05 && b.aDead >= 0.2 && b.aDead <= 0.7 && c1.lossAlive >= 0.3 && c2.lossAlive >= 0.3 && o1.lossAlive < 0.3 && o2.lossAlive < 0.3,
-      '④ 과녁(후보 가 nocommit,instant,breaknow) — ⓐ 행복 0.3 우세 편 죽음 ≤ 5 % · ⓑ 행복 1 약간 열세 편 죽음 20 ~ 70 % · ⓒ 진 편 살아 달아남 ≥ 30 %(민병 20 ↔ 석검 20 · 창 40 ↔ 20) · 끔은 ⓒ 가 안 선다',
+    L.push([K, a.aDead <= 0.05 && b.aDead >= 0.2 && b.aDead <= 0.7 && c1.lossAlive >= 0.3 && c2.lossAlive >= 0.3 && o1.lossAlive < 0.3 && o2.lossAlive < 0.3,
+      K + ' 과녁(' + NM + ') — ⓐ 행복 0.3 우세 편 죽음 ≤ 5 % · ⓑ 행복 1 약간 열세 편 죽음 20 ~ 70 % · ⓒ 진 편 살아 달아남 ≥ 30 %(민병 20 ↔ 석검 20 · 창 40 ↔ 20) · 끔은 ⓒ 가 안 선다',
       short({ a: +a.aDead.toFixed(2), b: +b.aDead.toFixed(2), c: [+c1.lossAlive.toFixed(2), +c2.lossAlive.toFixed(2)], off: [+o1.lossAlive.toFixed(2), +o2.lossAlive.toFixed(2)] })]); }
   // ⑤ 사기 0 ~ 1
   { arm(ALL); let bad = 0, n = 0;

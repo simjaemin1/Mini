@@ -91,7 +91,7 @@ if (KIND === 'table') {
       const S = ctx.sides, relA = S.A.start ? S.A.dead / S.A.start : 0, relB = S.B.start ? S.B.dead / S.B.start : 0;
       const commit = u.st === 'melee' ? 1 : (dMin2 < BC.COMMIT_D * BC.COMMIT_D ? 1 - Math.sqrt(dMin2) / BC.COMMIT_D : 0), wound = u.hp > 0 ? 1 - u.hp / u.maxHp : 1;
       const T = { 기본: BC.MRL0[u.type], 수우열: BC.M_KODDS * ((A.self ? fN + 1 : fN) - eN) / (fN + eN + 1), 전염: -BC.M_KCONTAG * rN, 사상률: BC.M_KRELCAS * (relB - relA) - BC.M_KABS * relA,
-        교전: BC.M_KCOMMIT * commit, 다침뺌: -BC.M_KWOUND * wound * (A.wound ? 1 : (1 - commit)), 다침더함: A.nodesp ? 0 : BC.M_KDESP * wound * commit };
+        교전: A.nocommit ? 0 : BC.M_KCOMMIT * commit, 다침뺌: -BC.M_KWOUND * wound * (A.wound ? 1 : (1 - commit)), 다침더함: A.nodesp ? 0 : BC.M_KDESP * wound * commit };
       rows.push({ s: +ctx.tick.toFixed(1), hp: Math.round(u.hp), mrl: +(u.mrl || 0).toFixed(2), rout: !!u.routing, st: u.st, fN, eN, ...Object.fromEntries(Object.entries(T).map(([k, v]) => [k, +v.toFixed(2)])) });
     });
     console.log(`\n### 팔 ${a} — 몸 하나(A · ${tgt && tgt.type}) · 판 끝 ${o.win} ${o.secs}초`);

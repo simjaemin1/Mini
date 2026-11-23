@@ -1,0 +1,20 @@
+[
+ {
+  "tag": "W_off",
+  "seed": 1020,
+  "days": 730,
+  "env": {},
+  "kind": "war",
+  "root": "/root/wt/b1462"
+ },
+ {
+  "tag": "W_da",
+  "seed": 1020,
+  "days": 730,
+  "env": {
+   "T1462_MORALE": "self,nodesp,wound,nocommit,instant,breaknow"
+  },
+  "kind": "war",
+  "root": "/root/wt/b1462"
+ }
+]
