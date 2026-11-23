@@ -1166,6 +1166,19 @@ function _t856LandElev(ev, ccx, ccy) {
 }
 //   ★[T1238 ④] 영토 셀 → econ 땅 크기 — 시딩이 쓰던 그 환산(바닥 30 · 셀 25 = 1) 하나(T1238 켬의 하루 맞춤이 같은 함수를 부른다 · 사본 0 · 값 무변)
 function landSizeOfCells(tn) { return Math.max(30, Math.round(tn / 25)); }
+// ★★[T1460 2026-11-23 · S15 · 재민 11-22 판정 77] 은거지 땅을 **둘레 실물**로 — 마을 땅 읽개(`extractLandParamsApprox`)를 그대로 부르되,
+//   은거지 몫이 아닌 칸(`mine(x, y)` 거짓 — 산 마을 생활권 `LAND_SCAN_R` 안 · 다른 은거지가 더 가까운 칸)은 숲 · 바위 · 광맥 · 물이 없는 빈 땅으로 본다.
+//   마을은 제 생활권을 이미 제 땅으로 읽었다 — 은거지가 그 칸을 또 세면 같은 숲 · 같은 짐승을 두 번 센다(정해진 것 3). 새 수 0 · 새 식 0(빈 땅 = 읽개의 바닥항).
+//   가장 가까운 물(`nearestWaterDist`)은 그대로 — 단의 하루(사냥 · 채집)는 물을 안 읽는다(어부 자리 0).
+function _t1460Mask(ta, mine) {
+  const m = Object.create(ta);
+  m.forestMult = (x, y) => (mine(x, y) ? ta.forestMult(x, y) : 1.0);
+  m.isRock = (x, y) => mine(x, y) && ta.isRock(x, y);
+  if (ta.isOre) m.isOre = (x, y) => mine(x, y) && ta.isOre(x, y);
+  m.isWater = (x, y) => mine(x, y) && ta.isWater(x, y);
+  if (ta.isSea) m.isSea = (x, y) => mine(x, y) && ta.isSea(x, y);
+  return m;
+}
 function extractLandParamsApprox(ta, ccx, ccy, layout) {
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const R = LAND_SCAN_R, STEP = 4;
@@ -12339,7 +12352,9 @@ function banditHost() {
     t1039Depart: _t1039Depart, t1039Join: _t1039Join, t1039Leave: _t1039Leave,   // ★[T1039] 도적 전환 몸 문 셋(도적 `formGang` · `_t1039Arrive` · `syncBodies` — `T1039_BANDIT_BODY` 켬 갈래에서만 불린다)
     t1079Pitch: _t1079Pitch, t1079Find: _t1079Find, t1079Flush: _t1079Flush, t1079Walk: _t1079Walk, t1079Home: _t1079Home, t1079Len: _t1079Len, t1079Gone: _t1079Gone,   // ★[T1079] 은거지 시설 · 짐 더미 문(도적 층 — `T1079_BANDIT_CAMP` 켬에서만 불린다)
     t1078Walkers: _t1078Walkers, t1078Die: _t1078Die, t1078Out: _t1078Out,   // ★[T1078] 단원 = 몸 문 셋(도적 `_t1078Gather` · `_t1078Trim` · `t1078Died` · `_t1078Out` — `T1078_BANDIT_ALL` 켬에서만 불린다)
-    t1404Land: (cx, cy) => extractLandParamsApprox(state._distCtx.ta, cx, cy, { territory: [] }),   // ★[T1404 ㉡] 은거지 땅 — 마을 시딩이 쓰는 그 읽개(영토 없는 자리 = 땅 크기 바닥 30 · 도적 층 `T1404_GANG_FORAGE` 켬에서만 불린다)
+    t1404Land: (cx, cy) => extractLandParamsApprox(state._distCtx.ta, cx, cy, { territory: [] }),
+    t1460Land: (cx, cy, mine) => extractLandParamsApprox(_t1460Mask(state._distCtx.ta, mine), cx, cy, { territory: [] }),   // ★[T1460] 은거지 땅 — 같은 읽개 · 남의 칸(마을 생활권 · 더 가까운 은거지)은 빈 땅으로 본다(도적 층 `T1460_DEN_LAND` 켬에서만 불린다)
+    t1460ScanR: LAND_SCAN_R,   // ★[T1460] 마을 생활권 = 마을 땅 읽개가 훑는 둘레(새 수 0 — 그 수를 내준다)   // ★[T1404 ㉡] 은거지 땅 — 마을 시딩이 쓰는 그 읽개(영토 없는 자리 = 땅 크기 바닥 30 · 도적 층 `T1404_GANG_FORAGE` 켬에서만 불린다)
     t1104Ppd: _t1079Ppd, t1104Walk: _t1104Walk, t1104Join: _t1104Join, t1104Release: _t1104Release, t1104Draft: _t1104Draft, t1104Fall: _t1104Fall, t1104Load: _t1104Load, t1104Store: _t1104Store,   // ★[T1104] 약탈 · 토벌 걸음 문(도적 층 — `T1104_BANDIT_WALK` 켬에서만 불린다)
     t1147Pick: _t1147Pick, t1147Stat: () => _t1147Stat,   // ★[T1147] 불행 이탈 받는 곳(둘레 여럿 · 더 행복 · 자리)
     t1306Stat: () => _t1306Stat, t1306On: _t1306On, t1306Known: _t1306Known, t1306Pass: _t1306Pass, t1306Record: _t1306Record,   // ★[T1306] 이주 문(소문으로 아는 곳간) — 하네스 · 계측이 같은 함수를 부른다(사본 0)

@@ -167,6 +167,14 @@ const T1404_GANG_SIZE = !!process.env && process.env.T1404_GANG_SIZE === '1';
 const T1404_RAID_LURK = T1104_WALK && !!process.env && process.env.T1404_RAID_LURK === '1';
 //   ㉡ 의 econ 수(`sim/economy-sim.js` 그 글자 — 모듈이 내보내지 않는 수라 여기 적는다 · 하네스가 econ 글자와 같은지 본다): `tickVillage` 도구 등급(맨손 0.25 · 석기 `_toolQ` 없을 때 1.4 · 청동 1.4 · 철 1.8) · 숙련 배수(1 + 숙련 × 0.05)
 const T1404_ECON = { bare: 0.25, stone: 1.4, bronze: 1.4, iron: 1.8, skill: 0.05 };
+// ★★[T1460 2026-11-23 · S15 · ★재민 11-22 판정 77 "좋긴 한데" = 나 · T1404 회부 3 · 7] **도적은 숨은 땅에서도 먹는다** — 손잡이 `T1460_DEN_LAND`(끔 기본 · `'1'` 만 켬 · 끔 = 아래 갈래가 하나도 안 닿는다 = 종전 글자).
+//   ㉡ · ㉢ 위에서만 뜻이 있다(도적 묶음 넷 켬). 새 수 0 · 새 식 0 · 새 규칙 0:
+//   ① 은거지 땅 = 둘레 실물 — 마을 땅 읽개 그대로(호스트 `t1460Land`)로 은거지 둘레(`LAND_SCAN_R`)를 읽되 **남의 칸은 빈 땅**: 산 마을 생활권(마을 둘레 같은 반경) 안 ·
+//      다른 은거지가 더 가까운 칸(같으면 단 번호 작은 쪽). 마을이 이미 제 땅으로 읽은 숲 · 짐승을 은거지가 또 세지 않는다(두 번 세지 않는다).
+//   ② 먹는 것은 그날 은거지 둘레에 있던 사람만 — 길목에 나간 단(`t1104.st` ≠ 'camp') · 은거지 밖을 걷는 몸은 그날 사냥 · 채집 몫이 없다(T1404 회부 7 의 추상을 걷는다).
+//      몸 없는 단원(판 자 · 몸 상한 밖)은 장부로 하되 "몸 없음"으로 센다. 짐승 몸 층(T1331 · T1393)에서 도적 몸이 실제로 사냥하는 길은 이 카드에 없다(회부).
+//   ③ 직업 · 크기 규칙은 그대로 — 사냥 · 채집 자리 · 산출은 ㉡ 식 · 떠남은 ㉢ 문(비축 0 열흘 · 그 땅이 먹이는 수를 넘는 사람) 그대로.
+const T1460_DEN_LAND = !!process.env && process.env.T1460_DEN_LAND === '1';
 function _t577Hash(name) { let h = 0; const s = String(name || ''); for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) | 0; return h >>> 0; }
 function _bdtOpenDay(vil) {   // 이 마을의 보호기가 끝나는 날(끔이면 모두 BDT_MIN_DAY — 종전) · ★[T984] 이 날부터 그 마을이 해체 · 절망 이탈 문을 탄다(소굴 습격은 이 날과 무관)
   if (!T577_RAMP) return BDT_MIN_DAY;
@@ -1686,11 +1694,43 @@ function _t1404Dens(D) {   // ㉠ 소굴 후보 줄 — 마을마다 그 둘레 
 }
 // ── ㉡ 사냥 · 채집 ──
 function _t1404Land(g) {   // 은거지 땅(마을 땅 읽개 그대로 · 은거지마다 한 번 — 비영속)
+  if (T1460_DEN_LAND) return _t1460Land(g);   // ★[T1460] 켬 = 남의 칸을 뺀 둘레 실물(끔 = 이 줄 무동작)
   const k = g.camp.cx + ',' + g.camp.cy;
   if (g._t1404L && g._t1404L.k === k) return g._t1404L.land;
   let land = null; try { land = S.host && S.host.t1404Land ? S.host.t1404Land(g.camp.cx, g.camp.cy) : null; } catch (e) { land = null; }
   Object.defineProperty(g, '_t1404L', { value: { k, land }, writable: true, configurable: true, enumerable: false });
   return land;
+}
+// ── ★[T1460] 둘레 실물 · 그날 있던 사람 ──
+function _t1460St() { return S.stats.t1460 || (S.stats.t1460 = { reads: 0, here: 0, away: 0, noBody: 0, food: 0, days: 0 }); }
+function _t1460Claim(g) {   // 이 은거지 몫인 칸 — 산 마을 생활권(마을 땅 읽개 둘레) 밖 · 다른 은거지보다 이 은거지에 가깝다(같으면 단 번호 작은 쪽)
+  const H = S.host, R = (H && H.t1460ScanR) || 140, cx = g.camp.cx, cy = g.camp.cy, L = 2 * R, vs = [], cs = [];
+  for (const v of (H && H.villages) || []) { if (!v.econ || !v.econ.npcs || !v.econ.npcs.length) continue; if (Math.abs(v.ccx - cx) <= L && Math.abs(v.ccy - cy) <= L) vs.push(v.ccx, v.ccy); }
+  for (const o of S.GANGS) { if (o === g || !o.camp || !((o.n | 0) > 0)) continue; if (Math.abs(o.camp.cx - cx) <= L && Math.abs(o.camp.cy - cy) <= L) cs.push(o.camp.cx, o.camp.cy, o.id); }
+  const R2 = R * R;
+  const mine = (x, y) => {
+    for (let i = 0; i < vs.length; i += 2) { const dx = x - vs[i], dy = y - vs[i + 1]; if (dx * dx + dy * dy <= R2) return false; }
+    const d0 = (x - cx) * (x - cx) + (y - cy) * (y - cy);
+    for (let i = 0; i < cs.length; i += 3) { const dx = x - cs[i], dy = y - cs[i + 1], d = dx * dx + dy * dy; if (d < d0 || (d === d0 && cs[i + 2] < g.id)) return false; }
+    return true;
+  };
+  return { key: cx + ',' + cy + '|' + vs.join(',') + '|' + cs.join(','), mine };
+}
+function _t1460Read(g, C) { let land = null; try { land = S.host && S.host.t1460Land ? S.host.t1460Land(g.camp.cx, g.camp.cy, C.mine) : null; } catch (e) { land = null; } return land; }
+function _t1460Land(g) {   // 은거지 땅 — 둘레 실물(남의 칸 = 빈 땅) · 마을 · 이웃 은거지가 바뀌면 다시 읽는다(비영속)
+  const C = _t1460Claim(g);
+  if (g._t1404L && g._t1404L.k === C.key) return g._t1404L.land;
+  const land = _t1460Read(g, C); _t1460St().reads++;
+  Object.defineProperty(g, '_t1404L', { value: { k: C.key, land }, writable: true, configurable: true, enumerable: false });
+  return land;
+}
+function _t1460Here(g) {   // 오늘 은거지 둘레에 있는 단원 — 길목에 나간 단 · 은거지 밖을 걷는 몸은 뺀다 · 몸 없는 단원(장부)은 단이 은거지에 있으면 있다
+  const n = g.n | 0; if (n <= 0) return { m: 0, away: 0, noBody: 0 };
+  if (g.t1104 && g.t1104.st && g.t1104.st !== 'camp') return { m: 0, away: n, noBody: 0 };
+  const H = S.host, pids = ((S.bodies && S.bodies.get(g.id)) || []).filter((pid) => H && H.players.has(pid));
+  let out = 0, body = 0; for (const pid of pids) { if (_t1104Away(H.players.get(pid))) out++; else body++; }
+  const m = Math.max(0, n - out);
+  return { m, away: n - m, noBody: Math.max(0, m - body) };
 }
 function _t1404Skill(g, field) {   // 단원 사람 기록의 숙련 평균(기록 없는 사람 = 0)
   const R = g.npc1079 || [], n = Math.max(1, g.n | 0); let s = 0;
@@ -1729,11 +1769,21 @@ function _t1404Forage(day) {   // ㉡ 단의 하루 — 사냥 · 채집한 것�
   for (const g of S.GANGS) {
     const n = g.n | 0; if (n <= 0) continue;
     const land = _t1404Land(g); if (!land) continue;
+    if (T1460_DEN_LAND) { _t1460Forage(g, n, land, st, _G); continue; }   // ★[T1460] 켬 = 그날 은거지에 있던 사람만(끔 = 이 줄 무동작)
     const P = _t1404Plan(g, n, land);
     const room = Math.max(0, n * BDT_CAP - (+g.food || 0)), k = Math.min(P.food, room);
     if (k > 0) { g.food = (+g.food || 0) + k; if (_G) _G.gangIn(g, k); }
     st.fgDays++; st.fgFood += k; st.fgHunt += P.h * P.hy; st.fgForage += P.f * P.fy;
   }
+}
+function _t1460Forage(g, n, land, st, _G) {   // ★[T1460] ㉡ 그 하루 — 사람 수만 그날 은거지 둘레에 있던 사람(더미 상한 = 단 전부 · ㉡ 그대로)
+  const s6 = _t1460St(), h = _t1460Here(g);
+  s6.days++; s6.here += h.m; s6.away += h.away; s6.noBody += h.noBody;
+  if (h.m <= 0) return;
+  const P = _t1404Plan(g, h.m, land);
+  const room = Math.max(0, n * BDT_CAP - (+g.food || 0)), k = Math.min(P.food, room);
+  if (k > 0) { g.food = (+g.food || 0) + k; if (_G) _G.gangIn(g, k); }
+  st.fgDays++; st.fgFood += k; st.fgHunt += P.h * P.hy; st.fgForage += P.f * P.fy; s6.food += k;
 }
 // ── ㉢ 떠남 · 갈라짐 ──
 function _t1404Leave(g, day) {   // 비축 0 이 `BDT_STARVE` 날 — 그 땅이 먹이는 수를 넘는 사람이 떠난다(갈라져 다른 길목으로 · 아니면 가장 가까운 산 마을로)
@@ -2054,6 +2104,8 @@ module.exports = { t1187OpenDay: (vil) => _bdtOpenDay(vil), init, onGameTick, da
   _t1079Probe: { install: () => installHooks() },   // ★[T1079] 하네스 문 — econ 훅 설치(운영 `installHooks` 그대로 · 부팅 없이)
   t1078: () => ({ on: T1078_ALL, stat: S.stats.t1078 ? JSON.parse(JSON.stringify(S.stats.t1078)) : null,
     gangs: S.GANGS.map((g) => ({ id: g.id, n: g.n, food: g.food, bodies: ((S.bodies && S.bodies.get(g.id)) || []).filter((pid) => S.host && S.host.players.has(pid)).length, walkers: S.host && S.host.t1078Walkers ? S.host.t1078Walkers().filter((w) => w.gid === g.id).length : 0 })) }),
+  _t1460Probe: { claim: (g) => _t1460Claim(g), read: (g) => _t1460Read(g, _t1460Claim(g)), land: (g) => _t1460Land(g), here: (g) => _t1460Here(g), forage: (g, n, land) => _t1460Forage(g, n, land, _t1404St(), _gl()),
+    stat: () => (S.stats.t1460 ? Object.assign({}, S.stats.t1460) : null), get ON() { return T1460_DEN_LAND; } },   // ★[T1460] 하네스 · 관찰기 문(운영 함수 그대로 · 사본 0 · `read` = 켬 · 끔 무관 실물 땅 — 캐시 안 씀)
   _t1078Probe: { dens: () => S.DENS, gather: (day) => _t1078Gather(day), trim: (g, why) => _t1078Trim(g, why), stats: () => S.stats },   // 하네스 문(운영 함수 그대로)
   // ★[T1391] 불행한 사람 → 도적 증인(관찰기 `t1391-hook` · 하네스 `test-t1391-unhappy-bandit` — 읽기만) · 하네스 문(운영 함수 그대로 · 사본 0)
   t1391: () => ({ ub: T1391_UB, rich: T1391_DEN_RICH, st: S.stats.t1391 ? Object.assign({}, S.stats.t1391) : null,
