@@ -435,7 +435,7 @@ function main() {
   console.log('\n[미끼 스물둘 — 사본마다 자리 꼭 한 번 · 빨강 줄]');
   const B = (name, kind, mode, red) => {   // 미끼 사본 한 판 — { n: 바꾼 자리 수, red: 빨강 줄이 섰나, why }
     const r = run(kind, name, mode);
-    const n = (() => { const b = BAITS[name], src = require('fs').readFileSync(b.file, 'utf8'); return LB.count(src, b.at[0]); })();
+    const n = (() => { const b = BAITS[name]; let src = ''; try { src = require('fs').readFileSync(b.file, 'utf8'); } catch (e) { return 0; } return LB.count(src, b.at[0]); })();   // 옛 코드엔 그 파일이 없을 수 있다(grudge.js) — 자리 0 = 빨강
     let isRed = false, why = '';
     try { isRed = !r.err && !r.baitErr && red(r); why = r.err || r.baitErr || ''; } catch (e) { why = e.message; }
     return { n, red: n === 1 && isRed, why: why ? ' · ' + String(why).slice(0, 200) : '' };
