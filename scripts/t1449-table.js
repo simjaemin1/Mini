@@ -77,12 +77,22 @@ for (const root of [...new Set(runs.map((q) => q.root))]) for (const kind of ['l
       pick(root, kind, a, (x) => { const o = offOf(x); return o && o !== x ? String(x.emptyNames.filter((n) => !o.emptyNames.includes(n)).length) + (x.emptyNames.length ? '(' + x.emptyNames.length + ')' : '') : String(x.emptyNames.length); }),
       pick(root, kind, a, (x) => { const o = offOf(x); return o && o !== x ? f2(x.pop / o.pop) : String(x.pop); }),
       pick(root, kind, a, (x) => x.dead), pick(root, kind, a, (x) => x.legs.weapon[0])]));
-  table(['팔', '안 쥔 칼 몫 — 판 끝(끔 셈 / 켬 셈)', '둘째 해 평균(끔 셈)', '마을 가운데 · 최대(판 끝 · 끔 셈)', '칼 ÷ 사람 최대(판 끝 · 마을)', '전사 합 · 근접검 합 · 청동 합(판 끝)'],
+  table(['팔', '안 쥔 칼 몫 — 판 끝(끔 셈 / 켬 셈)', '둘째 해 평균(끔 셈)', '마을 가운데/최대(판 끝 · 끔 셈)', '칼 ÷ 사람 최대(판 끝 · 마을)', '전사/근접검/청동 합(판 끝)'],
     arms.map((a) => [ARM_NAME[a] || a,
       pick(root, kind, a, (x) => (x.t && x.t.end ? f1(100 * x.t.end.shOff) + ' / ' + f1(100 * x.t.end.shOn) + '%' : '—')),
       pick(root, kind, a, (x) => (x.t && x.t.y2 ? f1(100 * x.t.y2.shOff) + '%' : '—')),
-      pick(root, kind, a, (x) => (x.t && x.t.end ? f0(100 * x.t.end.medOff) + ' · ' + f0(100 * x.t.end.maxOff) + '%' : '—')),
+      pick(root, kind, a, (x) => (x.t && x.t.end ? f0(100 * x.t.end.medOff) + '/' + f0(100 * x.t.end.maxOff) + '%' : '—')),
       pick(root, kind, a, (x) => (x.t && x.t.end && x.t.end.maxPer.n ? f1(x.t.end.maxPer.v) + ' ' + x.t.end.maxPer.n + '(' + f0(x.t.end.maxPer.w) + '/' + x.t.end.maxPer.N + ')' : '—')),
-      pick(root, kind, a, (x) => (x.t && x.t.end ? x.t.end.W + ' · ' + x.t.end.S + ' · ' + x.t.end.B : '—'))]));
+      pick(root, kind, a, (x) => (x.t && x.t.end ? x.t.end.W + '/' + x.t.end.S + '/' + x.t.end.B : '—'))]));
+}
+//   할 일 7 — 덜 부은 주석은 어디로: 캔다 → 녹인다 → 붓는다 → 남는다(묵은 몫 = 지난 30날 청동을 안 부은 마을이 쥔 주석 · T1385 정의) · 실려 나간다(교역 장부 줄 · kg)
+for (const root of [...new Set(runs.map((q) => q.root))]) for (const kind of ['lab', 'server']) {
+  const R = runs.filter((q) => q.root === root && q.kind === kind); if (!R.length) continue;
+  const arms = ARM_ORDER.filter((a) => R.some((q) => q.arm === a));
+  console.log(`### ${root} · ${kind} — 덜 부은 주석은 어디로(시드 1020 · 7 · 42)\n`);
+  table(['팔', '캔 주석 원석 kg/해', '녹인 주석 kg/해', '부은 주석 kg/해', '남은 주석 끝 kg', '묵은 주석 몫(끝)', '주석 짐 줄/kg', '주석 원석 짐 줄/kg'],
+    arms.map((a) => [ARM_NAME[a] || a, pick(root, kind, a, (x) => f0(x.tot.minedTin * x.yr * KG.ore)), pick(root, kind, a, (x) => f0(x.tot.smeltTin * x.yr * KG.tin)), pick(root, kind, a, (x) => f0(x.tot.castTin * x.yr * KG.tin)),
+      pick(root, kind, a, (x) => f0(x.tinEnd * KG.tin)), pick(root, kind, a, (x) => (x.tinEnd > 0 ? f0(100 * x.stale / x.tinEnd) + '%' : '—')),
+      pick(root, kind, a, (x) => x.legs.tin[0] + '줄/' + f0(x.legs.tin[1] * KG.tin)), pick(root, kind, a, (x) => x.legs.ore_tin[0] + '줄/' + f0(x.legs.ore_tin[1] * KG.ore))]));
 }
 if (jsonOut) fs.writeFileSync(jsonOut, JSON.stringify(runs, null, 1));
