@@ -7,7 +7,7 @@
   //   실제로 터졌다: rational picker 에 전사 줄을 넣자 warriorTarget(process.env.PEACE_W)이
   //   랩에서 처음 호출돼 즉사했다 — CLI 하네스는 못 잡는 브라우저 전용 지뢰라 여기서 구조적으로 막는다.
   var process=(typeof root.process!=='undefined'&&root.process)?root.process:{env:{}};
-  function req(p){ if(/shared-lab-rules$/.test(p))return modules.sharedLabRules; for(var k of ["freshfish","seafish","fish-goods","fish-preserve","sustain","fishing","kcal"])if(p.endsWith('/'+k))return modules[k]; if(/hanbando-minerals$/.test(p))return modules.oreKinds; if(/ore-goods$/.test(p))return modules.oreGoods; if(/move-model/.test(p))return modules.movem; if(/equilibrium/.test(p))return modules.equil; if(/(^|[/])carry$/.test(p))return modules.carry; if(/(^|[/])body$/.test(p))return modules.body; if(/(^|[/])weather$/.test(p))return modules.weather; if(/(^|[/])salt$/.test(p))return modules.salt; if(/(^|[/])tidal$/.test(p))return modules.tidal; if(/(^|[/])animals$/.test(p))return modules.animals; if(/(^|[/])game-meat$/.test(p))return modules.gmeat; if(/(^|[/])spoil$/.test(p))return modules.spoil; if(/(^|[/])lots$/.test(p))return modules.lots; if(/crops[.]json$/.test(p))return modules.cropsData; if(/crop-cal/.test(p))return modules.cropcal; if(/(^|[/])events$/.test(p))return modules.events; if(/(^|[/])crops$/.test(p))return modules.crops; if(/calendar/.test(p))return modules.cal; if(/zone-config/.test(p))return modules.zcfg; if(/weights$/.test(p))return modules.wts; if(/hut-stages/.test(p))return modules.hut; if(/stone-uses/.test(p))return modules.stoneu; if(/granary-stages/.test(p))return modules.granst; if(/smelt-uses/.test(p))return modules.smeltu; if(/village-layout/.test(p))return modules.vlayout; if(/era/.test(p))return modules.era; if(/specialty/.test(p))return modules.specialty; if(/economy-sim-v2/.test(p))return modules.v2; if(/economy-sim/.test(p))return modules.v1; return {}; }
+  function req(p){ if(/ore-stock-curve[.]json$/.test(p))return modules.oreStockCurve; if(/ore-stock$/.test(p))return modules.oreStock; if(/shared-lab-rules$/.test(p))return modules.sharedLabRules; for(var k of ["freshfish","seafish","fish-goods","fish-preserve","sustain","fishing","kcal"])if(p.endsWith('/'+k))return modules[k]; if(/hanbando-minerals$/.test(p))return modules.oreKinds; if(/ore-goods$/.test(p))return modules.oreGoods; if(/move-model/.test(p))return modules.movem; if(/equilibrium/.test(p))return modules.equil; if(/(^|[/])carry$/.test(p))return modules.carry; if(/(^|[/])body$/.test(p))return modules.body; if(/(^|[/])weather$/.test(p))return modules.weather; if(/(^|[/])salt$/.test(p))return modules.salt; if(/(^|[/])tidal$/.test(p))return modules.tidal; if(/(^|[/])animals$/.test(p))return modules.animals; if(/(^|[/])game-meat$/.test(p))return modules.gmeat; if(/(^|[/])spoil$/.test(p))return modules.spoil; if(/(^|[/])lots$/.test(p))return modules.lots; if(/crops[.]json$/.test(p))return modules.cropsData; if(/crop-cal/.test(p))return modules.cropcal; if(/(^|[/])events$/.test(p))return modules.events; if(/(^|[/])crops$/.test(p))return modules.crops; if(/calendar/.test(p))return modules.cal; if(/zone-config/.test(p))return modules.zcfg; if(/weights$/.test(p))return modules.wts; if(/hut-stages/.test(p))return modules.hut; if(/stone-uses/.test(p))return modules.stoneu; if(/granary-stages/.test(p))return modules.granst; if(/smelt-uses/.test(p))return modules.smeltu; if(/village-layout/.test(p))return modules.vlayout; if(/era/.test(p))return modules.era; if(/specialty/.test(p))return modules.specialty; if(/economy-sim-v2/.test(p))return modules.v2; if(/economy-sim/.test(p))return modules.v1; return {}; }
   modules["sharedLabRules"]=(function(){var module={exports:{}};Object.defineProperty(module,"exports",{get:function(){return modules["sharedLabRules"];},set:function(v){modules["sharedLabRules"]=v;}});module.exports={};var exports=module.exports;var require=req;
 // T1409 — 랩/서버의 같은 계산. 입력·상태·호출 시점은 각 호스트가 소유한다.
 'use strict';
@@ -12614,6 +12614,184 @@ module.exports = {
 };
 
 ;return module.exports;})();
+  modules.oreStockCurve={
+  "method": "controlled physical body calibration; daily uniform-stock reset, central test granary, one skill5 miner, unlimited demand (canonical missing-value fallback), actual terrain A* / canonical followNpcPath, daily uniform-stock reset; controlled physical calibration, NOT market equilibrium",
+  "source": "scripts/t1465-body-curve.js",
+  "rows": [
+    {
+      "fraction": 0,
+      "relativeOutput": 0
+    },
+    {
+      "fraction": 0.1,
+      "relativeOutput": 0.4273615728488468
+    },
+    {
+      "fraction": 0.5,
+      "relativeOutput": 0.5817384128704463
+    },
+    {
+      "fraction": 1,
+      "relativeOutput": 1
+    }
+  ],
+  "profiles": [
+    {
+      "depletedPrefix": 0,
+      "rows": [
+        {
+          "fraction": 0,
+          "relativeOutput": 0
+        },
+        {
+          "fraction": 0.1,
+          "relativeOutput": 0.4273615728488468
+        },
+        {
+          "fraction": 0.5,
+          "relativeOutput": 0.5817384128704463
+        },
+        {
+          "fraction": 1,
+          "relativeOutput": 1
+        }
+      ]
+    },
+    {
+      "depletedPrefix": 0.5,
+      "rows": [
+        {
+          "fraction": 0,
+          "relativeOutput": 0
+        },
+        {
+          "fraction": 0.1,
+          "relativeOutput": 0.41456178251683357
+        },
+        {
+          "fraction": 0.5,
+          "relativeOutput": 0.5643445839135007
+        },
+        {
+          "fraction": 1,
+          "relativeOutput": 0.9473089601338666
+        }
+      ]
+    },
+    {
+      "depletedPrefix": 0.9,
+      "rows": [
+        {
+          "fraction": 0,
+          "relativeOutput": 0
+        },
+        {
+          "fraction": 0.1,
+          "relativeOutput": 0.393530124656451
+        },
+        {
+          "fraction": 0.5,
+          "relativeOutput": 0.5351388818575069
+        },
+        {
+          "fraction": 1,
+          "relativeOutput": 0.8597189559910535
+        }
+      ]
+    }
+  ]
+};  modules["oreStock"]=(function(){var module={exports:{}};Object.defineProperty(module,"exports",{get:function(){return modules["oreStock"];},set:function(v){modules["oreStock"]=v;}});module.exports={};var exports=module.exports;var require=req;
+'use strict';
+// T1465: one physical-cell ledger per world. No village-owned stock copies.
+// The optional host bridge addresses zone's existing player/NPC cell records.
+const S = require('../server/specialty');
+const W = require('../server/weights');
+const curve = require('./ore-stock-curve.json');
+const ON = process.env.T1465_ORE_STOCK === '1';
+const hosts = new WeakMap();
+const teams = new WeakMap();
+function bindHost(world, host) { if (ON && world) hosts.set(world, host); }
+function book(world) {
+  return world._oreStock || (world._oreStock = { version: 1, cells: {} });
+}
+function read(world, cell) {
+  const host = hosts.get(world);
+  if (host) return host.read(cell.cx, cell.cy);
+  const b = book(world), key = cell.key, day = world.day || 0;
+  const r = b.cells[key];
+  if (!r) return S.ORE_K; // untouched cells are full, including unclaimed veins
+  if (day > r.day) { r.s = S.oreRegen(r.s, day - r.day); r.day = day; }
+  return r.s;
+}
+function atStock(rows, fraction) {
+  if (!(fraction >= 1 / S.ORE_K)) return 0; // canonical empty-cell threshold
+  for (let i = 1; i < rows.length; i++) {
+    if (fraction <= rows[i].fraction) {
+      const a = rows[i - 1], b = rows[i];
+      return a.relativeOutput + (b.relativeOutput - a.relativeOutput) *
+        (fraction - a.fraction) / (b.fraction - a.fraction);
+    }
+  }
+  return rows.at(-1).relativeOutput;
+}
+// Bilinear interpolation between measured stock/frontier samples; no fitted curve.
+function response(fraction, frontier = 0) {
+  const profiles = curve.profiles;
+  for (let i = 1; i < profiles.length; i++) {
+    if (frontier <= profiles[i].depletedPrefix) {
+      const a = profiles[i-1], b = profiles[i],
+        f = (frontier-a.depletedPrefix)/(b.depletedPrefix-a.depletedPrefix);
+      return atStock(a.rows,fraction)*(1-f)+atStock(b.rows,fraction)*f;
+    }
+  }
+  return atStock(profiles.at(-1).rows,fraction);
+}
+function miners(v) {
+  const world = v._world, day = world.day || 0;
+  let c = teams.get(v);
+  if (!c || c.day !== day) {
+    const list = (v.npcs || []).filter(n => n.currentJob === 'miner');
+    c = { day, list, index: new Map(list.map((n, i) => [n, i])) };
+    teams.set(v, c);
+  }
+  return c;
+}
+function plan(v, npc) {
+  if (!ON || !v || !v._world) return null;
+  const topology = v.land && v.land._oreStockCells;
+  // Placer has no vein. A host/map must explicitly provide topology for veins.
+  if (!topology) {
+    if (v.land?.oreMix && !Object.keys(v.land.oreMix).length) return null; // explicit placer, no vein
+    throw Error('T1465: canonical ore cell topology missing for ' + v.name);
+  }
+  const cells = topology.cells, world = v._world, m = miners(v);
+  if (!cells.length && !Object.keys(v.land.oreMix || {}).length) return null;
+  const count = Math.max(1, Math.ceil(m.list.length / topology.teamSize));
+  const team = Math.floor((m.index.get(npc) || 0) / topology.teamSize) % count;
+  for (let i = team; i < cells.length; i += count) {
+    const cell = cells[i], stock = read(world, cell);
+    if (stock >= 1) return { cell, response: response(stock / S.ORE_K, i / cells.length), mix: cell.mix };
+  }
+  return { cell: null, response: 0, mix: {} };
+}
+function forecast(v) { const p = plan(v); return p ? p.response : 1; }
+function consume(v, p, units, npc) {
+  if (!p) return units;
+  if (!p.cell || !(units > 0)) return 0;
+  const world = v._world, host = hosts.get(world);
+  // Body hosts produce through mineToGranary; econ is strictly read-only.
+  if (host && host.body(v)) return 0;
+  const kg = W.kgOf('ore'), ck = S.mineChunkKg(npc?.skills?.mining || 0);
+  const want = units * p.response * kg / ck;
+  const stock = read(world, p.cell), got = Math.min(want, stock);
+  if (host) return (host.consume(p.cell.cx, p.cell.cy, got) || 0) * ck / kg;
+  const b = book(world);
+  b.cells[p.cell.key] = { s: stock - got, day: world.day || 0 };
+  return got * ck / kg;
+}
+module.exports = { ON, bindHost, read, response, plan, forecast, consume };
+
+;return module.exports;})();
   modules["v1"]=(function(){var module={exports:{}};Object.defineProperty(module,"exports",{get:function(){return modules["v1"];},set:function(v){modules["v1"]=v;}});module.exports={};var exports=module.exports;var require=req;
 /**
  * NPC 마을 자율 경제 시뮬레이션
@@ -12636,6 +12814,8 @@ module.exports = {
 const FishGoods=require('../server/fish-goods');
 const T1192_FISH_SPECIES=FishGoods.ON;
 const OreGoods=require('../server/ore-goods');
+const OreStock=require('./ore-stock');
+const T1465_ORE_STOCK=OreStock.ON;
 const T1188_ORE_SPLIT=OreGoods.ON;
 if(T1188_ORE_SPLIT)require('../server/specialty');
 
@@ -13031,7 +13211,19 @@ if(T1188_ORE_SPLIT)delete RESERVE_PC.ore;
 function oreSourceMix(v) { const m=v?.land?.oreMix;return m&&Object.keys(m).length?m:m?SMELT_PLACER:OreGoods.POOL; }
 function oreTotal(v) { return T1188_ORE_SPLIT?OreGoods.total(v?.storage):(v?.storage?.ore||0); }
 function oreReserveTotal() { return T1188_ORE_SPLIT?OreGoods.ids.reduce((n,k)=>n+(RESERVE_PC[k]||0),0):(RESERVE_PC.ore||0); }
-function oreValue(v,w) { const W07=T1407_ORE_WORTH&&v&&v._world&&typeof v._world.oreWorthFn==='function'?v._world.oreWorthFn:null,u07=W07?((JOBS.miner&&JOBS.miner.base)||0)*((v.land&&v.land.ore)||0):0;let n=0;for(const[k,f]of Object.entries(OreGoods.shares(oreSourceMix(v)))){const id=OreGoods.idOf(k),p=w(id)||0;n+=f*(W07?W07(v,id,u07*f,p):p);}return n; }   // ★[T1407 ㉡] 켬 = 품목 값이 쓸 곳 + 팔 곳(광부 하루 몫 · 아래 `T1407_ORE_WORTH` 머리) · 끔 = 종전 글자 그대로의 셈
+// T1465: job valuation reads the same selected cell composition and measured yield
+// as production. OFF preserves the original price summation and its order.
+function oreValue(v,w) {
+  const stock=T1465_ORE_STOCK?OreStock.plan(v):null;
+  const W07=T1407_ORE_WORTH&&v&&v._world&&typeof v._world.oreWorthFn==='function'?v._world.oreWorthFn:null;
+  const u07=W07?((JOBS.miner&&JOBS.miner.base)||0)*((v.land&&v.land.ore)||0):0;
+  let n=0;
+  for(const[k,f]of Object.entries(OreGoods.shares(stock?stock.mix:oreSourceMix(v)))){
+    const id=OreGoods.idOf(k),p=w(id)||0;
+    n+=f*(W07?W07(v,id,u07*f*(stock?stock.response:1),p):p);
+  }
+  return stock?n*stock.response:n;
+}
 function oreWeights(v,w) { return T1188_ORE_SPLIT?(r=>r==='ore'?oreValue(v,w):w(r)):w; }
 // ★★[T1407 ㉡ 2026-11-21 · 재민 11-20 판정 18 · T1385 회부 1] 손잡이 `T1407_ORE_WORTH`('1' 만 켬 · 끔 기본 = 아래 두 자리가 한 줄도 안 선다 = 종전 바이트) —
 //   **광부가 원석을 캐는 까닭은 값이다: 쓸 곳 · 팔 곳이 없으면 안 캔다.**
@@ -17110,6 +17302,7 @@ function createVillage(opts) {
       //     land.tin = oreMix.tin × land.ore   — 조금 나는 마을·많이 나는 마을이 자연히 생긴다
       //   oreMix 가 없는 호출부(랩·CLI)만 옛 이름해시 문턱으로 폴백한다.
       //   ⇒ TIN_DEPOSIT_ORE_SCORE 문턱 튜닝 문제(본게임 최대 land.ore 1.06 < 필요 1.067)도 함께 소멸.
+      ...(T1465_ORE_STOCK && opts._oreStockCells ? { _oreStockCells: opts._oreStockCells } : {}),
       oreMix: opts.oreMix || null,
       oreP: opts.oreP != null ? opts.oreP : null,       // 노동권 면적가중 평균 농도(감정 모델 입력)
       oreDist: opts.oreDist != null ? opts.oreDist : 0,  // 광맥까지 면적가중 평균 거리(셀) — 헛짐 운반비
@@ -17553,15 +17746,16 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
     const _capM = npc.captive ? CAPTIVE_WORK_MUL : 1;
 
     // produceSpecial 분기 — 각 산출에 대해 세금 떼고 storage로
-    const addProduce = (r, amt, exactPreserve=false) => {
+    const addProduce = (r, amt, exactPreserve=false, orePlan=null) => {
       if(T1192_FISH_SPECIES&&exactPreserve){if(!(amt>0))return;v.storage[r]=(v.storage[r]||0)+amt;dailyProduction[r]=(dailyProduction[r]||0)+amt;dailyProductionPotential[r]=(dailyProductionPotential[r]||0)+amt;return;}
       if (productionFormulaOff(v, npc.currentJob)) return;   // T1180: 부산물·현장 0 폴백도 수식 생산이다
-      if(T1188_ORE_SPLIT&&r==='ore'){for(const[k,q]of Object.entries(OreGoods.split(amt,oreSourceMix(v))))addProduce(k,q);return;}
+      if(T1188_ORE_SPLIT&&r==='ore'){const p=T1465_ORE_STOCK?OreStock.plan(v,npc):null;for(const[k,q]of Object.entries(OreGoods.split(amt,p?p.mix:oreSourceMix(v))))addProduce(k,q,false,p);return;}
       const sm = satMul(r, amt);
       _potA += amt; _actA += amt * sm;   // 여유노동 측정: 잠재(감산 전) vs 실제(감산 후)
       dailyProductionPotential[r] = (dailyProductionPotential[r] || 0) + amt;   // 잠재 생산(건강·포만 적용 전) — prodK용
       amt *= _hpm * _hwm * _prodMul * sm * (v._laborMul || 1) * _capM;
       if (_t1113LQ !== 1 && !t1113IsFood(v, r)) amt *= _t1113LQ;   // ★[T1113 ③] 식량 외만(끔 = 이 줄 무동작)   // ★건강→작업량(±10%) × **행복→작업량(T157 · 주입 없으면 1)** × production stat × 포만 × 부상노동력(요양=일손 X·부상=효율↓ — 생활층서 계산) × 포로 노동(captive만 0.6, 미설치=1) ★[T329] 포위 배수 제거(반경으로 간다)
+      if (T1465_ORE_STOCK && (orePlan || r === 'ore')) amt = OreStock.consume(v, orePlan || OreStock.plan(v,npc), amt, npc);
       if (amt <= 0) return;
       if(T1192_FISH_SPECIES&&npc.currentJob==='fisher'&&FishGoods.species().includes(r))FishGoods.note(v,r,amt*_t860Unit(r)/FishGoods.factor(r));
       if (r === 'food') v._grainToday = (v._grainToday || 0) + amt;   // ★오늘 곡물 실생산 → 볏짚 연료(아래 연료 블록)
@@ -20752,7 +20946,7 @@ function computeVillagePrices(v) {
 module.exports = {
   T1259_WOOD_CAP, setT1259WoodReader, T1271_ORE_CAP, setT1271OreReader, jobCapacity,
   T1192_FISH_SPECIES,FishGoods,preservedFactor,fishPreserveReserve,_t1192Preserve,
-  T1188_ORE_SPLIT, OreGoods, oreTotal, oreReserveTotal, oreValue, oreSourceMix, migrateOre, takeOre,
+  T1465_ORE_STOCK, OreStock, T1188_ORE_SPLIT, OreGoods, oreTotal, oreReserveTotal, oreValue, oreSourceMix, migrateOre, takeOre,
   T1149, t1149LeanDays, t1149WinterDays, t1149WinterNeed, T1297_BIRTH_FOOD, T1297_FAMINE_DAYS, t1297WinterLeft, t1297NeedDays, T1306_BIRTH_GRADE, t1306Ratio, t1306GradeDP, T1319_AUTUMN_LOOK, T1319_AUTUMN_MIG, t1319AutumnLeft, t1319MigNeedDays, T1346_BIRTH_FLOW, t1346FlowShort, T1373_HOME_CAP, t1373HomeCap, t1373Hcap, T1363_FAMINE_TOOLS, t1363ToolCrit, t1363StoneReady, t1363StoneShort,   // ★[T1373] 땅 상한 = 집터 수 — 하네스가 정본 함수를 그대로 부른다 · ★[T1363] 기근 블록 · 도구 바닥 — 하네스가 정본 함수를 그대로 부른다 · ★[T1346] 흐름 문(하네스가 정본 함수를 그대로 부른다) · ★[T1149] 겨울 골짜기 — 손잡이 갈래 · 달력 셈 · 다가오는 겨울에 모자랄 식량(v2 가을 사 모으기가 읽는다)
   T1179_CROP_SEASON, t1179FieldDay, t1179Standing,   // ★[T1179] 작물 철 — 손잡이 · 밭 하루 · 밭에 선 먹을 것(계측)
   assignNPCJob, assignableJobs, JOB_SWITCH_COOLDOWN,

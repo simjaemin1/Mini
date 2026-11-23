@@ -20,6 +20,8 @@
 const FishGoods=require('../server/fish-goods');
 const T1192_FISH_SPECIES=FishGoods.ON;
 const OreGoods=require('../server/ore-goods');
+const OreStock=require('./ore-stock');
+const T1465_ORE_STOCK=OreStock.ON;
 const T1188_ORE_SPLIT=OreGoods.ON;
 if(T1188_ORE_SPLIT)require('../server/specialty');
 
@@ -415,7 +417,19 @@ if(T1188_ORE_SPLIT)delete RESERVE_PC.ore;
 function oreSourceMix(v) { const m=v?.land?.oreMix;return m&&Object.keys(m).length?m:m?SMELT_PLACER:OreGoods.POOL; }
 function oreTotal(v) { return T1188_ORE_SPLIT?OreGoods.total(v?.storage):(v?.storage?.ore||0); }
 function oreReserveTotal() { return T1188_ORE_SPLIT?OreGoods.ids.reduce((n,k)=>n+(RESERVE_PC[k]||0),0):(RESERVE_PC.ore||0); }
-function oreValue(v,w) { const W07=T1407_ORE_WORTH&&v&&v._world&&typeof v._world.oreWorthFn==='function'?v._world.oreWorthFn:null,u07=W07?((JOBS.miner&&JOBS.miner.base)||0)*((v.land&&v.land.ore)||0):0;let n=0;for(const[k,f]of Object.entries(OreGoods.shares(oreSourceMix(v)))){const id=OreGoods.idOf(k),p=w(id)||0;n+=f*(W07?W07(v,id,u07*f,p):p);}return n; }   // ★[T1407 ㉡] 켬 = 품목 값이 쓸 곳 + 팔 곳(광부 하루 몫 · 아래 `T1407_ORE_WORTH` 머리) · 끔 = 종전 글자 그대로의 셈
+// T1465: job valuation reads the same selected cell composition and measured yield
+// as production. OFF preserves the original price summation and its order.
+function oreValue(v,w) {
+  const stock=T1465_ORE_STOCK?OreStock.plan(v):null;
+  const W07=T1407_ORE_WORTH&&v&&v._world&&typeof v._world.oreWorthFn==='function'?v._world.oreWorthFn:null;
+  const u07=W07?((JOBS.miner&&JOBS.miner.base)||0)*((v.land&&v.land.ore)||0):0;
+  let n=0;
+  for(const[k,f]of Object.entries(OreGoods.shares(stock?stock.mix:oreSourceMix(v)))){
+    const id=OreGoods.idOf(k),p=w(id)||0;
+    n+=f*(W07?W07(v,id,u07*f*(stock?stock.response:1),p):p);
+  }
+  return stock?n*stock.response:n;
+}
 function oreWeights(v,w) { return T1188_ORE_SPLIT?(r=>r==='ore'?oreValue(v,w):w(r)):w; }
 // ★★[T1407 ㉡ 2026-11-21 · 재민 11-20 판정 18 · T1385 회부 1] 손잡이 `T1407_ORE_WORTH`('1' 만 켬 · 끔 기본 = 아래 두 자리가 한 줄도 안 선다 = 종전 바이트) —
 //   **광부가 원석을 캐는 까닭은 값이다: 쓸 곳 · 팔 곳이 없으면 안 캔다.**
@@ -4494,6 +4508,7 @@ function createVillage(opts) {
       //     land.tin = oreMix.tin × land.ore   — 조금 나는 마을·많이 나는 마을이 자연히 생긴다
       //   oreMix 가 없는 호출부(랩·CLI)만 옛 이름해시 문턱으로 폴백한다.
       //   ⇒ TIN_DEPOSIT_ORE_SCORE 문턱 튜닝 문제(본게임 최대 land.ore 1.06 < 필요 1.067)도 함께 소멸.
+      ...(T1465_ORE_STOCK && opts._oreStockCells ? { _oreStockCells: opts._oreStockCells } : {}),
       oreMix: opts.oreMix || null,
       oreP: opts.oreP != null ? opts.oreP : null,       // 노동권 면적가중 평균 농도(감정 모델 입력)
       oreDist: opts.oreDist != null ? opts.oreDist : 0,  // 광맥까지 면적가중 평균 거리(셀) — 헛짐 운반비
@@ -4937,15 +4952,16 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
     const _capM = npc.captive ? CAPTIVE_WORK_MUL : 1;
 
     // produceSpecial 분기 — 각 산출에 대해 세금 떼고 storage로
-    const addProduce = (r, amt, exactPreserve=false) => {
+    const addProduce = (r, amt, exactPreserve=false, orePlan=null) => {
       if(T1192_FISH_SPECIES&&exactPreserve){if(!(amt>0))return;v.storage[r]=(v.storage[r]||0)+amt;dailyProduction[r]=(dailyProduction[r]||0)+amt;dailyProductionPotential[r]=(dailyProductionPotential[r]||0)+amt;return;}
       if (productionFormulaOff(v, npc.currentJob)) return;   // T1180: 부산물·현장 0 폴백도 수식 생산이다
-      if(T1188_ORE_SPLIT&&r==='ore'){for(const[k,q]of Object.entries(OreGoods.split(amt,oreSourceMix(v))))addProduce(k,q);return;}
+      if(T1188_ORE_SPLIT&&r==='ore'){const p=T1465_ORE_STOCK?OreStock.plan(v,npc):null;for(const[k,q]of Object.entries(OreGoods.split(amt,p?p.mix:oreSourceMix(v))))addProduce(k,q,false,p);return;}
       const sm = satMul(r, amt);
       _potA += amt; _actA += amt * sm;   // 여유노동 측정: 잠재(감산 전) vs 실제(감산 후)
       dailyProductionPotential[r] = (dailyProductionPotential[r] || 0) + amt;   // 잠재 생산(건강·포만 적용 전) — prodK용
       amt *= _hpm * _hwm * _prodMul * sm * (v._laborMul || 1) * _capM;
       if (_t1113LQ !== 1 && !t1113IsFood(v, r)) amt *= _t1113LQ;   // ★[T1113 ③] 식량 외만(끔 = 이 줄 무동작)   // ★건강→작업량(±10%) × **행복→작업량(T157 · 주입 없으면 1)** × production stat × 포만 × 부상노동력(요양=일손 X·부상=효율↓ — 생활층서 계산) × 포로 노동(captive만 0.6, 미설치=1) ★[T329] 포위 배수 제거(반경으로 간다)
+      if (T1465_ORE_STOCK && (orePlan || r === 'ore')) amt = OreStock.consume(v, orePlan || OreStock.plan(v,npc), amt, npc);
       if (amt <= 0) return;
       if(T1192_FISH_SPECIES&&npc.currentJob==='fisher'&&FishGoods.species().includes(r))FishGoods.note(v,r,amt*_t860Unit(r)/FishGoods.factor(r));
       if (r === 'food') v._grainToday = (v._grainToday || 0) + amt;   // ★오늘 곡물 실생산 → 볏짚 연료(아래 연료 블록)
@@ -8136,7 +8152,7 @@ function computeVillagePrices(v) {
 module.exports = {
   T1259_WOOD_CAP, setT1259WoodReader, T1271_ORE_CAP, setT1271OreReader, jobCapacity,
   T1192_FISH_SPECIES,FishGoods,preservedFactor,fishPreserveReserve,_t1192Preserve,
-  T1188_ORE_SPLIT, OreGoods, oreTotal, oreReserveTotal, oreValue, oreSourceMix, migrateOre, takeOre,
+  T1465_ORE_STOCK, OreStock, T1188_ORE_SPLIT, OreGoods, oreTotal, oreReserveTotal, oreValue, oreSourceMix, migrateOre, takeOre,
   T1149, t1149LeanDays, t1149WinterDays, t1149WinterNeed, T1297_BIRTH_FOOD, T1297_FAMINE_DAYS, t1297WinterLeft, t1297NeedDays, T1306_BIRTH_GRADE, t1306Ratio, t1306GradeDP, T1319_AUTUMN_LOOK, T1319_AUTUMN_MIG, t1319AutumnLeft, t1319MigNeedDays, T1346_BIRTH_FLOW, t1346FlowShort, T1373_HOME_CAP, t1373HomeCap, t1373Hcap, T1363_FAMINE_TOOLS, t1363ToolCrit, t1363StoneReady, t1363StoneShort,   // ★[T1373] 땅 상한 = 집터 수 — 하네스가 정본 함수를 그대로 부른다 · ★[T1363] 기근 블록 · 도구 바닥 — 하네스가 정본 함수를 그대로 부른다 · ★[T1346] 흐름 문(하네스가 정본 함수를 그대로 부른다) · ★[T1149] 겨울 골짜기 — 손잡이 갈래 · 달력 셈 · 다가오는 겨울에 모자랄 식량(v2 가을 사 모으기가 읽는다)
   T1179_CROP_SEASON, t1179FieldDay, t1179Standing,   // ★[T1179] 작물 철 — 손잡이 · 밭 하루 · 밭에 선 먹을 것(계측)
   assignNPCJob, assignableJobs, JOB_SWITCH_COOLDOWN,

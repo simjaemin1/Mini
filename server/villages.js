@@ -1050,7 +1050,7 @@ function makeTerrainAdapter(terrain, ZONE, deps) {
   };
   // ★★[T585] 개울 — 술어 하나(`server/streams.js isStreamCell` · 존이 `deps.isStreamLocal` 로 넘긴다). 안 넘어오면(자 · 옛 배선) **없다**(키 자체가 없다 → 개울을 보는 자리 전부 무변).
   //   개울은 통행(`isBlocked` 무변 · 건넌다)이고 물(`isWater` 무변 — 둑·논 존닝·물거리장·낚시는 큰 물만 본다)도 아니다.
-  const _ta = { isBlocked, isWater, isRock, isOre, isBridgeCell, oreMinerals, oreMix, forestMult, fert, elev, nearestWaterDist, prepareFert, fertField: () => _FF, fertBox: () => _FFArgs };
+  const _ta = { ...(process.env.T1465_ORE_STOCK === '1' ? { oreCellMix: (cx,cy) => terrain.oreMixAt(zoneId || 'hanbando',cx*SZ+SZ/2,cy*SZ+SZ/2), oreCellProb: (cx,cy) => terrain.oreProbMajorAt(zoneId || 'hanbando',cx*SZ+SZ/2,cy*SZ+SZ/2) } : {}), isBlocked, isWater, isRock, isOre, isBridgeCell, oreMinerals, oreMix, forestMult, fert, elev, nearestWaterDist, prepareFert, fertField: () => _FF, fertBox: () => _FFArgs };
   if (deps.isStreamLocal) _ta.isStream = (cx, cy) => { const x = px(cx), y = px(cy); if (x < 0 || y < 0 || x >= W || y >= H) return false; return !!deps.isStreamLocal(x, y); };
   //   ★[T1218] 바다 칸 — 존 정본 술어(`deps.isSeaTileLocal` — look · 자염 · 갯벌 · NPC 바다 물가가 쓰는 그것) · 어장 고증 켬일 때만 키가 선다(끔 = 키 없음 · 무변)
   if (process.env.T1218_FISH_CANON === '1' && deps.isSeaTileLocal) _ta.isSea = (cx, cy) => { const x = px(cx), y = px(cy); if (x < 0 || y < 0 || x >= W || y >= H) return false; return !!deps.isSeaTileLocal(x, y); };
@@ -1205,6 +1205,7 @@ function extractLandParamsApprox(ta, ccx, ccy, layout) {
     fertility = clamp(+(0.4 + water * 0.9 - rockD * 1.5).toFixed(2), 0.1, 2.0); // 옛 근사(필드 없을 때)
   }
   return {
+    ...(process.env.T1465_ORE_STOCK === '1' ? { _oreStockCells: _t1465Topology(ta,ccx,ccy) } : {}),
     fertility,
     arable: tn ? +((tn - tw) / tn).toFixed(2) : 1.0,
     water: +(water * 1.6).toFixed(2),
@@ -7183,7 +7184,23 @@ function _oreWarmStart() {
 const T1095_MINE_DEMAND = process.env.T1095_MINE_DEMAND !== '0';
 const _t1095Stat = { on: T1095_MINE_DEMAND, days: 0, cut: 0, zero: 0, open: 0, dug: 0, D: 0, vils: {} };   // 계측 전용(세계에 안 쓴다) — 일괄 날 · 자른 날 · 수요 0 날 · 깎은 재고 덩이 · 수요 합
 // 하루치 채굴 정산. 반환: { cells, consumed, oFrac }
+// T1465: use the body scanner itself; temporary adapters are restored synchronously.
+function _t1465Topology(ta, ccx, ccy) {
+  const oldTa=state.ta, oldDep=state.deps;
+  try {
+    state.ta=ta; state.deps={...oldDep,oreProbAt:(x,y)=>ta.oreCellProb(Math.floor(x/SZ),Math.floor(y/SZ))};
+    const cells=_oreCellsOf({ccx,ccy}).map(c=>({...c,key:(state.zoneId||'hanbando')+':'+c.cx+','+c.cy,mix:ta.oreCellMix(c.cx,c.cy)}));
+    return {zone:state.zoneId||'hanbando',teamSize:MINE_TEAM,cells};
+  } finally {state.ta=oldTa;state.deps=oldDep;}
+}
+function _t1465OreBind(vil) {
+  const E=_lifeEcon(), dep=state.deps;
+  if (!E.T1465_ORE_STOCK || !vil.econ || !vil.econ._world || !dep.oreStockAt) return;
+  if (!vil.econ.land._oreStockCells) vil.econ.land._oreStockCells=_t1465Topology(state.ta,vil.ccx,vil.ccy);
+  E.OreStock.bindHost(vil.econ._world,{read:dep.oreStockAt,consume:dep.oreConsumeAt,body:ev=>!!(E.T1266_ORE_BODY && E.productionActsBound(ev))});
+}
 function _oreMineDaily(vil) {
+  _t1465OreBind(vil);
   const cells = _oreCellsOf(vil);
   if (!cells.length) return null;
   const dep = state.deps || {};
@@ -7221,7 +7238,7 @@ function _oreMineDaily(vil) {
     if (_l !== Infinity && _kgU > 0 && _ck > 0) { _t1095D = _l; if (T1095_MINE_DEMAND) _t1095Left = _l * _kgU / _ck; }
   }
   const _t1095Dug0 = consumed;
-  if (nMiner > 0 && !_t724Skip) {
+  if (nMiner > 0 && !_t724Skip && !_lifeEcon().T1465_ORE_STOCK) {
     // 2인 1조: 짝(2명)당 셀 하나. 조는 서로 다른 셀에 붙는다(랩 조 단위 분산 동형).
     const teams = Math.max(1, Math.ceil(nMiner / MINE_TEAM));
     for (let t = 0; t < teams; t++) {
@@ -7262,6 +7279,7 @@ function _oreMineDaily(vil) {
 // land.ore 되먹임 — 재고가 깎이는 *내내* 광부 정원(size×ore×0.30)이 비례해 준다.
 //   실측 평형(size 40): 대형 재고 100%·광부 27.9명 / 중형 89%·14.6명 / 소형 32%·4.6명 / 자잘 0%·1.1명.
 function _oreFeedback(vil, oFrac) {
+  if (_lifeEcon().T1465_ORE_STOCK) return;
   const land = vil.econ && vil.econ.land; if (!land) return;
   if (vil._baseOre == null) vil._baseOre = land.ore || 0;
   land.ore = +(vil._baseOre * (ORE_FLOOR + (1 - ORE_FLOOR) * oFrac)).toFixed(2);
@@ -7329,6 +7347,7 @@ function _t724Pick(vil, npc, day) {
 }
 // 몸 한 걸음 — 이 틱을 가지면 true. 광맥 목록이 아직 없으면 false(레거시 폴스루 — 종전 채광 그림).
 function _t724BodyStep(vil, npc, now, day) {
+  _t1465OreBind(vil);
   const dep = state.deps, S = _spec();
   if (!S || !dep.oreConsumeAt || !dep.oreStockAt || !vil._oreCells || !vil._oreCells.length) return false;
   const kgU = _oreKg(); if (!(kgU > 0)) return false;
@@ -11608,6 +11627,7 @@ function _t731Jobs(now, T) {
       if (late > _t731Stat.lateMax) _t731Stat.lateMax = late;
       if (!vil.econ || !state.world.villages.includes(vil.econ)) return;   // 창 가운데 사라진 마을 — 건너뛴다
       _lifeHandsIn(vil);
+      _t1465OreBind(vil);
       mute(() => W.P.village(vil.econ));
       vil._t731Day = W.D;
     }, 'econ:vil');
@@ -11754,6 +11774,7 @@ function _econDayParts(C, add) {
   const P = state.econV2.tickWorldV2Parts(state.world);
   const mute = (f) => { const _log = console.log; console.log = () => {}; try { f(); } finally { console.log = _log; } };
   add('econ', () => { for (const vil of C.vils) _lifeHandsIn(vil); mute(() => P.head()); }, 'econ:head');
+  if (_lifeEcon().T1465_ORE_STOCK) for (const vil of state.villages) _t1465OreBind(vil);
   for (const v of state.world.villages.slice()) add('econ', () => mute(() => P.village(v)), 'econ:vil');   // 마을 하나 = 조각 하나(목록은 여는 순간 얼린다)
   if (T698_BOUNDARY_SLICE && typeof P.tradeSteps === 'function') {   // ★[T698] 켬 — 마을 하나씩(같은 발생기를 끝까지 = `P.trade()`)
     let g = null;
@@ -11847,6 +11868,7 @@ function _openDayJobs(now, T) {
     const _log = console.log;
     console.log = () => {};
     try {
+      if (_lifeEcon().T1465_ORE_STOCK) for (const vil of state.villages) _t1465OreBind(vil);
       state.econV2.tickWorldV2(state.world);
       _econDayWar();
     } finally { console.log = _log; }
@@ -21362,6 +21384,9 @@ module.exports = { t1406PathCell: (cx, cy, vil) => _t1406PathCell(cx, cy, vil ||
   __labProbe: {
     get t772Stat() { return T772_ON ? Object.assign({}, _t772Stat) : null; },   // ★[T772] 켬만 — 귀환 다리 · 집 도착 · 늦음(관찰기가 읽는다)
     makeTerrainAdapter, extractLandParamsApprox, findOpenCenter, pickSeedVillages,
+    // T1465: 계측/광맥 연결이 몸의 같은 셀 목록을 읽는다(셀 선정 식 사본 없음).
+    oreCellsOf: (vil) => _oreCellsOf(vil),
+    oreGranStep: (v, p, now) => _lifeGranStep(v, p, now),
     t593Namer: _t593Namer, t593Kind: _t593Kind, get T593_LABEL() { return T593_LABEL; },   // ★[T593 ⑤] 자·표 기계가 **그 함수**로 이름을 짓는다(사본 0)
     t593SeaBank: (cx, cy) => _t593SeaBank(cx, cy),   // ★[T593 ④] NPC 어부 물가 판정 — 하네스가 같은 함수를 부른다(술어는 `_t374Probe.setDeps` 로 꽂는다)
     _gateTradePotential, get T436_K() { return T436_K; }, T436_K_DERIVED, _seedSpacingPx,   // ★[T436] 게이트 교역 잠재 — 표 기계가 **그 함수**를 부른다(사본 0)

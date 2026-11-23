@@ -1,0 +1,87 @@
+{
+  "method": "controlled physical body calibration; daily uniform-stock reset, central test granary, one skill5 miner, unlimited demand (canonical missing-value fallback), actual terrain A* / canonical followNpcPath, daily uniform-stock reset; controlled physical calibration, NOT market equilibrium",
+  "source": "scripts/t1465-body-curve.js",
+  "rows": [
+    {
+      "fraction": 0,
+      "relativeOutput": 0
+    },
+    {
+      "fraction": 0.1,
+      "relativeOutput": 0.4273615728488468
+    },
+    {
+      "fraction": 0.5,
+      "relativeOutput": 0.5817384128704463
+    },
+    {
+      "fraction": 1,
+      "relativeOutput": 1
+    }
+  ],
+  "profiles": [
+    {
+      "depletedPrefix": 0,
+      "rows": [
+        {
+          "fraction": 0,
+          "relativeOutput": 0
+        },
+        {
+          "fraction": 0.1,
+          "relativeOutput": 0.4273615728488468
+        },
+        {
+          "fraction": 0.5,
+          "relativeOutput": 0.5817384128704463
+        },
+        {
+          "fraction": 1,
+          "relativeOutput": 1
+        }
+      ]
+    },
+    {
+      "depletedPrefix": 0.5,
+      "rows": [
+        {
+          "fraction": 0,
+          "relativeOutput": 0
+        },
+        {
+          "fraction": 0.1,
+          "relativeOutput": 0.41456178251683357
+        },
+        {
+          "fraction": 0.5,
+          "relativeOutput": 0.5643445839135007
+        },
+        {
+          "fraction": 1,
+          "relativeOutput": 0.9473089601338666
+        }
+      ]
+    },
+    {
+      "depletedPrefix": 0.9,
+      "rows": [
+        {
+          "fraction": 0,
+          "relativeOutput": 0
+        },
+        {
+          "fraction": 0.1,
+          "relativeOutput": 0.393530124656451
+        },
+        {
+          "fraction": 0.5,
+          "relativeOutput": 0.5351388818575069
+        },
+        {
+          "fraction": 1,
+          "relativeOutput": 0.8597189559910535
+        }
+      ]
+    }
+  ]
+}

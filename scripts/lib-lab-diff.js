@@ -209,4 +209,11 @@ function checkClosure(srcOf = readRoot, allowanceText, registry = require('./t14
   return {ok:errors.length===0,errors,catalogEqual,unflagged:retained.map(r=>r.id),allowanceCount:allowances.size,allowed:registry.rows.filter(r=>r.disposition==='allow').map(r=>r.id),referred:registry.rows.filter(r=>r.disposition==='refer').map(r=>r.id),shared:registry.rows.filter(r=>r.disposition==='shared').map(r=>r.id),flagged:registry.rows.filter(r=>r.disposition==='flag').map(r=>r.id),extras:registry.extras};
 }
 
+
+// T1465: keep the hand-written lab stock approximation visible. Aligning its
+// physical/econ ledger is a follow-up card; the generated engine is refreshed.
+for (const [tag,file] of [['V','lab/마을실험실.html#body'],['W','lab/전쟁실험실.html#body']]) {
+  DIFFS.push({id:'D1465-'+tag+'-ORE_RESPONSE',what:'광맥 재고 응답: 랩 손 근사 ↔ 정본 실측 표',ref:'T1465',
+    lab:[file,/(0\.4\+0\.6\*oFrac)/],srv:['sim/ore-stock.js',/(response\(stock \/ S\.ORE_K, i \/ cells\.length\))/],knob:'T1465_ORE_STOCK'});
+}
 module.exports = { SAME, DIFFS, checkSame, checkDiffs, checkClosure, okList, grab, norm, readRoot, sourceCode, WAR, VIL };
