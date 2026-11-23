@@ -68,6 +68,10 @@
   window.__lagReport = _lagReport;   // ★[T913] 렉 보고 한 줄(00-const `_lagReport` · 재민 Safari 콘솔 — 보고/T913 맨 위)
   window.__memLine = _memLine;   // ★[T926] 힙 · 캐시 한 줄만 따로(00-const `_memLine` · 렉 보고 글 끝 줄과 같은 것 — 30초 캡처 없이)
   window.__hidpiDbg = _hidpiDbg;   // ★[T1193] 레티나 2배 손잡이 상태(00-const `_hidpiDbg` — 켬 · 배율 · 뒤판 · CSS 크기)
+  // ★[T1446] 화면 안 색인 시험 손잡이(00-const) — `on()` · `set(켬)`(그리는 길만 바꾼다 · 색인은 그대로 고친다) · `stat()`(목록 · 상자 수) ·
+  //   `cap()` 뒤 한 프레임이 지나면 `capOut()` = 그 프레임의 정렬된 목록 서명(종류 · 자리 · z · 등급 · 건물 id — 끔 ↔ 켬 같음 대조) · `check()` = 색인이 목록을 그대로 비추나
+  window.__t1446 = { on: () => T1446_ON, set: (v) => { T1446_ON = !!v; needsRedraw = true; return T1446_ON; }, stat: () => _t1446Stat(),
+    cap: () => { _t1446CapOut = null; _t1446CapReq = 1; needsRedraw = true; return true; }, capOut: () => _t1446CapOut, check: () => _t1446Check() };
   _t1193LagLink();   // ★[T1193] 주소 `lag=<초>` 면 들어간 뒤 렉 보고 표 + 복사 단추(재민 Safari 링크 · 00-const) — 주소에 없으면 아무 일도 안 한다
 // @@moved-end:491
 // @@moved-begin:600
