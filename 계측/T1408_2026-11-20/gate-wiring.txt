@@ -1,0 +1,60 @@
+  ✅ lab/마을실험실.html [T577] bdtDenRng 본문 = 서버 denRng(시드 변수 이름만 다르다)
+  ✅ lab/마을실험실.html [T577] banditDaily 결성 문 = econ 날 ≥ 마을별 보호기 끝(_bdtOpenDay)
+  ✅ lab/마을실험실.html [T569] 집터가 남의 집·영토를 본다(_t569Foreign 1곳 · 서버 '남의 마을' 거부 그 꼴)
+  ✅ lab/마을실험실.html [T569] growTerritory — 남의 영토 칸은 후보가 아니다(서버 _terrGrow 그 줄)
+  ✅ lab/마을실험실.html [T570] 화면 날짜·달·해 = 달력 정본 호출 2곳(EconEngine.Calendar)
+  ✅ lab/마을실험실.html [T590] BX_CAT 표 = 서버 villages.js(까닭 여덟 → 죽음·걸음·그 밖)
+  ✅ lab/마을실험실.html [T590] lifeSync → bxSync · 비는 마을 → bxEmptied(몸이 econ 수의 그림자가 아니다)
+  ✅ lab/마을실험실.html [T578] 캐러밴 직선 검사 = 1/16칸 보폭(서버 _walkLineClear 그 보폭)
+  ✅ lab/마을실험실.html [T578] dispatchTrades 교역 다리 세 토막 = _smoothCaravan
+  ✅ lab/전쟁실험실.html [T577] _t577Hash 본문 = 서버 bandits.js 와 한 글자도 안 다르다
+  ✅ lab/전쟁실험실.html [T577] bdtDenRng 본문 = 서버 denRng(시드 변수 이름만 다르다)
+  ✅ lab/전쟁실험실.html [T577] banditDaily 결성 문 = econ 날 ≥ 마을별 보호기 끝(_bdtOpenDay)
+  ✅ lab/전쟁실험실.html [T569] 집터가 남의 집·영토를 본다(_t569Foreign 2곳 · 서버 '남의 마을' 거부 그 꼴)
+  ✅ lab/전쟁실험실.html [T569] growTerritory — 남의 영토 칸은 후보가 아니다(서버 _terrGrow 그 줄)
+  ✅ lab/전쟁실험실.html [T570] 화면 날짜·달·해 = 달력 정본 호출 3곳(EconEngine.Calendar)
+  ✅ lab/전쟁실험실.html [T590] BX_CAT 표 = 서버 villages.js(까닭 여덟 → 죽음·걸음·그 밖)
+  ✅ lab/전쟁실험실.html [T590] lifeSync → bxSync · 비는 마을 → bxEmptied(몸이 econ 수의 그림자가 아니다)
+  ✅ lab/전쟁실험실.html [T578] 캐러밴 직선 검사 = 1/16칸 보폭(서버 _walkLineClear 그 보폭)
+  ✅ lab/전쟁실험실.html [T578] dispatchTrades 교역 다리 세 토막 = _smoothCaravan
+  ✅ lab/전쟁실험실.html [T578 ④] 등급 지도가 바뀐 날 다닌 쌍을 다시 판다(tpRedigDaily) · h = 스텝 비용 최저값(hScale)
+  ✅ ⓓ [자명 통과 금지] 서버 해시 곱수 31→37 로 비틀면 랩 본문과 갈린다 — 비교가 실제로 문다
+
+  ✅ lab/마을실험실.html [T641 ⓐ] 문 하나 · 번들 시작 표시 앞(번들이 처음 돌 때 env 가 서 있다)
+  ✅ lab/마을실험실.html [T641 ⓐ] 대문자 칸만 같은 이름으로 env({"T602_NEW_FISH":"1","PEACE_W":"0.3"}) · 소문자 칸(seed·cropcal·stream) 안 샘 · 칸 없으면 빈 env 를 늘 세움(= 서버 기본 · T882)
+  ✅ lab/전쟁실험실.html [T641 ⓐ] 문 하나 · 번들 시작 표시 앞(번들이 처음 돌 때 env 가 서 있다)
+  ✅ lab/전쟁실험실.html [T641 ⓐ] 대문자 칸만 같은 이름으로 env({"T602_NEW_FISH":"1","PEACE_W":"0.3"}) · 소문자 칸(seed·cropcal·stream) 안 샘 · 칸 없으면 빈 env 를 늘 세움(= 서버 기본 · T882)
+  ✅ lab/마을실험실.html [T641 ⓐ′] 작물 철 손잡이 — 서버 이름 `?T594_CROP_CAL=` 도 받는다(1 켬 · 0 끔 · 수가 아니면 그대로 = 서버 _num)
+  ✅ lab/전쟁실험실.html [T641 ⓐ′] 작물 철 손잡이 — 서버 이름 `?T594_CROP_CAL=` 도 받는다(1 켬 · 0 끔 · 수가 아니면 그대로 = 서버 _num)
+  ✅ ⓑ 번들 process shim = `root.process` 가 있으면 그것(문이 심은 env 를 번들이 읽는다)
+  ✅ ⓑ 서버와 같은 손잡이 줄 — `T602_NEW_FISH` 줄이 server/specialty.js 와 번들에 같은 글자로 있다(랩도 이 줄을 읽는다)
+  ✅ ⓒ [자명 통과 금지] 문 정규식을 소문자까지 풀면 랩 칸(seed·cropcal)이 env 로 샌다 — 검사가 문다
+  ✅ lab/마을실험실.html [T594 ⓓ] 작물 철 켬 — 랩 cropGrowAt = 서버 readyDay 23376/23376(거울 16종 × econ 날 0..1460 · 월동 = 그 겨울이 끝난 다음 날부터)
+  ✅ lab/전쟁실험실.html [T594 ⓓ] 작물 철 켬 — 랩 cropGrowAt = 서버 readyDay 23376/23376(거울 16종 × econ 날 0..1460 · 월동 = 그 겨울이 끝난 다음 날부터)
+  ✅ ⓔ [자명 통과 금지] T641 전 옛 줄(랩 1월 기점 달력)은 월동 셋에서 4383날 갈린다 — 비교가 실제로 문다
+
+  ✅ ⓐ 번들이 서버 작물 정본을 글자 그대로 싣고(crops.js · crops.json · crop-cal.js · events.js) `EconEngine.Crops` 로 내놓는다(사본 0)
+  ✅ lab/마을실험실.html [T648 ⓑ] 문 하나(구운 블록) — 번들의 서버 정본 EconEngine.Crops.dormantAt(서버 id, econ 날)을 부른다
+  ✅ lab/마을실험실.html [T648 ⓑ] 상태기 세 자리(cellTask 일감 · doTask 수행 · 하루 작물 진화 감점)가 문 하나로 들어간다
+  ✅ lab/마을실험실.html [T648 ⓑ] 번들 밖 랩 글에 휴면 술어 사본 0(dormantAt · _dormantKind · _dormant 정의 없음)
+  ✅ lab/마을실험실.html [T648 ⓓ] 돌봄 차례 비율 cropCareFrac 하나(구운 블록) — 월동 셋 = 번들 정본 grownDays ÷ max(1, growDaysOf)(서버 _cropGrowFrac 그 셈) · 상태기 세 자리가 부른다 · 종전 비율 글은 그 종전 갈래 하나
+  ✅ lab/전쟁실험실.html [T648 ⓑ] 문 하나(구운 블록) — 번들의 서버 정본 EconEngine.Crops.dormantAt(서버 id, econ 날)을 부른다
+  ✅ lab/전쟁실험실.html [T648 ⓑ] 상태기 세 자리(cellTask 일감 · doTask 수행 · 하루 작물 진화 감점)가 문 하나로 들어간다
+  ✅ lab/전쟁실험실.html [T648 ⓑ] 번들 밖 랩 글에 휴면 술어 사본 0(dormantAt · _dormantKind · _dormant 정의 없음)
+  ✅ lab/전쟁실험실.html [T648 ⓓ] 돌봄 차례 비율 cropCareFrac 하나(구운 블록) — 월동 셋 = 번들 정본 grownDays ÷ max(1, growDaysOf)(서버 _cropGrowFrac 그 셈) · 상태기 세 자리가 부른다 · 종전 비율 글은 그 종전 갈래 하나
+  ✅ ⓒ [자명 통과 금지] doTask 자리를 뺀 사본은 자리 셋 → 둘 · 번들에서 Crops 내놓기를 뺀 사본은 ⓐ 가 갈린다 · 감점 문턱을 종전 비율로 되돌린 사본은 ⓓ 가 갈린다 — 검사가 문다
+
+  ✅ ⓐ econ `houseCrewDay` 가 곳간 출구를 내보낸 칸으로 부른다(관찰기가 감싸는 그 칸)
+  ✅ ⓑ 서버 `_t400BuildDay` 는 `E.houseCrewDay` 를 한 번 부르기만 한다(곳간 출구 · 단계 셈 사본 0)
+  ✅ ⓒ 하루 끝(`tickWorldV2Parts.tail`) 한 자리가 붙인 마을의 집 하루를 부른다
+  ✅ ⓓ scripts/t17-metrics.js — 시딩 집 칸 · 서버 크루 두 수로 붙인다(사본 0)
+  ✅ ⓓ scripts/t176-ab.js — 시딩 집 칸 · 서버 크루 두 수로 붙인다(사본 0)
+  ✅ ⓔ [자명 통과 금지] 서버 몸통에 곳간 출구를 되살린 사본은 ⓑ 가 문다
+
+  ✅ ⓐ econ `labHouseDay`(t17 · t176) → `labSiteCrewDay` → `houseCrewDay` — 몸 없는 크루 몸통 하나
+  ✅ ⓑ 번들 `EconEngine.LifeCrew` = 서버 `LIFE_CREW` 2 · `LIFE_STAGE_PDAY` 1(villages.js 글자 — 사본 0)
+  ✅ ⓒ lab/마을실험실.html — 집 고리 켬 = econ `labSiteCrewDay` 한 자리(번들 두 수) · `_t400Live` · 방아쇠 `_t958Want` · 크루 몸통 사본 0 · 셋째 규칙은 끔 갈래 하나
+  ✅ ⓒ lab/전쟁실험실.html — 집 고리 켬 = econ `labSiteCrewDay` 한 자리(번들 두 수) · `_t400Live` · 방아쇠 `_t958Want` · 크루 몸통 사본 0 · 셋째 규칙은 끔 갈래 하나
+  ✅ ⓓ [자명 통과 금지] 번들에서 LifeCrew 를 뺀 사본 · 방아쇠에서 `_t958Want` 를 뺀 사본 · 랩 글에 곳간 출구를 부른 사본 · 크루 문을 둘로 늘린 사본 — 넷 다 문다
+
+=== 배선 검사: 실패 0 · 경고 1 ===

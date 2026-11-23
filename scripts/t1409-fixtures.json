@@ -1,0 +1,13 @@
+{
+  "base": "1aa63e63",
+  "oreFunction": "function oreRegen(R0,days){ return Math.min(L_OREMAX, _OREREG_ASY-(_OREREG_ASY-R0)*Math.exp(-_OREREG_B*days)); }",
+  "oreDeclarations": [
+    "L_OREMAX=1000",
+    "L_OREREG0=0.01",
+    "L_OREREG1=0.01",
+    "_OREREG_A=L_OREREG0+L_OREREG1",
+    "_OREREG_B=L_OREREG1/L_OREMAX",
+    "_OREREG_ASY=_OREREG_A/_OREREG_B"
+  ],
+  "waterExpression": "opts.water != null ? opts.water : Math.max(0.05, Math.min(1, 1 - nd / 140))"
+}

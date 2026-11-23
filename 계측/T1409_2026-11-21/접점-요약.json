@@ -1,0 +1,89 @@
+{
+  "tests": [
+    {
+      "test": "test-body-fields.js",
+      "rc": 0
+    },
+    {
+      "test": "test-coll-grid.js",
+      "rc": 0
+    },
+    {
+      "test": "test-frontier-iron.js",
+      "rc": 0
+    },
+    {
+      "test": "test-harness-lint.js",
+      "rc": 0
+    },
+    {
+      "test": "test-hp-src.js",
+      "rc": 0
+    },
+    {
+      "test": "test-lab-mining.js",
+      "rc": 1
+    },
+    {
+      "test": "test-lon-day.js",
+      "rc": 0
+    },
+    {
+      "test": "test-mining.js",
+      "rc": 0
+    },
+    {
+      "test": "test-onboarding.js",
+      "rc": 0
+    },
+    {
+      "test": "test-one-decay.js",
+      "rc": 0
+    },
+    {
+      "test": "test-t1044-scram-walk.js",
+      "rc": 0
+    },
+    {
+      "test": "test-t1060-scram-hold.js",
+      "rc": 0
+    },
+    {
+      "test": "test-t1089-ret-walk.js",
+      "rc": 0
+    },
+    {
+      "test": "test-t1094-arms-trip.js",
+      "rc": 0
+    },
+    {
+      "test": "test-t1094-carry-cap.js",
+      "rc": 0
+    },
+    {
+      "test": "test-t1325-one-rot.js",
+      "rc": 0
+    },
+    {
+      "test": "test-t1334-bundle.js",
+      "rc": 0
+    },
+    {
+      "test": "test-t1395-lab-diff.js",
+      "rc": 0
+    },
+    {
+      "test": "test-t1409-shared-rules.js",
+      "rc": 0
+    },
+    {
+      "test": "test-war-world.js",
+      "rc": 0
+    }
+  ],
+  "passed": 19,
+  "failed": 1,
+  "runnerRC": 1,
+  "knownFailure": "test-lab-mining.js: 광부 배치0·광맥 재고 미감소. 베이스부터 PM nightly-known에 등록.",
+  "newFailures": 0
+}

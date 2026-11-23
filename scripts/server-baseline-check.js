@@ -114,6 +114,9 @@ const MAKE = opt('--make', null);
 const BASE = MAKE ? null : A.find((x, i) => !x.startsWith('--') && !(A[i - 1] || '').startsWith('--') && !(A[i - 1] === '--war' && /^(inf|front)$/.test(x)));
 if (!MAKE && !BASE) { console.error('쓰는 법: --make <out.json> [--days 400] [--seeds 1020,7,42] [--par 2] · 또는 <기준선.json> [--days N] [--seeds …] [--par 2]'); process.exit(2); }
 const base = BASE ? JSON.parse(fs.readFileSync(BASE, 'utf8')) : null;
+//   ★[T1410 ③] 상자 수 지문(`lib-box` — 초월 함수가 상자마다 1ulp 갈린다: arm64 ↔ x64) — 기준선에 `box` 가 있거나 옆 파일 `<기준선>.box.json` 이 있으면 끝맺음에 쓴다.
+const BX = require('./lib-box');
+const baseBox = base ? (base.box || (() => { try { return JSON.parse(fs.readFileSync(BASE + '.box.json', 'utf8')); } catch (e) { return null; } })()) : null;
 const PLAN0 = opt('--plan', null);
 const DAYS = parseInt(opt('--days', base ? String(base.days) : (A.includes('--war') ? '800' : '400')), 10);   // ★[T1041] 전쟁 팔은 800날 기본
 const SEEDS = PLAN0 ? PLAN0.split(',').map((x) => +x.split(':')[0]) : String(opt('--seeds', base ? base.seeds.join(',') : '1020,7,42')).split(',').map(Number).filter(Boolean);
@@ -240,7 +243,7 @@ if (MAKE) {
     how: `node scripts/server-baseline-check.js --make ${MAKE} --days ${DAYS} --seeds ${SEEDS.join(',')}${BODY_DAY ? ' --body-day' : (HOUSE ? ' --house' : '')}${WAR ? ' --war ' + WAR : ''}${VCLOCK ? ' --vclock' : ''}${VCLOCK && !SIDE ? ' --side off' : ''}`,
     note: '날 지문 = [scanDay 날 · econ world.day · 그날 전체 sha1 12 · 마을마다 칸 넷(st·pp·hs·tr) sha1 4자리씩]'
       + (SIDE ? ' · 마을 칸 지문(side) = [날 · 그날 전체 sha1 12 · 칸마다 sha1 8(차례 = keys)] — 칸 = 서버 마을 칸(Map · Set 풀어서 · 마을 51 의 6자 해시를 이은 줄 · t740-side-hook)' : ''),
-    vclock: VCLOCK, side: SIDE, house: HOUSE, bodyDay: BODY_DAY, war: WAR, runHashDef: RH.RUN_HASH_DEF, byseed: seeds };   // ★[T1315 ⑤] 지문 정의 표시
+    vclock: VCLOCK, side: SIDE, house: HOUSE, bodyDay: BODY_DAY, war: WAR, runHashDef: RH.RUN_HASH_DEF, box: BX.box(), byseed: seeds };   // ★[T1410] box = 구운 상자의 수 지문   // ★[T1315 ⑤] 지문 정의 표시
   fs.writeFileSync(MAKE, JSON.stringify(doc));
   if (WAR) for (const s of SEEDS) { const w = seeds[s].war || {}; console.log(`  시드 ${s} 전쟁: 선포 ${w.decl} · 전투 ${w.battle} · 공승 ${w.atkWin} · 방승 ${w.defWin} · 사상 ${w.cas} · 포로 ${w.captured} · 철수 ${w.withdraw} · 항복 ${w.surrender}`); }
   for (const s of SEEDS) { const e = seeds[s].eight; console.log(`  시드 ${s}: 인구 ${e.pop} · 소멸 ${e.dead}/${e.ever} · 무기Q ${e.weapQ} · 확장 ${e.expand} · 게시 ${e.board} · 도구Q ${e.toolQ} · 보존 ${e.preserve} · 곡물 ${e.grain} · 해체 ${seeds[s].dissolved} · 빈 ${seeds[s].empty} · 날 ${seeds[s].days.length}`); }
@@ -312,5 +315,8 @@ if (firstBad && !process.env.SBC_DUMP_DAY) console.log(`\n  (그날 칸 값을 �
 const covAll = `경제 ${covTot.econ[0]}/${covTot.econ[1]} · 생활층 ${covTot.sideAny ? `${covTot.side[0]}/${covTot.side[1]}` : '기준선에 없음'}`;   // ★[T1280] 끝 줄에 칸별 날 수
 console.log(`\n=== ${failed ? `판 실패 ${failed}/${SEEDS.length}${bad ? ` · 다름 ${bad}` : ''}` : bad ? `다름 ${bad}/${SEEDS.length}` : `같음 ${SEEDS.length}/${SEEDS.length}`} · ${covAll} · 판 ${R.sec}초 ===`);
 fs.writeFileSync(path.join(tmp, 'check.json'), JSON.stringify({ base: BASE, plan: DAYS_OF, seeds: SEEDS, sec: R.sec, per: R.per, res }, null, 1));
-process.exit(failed ? 2 : bad ? 1 : 0);   // ★[T1280] 판 실패(칸 날 수 모자람 · 판 없음) 2 가 다름 1 보다 앞선다
+//   ★[T1410 ③] 다름이어도 상자 수 지문이 기준선과 다르면 유보(75 — 빨강 아님) · 끝 줄 글자는 그대로(하네스가 그 줄을 읽는다) · 판 실패 2 가 앞선다
+const _bx = failed ? null : BX.verdict(BX.box(), baseBox, !bad);
+if (_bx && _bx.line) console.log(_bx.line);
+process.exit(failed ? 2 : _bx.rc);   // ★[T1280] 판 실패(칸 날 수 모자람 · 판 없음) 2 가 다름 1 보다 앞선다
 })();

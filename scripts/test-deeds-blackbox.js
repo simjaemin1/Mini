@@ -7,8 +7,10 @@
 //   이 하네스는 **재민의 말에서만** 질문을 뽑아(아래 머리 표 · 글자 그대로) **플레이어 손**으로 묻는다 — 실제 존(central + zone)을 띄우고
 //   게스트 ws 손이 보내는 메시지(`claim` · `unclaim` · `craft` · 순간이동 `teleport_debug` · 재료 `__e2e_give` — E2E_GIVE 판)와
 //   손이 받는 메시지(`claim_added` · `claim_removed` · `deeds_meter` · `notice` · `inventory` · `welcome.claims`)만 읽는다. 서버 함수 · 서버 파일 글자를 읽지 않는다.
-// ★시간: 실제 날짜로 줄어든다(재민 11-16) — 존을 내렸다가 같은 DB 로 **시계를 민 채** 다시 띄운다(`scripts/clock-shift.js` 프리로드 ·
-//   `T1356_CLOCK_SHIFT_DAYS` — 하네스 시계 밀기 정본 `lib-phase.shift`). 하네스에 날짜 · 벽시계 값을 박지 않는다(계량기의 `now` 는 서버가 준 것).
+// ★시간: 실제 날짜로 줄어든다(재민 11-16) — ★[T1403 · 재민 11-20 판정 13 "서버가 꺼진 시간은 빚으로 안 센다"] 두 꼴로 민다:
+//   · **켜진 채** 보름 · 한 달 — 존을 띄운 채 사유지 시계만 민다(`scripts/fixture-deeds-clock.js` 프리로드 · T1402 의 시계 넣는 길 `_t1332SetClock`).
+//   · **꺼진 채** 보름 — 존을 내렸다가 같은 DB 로 벽시계를 민 채 다시 띄운다(`scripts/clock-shift.js` · `T1356_CLOCK_SHIFT_DAYS`) — 그 보름은 안 센다(Q17).
+//   하네스에 날짜 · 벽시계 값을 박지 않는다(계량기의 `now` 는 서버가 준 것).
 //
 // ★재민의 말(기준의 뿌리 — 카드 T1390 글자 그대로)
 //   11-13 "사유지는 마을과 아무 상관이 없다 — 마을 미가입자도 만들 수 있어야" · "마을 영토 안에는 그 마을에서 인정받은 사람만" ·
@@ -19,7 +21,7 @@
 //   11-19 점수 = 일한 시간(속임 이득 0) · "1셀 단위로 없어지게 하되 … 카운트다운을 처음부터 다시 세면 안 되는 거지" ·
 //         "처음부터 24칸 가진 사람이 장기적으로 더 오래 살아남는 … 그 원리 좋거든"
 //
-// ★판 — ① 켬(존 env `T1305_DEEDS=1`): 판 ⓐ(시계 0) 선포 · 계량기 → 판 ⓑ(다시 띄움 · 시계 0) → 판 ⓒ(+15일) → 판 ⓓ(+30일)
+// ★판 — ① 켬(존 env `T1305_DEEDS=1`): 판 ⓐ(시계 0) 선포 · 계량기 → 판 ⓑ(다시 띄움 · 시계 0) → 판 ⓑ'(꺼진 채 +15일 · Q17) → 판 ⓒ(켜진 채 +15일) → 판 ⓓ(켜진 채 +30일)
 //        ② 미끼 — 끔(`T1305_DEEDS=0` · 바뀐 칸 하나): 켬에서만 뜻이 있는 질문이 빨강이어야 한다(Q4 · Q5 · Q6 · Q7 · Q8 · Q14 — 6줄)
 //   손 아홉: A 24칸 · B 40칸 · C 70칸 · D 100칸 · E 70칸(다시 선포 공격) · F · G 16칸(일하는 손 둘) · H 땅 없음(영토 안 묻기 · 남의 땅 색 보기) ·
 //            K 24칸(서버가 켜진 채 나가 있기)
@@ -37,6 +39,7 @@ const val = (f, d) => { const i = argv.indexOf(f); return i >= 0 ? argv[i + 1] :
 const ARM = val('--arm', 'both');
 const KNOB = 'T1305_DEEDS';
 const SHIFT = path.join(__dirname, 'clock-shift.js');
+const DCLOCK = path.join(__dirname, 'fixture-deeds-clock.js');   // ★[T1403] 켜진 채 사유지 시계 밀기
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let pass = 0, fail = 0;
 const ok = (c, m, d) => { if (c) pass++; else fail++; console.log(`  ${c ? '✓' : '✗'} ${m}${d !== undefined ? '  ' + d : ''}`); return !!c; };
@@ -58,6 +61,7 @@ const Q = {
   Q14: '점수 = 일한 시간(속임 이득 0) — 같은 시간 동안 일을 열 배 자주 해도 관리도가 더 오르지 않는다(11-19)',
   Q15: '서버를 내렸다 올려도(시계 그대로) 내 땅 · 버티는 날이 그대로다(현실 날짜 · 11-16)',
   Q16: '현실 날짜로 보름 안 들어와도 어느 정도 유지 — 서버가 켜진 채 몇 분 나가 있다 와도 내 땅이 내 땅이다(이웃이 지나가도 · 이웃이 그 칸을 못 잡는다 · 11-16)',
+  Q17: '서버가 꺼진 채 보름이면 그 보름은 안 센다 — 다시 띄운 뒤 내 땅 칸 · 버티는 날 · 다음 풀림이 꺼지기 전 그대로(11-20 판정 13)',
 };
 
 // ── 존 띄우기 ────────────────────────────────────────────────────────────────
@@ -65,7 +69,8 @@ const LP = require('./lib-port');
 const base = LP.ports(4, 39500);
 const CPORT = base, ZPORT = base + 2;
 const RUN = `/tmp/t1390-bb-${process.pid}`;
-fs.mkdirSync(RUN, { recursive: true });
+fs.mkdirSync(RUN, { recursive: true }); require('./lib-tmp').own(RUN);   // ★[T1403 · lint ㉑] 제 /tmp 는 lib-tmp 에
+const DFILE = path.join(RUN, 'deeds-clock');
 let procs = [];
 function boot(file, env, db) {
   const p = spawn(process.execPath, [path.join(ROOT, 'server', file)], { cwd: ROOT, env: Object.assign({}, process.env, env, { DB_PATH: db }), stdio: ['ignore', 'pipe', 'pipe'] });
@@ -73,12 +78,22 @@ function boot(file, env, db) {
   procs.push(p); return p;
 }
 async function up(arm, shiftDays) {
-  const env = { T1356_CLOCK_SHIFT_DAYS: String(shiftDays || 0), NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --require ${SHIFT}`.trim() };
+  const env = { T1356_CLOCK_SHIFT_DAYS: String(shiftDays || 0), NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --require ${SHIFT} --require ${DCLOCK}`.trim(), T1403_DEEDS_CLOCK_FILE: DFILE };
   const cen = boot('central.js', Object.assign({ PORT: String(CPORT), PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' }, env), path.join(RUN, `${arm}-c.db`));
   const zon = boot('zone.js', Object.assign({ PORT: String(ZPORT), ZONE_ID: 'hanbando', CENTRAL_URL: `http://localhost:${CPORT}`, ENABLE_VILLAGES: '1', ENABLE_BANDITS: '0', ENABLE_ROADS: '0',
     ENABLE_WILDLIFE: '0', VILLAGE_MAX: '4', E2E_GIVE: '1', [KNOB]: arm === 'on' ? '1' : '0' }, env), path.join(RUN, `${arm}-z.db`));
   const a = await FB.waitUp(cen, /central server up on/, { name: 'central' }), b = await FB.waitUp(zon, /zone server up on/, { name: 'zone', capMs: 400000 });
+  zoneProc = zon;
   return a.ok && b.ok;
+}
+//   ★[T1403] 켜진 채 사유지 시계를 민다(존을 안 내린다) — 민 날을 파일에 쓰고 존에 SIGUSR2 · 존이 `<파일>.ack` 에 답한다
+let zoneProc = null;
+async function pushDeeds(days) {
+  try { fs.rmSync(DFILE + '.ack', { force: true }); } catch (e) {}
+  fs.writeFileSync(DFILE, String(days));
+  try { zoneProc.kill('SIGUSR2'); } catch (e) { return false; }
+  const ack = await waitFor(() => { try { return fs.readFileSync(DFILE + '.ack', 'utf8'); } catch (e) { return null; } }, 5000);
+  return ack === String(days);
 }
 async function down() { for (const p of procs) { try { p.kill('SIGTERM'); } catch (e) {} } await sleep(1500); for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} } procs = []; await sleep(500); }
 process.on('exit', () => { for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} } try { fs.rmSync(RUN, { recursive: true, force: true }); } catch (e) {} });
@@ -213,14 +228,27 @@ async function runOn() {
   for (const u of Object.keys(P)) { P[u] = await connect(u); await freshMeter(P[u]); }
   const keep = Object.keys(P).every((u) => n(u) === before[u].n && P[u].meter && P[u].meter.N === before[u].N && Math.abs(P[u].meter.days - before[u].days) <= 0.01 * before[u].days);
   ok(keep, Q.Q15, Object.keys(P).map((u) => `${u.slice(2)} ${before[u].n}칸 ${before[u].days}일→${n(u)}칸 ${P[u].meter && P[u].meter.days}일`).join(' · '));
-  // Q14 — 일하는 손 둘(F 3초마다 한 번 · G 0.3초마다 한 번 · 같은 45초) — 먼저 시계를 밀어 관리도가 덜 찬 땅에서
+  // Q17 — ★[T1403 · 판정 13] 꺼진 채 보름(존을 내리고 벽시계를 보름 민 채 다시 띄움) — 그 보름은 안 센다
+  const nextOf0 = (MM) => (MM && MM.first > MM.now ? MM.first - MM.now : NaN);
+  const snap = () => Object.fromEntries(Object.keys(P).map((u) => { const mm = meterNow(P[u].meter); return [u, { n: n(u), N: mm && mm.N, days: mm && mm.days, next: nextOf0(mm) }]; }));
+  const pre = snap();
   for (const u of Object.keys(P)) { try { P[u].ws.close(); } catch (e) {} }
   await down();
-  if (!(await up('on', 15))) { ok(false, '켬 판 +15일 기동'); return; }
+  if (!(await up('on', 15))) { ok(false, '켬 판 꺼진 채 +15일 기동'); return; }
   for (const u of Object.keys(P)) { P[u] = await connect(u); await freshMeter(P[u]); }
+  const off15 = snap();
+  const h0 = (x) => (Number.isFinite(x) ? (x / 3600000).toFixed(1) + '시간' : '?');
+  //   다음 풀림 — 꺼진 보름이 셈에 들면 수백 시간이 빠진다 · 켜진 몇 분(다시 띄우는 사이)은 1시간 안
+  const offKeep = Object.keys(P).every((u) => off15[u].n === pre[u].n && off15[u].N === pre[u].N && Math.abs(off15[u].days - pre[u].days) <= 0.01 * pre[u].days
+    && (!Number.isFinite(pre[u].next) || (Number.isFinite(off15[u].next) && Math.abs(off15[u].next - pre[u].next) <= 3600000)));
+  ok(offKeep, Q.Q17, ['bbA', 'bbB', 'bbC', 'bbD'].map((u) => `${u.slice(2)} ${pre[u].n}칸 다음 ${h0(pre[u].next)} → ${off15[u].n}칸 다음 ${h0(off15[u].next)}`).join(' · '));
+  // Q14 — 일하는 손 둘(F 3초마다 한 번 · G 0.3초마다 한 번 · 같은 45초) — 먼저 시계를 밀어 관리도가 덜 찬 땅에서
+  //   ★[T1403] 켜진 채 +15일 — 존을 안 내리고 사유지 시계만 민다(그 보름은 센다)
+  if (!(await pushDeeds(15))) { ok(false, '켬 판 켜진 채 +15일 시계 밀기'); return; }
+  for (const u of Object.keys(P)) { P[u] = await relog(P[u]); await freshMeter(P[u]); }
   const M15 = {}; for (const u of Object.keys(P)) M15[u] = meterNow(P[u].meter);
   const n15 = Object.fromEntries(Object.keys(P).map((u) => [u, n(u)]));
-  console.log(`    +15일: ${Object.keys(P).map((u) => `${u.slice(2)} ${n15[u]}칸`).join(' · ')}`);
+  console.log(`    켜진 채 +15일: ${Object.keys(P).map((u) => `${u.slice(2)} ${n15[u]}칸`).join(' · ')}`);
   ok(n15.bbA === 24 && n15.bbB > 20, Q.Q9, `24칸 → ${n15.bbA} · 40칸 → ${n15.bbB}`);
   ok(n15.bbC >= 1 && n15.bbC < 70 && n15.bbD >= 1 && n15.bbD < 100, Q.Q10, `70칸 → ${n15.bbC} · 100칸 → ${n15.bbD}`);
   const nextOf = (MM) => (MM && MM.first > MM.now ? MM.first - MM.now : NaN);   // 계량기 `first` — 다음 칸이 풀리는 때(서버 시계)
@@ -263,15 +291,13 @@ async function runOn() {
   const F1 = meterNow(P.bbF.meter), G1 = meterNow(P.bbG.meter);
   const dF = F1 && F0 ? F1.m - F0.m + F0.rDay * (F1.now - F0.now) / DAY : NaN, dG = G1 && G0 ? G1.m - G0.m + G0.rDay * (G1.now - G0.now) / DAY : NaN;
   ROW.Q14 = ok(dF > 20 && dG > 20 && Math.abs(dG - dF) <= 0.2 * dF, Q.Q14, `3초마다 ${kF}번 → +${Number.isFinite(dF) ? dF.toFixed(0) : '?'}점 · 0.3초마다 ${kG}번 → +${Number.isFinite(dG) ? dG.toFixed(0) : '?'}점`);
-  // +30일
-  for (const u of Object.keys(P)) { try { P[u].ws.close(); } catch (e) {} }
-  await down();
-  if (!(await up('on', 30))) { ok(false, '켬 판 +30일 기동'); return; }
-  for (const u of ['bbA', 'bbC', 'bbD']) { P[u] = await connect(u); await freshMeter(P[u]); }
+  // 켜진 채 +30일(★[T1403] 존을 안 내리고 사유지 시계만 — 처음에서 30일)
+  if (!(await pushDeeds(30))) { ok(false, '켬 판 켜진 채 +30일 시계 밀기'); return; }
+  for (const u of ['bbA', 'bbC', 'bbD']) { P[u] = await relog(P[u]); await freshMeter(P[u]); }
   const n30 = { A: n('bbA'), C: n('bbC'), D: n('bbD') };
   ok(Number.isFinite(nextC) && nextC < fullD * 0.5 && n30.C < n15.bbC && n30.C >= 1, Q.Q11,
-    `+15일 70칸 땅(${n15.bbC}칸) 다음 풀림 ${Number.isFinite(nextC) ? (nextC * 24).toFixed(1) : '?'}시간(그 넓이 버티는 날 ${fullD.toFixed(1)}일) · +30일 ${n30.C}칸`);
-  ok(n30.A >= n30.D && n30.A >= 1, Q.Q13, `+30일 — 처음 24칸 사람 ${n30.A}칸 · 처음 100칸 사람 ${n30.D}칸`);
+    `켜진 채 +15일 70칸 땅(${n15.bbC}칸) 다음 풀림 ${Number.isFinite(nextC) ? (nextC * 24).toFixed(1) : '?'}시간(그 넓이 버티는 날 ${fullD.toFixed(1)}일) · 켜진 채 +30일 ${n30.C}칸`);
+  ok(n30.A >= n30.D && n30.A >= 1, Q.Q13, `켜진 채 +30일 — 처음 24칸 사람 ${n30.A}칸 · 처음 100칸 사람 ${n30.D}칸`);
   for (const u of Object.keys(P)) { try { P[u].ws.close(); } catch (e) {} }
   await down();
 }

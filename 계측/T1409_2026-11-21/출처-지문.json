@@ -1,0 +1,78 @@
+{
+  "base": "1aa63e63",
+  "sourceCommit": "ef3bc442",
+  "browserSources": {
+    "browser-village-raid.json": {
+      "actual": "6d03d0c455f9a01f6dcce88e1937d7846ebafae5001208578b77ed8828aa5309",
+      "expected": "6d03d0c455f9a01f6dcce88e1937d7846ebafae5001208578b77ed8828aa5309",
+      "equal": true
+    },
+    "browser-war-fast1.json": {
+      "actual": "e9c204094fca9b908bd42e4403a383066be0a30d0393e9f8f74672f96352c5c7",
+      "expected": "e9c204094fca9b908bd42e4403a383066be0a30d0393e9f8f74672f96352c5c7",
+      "equal": true
+    },
+    "browser-war-slow.json": {
+      "actual": "e9c204094fca9b908bd42e4403a383066be0a30d0393e9f8f74672f96352c5c7",
+      "expected": "e9c204094fca9b908bd42e4403a383066be0a30d0393e9f8f74672f96352c5c7",
+      "equal": true
+    },
+    "browser-village-before.json": {
+      "actual": "5a9948fc041035afe18cee79043625730e8ba69af1153ae0d1367e65769f03f2",
+      "expected": "5a9948fc041035afe18cee79043625730e8ba69af1153ae0d1367e65769f03f2",
+      "equal": true
+    },
+    "browser-war-before.json": {
+      "actual": "d26bdc77c73e49a26927e112f3401ab60a16ebdf386bc2f863355bc51b06aaee",
+      "expected": "d26bdc77c73e49a26927e112f3401ab60a16ebdf386bc2f863355bc51b06aaee",
+      "equal": true
+    },
+    "browser-village-slow.json": {
+      "actual": "6d03d0c455f9a01f6dcce88e1937d7846ebafae5001208578b77ed8828aa5309",
+      "expected": "6d03d0c455f9a01f6dcce88e1937d7846ebafae5001208578b77ed8828aa5309",
+      "equal": true
+    },
+    "browser-village-off.json": {
+      "actual": "6d03d0c455f9a01f6dcce88e1937d7846ebafae5001208578b77ed8828aa5309",
+      "expected": "6d03d0c455f9a01f6dcce88e1937d7846ebafae5001208578b77ed8828aa5309",
+      "equal": true
+    },
+    "browser-village-water.json": {
+      "actual": "6d03d0c455f9a01f6dcce88e1937d7846ebafae5001208578b77ed8828aa5309",
+      "expected": "6d03d0c455f9a01f6dcce88e1937d7846ebafae5001208578b77ed8828aa5309",
+      "equal": true
+    },
+    "browser-war-off.json": {
+      "actual": "e9c204094fca9b908bd42e4403a383066be0a30d0393e9f8f74672f96352c5c7",
+      "expected": "e9c204094fca9b908bd42e4403a383066be0a30d0393e9f8f74672f96352c5c7",
+      "equal": true
+    },
+    "browser-war-water.json": {
+      "actual": "e9c204094fca9b908bd42e4403a383066be0a30d0393e9f8f74672f96352c5c7",
+      "expected": "e9c204094fca9b908bd42e4403a383066be0a30d0393e9f8f74672f96352c5c7",
+      "equal": true
+    },
+    "browser-village-march.json": {
+      "actual": "6d03d0c455f9a01f6dcce88e1937d7846ebafae5001208578b77ed8828aa5309",
+      "expected": "6d03d0c455f9a01f6dcce88e1937d7846ebafae5001208578b77ed8828aa5309",
+      "equal": true
+    }
+  },
+  "canonicalBaselineUnchanged": true,
+  "rawGzip": {
+    "서버-변경전/sbc-1020.json.t740.json.gz": "f9eac14e40ce174b51af36d296c601cefc8025b6caa6893f526a1c77b36d4b70",
+    "서버-변경전/sbc-1020.log.gz": "938ddb5cb689cdc6aa05790a33fa102f2bb77a04fd0a34b3fcd40eaf154193e7",
+    "서버-변경전/sbc-1020.json.sbc.json.gz": "23dfc5c4936533d9c4e131f03240d9e6c729f3f52e1ee042f61c6a3bbe586a08",
+    "서버-변경전/sbc-1020.json.gz": "9331245f66385ae03ca80f58f1d43b4e900639d3c4296bb1f6c13459d691b55b",
+    "서버-변경전/check.json.gz": "a64acce9298aba3bc4105cea7ec65a6072d8d230bca4f8c3adde5076bf555e7c",
+    "서버-변경전/sbc-1020.fd-deaths.json.gz": "d7416fd097c00cfe19264eca7da02b5fa21242394d0b12975a7615bfa17fe0ff",
+    "서버-끔/sbc-1020.json.t740.json.gz": "f9eac14e40ce174b51af36d296c601cefc8025b6caa6893f526a1c77b36d4b70",
+    "서버-끔/sbc-1020.log.gz": "fb503cf17be3e156601e505887e31e637ebd38cb89cded9a038f0a85d140ac90",
+    "서버-끔/sbc-1020.json.sbc.json.gz": "23dfc5c4936533d9c4e131f03240d9e6c729f3f52e1ee042f61c6a3bbe586a08",
+    "서버-끔/sbc-1020.json.gz": "9331245f66385ae03ca80f58f1d43b4e900639d3c4296bb1f6c13459d691b55b",
+    "서버-끔/check.json.gz": "49ad090277d35c45f1e6db771ce939c6991e44324f5ffc085781dedf9ea10603",
+    "서버-끔/sbc-1020.fd-deaths.json.gz": "d7416fd097c00cfe19264eca7da02b5fa21242394d0b12975a7615bfa17fe0ff"
+  },
+  "canonicalSha256": "ef5b86261fd895981ec23579745d856fb06ebfd4fcaf6174cbb8e6b16a8a1dd3",
+  "serverFinalRawJsonByteEqual": true
+}

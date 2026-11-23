@@ -1110,6 +1110,13 @@ function _t1293Fill(v, id, ctx, f, units) {
 //     이웃이 쳐 줄 값(`_t1313Over` — 순수출가 `netExportValue` 의 빈자리 갈래: 그 원석을 더 녹일 빈자리가 있는 이웃만 · 정보 거리 안 · 다 차면 0).
 //     목표 밑 몫은 그대로 그 마을 그림자 값이다(T1277 (가)는 목표 밑 몫에서 그대로 산다). 끔 = 넘는 몫 값 0(T1293 그대로).
 function _t1313Over(v, id) { return v && v._world ? netExportValue(v._world, v, id, true) : 0; }
+//   ★★[T1407 ㉡] 원석 품목 한 단위의 값(쓸 곳 + 팔 곳) — 위 두 줄(`_t1293Fill` 빈자리 몫 × 그 칸 그림자 값 + 넘는 몫 × `_t1313Over`)을 수식 세계 광부가 부른다
+//     (v1 손잡이 `T1407_ORE_WORTH` 켬일 때만 `world.oreWorthFn` 이 선다 — 산출 포만 · `oreValue`). p = 부르는 쪽이 이미 든 그 칸 값(값표 · 원석 상한 뒤). units = 그 덩이(0 이면 첫 한 단위).
+function t1407OreWorth(v, id, units, p) {
+  if (!v || !v._world) return p;
+  const g = _t1293Fill(v, id, _targetCtxV2(v), 1, units);
+  return g * p + (g < 1 ? (1 - g) * _t1313Over(v, id) : 0);
+}
 function t1266OreValue(v, H, key, mix, units) {
   if (!v || !v.npcs) return null;
   const N = Math.max(1, v.npcs.length), px = t1217PricesOf(v, key) || computeShadowPrices(v);
@@ -3373,18 +3380,33 @@ function _t1333CanExport(v, res) {
   if (!C || C.day !== w.day) { C = { day: w.day, has: {} }; for (const c of _exportCandidatesV2({ v }, Math.max(1, v.npcs.length))) C.has[c.res] = true; _t1333Exp.set(v, C); }
   return !!C.has[res];
 }
+// ★[T1420] 세계에 다는 함수 칸 둘(값표 · 순수출가) — `createWorldV2` 가 늘 부르던 두 줄 그대로를 한 문으로 뗐다(칸 · 차례 · 값 같음).
+//   랩 평형 저장본(`scripts/lib-eq-lab.js`)이 되살린 세계에 같은 문으로 다시 단다(v8 은 함수를 못 싣는다 — 사본 0).
+function _attachPriceFnV2(world) {
+  world.priceFn = computeShadowPrices;
+}
+function _attachNetExportFnV2(world) {   // ★줄 글자 그대로(test-t1333-alloy-order 미끼 `oppall` 이 이 줄을 글자로 바꾼다 — 들여쓰기 · 꼴을 바꾸지 말 것)
+  world.netExportFn = (v, res) => ((v1.T1333_ALLOY_ORDER && !_t1333CanExport(v, res)) ? 0 : netExportValue(world, v, res));
+}
+function attachWorldFnsV2(world, which) {
+  if (!which || which === 'price') _attachPriceFnV2(world);
+  if (!which || which === 'netExport') _attachNetExportFnV2(world);
+  if (!which && v1.T1407_ORE_WORTH) world.oreWorthFn = t1407OreWorth;   // ★[land1089 · PM] 되살린 세계(T1420 — 인자 없이 부른다)에도 T1407 ㉡ 원석 값 함수를 다시 붙인다 · 새 세계는 createWorldV2 의 그 줄 그대로 · 끔 = 칸 없음
+  return world;
+}
 function createWorldV2(opts = {}) {
   // v1 createWorld 그대로 사용 (인프라 공유)
   const world = v1.createWorld(opts);
   // v2 핵심: picker에 shadow price 주입 → 가격이 직업 선택에 진짜 영향
-  world.priceFn = computeShadowPrices;
+  attachWorldFnsV2(world, 'price');
   world.priceBase = BASE_VALUE_V2;   // ★생산 포만(satiation) 판정용 — v1 tickVillage가 adj=가격/기준값으로 글럿 측정
   // ★★[2026-08-02c 배합↔교역 한 단위 통합] 순수출가 주입 — priceFn 선례와 같은 계약(v1→v2 역참조 금지, world 로 주입).
   //   v1 의 주조 결정(_alloyMelt)이 "이 주석을 이웃이 얼마에 사 주는가"를 볼 수 있게 한다.
   //   ★[T1333 ⓐ] 합금 발주 켬 — 그 마을 수출 후보 밖(비축 · 문턱 밑 — `_exportCandidatesV2` 그 규칙 · 받아 올 짐도 같은 규칙)인 재화는 순수출가가 기회비용이 아니다.
   //     발주가 이웃 값을 올리면 그 값이 쥔 마을의 주조 기회비용(v1 `_oppPrice`)을 올려 대장장이가 석공에 밀린다 — 문턱 밑 곳간은 실제로 나가지도 않는다
   //     (랩 날 30: 쥔 마을 셋 대장장이 주조비 0.05 ~ 0.38 → 1.9 ~ 2.8 · 석공 0.3 ~ 0.8). 끔 = 앞 항 거짓 = 종전 함수 그대로.
-  world.netExportFn = (v, res) => ((v1.T1333_ALLOY_ORDER && !_t1333CanExport(v, res)) ? 0 : netExportValue(world, v, res));
+  attachWorldFnsV2(world, 'netExport');
+  if (v1.T1407_ORE_WORTH) world.oreWorthFn = t1407OreWorth;   // ★[T1407 ㉡] 켬만 — 수식 세계 광부의 원석 값(쓸 곳 + 팔 곳 · 위 `t1407OreWorth`) · 끔 = 칸 없음(종전)
   // 직업 전환 빈도 21일 — 변동 줄여 안정성 ↑. (30일로 늘리니 반응 느려 기근↑→crisis-mode↑ 역효과 확인, 21 유지)
   world.autoSwitchInterval = 21;
   return world;
@@ -3610,11 +3632,11 @@ if(v1.T1192_FISH_SPECIES)for(const [id,it]of Object.entries(v1.FishGoods.items()
 }
 module.exports = {
   _t1188Probe:{budgetPart:_orePart,returnGlutted:_returnGluttedV2,exportCandidates:_exportCandidatesV2,quote:_oreQuote},
-  createWorldV2,
+  createWorldV2, attachWorldFnsV2,
   tickWorldV2, tickWorldV2Parts,   // ★[T513] 하루 틱 조각(서버 하루 마감이 여러 프레임에 흘린다 · 정본 한 벌)
   WEATHER_KINDS,   // ★[T1437] 날씨 정본 표(하네스가 가장 긴 가뭄 날을 옮겨 적지 않는다 · 값 무변)
   computeShadowPrices,
-  t1217PricesOf, t1217Value, t1266OreValue, t1217RestValue, t1217Hour, t1217PxStat: () => Object.assign({}, _t1217PxStat),   // ★[T1217] 시세 하루 안 갱신 · 어부 한 시간 값(서버 · 하네스가 같은 함수를 읽는다)
+  t1217PricesOf, t1217Value, t1266OreValue, t1407OreWorth, t1217RestValue, t1217Hour, t1217PxStat: () => Object.assign({}, _t1217PxStat),   // ★[T1217] 시세 하루 안 갱신 · 어부 한 시간 값(서버 · 하네스가 같은 함수를 읽는다)
   shadowPricesOf,   // ★[T1161 · K13] 값표의 몇 칸만(전 표의 그 칸과 같은 값) — 거래소 견적 · 실행이 부른다
   netExportValue, FORWARD_PRICE_MARGIN_NEV,   // ★배합↔교역 통합(2026-08-02c) — 하네스가 산술을 직접 재게 노출
   haulMul, HORSE_HAUL_MUL, TRANSPORT_COST_PER_1000,   // ★말 사역(2026-08-02e ⑥) — 시대 전/후 비트 동일 검증용

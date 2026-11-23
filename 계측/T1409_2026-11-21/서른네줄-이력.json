@@ -1,0 +1,444 @@
+[
+  {
+    "id": "D1-FERTW",
+    "lab": {
+      "file": "lab/전쟁실험실.html",
+      "needle": "const fertW=opts.fertW!=null?opts.fertW:0.35",
+      "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+    },
+    "srv": {
+      "file": "server/village-layout.js",
+      "needle": "const fertW = opts.fertW != null ? opts.fertW : 3.5",
+      "log": "15b60d27|2026-07-29|★셀 단위 비옥도 도입 — 그리고 필드만 깔았을 땐 아무것도 안 바뀌었다(저울이 문제였다)"
+    }
+  },
+  {
+    "id": "D1-FARM_HOUSE_RES",
+    "lab": {
+      "file": "lab/전쟁실험실.html",
+      "needle": "numHousesEst*240",
+      "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+    },
+    "srv": {
+      "file": "server/village-layout.js",
+      "needle": "numHousesEst * 60",
+      "log": "da56082c|2026-06-27|마을 레이아웃 모듈: 논/밭 stateful(농지 절대 안 줄어듦)+집 농지 회피, 집촌/산촌 토글, 산맥 지형, 유기적 영토, 회관 마당"
+    }
+  },
+  {
+    "id": "D1-WATER_D",
+    "lab": {
+      "file": "lab/전쟁실험실.html",
+      "needle": "1.25-d/22",
+      "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+    },
+    "srv": {
+      "file": "server/village-layout.js",
+      "needle": "1 - nd / 140",
+      "log": "100880ae|2026-07-07|공유 village-layout 물 접근 리카도 통일: 탐색 45→140·감쇠 25→140(nd 센티널 99→999) — 25셀 절벽 제거, 서버·랩 동일 규칙"
+    }
+  },
+  {
+    "id": "D1-TERR_GROW_DAY",
+    "lab": {
+      "file": "lab/전쟁실험실.html",
+      "needle": "arguments[1]:300);",
+      "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+    },
+    "srv": {
+      "file": "server/villages.js",
+      "needle": "TERR_GROW_MAX_PER_DAY = 60;",
+      "log": "6412516a|2026-07-30|영토 확장 실동 — econ이 산 땅만큼 실제로 넓히고 바로 개간한다 [재민 지적]"
+    }
+  },
+  {
+    "id": "D3-HUNT_BAND0",
+    "lab": {
+      "file": "lab/전쟁실험실.html",
+      "needle": "MOB_AV0=100",
+      "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+    },
+    "srv": {
+      "file": "server/villages.js",
+      "needle": "HUNT_BAND0 = 40",
+      "log": "591f2245|2026-09-07|사냥 이식 — 서버의 짐승이 곳간과 부존을 움직인다 [승인 대기 · T146]"
+    }
+  },
+  {
+    "id": "D3-HUNT_BAND1",
+    "lab": {
+      "file": "lab/전쟁실험실.html",
+      "needle": "MOB_WILD_R=250",
+      "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+    },
+    "srv": {
+      "file": "server/villages.js",
+      "needle": "HUNT_BAND1 = 130",
+      "log": "591f2245|2026-09-07|사냥 이식 — 서버의 짐승이 곳간과 부존을 움직인다 [승인 대기 · T146]"
+    }
+  },
+  {
+    "id": "D3-STONE_FLOOR",
+    "lab": {
+      "file": "lab/전쟁실험실.html",
+      "needle": "L_STONE_FLOOR=0.1",
+      "log": "cb054554|2026-09-11|[재민 확정 2026-09-10 · T163] 기준선 셋째 판 · 석재 바닥 ② 랩 — 실측이 부호를 뒤집었다"
+    },
+    "srv": {
+      "file": "server/livelihood.js",
+      "needle": "stone: 0.25,   // 돌은 흔하다",
+      "log": "96d2ee2e|2026-07-30|생업별 부존 정본 분리 + 종류마다 바닥항 [재민 확정]"
+    }
+  },
+  {
+    "id": "D3-STONE_GAIN",
+    "lab": {
+      "file": "lab/전쟁실험실.html",
+      "needle": "L_STONE_GAIN=12",
+      "log": "cb054554|2026-09-11|[재민 확정 2026-09-10 · T163] 기준선 셋째 판 · 석재 바닥 ② 랩 — 실측이 부호를 뒤집었다"
+    },
+    "srv": {
+      "file": "server/livelihood.js",
+      "needle": "stone: 9.00,   // 바위비율",
+      "log": "96d2ee2e|2026-07-30|생업별 부존 정본 분리 + 종류마다 바닥항 [재민 확정]"
+    }
+  },
+  {
+    "id": "D5-SLOT_GAP",
+    "lab": {
+      "file": "lab/전쟁실험실.html",
+      "needle": "SLOT_GAP:0.9",
+      "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+    },
+    "srv": {
+      "file": "server/war-live.js",
+      "needle": "SLOT_GAP: 1.5",
+      "log": "a9733d81|2026-07-14|식량 pull·무두질 웨이브: 위기 마을 국소 구속으로 신규 교역재 흡수"
+    }
+  },
+  {
+    "id": "D5-SLOT_DEPTH",
+    "lab": {
+      "file": "lab/전쟁실험실.html",
+      "needle": "SLOT_DEPTH:1.8",
+      "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+    },
+    "srv": {
+      "file": "server/war-live.js",
+      "needle": "SLOT_DEPTH: 1.7",
+      "log": "a9733d81|2026-07-14|식량 pull·무두질 웨이브: 위기 마을 국소 구속으로 신규 교역재 흡수"
+    }
+  },
+  {
+    "id": "D5-FOLLOW_SNAP",
+    "lab": {
+      "file": "lab/전쟁실험실.html",
+      "needle": "FOLLOW_SNAP:0.15",
+      "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+    },
+    "srv": {
+      "file": "server/war-live.js",
+      "needle": "FOLLOW_SNAP: 0.35",
+      "log": "a9733d81|2026-07-14|식량 pull·무두질 웨이브: 위기 마을 국소 구속으로 신규 교역재 흡수"
+    }
+  },
+  {
+    "id": "D5-SEP_R",
+    "lab": {
+      "file": "lab/전쟁실험실.html",
+      "needle": "SEP_R:0.8",
+      "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+    },
+    "srv": {
+      "file": "server/war-live.js",
+      "needle": "SEP_R: 0.9",
+      "log": "a9733d81|2026-07-14|식량 pull·무두질 웨이브: 위기 마을 국소 구속으로 신규 교역재 흡수"
+    }
+  },
+  {
+    "id": "D5-MARCH_JITTER",
+    "lab": {
+      "file": "lab/전쟁실험실.html",
+      "needle": "MARCH_JITTER:0",
+      "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+    },
+    "srv": {
+      "file": "server/war-live.js",
+      "needle": "MARCH_JITTER: 0.55",
+      "log": "a9733d81|2026-07-14|식량 pull·무두질 웨이브: 위기 마을 국소 구속으로 신규 교역재 흡수"
+    }
+  },
+  {
+    "id": "D5-WALL_GMUL",
+    "lab": {
+      "file": "lab/전쟁실험실.html",
+      "needle": "form==='wall'){ wSpear=8; wBack=8; gMul=1.0",
+      "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+    },
+    "srv": {
+      "file": "server/war-live.js",
+      "needle": "form === 'wall') { wSpear = 8; wBack = 8; gMul = 0.85",
+      "log": "a9733d81|2026-07-14|식량 pull·무두질 웨이브: 위기 마을 국소 구속으로 신규 교역재 흡수"
+    }
+  },
+  {
+    "id": "D5-SIEGE_RING_PAD",
+    "lab": {
+      "file": "lab/전쟁실험실.html",
+      "needle": "WAR_SIEGE_R=WAR_DEF_STANDOFF+WAR_ENGAGE_R+15",
+      "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+    },
+    "srv": {
+      "file": "server/villages.js",
+      "needle": "function _warCampBackCells() { const WL = state.warLive; return WL.WAR_ENGAGE_R + WL.WAR_DEF_STANDOFF; }",
+      "log": "1fac6e13|2026-09-16|[승인 대기 · T284] 전투 실체화 — 좌표계 하나 · 장애물은 존의 것 · 전투 = 연속 상태 · 세계 부하 위 성능"
+    }
+  },
+  {
+    "id": "D6-V-WAR_RAID_MIN",
+    "lab": {
+      "file": "lab/마을실험실.html",
+      "needle": "WAR_RAID_MIN=3",
+      "log": "c7778a495|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+    },
+    "srv": {
+      "file": "sim/war-core.js",
+      "needle": "WAR_RAID_MIN = 2",
+      "log": "048d69b2|2026-07-12|본체 이식 2~4파 완주(계획서 §6~8 기록): [2파] war-core 재동기+작전층(자동 개전 폐지·상태기계·봉쇄 훅 siege 상태 이동·공성팩·방어 3택·절박 항복·무저항 함락, WAR_OPS 게이트 OFF=바이트 동일)+긴급 소집+도적 실체 최소+병사→야생 위협(블록 무수정 어댑터 16줄) [3파] 포로 전량(35%·J상한·호송·동화/탈출/몸값·재큐 보강, WAR_CAPTIVES 게이트)+벌점 karmaOf 인터페이스 예약 [4파] 움집 단층 8명(기존 다층 유지 마이그레이션 증명)+답압 길 roads.js(DB 왕복·A* 할인·클라 틴트, ENABLE_ROADS)+물가 K/d²+영토 등가반경 동기+경도 _lonOff+절대 시계 설계 상수 — _p3-war-probe 25/25·존 스모크·재부팅 왕복·실DB 무접촉"
+    }
+  },
+  {
+    "id": "D6-H-MOB_WOLF_P",
+    "lab": {
+      "file": "lab/원본/사냥실험실_0707.html",
+      "needle": "MOB_WOLF_P=0",
+      "log": "35258975|2026-11-19|카드 T1394~T1401(S-API 넷 · GPT 2 · S4 · S6 · S16 — 재민 11-19 배분) · 덧붙임 T1389 · T1392 · T1393 · 사냥실험실 07-07 판(lab/원본) · 족보 889 · 배분표"
+    },
+    "srv": {
+      "file": "server/wildlife.js",
+      "needle": "MOB_WOLF_P=0.0012",
+      "log": "d85e9e39|2026-07-07|본체 동물 AI 이식(§4-4 완결): 야생 블록 49,793B 바이트 무수정 삽입 + 어댑터(지형 격자·게임분 환산·프록시 피해·shadow 몹 브리지) — dt=1/30유닛 환산 계수 1(사슴 도주 실측 12.99m/s=캐논 13), 서식 밴드 100~250m 무리 스폰, 돼지 돌진·호랑이 stalk→사체→feed 재현, 틱 0.57~6ms(33ms 예산 내), ENABLE_WILDLIFE 게이트·OFF 무해·랩 하네스 불변 15/15"
+    }
+  },
+  {
+    "id": "D6-H-MOB_TIG_P",
+    "lab": {
+      "file": "lab/원본/사냥실험실_0707.html",
+      "needle": "MOB_TIG_P=0",
+      "log": "35258975|2026-11-19|카드 T1394~T1401(S-API 넷 · GPT 2 · S4 · S6 · S16 — 재민 11-19 배분) · 덧붙임 T1389 · T1392 · T1393 · 사냥실험실 07-07 판(lab/원본) · 족보 889 · 배분표"
+    },
+    "srv": {
+      "file": "server/wildlife.js",
+      "needle": "MOB_TIG_P=0.00018",
+      "log": "d85e9e39|2026-07-07|본체 동물 AI 이식(§4-4 완결): 야생 블록 49,793B 바이트 무수정 삽입 + 어댑터(지형 격자·게임분 환산·프록시 피해·shadow 몹 브리지) — dt=1/30유닛 환산 계수 1(사슴 도주 실측 12.99m/s=캐논 13), 서식 밴드 100~250m 무리 스폰, 돼지 돌진·호랑이 stalk→사체→feed 재현, 틱 0.57~6ms(33ms 예산 내), ENABLE_WILDLIFE 게이트·OFF 무해·랩 하네스 불변 15/15"
+    }
+  },
+  {
+    "id": "D7-V-WAR_MARCH",
+    "lab": {
+      "file": "lab/마을실험실.html",
+      "needle": "WAR_MARCH=240",
+      "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+    },
+    "srv": {
+      "file": "sim/war-core.js",
+      "needle": "WAR_MARCH = 1440",
+      "log": "048d69b2|2026-07-12|본체 이식 2~4파 완주(계획서 §6~8 기록): [2파] war-core 재동기+작전층(자동 개전 폐지·상태기계·봉쇄 훅 siege 상태 이동·공성팩·방어 3택·절박 항복·무저항 함락, WAR_OPS 게이트 OFF=바이트 동일)+긴급 소집+도적 실체 최소+병사→야생 위협(블록 무수정 어댑터 16줄) [3파] 포로 전량(35%·J상한·호송·동화/탈출/몸값·재큐 보강, WAR_CAPTIVES 게이트)+벌점 karmaOf 인터페이스 예약 [4파] 움집 단층 8명(기존 다층 유지 마이그레이션 증명)+답압 길 roads.js(DB 왕복·A* 할인·클라 틴트, ENABLE_ROADS)+물가 K/d²+영토 등가반경 동기+경도 _lonOff+절대 시계 설계 상수 — _p3-war-probe 25/25·존 스모크·재부팅 왕복·실DB 무접촉"
+    }
+  },
+  {
+    "id": "R01",
+    "lab": {
+      "file": "lab/전쟁실험실.html",
+      "needle": "id=\"pop\"",
+      "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+    },
+    "srv": {
+      "file": "server/villages.js",
+      "needle": "const INITIAL_POP",
+      "log": "99386737|2026-07-07|본체 이식 §4-4 Stage1~3: NPC 마을 경제 착륙 — villages/village_buildings 테이블, hanbando 하드코딩 50→선별 10 시딩(village-layout 지형 주입·입지별 land 실산출), econ 일일 틱(게임일 경계 훅·무인 존에서도 진행)·직렬화 왕복(재부팅 연속성 day11→21 검증), NPC=기존 spawnNpc 재사용, ENABLE_VILLAGES 게이트(off=완전 무해 검증)·실DB 불가침·순수 추가 +64행+신규 470행"
+    }
+  },
+  {
+    "id": "R02",
+    "lab": {
+      "file": "lab/전쟁실험실.html",
+      "needle": "const centers=pickCenters(NV,275)",
+      "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+    },
+    "srv": {
+      "file": "server/villages.js",
+      "needle": "pickSeedVillages",
+      "log": "15af7f88|2026-10-02|[승인 대기 · T559] 광산 게이트 K 0.278025(재민 #78) · 교역 게이트 기본 켬 · 간격 존별 유도 식(기본 끔)"
+    }
+  },
+  {
+    "id": "R03",
+    "lab": {
+      "file": "lab/전쟁실험실.html",
+      "needle": "_lp.fertility = (s.role==='agri')",
+      "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+    },
+    "srv": {
+      "file": "server/villages.js",
+      "needle": "fertility = clamp(+((fs / tn) * 1.4)",
+      "log": "15b60d27|2026-07-29|★셀 단위 비옥도 도입 — 그리고 필드만 깔았을 땐 아무것도 안 바뀌었다(저울이 문제였다)"
+    }
+  },
+  {
+    "id": "R04",
+    "lab": {
+      "file": "lab/전쟁실험실.html",
+      "needle": "_lp.ore = 1.5",
+      "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+    },
+    "srv": {
+      "file": "server/villages.js",
+      "needle": "function extractLandParamsApprox",
+      "log": "99386737|2026-07-07|본체 이식 §4-4 Stage1~3: NPC 마을 경제 착륙 — villages/village_buildings 테이블, hanbando 하드코딩 50→선별 10 시딩(village-layout 지형 주입·입지별 land 실산출), econ 일일 틱(게임일 경계 훅·무인 존에서도 진행)·직렬화 왕복(재부팅 연속성 day11→21 검증), NPC=기존 spawnNpc 재사용, ENABLE_VILLAGES 게이트(off=완전 무해 검증)·실DB 불가침·순수 추가 +64행+신규 470행"
+    }
+  },
+  {
+    "id": "R12",
+    "lab": {
+      "file": "lab/전쟁실험실.html",
+      "needle": "function lifeDay(doBulk)",
+      "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+    },
+    "srv": {
+      "file": "server/villages.js",
+      "needle": "function _lifeDay",
+      "log": "f2888d7c|2026-10-11|[승인 대기 · T690] 하루 펴기 1단계 손잡이 T690_DAY_PHASE(기본 끔 = main) — 생활층 조각을 마을마다 하루 안의 제 때(위상 k/V · k = (dbId + 게임일) mod V)에 작은 마감으로 · 다음 경계 앞 마무리 · 생활층 조각 함수 _lifeDayJobs 한 벌(경계·위상 같이) · 설계 한 장 · 관찰기 t690-obs(날마다 교역 줄)"
+    }
+  },
+  {
+    "id": "R16",
+    "lab": {
+      "file": "lab/전쟁실험실.html",
+      "needle": "const _t1056H=",
+      "log": "223300e1|2026-11-01|[승인 대기 · T1056] 랩 HTML 둘의 집 고리 = 서버 집 규칙(econ labSiteCrewDay · t17 과 같은 함수) · psite ⑧ 새 자 · 남은 안 겹침 9 귀속 · 집터 못 세운 마을 표"
+    },
+    "srv": {
+      "file": "server/villages.js",
+      "needle": "function _t400",
+      "log": "07bde77b|2026-09-26|[승인 대기 · T400] 집도 행위다 1층 — 자재 정본 하나(server/hut-stages.js · 통나무 22·풀 38 · 석재 0 · zone·쉼터·econ·랩 번들이 읽는다) · 크루가 곳간에서 통나무를 손에 들고 집터에 놓는 순간 단계가 오른다(T400_BUILD_ACT 기본 끔 · 관측자 무관 · 주사위 0) · 끔 3시드 800일 JSON 동일 3/3 · test-build-act 51/51"
+    }
+  },
+  {
+    "id": "R23",
+    "lab": {
+      "file": "lab/원본/사냥실험실_0707.html",
+      "needle": "function _mobView",
+      "log": "35258975|2026-11-19|카드 T1394~T1401(S-API 넷 · GPT 2 · S4 · S6 · S16 — 재민 11-19 배분) · 덧붙임 T1389 · T1392 · T1393 · 사냥실험실 07-07 판(lab/원본) · 족보 889 · 배분표"
+    },
+    "srv": {
+      "file": "server/wildlife.js",
+      "needle": "function tick(now)",
+      "log": "d85e9e39|2026-07-07|본체 동물 AI 이식(§4-4 완결): 야생 블록 49,793B 바이트 무수정 삽입 + 어댑터(지형 격자·게임분 환산·프록시 피해·shadow 몹 브리지) — dt=1/30유닛 환산 계수 1(사슴 도주 실측 12.99m/s=캐논 13), 서식 밴드 100~250m 무리 스폰, 돼지 돌진·호랑이 stalk→사체→feed 재현, 틱 0.57~6ms(33ms 예산 내), ENABLE_WILDLIFE 게이트·OFF 무해·랩 하네스 불변 15/15"
+    }
+  },
+  {
+    "id": "R24",
+    "lab": {
+      "file": "lab/원본/사냥실험실_0707.html",
+      "needle": "const setPath=",
+      "log": "35258975|2026-11-19|카드 T1394~T1401(S-API 넷 · GPT 2 · S4 · S6 · S16 — 재민 11-19 배분) · 덧붙임 T1389 · T1392 · T1393 · 사냥실험실 07-07 판(lab/원본) · 족보 889 · 배분표"
+    },
+    "srv": {
+      "file": "server/villages.js",
+      "needle": "function _walkLineClear",
+      "log": "f51501cb|2026-10-03|[승인 대기 · T578] 길이 지형을 따라 난다 · 캐러밴·호위가 걷는다 · 경계 넘김은 걸은 뒤 — 세션9 가지(batch/road-walk-1003 · 9ddb7bd7·9a7475bf·5702ec48 병합·2a9e7d7c)의 main 18a5d619 대비 순변경을 PM 이 한 판으로 얹음(T566 roads·zone 겹침은 가지의 병합 해법 그대로)"
+    }
+  },
+  {
+    "id": "R25",
+    "lab": {
+      "file": "lab/원본/사냥실험실_0707.html",
+      "needle": "(a.rest?0.5:0.03)",
+      "log": "35258975|2026-11-19|카드 T1394~T1401(S-API 넷 · GPT 2 · S4 · S6 · S16 — 재민 11-19 배분) · 덧붙임 T1389 · T1392 · T1393 · 사냥실험실 07-07 판(lab/원본) · 족보 889 · 배분표"
+    },
+    "srv": {
+      "file": "server/villages.js",
+      "needle": "const regenMul = _lifeEcon().npcRegenMul",
+      "log": "cd86feff|2026-11-06|[승인 대기 · T1197] 식사 = 몸이 꺼내 먹음 · 굶어 죽음 = 그 몸 — 손잡이 T1197_MEAL_BODY(켬 기본)"
+    }
+  },
+  {
+    "id": "R28",
+    "lab": {
+      "file": "lab/전쟁실험실.html",
+      "needle": "function resourceTick",
+      "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+    },
+    "srv": {
+      "file": "server/sustain.js",
+      "needle": "L_WOODREGLOG",
+      "log": "c73e7535|2026-07-30|랩 공간 자원 층의 econ 접점 이식 — MSY 상한·리카도 한계지·특수 산지 [재민 \"한 번에 다 해\"]"
+    }
+  },
+  {
+    "id": "R29",
+    "lab": {
+      "file": "lab/마을실험실.html",
+      "needle": "const powA=aEff",
+      "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+    },
+    "srv": {
+      "file": "sim/war-core.js",
+      "needle": "function runBattleHeadless",
+      "log": "048d69b2|2026-07-12|본체 이식 2~4파 완주(계획서 §6~8 기록): [2파] war-core 재동기+작전층(자동 개전 폐지·상태기계·봉쇄 훅 siege 상태 이동·공성팩·방어 3택·절박 항복·무저항 함락, WAR_OPS 게이트 OFF=바이트 동일)+긴급 소집+도적 실체 최소+병사→야생 위협(블록 무수정 어댑터 16줄) [3파] 포로 전량(35%·J상한·호송·동화/탈출/몸값·재큐 보강, WAR_CAPTIVES 게이트)+벌점 karmaOf 인터페이스 예약 [4파] 움집 단층 8명(기존 다층 유지 마이그레이션 증명)+답압 길 roads.js(DB 왕복·A* 할인·클라 틴트, ENABLE_ROADS)+물가 K/d²+영토 등가반경 동기+경도 _lonOff+절대 시계 설계 상수 — _p3-war-probe 25/25·존 스모크·재부팅 왕복·실DB 무접촉"
+    }
+  },
+  {
+    "id": "R31",
+    "lab": {
+      "file": "lab/전투실험실.html",
+      "needle": "const LAB_WORLD",
+      "log": "09de02ee|2026-11-02|[승인 대기 · T1090] 전투실험실을 지금 battle-core 인라인으로 — 7월 원본과 차는 평지 · 숲에선 몸 0.5m 하나(80/80 판 일치로 갈라짐)"
+    },
+    "srv": {
+      "file": "server/war-live.js",
+      "needle": "const ctx = BC.createContext()",
+      "log": "1fac6e13|2026-09-16|[승인 대기 · T284] 전투 실체화 — 좌표계 하나 · 장애물은 존의 것 · 전투 = 연속 상태 · 세계 부하 위 성능"
+    }
+  },
+  {
+    "id": "R32",
+    "lab": {
+      "file": "lab/전쟁실험실.html",
+      "needle": "function conscript",
+      "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+    },
+    "srv": {
+      "file": "sim/war-core.js",
+      "needle": "function _warConscriptIndividual",
+      "log": "048d69b2|2026-07-12|본체 이식 2~4파 완주(계획서 §6~8 기록): [2파] war-core 재동기+작전층(자동 개전 폐지·상태기계·봉쇄 훅 siege 상태 이동·공성팩·방어 3택·절박 항복·무저항 함락, WAR_OPS 게이트 OFF=바이트 동일)+긴급 소집+도적 실체 최소+병사→야생 위협(블록 무수정 어댑터 16줄) [3파] 포로 전량(35%·J상한·호송·동화/탈출/몸값·재큐 보강, WAR_CAPTIVES 게이트)+벌점 karmaOf 인터페이스 예약 [4파] 움집 단층 8명(기존 다층 유지 마이그레이션 증명)+답압 길 roads.js(DB 왕복·A* 할인·클라 틴트, ENABLE_ROADS)+물가 K/d²+영토 등가반경 동기+경도 _lonOff+절대 시계 설계 상수 — _p3-war-probe 25/25·존 스모크·재부팅 왕복·실DB 무접촉"
+    }
+  },
+  {
+    "id": "R33",
+    "lab": {
+      "file": "lab/전쟁실험실.html",
+      "needle": "function tickMarch",
+      "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+    },
+    "srv": {
+      "file": "server/war-live.js",
+      "needle": "function _muStepFollow",
+      "log": "a9733d81|2026-07-14|식량 pull·무두질 웨이브: 위기 마을 국소 구속으로 신규 교역재 흡수"
+    }
+  },
+  {
+    "id": "R34",
+    "lab": {
+      "file": "lab/전쟁실험실.html",
+      "needle": "const LB_MAXSUB=",
+      "log": "c7778a49|2026-09-05|lab/ — 전쟁실험실(정본)·마을실험실 HTML 을 레포로 (PM · 재민 확정 · 게임 코드 무접촉 · T89 회부 5 닫힘)"
+    },
+    "srv": {
+      "file": "server/war-live.js",
+      "needle": "BC._stepBattle",
+      "log": "1fac6e13|2026-09-16|[승인 대기 · T284] 전투 실체화 — 좌표계 하나 · 장애물은 존의 것 · 전투 = 연속 상태 · 세계 부하 위 성능"
+    }
+  }
+]

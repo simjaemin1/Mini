@@ -24,7 +24,7 @@ const DAYMS = 24 * 60 * 60 * 1000;
 const put = (R, k, c, x) => { R[k] = !!c; if (x !== undefined) R[k + '#'] = String(x).slice(0, 260); };
 
 function bootZone() {
-  Object.assign(process.env, { ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', CLAIM_ABSENCE: '0', T1305_DEEDS: '1' });
+  Object.assign(process.env, { ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', CLAIM_ABSENCE: '0', T1305_DEEDS: '1', T1402_CHEST_WORK: '1' });   // ★[T1402 덧붙임 둘] 이 판은 시계를 잰다 — 일 한 번을 보관함 넣기로 그대로 둔다(판정 27 은 보관함을 일에서 뺐다 · 되돌림 손잡이로 글자로 켠다)
   const _l = console.log, _w = console.warn, _e = console.error; console.log = () => {}; console.warn = () => {}; console.error = () => {};
   const Zone = require(process.env.__T1402_ZONE || path.join(ROOT, 'server', 'zone.js'));
   console.log = _l; console.warn = _w; console.error = _e;

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
-// @bait 2   ← [T1401] 미끼 판정 줄 수(파일 안 · `test-harness-lint` ⑲b 가 센다)
+// @bait 4   ← [T1401 · T1406] 미끼 판정 줄 수(파일 안 · `test-harness-lint` ⑲b 가 센다)
 // === scripts/test-t1401-walk-map.js — 걸음 지도: 마을 51 이 지형 · 다리로 다 이어지는가 · 멀리 도는 이웃 쌍 지문(T1401) ==========================
 //
 // ★무엇을 보나(한반도 · `audit-reachability.js hanbando --walk --bridge-pairs 0` 한 판 · 지도 탐색만 — 서버 0)
@@ -10,6 +10,11 @@
 //   ③ 미끼 둘(이 파일이 프리로드로 실린다 · `T1401_BAIT`): 지도 설정(`zone-config` 한반도 `bridges`)에서 다리를 지운 사본 — 지운 칸 수를 세고 그 물음만 빨강:
 //      `all` = 다리 칸 전부 → ① 빨강 / `one` = 다리 하나(어촌3 이 돌아 건너는 북쪽 다리 · (387,2070) 이 든 묶음) → ② 빨강 · ① 초록
 //      (다리 묶음 29 가운데 하나만 지워 마을이 끊기는 다리는 0 이다 — T1401 보고 §1. 그래서 ① 의 미끼는 전부 지우기다)
+//   ★[T1406] ④ 다리 놓은 지도(`T1406_BRIDGES=1` · `server/bridges-t1406.json`): 못 닿음 0 · 걸음 ÷ 곧은 거리 3배 넘는 이웃 쌍 **0**(과녁)
+//      미끼 `t1406` = 그 다리 칸을 지운 사본 → ④ 빨강(3배 넘는 쌍이 돌아온다)
+//   ★[T1406] ⑤ NPC 마을은 길을 안 막는다(`T1406_KEEP_PATHS=1`): 운영 영토 넓히기(`_terrGrowCore` — `__labProbe._t569Probe.grow`)를 다리 곁 시험 마을로 60날 —
+//      켬 = 다리 칸 · 다리 머리(물 칸에서 체비쇼프 2)를 한 칸도 안 먹는다 · 끔 = 먹는다(자명 통과 금지 전제) · 집 부지 문(`reject`)은 남의 교역로 칸을 '길 칸'으로 거른다(`T1406_KEEP_ROUTES=1` 같이 · 끔 = 안 거른다)
+//      미끼 `claim` = 길 칸 술어가 그 다리를 모르는 사본(존 설정에서 그 다리를 지움 · 지형은 그대로 열림 = 다리 칸에 땅을 놓는다) → ⑤ 빨강
 // 실행: node scripts/test-t1401-walk-map.js   (판 셋 · 동시 둘 · 약 3 ~ 5분) · 표 다시 쓰기: node scripts/test-t1401-walk-map.js --write-table
 'use strict';
 const path = require('path');
@@ -25,6 +30,10 @@ if (require.main !== module) {
     const cells = []; for (let i = 0; i + 1 < b.length; i += 2) cells.push([b[i], b[i + 1]]);
     let drop = new Set();
     if (B === 'all') drop = new Set(cells.map((c) => c[0] + ',' + c[1]));
+    if (B === 't1406') {   // [T1406] 다리 놓은 지도에서 T1406 다리 칸만 지운다
+      let add = {}; try { add = require(path.join(ROOT, 'server', 'bridges-t1406.json')); } catch (e) {}
+      const f = add.hanbando || []; for (let i = 0; i + 1 < f.length; i += 2) drop.add(f[i] + ',' + f[i + 1]);
+    }
     if (B === 'one') {   // (387,2070) 이 든 4방 이웃 묶음 하나
       const has = new Set(cells.map((c) => c[0] + ',' + c[1])), st = ['387,2070'];
       if (has.has(st[0])) { drop.add(st[0]); while (st.length) { const [x, y] = st.pop().split(',').map(Number); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const k = (x + dx) + ',' + (y + dy); if (has.has(k) && !drop.has(k)) { drop.add(k); st.push(k); } } } }
@@ -34,6 +43,33 @@ if (require.main !== module) {
     if (process.env.T1401_BAIT_OUT) fs.writeFileSync(process.env.T1401_BAIT_OUT, JSON.stringify({ bait: B, n: drop.size }));
   }
   return;
+}
+
+//   ── [T1406 ⑤] 영토 넓히기 아이(`--grow-child` · 끔/켬은 부르는 쪽 env · 미끼는 `T1406_GROW_BAIT=1`) ──
+if (process.argv.includes('--grow-child')) {
+  const ROOT = path.join(__dirname, '..'), SZ = 32;
+  const T = require(path.join(ROOT, 'server', 'terrain')); const { ZONES } = require(path.join(ROOT, 'server', 'zone-config')); if (T.setZonesMeta) T.setZonesMeta(ZONES);
+  const Z = ZONES.hanbando, b = Z.bridges || []; const BR = new Set(); for (let i = 0; i + 1 < b.length; i += 2) BR.add(b[i] + ',' + b[i + 1]);
+  const W = (x, y) => T.isWaterCellLocal('hanbando', x * SZ + 16, y * SZ + 16), Rk = (x, y) => T.isRockCellLocal('hanbando', x * SZ + 16, y * SZ + 16);
+  const ta = { isWater: W, isBlocked: (x, y) => Rk(x, y) || (W(x, y) && !BR.has(x + ',' + y)), isRock: Rk, fert: () => 0.5, forestMult: () => 1, isStream: () => false };
+  //   다리 묶음 하나 — (387,2070) 이 든 4방 덩이(어촌3 북쪽 다리 · T1401 미끼와 같은 다리)
+  const g = new Set(['387,2070']), st = ['387,2070']; while (st.length) { const [x, y] = st.pop().split(',').map(Number); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const k = (x + dx) + ',' + (y + dy); if (BR.has(k) && !g.has(k)) { g.add(k); st.push(k); } } }
+  if (process.env.T1406_GROW_BAIT === '1') { const keep = []; for (let i = 0; i + 1 < b.length; i += 2) if (!g.has(b[i] + ',' + b[i + 1])) keep.push(b[i], b[i + 1]); Z.bridges = keep; console.error(`[미끼] 바꾼 자리 ${g.size}칸 — 존 설정에서 다리 하나를 지운 사본(지형은 열린 그대로)`); }
+  const V = require(path.join(ROOT, 'server', 'villages.js')), E = require(path.join(ROOT, 'sim', 'economy-sim.js'));
+  const land = [...g].map((k) => k.split(',').map(Number)).filter(([x, y]) => !W(x, y)), [lx, ly] = land[0];
+  const own = new Set(); for (let dy = -6; dy <= 6; dy++) for (let dx = -6; dx <= 6; dx++) { const x = lx + dx, y = ly + dy; if (!ta.isBlocked(x, y) && !g.has(x + ',' + y) && Math.max(Math.abs(dx), Math.abs(dy)) >= 4) own.add(x + ',' + y); }
+  const ec = E.createVillage({ name: 'T', initialPop: 40, fertility: 0.6, water: 0.5, wood: 0.6, stone: 0.4, game: 0.4, ore: 0, size: 100 }); ec.land.size = 400; ec.housing = 600; ec.npcs = new Array(400).fill(0).map((_, i) => ec.npcs[i % ec.npcs.length]);
+  const vil = { name: '시험', dbId: 1, ccx: lx, ccy: ly - 5, _terrSet: own, _potSet: new Set(), _farmSet: new Set(), _drySet: new Set(), _houseCells: [], _granList: [], _ditch: [], npcPids: [], econ: ec };
+  //   교역로 하나 — 시험 마을(1) 곁을 동서로 지나는 **남의 길**(마을 901 ↔ 902 · 칸 중심 점 둘)
+  const rY = ly - 12, route = [{ x: (lx - 40) * SZ + 16, y: rY * SZ + 16 }, { x: (lx + 40) * SZ + 16, y: rY * SZ + 16 }];
+  V.__p3Bind({ zoneId: 'hanbando', routeCache: new Map([['901_902', route]]), world: { day: 1 } }); V.__labProbe._t569Probe.setup({ ta, villages: [vil], db: null });
+  const n0 = own.size; let err = null; for (let i = 0; i < 60; i++) { try { V.__labProbe._t569Probe.grow(vil); } catch (e) { err = e.message; break; } }
+  const head = (x, y) => { for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (g.has((x + dx) + ',' + (y + dy)) && W(x + dx, y + dy)) return true; return false; };
+  let onBr = 0, onHead = 0, onRoute = 0; for (const k of own) { const [x, y] = k.split(',').map(Number); if (g.has(k)) onBr++; else if (head(x, y)) onHead++; if (y === rY && x >= lx - 40 && x <= lx + 40) onRoute++; }
+  //   집 부지 문(운영 `_lifeSiteFilters(vil).reject`) — 남의 교역로 줄 위 칸 하나 · 길에서 10칸 넘게 떨어진 칸 가운데 부지가 서는 첫 칸(null = 선다)
+  let lotOn = null, lotOff = null; try { lotOn = V.__labProbe._t569Probe.reject(vil, lx, rY, false); lotOff = '자리 없음'; for (const k of [...own].sort()) { const [x, y] = k.split(',').map(Number); if (Math.abs(y - rY) < 10) continue; const r = V.__labProbe._t569Probe.reject(vil, x, y, false); if (r == null) { lotOff = null; break; } } } catch (e) { lotOn = 'ERR ' + e.message; }
+  process.stdout.write(JSON.stringify({ on: !!V.T1406_KEEP_PATHS, n0, n: own.size, onBr, onHead, onRoute, lotOn, lotOff, err }) + '\n');
+  process.exit(0);
 }
 
 const os = require('os');
@@ -50,6 +86,22 @@ const audit = (tag, bait) => new Promise((res) => {
   if (bait) Object.assign(env, { T1401_BAIT: bait, T1401_BAIT_OUT: bo });
   const args = [...(bait ? ['-r', __filename] : []), path.join(__dirname, 'audit-reachability.js'), 'hanbando', '--walk', '--bridge-pairs', '0', '--top', '100000', '--json', out];
   const c = spawn(process.execPath, args, { env, stdio: ['ignore', 'ignore', 'pipe'] });
+  let err = ''; c.stderr.on('data', (d) => { err += d; });
+  c.on('exit', (code) => res({ code, J: rd(out), K: rd(bo), err: err.slice(-400) }));
+});
+const grow = (env) => new Promise((res) => {
+  const e2 = Object.assign({}, process.env, { ENABLE_VILLAGES: '0', DB_PATH: path.join(BASE, 'grow-' + Math.random().toString(36).slice(2) + '.db') }, env); delete e2.T1401_BAIT;
+  if (!env.T1406_KEEP_PATHS) delete e2.T1406_KEEP_PATHS; if (!env.T1406_KEEP_ROUTES) delete e2.T1406_KEEP_ROUTES; if (!env.T1406_GROW_BAIT) delete e2.T1406_GROW_BAIT;
+  const c = spawn(process.execPath, [__filename, '--grow-child'], { env: e2, stdio: ['ignore', 'pipe', 'pipe'] }); let o = '', er = '';
+  c.stdout.on('data', (d) => { o += d; }); c.stderr.on('data', (d) => { er += d; });
+  c.on('exit', () => { let J = null; try { J = JSON.parse(o.trim().split('\n').pop()); } catch (x) {} res({ J, bait: /바꾼 자리 (\d+)칸/.exec(er) }); });
+});
+const auditEnv = (tag, bait, env) => new Promise((res) => {
+  const out = path.join(BASE, tag + '.json'), bo = path.join(BASE, tag + '.bait.json');
+  const e2 = Object.assign({}, process.env, env || {}); delete e2.T1401_BAIT;
+  if (bait) Object.assign(e2, { T1401_BAIT: bait, T1401_BAIT_OUT: bo });
+  const args = [...(bait ? ['-r', __filename] : []), path.join(__dirname, 'audit-reachability.js'), 'hanbando', '--walk', '--bridge-pairs', '0', '--top', '100000', '--json', out];
+  const c = spawn(process.execPath, args, { env: e2, stdio: ['ignore', 'ignore', 'pipe'] });
   let err = ''; c.stderr.on('data', (d) => { err += d; });
   c.on('exit', (code) => res({ code, J: rd(out), K: rd(bo), err: err.slice(-400) }));
 });
@@ -85,6 +137,19 @@ const sameOver = (J, T) => { const a = over(J); if (!a || !T) return { ok: false
   ok(Ball.code === 0 && Ball.K && Ball.K.n > 0 && !q1(Ball.J), `[미끼] 바꾼 자리 ${Ball.K ? Ball.K.n : '?'}칸 — 다리 칸 전부를 지운 사본은 ① 빨강`, `지운 칸 ${Ball.K ? Ball.K.n : '?'} · 못 닿는 쌍 ${Ball.J ? Ball.J.a.unreachAll : '?'} · ② ${SA.ok ? '초록' : '빨강'}`);
   const SO = sameOver(Bone.J, T);
   ok(Bone.code === 0 && Bone.K && Bone.K.n > 0 && q1(Bone.J) && !SO.ok, `[미끼] 바꾼 자리 ${Bone.K ? Bone.K.n : '?'}칸 — 다리 하나(어촌3 북쪽 · (387,2070) 묶음)를 지운 사본은 ② 만 빨강(① 초록 — 끊기지 않고 더 돈다)`, `지운 칸 ${Bone.K ? Bone.K.n : '?'} · ① ${q1(Bone.J) ? '초록' : '빨강'} · ② ${SO.ok ? '초록' : '빨강'} · ${SO.d}`);
+
+  console.log('\n④ [T1406] 다리 놓은 지도(T1406_BRIDGES=1) — 걸음 ÷ 곧은 거리 3배 넘는 이웃 쌍 0');
+  const over3 = (J) => (J && J.a ? J.a.ratio.over3 : null);
+  const [N4, N4b] = await Promise.all([auditEnv('t1406', null, { T1406_BRIDGES: '1' }), auditEnv('t1406bait', 't1406', { T1406_BRIDGES: '1' })]);
+  ok(N4.code === 0 && q1(N4.J) && over3(N4.J) === 0 && N4.J.bridges > (A.J ? A.J.bridges : 1e9), '④ 다리 놓은 지도: 마을 51 다 이어짐 · 3배 넘는 이웃 쌍 0 · 다리 칸이 늘었다', N4.J ? `다리 칸 ${A.J ? A.J.bridges : '?'} → ${N4.J.bridges} · 3배 넘음 ${over3(N4.J)}(다리 전 ${over3(A.J)}) · 가장 큼 ×${N4.J.a.ratio.max}` : N4.err);
+  ok(N4b.code === 0 && N4b.K && N4b.K.n > 0 && over3(N4b.J) > 0, `[미끼] 바꾼 자리 ${N4b.K ? N4b.K.n : '?'}칸 — T1406 다리 칸을 지운 사본은 ④ 빨강(3배 넘는 쌍이 돌아온다)`, `지운 칸 ${N4b.K ? N4b.K.n : '?'} · 3배 넘음 ${over3(N4b.J)}`);
+
+  console.log('\n⑤ [T1406 ㉮] NPC 마을 영토 넓히기는 길 칸(다리 · 다리 머리 · 교역로)을 안 먹는다(T1406_KEEP_PATHS=1)');
+  const [G0, G1, Gb] = await Promise.all([grow({}), grow({ T1406_KEEP_PATHS: '1', T1406_KEEP_ROUTES: '1' }), grow({ T1406_KEEP_PATHS: '1', T1406_KEEP_ROUTES: '1', T1406_GROW_BAIT: '1' })]);
+  const gs = (G) => G && G.J ? `넓힘 ${G.J.n0}→${G.J.n} · 다리 ${G.J.onBr} · 머리 ${G.J.onHead} · 교역로 ${G.J.onRoute}${G.J.err ? ' · 오류 ' + G.J.err : ''}` : '판 없음';
+  ok(!!G0.J && !G0.J.on && G0.J.n > G0.J.n0 && (G0.J.onBr + G0.J.onHead) > 0 && !/길 칸/.test(String(G0.J.lotOn)), '⑤ [전제] 끔 = 같은 마을이 다리 · 머리 칸을 먹는다 · 집 부지 문이 교역로 칸을 안 거른다(자명 통과 금지)', gs(G0) + ` · 부지(길 위) ${G0.J ? G0.J.lotOn : '?'}`);
+  ok(!!G1.J && G1.J.on && G1.J.n > G1.J.n0 && G1.J.onBr === 0 && G1.J.onHead === 0 && /길 칸/.test(String(G1.J.lotOn)) && G1.J.lotOff === null, '⑤ 켬 = 영토가 다리 · 머리 칸 0 · 그래도 넓힌다 · 집 부지 문은 남의 교역로 칸을 거르고 길 밖엔 부지가 선다', gs(G1) + ` · 부지(길 위) ${G1.J ? G1.J.lotOn : '?'} · (길 밖) ${G1.J ? G1.J.lotOff : '?'}` + (G0.J && G1.J ? ` · 넓힌 칸 끔의 ${((G1.J.n - G1.J.n0) / (G0.J.n - G0.J.n0) * 100).toFixed(0)}%` : ''));
+  ok(!!Gb.J && Gb.bait && (Gb.J.onBr + Gb.J.onHead) > 0, `[미끼] 바꾼 자리 ${Gb.bait ? Gb.bait[1] : '?'}칸 — 길 칸 술어가 그 다리를 모르는 사본은 ⑤ 빨강(다리 칸에 땅이 선다)`, gs(Gb));
 
   console.log(`\n=== T1401 결과: ${pass} 통과 · ${fail} 실패 ===`);
   if (!fail) fs.rmSync(BASE, { recursive: true, force: true });

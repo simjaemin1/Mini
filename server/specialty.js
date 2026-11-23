@@ -425,7 +425,7 @@ const ORE_REG0 = 0.01, ORE_REG1 = 0.01;
 const _ORE_A = ORE_REG0 + ORE_REG1, _ORE_B = ORE_REG1 / ORE_K, _ORE_ASY = _ORE_A / _ORE_B;
 function oreRegen(R0, gameDays) {
   if (!(gameDays > 0)) return Math.min(ORE_K, R0);
-  return Math.min(ORE_K, _ORE_ASY - (_ORE_ASY - R0) * Math.exp(-_ORE_B * gameDays));
+  return require('../sim/shared-lab-rules').oreRegenRaw(R0, gameDays, ORE_K, ORE_REG0, ORE_REG1);
 }
 // 광부 1명 일일 정산량(NPC 마을 경제용) — L_MINE 동형 유도:
 //   1440 게임분 × 노동률 0.633 × 왕복효율 0.9697 ÷ 60 = 14.73 덩이/게임일

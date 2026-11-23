@@ -1,0 +1,3 @@
+# 옛 코드 빨강 — 하네스 = f3100128f · 제품(server sim public lab) = 674634cda · 시한 600초
+빨강 ○ | test-t1407-tin-world.js | RC=1 · ✓ 0 · ✗ 28 |   ✗ unit n.worth 돈다 TypeError: V2.t1407OreWorth is not a function
+# 합: 빨강 1 · 크래시 0 · 초록 0 · 모름 0 · 제품 무관 0

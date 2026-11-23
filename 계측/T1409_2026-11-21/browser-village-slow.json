@@ -1,0 +1,149 @@
+{
+  "series": [
+    "ad02529f4c5e8657b2585b56b69492858d79590836a0cb8c22394aa619869cc6"
+  ],
+  "parameters": {
+    "WAR_RAID_MIN": 3,
+    "WAR_MARCH": 240
+  },
+  "waterSamples": [
+    {
+      "d": 0,
+      "value": 0.15
+    },
+    {
+      "d": 10,
+      "value": 0.8
+    },
+    {
+      "d": 50,
+      "value": 0.15
+    },
+    {
+      "d": 200,
+      "value": 0.15
+    }
+  ],
+  "oreSamples": [
+    {
+      "R0": 0,
+      "days": 0,
+      "value": 0
+    },
+    {
+      "R0": 0,
+      "days": 1,
+      "value": 0.01999990000035723
+    },
+    {
+      "R0": 0,
+      "days": 10,
+      "value": 0.19999000033340053
+    },
+    {
+      "R0": 0.5,
+      "days": 0,
+      "value": 0.5
+    },
+    {
+      "R0": 0.5,
+      "days": 1,
+      "value": 0.5199949000252673
+    },
+    {
+      "R0": 0.5,
+      "days": 10,
+      "value": 0.699940002833273
+    },
+    {
+      "R0": 250,
+      "days": 0,
+      "value": 250
+    },
+    {
+      "R0": 250,
+      "days": 1,
+      "value": 250.0174999125004
+    },
+    {
+      "R0": 250,
+      "days": 10,
+      "value": 250.17499125029167
+    },
+    {
+      "R0": 1000,
+      "days": 0,
+      "value": 1000
+    },
+    {
+      "R0": 1000,
+      "days": 1,
+      "value": 1000
+    },
+    {
+      "R0": 1000,
+      "days": 10,
+      "value": 1000
+    }
+  ],
+  "final": [
+    {
+      "name": "마을1",
+      "pop": 8,
+      "food": 401.7894883199999,
+      "empty": false
+    },
+    {
+      "name": "마을2",
+      "pop": 8,
+      "food": 362.9298348719998,
+      "empty": false
+    },
+    {
+      "name": "마을3",
+      "pop": 8,
+      "food": 357.7903323192,
+      "empty": false
+    },
+    {
+      "name": "마을4",
+      "pop": 8,
+      "food": 401.7894883199999,
+      "empty": false
+    },
+    {
+      "name": "마을5",
+      "pop": 8,
+      "food": 401.7894883199999,
+      "empty": false
+    },
+    {
+      "name": "마을6",
+      "pop": 8,
+      "food": 401.7894883199999,
+      "empty": false
+    },
+    {
+      "name": "마을7",
+      "pop": 8,
+      "food": 401.7894883199999,
+      "empty": false
+    },
+    {
+      "name": "마을8",
+      "pop": 8,
+      "food": 401.7894883199999,
+      "empty": false
+    }
+  ],
+  "fixtures": [],
+  "knob": "0",
+  "meta": {
+    "lab": "village",
+    "arm": "slow",
+    "days": 1,
+    "seed": 1020,
+    "sourceSha256": "6d03d0c455f9a01f6dcce88e1937d7846ebafae5001208578b77ed8828aa5309",
+    "initialCaptureOmitted": "초기 스냅샷의 참조 복사 결함으로 initial은 증거에서 제외. 날별 직렬화 SHA와 final은 유효. 초기 동일성은 수정 계측기의 war-fast1/slow 별도 판으로 확인."
+  }
+}

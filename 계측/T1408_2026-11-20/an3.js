@@ -1,0 +1,10 @@
+// 달 표(쪼개진 달 줄 합침): node an3.js <t1408.json>
+const r=require(process.argv[2]);const C=r.cols,I=c=>C.indexOf(c);
+const G=new Map();for(const x of r.rows){const k=x[0]+'|'+x[1];const g=G.get(k);if(!g){G.set(k,x.slice());continue;}for(let i=2;i<C.length;i++){const c=C[i];if(c==='pop')g[i]=x[i];else if(c==='popMin'||c==='fdaysMin')g[i]=Math.min(g[i],x[i]);else if(c==='popMax')g[i]=Math.max(g[i],x[i]);else g[i]+=x[i];}}
+const by={};for(const x of G.values()){const ym=x[0],d=x[I('days')];const o=by[ym]||(by[ym]={n:0,pop:0,K:0,prod:0,slot:0,fuel:0,g74:0,vd:0,born:0,fd:0,nat:0,gb:0,farm:0,fish:0,hunt:0,forage:0,lj:0,mason:0,other:0,fdays:0,need:0,fdmin:1e9,emp:0});
+ o.n++;o.pop+=x[I('pop')];o.K+=x[I('K')]/d;o.prod+=x[I('prod')]/d;o.slot+=x[I('slot')]/d;o.fuel+=x[I('fuel')]/d;o.g74+=x[I('g74')];o.vd+=d;o.born+=x[I('born')];o.fd+=x[I('fd')];o.nat+=x[I('nat')];o.gb+=x[I('gateBorn')];
+ o.farm+=x[I('j_farmer')]/d;o.fish+=x[I('j_fisher')]/d;o.hunt+=x[I('j_hunter')]/d;o.forage+=x[I('j_forager')]/d;o.lj+=x[I('j_lumberjack')]/d;o.mason+=x[I('j_mason')]/d;
+ let oth=0;for(const c of C)if(c.startsWith('j_')&&!['j_farmer','j_fisher','j_hunter','j_forager','j_lumberjack','j_mason'].includes(c))oth+=x[I(c)]/d;o.other+=oth;
+ o.fdays+=x[I('fdays')]/d*x[I('pop')];o.need+=x[I('need')]/d;if(x[I('pop')]===0)o.emp++;}
+console.log('ym    pop   K   prod  slot fuel g74% born gB   fd  nat farm fish hunt forg lj  mason oth fdays need emp');
+for(const ym of Object.keys(by).sort()){const o=by[ym];const P=Math.max(1,o.pop);console.log(ym,String(o.pop).padStart(5),o.K.toFixed(0).padStart(5),o.prod.toFixed(0).padStart(5),o.slot.toFixed(0).padStart(5),o.fuel.toFixed(0).padStart(5),(o.g74/o.vd*100).toFixed(0).padStart(3),String(o.born).padStart(5),o.gb.toFixed(0).padStart(4),String(o.fd).padStart(4),String(o.nat).padStart(3),o.farm.toFixed(0).padStart(4),o.fish.toFixed(0).padStart(4),o.hunt.toFixed(0).padStart(4),o.forage.toFixed(0).padStart(4),o.lj.toFixed(0).padStart(3),o.mason.toFixed(0).padStart(4),o.other.toFixed(0).padStart(4),(o.fdays/P).toFixed(0).padStart(5),(o.need/o.n).toFixed(0).padStart(4),String(o.emp).padStart(3));}

@@ -48,7 +48,7 @@ function declNames(line) {
   return out;
 }
 // `git diff -U0` 글자 → { files: [{ file, names: Set }], harness: [바뀐 하네스] }
-function namesFromDiff(diff) {
+function namesFromDiff(diff, forceFile) {   // forceFile — ★[T1400 → T1410] 이 diff 가 한 파일 몫이면 그 길(머리 줄 글자에 안 기댄다)
   const files = [], harness = [];
   let cur = null, ctx = [];
   //   ★[T1400 · 족보 881] 기본값을 뒤집은 손잡이 — 같은 파일의 − 줄과 + 줄에 같은 `process.env.X` 가 서로 다른 꼴로 서면(`=== '1'` → `!== '0'` …) 그 X.
@@ -61,8 +61,8 @@ function namesFromDiff(diff) {
     //     여기서도 따옴표 꼴을 받고 · 못 읽은 `diff --git` 줄은 `cur` 를 끊는다(새는 일 0).
     if (/^diff --git /.test(raw)) {
       m = /^diff --git "?a\/(.+?)"? "?b\/(.+?)"?$/.exec(raw);
-      cur = null; if (!m) continue;
-      const f = m[2];
+      cur = null; if (!m && !forceFile) continue;
+      const f = forceFile || m[2];
       if (isHarness(f)) harness.push(path.basename(f));
       else if (isCode(f)) { cur = { file: f, names: new Set() }; files.push(cur); if (/^scripts\/lib-[^/]*\.js$/.test(f)) cur.names.add(path.basename(f, '.js')); }   // 하네스 공용 자가 바뀌면 그 자를 싣는 하네스도
       continue;
@@ -99,9 +99,17 @@ function match(names, hfiles, readH) {
 function plan(root, base) {
   const git = (...a) => execFileSync('git', ['-c', 'core.quotepath=off', ...a], { cwd: root, encoding: 'utf8', maxBuffer: 1 << 28 });   // ★[T1400] 한글 길 그대로(위 namesFromDiff)
   const mb = git('merge-base', base, 'HEAD').trim();
-  const diff = git('diff', '-U0', '--no-color', '--no-ext-diff', mb);
-  const untracked = git('ls-files', '--others', '--exclude-standard').split('\n').filter(Boolean);
-  const D = namesFromDiff(diff);
+  //   ★[T1410 · T1358 회부 3] `core.quotePath` 에 안 기댄다 — 바뀐 길은 `--name-only -z`(NUL 끝 · 길 글자 그대로)로 받고, 파일마다 diff 를 따로 떠
+  //     그 길로 이름을 붙인다(머리 줄 `diff --git "a/\352…"` 를 안 읽는다). 아직 안 더한 파일도 `ls-files -z`.
+  const changed = git('diff', '--name-only', '-z', mb).split('\0').filter(Boolean);
+  const untracked = git('ls-files', '-z', '--others', '--exclude-standard').split('\0').filter(Boolean);
+  const D = { files: [], harness: [] };
+  for (const f of changed) {
+    if (isHarness(f)) { D.harness.push(path.basename(f)); continue; }
+    if (!isCode(f)) continue;
+    const one = namesFromDiff(git('diff', '-U0', '--no-color', '--no-ext-diff', mb, '--', f), f);
+    D.files.push(...one.files);
+  }
   for (const f of untracked) {   // 아직 안 더한 새 파일 — 하네스는 목록에 · 코드는 파일 전체의 선언을 이름으로
     if (isHarness(f)) D.harness.push(path.basename(f));
     else if (isCode(f)) D.files.push({ file: f, names: new Set([path.basename(f).replace(/\.(c|m)?js$/, '')]) });   // 새 코드 파일 — 파일 이름(그 파일을 싣는 하네스만 그 안 이름을 부를 수 있다)
