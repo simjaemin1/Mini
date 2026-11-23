@@ -7571,6 +7571,90 @@ function _t569Resolve(owners) {
   }
   return n;
 }
+// ══ ★★[T1433 2026-11-22 · T1379 회부 1 · 2] 영토 행 묶어 적기 — 손잡이 `T1433_TERR_SEQ`(**끔 기본** · `=1` 켬 · 끔 = 종전 바이트) ══════════
+//   진단(보고/T1433 §1): 800날 `village_buildings` 의 78.9 % 가 `terr` 행인데 **죽은 행이 아니다** — 칸 하나 = 행 하나 · 같은 칸 두 번 0 ·
+//     두 마을이 가진 칸 0 · 풀린 칸 0(끔 세계엔 영토를 줄이는 문이 없다). 영토가 인구 상한 식(T538 · T579 ⌈인구 ÷ 6⌉ × 600 + 1,500)을 따라
+//     **실제로 넓어져서** 행이 는다(인구가 해마다 오르는 동안 — T1426). ⇒ 지우는 게 아니라 **저장 꼴**을 바꾼다(상한 새로 0).
+//   켬:
+//     ① 쓰기 — `_terrAdd` 한 번(마을 하나의 그날 몫) = 묶음 행 하나(`terrseq` · 칸 차례 그대로 · 글 꼴 `server/terr-rows.js`).
+//        T1238 묵힘으로 빠진 칸 = 뺌 토막 하나(종전 행 지움과 같은 뜻 · 다시 들면 끝으로).
+//     ② 부팅 — 영토를 읽고 겹친 칸을 가른 **뒤**(T569 · 메모리 = 종전과 같은 집합 · 같은 차례) 마을마다 지금 칸 차례 그대로 묶음 행 **하나**로 갈아 끼운다
+//        (옛 DB 이관 · 그동안 쌓인 묶음 행 · 겹친 칸의 진 쪽 죽은 행 · 같은 칸 두 행을 한 번에) — 전 마을 **한 거래**(도중에 죽으면 통째로 되돌아 옛 행 그대로 · 다음 부팅이 다시).
+//        죽은 행이 쥐던 가장 먼 점은 증거로 남겨 부팅 반지름(`getVillageFarthest`)이 종전과 같은 값을 낸다.
+//   읽기는 손잡이와 무관하게 늘 두 꼴 다(zone-local-db `eachVillageCell` · 이관한 DB 를 끔으로 띄워도 같은 영토) · 끈 코드(이 손잡이 이전 판)로 되돌릴 땐
+//     `scripts/t1433-terr-migrate.js --back`(묶음 행 → 칸 행 · 같은 차례 · 한 거래)을 먼저.
+const T1433_TERR_SEQ = process.env.T1433_TERR_SEQ === '1';
+const _t1433Stat = { seqVils: 0, anySeq: false, contest: 0, contestMs: 0, compact: null };
+//   묶음 행이 있는 마을(dbId) — 마을 객체에 칸을 세우지 않는다(켬 세계도 마을 객체 모양 = 끔 그대로 · 생활층 마을 칸 지문이 같게)
+const _t1433SeqV = new Set();
+//   겹친 칸 — 묶음 행이 있는 DB 에서는 SQL(`getTerrContestOwners` — 칸 행만 본다) 대신 **메모리 집합**으로 겹친 칸을 찾고,
+//   그 칸들만 행을 되읽어 **먼저 가진**(행 id · 행 안 차례가 가장 작은 — 뺌 뒤 다시 든 칸은 다시 든 자리) 마을을 고른다(종전 MIN(id) 와 같은 뜻).
+function _t1433Contest(db) {
+  const t0 = Date.now();
+  const V = (state.villages || []).filter((v) => v._terrSet && v._terrSet.size);
+  const box = new Map();
+  for (const v of V) {
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const k of v._terrSet) { const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1); if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    box.set(v, [x0, x1, y0, y1]);
+  }
+  const K = new Map();   // 칸 → 가진 마을들
+  for (let i = 0; i < V.length; i++) for (let j = i + 1; j < V.length; j++) {
+    const a = box.get(V[i]), b = box.get(V[j]);
+    if (a[1] < b[0] || b[1] < a[0] || a[3] < b[2] || b[3] < a[2]) continue;
+    const [s, l] = V[i]._terrSet.size <= V[j]._terrSet.size ? [V[i], V[j]] : [V[j], V[i]];
+    for (const k of s._terrSet) if (l._terrSet.has(k)) { let o = K.get(k); if (!o) K.set(k, o = new Set()); o.add(s); o.add(l); }
+  }
+  const out = [];
+  if (K.size) {
+    const best = new Map();   // 칸 → [행 id, 행 안 차례, dbId]
+    const inv = new Set(); for (const o of K.values()) for (const v of o) inv.add(v);
+    for (const v of inv) {
+      const cur = new Map();   // 이 마을에서 지금 그 칸을 가진 자리(뺌이면 지운다 · 이미 있으면 그대로 — 종전 MIN(id))
+      db.eachTerrRow(v.dbId, (r) => {
+        if (r.type === 'terr') { const k = r.cx + ',' + r.cy; if (K.has(k) && !cur.has(k)) cur.set(k, [r.id, 0]); return; }
+        if (r.type !== 'terrseq') return;
+        TerrRows.decode(r.data, (op, x, y, i) => { const k = x + ',' + y; if (!K.has(k)) return; if (op === TerrRows.ADD) { if (!cur.has(k)) cur.set(k, [r.id, i]); } else if (op === TerrRows.DEL) cur.delete(k); });
+      });
+      for (const [k, p] of cur) { const b = best.get(k); if (!b || p[0] < b[0] || (p[0] === b[0] && p[1] < b[1])) best.set(k, [p[0], p[1], v.dbId]); }
+    }
+    for (const [k, b] of best) { const ci = k.indexOf(','); out.push({ cx: +k.slice(0, ci), cy: +k.slice(ci + 1), village_id: b[2] }); }
+  }
+  _t1433Stat.contest = out.length; _t1433Stat.contestMs = Date.now() - t0;
+  return out;
+}
+const TerrRows = require('./terr-rows');   // 순수 글 꼴(상태 0 · 끔이면 이 위 함수들을 아무도 안 부른다)
+//   부팅 이관 — 마을마다 지금 칸 차례 그대로 묶음 행 하나로 · 전 마을 한 거래(`db.terrTx` — SAVEPOINT) · 반환 = 셈(실패면 { err })
+//     이미 묶음 행 하나이고 되읽은 차례가 메모리 차례 그대로면 그 마을은 쓰지 않는다(두 번째 부팅부터 쓰기 0 — 그날까지 쌓인 묶음이 있는 마을만).
+function _t1433CompactAll(db) {
+  const t0 = Date.now(), C = { vils: 0, skip: 0, before: 0, cells: 0, wit: 0, ms: 0 };
+  try {
+    db.terrTx(() => {
+      for (const v of state.villages) {
+        const H = db.terrHead(v.dbId), nr = H.n;   // 행 수 · 한 행이면 그 행만(옛 DB 첫 이관 = 칸 행 수만을 JS 로 안 올린다)
+        const rows = (H.first && H.first.type === 'terrseq') ? [H.first] : [];
+        const n = v._terrSet ? v._terrSet.size : 0;
+        let same = nr === 0 && n === 0;
+        if (!same && rows.length === 1 && rows[0].floors === n) {
+          const R = TerrRows.replay(rows, new Set());
+          if (R.size === n) { same = true; const it = v._terrSet.values(); for (const k of R) if (it.next().value !== k) { same = false; break; } }
+        }
+        if (same) { C.skip++; if (nr) _t1433SeqV.add(v.dbId); continue; }
+        const r = db.terrCompact(v.dbId, v.ccx, v.ccy, v._terrSet || new Set());
+        C.vils++; C.before += r.before; C.cells += r.cells; if (r.wit) C.wit++;
+        _t1433SeqV.add(v.dbId);
+      }
+    });
+    C.ms = Date.now() - t0; _t1433Stat.compact = C;
+    console.log(`[${state.zoneId}] 🏘️ [T1433] 영토 행 묶기 — 마을 ${C.vils}곳 행 ${C.before} → ${C.vils}(칸 ${C.cells} · 증거 ${C.wit}) · 그대로 ${C.skip} · ${C.ms}ms`);
+    return C;
+  } catch (e) {
+    _t1433Stat.compact = { err: e.message };
+    for (const v of state.villages) if (_t1433SeqV.has(v.dbId) && !(typeof db.terrHasSeq === 'function' && db.terrHasSeq(v.dbId))) _t1433SeqV.delete(v.dbId);   // 되돌린 거래 — 표지도 행 그대로에 맞춘다
+    console.error(`[${state.zoneId}] 🏘️ [T1433] 영토 행 묶기 실패(되돌림 · 옛 행 그대로 계속):`, e.message);
+    return { err: e.message };
+  }
+}
 // ══ ★★[T1207 2026-11-07 · ★재민 11-07] 영토 확장 실물화 — 개간 노동 + 경계 말뚝 · 크기 · 길쭉함 · NPC 도 곳간에서 꺼내고 몸이 가서 한다 ══════════
 //   재민 11-07: "돌이나 나무로 확장 · 영토와 인접한 셀로 직접 가서 우클릭 · 멀수록 · 클수록 비싸게" · "칠레처럼 기다랗게만 이어 맵을 망치는 걸 막고 싶다" ·
 //     "NPC 마을은 셀 고르는 법은 원래대로 — 필요 자원이 창고에서 빠지고 NPC 중 누군가가 영토를 늘리러 작업 출발해야 한다는 것만 같게".
@@ -8363,6 +8447,8 @@ function _t1238Remove(vil, k) {
   try {
     if (state.db && typeof state.db.deleteVillageCell === 'function' && vil.dbId != null) {
       state.db.deleteVillageCell(vil.dbId, 'terr', x, y);
+      //   ★[T1433 ①] 그 칸이 묶음 행에 들어 있을 수 있다(켬 · 또는 켰다 끈 세계) — 뺌 토막 하나(칸 행 지움과 같은 뜻 · 끔 + 옛 DB = 이 줄 무동작)
+      if ((T1433_TERR_SEQ || _t1433SeqV.has(vil.dbId)) && typeof state.db.insertTerrSeq === 'function') state.db.insertTerrSeq(vil.dbId, vil.ccx, vil.ccy, [[TerrRows.DEL, x, y]]);
       if (pot) state.db.deleteVillageCell(vil.dbId, 'nongzone', x, y);
     }
   } catch (e) { console.error(`[${state.zoneId}] 🏘️ [T1238] 영토 행 지우기 실패(${vil.name} ${k}):`, e.message); }
@@ -8571,6 +8657,10 @@ function _terrAdd(vil, keys, target, fell) {
   //     ⚠실패하면 그 마을의 오늘 몫 전부를 되돌린다(종전은 실패 앞의 행만 남았다). 메모리 `_terrSet` 은 종전처럼 이미 자랐다 — 다음 부팅은 DB 를 믿는다.
   const _tdb = state.db && state.db.db;
   try {
+    //   ★[T1433 ①] 켬 = 이 몫 전부를 묶음 행 **하나**로(같은 칸 · 같은 차례 · 행 하나라 원자성도 그대로 마을 단위) — 끔 = 아래 종전 줄 그대로
+    if (T1433_TERR_SEQ && state.db && typeof state.db.insertTerrSeq === 'function' && vil.dbId != null && added.size) {
+      state.db.insertTerrSeq(vil.dbId, vil.ccx, vil.ccy, TerrRows.opsOfKeys(added)); _t1433SeqV.add(vil.dbId);
+    } else
     if (state.db && state.db.insertVillageBuilding && vil.dbId != null && added.size) {
       if (_tdb) _tdb.exec('SAVEPOINT t538_terr');
       try {
@@ -8760,14 +8850,17 @@ function init(deps) {
           else { dryN++; farmSet.add(cx + ',' + cy); drySet.add(cx + ',' + cy); }
         });
         db.eachVillageCell(row.id, 'nongzone', (cx, cy) => { potSet.add(cx + ',' + cy); });
-        db.eachVillageCell(row.id, 'terr', (cx, cy) => { terrSet.add(cx + ',' + cy); });
+        db.eachVillageCell(row.id, 'terr', (cx, cy) => { terrSet.add(cx + ',' + cy); });   // ★[T1433] 묶음 행이 있는 마을이면 두 꼴을 id 차례로 되읽는다(zone-local-db · 없으면 종전 글자)
       }
+      const _t1433Has = typeof db.terrHasSeq === 'function' && db.terrHasSeq(row.id);   // ★[T1433] 이 마을에 묶음 행이 있나(겹친 칸 가르기 · 뺌 토막이 쓴다 · 옛 DB = 늘 아니다)
+      if (_t1433Has) { _t1433Stat.seqVils++; _t1433Stat.anySeq = true; }
       for (const b of bRows) {
         if (!_bLite) { const r = Math.hypot(b.cx - row.cx, b.cy - row.cy); if (r > maxCellR) maxCellR = r; }
         if (b.type === 'house') { housesPx.push({ x: b.cx * SZ + SZ / 2, y: b.cy * SZ + SZ / 2 }); houseCells.push({ cx: b.cx, cy: b.cy }); }
         else if (b.type === 'farmland') { farmN++; farmSet.add(b.cx + ',' + b.cy); }
         else if (b.type === 'dryfield') { dryN++; farmSet.add(b.cx + ',' + b.cy); drySet.add(b.cx + ',' + b.cy); }   // ★[생활 층 100% ③] 밭 셀 구분(논=물대기 대상, 밭=아님 — 랩 field 동형)
         else if (b.type === 'terr') terrSet.add(b.cx + ',' + b.cy);
+        else if (b.type === 'terrseq') TerrRows.replay([b], terrSet);   // ★[T1433] 옛 배선(픽스처) 길도 묶음 행을 읽는다(옛 DB 엔 그 행이 없다)
         else if (b.type === 'nongzone') potSet.add(b.cx + ',' + b.cy);
         else if (b.type === 'granary') granList.push({ cx: b.cx, cy: b.cy });
         else if (b.type === 'housesite') siteRows.push({ cx: b.cx, cy: b.cy });
@@ -8797,6 +8890,7 @@ function init(deps) {
         //   ★[T785] 켬 — 런타임엔 안 싣는다(마을이 유일한 무리 · 옛 칸 `tribeId` 는 회관 행에 그대로 · 이행이 읽는다).
         _tribeId: (!T785 && hallData && hallData.tribeId != null) ? hallData.tribeId : null,
         _shelter: shelterCell });   // ★[T62] 공용 쉼터 셀(없으면 null — 좌표를 지어내지 않는다)
+      if (_t1433Has) _t1433SeqV.add(row.id);   // ★[T1433] 묶음 행 마을 표(모듈 집합 — 마을 객체 모양 그대로)
       //   ★[T203] 창설자 이름도 되살린다 — 읽는 자리가 `econ` 이므로 `econ` 에 얹는다(`_tribeId` 와 같은 짝).
       //     ⚠**있을 때만** 얹는다: NPC 마을엔 이 칸이 아예 없고, 그래서 랩·기준선은 한 비트도 안 움직인다.
       if (hallData && hallData.founderName) ev.founderName = String(hallData.founderName);
@@ -8816,10 +8910,14 @@ function init(deps) {
     }
     // ★[T569 ③] 옛 DB 의 겹친 영토 셀 — 먼저 가진 마을(그 셀 `terr` 행 id 가 작은 쪽)에 남기고 다른 마을 메모리에서 뺀다(행은 그대로)
     if (T569_OVERLAP && typeof db.getTerrContestOwners === 'function') {
-      try { const _own = db.getTerrContestOwners(); const _n = _t569Resolve(_own);
+      //   ★[T1433] 묶음 행이 있는 DB 면 SQL(칸 행만 본다) 대신 메모리 집합 + 그 칸들만 되읽기로 같은 답(먼저 가진 마을) — 옛 DB = 종전 SQL 글자 그대로
+      try { const _own = _t1433Stat.anySeq ? _t1433Contest(db) : db.getTerrContestOwners(); const _n = _t569Resolve(_own);
         if (_n) console.log(`[${ZONE_ID}] 🏘️ [T569] 두 마을이 가진 영토 셀 ${_own.length} — 먼저 가진 마을에 남기고 다른 마을에서 ${_n}셀 뺐다(메모리 · 행 그대로)`); }
       catch (e) { console.error(`[${ZONE_ID}] 🏘️ [T569] 겹친 영토 정리 실패(겹친 채로 계속):`, e.message); }
     }
+    //   ★[T1433 ②] 켬 = 마을마다 지금 칸 차례 그대로 묶음 행 하나로(옛 DB 이관 · 쌓인 묶음 · 겹친 칸의 진 쪽 행 · 같은 칸 두 행) — 전 마을 **한 거래**
+    //     (이미 행 하나뿐이고 칸 수가 같으면 그대로 둔다 · 실패 = 통째로 되돌아 옛 행 그대로 계속 — 메모리는 이미 같은 영토라 세계는 안 갈린다 · 다음 부팅이 다시)
+    if (T1433_TERR_SEQ && typeof db.terrCompact === 'function') _t1433CompactAll(db);
     world.day = maxDay;
     state.world = world;
     if (T762_CARAVAN_BODY) world.caravanBodyReady = _t1182BodyReady;
@@ -13335,7 +13433,7 @@ function _ditchPlan(vil, VL) {
   // 링 계산만(DB 무변경) — 시범 선정에 쓰는 순수 계측.
   const block = new Set();
   for (const b of (vil._bRows || [])) {
-    if (b.type === 'terr' || b.type === 'nongzone' || b.type === 'ditch') continue;
+    if (b.type === 'terr' || b.type === 'terrseq' || b.type === 'nongzone' || b.type === 'ditch') continue;   // ★[T1433] 묶음 행도 영토(옛 DB 엔 없다)
     if (b.type === 'house' || b.type === 'hall') {                  // 집채 6×4 / 큰집 8×8 발자국까지
       const x0 = b.cx - (b.type === 'hall' ? 4 : 5), x1 = b.cx + (b.type === 'hall' ? 3 : 0);
       const y0 = b.cy - (b.type === 'hall' ? 4 : 5), y1 = b.cy + (b.type === 'hall' ? 3 : -2);
@@ -21226,6 +21324,7 @@ function __rumorProbe() {
 }
 
 module.exports = { t1406PathCell: (cx, cy, vil) => _t1406PathCell(cx, cy, vil || null), T1406_KEEP_PATHS, artisanPerf,   // ★[T1196] 장인 작업장 관측
+  T1433_TERR_SEQ, _t1433Contest, _t1433CompactAll, _t1433Stat, _t1433SeqV,   // ★[T1433] 영토 행 묶기 — 하네스가 같은 함수를 부른다(사본 0)
   __t740: () => state,   // ★[T1287 · T1280 회부 1] 생활층 지문 훅(`scripts/t740-side-hook.js`)의 공식 자리 — 읽기만 · 세계 0. 종전엔 훅이 컴파일 때 이 한 줄을 덧붙여서, 관찰기가 villages 를 먼저 실으면 훅이 못 붙었다(생활층 0일)
   _t1259WoodRadius, _t1259WoodCells,
   t1243FieldClearMinAt, T1207_TERR_REAL, terrQuote, terrPlayerAdd, t1207Stat, villageById, _t1207CellCost, _t1207Batch, _t1207Queue, _t1207BodyDone, _t1283BodyHaul, _t1207LogIn, _t1207Flush, _t1207CanTake, _terrAdd, _terrGrow,   // ★[T1207] 영토 확장 실물화 — 존(우클릭)과 하네스가 같은 함수를 부른다(사본 0)

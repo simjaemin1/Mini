@@ -18205,6 +18205,16 @@
    "child": [
     "spawnSync node"
    ]
+  },
+  "test-t1433-terr-rows.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "다",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "서버(글자) — CI 밖(야간 · 전수)",
+   "logSec": 147
   }
  },
  "at": "2026-11-22"
