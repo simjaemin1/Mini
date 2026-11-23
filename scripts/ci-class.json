@@ -15799,6 +15799,28 @@
    "core": false,
    "why": "srv"
   },
+  "test-t1455-bridge-decay.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "다",
+   "maxSec": 15.9,
+   "same5": null,
+   "core": false,
+   "why": "서버 1판만 잼",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 15.9,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "다",
+   "child": [
+    "execFileSync node",
+    "spawnSync node"
+   ]
+  },
   "test-t721-apply.js": {
    "cls0": "나",
    "why0": "child_process",
@@ -18107,5 +18129,5 @@
    "srv": true
   }
  },
- "at": "2026-11-22"
+ "at": "2026-11-23"
 }

@@ -614,10 +614,12 @@ db.exec(`
 const stmtGetRoutes = db.prepare('SELECT pair, pts FROM trade_routes WHERE zone = ? AND sig = ?');
 const stmtUpsertRoute = db.prepare('INSERT INTO trade_routes (zone, pair, sig, pts) VALUES (?, ?, ?, ?) ON CONFLICT(zone, pair) DO UPDATE SET sig = excluded.sig, pts = excluded.pts');
 const stmtClearRoutes = db.prepare('DELETE FROM trade_routes WHERE zone = ?');
+const stmtDelRoute = db.prepare('DELETE FROM trade_routes WHERE zone = ? AND pair = ?');   // ★[T1455] 다리 몫만 — 끊긴 다리를 지나던 쌍 하나
 const stmtCountRoutes = db.prepare('SELECT COUNT(*) AS n FROM trade_routes WHERE zone = ?');
 function getTradeRoutes(zone, sig) { return stmtGetRoutes.all(zone, String(sig)); }
 function upsertTradeRoute(zone, pair, sig, ptsJson) { stmtUpsertRoute.run(zone, String(pair), String(sig), ptsJson === null ? null : String(ptsJson)); }
 function clearTradeRoutes(zone) { return stmtClearRoutes.run(zone).changes | 0; }
+function deleteTradeRoute(zone, pair) { return stmtDelRoute.run(zone, String(pair)).changes | 0; }   // ★[T1455]
 function countTradeRoutes(zone) { return (stmtCountRoutes.get(zone) || {}).n | 0; }
 
 // === [배치 20 B] 동적 토양치 + 지질 플래그(server/soil.js) ===
@@ -924,7 +926,7 @@ module.exports = {
   // [배치 20 B] 동적 토양치 · 지질 (soil.js)
   getSoilCells, upsertSoilCell, deleteSoilCell,
   // [T42] 교역로 캐시 영속 (villages.js getRoute)
-  getTradeRoutes, upsertTradeRoute, clearTradeRoutes, countTradeRoutes,
+  getTradeRoutes, upsertTradeRoute, clearTradeRoutes, countTradeRoutes, deleteTradeRoute,
   // [T537] 마을이 짓는 다리 — 진척·완공 영속(villages `_t527*` · 존 부팅 복원)
   getVillageBridges, upsertVillageBridge,
   // [T916] 못 닿은 사람 저장 줄(zone.js `_saveSend` · 손잡이 `T916_SAVE_RETRY`)
