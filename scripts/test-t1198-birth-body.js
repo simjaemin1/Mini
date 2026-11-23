@@ -130,12 +130,12 @@ if (process.argv[2] === '--child-t1297') {
   };
   const out = { knob: E.T1297_BIRTH_FOOD, famine: E.T1297_FAMINE_DAYS, real: run(E) };
   if (E.T1297_BIRTH_FOOD) {
-    const src = fs.readFileSync(PP, 'utf8'), line = 'totalFoodEquivalent(v) < (_homeN + 1) * DAILY_FOOD_CONSUMPTION * t1297NeedDays(day)';
+    const src = fs.readFileSync(PP, 'utf8'), line = 'totalFoodEquivalent(v) < (_homeN + 1) * DAILY_FOOD_CONSUMPTION * t1297NeedDays(day, v)';
     out.baitLine = src.split(line).length === 2; out.baitN = src.split(line).length - 1;
     const Module = require('module');
     const bait = (rep, tag) => { const m = new Module(PP + tag, null); m.filename = PP; m.paths = Module._nodeModulePaths(path.dirname(PP)); m._compile(src.replace(line, rep), PP); return run(m.exports); };
-    out.bait1 = bait('(_homeN + 1) * DAILY_FOOD_CONSUMPTION * 45 < (_homeN + 1) * DAILY_FOOD_CONSUMPTION * t1297NeedDays(day)', '.bait1');   // 곳간 대신 상수 일치(45일치)
-    out.bait2 = bait('0 < (_homeN + 1) * DAILY_FOOD_CONSUMPTION * t1297NeedDays(day)', '.bait2');                                           // 곳간 칸을 지운(0) 사본
+    out.bait1 = bait('(_homeN + 1) * DAILY_FOOD_CONSUMPTION * 45 < (_homeN + 1) * DAILY_FOOD_CONSUMPTION * t1297NeedDays(day, v)', '.bait1');   // 곳간 대신 상수 일치(45일치)
+    out.bait2 = bait('0 < (_homeN + 1) * DAILY_FOOD_CONSUMPTION * t1297NeedDays(day, v)', '.bait2');                                           // 곳간 칸을 지운(0) 사본
   }
   console.log('@@T1297 ' + JSON.stringify(out));
   process.exit(0);
@@ -234,8 +234,8 @@ console.log('\n=== T1297 ⑤ 출생 곳간 문(`T1297_BIRTH_FOOD`) — 곳간 �
     const O = OFF.real;
     ok(O.a.gate === null && O.a.dP > 0 && O.c.gate === null && O.c.dP > 0, '끔 — 같은 곳간(20 · 60일치)이 종전대로 는다 · 문 표지 칸 0', JSON.stringify({ a: O.a, c: O.c }));
     const EC = require('fs').readFileSync(path.join(ROOT, 'sim', 'economy-sim.js'), 'utf8');
-    const ip = EC.indexOf('function pickDeficitJob_rational('), fam = /\n  if \(foodEquiv < N \* (\d+)\) \{/.exec(EC.slice(ip));
-    ok(ip > 0 && fam && +fam[1] === ON.famine, `기근 문 날 수 = 피커 기근 블록 글자(\`foodEquiv < N * ${fam && fam[1]}\`) — 이름만 붙인 수가 같다(사본 0)`, JSON.stringify({ famine: ON.famine, block: fam && fam[1] }));
+    const ip = EC.indexOf('function pickDeficitJob_rational('), fam = /\n  if \(foodEquiv < N \* t1419Days\(v, null, (\d+), 'famine'\)\) \{/.exec(EC.slice(ip));   // ★[T1419] 블록 줄은 한 함수를 읽는다 — 종전 수는 그 끔 인자
+    ok(ip > 0 && fam && +fam[1] === ON.famine, `기근 문 날 수 = 피커 기근 블록 글자(\`foodEquiv < N * t1419Days(v, null, ${fam && fam[1]}, 'famine')\` — 끔 인자) — 이름만 붙인 수가 같다(사본 0)`, JSON.stringify({ famine: ON.famine, block: fam && fam[1] }));
     const gl = EC.split('\n').find((x) => x.includes('if (T1297_BIRTH_FOOD) { v._t1297Gate = 0;')) || '';
     ok(gl && !/T325|T1243|T1238|T1207|_t1238Land|founder/.test(gl), '세계 갈래 0 — 출생 문 줄이 세계 손잡이를 안 읽는다(v2 · 밭 · 끔 같은 길)', gl.slice(0, 160));
     const B1 = ON.bait1, B2 = ON.bait2;
@@ -265,7 +265,7 @@ console.log('\n=== T1306 ⑥ 단계 문(`T1306_BIRTH_GRADE` · T1297 켬 안) �
     ok(T.a.gate === 1 && T.a.dP === 0 && T.f.dP === 0 && T.b.dP > 0 && T.a.r === null, 'T1297 만(단계 문 끔) — 10 · 15일치는 그대로 0 · 45일치는 는다 · 비율 칸 0', J({ a: T.a, f: T.f }));
     const EC = require('fs').readFileSync(path.join(ROOT, 'sim', 'economy-sim.js'), 'utf8');
     const fb = EC.slice(EC.indexOf('function t1306GradeDP('), EC.indexOf('function t1306GradeDP(') + 900);
-    ok(/t1297NeedDays\(day\)/.test(fb) && /totalFoodEquivalent\(v\)/.test(fb) && !/T325|T1243|T1238|T1207|founder/.test(fb) && !/\b(0\.\d+|[2-9]\d*)\b/.test(fb.replace(/\/\/.*$/gm, '').replace(/homeN \+ 1/, '')), '새 수 0 · 세계 갈래 0 — 문턱은 T1297 날 수 · 곳간은 피커가 읽는 그 합', J(fb.split('\n')[3].trim()));
+    ok(/t1297NeedDays\(day, v\)/.test(fb) && /totalFoodEquivalent\(v\)/.test(fb) && !/T325|T1243|T1238|T1207|founder/.test(fb) && !/\b(0\.\d+|[2-9]\d*)\b/.test(fb.replace(/\/\/.*$/gm, '').replace(/homeN \+ 1/, '')), '새 수 0 · 세계 갈래 0 — 문턱은 T1297 날 수 · 곳간은 피커가 읽는 그 합', J(fb.split('\n')[3].trim()));
     const B1 = G.bait1, B2 = G.bait2;
     ok(G.baitN1 === 1 && (G.baitLine && B1 && grade(R.a, raw.a) && !grade(B1.a, raw.a) && B1.a.dP === 0), `★미끼 1 — 단계 문을 전부/0 로 되돌린 사본은 10일치 마을을 0 으로 막는다(빨강 · dP ${B1 && B1.a.dP}) · 미끼 바꾼 자리 ${G.baitN1}`, J(B1 && B1.a));
     ok(G.baitN2 === 1 && (G.baitLine && B2 && !grade(B2.a, raw.a) && near(B2.a.dP, raw.a.dP)), `★미끼 2 — 비율이 곳간을 안 보는 사본은 10일치 마을도 다 는다(빨강 · dP ${B2 && B2.a.dP}) · 미끼 바꾼 자리 ${G.baitN2}`, J(B2 && B2.a));

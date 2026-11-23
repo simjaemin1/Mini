@@ -1,0 +1,27 @@
+# T1443 ② 밖에서 보는 생존 확인 — 15분마다 게임 주소 · central · 존(한반도 · 닛폰)이 HTTP 로 답하는지 본다.
+#   세 번(60초 간격) 다 실패일 때만 이 잡이 빨강이 되고 → GitHub 가 실패 메일을 보낸다(받는 사람: 보고 T1443 §2 — 문서 인용).
+#   비밀 0 · 라이브 무변(읽기만) · `regress-unit.yml` 과 무관 · 가지 보호 필수 검사에 넣지 않는다(재민 설정).
+#   매시 정각은 GitHub 가 늦추거나 버리는 때라(문서 "High load times include the start of every hour") 7 · 22 · 37 · 52분에 돈다.
+name: 생존 확인(밖에서)
+on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: live-ping
+  cancel-in-progress: false
+jobs:
+  live-ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts/live-ping.js
+            scripts/live-ping.sh
+          sparse-checkout-cone-mode: false
+      - name: 생존 확인
+        run: bash scripts/live-ping.sh

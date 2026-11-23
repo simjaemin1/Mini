@@ -83,7 +83,7 @@ ok(!T0.err && T0.same && T0.same.far.act === '고기 가지러' && T0.same.far.h
   '④ 불려 온 몸 — 멀면 걷기만(손 0) · 닿으면 그날 몫 25 kg(상한)을 지고 곳간 길 · 곳간에서 넣음(누계 25) · 지난날 몫이면 헛걸음(빈손 · 셈)', JSON.stringify(T0));
 // ── ⑤ 제 일을 같이 안 한다 ──
 const tick = VS.slice(VS.indexOf('function npcLifeTick(npc, now) {'));
-const iMeat = tick.indexOf("if (T1439_CALL_CARRY && t.k === 'meat') return _t1439Step(vil, npc, now, t);"), iJob = tick.indexOf('const job = npc.simJob;');
+const iMeat = tick.indexOf("if (T1439_CALL_CARRY && t.k === 'meat') return _t1439Step(vil, npc, now, t);"), iJob = Math.max(tick.indexOf('const job = npc.simJob;'), tick.indexOf('const job = _t1422J || npc.simJob;'));   // T1422 켬 = 그날 남는 시간 직업(끔 = `npc.simJob` · 같은 자리)
 ok(iMeat > 0 && iJob > iMeat, '⑤ 불려 간 몸은 제 일을 같이 안 한다 — 일감 갈래가 직업 갈래 앞에서 `return`(글자 차례)', JSON.stringify({ iMeat, iJob }));
 // ── ⑥ 미끼 ──
 const Ba = run(ON, SH(BAIT('server/wildlife.js', '    if (part.kg > 0) { for (const k in part.it) { left.it[k]', '    if (false) { for (const k in part.it) { left.it[k]')));
@@ -94,6 +94,6 @@ const Bc = run(ON, CALL(BAIT('server/villages.js', 'while (n < C.it[k] && part.k
 ok(Bc.baitN === 1 && !Bc.err && !callOk(Bc), '⑥ 미끼 ⓒ — 바꾼 자리 1곳(조각 짐 상한 → 늘 참)인 villages 사본은 ③ 빨강(짐 상한 넘김)', JSON.stringify({ baitN: Bc.baitN, parts: Bc.parts }));
 const VSb = VS.replace("if (T1439_CALL_CARRY && t.k === 'meat') return _t1439Step(vil, npc, now, t);", "if (T1439_CALL_CARRY && t.k === 'meat') _t1439Step(vil, npc, now, t);");
 const tickB = VSb.slice(VSb.indexOf('function npcLifeTick(npc, now) {')), iMeatB = tickB.indexOf("if (T1439_CALL_CARRY && t.k === 'meat') return _t1439Step(vil, npc, now, t);");
-ok(VSb !== VS && !(iMeatB > 0 && tickB.indexOf('const job = npc.simJob;') > iMeatB), '⑥ 미끼 ⓓ — 바꾼 자리 1곳(일감 갈래 `return` 뺌 — 제 일로 떨어짐)인 글자 사본은 ⑤ 빨강', JSON.stringify({ iMeatB }));
+ok(VSb !== VS && !(iMeatB > 0 && Math.max(tickB.indexOf('const job = npc.simJob;'), tickB.indexOf('const job = _t1422J || npc.simJob;')) > iMeatB), '⑥ 미끼 ⓓ — 바꾼 자리 1곳(일감 갈래 `return` 뺌 — 제 일로 떨어짐)인 글자 사본은 ⑤ 빨강', JSON.stringify({ iMeatB }));
 console.log(`\n${pass} 통과 · ${fail} 실패`);
 process.exit(fail ? 1 : 0);

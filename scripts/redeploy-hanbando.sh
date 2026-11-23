@@ -27,8 +27,12 @@
 #     지난번이 도중에 실패했으면 pull 전 HEAD 를 믿는 순간 빠뜨린다.
 set -euo pipefail
 REPO_DIR="${REPO_DIR:-/opt/Mini}"
+STOP_T="${STOP_T:-60}"   # ★[T1443 ④] 존 내리기 잰 값 — 라이브 크기(마을 51 · 사람 ~6,400 · 날 800) 20판 SIGTERM → 끝 7.7 ~ 35.7초(10초 넘김 19/20 · 보고 T1443 §4) → 60초
 STAMP="${STAMP:-/srv/durango/deployed-hanbando.sha}"
 cd "$REPO_DIR"
+# ★[T1443 ③] 앞 배포가 끊긴 흔적이면 첫 줄에 알린다(읽기만 — 하는 일은 아래 판정 그대로 · 새 규칙 0). 사고 2026-11-21: 존 stop 뒤에서 끊겨 재부팅에도 존이 안 떴다.
+_LS="$(bash "$REPO_DIR/scripts/live-status.sh" --brief 2>/dev/null || true)"
+case "$_LS" in "상태 ✗"*) echo "⚠ $_LS"; echo ;; esac
 
 MODE="${1:-}"
 FORCE_ALL=0; FORCE_CENTRAL=0; FORCE_ZONE=0; DRY=0
@@ -118,7 +122,7 @@ recreate() {  # recreate <name> <image> <port> <volume>
   local ENVS=()
   mapfile -t ENVS < <(docker inspect "$NAME" --format '{{range .Config.Env}}{{println .}}{{end}}' \
     | grep -v -E '^(PATH|NODE_VERSION|YARN_VERSION|NODE_ENV|HOME|HOSTNAME)=' || true)
-  docker stop "$NAME" >/dev/null 2>&1 || true   # ★[T728] SIGTERM 먼저 — 존이 진행 중 마감을 끝내고 마을을 저장한 뒤 내린다(기본 정지 시간 안 · 넘기면 SIGKILL · 마지막 경계 저장 그대로)
+  docker stop -t "$STOP_T" "$NAME" >/dev/null 2>&1 || true   # ★[T728] SIGTERM 먼저 — 존이 진행 중 마감을 끝내고 마을을 저장한 뒤 내린다(기본 정지 시간 안 · 넘기면 SIGKILL · 마지막 경계 저장 그대로)
   docker rm -f "$NAME" >/dev/null
   (
     a=(); for kv in ${ENVS[@]+"${ENVS[@]}"}; do case "$kv" in *=*) export "$kv"; a+=(-e "${kv%%=*}") ;; esac; done

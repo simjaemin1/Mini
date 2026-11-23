@@ -60,7 +60,7 @@ console.log(JSON.stringify({a:E.t1148Cold(mk(10,0)),b:E.t1148Cold(mk(1e6,0)),c:E
 }
 // ── ④ 직업 줄 ──
 {
-  const i = S.indexOf('// ★★[T1148] 추위 빚 — 땔감도 생존 필요'), f = S.indexOf('  if (foodEquiv < N * 30) {', i);
+  const i = S.indexOf('// ★★[T1148] 추위 빚 — 땔감도 생존 필요'), f = S.indexOf("  if (foodEquiv < N * t1419Days(v, null, 30, 'famine')) {", i);
   ok(i > 0 && f > i && f - i < 900, '④ 기근 블록 바로 앞이다(블록 안팎 같은 잣대)');
   const blk = S.slice(i, f);
   ok(/if \(T1148_FUEL_JOB && foodEquiv > N \* 6 && hasSlot\(v, 'lumberjack', cap, counts\) && !\(T325_WOOD_ACT && v\._t325Cells === 0\)\) \{/.test(blk), '④ 켬 ∧ 하드 플로어 N × 6 ∧ 자리 ∧ 나무 칸 0 아님(없으면 못 벤다)');

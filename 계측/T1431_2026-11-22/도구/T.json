@@ -1,0 +1,67 @@
+[
+ {
+  "tag": "B_1020",
+  "seed": 1020,
+  "days": 730,
+  "env": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1",
+   "T1431_RAID_BATTLE": "1"
+  },
+  "kind": "sbc",
+  "root": "/root/wt/b1431"
+ },
+ {
+  "tag": "B_7",
+  "seed": 7,
+  "days": 730,
+  "env": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1",
+   "T1431_RAID_BATTLE": "1"
+  },
+  "kind": "sbc",
+  "root": "/root/wt/b1431"
+ },
+ {
+  "tag": "B_42",
+  "seed": 42,
+  "days": 730,
+  "env": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1",
+   "T1431_RAID_BATTLE": "1"
+  },
+  "kind": "sbc",
+  "root": "/root/wt/b1431",
+  "heap": 4608
+ },
+ {
+  "tag": "ALL_42",
+  "seed": 42,
+  "days": 730,
+  "env": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1"
+  },
+  "kind": "sbc",
+  "root": "/root/wt/m1431",
+  "heap": 4608
+ },
+ {
+  "tag": "OFF_42",
+  "seed": 42,
+  "days": 730,
+  "env": {},
+  "kind": "sbc",
+  "root": "/root/wt/m1431"
+ }
+]

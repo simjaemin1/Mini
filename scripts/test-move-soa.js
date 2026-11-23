@@ -692,6 +692,7 @@ let RUN9 = null;
       wearEquipment: (p, slot) => { p._wear = (p._wear || 0) + 1; },
       zoneGameDay: () => 12, Lots: { isLot: () => false, reconcile: () => {} },
       weatherFor: (p) => ({ t: (p.x | 0) % 10 }), moveMultOf: (p) => 1,
+      T1438_DECAY: false, _t1438Roof: () => 1,   // ★[T1438] 몸 줄 지붕 몫(존 한 자리 · 끔 기본 — 끔이면 칸이 안 선다 · 켠 판은 `test-t1438-decay`)
       _followPayload: (p) => {                       // ★벗의 **x·y** 만 읽는다 — 일곱 단계 중 누구도 안 쓰는 칸(표 그대로)
         const f = p._follow; if (!f) return null; const t = onlineById.get(f.id); if (!t) return null;
         if (bait === 'hp') return { follow: { v: t.hp } };      // ★미끼 ① — 같은 틱에 HP 단계가 쓰는 칸

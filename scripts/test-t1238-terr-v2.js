@@ -805,7 +805,7 @@ sec('ⓜ [T1283] 나무 모자람 → 직업 고르기 · 미끼 · 틱 칸 · (
     ok(hf.haulMin === null && hf.added === MO.haul.day1.added, '(나) 수식 나무꾼 세계(T325 끔)는 켜도 걸음 0 · 넓힘 그대로', { hf, off: MO.haul.day1 });
   }
   const EC = fs.readFileSync(path.join(ROOT, 'sim/economy-sim.js'), 'utf8'), VS = fs.readFileSync(path.join(ROOT, 'server/villages.js'), 'utf8');
-  const iT1148 = EC.indexOf('if (T1148_FUEL_JOB && foodEquiv > N * 6'), iT1283 = EC.indexOf('if (T1283_WOOD_DEMAND && foodEquiv > N * 6'), iFam = EC.indexOf('  if (foodEquiv < N * 30) {\n    // ★농사 불가 마을');
+  const iT1148 = EC.indexOf('if (T1148_FUEL_JOB && foodEquiv > N * 6'), iT1283 = EC.indexOf('if (T1283_WOOD_DEMAND && foodEquiv > N * 6'), iFam = EC.indexOf("  if (foodEquiv < N * t1419Days(v, null, 30, 'famine')) {   // ★[T1419] 기근 문 날 = 한 함수(끔 = 30 · (나) = 0 = 문 걷음)\n    // ★농사 불가 마을");
   ok(iT1283 > 0 && iT1148 > iT1283 && iFam > iT1148 && /candidates\.push\(\['lumberjack', v\.land\.wood \* 0\.3 \* period \* w\('wood'\)\]\);/.test(EC) && /case 'lumberjack':  return \(L\.wood \|\| 0\) \* 0\.3 \* w\('wood'\) \* sk;/.test(EC),
     '글자 — T1283 문은 T1148 문 바로 앞(T1148 문은 그대로 기근 블록 바로 앞) · 값 함수(나무꾼 한계 가치 · 기회비용) 줄 그대로');
   ok(/const T1283_WOOD_DEMAND = \(typeof process !== 'undefined' && process\.env && process\.env\.T1283_WOOD_DEMAND === '1'\);/.test(EC) && /const T1283_CLEAR_HAUL = process\.env\.T1283_CLEAR_HAUL === '1';/.test(VS)

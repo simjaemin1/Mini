@@ -1,0 +1,29 @@
+
+A 원문 — 손잡이 · 문 · 미끼 자리
+  ✓ 손잡이 `T1432_NPC_DEATH` — `1` 만 켬 · env 읽는 자리 하나
+  ✓ 서버 블록 `reapDead` 잠든 econ 갈래에 T311 직업 수 줄(랩 그 식 — T1414 회부 2)
+  ✓ 미끼 a 자리 — 원문에 정확히 한 곳  zone.js
+  ✓ 미끼 b 자리 — 원문에 정확히 한 곳  villages.js
+  ✓ 미끼 c 자리 — 원문에 정확히 한 곳  villages.js
+  ✓ 미끼 d 자리 — 원문에 정확히 한 곳  villages.js
+
+B 켬(`T1432_NPC_DEATH=1`) — 마을 몸이 짐승에 쓰러진다
+    마을 1 · 앞 {"npc":8,"econ":8,"job":"hunter","cnt":8,"wild":0,"died":0,"t":0} · 뒤 {"npc":7,"econ":7,"cnt":7,"wild":1,"died":1,"t":0,"exit":"died","down":true,"hp":0,"inList":false,"alive":true} · 동기 뒤 {"npc":7,"econ":7} · 문 {"died":2,"wild":1,"other":1,"person":2,"paired":0,"sameJob":2,"first":0,"skip":0}
+  ✓ ★① 되살림 타이머 0 · 그 자리에 쓰러진 채(HP 0 · 나감 `died`) · 명부에서 빠짐  [[],"died",0]
+  ✓ ★① econ 명부 −1 · 몸 명부 −1(사람과 몸을 같이 뺀다)  econ 8→7 · 몸 8→7
+  ✓ ★① 그 직업 수 −1(`counts.hunter` · T311 줄)  8→7
+  ✓ ① econ 야생 누계 `_wildDeadTot` +1(랩 `reapDead` 그 칸 · T1315)  0→1
+  ✓ ★① 주검이 남는다(몸은 존에 그대로 · 누운 몸 꼬리표 `died.wild` +1 · 누운 시간 뒤 거둠)  died.wild 0→1
+  ✓ ② 다음 몸 동기(운영 그 문) 뒤 — 다른 몸이 또 줄지 않는다  {"npc":7,"econ":7}
+  ✓ ③ 촌장이 사람 손에 쓰러짐 — 다음 사람이 촌장 · econ −1 · 야생 누계 그대로  {"had":true,"was":"p1","now":"p3","next":"p3","econ":[7,6],"wild":[1,1],"exit":"died"}
+
+C 끔(`T1432_NPC_DEATH` 없음) — 종전 30초 되살림
+  ✓ ④ 끔 = 종전(되살림 타이머 30초 · 명부 · econ · 직업 수 그대로)  [[30000,30000],{"npc":8,"econ":8,"cnt":8,"wild":0,"died":0,"t":1,"exit":null,"down":false,"hp":0,"inList":true,"alive":true}]
+
+D 미끼 넷 — 켬 판에 원문 한 곳을 비틀어 싣는다
+  ✓ ★미끼 a 바꾼 자리 1곳(되살아나는 사본(켬 한 줄을 뺌)) — ① 되살림 줄이 빨강  1곳 · [[30000,30000],{"npc":8,"econ":8,"cnt":8,"wild":0,"died":0,"t":1,"exit":null,"down":false,"hp":0,"inList":true,"alive":true}]
+  ✓ ★미끼 b 바꾼 자리 1곳(명부에서 안 빠지는 사본(econ 빼기 → 읽기)) — ① 명부 줄이 빨강  1곳 · [[],{"npc":7,"econ":8,"cnt":7,"wild":1,"died":1,"t":0,"exit":"died","down":true,"hp":0,"inList":false,"alive":true}]
+  ✓ ★미끼 c 바꾼 자리 1곳(`counts` 가 하나 남는 사본(직업 수 줄을 뺌)) — ① 직업 수 줄이 빨강  1곳 · [[],{"npc":7,"econ":7,"cnt":8,"wild":1,"died":1,"t":0,"exit":"died","down":true,"hp":0,"inList":false,"alive":true}]
+  ✓ ★미끼 d 바꾼 자리 1곳(주검이 안 남는 사본(눕는 문 → 걸어 나가는 문)) — ① 주검 줄이 빨강  1곳 · [[],{"npc":7,"econ":7,"cnt":7,"wild":1,"died":0,"t":0,"exit":"other","down":false,"hp":0,"inList":false,"alive":true}]
+
+=== 18건 중 PASS 18 · FAIL 0 ===

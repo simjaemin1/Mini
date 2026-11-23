@@ -1,0 +1,17 @@
+[
+  {
+    "label": "서버-기준선-Node22",
+    "command": [
+      "npx",
+      "--yes",
+      "--package=node@22.23.4",
+      "node",
+      "scripts/server-baseline-check.js",
+      "계측/서버기준선_2026-11-18.json",
+      "--vclock",
+      "--plan",
+      "1020:400"
+    ],
+    "rc": 0
+  }
+]

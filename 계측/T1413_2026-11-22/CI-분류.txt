@@ -1,0 +1,2 @@
+--static — 이 가지가 바꾼 하네스 2종만(test-t1396-hunt-lab.js test-t1413-hunt-year.js) · 전부는 --all
+글자 분류 2종 · 가 95 · 나 265 · 다 93 · 라 10

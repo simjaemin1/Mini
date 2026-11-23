@@ -1,0 +1,66 @@
+[
+  {
+    "sp": "🦌",
+    "exchange": 500,
+    "share": "0.1",
+    "hunters": 17,
+    "labBothHold": true,
+    "freeBothHold": false,
+    "labEndRatios": [
+      0.9664,
+      0.984
+    ],
+    "freeEndRatios": [
+      0.9082,
+      0.8809
+    ]
+  },
+  {
+    "sp": "🐗",
+    "exchange": 500,
+    "share": "0.25",
+    "hunters": 1,
+    "labBothHold": true,
+    "freeBothHold": false,
+    "labEndRatios": [
+      0.9892,
+      0.9904
+    ],
+    "freeEndRatios": [
+      0.8972,
+      0.9208
+    ]
+  },
+  {
+    "sp": "🐗",
+    "exchange": 500,
+    "share": "0.25",
+    "hunters": 3,
+    "labBothHold": true,
+    "freeBothHold": false,
+    "labEndRatios": [
+      0.9448,
+      0.9009
+    ],
+    "freeEndRatios": [
+      0.4197,
+      0.3965
+    ]
+  },
+  {
+    "sp": "🐗",
+    "exchange": 5000,
+    "share": "5d",
+    "hunters": 1,
+    "labBothHold": true,
+    "freeBothHold": false,
+    "labEndRatios": [
+      0.9568,
+      0.921
+    ],
+    "freeEndRatios": [
+      0.8347,
+      0.898
+    ]
+  }
+]
