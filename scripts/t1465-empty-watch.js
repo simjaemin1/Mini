@@ -5,7 +5,7 @@ const state={scannedDays:0,firstDay:null,lastDay:null,firstEmptyCellDay:{},first
 let D=null,index=null,OUT=null;
 function scan(world,day,out){
  if(state.lastDay===day)return;
- if(!D){D=JSON.parse(fs.readFileSync(require('path').join(__dirname,'../계측/T1465_2026-11-23/광맥-진단.json')));index=new Map(T._getHardcoded()[D.zone].ores.map((o,i)=>[o,i]));OUT=out+'.empty-events.json';}
+ if(!D){if(process.env.T1465_EMPTY_RESUME){const r=JSON.parse(fs.readFileSync(process.env.T1465_EMPTY_RESUME));for(const k of Object.keys(state))if(Object.hasOwn(r,k))state[k]=r[k];}D=JSON.parse(fs.readFileSync(require('path').join(__dirname,'../계측/T1465_2026-11-23/광맥-진단.json')));index=new Map(T._getHardcoded()[D.zone].ores.map((o,i)=>[o,i]));OUT=out+'.empty-events.json';}
  state.firstDay??=day;state.lastDay=day;state.scannedDays++;
  const emptyByVein={};let emptyCells=0;
  for(const[key,r]of Object.entries(world._oreStock?.cells||{})){
@@ -20,4 +20,4 @@ function scan(world,day,out){
 }
 function write(){if(!OUT)return;const tmp=OUT+'.tmp-'+process.pid;fs.writeFileSync(tmp,JSON.stringify({definition:'All canonical physical candidate cells of a vein have stock below the body threshold1; untouched cells are full. Daily at completed economy-day boundary; canonical lazy refill evaluated without writing product records.',...state}));fs.renameSync(tmp,OUT);}
 process.on('exit',write);
-module.exports={scan};
+module.exports={scan,flush:write};
