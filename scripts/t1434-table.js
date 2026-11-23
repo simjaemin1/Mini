@@ -97,6 +97,20 @@ for (const r of dead) {
   if (r.stack) { L.push(`  - ${r.stack.file} ${r.stack.at}줄부터 15줄:`); L.push('  ```'); for (const t of r.stack.lines) L.push('  ' + t); L.push('  ```'); }
 }
 L.push('');
+L.push('## ⑤ 산 교전이 있던 날 수와 하루 초(100날 칸 · 판 로그 `⚔️ 전쟁 day N: … 교전 K` 줄에서 K ≥ 1 인 날)');
+L.push('');
+const fights = {};
+for (const r of runs) {
+  const m = new Map();
+  for (const f of (() => { try { return fs.readdirSync(path.join(R, r.id)).filter((x) => /^seg-\d+\.log$/.test(x)); } catch (e) { return []; } })()) {
+    for (const l of lines(path.join(R, r.id, f))) { const q = l.match(/전쟁 day (\d+):.*교전 (\d+)/); if (q && !m.has(+q[1])) m.set(+q[1], +q[2]); }
+  }
+  const win = {}; for (const [d, k] of m) { const b = Math.min(Math.ceil(d / 100) * 100, r.days); win[b] = win[b] || { n: 0, f: 0 }; win[b].n++; if (k > 0) win[b].f++; }
+  fights[r.id] = win;
+  const cells = r.obs.map((x) => `${x.day}날 ${win[x.day] ? win[x.day].f : '—'}일 · ${x.secPerDay}초`);
+  if (cells.length) L.push(`- ${r.id}: ${cells.join(' | ')}`);
+}
+L.push('');
 L.push('## ④ 첫 줄 칸');
 L.push('');
 const head = {};
@@ -109,4 +123,4 @@ for (const r of runs) {
   L.push(`- ${r.id}: RSS 400 · 800 · 1200 · 1460날 ${rss.join(' · ')} MB · DB ${db} MB · 하루 ${s0} → ${s1}초`);
 }
 console.log(L.join('\n'));
-if (jsonOut) fs.writeFileSync(jsonOut, JSON.stringify({ runs: runs.map((r) => ({ id: r.id, seed: r.seed, heap: r.heap, rc: r.rc, sec: r.sec, full: r.full, lastDay: r.lastDay, cause: r.cause, last: r.last, obs: r.obs, stack: r.stack })), head, nFull }, null, 1));
+if (jsonOut) fs.writeFileSync(jsonOut, JSON.stringify({ runs: runs.map((r) => ({ id: r.id, seed: r.seed, heap: r.heap, rc: r.rc, sec: r.sec, full: r.full, lastDay: r.lastDay, cause: r.cause, last: r.last, obs: r.obs, stack: r.stack })), head, fights, nFull }, null, 1));
