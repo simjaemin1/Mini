@@ -1,0 +1,168 @@
+{
+  "acceptedAsSameHostOffGate": false,
+  "reason": "Inherited outputs came from a different execution environment. Default-world main output agrees but probe has last-bit floating accumulation differences; bundle main outputs also diverge. Investigating by rerunning pre-implementation and current OFF on the SAME runner; these cross-environment comparisons are not claimed as byte parity.",
+  "runs": [
+    {
+      "run": "lab-off-7",
+      "days": 800,
+      "node": "v24.22.1",
+      "workflowRun": 45115738750,
+      "sourceCommit": "a1064b07",
+      "comparison": {
+        "worldByteEqual": true,
+        "probeByteEqual": false
+      },
+      "currentWorldBase": {
+        "pop": 6685,
+        "dead": 0,
+        "ever": 51,
+        "weapQ": 766,
+        "expand": 5874,
+        "trades": 5000
+      },
+      "inheritedWorldBase": {
+        "pop": 6685,
+        "dead": 0,
+        "ever": 51,
+        "weapQ": 766,
+        "expand": 5874,
+        "trades": 5000
+      }
+    },
+    {
+      "run": "lab-bundle-42",
+      "days": 800,
+      "node": "v24.22.1",
+      "workflowRun": 45115738750,
+      "sourceCommit": "a1064b07",
+      "comparison": {
+        "worldByteEqual": false,
+        "probeByteEqual": false
+      },
+      "currentWorldBase": {
+        "pop": 6095,
+        "dead": 0,
+        "ever": 51,
+        "weapQ": 1660,
+        "expand": 4193,
+        "trades": 5000
+      },
+      "inheritedWorldBase": {
+        "pop": 5978,
+        "dead": 0,
+        "ever": 51,
+        "weapQ": 1701,
+        "expand": 4231,
+        "trades": 5000
+      }
+    },
+    {
+      "run": "lab-bundle-1020",
+      "days": 800,
+      "node": "v24.22.1",
+      "workflowRun": 45115738750,
+      "sourceCommit": "a1064b07",
+      "comparison": {
+        "worldByteEqual": false,
+        "probeByteEqual": false
+      },
+      "currentWorldBase": {
+        "pop": 6377,
+        "dead": 0,
+        "ever": 51,
+        "weapQ": 2053,
+        "expand": 5087,
+        "trades": 5000
+      },
+      "inheritedWorldBase": {
+        "pop": 6372,
+        "dead": 0,
+        "ever": 51,
+        "weapQ": 1633,
+        "expand": 5154,
+        "trades": 5000
+      }
+    },
+    {
+      "run": "lab-off-1020",
+      "days": 800,
+      "node": "v24.22.1",
+      "workflowRun": 45115738750,
+      "sourceCommit": "a1064b07",
+      "comparison": {
+        "worldByteEqual": true,
+        "probeByteEqual": false
+      },
+      "currentWorldBase": {
+        "pop": 6181,
+        "dead": 1,
+        "ever": 51,
+        "weapQ": 1163,
+        "expand": 4491,
+        "trades": 5000
+      },
+      "inheritedWorldBase": {
+        "pop": 6181,
+        "dead": 1,
+        "ever": 51,
+        "weapQ": 1163,
+        "expand": 4491,
+        "trades": 5000
+      }
+    },
+    {
+      "run": "lab-bundle-7",
+      "days": 800,
+      "node": "v24.22.1",
+      "workflowRun": 45115738750,
+      "sourceCommit": "a1064b07",
+      "comparison": {
+        "worldByteEqual": false,
+        "probeByteEqual": false
+      },
+      "currentWorldBase": {
+        "pop": 6247,
+        "dead": 0,
+        "ever": 51,
+        "weapQ": 2594,
+        "expand": 5250,
+        "trades": 5000
+      },
+      "inheritedWorldBase": {
+        "pop": 6123,
+        "dead": 0,
+        "ever": 51,
+        "weapQ": 1614,
+        "expand": 4339,
+        "trades": 5000
+      }
+    },
+    {
+      "run": "lab-off-42",
+      "days": 800,
+      "node": "v24.22.1",
+      "workflowRun": 45115738750,
+      "sourceCommit": "a1064b07",
+      "comparison": {
+        "worldByteEqual": true,
+        "probeByteEqual": false
+      },
+      "currentWorldBase": {
+        "pop": 6530,
+        "dead": 0,
+        "ever": 51,
+        "weapQ": 928,
+        "expand": 4760,
+        "trades": 5000
+      },
+      "inheritedWorldBase": {
+        "pop": 6530,
+        "dead": 0,
+        "ever": 51,
+        "weapQ": 928,
+        "expand": 4760,
+        "trades": 5000
+      }
+    }
+  ]
+}

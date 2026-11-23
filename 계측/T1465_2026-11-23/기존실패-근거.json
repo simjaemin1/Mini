@@ -1,0 +1,21 @@
+{
+  "lab/마을실험실.html": {
+    "outsideGeneratedEngineByteEqual": true,
+    "sha256": "7ebe07c3398244505f884a749b7a050941b8cb5b12550b2ca992dd1ea4e1e6b3"
+  },
+  "lab/전쟁실험실.html": {
+    "outsideGeneratedEngineByteEqual": true,
+    "sha256": "30bb68d8dc60390c4332e31222794d47f5de6567382f616a7a16e24b5b6cc8b1"
+  },
+  "harness": {
+    "path": "scripts/test-lab-mining.js",
+    "sameAsBase": true,
+    "sha256": "fc9154ee694b89fbeb53e790b5f27f734b6991331fdd1b7a701615745b4e524c",
+    "currentResult": "FAIL 2: no miners assigned to ore cells; no stock decrease. 90-day world, miners0. 2203s under simultaneous measurement load.",
+    "existingEvidence": [
+      "보고/T1427_2026-11-22.md:203",
+      "계측/T1427_2026-11-22/하네스-러너.txt:31"
+    ],
+    "baselineExistingResult": "Same two failures, 1296seconds alone, explicitly known nightly red T1240/T1203."
+  }
+}
