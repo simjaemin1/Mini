@@ -1818,8 +1818,9 @@ function _t1404Leave(g, day) {   // 비축 0 이 `BDT_STARVE` 날 — 그 땅이
   return ex;
 }
 function _t1404Where(g, each) {   // ㉢ 갈라짐(· T1469 옮김) 자리 — 정보 반경 안 털 것 많은 마을부터(이미 단이 사는 마을 둘레는 뺀다 — 소굴 이격 그 수) 그 둘레 숨을 자리 · `each` 가 있으면 자리마다 묻는다(참 = 고름)
-  const L = _t1404Rich(g.camp.cx, g.camp.cy, (v) => S.GANGS.some((o) => Math.hypot(o.camp.cx - v.ccx, o.camp.cy - v.ccy) < BDT_DEN_SEP) || S.ROAD.some((r) => Math.hypot(r.g.camp.cx - v.ccx, r.g.camp.cy - v.ccy) < BDT_DEN_SEP));
-  let camp = null; for (const { v } of L) { camp = campSpot(v.ccx, v.ccy, true, BDT_DEN_SEP); if (camp && (!each || each(camp, v))) break; camp = null; }
+  const sep = BDT_DEN_SEP;   // 소굴 이격(마을 둘레를 뺄 때 · 자리를 고를 때 같은 수)
+  const L = _t1404Rich(g.camp.cx, g.camp.cy, (v) => S.GANGS.some((o) => Math.hypot(o.camp.cx - v.ccx, o.camp.cy - v.ccy) < sep) || S.ROAD.some((r) => Math.hypot(r.g.camp.cx - v.ccx, r.g.camp.cy - v.ccy) < sep));
+  let camp = null; for (const { v } of L) { camp = campSpot(v.ccx, v.ccy, true, sep); if (camp && (!each || each(camp, v))) break; camp = null; }
   return camp;
 }
 function _t1404Split(g, k, day) {   // 갈라짐 — k 명이 다른 길목으로(㉠ 자리 · 이미 단이 사는 마을 둘레는 뺀다 — 소굴 이격 그 수) · 몸은 걷는다 · 장부가 닿는 날 단이 선다
@@ -1866,7 +1867,7 @@ function _t1469Move(g, day) {   // 비축 0 이 `BDT_STARVE` 날 — 옮길 자�
     if (T1104_WALK) _t1104Drop(g, P, day);
     const d = P.pile.data;
     { const _G = _gl(); if (_G) { const Lt = _G.gangDump(g); if (Lt) d._t748Lots = Lt; } }
-    delete d._bandit; d._left = day; P.pile.ownerId = 'public'; P.gid = null;
+    delete d._bandit; d._left = day; P.pile.ownerId = 'public'; P.gid = null; d._t1469 = g.id;   // 흩어진 단 더미 그 꼴 · 옮겨 간 단 번호(계측)
     st.pile++; st.pileFood += +d.food || 0;
     _t1079Unbind(g);
   }
