@@ -1,0 +1,9 @@
+--seeds 7 --cap lab --out /Users/simjaemin1/Mini/_api/tmp/t1413/A2_s7.jsonl
+--seeds 1020 --cap lab --out /Users/simjaemin1/Mini/_api/tmp/t1413/A2_s1020.jsonl
+--seeds 7 --cap free --exch 5000,50000,187000 --out /Users/simjaemin1/Mini/_api/tmp/t1413/B_s7.jsonl
+--seeds 1020 --cap free --exch 5000 --out /Users/simjaemin1/Mini/_api/tmp/t1413/B_s1020.jsonl
+--seeds 7 --cap lab --r 0.0004 --out /Users/simjaemin1/Mini/_api/tmp/t1413/C4_s7.jsonl
+--seeds 7 --cap lab --r 0.0006 --out /Users/simjaemin1/Mini/_api/tmp/t1413/C6_s7.jsonl
+--seeds 1020 --cap lab --r 0.0004 --out /Users/simjaemin1/Mini/_api/tmp/t1413/C4_s1020.jsonl
+--seeds 1020 --cap lab --r 0.0006 --out /Users/simjaemin1/Mini/_api/tmp/t1413/C6_s1020.jsonl
+--seeds 7 --cap free --exch 500 --out /Users/simjaemin1/Mini/_api/tmp/t1413/B500_s7.jsonl

@@ -1,0 +1,2 @@
+동일 관측 → 첫 갈림 없음
+실제 틱1255 사망 장부 한 칸 1→0 → 첫 인덱스/필드/두 값 탐지: {"index":25739,"left":["🐯",1255,689922,"16450557ba0088a86b6ce15d466e5380c8528f5fa4c3d18dc8341814c6f28a06"],"right":["🐯",1255,689922,"41cdd75cd5c800cafc51f86de2b9da150de864e8cf5f68a70fdfba39c4816e21"],"field":{"path":"state.stats._hDeadN","left":1,"right":0}}

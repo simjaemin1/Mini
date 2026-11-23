@@ -165,6 +165,17 @@ const T1404_DEN_ROUTE = !!process.env && process.env.T1404_DEN_ROUTE === '1';
 const T1404_GANG_FORAGE = !!process.env && (process.env.T1404_GANG_FORAGE === '1' || process.env.T1404_GANG_FORAGE === 'tool') ? process.env.T1404_GANG_FORAGE : '';
 const T1404_GANG_SIZE = !!process.env && process.env.T1404_GANG_SIZE === '1';
 const T1404_RAID_LURK = T1104_WALK && !!process.env && process.env.T1404_RAID_LURK === '1';
+// ★★[T1431 2026-11-22 · 세션6 · ★재민 11-22 판정 35 "도적과 npc의 싸움도 전투실험실처럼 물리적인 전투가 일어나야 해 … 캐러밴이 도적과 일정 거리 안에 들어오면 전투 모드..
+//    전력 차이+낮은 행복(사기)면 바로 짐 버리고 도주.. 그렇지 않으면 싸움.."] **도적과 캐러밴은 몸으로 싸운다** — 손잡이 `T1431_RAID_BATTLE=1`(끔 기본 · 끔 = 아래 갈래가 안 닿는다 = 종전 글자).
+//   켬: econ 약탈 판(`_raidOut` · `_raidIn`)이 `_raidScrum`(식이 정한 per-entity 스크럼 — 털리면 행상 하나가 그 자리에서 쓰러짐) 대신 호스트 문 `world.raidFight` 를 부른다 —
+//     `sim/caravan-battle.js` `raidBattle`: 만나는 순간 두 편 세기(란체스터 제곱 · battle-core 병종 atk · hp × 무기 품질)와 사기(battle-core 사기 목표 × 집 마을 행복)를 보고
+//     밀리고 **그리고** 사기가 궤주 문턱 밑이면 짐을 버리고 달아난다(사람은 산다 · 짐은 도적이 몸으로 나른다 — `onBanditLoot`) · 아니면 battle-core 한 판(병종 · 개별 사기 · 궤주 —
+//     전투실험실 그 코어)으로 싸운다(진 쪽이 궤주 · 쓰러진 몸만 죽는다). 씨 = (날 · 캐러밴 · 단) 해시(주사위 0).
+//   거리: 길목에 선 단은 그 길목 칸에서 `ENGAGE_R`(50칸 — 전쟁 층 `WAR_ENGAGE_R`) 안을 지나는 캐러밴을 만난다(T1404 ㉣ 만남 식의 "같은 칸"이 "거리 안"으로 — 반대 방향 길의 길목이 단 곁이면 그 캐러밴도).
+//   몸: 판 자(몸 상한 1)와 몸 세계가 같은 한 판(battle-core 를 머리 없이 · 표준 배치 간격 = 그 거리) — 죽은 몸은 종전 문(도적 = T1078 · 호위 · 행상 = econ 사람 줄)으로 걷힌다.
+const T1431_RAID_BATTLE = !!process.env && process.env.T1431_RAID_BATTLE === '1';
+let _cbM = null;
+function _cb() { return _cbM || (_cbM = require('../sim/caravan-battle')); }
 //   ㉡ 의 econ 수(`sim/economy-sim.js` 그 글자 — 모듈이 내보내지 않는 수라 여기 적는다 · 하네스가 econ 글자와 같은지 본다): `tickVillage` 도구 등급(맨손 0.25 · 석기 `_toolQ` 없을 때 1.4 · 청동 1.4 · 철 1.8) · 숙련 배수(1 + 숙련 × 0.05)
 const T1404_ECON = { bare: 0.25, stone: 1.4, bronze: 1.4, iron: 1.8, skill: 0.05 };
 function _t577Hash(name) { let h = 0; const s = String(name || ''); for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) | 0; return h >>> 0; }
@@ -765,7 +776,8 @@ function installHooks() { // econ 계약 훅(★v2 주사위는 이미 서버 �
     return gs && gs.length ? gs[0] : null;
   };
   if (T1079_CAMP) world.banditArmed = (g) => armsHeld(g);   // ★[T1079 ⑤] econ `_raidScrum` 이 단의 무기 짐을 읽는 문(손에 든 수 · 끔 = 설치 0 → econ 종전 atk 19)
-  if (T1104_WALK) world.banditMeet = (c, day) => _t1104Meet(c, day);   // ★[T1104 ①] econ 캐러밴 하루마다 — 오늘 길목에서 그 캐러밴을 만난 단(끔 = 설치 0 → econ 종전 도착 판)
+  if (T1104_WALK) world.banditMeet = (c, day) => _t1104Meet(c, day);
+  if (T1431_RAID_BATTLE) world.raidFight = (c, g, leg, day) => _t1431Fight(c, g, leg, day);   // ★[T1431] econ 약탈 판이 몸 전투로(끔 = 설치 0 → econ `_raidScrum` 그대로)   // ★[T1104 ①] econ 캐러밴 하루마다 — 오늘 길목에서 그 캐러밴을 만난 단(끔 = 설치 0 → econ 종전 도착 판)
   world.onBanditLoot = (victim, other, res, amt, day, gang) => {   // ★[T1104] 여섯째 = 싸운 단(econ 이 준다 · 켬에서만 읽는다)
     if (!(amt > 0)) return;
     const k = victim.name < other.name ? victim.name + '|' + other.name : other.name + '|' + victim.name;
@@ -1853,7 +1865,8 @@ function _t1404Meet(c, day) {   // econ 캐러밴 하루마다 — 오늘 장부
     if (!_t1104At(T, day)) continue;   // 장부가 아직 길목에 못 닿았다
     const C = _t1104Choke(g, lg.from, lg.to); if (!C) continue;
     const cx = Math.floor(T.x / SZ), cy = Math.floor(T.y / SZ);
-    if (Math.floor(C.x / SZ) !== cx || Math.floor(C.y / SZ) !== cy) continue;   // 이 방향 길의 길목이 단이 선 칸이 아니다
+    if (T1431_RAID_BATTLE) { if (!_cb().inRange(Math.floor(C.x / SZ) - cx, Math.floor(C.y / SZ) - cy)) continue; }   // ★[T1431] 거리 안(단이 선 칸에서 이 방향 길의 길목까지)
+    else if (Math.floor(C.x / SZ) !== cx || Math.floor(C.y / SZ) !== cy) continue;   // 이 방향 길의 길목이 단이 선 칸이 아니다
     const L1 = _t1104Lc(C.clen, lg.D0, lg.D1, day), L0 = _t1104Lc(C.clen, lg.D0, lg.D1, day - 1);
     if (!(day > lg.D0 && L1 >= C.s && (day - 1 <= lg.D0 || L0 < C.s))) continue;   // 오늘 길목을 안 지난다(T1104 `_t1104Meet` 그 식)
     const all = _t1104Bodies(g), party = all.filter((p) => p._t1104W === g.id);
@@ -1868,6 +1881,23 @@ function _t1404Meet(c, day) {   // econ 캐러밴 하루마다 — 오늘 장부
   queueLog(day, `도적단#${best.id} ${best.n}명이 길목(${Math.floor(T.x / SZ)},${Math.floor(T.y / SZ)})에서 캐러밴#${c.id}(${c.from.name}→${c.to.name} ${c.state === 'outbound' ? '가는 길' : '귀로'})을 만났다 — 서서 기다렸다 [T1404 ㉣]`);
   return best;
 }
+// ★[T1431] 몸 전투 한 판 — econ 문 `world.raidFight`(위 머리 주석). 답 = econ `_raidScrum` 꼴 + `loss`(버린 짐 몫) · `fled`.
+function _t1431St() { return S.stats.t1431 || (S.stats.t1431 = { n: 0, fled: 0, fight: 0, repel: 0, lost: 0, draw: 0, traderDead: 0, traderDeadWon: 0, escDead: 0, banditDead: 0, esc0: 0, secs: 0, ms: 0, happySum: 0, outmatched: 0, low: 0 }); }   // 켬에서만 칸이 선다
+function _t1431Fight(c, g, leg, day) {
+  const st = _t1431St(), v = c.from, t0 = process.hrtime();   // CPU 재기(벽시계 — 가상 시계 판도 진짜 시간 · 판 값엔 안 든다)
+  const happy = v && v.lastStats && typeof v.lastStats.happiness === 'number' ? v.lastStats.happiness : 1;
+  const armed = S.host.world && S.host.world.banditArmed ? S.host.world.banditArmed(g) : null;
+  const r = _cb().raidBattle({ esc: c.escort | 0, gangN: g.n | 0, armed, qA: (v && v._weapQ) || 0.42, qB: 0.42, happy, seed: _cb().seedOf(day, c.id | 0, g.id | 0) });
+  st.n++; st.happySum += r.d.happy; if (r.d.outmatched) st.outmatched++; if (r.d.low) st.low++; if (!((c.escort | 0) > 0)) st.esc0++;
+  if (r.fled) st.fled++; else { st.fight++; if (r.repel) { if (r.draw) st.draw++; else st.repel++; } else st.lost++; st.secs += r.secs || 0; }
+  if (r.traderDead) { st.traderDead++; if (r.repel) st.traderDeadWon++; }
+  st.escDead += r.escKilled | 0; st.banditDead += r.banditsKilled | 0; { const d = process.hrtime(t0); st.ms += d[0] * 1e3 + d[1] / 1e6; }
+  queueLog(day, `캐러밴#${c.id}(${c.from.name}→${c.to.name} ${leg === 'outbound' ? '가는 길' : '귀로'} · 호위 ${c.escort | 0} · 행복 ${r.d.happy.toFixed(2)}) ↔ 도적단#${g.id} ${g.n}명 — ` +
+    (r.fled ? `밀리고(세기 ${Math.round(r.d.sA)} < ${Math.round(r.d.sB)}) 사기 ${r.d.mrl.toFixed(2)} < 궤주 문턱 — 짐을 버리고 달아났다` :
+      `싸웠다 ${r.secs}초 — ${r.repel ? (r.draw ? '비겼다(도적이 못 가져갔다)' : '도적을 물리쳤다') : '졌다(짐을 버리고 궤주)'} · 쓰러짐 호위 ${r.escKilled} · 행상 ${r.traderDead ? 1 : 0} · 도적 ${r.banditsKilled}`) + ' [T1431]');
+  return r;
+}
+function t1431() { return { on: T1431_RAID_BATTLE, st: S.stats.t1431 ? Object.assign({}, S.stats.t1431) : null, R: T1431_RAID_BATTLE ? _cb().ENGAGE_R : null }; }   // 증인(읽기만)
 function t1404() {   // 증인(읽기만) — 손잡이 · 셈 · 단마다 땅 · 먹이는 수 · 길목
   return { knobs: { route: T1404_DEN_ROUTE, forage: T1404_GANG_FORAGE || '', size: T1404_GANG_SIZE, lurk: T1404_RAID_LURK }, st: S.stats.t1404 ? Object.assign({}, S.stats.t1404) : null,
     gangs: S.GANGS.map((g) => { const L = g._t1404L ? g._t1404L.land : null, P = L && T1404_GANG_FORAGE ? _t1404Plan(g, g.n | 0, L) : null;
@@ -2046,6 +2076,7 @@ module.exports = { t1187OpenDay: (vil) => _bdtOpenDay(vil), init, onGameTick, da
   t1078Died, t1078On: () => T1078_ALL,
   t1079, t1079On: () => T1079_CAMP,   // ★[T1079] 은거지 시설 · 짐 더미 증인(읽기만)
   t1104, t1104On: () => T1104_WALK,   // ★[T1104] 약탈 · 토벌 걸음 증인(읽기만)
+  t1431,   // ★[T1431] 도적과 캐러밴은 몸으로 싸운다 — 증인(읽기만)
   t1404,   // ★[T1404] 도적은 길목에서 산다 — 증인(관찰기 `t1404hook` · 하네스 `test-t1404-bandit-live` — 읽기만)
   _t1404Probe: { hide: (x, y) => _t1404Hide(x, y), spot: (x, y) => _t1404Spot(x, y), camp: (vil) => _t1404Camp(vil), dens: (D) => _t1404Dens(D), plan: (g, m, land) => _t1404Plan(g, m, land), cap: (g, land) => _t1404Cap(g, land),
     land: (g) => _t1404Land(g), forage: (day) => _t1404Forage(day), leave: (g, day) => _t1404Leave(g, day), split: (g, k, day) => _t1404Split(g, k, day), traffic: (day, byE) => _t1404Traffic(day, byE), best: (g) => _t1404Best(g),

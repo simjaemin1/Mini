@@ -1,0 +1,5 @@
+[
+ {"tag":"POP_ON_1020g","seed":1020,"days":400,"env":{"T400_BUILD_ACT":"1","T1440_ROAD_RULE":"1","T1423_NO_BUILD":"1"}},
+ {"tag":"POP_ON_7g","seed":7,"days":400,"env":{"T400_BUILD_ACT":"1","T1440_ROAD_RULE":"1","T1423_NO_BUILD":"1"}},
+ {"tag":"POP_ON_42g","seed":42,"days":400,"env":{"T400_BUILD_ACT":"1","T1440_ROAD_RULE":"1","T1423_NO_BUILD":"1"}}
+]

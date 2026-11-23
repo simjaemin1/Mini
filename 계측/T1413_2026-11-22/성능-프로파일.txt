@@ -1,0 +1,891 @@
+Statistical profiling result from /workspace/scratch/t1413-v8.log, (9692 ticks, 6830 unaccounted, 0 excluded).
+
+ [Shared libraries]:
+   ticks  total  nonlib   name
+     74    0.8%          /usr/lib/x86_64-linux-gnu/libc.so.6
+      2    0.0%          /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.33
+
+ [JavaScript]:
+   ticks  total  nonlib   name
+    663    6.8%    6.9%  Builtin: LoadIC_Megamorphic
+    226    2.3%    2.4%  JS: *updateMobs evalmachine.<anonymous>:206:20
+    194    2.0%    2.0%  JS: *query evalmachine.<anonymous>:14:14
+    185    1.9%    1.9%  JS: +updateMobs evalmachine.<anonymous>:206:20
+    143    1.5%    1.5%  Builtin: LoadGlobalIC
+    117    1.2%    1.2%  Builtin: LoadIC
+    100    1.0%    1.0%  Builtin: StoreIC_Megamorphic
+     75    0.8%    0.8%  JS: *move evalmachine.<anonymous>:268:16
+     66    0.7%    0.7%  Builtin: LoadICTrampoline_Megamorphic
+     63    0.7%    0.7%  Builtin: CEntry_Return1_ArgvOnStack_NoBuiltinExit
+     55    0.6%    0.6%  JS: *nearIn evalmachine.<anonymous>:250:16
+     52    0.5%    0.5%  JS: *__sepGrid evalmachine.<anonymous>:2:23
+     48    0.5%    0.5%  Builtin: FindOrderedHashMapEntry
+     36    0.4%    0.4%  JS: *sin evalmachine.<anonymous>:30:15
+     36    0.4%    0.4%  JS: *move evalmachine.<anonymous>:22:13
+     33    0.3%    0.3%  Builtin: LoadGlobalICTrampoline
+     32    0.3%    0.3%  JS: *Math.hypot evalmachine.<anonymous>:3:24
+     29    0.3%    0.3%  JS: ^updateMobs evalmachine.<anonymous>:206:20
+     29    0.3%    0.3%  Builtin: StoreIC
+     27    0.3%    0.3%  JS: *<anonymous> evalmachine.<anonymous>:280:55
+     26    0.3%    0.3%  JS: *<anonymous> evalmachine.<anonymous>:1:1
+     23    0.2%    0.2%  Builtin: ArrayIteratorPrototypeNext
+     22    0.2%    0.2%  JS: *cos evalmachine.<anonymous>:35:15
+     22    0.2%    0.2%  Builtin: ToBooleanForBaselineJump
+     21    0.2%    0.2%  Builtin: CallFunction_ReceiverIsNotNullOrUndefined
+     15    0.2%    0.2%  JS: *Math.random evalmachine.<anonymous>:1:49
+     15    0.2%    0.2%  Builtin: KeyedLoadIC
+     12    0.1%    0.1%  JS: *atan evalmachine.<anonymous>:46:16
+     12    0.1%    0.1%  Builtin: StrictEqual_Baseline
+     11    0.1%    0.1%  JS: *<anonymous> evalmachine.<anonymous>:689:62
+      9    0.1%    0.1%  JS: *atan2 evalmachine.<anonymous>:57:17
+      9    0.1%    0.1%  Builtin: RecordWriteSaveFP
+      9    0.1%    0.1%  Builtin: GrowFastSmiOrObjectElements
+      9    0.1%    0.1%  Builtin: Add_Baseline
+      8    0.1%    0.1%  JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      8    0.1%    0.1%  Builtin: Multiply_Baseline
+      8    0.1%    0.1%  Builtin: MapPrototypeSet
+      7    0.1%    0.1%  JS: *<anonymous> evalmachine.<anonymous>:210:24
+      7    0.1%    0.1%  Builtin: Subtract_Baseline
+      7    0.1%    0.1%  Builtin: StoreICTrampoline_Megamorphic
+      7    0.1%    0.1%  Builtin: MapPrototypeGet
+      7    0.1%    0.1%  Builtin: Call_ReceiverIsNotNullOrUndefined_Baseline_Compact
+      6    0.1%    0.1%  Builtin: MathMin
+      6    0.1%    0.1%  Builtin: MapIteratorPrototypeNext
+      6    0.1%    0.1%  Builtin: FastNewClosure
+      5    0.1%    0.1%  JS: +move evalmachine.<anonymous>:268:16
+      5    0.1%    0.1%  JS: +Math.hypot evalmachine.<anonymous>:3:24
+      5    0.1%    0.1%  JS: *win evalmachine.<anonymous>:688:6
+      5    0.1%    0.1%  JS: *key evalmachine.<anonymous>:10:17
+      5    0.1%    0.1%  JS: *kcos evalmachine.<anonymous>:14:16
+      5    0.1%    0.1%  JS: *canWalk evalmachine.<anonymous>:223:17
+      5    0.1%    0.1%  JS: *_insideBldgV evalmachine.<anonymous>:72:22
+      5    0.1%    0.1%  Builtin: CallIteratorWithFeedback
+      5    0.1%    0.1%  Builtin: ArrayTimSort
+      4    0.0%    0.0%  JS: *rec evalmachine.<anonymous>:1:730
+      4    0.0%    0.0%  Builtin: MathMax
+      4    0.0%    0.0%  Builtin: MathAbs
+      4    0.0%    0.0%  Builtin: LoadICBaseline
+      4    0.0%    0.0%  Builtin: GreaterThan_Baseline
+      4    0.0%    0.0%  Builtin: CreateShallowObjectLiteral
+      4    0.0%    0.0%  Builtin: CallFunction_ReceiverIsAny
+      4    0.0%    0.0%  Builtin: ArrayPrototypeSort
+      3    0.0%    0.0%  JS: +canWalk evalmachine.<anonymous>:223:17
+      3    0.0%    0.0%  JS: +atan2 evalmachine.<anonymous>:57:17
+      3    0.0%    0.0%  JS: +<anonymous> evalmachine.<anonymous>:280:55
+      3    0.0%    0.0%  JS: *valid evalmachine.<anonymous>:9:19
+      3    0.0%    0.0%  JS: *losRk evalmachine.<anonymous>:201:13
+      3    0.0%    0.0%  JS: *ksin evalmachine.<anonymous>:12:16
+      3    0.0%    0.0%  JS: *__ps evalmachine.<anonymous>:1:36
+      3    0.0%    0.0%  Builtin: LessThan_Baseline
+      3    0.0%    0.0%  Builtin: Increment_Baseline
+      3    0.0%    0.0%  Builtin: Call_ReceiverIsNotNullOrUndefined
+      3    0.0%    0.0%  Builtin: CallFunction_ReceiverIsNullOrUndefined
+      3    0.0%    0.0%  Builtin: ArrayPrototypePush
+      3    0.0%    0.0%  Builtin: ArrayFilter
+      2    0.0%    0.0%  JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      2    0.0%    0.0%  JS: +fbm evalmachine.<anonymous>:35:11
+      2    0.0%    0.0%  JS: +HSK_F evalmachine.<anonymous>:198:13
+      2    0.0%    0.0%  JS: *seen evalmachine.<anonymous>:279:16
+      2    0.0%    0.0%  JS: *isBlocked evalmachine.<anonymous>:57:48
+      2    0.0%    0.0%  JS: *gkey evalmachine.<anonymous>:248:20
+      2    0.0%    0.0%  JS: *__none evalmachine.<anonymous>:1:196
+      2    0.0%    0.0%  Builtin: Store_FastSmiElements_0
+      2    0.0%    0.0%  Builtin: MergeAt
+      2    0.0%    0.0%  Builtin: LessThanOrEqual_Baseline
+      2    0.0%    0.0%  Builtin: GreaterThanOrEqual_Baseline
+      2    0.0%    0.0%  Builtin: Divide_Baseline
+      2    0.0%    0.0%  Builtin: DefineNamedOwnIC
+      2    0.0%    0.0%  Builtin: Call_ReceiverIsNullOrUndefined
+      1    0.0%    0.0%  JS: ~updateMobs evalmachine.<anonymous>:206:20
+      1    0.0%    0.0%  JS: ~Math.hypot evalmachine.<anonymous>:3:24
+      1    0.0%    0.0%  JS: ^resetAll evalmachine.<anonymous>:500:18
+      1    0.0%    0.0%  JS: ^move evalmachine.<anonymous>:268:16
+      1    0.0%    0.0%  JS: ^driveHunters evalmachine.<anonymous>:506:22
+      1    0.0%    0.0%  JS: +trim /workspace/Mini-T1413/scripts/t1413-hunt-year.js:166:16
+      1    0.0%    0.0%  JS: +remPio2 evalmachine.<anonymous>:20:19
+      1    0.0%    0.0%  JS: +rec evalmachine.<anonymous>:1:730
+      1    0.0%    0.0%  JS: +nearIn evalmachine.<anonymous>:250:16
+      1    0.0%    0.0%  JS: +losFT evalmachine.<anonymous>:202:13
+      1    0.0%    0.0%  JS: +kcos evalmachine.<anonymous>:14:16
+      1    0.0%    0.0%  JS: +gkey evalmachine.<anonymous>:248:20
+      1    0.0%    0.0%  JS: +__ps evalmachine.<anonymous>:1:36
+      1    0.0%    0.0%  JS: +__none evalmachine.<anonymous>:1:196
+      1    0.0%    0.0%  JS: +<anonymous> evalmachine.<anonymous>:689:62
+      1    0.0%    0.0%  JS: +<anonymous> evalmachine.<anonymous>:441:81
+      1    0.0%    0.0%  JS: *put evalmachine.<anonymous>:11:19
+      1    0.0%    0.0%  JS: *idx evalmachine.<anonymous>:31:11
+      1    0.0%    0.0%  Builtin: ToObject
+      1    0.0%    0.0%  Builtin: StringEqual
+      1    0.0%    0.0%  Builtin: StringAdd_CheckNone
+      1    0.0%    0.0%  Builtin: StoreICTrampoline
+      1    0.0%    0.0%  Builtin: StoreICBaseline
+      1    0.0%    0.0%  Builtin: Negate_Baseline
+      1    0.0%    0.0%  Builtin: MathSqrt
+      1    0.0%    0.0%  Builtin: MathFloor
+      1    0.0%    0.0%  Builtin: Load_FastSmiElements_0
+      1    0.0%    0.0%  Builtin: KeyedLoadIC_PolymorphicName
+      1    0.0%    0.0%  Builtin: KeyedLoadICBaseline
+      1    0.0%    0.0%  Builtin: InterpreterEntryTrampoline
+      1    0.0%    0.0%  Builtin: GetIteratorBaseline
+      1    0.0%    0.0%  Builtin: FastNewFunctionContextFunction
+      1    0.0%    0.0%  Builtin: Equal_Baseline
+      1    0.0%    0.0%  Builtin: DivideSmi_Baseline
+      1    0.0%    0.0%  Builtin: Copy
+      1    0.0%    0.0%  Builtin: ConstructFunction
+      1    0.0%    0.0%  Builtin: CanUseSameAccessor_FastSmiElements_0
+      1    0.0%    0.0%  Builtin: AllocateInYoungGeneration
+
+ [C++]:
+   ticks  total  nonlib   name
+     41    0.4%    0.4%  syscall@@GLIBC_2.2.5
+     12    0.1%    0.1%  __madvise@@GLIBC_PRIVATE
+     10    0.1%    0.1%  std::ostream::put(char)@@GLIBCXX_3.4
+      9    0.1%    0.1%  fputc@@GLIBC_2.2.5
+      7    0.1%    0.1%  pthread_cond_signal@@GLIBC_2.3.2
+      5    0.1%    0.1%  __libc_malloc@@GLIBC_2.2.5
+      4    0.0%    0.0%  std::ostream::sentry::sentry(std::ostream&)@@GLIBCXX_3.4
+      3    0.0%    0.0%  std::ostream& std::ostream::_M_insert<long>(long)@@GLIBCXX_3.4.9
+      2    0.0%    0.0%  std::num_put<char, std::ostreambuf_iterator<char, std::char_traits<char> > >::do_put(std::ostreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, char, long) const@@GLIBCXX_3.4
+      2    0.0%    0.0%  __munmap@@GLIBC_PRIVATE
+      2    0.0%    0.0%  _IO_fwrite@@GLIBC_2.2.5
+      1    0.0%    0.0%  std::ostream::operator<<(int)@@GLIBCXX_3.4
+      1    0.0%    0.0%  pthread_sigmask@GLIBC_2.2.5
+      1    0.0%    0.0%  __write@@GLIBC_2.2.5
+      1    0.0%    0.0%  __mmap@@GLIBC_PRIVATE
+      1    0.0%    0.0%  __libc_free@@GLIBC_2.2.5
+      1    0.0%    0.0%  _IO_file_xsputn@@GLIBC_2.2.5
+
+ [Summary]:
+   ticks  total  nonlib   name
+   2683   27.7%   27.9%  JavaScript
+    103    1.1%    1.1%  C++
+    107    1.1%    1.1%  GC
+     76    0.8%          Shared libraries
+   6830   70.5%          Unaccounted
+
+ [C++ entry points]:
+   ticks    cpp   total   name
+     11   20.4%    0.1%  __madvise@@GLIBC_PRIVATE
+     10   18.5%    0.1%  std::ostream::put(char)@@GLIBCXX_3.4
+      9   16.7%    0.1%  fputc@@GLIBC_2.2.5
+      4    7.4%    0.0%  std::ostream::sentry::sentry(std::ostream&)@@GLIBCXX_3.4
+      4    7.4%    0.0%  pthread_cond_signal@@GLIBC_2.3.2
+      4    7.4%    0.0%  __libc_malloc@@GLIBC_2.2.5
+      3    5.6%    0.0%  std::ostream& std::ostream::_M_insert<long>(long)@@GLIBCXX_3.4.9
+      2    3.7%    0.0%  std::num_put<char, std::ostreambuf_iterator<char, std::char_traits<char> > >::do_put(std::ostreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, char, long) const@@GLIBCXX_3.4
+      2    3.7%    0.0%  _IO_fwrite@@GLIBC_2.2.5
+      1    1.9%    0.0%  syscall@@GLIBC_2.2.5
+      1    1.9%    0.0%  std::ostream::operator<<(int)@@GLIBCXX_3.4
+      1    1.9%    0.0%  __write@@GLIBC_2.2.5
+      1    1.9%    0.0%  __mmap@@GLIBC_PRIVATE
+      1    1.9%    0.0%  _IO_file_xsputn@@GLIBC_2.2.5
+
+ [Bottom up (heavy) profile]:
+  Note: percentage shows a share of a particular caller in the total
+  amount of its parent calls.
+  Callers occupying less than 1.0% are not shown.
+
+   ticks parent  name
+   6830   70.5%  UNKNOWN
+   1113   16.3%    JS: *updateMobs evalmachine.<anonymous>:206:20
+   1064   95.6%      JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+   1064  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+   1064  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     42    3.8%      JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     42  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     42  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+    788   11.5%    JS: *query evalmachine.<anonymous>:14:14
+    359   45.6%      JS: +updateMobs evalmachine.<anonymous>:206:20
+    262   73.0%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+    262  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+    262  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     77   21.4%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     77  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     77  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     20    5.6%        JS: +runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     20  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     20  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+    341   43.3%      JS: *updateMobs evalmachine.<anonymous>:206:20
+    322   94.4%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+    322  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+    322  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     15    4.4%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     15  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     15  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      4    1.2%        JS: +runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      4  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      4  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     88   11.2%      JS: ^updateMobs evalmachine.<anonymous>:206:20
+     53   60.2%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     53  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     53  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     35   39.8%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     35  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     35  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+    633    9.3%    JS: *move evalmachine.<anonymous>:268:16
+    337   53.2%      JS: *updateMobs evalmachine.<anonymous>:206:20
+    313   92.9%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+    313  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+    313  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     23    6.8%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     23  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     23  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+    252   39.8%      JS: +updateMobs evalmachine.<anonymous>:206:20
+    204   81.0%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+    204  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+    204  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     33   13.1%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     33  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     33  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     15    6.0%        JS: +runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     15  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     15  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     44    7.0%      JS: ^updateMobs evalmachine.<anonymous>:206:20
+     23   52.3%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     23  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     23  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     21   47.7%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     21  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     21  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+    591    8.7%    JS: *__sepGrid evalmachine.<anonymous>:2:23
+    259   43.8%      JS: *updateMobs evalmachine.<anonymous>:206:20
+    259  100.0%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+    259  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+    259  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+    200   33.8%      JS: +updateMobs evalmachine.<anonymous>:206:20
+    158   79.0%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+    158  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+    158  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     27   13.5%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     27  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     27  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     15    7.5%        JS: +runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     15  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     15  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+    132   22.3%      JS: ^updateMobs evalmachine.<anonymous>:206:20
+     92   69.7%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     92  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     92  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     37   28.0%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     37  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     37  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      3    2.3%        JS: +runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      3  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      3  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+    552    8.1%    JS: +updateMobs evalmachine.<anonymous>:206:20
+    404   73.2%      JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+    404  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+    404  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+    113   20.5%      JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+    113  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+    113  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     35    6.3%      JS: +runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     35  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     35  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+    491    7.2%    JS: *<anonymous> evalmachine.<anonymous>:280:55
+    345   70.3%      JS: *nearIn evalmachine.<anonymous>:250:16
+    239   69.3%        JS: +updateMobs evalmachine.<anonymous>:206:20
+    183   76.6%          JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+    183  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     43   18.0%          JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     43  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     13    5.4%          JS: +runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     13  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     67   19.4%        JS: ^updateMobs evalmachine.<anonymous>:206:20
+     56   83.6%          JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     56  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     11   16.4%          JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     11  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     39   11.3%        JS: *updateMobs evalmachine.<anonymous>:206:20
+     39  100.0%          JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     39  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+    146   29.7%      JS: *updateMobs evalmachine.<anonymous>:206:20
+    109   74.7%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+    109  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+    109  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     32   21.9%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     32  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     32  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      5    3.4%        JS: +runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      5  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      5  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+    489    7.2%    JS: *Math.hypot evalmachine.<anonymous>:3:24
+    230   47.0%      JS: +updateMobs evalmachine.<anonymous>:206:20
+    173   75.2%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+    173  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+    173  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     43   18.7%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     43  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     43  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     14    6.1%        JS: +runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     14  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     14  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+    120   24.5%      JS: ^updateMobs evalmachine.<anonymous>:206:20
+     73   60.8%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     73  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     73  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     45   37.5%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     45  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     45  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      2    1.7%        JS: +runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      2  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      2  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+    104   21.3%      JS: *updateMobs evalmachine.<anonymous>:206:20
+     90   86.5%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     90  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     90  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     11   10.6%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     11  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     11  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      3    2.9%        JS: +runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      3  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      3  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     27    5.5%      JS: +move evalmachine.<anonymous>:268:16
+     21   77.8%        JS: +updateMobs evalmachine.<anonymous>:206:20
+     11   52.4%          JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     11  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      9   42.9%          JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      9  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1    4.8%          JS: +runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      6   22.2%        JS: ^updateMobs evalmachine.<anonymous>:206:20
+      6  100.0%          JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      6  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+    392    5.7%    JS: *move evalmachine.<anonymous>:22:13
+    345   88.0%      JS: +updateMobs evalmachine.<anonymous>:206:20
+    257   74.5%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+    257  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+    257  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     71   20.6%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     71  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     71  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     17    4.9%        JS: +runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     17  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     17  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     47   12.0%      JS: ^updateMobs evalmachine.<anonymous>:206:20
+     27   57.4%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     27  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     27  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     20   42.6%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     20  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     20  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+    373    5.5%    JS: *Math.random evalmachine.<anonymous>:1:49
+    189   50.7%      JS: +updateMobs evalmachine.<anonymous>:206:20
+    157   83.1%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+    157  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+    157  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     25   13.2%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     25  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     25  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      7    3.7%        JS: +runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      7  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      7  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+    106   28.4%      JS: *updateMobs evalmachine.<anonymous>:206:20
+    103   97.2%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+    103  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+    103  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      3    2.8%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      3  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      3  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     78   20.9%      JS: ^updateMobs evalmachine.<anonymous>:206:20
+     45   57.7%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     45  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     45  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     32   41.0%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     32  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     32  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      1    1.3%        JS: +runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+    306    4.5%    JS: ^updateMobs evalmachine.<anonymous>:206:20
+    154   50.3%      JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+    154  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+    154  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+    148   48.4%      JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+    148  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+    148  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+    135    2.0%    JS: *<anonymous> evalmachine.<anonymous>:1:1
+    135  100.0%      Builtin: CallApiCallbackGeneric
+    135  100.0%        JS: ~runInContext node:vm:140:15
+    135  100.0%          JS: ~runInContext node:vm:290:22
+    135  100.0%            JS: ~load /workspace/Mini-T1413/scripts/t1413-hunt-year.js:58:14
+    122    1.8%    JS: *_insideBldgV evalmachine.<anonymous>:72:22
+     84   68.9%      JS: *move evalmachine.<anonymous>:268:16
+     43   51.2%        JS: *updateMobs evalmachine.<anonymous>:206:20
+     40   93.0%          JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     40  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      3    7.0%          JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      3  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     37   44.0%        JS: +updateMobs evalmachine.<anonymous>:206:20
+     32   86.5%          JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     32  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      5   13.5%          JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      5  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      4    4.8%        JS: ^updateMobs evalmachine.<anonymous>:206:20
+      2   50.0%          JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      2  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      2   50.0%          JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      2  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     31   25.4%      JS: *canWalk evalmachine.<anonymous>:223:17
+     12   38.7%        JS: *updateMobs evalmachine.<anonymous>:206:20
+     12  100.0%          JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     12  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     11   35.5%        JS: +move evalmachine.<anonymous>:268:16
+      8   72.7%          JS: +updateMobs evalmachine.<anonymous>:206:20
+      6   75.0%            JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      2   25.0%            JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      3   27.3%          JS: ^updateMobs evalmachine.<anonymous>:206:20
+      3  100.0%            JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      6   19.4%        JS: +updateMobs evalmachine.<anonymous>:206:20
+      3   50.0%          JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      3  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      2   33.3%          JS: +runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      2  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1   16.7%          JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1    3.2%        JS: ^updateMobs evalmachine.<anonymous>:206:20
+      1  100.0%          JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1    3.2%        JS: ^move evalmachine.<anonymous>:268:16
+      1  100.0%          JS: *updateMobs evalmachine.<anonymous>:206:20
+      1  100.0%            JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      3    2.5%      JS: ^canWalk evalmachine.<anonymous>:223:17
+      1   33.3%        JS: ^updateMobs evalmachine.<anonymous>:206:20
+      1  100.0%          JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1   33.3%        JS: ^move evalmachine.<anonymous>:268:16
+      1  100.0%          JS: ^updateMobs evalmachine.<anonymous>:206:20
+      1  100.0%            JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1   33.3%        JS: +move evalmachine.<anonymous>:268:16
+      1  100.0%          JS: ^updateMobs evalmachine.<anonymous>:206:20
+      1  100.0%            JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      2    1.6%      JS: +canWalk evalmachine.<anonymous>:223:17
+      1   50.0%        JS: +updateMobs evalmachine.<anonymous>:206:20
+      1  100.0%          JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1   50.0%        JS: +move evalmachine.<anonymous>:268:16
+      1  100.0%          JS: ^updateMobs evalmachine.<anonymous>:206:20
+      1  100.0%            JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      2    1.6%      JS: *updateMobs evalmachine.<anonymous>:206:20
+      2  100.0%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      2  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      2  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     99    1.4%    JS: *__none evalmachine.<anonymous>:1:196
+     90   90.9%      JS: +losRk evalmachine.<anonymous>:201:13
+     85   94.4%        JS: +<anonymous> evalmachine.<anonymous>:280:55
+     85  100.0%          JS: *nearIn evalmachine.<anonymous>:250:16
+     46   54.1%            JS: +updateMobs evalmachine.<anonymous>:206:20
+     39   45.9%            JS: ^updateMobs evalmachine.<anonymous>:206:20
+      3    3.3%        JS: ^<anonymous> evalmachine.<anonymous>:280:55
+      3  100.0%          JS: *nearIn evalmachine.<anonymous>:250:16
+      3  100.0%            JS: ^updateMobs evalmachine.<anonymous>:206:20
+      2    2.2%        JS: ^driveHunters evalmachine.<anonymous>:506:22
+      2  100.0%          JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      2  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      9    9.1%      JS: +rec evalmachine.<anonymous>:1:730
+      8   88.9%        JS: +rec evalmachine.<anonymous>:1:730
+      5   62.5%          JS: +__ft evalmachine.<anonymous>:1:576
+      5  100.0%            JS: ^losFT evalmachine.<anonymous>:202:13
+      2   25.0%          JS: +rec evalmachine.<anonymous>:1:730
+      1   50.0%            JS: +rec evalmachine.<anonymous>:1:730
+      1   50.0%            JS: +__ft evalmachine.<anonymous>:1:576
+      1   12.5%          JS: ^__ft evalmachine.<anonymous>:1:576
+      1  100.0%            JS: ^losFT evalmachine.<anonymous>:202:13
+      1   11.1%        JS: +__ft evalmachine.<anonymous>:1:576
+      1  100.0%          JS: ^losFT evalmachine.<anonymous>:202:13
+      1  100.0%            JS: ^driveHunters evalmachine.<anonymous>:506:22
+     69    1.0%    JS: *rec evalmachine.<anonymous>:1:730
+     56   81.2%      JS: *rec evalmachine.<anonymous>:1:730
+     32   57.1%        JS: *rec evalmachine.<anonymous>:1:730
+     17   53.1%          JS: *rec evalmachine.<anonymous>:1:730
+     15   88.2%            JS: +__ft evalmachine.<anonymous>:1:576
+      2   11.8%            JS: *rec evalmachine.<anonymous>:1:730
+     15   46.9%          JS: +__ft evalmachine.<anonymous>:1:576
+      8   53.3%            JS: +losFT evalmachine.<anonymous>:202:13
+      7   46.7%            JS: ^losFT evalmachine.<anonymous>:202:13
+     24   42.9%        JS: +__ft evalmachine.<anonymous>:1:576
+     14   58.3%          JS: +losFT evalmachine.<anonymous>:202:13
+     14  100.0%            JS: ^driveHunters evalmachine.<anonymous>:506:22
+     10   41.7%          JS: ^losFT evalmachine.<anonymous>:202:13
+     10  100.0%            JS: ^driveHunters evalmachine.<anonymous>:506:22
+     13   18.8%      JS: +__ft evalmachine.<anonymous>:1:576
+     12   92.3%        JS: +losFT evalmachine.<anonymous>:202:13
+     12  100.0%          JS: ^driveHunters evalmachine.<anonymous>:506:22
+      8   66.7%            JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      4   33.3%            JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1    7.7%        JS: ^losFT evalmachine.<anonymous>:202:13
+      1  100.0%          JS: ^driveHunters evalmachine.<anonymous>:506:22
+      1  100.0%            JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+
+    663    6.8%  Builtin: LoadIC_Megamorphic
+    232   35.0%    JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+    232  100.0%      JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+    232  100.0%        JS: ~<anonymous> node:internal/main/run_main_module:1:1
+    153   23.1%    JS: +updateMobs evalmachine.<anonymous>:206:20
+    117   76.5%      JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+    117  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+    117  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     30   19.6%      JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     30  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     30  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      6    3.9%      JS: +runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      6  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      6  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+    148   22.3%    JS: *updateMobs evalmachine.<anonymous>:206:20
+    140   94.6%      JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+    140  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+    140  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      7    4.7%      JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      7  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      7  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     49    7.4%    JS: ^updateMobs evalmachine.<anonymous>:206:20
+     37   75.5%      JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     37  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     37  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     12   24.5%      JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     12  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     12  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     29    4.4%    JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     29  100.0%      JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     29  100.0%        JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     15    2.3%    JS: *nearIn evalmachine.<anonymous>:250:16
+     10   66.7%      JS: +updateMobs evalmachine.<anonymous>:206:20
+      7   70.0%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      7  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      7  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      2   20.0%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      2  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      2  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      1   10.0%        JS: +runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      3   20.0%      JS: *updateMobs evalmachine.<anonymous>:206:20
+      3  100.0%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      3  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      3  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      1    6.7%      JS: ~updateMobs evalmachine.<anonymous>:206:20
+      1  100.0%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      1    6.7%      JS: ^updateMobs evalmachine.<anonymous>:206:20
+      1  100.0%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     13    2.0%    Builtin: ArrayFilter
+     11   84.6%      JS: +updateMobs evalmachine.<anonymous>:206:20
+      8   72.7%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      8  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      8  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      3   27.3%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      3  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      3  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      2   15.4%      JS: ^updateMobs evalmachine.<anonymous>:206:20
+      1   50.0%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      1   50.0%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      8    1.2%    JS: +runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      8  100.0%      JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      8  100.0%        JS: ~<anonymous> node:internal/main/run_main_module:1:1
+
+    226    2.3%  JS: *updateMobs evalmachine.<anonymous>:206:20
+    216   95.6%    JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+    216  100.0%      JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+    216  100.0%        JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      9    4.0%    JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      9  100.0%      JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      9  100.0%        JS: ~<anonymous> node:internal/main/run_main_module:1:1
+
+    194    2.0%  JS: *query evalmachine.<anonymous>:14:14
+     94   48.5%    JS: +updateMobs evalmachine.<anonymous>:206:20
+     70   74.5%      JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     70  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     70  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     13   13.8%      JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     13  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     13  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     11   11.7%      JS: +runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     11  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     11  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     81   41.8%    JS: *updateMobs evalmachine.<anonymous>:206:20
+     76   93.8%      JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     76  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     76  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      5    6.2%      JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      5  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      5  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     19    9.8%    JS: ^updateMobs evalmachine.<anonymous>:206:20
+     12   63.2%      JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     12  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     12  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      7   36.8%      JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      7  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      7  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+
+    185    1.9%  JS: +updateMobs evalmachine.<anonymous>:206:20
+    143   77.3%    JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+    143  100.0%      JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+    143  100.0%        JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     29   15.7%    JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     29  100.0%      JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     29  100.0%        JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     13    7.0%    JS: +runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     13  100.0%      JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     13  100.0%        JS: ~<anonymous> node:internal/main/run_main_module:1:1
+
+    143    1.5%  Builtin: LoadGlobalIC
+     23   16.1%    JS: *updateMobs evalmachine.<anonymous>:206:20
+     21   91.3%      JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     21  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     21  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      2    8.7%      JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      2  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      2  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     17   11.9%    JS: +updateMobs evalmachine.<anonymous>:206:20
+      7   41.2%      JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      7  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      7  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      7   41.2%      JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      7  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      7  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      3   17.6%      JS: +runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      3  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      3  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     13    9.1%    JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     13  100.0%      JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     13  100.0%        JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     13    9.1%    JS: *__sepGrid evalmachine.<anonymous>:2:23
+      8   61.5%      JS: *updateMobs evalmachine.<anonymous>:206:20
+      8  100.0%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      8  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      8  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      3   23.1%      JS: +updateMobs evalmachine.<anonymous>:206:20
+      2   66.7%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      2  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      2  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      1   33.3%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      2   15.4%      JS: ^updateMobs evalmachine.<anonymous>:206:20
+      2  100.0%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      2  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      2  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      9    6.3%    JS: ^updateMobs evalmachine.<anonymous>:206:20
+      6   66.7%      JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      6  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      6  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      3   33.3%      JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      3  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      3  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      8    5.6%    JS: *Math.random evalmachine.<anonymous>:1:49
+      4   50.0%      JS: +updateMobs evalmachine.<anonymous>:206:20
+      3   75.0%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      3  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      3  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      1   25.0%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      3   37.5%      JS: ^updateMobs evalmachine.<anonymous>:206:20
+      2   66.7%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      2  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      2  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      1   33.3%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      1   12.5%      JS: *updateMobs evalmachine.<anonymous>:206:20
+      1  100.0%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      8    5.6%    JS: *Math.hypot evalmachine.<anonymous>:3:24
+      4   50.0%      JS: +updateMobs evalmachine.<anonymous>:206:20
+      3   75.0%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      3  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      3  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      1   25.0%        JS: +runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      3   37.5%      JS: *updateMobs evalmachine.<anonymous>:206:20
+      3  100.0%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      3  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      3  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      1   12.5%      JS: ^updateMobs evalmachine.<anonymous>:206:20
+      1  100.0%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      6    4.2%    JS: *<anonymous> evalmachine.<anonymous>:280:55
+      5   83.3%      JS: *nearIn evalmachine.<anonymous>:250:16
+      3   60.0%        JS: +updateMobs evalmachine.<anonymous>:206:20
+      2   66.7%          JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      2  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1   33.3%          JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      2   40.0%        JS: ^updateMobs evalmachine.<anonymous>:206:20
+      1   50.0%          JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1   50.0%          JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1   16.7%      JS: *updateMobs evalmachine.<anonymous>:206:20
+      1  100.0%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      4    2.8%    JS: *query evalmachine.<anonymous>:14:14
+      2   50.0%      JS: +updateMobs evalmachine.<anonymous>:206:20
+      1   50.0%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      1   50.0%        JS: +runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      1   25.0%      JS: ^updateMobs evalmachine.<anonymous>:206:20
+      1  100.0%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      1   25.0%      JS: *updateMobs evalmachine.<anonymous>:206:20
+      1  100.0%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      4    2.8%    JS: *nearIn evalmachine.<anonymous>:250:16
+      2   50.0%      JS: +updateMobs evalmachine.<anonymous>:206:20
+      1   50.0%        JS: +runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      1   50.0%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      2   50.0%      JS: *updateMobs evalmachine.<anonymous>:206:20
+      2  100.0%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      2  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      2  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      4    2.8%    JS: *move evalmachine.<anonymous>:268:16
+      3   75.0%      JS: *updateMobs evalmachine.<anonymous>:206:20
+      2   66.7%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      2  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      2  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      1   33.3%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      1   25.0%      JS: +updateMobs evalmachine.<anonymous>:206:20
+      1  100.0%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      4    2.8%    JS: *move evalmachine.<anonymous>:22:13
+      3   75.0%      JS: +updateMobs evalmachine.<anonymous>:206:20
+      3  100.0%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      3  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      3  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      1   25.0%      JS: ^updateMobs evalmachine.<anonymous>:206:20
+      1  100.0%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      3    2.1%    JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      3  100.0%      JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      3  100.0%        JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      3    2.1%    JS: +<anonymous> evalmachine.<anonymous>:280:55
+      3  100.0%      JS: *nearIn evalmachine.<anonymous>:250:16
+      2   66.7%        JS: ^updateMobs evalmachine.<anonymous>:206:20
+      1   50.0%          JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1   50.0%          JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1   33.3%        JS: *updateMobs evalmachine.<anonymous>:206:20
+      1  100.0%          JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      3    2.1%    JS: *rec evalmachine.<anonymous>:1:730
+      3  100.0%      JS: *rec evalmachine.<anonymous>:1:730
+      2   66.7%        JS: *rec evalmachine.<anonymous>:1:730
+      2  100.0%          JS: *rec evalmachine.<anonymous>:1:730
+      2  100.0%            JS: +__ft evalmachine.<anonymous>:1:576
+      1   33.3%        JS: +__ft evalmachine.<anonymous>:1:576
+      1  100.0%          JS: +losFT evalmachine.<anonymous>:202:13
+      1  100.0%            JS: ^driveHunters evalmachine.<anonymous>:506:22
+      2    1.4%    JS: +move evalmachine.<anonymous>:268:16
+      2  100.0%      JS: +updateMobs evalmachine.<anonymous>:206:20
+      2  100.0%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      2  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      2  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      2    1.4%    JS: +losRk evalmachine.<anonymous>:201:13
+      2  100.0%      JS: +<anonymous> evalmachine.<anonymous>:280:55
+      2  100.0%        JS: *nearIn evalmachine.<anonymous>:250:16
+      2  100.0%          JS: ^updateMobs evalmachine.<anonymous>:206:20
+      1   50.0%            JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1   50.0%            JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      2    1.4%    JS: +__sepGrid evalmachine.<anonymous>:2:23
+      2  100.0%      JS: ^updateMobs evalmachine.<anonymous>:206:20
+      2  100.0%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      2  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      2  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      2    1.4%    JS: *canWalk evalmachine.<anonymous>:223:17
+      1   50.0%      JS: +move evalmachine.<anonymous>:268:16
+      1  100.0%        JS: +updateMobs evalmachine.<anonymous>:206:20
+      1  100.0%          JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1   50.0%      JS: *updateMobs evalmachine.<anonymous>:206:20
+      1  100.0%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      2    1.4%    JS: *atan2 evalmachine.<anonymous>:57:17
+      1   50.0%      JS: +updateMobs evalmachine.<anonymous>:206:20
+      1  100.0%        JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      1   50.0%      JS: *updateMobs evalmachine.<anonymous>:206:20
+      1  100.0%        JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%          JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1  100.0%            JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      2    1.4%    JS: *_insideBldgV evalmachine.<anonymous>:72:22
+      2  100.0%      JS: *canWalk evalmachine.<anonymous>:223:17
+      1   50.0%        JS: +move evalmachine.<anonymous>:268:16
+      1  100.0%          JS: +updateMobs evalmachine.<anonymous>:206:20
+      1  100.0%            JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1   50.0%        JS: *updateMobs evalmachine.<anonymous>:206:20
+      1  100.0%          JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%            JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+
+    117    1.2%  Builtin: LoadIC
+     55   47.0%    JS: ^updateMobs evalmachine.<anonymous>:206:20
+     31   56.4%      JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     31  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     31  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     23   41.8%      JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     23  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     23  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      1    1.8%      JS: ~runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     32   27.4%    JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     32  100.0%      JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     32  100.0%        JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     26   22.2%    JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     26  100.0%      JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     26  100.0%        JS: ~<anonymous> node:internal/main/run_main_module:1:1
+
+    100    1.0%  Builtin: StoreIC_Megamorphic
+     73   73.0%    JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     73  100.0%      JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     73  100.0%        JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     12   12.0%    JS: *updateMobs evalmachine.<anonymous>:206:20
+     10   83.3%      JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+     10  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+     10  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      2   16.7%      JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      2  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      2  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+     10   10.0%    JS: +updateMobs evalmachine.<anonymous>:206:20
+      7   70.0%      JS: *runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      7  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      7  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      3   30.0%      JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      3  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      3  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      2    2.0%    JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      2  100.0%      JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      2  100.0%        JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      2    2.0%    JS: +runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      2  100.0%      JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      2  100.0%        JS: ~<anonymous> node:internal/main/run_main_module:1:1
+      1    1.0%    JS: ^updateMobs evalmachine.<anonymous>:206:20
+      1  100.0%      JS: ^runOne /workspace/Mini-T1413/scripts/t1413-hunt-year.js:156:16
+      1  100.0%        JS: ~<anonymous> /workspace/Mini-T1413/scripts/t1413-hunt-year.js:1:1
+      1  100.0%          JS: ~<anonymous> node:internal/main/run_main_module:1:1

@@ -1,0 +1,73 @@
+##### e2e-charsprite.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+  ✓ ★ⓕ[walk] 자명 통과 금지 — 행을 4칸 돌리면(앞뒤 맞바꿈) **부호가 뒤집힌다**  머리 -19.73 · 옷 -11.70 (신호 없는 시트는 둘 다 0 근처라 여기서 깨진다)
+  ✓ ★★자명 통과 금지 — 맨손일 땐 남에게 **도구 층이 없다**  ["body","clothes_ramie"]
+  ✓ ★★자명 통과 금지 — 지게를 안 졌을 땐 남에게 **등짐 층이 없다**  ["body","clothes_ramie","tool_axe"]
+=== e2e-charsprite 결과: 통과 99 · 실패 0 ===
+  [소요] 82초
+  ✓ RC=0
+##### e2e-fishing.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+=== 35건 중 PASS 35 · FAIL 0 ===
+  [소요] 58초
+  ✓ RC=0
+##### e2e-zone-cross.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+  ✓ ⓡ5 [전제 · 자명 통과 금지] 대입 붙잡기는 한 틱 안의 승격 · 첫 pong · welcome 을 다 잡는다 — 종전 10ms 표본은 같은 미끼에서 승격을 못 본다  {"pong":1,"pongMs":3,"welcome":true,"pollSawPromote":false}
+=== 54건 중 PASS 54 · FAIL 0 ===
+  [소요] 797초
+  ✓ RC=0
+##### test-bundle-blackbox.js #####
+  ✗ ① 기본 세계가 묶음 세계(켬 판 결과 ≠ 끔 판)  갈린 날 · 마을 0
+✗ test-bundle-blackbox 17/1
+  [소요] 538초
+  ✗ RC=1 · 결과줄 21개 → **실패로 센다**
+##### test-lab-mining.js #####
+  ✗ 광부가 광맥 셀에 배치됨
+  ✗ 광맥 재고가 실제로 줄어든다
+결과: FAIL — 2건
+  ✔ ③ⓜ 자명 통과 금지 — 한 광맥 셀에 다른 조 둘을 일부러 세운 미끼는 같은 자로 **빨강** (같은 조 셀 0/1)
+  [소요] 1273초
+  ✗ RC=1 · 결과줄 29개 → **실패로 센다**
+##### test-onb-blackbox.js #####
+  ✗ Q16 [기준 공격] 안내가 가리킨 바위 곁에서 맨손으로 자갈을 주울 수 있다(네 마을)  농촌1 자갈 0 · 어촌2 자갈 0 · 임업2 자갈 0 · 광산4 자갈
+  ✗ Q19 [기준 공격] 어느 시작 마을이든 도착했을 때 새 사람이 맨손 · 조잡한 도구로 낼 수 있는 의뢰가 판에 하나 이상 있다  농촌1 [빈 판] 낼 수 있는 것 0 · 어촌2 [herb,stone] 낼 수 있는 것 2 · 임업2 [wood,ore_copper,ore_gold,ore_silver,ore_tin] 낼 수 있는 것 1 · 광산4 [ore_copper,ore_gold,ore_silver,ore_obsidian,ore_tin,wood,hide] 낼 수 있는 것 1
+=== 23건 중 PASS 21 · FAIL 2 ===
+=== 23건 중 PASS 21 · FAIL 2 ===
+  [소요] 355초
+  ✗ RC=1 · 결과줄 25개 → **실패로 센다**
+##### test-route-persist.js #####
+=== 59 통과 / 0 실패 ===
+  ✓ ⑦ [상황] 데우는 동안 A* 가 실제로 돌았다(자명 통과 금지)  한 걸음 최대 1161ms
+  ✓ ⑧ [상황] 예산 1노드가 실제로 잘게 쪼갰다 — 한 번에 끝났으면 자명 통과다  한 쌍 최대 247603조각 · 합 20831821조각
+  ✓ ⑨ [상황] 재개형으로 판 길이 실제로 있다(자명 통과 금지)  1206쌍
+=== 59 통과 / 0 실패 ===
+  [소요] 410초
+  ✓ RC=0
+##### test-site-memo.js #####
+=== 23 통과 / 0 실패 ===
+  ✓ ② ★★건너뛴 셀 중 **지금은 통과할 자리가 하나도 없다**(단조성 성립)  위반 0 / 62013
+  ✓ ② [전제] 두 팔이 둘 다 산 날이 있다(0이면 아래가 자명 통과다)  공통 9일 (종전 9일 · 채택 9일)
+=== 23 통과 / 0 실패 ===
+  [소요] 402초
+  ✓ RC=0
+##### test-t1034-caravan-keep.js #####
+  ✓ 표 자리 다섯 — 귀환 출발 둘(장부 켬 · 끔 갈래) · 고립 · 재경로 실패 · 지연
+  ✓ ★★[자명 통과 금지] 끔 — 같은 판에서 장부가 가는 길로 되돌아간다(종전 · 메타 행이 아침 것)  inbound/4 → outbound/11
+=== T1034: 통과 27 · 실패 0 ===
+  [소요] 528초
+  ✓ RC=0
+##### test-t1243-farm-on.js #####
+85 통과 · 0 실패
+  ✓ ② ★자명 통과 금지 — 끈 묶음 + 밭 산출만 켠 판의 작물 없는 수확 = `T100_K` 그대로  5.342 = K 5.342
+85 통과 · 0 실패
+  [소요] 1251초
+  ✓ RC=0
+
+=== 러너 요약 ===
+  통과 7: e2e-charsprite.js e2e-fishing.js e2e-zone-cross.js test-route-persist.js test-site-memo.js test-t1034-caravan-keep.js test-t1243-farm-on.js
+  실패 3: test-bundle-blackbox.js(rc=1) test-lab-mining.js(rc=1) test-onb-blackbox.js(rc=1)
+  걸린 시간 상위(초): test-lab-mining.js 1273 · test-t1243-farm-on.js 1251 · e2e-zone-cross.js 797 · test-bundle-blackbox.js 538 · test-t1034-caravan-keep.js 528 · test-route-persist.js 410 · test-site-memo.js 402 · test-onb-blackbox.js 355 · e2e-charsprite.js 82 · e2e-fishing.js 58
+  걸린 시간 합: 하네스 5694초 · 러너 전체 5726초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 4번 × 8초 · 건넘 7번(앞 판이 남긴 아이 없음)
+rc=1 벽 5726초
