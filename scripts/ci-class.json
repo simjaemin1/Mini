@@ -18483,6 +18483,51 @@
    "child": [
     "execFileSync node"
    ]
+  },
+  "test-t1438-decay.js": {
+   "cls0": "다",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 14.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 14.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 12.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 13.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 12.8,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "다",
+   "child": [
+    "spawnSync node"
+   ],
+   "cls": "다",
+   "maxSec": 14.7,
+   "same5": true,
+   "srv": true,
+   "core": false,
+   "why": "srv"
   }
  },
  "at": "2026-11-22"

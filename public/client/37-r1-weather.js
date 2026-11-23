@@ -94,10 +94,15 @@
     const _wIn = (typeof myWeather !== 'undefined' && myWeather) ? myWeather.indoor : undefined;
     const indoor = (typeof _wIn === 'boolean') ? _wIn : ((typeof playerIsIndoors === 'function') ? !!playerIsIndoors() : false);
     window.__sfx && window.__sfx.weather(w, indoor);   // ★[T261·T283] 소리 훅 한 줄(바람+비 · 세기→볼륨은 48-a-audio 가 표로 한다)
-    if (!(precip > 0) || indoor) {
+    // ★[T1438] 비가 새는 집 안 — 서버가 지붕 몫(`weather.indoorF` · 낡음 손잡이 켬만 실린다)을 주면 지붕 아래도 (1 − 몫)만큼 내린다(문턱 0 · 클라 셈 0).
+    //   칸이 없으면(끔) leak 0 = 종전 그대로(지붕 아래 0).
+    const _wF = (indoor && typeof myWeather !== 'undefined' && myWeather && typeof myWeather.indoorF === 'number') ? myWeather.indoorF : null;
+    const leak = (_wF != null && _wF < 1) ? 1 - Math.max(0, _wF) : 0;
+    if (!(precip > 0) || (indoor && !(leak > 0))) {
       _wxLast = { on: false, kind: null, n: 0, tilt: 0, indoor, precip };
       return 0;
     }
+    const precipSeen = indoor ? precip * leak : precip;
     // 눈이냐 비냐 — 어는점 하나(물리). 기온이 없으면 비로 본다.
     const snow = (w.tempC != null && w.tempC < 0);
     // 바람은 **부호 있는 계절풍**이다(`server/wind.js seasonWind` — s>0 이면 남동향).
@@ -115,7 +120,7 @@
     //     ★실측이 시켰다(보고 §①): 굵기를 그대로 둔 1판은 최악 판(강수 1 · 바람 1)에서 **밤 오버레이와 같아졌다**
     //       (5.72ms vs 5.68ms · 1.01배 — T93 규약 "비싼 쪽도 밤 오버레이보다 싸다" 위반). 굵은 긴 획이 비싸다.
     const blizzard = snow && wxWinterOn();
-    const n = Math.min(WX_MAX, Math.round((W * H) / WX_CELL_AREA * precip * (blizzard ? 1 + Math.abs(tiltAir) : 1)));
+    const n = Math.min(WX_MAX, Math.round((W * H) / WX_CELL_AREA * precipSeen * (blizzard ? 1 + Math.abs(tiltAir) : 1)));
     const tilt = blizzard ? tiltAir * (WX_RAIN_PXPS / WX_SNOW_PXPS) : tiltAir;
     const t = (nowMs || 0) / 1000;
     const len = snow ? WX_SNOW_LEN : WX_RAIN_LEN;
@@ -137,7 +142,7 @@
     }
     ctx.stroke();
     ctx.restore();
-    _wxLast = { on: true, kind: snow ? 'snow' : 'rain', n, tilt: +tilt.toFixed(4), indoor: false, precip, blizzard };
+    _wxLast = { on: true, kind: snow ? 'snow' : 'rain', n, tilt: +tilt.toFixed(4), indoor: !!indoor, precip, blizzard, ...(indoor ? { leak: +leak.toFixed(3) } : {}) };
     return n;
   }
 

@@ -11863,11 +11863,13 @@ function wetStep(p, dtSec, ctx) {
     const sec = Math.max(1, CFG.WET_DRY_SEC * _dryFactor(c));
     b.wet = Math.max(0, b.wet - dtSec / sec);
   }
-  if (!c.indoor) {
+  const _f1438 = _indF(c);   // ★[T1438] 지붕 몫(칸 없으면 종전 참/거짓 = 1/0)
+  if (_f1438 < 1) {
     const W = Number.isFinite(c.day) ? _weather() : null;
     let pr = 0;
     if (W && typeof W.precipAt === 'function') { try { pr = +W.precipAt(c.day) || 0; } catch (e) { pr = 0; } }
     pr *= coverMult(c.cover);   // ★[T114] 나무 아래면 그만큼 덜 닿는다 — 곱 하나(새 축 0)
+    if (_f1438 > 0) pr *= (1 - _f1438);   // ★[T1438] 새는 지붕 — 남은 지붕 몫만큼 덜 닿는다(0 이면 종전 그대로 · 곱 0 갈래)
     if (pr > b.wet) b.wet = Math.min(1, pr);
   }
   // ⚠상태값은 **반올림하지 않는다** — 짧은 틱의 마름(1초면 0.000625)이 4자리에서 통째로 사라져
@@ -11876,9 +11878,13 @@ function wetStep(p, dtSec, ctx) {
   return b.wet;
 }
 /** 그 자리가 젖음을 말리는 빠르기 — **새 수가 아니라** 이미 있는 "여기는 얼마나 덜 추운가"다. */
+// ★★[T1438 2026-11-22 · ★재민 11-22 판정 38] 지붕 몫 — 존이 `ctx.indoorF`(0..1 · 움집 · 마을 집의 지붕 내구)를 주면 실내의 다섯 효과(젖음 · 마름 · 추위 · 그늘 · 쉼)가
+//   **그 몫만큼** 든다(문턱 0 · 곧게 — 1 이면 종전 실내 그대로 · 0 이면 바깥). 칸이 없으면(손잡이 `T1438_DECAY` 끔 · 종전 호출부) 종전 참/거짓 갈래 그대로(비트 같음).
+function _indF(c) { return (c && Number.isFinite(c.indoorF)) ? (c.indoor ? Math.max(0, Math.min(1, c.indoorF)) : 0) : (c && c.indoor ? 1 : 0); }
+function _indMul(mult, f) { return f >= 1 ? mult : (f > 0 ? 1 + (mult - 1) * f : 1); }
 function _dryFactor(c) {
   if (c && c.nearFire) return CFG.COLD_FIRE_TARGET;     // 불 곁 — 0.05 ⇒ 20배 빠르다
-  if (c && c.indoor) return CFG.COLD_INDOOR_MULT;       // 실내 — 0.30 ⇒ 3.3배 (앵커가 선 자리)
+  if (c && c.indoor) return Number.isFinite(c.indoorF) ? _indMul(CFG.COLD_INDOOR_MULT, _indF(c)) : CFG.COLD_INDOOR_MULT;       // 실내 — 0.30 ⇒ 3.3배 (앵커가 선 자리) · ★[T1438] 지붕 몫만큼
   return 1;                                             // 실외 — 깎아 주는 것이 없다
 }
 let _Weather = null;
@@ -11929,7 +11935,7 @@ function coldTarget(ctx) {
   const sh = Math.max(0, Math.min(1, Number(c.villageShelter) || 0));
   if (sh > 0) t *= (1 - CFG.COLD_VILLAGE_SHELTER * sh);
   if (outdoor === null) t *= exposure;   // ★폴백 경로에서만 — 곡선 경로는 ℃ 로 이미 반영됐다
-  if (c.indoor) t *= CFG.COLD_INDOOR_MULT;
+  if (c.indoor) t *= Number.isFinite(c.indoorF) ? _indMul(CFG.COLD_INDOOR_MULT, _indF(c)) : CFG.COLD_INDOOR_MULT;   // ★[T1438] 지붕 몫만큼(칸 없으면 종전)
   if (c.nearFire) t = Math.min(t, CFG.COLD_FIRE_TARGET);
   // ★[천장 해제] 상한 없음. 하한만 0. (상태값의 0~1 은 `tick` 이 지킨다 — `test-body ⑮` 가 못 박는다.)
   return +Math.max(0, t).toFixed(4);
@@ -11968,7 +11974,7 @@ function heatThirstMult(ctx) {
   //   `⑯㉧`(짠물 가속 = BRINE_MULT 정확히)가 ×2.458 로 뒤집혔다. 0(여름)과 무(無)는 다른 값이다.
   if (!Number.isFinite(c.seasonCold)) return 1;
   if (c.night) return 1;
-  const shade = c.indoor ? 1 : 0;
+  const shade = Number.isFinite(c.indoorF) ? _indF(c) : (c.indoor ? 1 : 0);   // ★[T1438] 그늘 = 지붕 몫
   return 1 + W * seasonHeatOf(c.seasonCold) * (1 - shade);
 }
 
@@ -12082,7 +12088,7 @@ function tick(p, dtSec, ctx) {
     b._amCap = cap; b._amLeft = aftermathLeft(p, c.day);
   }
   // 피로 — 일하면 오르고(그건 onLabor 가 한다) 쉬면 내린다.
-  let restMult = c.indoor ? CFG.FATIGUE_INDOOR_MULT : 1;
+  let restMult = Number.isFinite(c.indoorF) ? _indMul(CFG.FATIGUE_INDOOR_MULT, _indF(c)) : (c.indoor ? CFG.FATIGUE_INDOOR_MULT : 1);   // ★[T1438] 지붕 몫만큼 쉰다
   if (c.moving) restMult *= CFG.FATIGUE_MOVE_MULT;
   b.fatigue = Math.max(0, b.fatigue - (dtSec / CFG.FATIGUE_REST_SEC) * restMult);
   // 부상 — 시간이 낫게 하고 약초가 재촉한다.

@@ -212,7 +212,8 @@ console.log('\n=== 겨울 이펙트 셋 정본 하네스 (T500) ===\n');
   // ⑤-2 눈보라
   const won = fnBody(WX, 'wxWinterOn'), dw = fnBody(WX, 'drawWeather');
   ok(/myWeather\.frost !== undefined/.test(won), '⑤i 켬은 **칸이 있는가** 하나로 안다(T487 `snow` 칸과 같은 문법)', won.replace(/\s+/g, ' ').slice(0, 100));
-  ok(/const blizzard = snow && wxWinterOn\(\);/.test(dw) && /precip \* \(blizzard \? 1 \+ Math\.abs\(tiltAir\) : 1\)/.test(dw)
+  //   ★[T1438] 밀도의 강수는 `precipSeen`(지붕 아래 새는 몫 — 밖이면 `precip` 그대로 · 지붕 몫 칸이 없으면(끔) 지붕 아래는 그리지 않는다 = 종전)
+  ok(/const blizzard = snow && wxWinterOn\(\);/.test(dw) && /precipSeen \* \(blizzard \? 1 \+ Math\.abs\(tiltAir\) : 1\)/.test(dw) && /const precipSeen = indoor \? precip \* leak : precip;/.test(dw)
     && /const tilt = blizzard \? tiltAir \* \(WX_RAIN_PXPS \/ WX_SNOW_PXPS\) : tiltAir;/.test(dw) && /Math\.min\(WX_MAX, /.test(dw),
     '⑤j 눈보라 — 켬 ∧ 눈일 때만 · 기울기 = 공기 자 × 낙하 속도 비(760/95) · 밀도 × (1 + |공기 자|) · 상한 `WX_MAX` 그대로');
   ok(/const tiltAir = Math\.max\(-1, Math\.min\(1, \(w\.wind \|\| 0\) \* WX_TILT_K\)\);/.test(dw), '⑤k 공기의 자는 **있는 `WX_TILT_K` 식 그대로**(부호 · |·| ≤ 1) — 새 문턱 0');

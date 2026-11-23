@@ -178,6 +178,25 @@
       ctx.textAlign = 'left';
       return;
     }
+    // ★★[T1438] 낡음 — 그림이 아직 없다(그림 요청 목록 · 어홍 몫 — 보고 T1438 §보이는 것) · 그 자리는 **점선 칸**:
+    //   발자국 네 모서리(셀 경계 · 월드 px)를 아이소로 옮긴 사각형. 무너진 자리 = 어두운 칠 + 점선 · 낡은 지붕 = 지붕 몫만큼 실선 · 빈 몫만큼 틈(문턱 0).
+    const _t1438Poly = (R, bld) => {
+      const S = CL_BUILDING_SIZE;
+      return [[R[0], R[1]], [R[2] + 1, R[1]], [R[2] + 1, R[3] + 1], [R[0], R[3] + 1]].map(([cx, cy]) => { const dx = cx * S - bld.x, dy = cy * S - bld.y; return [x + (dx - dy), y + (dx + dy) * 0.5]; });
+    };
+    if (type === 'ruin') {   // 무너진 자리(서버 `T1438_DECAY` 켬에서만 선다) — 우클릭 = 치우기
+      const R = building && building.data && building.data.ruin;
+      if (Array.isArray(R)) {
+        const P = _t1438Poly(R, building);
+        ctx.beginPath(); ctx.moveTo(P[0][0], P[0][1]); for (let i = 1; i < 4; i++) ctx.lineTo(P[i][0], P[i][1]); ctx.closePath();
+        ctx.fillStyle = 'rgba(58,46,34,0.35)'; ctx.fill();
+        ctx.setLineDash([3, 4]); ctx.strokeStyle = '#8a7a66'; ctx.lineWidth = 1.2; ctx.stroke(); ctx.setLineDash([]);
+      }
+      ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = '#c8b898'; ctx.textAlign = 'center';
+      ctx.fillText(`무너진 ${building && building.data && building.data.was === 'house' ? '집' : '움집'}`, x, y - 6);
+      ctx.textAlign = 'left';
+      return;
+    }
     if (type === 'hut') {
       // ★[T1403] 간이 움집 — 가운데 기둥 둘(서버 `data.posts` = 앵커 기준 월드 px · `hut-stages.js SMALL_POSTS` · 그림만 · 지붕 그림이 없어 기둥이 보인다)
       if (building.data && building.data.small && Array.isArray(building.data.posts)) {
@@ -187,9 +206,16 @@
           ctx.fillStyle = '#7a5a36'; ctx.fillRect(sx - 2, sy - 26, 2, 26);
         }
       }
+      // ★[T1438] 낡은 지붕 — 서버가 준 부위 값(`building.wear` · 5% 걸음) · 지붕이 덜 찼으면 발자국 점선(실선 = 남은 몫) · 이름표에 부위별 내구
+      const _wr = building.wear, _R = building.data && building.data.hut;
+      if (_wr && typeof _wr.roof === 'number' && _wr.roof < 1 && Array.isArray(_R)) {
+        const P = _t1438Poly(_R, building);
+        ctx.beginPath(); ctx.moveTo(P[0][0], P[0][1]); for (let i = 1; i < 4; i++) ctx.lineTo(P[i][0], P[i][1]); ctx.closePath();
+        ctx.setLineDash([Math.max(1, 10 * _wr.roof), Math.max(0.5, 10 * (1 - _wr.roof))]); ctx.strokeStyle = 'rgba(214,170,90,0.9)'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]);
+      }
       // 완공 앵커 — 몸체(벽·바닥)는 기존 경로가 그림. 라벨만.
       ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = '#e8d8b0'; ctx.textAlign = 'center';
-      ctx.fillText('움집', x, y - 6);
+      ctx.fillText((_wr && typeof _wr.roof === 'number') ? `움집 · 지붕 ${Math.round(_wr.roof * 100)}% · 뼈대 ${Math.round((_wr.frame || 0) * 100)}%` : '움집', x, y - 6);
       ctx.textAlign = 'left';
       return;
     }
