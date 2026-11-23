@@ -15808,6 +15808,51 @@
    "core": false,
    "why": "브라우저(글자) — CI 밖(야간 · 전수)"
   },
+  "test-t1454-slow.js": {
+   "cls0": "다",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 12.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 11.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 12.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 12.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 12.4,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "다",
+   "child": [
+    "spawnSync node"
+   ],
+   "cls": "다",
+   "maxSec": 12.7,
+   "same5": true,
+   "srv": true,
+   "core": false,
+   "why": "srv"
+  },
   "test-t721-apply.js": {
    "cls0": "나",
    "why0": "child_process",
@@ -18116,5 +18161,5 @@
    "srv": true
   }
  },
- "at": "2026-11-22"
+ "at": "2026-11-23"
 }
