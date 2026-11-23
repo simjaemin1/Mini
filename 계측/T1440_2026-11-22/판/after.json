@@ -1,0 +1,41 @@
+{
+ "POP_ON_1020g": {
+  "block": 10,
+  "delay": 0,
+  "t1440re": 0,
+  "iso": 0,
+  "pop": 4075,
+  "fd": 0,
+  "war": 181,
+  "move": 12,
+  "dead": 402,
+  "stepHit": 10,
+  "reroute": 0
+ },
+ "POP_ON_7g": {
+  "block": 16,
+  "delay": 0,
+  "t1440re": 0,
+  "iso": 0,
+  "pop": 4311,
+  "fd": 158,
+  "war": 189,
+  "move": 118,
+  "dead": 663,
+  "stepHit": 16,
+  "reroute": 0
+ },
+ "POP_ON_42g": {
+  "block": 17,
+  "delay": 0,
+  "t1440re": 2,
+  "iso": 0,
+  "pop": 3893,
+  "fd": 154,
+  "war": 133,
+  "move": 175,
+  "dead": 587,
+  "stepHit": 19,
+  "reroute": 2
+ }
+}

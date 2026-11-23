@@ -18237,6 +18237,96 @@
     "spawnSync node",
     "spawn node"
    ]
+  },
+  "test-t1423-block-react.js": {
+   "cls0": "다",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 5.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 7.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 7.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 5.8,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "다",
+   "child": [
+    "spawnSync node"
+   ],
+   "cls": "다",
+   "maxSec": 9,
+   "same5": true,
+   "core": false,
+   "why": "srv",
+   "srv": true
+  },
+  "test-t1440-road-rule.js": {
+   "cls0": "다",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 20,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 20.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 20.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 22.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 20.8,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "다",
+   "child": [
+    "spawnSync node"
+   ],
+   "cls": "다",
+   "maxSec": 22.1,
+   "same5": true,
+   "srv": true,
+   "core": false,
+   "why": "srv"
   }
  },
  "at": "2026-11-22"

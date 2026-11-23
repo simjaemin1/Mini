@@ -1,0 +1,38 @@
+[
+ {
+  "tag": "BOT_CTL_1020",
+  "seed": 1020,
+  "days": 80,
+  "bot": 10,
+  "env": {
+   "T400_BUILD_ACT": "0",
+   "T1423_BLOCK_REACT": "1",
+   "T1423_REACT_MEET": "1",
+   "T1440_BOT_KINDS": "wingsU,wingsP,thick,house,vilpush,neck,grad,door"
+  }
+ },
+ {
+  "tag": "BOT_CTL_7",
+  "seed": 7,
+  "days": 80,
+  "bot": 10,
+  "env": {
+   "T400_BUILD_ACT": "0",
+   "T1423_BLOCK_REACT": "1",
+   "T1423_REACT_MEET": "1",
+   "T1440_BOT_KINDS": "wingsU,wingsP,thick,house,vilpush,neck,grad,door"
+  }
+ },
+ {
+  "tag": "BOT_CTL_42",
+  "seed": 42,
+  "days": 80,
+  "bot": 10,
+  "env": {
+   "T400_BUILD_ACT": "0",
+   "T1423_BLOCK_REACT": "1",
+   "T1423_REACT_MEET": "1",
+   "T1440_BOT_KINDS": "wingsU,wingsP,thick,house,vilpush,neck,grad,door"
+  }
+ }
+]

@@ -1,0 +1,86 @@
+[
+ {
+  "tag": "BOT_ON_1020",
+  "seed": 1020,
+  "days": 80,
+  "probe": 10,
+  "env": {
+   "T1423_NO_BUILD": "1",
+   "T1423_BLOCK_REACT": "1"
+  }
+ },
+ {
+  "tag": "BOT_CTRL_1020",
+  "seed": 1020,
+  "days": 80,
+  "probe": 10,
+  "env": {
+   "T1423_NO_BUILD": "1",
+   "T1423_BLOCK_REACT": "1",
+   "T1423_REACT_MEET": "1"
+  }
+ },
+ {
+  "tag": "BOT_OFF_1020",
+  "seed": 1020,
+  "days": 80,
+  "probe": 10,
+  "env": {}
+ },
+ {
+  "tag": "BOT_ON_7",
+  "seed": 7,
+  "days": 80,
+  "probe": 10,
+  "env": {
+   "T1423_NO_BUILD": "1",
+   "T1423_BLOCK_REACT": "1"
+  }
+ },
+ {
+  "tag": "BOT_CTRL_7",
+  "seed": 7,
+  "days": 80,
+  "probe": 10,
+  "env": {
+   "T1423_NO_BUILD": "1",
+   "T1423_BLOCK_REACT": "1",
+   "T1423_REACT_MEET": "1"
+  }
+ },
+ {
+  "tag": "BOT_OFF_7",
+  "seed": 7,
+  "days": 80,
+  "probe": 10,
+  "env": {}
+ },
+ {
+  "tag": "BOT_ON_42",
+  "seed": 42,
+  "days": 80,
+  "probe": 10,
+  "env": {
+   "T1423_NO_BUILD": "1",
+   "T1423_BLOCK_REACT": "1"
+  }
+ },
+ {
+  "tag": "BOT_CTRL_42",
+  "seed": 42,
+  "days": 80,
+  "probe": 10,
+  "env": {
+   "T1423_NO_BUILD": "1",
+   "T1423_BLOCK_REACT": "1",
+   "T1423_REACT_MEET": "1"
+  }
+ },
+ {
+  "tag": "BOT_OFF_42",
+  "seed": 42,
+  "days": 80,
+  "probe": 10,
+  "env": {}
+ }
+]
