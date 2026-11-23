@@ -1,0 +1,11 @@
+{
+  "reason": "Existing unchanged test-hunt-port.js /T146/ regex also matched unrelated T1465 identifiers.",
+  "change": "Alpha-rename only the economy local boolean; feature module owns flags={T1465_ORE_STOCK:ON}, economy forwards that single public property in the same object-key position. No expression, branch, numeric operation, or call order changes.",
+  "publicKnobAndExport": "T1465_ORE_STOCK",
+  "normalizedEconomySourceByteEqual": true,
+  "beforeSHA256": "861c77032558c404beb671cce7f40ada128f41bc45c0833497334b1b6e9cac87",
+  "afterSHA256": "5c06541f236ed5d0680e9207c4b648229705baa2c033a8ac10d9071e1c9ecf9a",
+  "physicalModuleChange": "Adds only a flags export object derived from the existing ON boolean; original functions unchanged.",
+  "numericCheck": "Old-binding native engine versus regenerated new-binding browser bundle: 20days × full/1% stock, three mapped villages with shared finite cells; exact serialized world and stock equality. See 식별자-번들-대조.txt.",
+  "measurementImpact": "Prior numerical measurements remain valid; exact alpha-normalization and old/new representative complete-world equality retained."
+}

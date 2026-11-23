@@ -23,7 +23,7 @@ run_lab(){
   fi
  )
  touch "$dir/done"
- node -e 'const fs=require("fs"),cp=require("child_process");fs.writeFileSync(process.argv[1],JSON.stringify({commit:cp.execFileSync("git",["rev-parse","HEAD"],{encoding:"utf8"}).trim(),node:process.version,run:process.env.GITHUB_RUN_ID,job:process.env.GITHUB_JOB},null,2));' "$dir/remote-source.json"
+ node -e 'const fs=require("fs"),cp=require("child_process");fs.writeFileSync(process.argv[1],JSON.stringify({commit:cp.execFileSync("git",["-C",process.argv[2],"rev-parse","HEAD"],{encoding:"utf8"}).trim(),observerRunnerCommit:process.env.GITHUB_SHA||null,node:process.version,run:process.env.GITHUB_RUN_ID,job:process.env.GITHUB_JOB},null,2));' "$dir/remote-source.json" "$sim_root"
 }
 OLD="${RUNNER_TEMP:-/tmp}/t1465-pre-product"
 git worktree add --detach "$OLD" 34b1978a97b232323da53e177451ba30377049c6

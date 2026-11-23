@@ -86,4 +86,6 @@ function consume(v, p, units, npc) {
   b.cells[p.cell.key] = { s: stock - got, day: world.day || 0 };
   return got * ck / kg;
 }
-module.exports = { ON, bindHost, read, response, plan, forecast, consume };
+// Public feature metadata belongs to the stock module; the economy forwards it.
+const flags = { T1465_ORE_STOCK: ON };
+module.exports = { ON, flags, bindHost, read, response, plan, forecast, consume };
