@@ -13939,9 +13939,13 @@ function _t1276Stand(vil) {
   let S = 0, nS = 0;
   const _g = E.T1421_FARM_DIV === 'grow', _m = E.T1421_FARM_PRICE === 'mix', _C = (_g || _m) ? _Crops() : null;   // ★[T1421 ④ ⑤] 끔 = 아래 갈래 무동작
   let _gf = 0, _gw = 0, _in = null;
+  const _fm = (E.T1452_LEDGER && T1408_HARV_AXIS) ? {} : null, _C52 = _fm ? _Crops() : null;   // ★[T1452] 앞날 장부의 밭 칸(밭 날 축 = econ 날 축일 때만 · 끔 = null = 무동작)
+  const _d52 = _fm ? _farmDay(vil, state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0) : 0;
   for (const [k, e] of vil._crop) { if (!e || !e.c) continue; const it = _t368Item(vil, k, e); if (it && it.u > 0) { const _f = it.u * (E.t368FoodPer(vil.econ, e.c) || 0); S += _f; nS++;
-    if (_C) { if (_g && _f > 0) { _gf += _f; _gw += _f * (_C.growDaysOf(e.c) || 0); } if (_m && !(_f > 0)) { _in = _in || {}; _in[e.c] = (_in[e.c] || 0) + it.u; } } } }
+    if (_C) { if (_g && _f > 0) { _gf += _f; _gw += _f * (_C.growDaysOf(e.c) || 0); } if (_m && !(_f > 0)) { _in = _in || {}; _in[e.c] = (_in[e.c] || 0) + it.u; } }
+    if (_fm && _C52 && _f > 0) { let rd = _T1374_RD.get(e); if (rd === undefined) { rd = _C52.readyDay(e.c, e.p); _T1374_RD.set(e, rd); } if (rd != null) { const d = rd > _d52 ? rd : _d52 + 1; _fm[d] = (_fm[d] || 0) + _f; } } } }   // ★[T1452] 익는 날 → 식량(익었는데 안 거둔 칸 = 내일)
   vil.econ._t1276Stand = S;
+  if (_fm) vil.econ._t1452Fm = _fm;
   if (_g && _gf > 0) vil.econ._t1421GAvg = _gw / _gf;   // ★[T1421 ⑤ ⓑ] 선 식량으로 무게 단 자라는 날(빈 밭이면 마지막 값)
   if (_m) vil.econ._t1421Ined = _in;   // ★[T1421 ④] 안 먹는 선 작물 낱개(없으면 null)
   if (E.T1421_FARM_DIV === 'labor') { vil.econ._t1421DayS = _t1221DayS(); vil.econ._t1421Lab = true; }   // ★[T1421 ⑤ ⓒ] 사람 하루 낮 초
@@ -13980,9 +13984,34 @@ function _t1374Next(vil) {
   const day = state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0;
   vil.econ._t1374Next = _t1374NextHarv(vil, T1408_HARV_AXIS ? _farmDay(vil, day) : day);   // ★[T1408] 켬 = 밭 날 축(위 머리말)
 }
+// ★★[T1452 2026-11-23 · 지시 T1452 정해진 것 4] **지금 심으면 거둘 가장 이른 날 · 앞 열두 달 새로 심어 거둘 가장 이른 날** — econ `_t1452Sow` · `_t1452Rel`
+//   (손잡이 `T1419_FOOD_NEED=ahead` · 밭 날 축 = econ 날 축(`T1408_HARV_AXIS`)일 때만 · 끔 = 무동작). 그 마을 밭 · 논에 그 달 심을 수 있는 작물(청동기 묶음 · 작물 정본 `sowableMonth`)이
+//   익는 날(`readyDay`) 가운데 가장 이른 날 — 오늘(이 달) · 앞 열두 달 그 달 첫날. 이 달 심을 작물이 없으면 `_t1452Sow` = null(심을 철이 아님). 새 수 0(작물 달력 그대로 · 다음 거둠 날 `_t1374NextHarv` 와 같은 표).
+function _t1452Sow(vil) {
+  const E = _lifeEcon(); if (!E || !E.T1452_LEDGER || !T1408_HARV_AXIS || !vil || !vil.econ) return;
+  const C = _Crops(); if (!C) return;
+  const day = _farmDay(vil, state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0);
+  const Cal = require('./calendar'), flds = [];
+  if (vil._farmSet && vil._farmSet.size) { const nD = vil._drySet ? [...vil._farmSet].filter((k) => vil._drySet.has(k)).length : 0; if (nD > 0) flds.push('밭'); if (vil._farmSet.size - nD > 0) flds.push('논'); }
+  const key = flds.join(',') + '|' + day;
+  let hit = _t1452Fb.get(key);
+  if (!hit) {   // 같은 밭 꼴 · 같은 날은 마을이 달라도 답이 같다(작물 달력뿐) — 한 번 셈
+    const first = (d) => { const mo = Cal.dateOf(d).month; let r = Infinity; for (const f of flds) for (const id of C.sowableMonth(f, mo)) { if (!C.T1201_BRONZE_SET.has(id)) continue; const x = C.readyDay(id, d); if (x != null && x < r) r = x; } return r; };
+    const now = first(day);
+    let rel = now;
+    for (let d = day + 1, mo0 = Cal.dateOf(day).month; d < day + 366; d++) { const mo = Cal.dateOf(d).month; if (mo === mo0) continue; mo0 = mo; const r = first(d); if (r < rel) rel = r; if (rel <= d) break; }
+    hit = { now: now === Infinity ? null : now, rel: rel === Infinity ? null : rel };
+    if (_t1452Fb.size > 64) _t1452Fb.clear();
+    _t1452Fb.set(key, hit);
+  }
+  vil.econ._t1452Sow = hit.now;
+  vil.econ._t1452Rel = hit.rel;
+}
+const _t1452Fb = new Map();   // '밭,논|날' → { now, rel }
 function _lifeHeadlessDay(vil) {
   _t1276Stand(vil);   // ★[T1276] 하루 한 번(라이브 · 판 자 — 몸 갈래여도 선다)
   _t1374Next(vil);   // ★[T1374 ②] 다음 거둠 날(출생 문 · 끔 = 무동작)
+  _t1452Sow(vil);   // ★[T1452] 지금 심으면 · 새로 심어 거둘 가장 이른 날(끔 = 무동작)
   _t1388Other(vil);   // ★[T1388 ⓒ] 다른 식량 몫(끔 = 무동작)
   _lifeVL();   // lazy 로드 방어(단독 호출 경로 — 5e8d5f5 'is not defined' 클래스 재발 금지)
   const day = state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0;

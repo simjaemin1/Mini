@@ -15709,6 +15709,51 @@
    "why": "서버(글자) — CI 밖(야간 · 전수)",
    "logSec": 431
   },
+  "test-t1419-food-need.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": 38.5,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 38.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 38.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 34.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 36.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 36.2,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawnSync node"
+   ]
+  },
   "test-t1421-farm-4000b.js": {
    "cls0": "나",
    "why0": "child_process",
@@ -15753,6 +15798,94 @@
    "child": [
     "execFileSync node"
    ]
+  },
+  "test-t1437-food-buffer.js": {
+   "cls0": "나",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 25.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 23.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 22.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 23.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 24,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawnSync node"
+   ],
+   "cls": "나",
+   "maxSec": 25.4,
+   "same5": true,
+   "core": true,
+   "why": "core"
+  },
+  "test-t1452-food-ahead.js": {
+   "cls0": "나",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 32.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 32.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 36.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 32.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 32.5,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawnSync node"
+   ],
+   "cls": "나",
+   "maxSec": 36.9,
+   "same5": true,
+   "core": true,
+   "why": "core"
   },
   "test-t721-apply.js": {
    "cls0": "나",
@@ -18060,96 +18193,7 @@
     "spawnSync node"
    ],
    "srv": true
-  },
-  "test-t1419-food-need.js": {
-   "cls0": "나",
-   "why0": "child_process",
-   "cls": "나",
-   "maxSec": 38.5,
-   "same5": true,
-   "core": true,
-   "why": "core",
-   "runs": [
-    {
-     "rc": 0,
-     "secs": 38.5,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 38.5,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 34.5,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 36.3,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 36.2,
-     "green": true,
-     "fails": []
-    }
-   ],
-   "dyn": "나",
-   "child": [
-    "spawnSync node"
-   ]
-  },
-  "test-t1437-food-buffer.js": {
-   "cls0": "나",
-   "runs": [
-    {
-     "rc": 0,
-     "secs": 25.4,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 23.3,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 22.7,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 23.5,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 24,
-     "green": true,
-     "fails": []
-    }
-   ],
-   "dyn": "나",
-   "child": [
-    "spawnSync node"
-   ],
-   "cls": "나",
-   "maxSec": 25.4,
-   "same5": true,
-   "core": true,
-   "why": "core"
   }
  },
- "at": "2026-11-21"
+ "at": "2026-11-23"
 }
