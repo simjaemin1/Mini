@@ -60,8 +60,8 @@ ok((SRC.match(/process\.env\.T932_SMELT_CONT/g) || []).length === 1, '읽는 자
   let tick = null;
   (function f(n) { if (!n || typeof n !== 'object' || tick) return; if (n.type === 'FunctionDeclaration' && n.id && n.id.name === 'tickVillage') { tick = n; return; } for (const k in n) { const c = n[k]; if (Array.isArray(c)) c.forEach(f); else if (c && typeof c.type === 'string') f(c); } })(ast);
   const FN = new Set(['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression']);
-  let loop = null;   // tickVillage 안 `for (const … of v.npcs)` 중 가장 긴 것 = 일하기 루프
-  (function f(n) { if (!n || typeof n !== 'object') return; if (FN.has(n.type) && n !== tick) return; if (n.type === 'ForOfStatement' && SRC.slice(n.right.start, n.right.end) === 'v.npcs' && (!loop || n.end - n.start > loop.end - loop.start)) loop = n; for (const k in n) { const c = n[k]; if (Array.isArray(c)) c.forEach(f); else if (c && typeof c.type === 'string') f(c); } })(tick ? tick.body : null);
+  let loop = null;   // tickVillage 안 `for (const … of v.npcs)` 중 가장 긴 것 = 일하기 루프(★[T1422] 켬이면 같은 루프가 남는 시간 일꾼을 끝에 붙인다 — `v.npcs.concat(_t1422L)` · 끔 = `v.npcs`)
+  (function f(n) { if (!n || typeof n !== 'object') return; if (FN.has(n.type) && n !== tick) return; if (n.type === 'ForOfStatement' && (SRC.slice(n.right.start, n.right.end) === 'v.npcs' || SRC.slice(n.right.start, n.right.end) === '_t1422L ? v.npcs.concat(_t1422L) : v.npcs') && (!loop || n.end - n.start > loop.end - loop.start)) loop = n; for (const k in n) { const c = n[k]; if (Array.isArray(c)) c.forEach(f); else if (c && typeof c.type === 'string') f(c); } })(tick ? tick.body : null);
   ok(!!tick && !!loop, '전제 — tickVillage 와 그 일하기 루프를 찾았다', loop ? `${loop.loc.start.line}~${loop.loc.end.line}줄` : '');
   const ends = [], nested = [], conts = [];
   const LOOPS = new Set(['ForOfStatement', 'ForInStatement', 'ForStatement', 'WhileStatement', 'DoWhileStatement']);

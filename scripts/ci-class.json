@@ -3377,39 +3377,15 @@
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
    "cls": "다",
-   "maxSec": 19,
-   "same5": true,
+   "maxSec": 17.2,
+   "same5": null,
    "core": false,
-   "why": "srv",
+   "why": "서버 1판만 잼",
    "logSec": 18,
    "runs": [
     {
      "rc": 0,
-     "secs": 18.4,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 19,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 18.7,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 18.5,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 17.8,
+     "secs": 17.2,
      "green": true,
      "fails": []
     }
@@ -8230,12 +8206,24 @@
    "cls0": "나",
    "why0": "child_process",
    "cls": "나",
-   "maxSec": 0.6,
+   "maxSec": 0.5,
    "same5": true,
    "core": true,
    "why": "core",
    "logSec": 1,
    "runs": [
+    {
+     "rc": 0,
+     "secs": 0.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.5,
+     "green": true,
+     "fails": []
+    },
     {
      "rc": 0,
      "secs": 0.4,
@@ -8250,19 +8238,7 @@
     },
     {
      "rc": 0,
-     "secs": 0.6,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 0.6,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 0.5,
+     "secs": 0.4,
      "green": true,
      "fails": []
     }
@@ -13526,7 +13502,7 @@
    "cls0": "가",
    "why0": "",
    "cls": "가",
-   "maxSec": 3.5,
+   "maxSec": 3.7,
    "same5": true,
    "core": true,
    "why": "core",
@@ -13540,25 +13516,25 @@
     },
     {
      "rc": 0,
-     "secs": 3.5,
+     "secs": 3.7,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 3.3,
+     "secs": 3.7,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 3.3,
+     "secs": 3.1,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 3.4,
+     "secs": 2.9,
      "green": true,
      "fails": []
     }
@@ -14472,7 +14448,7 @@
    "maxSec": null,
    "same5": null,
    "core": false,
-   "why": "안 잼",
+   "why": "러너 한 판 131초 > 60초(안 돌림)",
    "logSec": 131
   },
   "test-t1349-war-stall.js": {
@@ -15609,7 +15585,8 @@
    "maxSec": 11.5,
    "same5": true,
    "core": true,
-   "why": "core"
+   "why": "core",
+   "why0": "child_process"
   },
   "test-t1408-farm-4000.js": {
    "cls0": "나",
@@ -18416,6 +18393,96 @@
    "same5": true,
    "core": true,
    "why": "core"
+  },
+  "test-t1402-deeds-split.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "다",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "서버(글자) — CI 밖(야간 · 전수)"
+  },
+  "test-t1402-deeds-uptime.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "다",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "서버(글자) — CI 밖(야간 · 전수)"
+  },
+  "test-t1402-deeds-work.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "다",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "서버(글자) — CI 밖(야간 · 전수)"
+  },
+  "test-t1416-hunt-body2.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "안 잼"
+  },
+  "test-t1420-eq.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "안 잼"
+  },
+  "test-t1422-side-work.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": 2.7,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 2.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.7,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "execFileSync node"
+   ]
   }
  },
  "at": "2026-11-22"
