@@ -1546,86 +1546,6 @@ function _t1104Carry(g, res, q) {   // 노획 — 싸운 단의 길목 산 몸 �
   const each = q / bodies.length, _G = res === 'food' ? _gl() : null;
   for (const p of bodies) { const inv = p.inventory || (p.inventory = {}); inv[res] = (+inv[res] || 0) + each; if (_G) _G.bagNote(p, 'food', each); }
 }
-// ── ★[T1459] 버린 짐은 땅에 — 더미(만난 자리) · 걷기 · 싣기(상한) · 남은 것은 땅 꾸러미 · 은거지에서 환산 ──
-function _t1459Add(g, res, q, day, victim, other) {   // econ `onBanditLoot` 자리 — 싸운 단의 오늘 더미에 품목 그대로(반환 false = 몸 없는 단 → 종전 장부 줄)
-  if (!(q > 0) || !g) return false;
-  const T = g.t1104, at = T && T.metAt; const st = _t1459St();
-  if (!at || !_t1104Party(g).length) { st.ledger++; return false; }
-  const Z = _t1459(); let P = T.pileId != null ? Z.piles.get(T.pileId) : null;
-  if (!P || P.day !== day || P.cid !== at.cid) {   // 만남 하나 = 더미 하나
-    P = { id: ++Z.seq, gid: g.id, cid: at.cid, x: at.x, y: at.y, day, items: {}, kg: 0, pick: 0, st: 'wait', from: victim && victim.name, to: other && other.name };
-    Z.piles.set(P.id, P); T.pileId = P.id; st.piles++;
-  }
-  P.items[res] = (P.items[res] || 0) + q; const kg = _t1459Kg(res, q); P.kg += kg; st.kg += kg;
-  return true;
-}
-function _t1459Go(g, day) {   // 만난 뒤 — 더미가 있으면 산 몸이 다 그 자리로 걷는다(T1104 걸음 문 · 장부 길날)
-  const T = g.t1104, Z = _t1459(), P = T && T.pileId != null ? Z.piles.get(T.pileId) : null;
-  if (!P || P.st !== 'wait') return false;
-  const H = S.host, ppd = H.t1104Ppd ? H.t1104Ppd() : 0, bodies = _t1104Party(g);
-  if (!bodies.length || !H.t1104Walk) return false;
-  let len = Math.hypot(P.x - T.x, P.y - T.y);
-  for (const p of bodies) { const r = H.t1104Walk(p, P.x, P.y, 't1104', g.id, null); if (r && r.len > len) len = r.len; }
-  P.st = 'walk'; _t1459St().walk++;
-  g.t1104 = { st: 'pick', pile: P.id, d0: day, len, ppd, x: P.x, y: P.y, met: T.met, key: T.key, carry: T.carry || null };
-  log(day, `도적단#${g.id}(몸 ${bodies.length})이 버린 짐 더미(${Math.floor(P.x / SZ)},${Math.floor(P.y / SZ)} · ${P.kg.toFixed(1)}kg)로 걷는다 — 닿는 날 D${_t1104Eta(g.t1104)} [T1459]`);
-  return true;
-}
-function _t1459PickDay(g, day) {   // 더미로 걷는 단의 하루 — 닿았으면(장부 길날 + 몸이 그 칸) 싣고 은거지로 · 길날 둘이 지나도 못 닿은 몸은 두고 닿은 몸만 싣는다
-  const T = g.t1104, P = _t1459().piles.get(T.pile);
-  if (!P) { _t1104Back(g, day, 'met'); return; }
-  if (!_t1104At(T, day)) return;
-  const cx = Math.floor(P.x / SZ), cy = Math.floor(P.y / SZ), party = _t1104Party(g), here = party.filter((p) => _t1184Here(p, cx, cy));
-  const late = day >= (_t1104Eta(T) || day) + 2;
-  if (here.length < party.length && !late) return;
-  if (late && here.length < party.length) _t1459St().late++;
-  _t1459Load(g, P, here, day);
-  _t1104Back(g, day, 'met');
-}
-function _t1459Load(g, P, bodies, day) {   // 몸마다 남은 kg 만큼(T466 `_warLootLoad` 그 함수 — `CAP_KG` · 무게) · 실은 몫은 몸에 표(은거지 환산) · 남은 몫은 존 땅 꾸러미
-  const H = S.host, st = _t1459St(), src = Object.assign({}, P.items);
-  const before = bodies.map((p) => Object.assign({}, p.inventory || {}));
-  if (bodies.length && H.t1104Load) H.t1104Load(bodies, src);
-  bodies.forEach((p, i) => { const inv = p.inventory || {}; for (const r of Object.keys(P.items)) { const d = (+inv[r] || 0) - (+before[i][r] || 0); if (d > 1e-9) { const B = p._t1459Bag || (p._t1459Bag = {}); B[r] = (B[r] || 0) + d; } } });
-  let pickKg = 0, leftKg = 0, items = 0;
-  for (const r of Object.keys(P.items)) {
-    const left = Math.max(0, src[r] || 0), took = P.items[r] - left;
-    pickKg += _t1459Kg(r, took);
-    if (left > 1e-9) {
-      const n = Math.floor(left + 1e-9), dust = left - n;
-      if (n >= 1 && H.t1459Ground) { const gis = H.t1459Ground(P.x, P.y, r, n, _t1459Kg(r, n)) || []; for (const gi of gis) { _t1459().gi.set(gi.id, { kg: +gi.kg || 0, at: H.t1459Now ? H.t1459Now() : Date.now(), pile: P.id }); items++; } leftKg += _t1459Kg(r, n); }
-      else if (n >= 1) leftKg += _t1459Kg(r, n);
-      if (dust > 1e-9) st.dust += _t1459Kg(r, dust);
-    }
-  }
-  P.pick = pickKg; P.left = leftKg; P.st = 'done'; st.pickKg += pickKg; st.leftKg += leftKg; st.leftItems += items;
-  log(day, `도적단#${g.id} 몸 ${bodies.length}이 더미에서 ${pickKg.toFixed(1)}kg 을 졌다(몸마다 상한 ${(_t1459Cap() || 0)}kg)${leftKg > 0 ? ` · 못 진 ${leftKg.toFixed(1)}kg 은 땅 꾸러미 ${items}개로 남는다(누구나 줍는다)` : ''} [T1459]`);
-  _t1459().piles.delete(P.id);
-}
-function _t1459World(g, c) {   // 만난 자리 둘(캐러밴 · 단 — 칸) · 보는 사람이 둘 중 하나 곁에 있나(관측자 반경 800px) · 있으면 존 지형 어댑터
-  const H = S.host, T = g && g.t1104, at = T && T.metAt; if (!at || !H.t1459Viewer || !H.t1459Cell) return null;
-  if (!(H.t1459Viewer(at.x, at.y) || H.t1459Viewer(T.x, T.y))) return null;
-  return _cb().zoneWorld(at.x / SZ, at.y / SZ, T.x / SZ, T.y / SZ, H.t1459Cell);
-}
-function _t1459Cap() { try { return require('./carry').CFG.CAP_KG; } catch (e) { return null; } }
-function _t1459Fence(p) {   // 은거지 — 더미에서 실어 온 품목만 장물 환산(식량류 · 잡화 — 종전 `onBanditLoot` 의 `gain` 식) · 무기 짐은 실물(아래 `_t1079Unload` 가 내린다)
-  const B = p && p._t1459Bag; if (!B) return;
-  const inv = p.inventory || (p.inventory = {}), st = _t1459St(), _G = _gl();
-  for (const r of Object.keys(B)) {
-    const q = Math.min(+B[r] || 0, +inv[r] || 0); if (!(q > 0)) continue;
-    if (ARMS_RES.has(r)) { st.fenceArms += q; continue; }
-    const foody = r === 'food' || r === 'fish' || r === 'meat' || r === 'cooked_food' || r === 'vegetable', gain = q * (foody ? BDT_FENCE_F : BDT_FENCE_G);
-    inv[r] = +inv[r] - q; if (!(inv[r] > 1e-9)) delete inv[r]; if (_G) _G.bagOut(p, r, q);
-    inv.food = (+inv.food || 0) + gain; if (_G) _G.bagNote(p, 'food', gain); st.fenceFood += gain;
-  }
-  p._t1459Bag = undefined;
-}
-function _t1459Watch() {   // 땅 꾸러미 — 존에서 사라졌으면 까닭(10분 청소 시각을 넘겼으면 청소 · 아니면 남이 주웠다)
-  const H = S.host, Z = _t1459(); if (!H.t1459GroundHas || !Z.gi.size) return;
-  const now = H.t1459Now ? H.t1459Now() : Date.now(), life = H.t1459GroundLife || Infinity, st = _t1459St();
-  for (const [gid, r] of Z.gi) { if (H.t1459GroundHas(gid)) continue; Z.gi.delete(gid); if (now - r.at >= life) { st.goneClean++; st.goneCleanKg += r.kg; } else { st.goneOther++; st.goneOtherKg += r.kg; } }
-}
-function t1459() { return { on: T1459_LOOT_GROUND, st: S.stats.t1459 ? Object.assign({}, S.stats.t1459) : null, piles: S.t1459 ? S.t1459.piles.size : 0, ground: S.t1459 ? S.t1459.gi.size : 0 }; }   // 증인(읽기만)
 function _t1104Drop(g, P, day) {   // 해산 — 몸 없는 사람이 쥐던 노획(장부)은 더미에(그 사람들은 장부로 흩어진다 · 몸 짐은 그 몸과 같이)
   const T = g.t1104; if (!T || !T.carry) return;
   let n = 0;
@@ -2012,6 +1932,87 @@ function t1404() {   // 증인(읽기만) — 손잡이 · 셈 · 단마다 땅 
         plan: P ? { food: +P.food.toFixed(4), h: P.h, f: P.f, hy: +P.hy.toFixed(4), fy: +P.fy.toFixed(4), H: P.H, F: P.F } : null, cap: L && T1404_GANG_FORAGE ? _t1404Cap(g, L) : null,
         tools: g.arms ? { tool: +g.arms.tool || 0, bronze: +g.arms.bronze_tool || 0, iron: +g.arms.iron_tool || 0 } : null, seen: g._t1404M ? [...g._t1404M].map(([k, v]) => [k, +v.toFixed(3)]) : [] }; }) };
 }
+
+// ── ★[T1459] 버린 짐은 땅에 — 더미(만난 자리) · 걷기 · 싣기(상한) · 남은 것은 땅 꾸러미 · 은거지에서 환산 ──
+function _t1459Add(g, res, q, day, victim, other) {   // econ `onBanditLoot` 자리 — 싸운 단의 오늘 더미에 품목 그대로(반환 false = 몸 없는 단 → 종전 장부 줄)
+  if (!(q > 0) || !g) return false;
+  const T = g.t1104, at = T && T.metAt; const st = _t1459St();
+  if (!at || !_t1104Party(g).length) { st.ledger++; return false; }
+  const Z = _t1459(); let P = T.pileId != null ? Z.piles.get(T.pileId) : null;
+  if (!P || P.day !== day || P.cid !== at.cid) {   // 만남 하나 = 더미 하나
+    P = { id: ++Z.seq, gid: g.id, cid: at.cid, x: at.x, y: at.y, day, items: {}, kg: 0, pick: 0, st: 'wait', from: victim && victim.name, to: other && other.name };
+    Z.piles.set(P.id, P); T.pileId = P.id; st.piles++;
+  }
+  P.items[res] = (P.items[res] || 0) + q; const kg = _t1459Kg(res, q); P.kg += kg; st.kg += kg;
+  return true;
+}
+function _t1459Go(g, day) {   // 만난 뒤 — 더미가 있으면 산 몸이 다 그 자리로 걷는다(T1104 걸음 문 · 장부 길날)
+  const T = g.t1104, Z = _t1459(), P = T && T.pileId != null ? Z.piles.get(T.pileId) : null;
+  if (!P || P.st !== 'wait') return false;
+  const H = S.host, ppd = H.t1104Ppd ? H.t1104Ppd() : 0, bodies = _t1104Party(g);
+  if (!bodies.length || !H.t1104Walk) return false;
+  let len = Math.hypot(P.x - T.x, P.y - T.y);
+  for (const p of bodies) { const r = H.t1104Walk(p, P.x, P.y, 't1104', g.id, null); if (r && r.len > len) len = r.len; }
+  P.st = 'walk'; _t1459St().walk++;
+  g.t1104 = { st: 'pick', pile: P.id, d0: day, len, ppd, x: P.x, y: P.y, met: T.met, key: T.key, carry: T.carry || null };
+  log(day, `도적단#${g.id}(몸 ${bodies.length})이 버린 짐 더미(${Math.floor(P.x / SZ)},${Math.floor(P.y / SZ)} · ${P.kg.toFixed(1)}kg)로 걷는다 — 닿는 날 D${_t1104Eta(g.t1104)} [T1459]`);
+  return true;
+}
+function _t1459PickDay(g, day) {   // 더미로 걷는 단의 하루 — 닿았으면(장부 길날 + 몸이 그 칸) 싣고 은거지로 · 길날 둘이 지나도 못 닿은 몸은 두고 닿은 몸만 싣는다
+  const T = g.t1104, P = _t1459().piles.get(T.pile);
+  if (!P) { _t1104Back(g, day, 'met'); return; }
+  if (!_t1104At(T, day)) return;
+  const cx = Math.floor(P.x / SZ), cy = Math.floor(P.y / SZ), party = _t1104Party(g), here = party.filter((p) => _t1184Here(p, cx, cy));
+  const late = day >= (_t1104Eta(T) || day) + 2;
+  if (here.length < party.length && !late) return;
+  if (late && here.length < party.length) _t1459St().late++;
+  _t1459Load(g, P, here, day);
+  _t1104Back(g, day, 'met');
+}
+function _t1459Load(g, P, bodies, day) {   // 몸마다 남은 kg 만큼(T466 `_warLootLoad` 그 함수 — `CAP_KG` · 무게) · 실은 몫은 몸에 표(은거지 환산) · 남은 몫은 존 땅 꾸러미
+  const H = S.host, st = _t1459St(), src = Object.assign({}, P.items);
+  const before = bodies.map((p) => Object.assign({}, p.inventory || {}));
+  if (bodies.length && H.t1104Load) H.t1104Load(bodies, src);
+  bodies.forEach((p, i) => { const inv = p.inventory || {}; for (const r of Object.keys(P.items)) { const d = (+inv[r] || 0) - (+before[i][r] || 0); if (d > 1e-9) { const B = p._t1459Bag || (p._t1459Bag = {}); B[r] = (B[r] || 0) + d; } } });
+  let pickKg = 0, leftKg = 0, items = 0;
+  for (const r of Object.keys(P.items)) {
+    const left = Math.max(0, src[r] || 0), took = P.items[r] - left;
+    pickKg += _t1459Kg(r, took);
+    if (left > 1e-9) {
+      const n = Math.floor(left + 1e-9), dust = left - n;
+      if (n >= 1 && H.t1459Ground) { const gis = H.t1459Ground(P.x, P.y, r, n, _t1459Kg(r, n)) || []; for (const gi of gis) { _t1459().gi.set(gi.id, { kg: +gi.kg || 0, at: H.t1459Now ? H.t1459Now() : Date.now(), pile: P.id }); items++; } leftKg += _t1459Kg(r, n); }
+      else if (n >= 1) leftKg += _t1459Kg(r, n);
+      if (dust > 1e-9) st.dust += _t1459Kg(r, dust);
+    }
+  }
+  P.pick = pickKg; P.left = leftKg; P.st = 'done'; st.pickKg += pickKg; st.leftKg += leftKg; st.leftItems += items;
+  log(day, `도적단#${g.id} 몸 ${bodies.length}이 더미에서 ${pickKg.toFixed(1)}kg 을 졌다(몸마다 상한 ${(_t1459Cap() || 0)}kg)${leftKg > 0 ? ` · 못 진 ${leftKg.toFixed(1)}kg 은 땅 꾸러미 ${items}개로 남는다(누구나 줍는다)` : ''} [T1459]`);
+  _t1459().piles.delete(P.id);
+}
+function _t1459World(g, c) {   // 만난 자리 둘(캐러밴 · 단 — 칸) · 보는 사람이 둘 중 하나 곁에 있나(관측자 반경 800px) · 있으면 존 지형 어댑터
+  const H = S.host, T = g && g.t1104, at = T && T.metAt; if (!at || !H.t1459Viewer || !H.t1459Cell) return null;
+  if (!(H.t1459Viewer(at.x, at.y) || H.t1459Viewer(T.x, T.y))) return null;
+  return _cb().zoneWorld(at.x / SZ, at.y / SZ, T.x / SZ, T.y / SZ, H.t1459Cell);
+}
+function _t1459Cap() { try { return require('./carry').CFG.CAP_KG; } catch (e) { return null; } }
+function _t1459Fence(p) {   // 은거지 — 더미에서 실어 온 품목만 장물 환산(식량류 · 잡화 — 종전 `onBanditLoot` 의 `gain` 식) · 무기 짐은 실물(아래 `_t1079Unload` 가 내린다)
+  const B = p && p._t1459Bag; if (!B) return;
+  const inv = p.inventory || (p.inventory = {}), st = _t1459St(), _G = _gl();
+  for (const r of Object.keys(B)) {
+    const q = Math.min(+B[r] || 0, +inv[r] || 0); if (!(q > 0)) continue;
+    if (ARMS_RES.has(r)) { st.fenceArms += q; continue; }
+    const foody = r === 'food' || r === 'fish' || r === 'meat' || r === 'cooked_food' || r === 'vegetable', gain = q * (foody ? BDT_FENCE_F : BDT_FENCE_G);
+    inv[r] = +inv[r] - q; if (!(inv[r] > 1e-9)) delete inv[r]; if (_G) _G.bagOut(p, r, q);
+    inv.food = (+inv.food || 0) + gain; if (_G) _G.bagNote(p, 'food', gain); st.fenceFood += gain;
+  }
+  p._t1459Bag = undefined;
+}
+function _t1459Watch() {   // 땅 꾸러미 — 존에서 사라졌으면 까닭(10분 청소 시각을 넘겼으면 청소 · 아니면 남이 주웠다)
+  const H = S.host, Z = _t1459(); if (!H.t1459GroundHas || !Z.gi.size) return;
+  const now = H.t1459Now ? H.t1459Now() : Date.now(), life = H.t1459GroundLife || Infinity, st = _t1459St();
+  for (const [gid, r] of Z.gi) { if (H.t1459GroundHas(gid)) continue; Z.gi.delete(gid); if (now - r.at >= life) { st.goneClean++; st.goneCleanKg += r.kg; } else { st.goneOther++; st.goneOtherKg += r.kg; } }
+}
+function t1459() { return { on: T1459_LOOT_GROUND, st: S.stats.t1459 ? Object.assign({}, S.stats.t1459) : null, piles: S.t1459 ? S.t1459.piles.size : 0, ground: S.t1459 ? S.t1459.gi.size : 0 }; }   // 증인(읽기만)
 
 // =============================================================================
 // init / onGameTick — zone.js 배선 2줄(부팅 init + gameLoop 훅, villages 옆).
