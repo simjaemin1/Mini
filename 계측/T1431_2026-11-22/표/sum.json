@@ -1,0 +1,1954 @@
+{
+ "ALL_1020": {
+  "tag": "ALL_1020",
+  "day": 730,
+  "pop365": 2976,
+  "popEnd": 4038,
+  "alive": 49,
+  "empty": 2,
+  "fd": 496,
+  "dead": 2683,
+  "poor5": 147,
+  "gPeak": 3,
+  "gMean": 2.0,
+  "mPeak": 28,
+  "mEnd": 10,
+  "mMean": 12.23,
+  "gStarve": 0,
+  "disband": 12,
+  "denForm": 15,
+  "exo": 7,
+  "sup": 0,
+  "supDead": 0,
+  "lootN": 222,
+  "lootFood": 1047.0,
+  "lootAmt": 9280.8,
+  "killed": 225,
+  "raided": 229,
+  "sent": 16932,
+  "raidShare": 0.0135,
+  "foodImp": 394521.5,
+  "newCar": 16957,
+  "escPer": 1.106,
+  "escY1": 0.648,
+  "escY2": 1.479,
+  "warEnd": 109,
+  "palEnd": 2.47,
+  "pal365": 0.95,
+  "riskEnd": 1.439,
+  "fgFood": 1297.8,
+  "split": 0,
+  "home": 24,
+  "meet": 238,
+  "t1404": {
+   "dens": 51,
+   "camps": 0,
+   "hideMiss": 5,
+   "fgDays": 1472,
+   "fgFood": 1297.8363491660916,
+   "fgHunt": 40.32,
+   "fgForage": 1377.7667403304274,
+   "leave": 2,
+   "home": 24,
+   "homeBody": 9,
+   "homeRec": 7,
+   "homeNone": 12,
+   "split": 0,
+   "splitN": 0,
+   "splitMiss": 0,
+   "lurk": 243,
+   "lurkMove": 0,
+   "lurkSup": 0,
+   "met": 239,
+   "metBodiless": 61,
+   "noChoke": 0
+  },
+  "gangsN": 15,
+  "denWalk": [
+   35,
+   10,
+   11
+  ],
+  "denStraight": [
+   33,
+   2,
+   1
+  ],
+  "campWalk": [
+   35,
+   10,
+   11,
+   10,
+   11,
+   11,
+   11,
+   11,
+   11,
+   11,
+   35,
+   11,
+   35,
+   10,
+   11
+  ],
+  "usedPairs": 666,
+  "gangLife": 97.5,
+  "knobs": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1",
+   "T1404_ROOT": "/root/wt/m1431"
+  },
+  "heapPeak": 1297,
+  "heap365": 505,
+  "heapEnd": 993,
+  "heap2000": null,
+  "heap1500": null,
+  "pairsMean": 570,
+  "pairsSeries": [
+   [
+    60,
+    651
+   ],
+   [
+    90,
+    651
+   ],
+   [
+    120,
+    651
+   ],
+   [
+    150,
+    651
+   ],
+   [
+    180,
+    651
+   ],
+   [
+    210,
+    378
+   ],
+   [
+    240,
+    651
+   ],
+   [
+    270,
+    518
+   ],
+   [
+    300,
+    651
+   ],
+   [
+    330,
+    651
+   ],
+   [
+    360,
+    518
+   ],
+   [
+    390,
+    518
+   ],
+   [
+    420,
+    518
+   ],
+   [
+    450,
+    651
+   ]
+  ],
+  "fellOther": 52,
+  "fellStarve": 0,
+  "joinN": 8,
+  "bExo": 7,
+  "loot1104Food": 2514.5,
+  "n0Sum": 73,
+  "y1": {
+   "fd": 344,
+   "gStarve": 0,
+   "lootN": 144,
+   "killed": 149,
+   "raided": 151,
+   "sent": 7581,
+   "foodImp": 106235.9,
+   "fgFood": 651.1,
+   "home": 5,
+   "split": 0,
+   "mPeak": 16,
+   "gMean": 2.26,
+   "pop365": 2976,
+   "empty360": 1,
+   "lastDay": 365,
+   "pairsMean": 573
+  },
+  "t1431": null
+ },
+ "ALL_42": {
+  "tag": "ALL_42",
+  "day": 360,
+  "pop365": null,
+  "popEnd": 3310,
+  "alive": 49,
+  "empty": 2,
+  "fd": 377,
+  "dead": 1645,
+  "poor5": 179,
+  "gPeak": 3,
+  "gMean": 2.53,
+  "mPeak": 15,
+  "mEnd": 10,
+  "mMean": 12.49,
+  "gStarve": 0,
+  "disband": 1,
+  "denForm": 3,
+  "exo": 0,
+  "sup": 0,
+  "supDead": 0,
+  "lootN": 110,
+  "lootFood": 230.5,
+  "lootAmt": 4619.8,
+  "killed": 109,
+  "raided": 110,
+  "sent": 7453,
+  "raidShare": 0.0148,
+  "foodImp": 120823.8,
+  "newCar": 7478,
+  "escPer": 0.564,
+  "escY1": 0.564,
+  "escY2": null,
+  "warEnd": 35,
+  "palEnd": 1.52,
+  "pal365": null,
+  "riskEnd": 2.128,
+  "fgFood": 702.3,
+  "split": 0,
+  "home": 4,
+  "meet": 108,
+  "t1404": {
+   "dens": 51,
+   "camps": 0,
+   "hideMiss": 5,
+   "fgDays": 911,
+   "fgFood": 702.3010868605775,
+   "fgHunt": 0,
+   "fgForage": 714.1454911616523,
+   "leave": 1,
+   "home": 4,
+   "homeBody": 4,
+   "homeRec": 0,
+   "homeNone": 0,
+   "split": 0,
+   "splitN": 0,
+   "splitMiss": 0,
+   "lurk": 113,
+   "lurkMove": 0,
+   "lurkSup": 0,
+   "met": 110,
+   "metBodiless": 0,
+   "noChoke": 0
+  },
+  "gangsN": 3,
+  "denWalk": [],
+  "denStraight": [],
+  "campWalk": [],
+  "usedPairs": null,
+  "gangLife": 303.3,
+  "knobs": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1",
+   "T1404_ROOT": "/root/wt/m1431"
+  },
+  "heapPeak": 1475,
+  "heap365": null,
+  "heapEnd": 646,
+  "heap2000": null,
+  "heap1500": null,
+  "pairsMean": 607,
+  "pairsSeries": [
+   [
+    60,
+    651
+   ],
+   [
+    90,
+    651
+   ],
+   [
+    120,
+    651
+   ],
+   [
+    150,
+    651
+   ],
+   [
+    180,
+    651
+   ],
+   [
+    210,
+    651
+   ],
+   [
+    240,
+    651
+   ],
+   [
+    270,
+    651
+   ],
+   [
+    300,
+    651
+   ],
+   [
+    330,
+    378
+   ],
+   [
+    360,
+    378
+   ]
+  ],
+  "fellOther": 1,
+  "fellStarve": 0,
+  "joinN": 0,
+  "bExo": 0,
+  "loot1104Food": 1157.2,
+  "n0Sum": 15,
+  "y1": {
+   "fd": 377,
+   "gStarve": 0,
+   "lootN": 110,
+   "killed": 109,
+   "raided": 110,
+   "sent": 7453,
+   "foodImp": 120823.8,
+   "fgFood": 702.3,
+   "home": 4,
+   "split": 0,
+   "mPeak": 15,
+   "gMean": 2.53,
+   "pop365": null,
+   "empty360": 2,
+   "lastDay": 360,
+   "pairsMean": 619
+  },
+  "t1431": null
+ },
+ "ALL_7": {
+  "tag": "ALL_7",
+  "day": 730,
+  "pop365": 3414,
+  "popEnd": 5446,
+  "alive": 51,
+  "empty": 0,
+  "fd": 240,
+  "dead": 2185,
+  "poor5": 23,
+  "gPeak": 3,
+  "gMean": 1.89,
+  "mPeak": 16,
+  "mEnd": 5,
+  "mMean": 9.11,
+  "gStarve": 0,
+  "disband": 15,
+  "denForm": 16,
+  "exo": 0,
+  "sup": 1,
+  "supDead": 3,
+  "lootN": 242,
+  "lootFood": 3753.3,
+  "lootAmt": 13376.6,
+  "killed": 245,
+  "raided": 246,
+  "sent": 18114,
+  "raidShare": 0.0136,
+  "foodImp": 545672.1,
+  "newCar": 18139,
+  "escPer": 1.402,
+  "escY1": 0.534,
+  "escY2": 2.097,
+  "warEnd": 143,
+  "palEnd": 7.13,
+  "pal365": 0.24,
+  "riskEnd": 0.484,
+  "fgFood": 960.8,
+  "split": 0,
+  "home": 0,
+  "meet": 258,
+  "t1404": {
+   "dens": 51,
+   "camps": 0,
+   "hideMiss": 5,
+   "fgDays": 1390,
+   "fgFood": 960.6938218978611,
+   "fgHunt": 0,
+   "fgForage": 1109.8002181292682,
+   "leave": 0,
+   "home": 0,
+   "homeBody": 0,
+   "homeRec": 0,
+   "homeNone": 0,
+   "split": 0,
+   "splitN": 0,
+   "splitMiss": 0,
+   "lurk": 261,
+   "lurkMove": 0,
+   "lurkSup": 1,
+   "met": 260,
+   "metBodiless": 54,
+   "noChoke": 0
+  },
+  "gangsN": 16,
+  "denWalk": [
+   35,
+   10,
+   15
+  ],
+  "denStraight": [
+   33,
+   2,
+   4
+  ],
+  "campWalk": [
+   35,
+   10,
+   15,
+   15,
+   15,
+   10,
+   15,
+   15,
+   35,
+   10,
+   15,
+   15,
+   10,
+   35,
+   15,
+   35
+  ],
+  "usedPairs": 728,
+  "gangLife": 86.2,
+  "knobs": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1",
+   "T1404_ROOT": "/root/wt/m1431"
+  },
+  "heapPeak": 1343,
+  "heap365": 556,
+  "heapEnd": 755,
+  "heap2000": null,
+  "heap1500": null,
+  "pairsMean": 562,
+  "pairsSeries": [
+   [
+    60,
+    651
+   ],
+   [
+    90,
+    651
+   ],
+   [
+    120,
+    651
+   ],
+   [
+    150,
+    651
+   ],
+   [
+    180,
+    651
+   ],
+   [
+    210,
+    651
+   ],
+   [
+    240,
+    651
+   ],
+   [
+    270,
+    651
+   ],
+   [
+    300,
+    651
+   ],
+   [
+    330,
+    518
+   ],
+   [
+    360,
+    651
+   ],
+   [
+    390,
+    217
+   ],
+   [
+    420,
+    378
+   ],
+   [
+    450,
+    518
+   ],
+   [
+    480,
+    518
+   ],
+   [
+    510,
+    518
+   ],
+   [
+    540,
+    518
+   ],
+   [
+    570,
+    651
+   ],
+   [
+    630,
+    217
+   ]
+  ],
+  "fellOther": 65,
+  "fellStarve": 0,
+  "joinN": 3,
+  "bExo": 0,
+  "loot1104Food": 2224.0,
+  "n0Sum": 79,
+  "y1": {
+   "fd": 190,
+   "gStarve": 0,
+   "lootN": 149,
+   "killed": 152,
+   "raided": 153,
+   "sent": 8036,
+   "foodImp": 126385.5,
+   "fgFood": 704.0,
+   "home": 0,
+   "split": 0,
+   "mPeak": 15,
+   "gMean": 2.49,
+   "pop365": 3414,
+   "empty360": 0,
+   "lastDay": 365,
+   "pairsMean": 629
+  },
+  "t1431": null
+ },
+ "B_1020": {
+  "tag": "B_1020",
+  "day": 730,
+  "pop365": 2977,
+  "popEnd": 4363,
+  "alive": 51,
+  "empty": 0,
+  "fd": 594,
+  "dead": 2972,
+  "poor5": 168,
+  "gPeak": 3,
+  "gMean": 2.04,
+  "mPeak": 18,
+  "mEnd": 10,
+  "mMean": 11.51,
+  "gStarve": 0,
+  "disband": 12,
+  "denForm": 14,
+  "exo": 5,
+  "sup": 0,
+  "supDead": 0,
+  "lootN": 199,
+  "lootFood": 1973.3,
+  "lootAmt": 11984.8,
+  "killed": 0,
+  "raided": 213,
+  "sent": 17400,
+  "raidShare": 0.0122,
+  "foodImp": 516690.8,
+  "newCar": 17425,
+  "escPer": 1.138,
+  "escY1": 0.597,
+  "escY2": 1.57,
+  "warEnd": 101,
+  "palEnd": 4.56,
+  "pal365": 0,
+  "riskEnd": 0.833,
+  "fgFood": 1147.6,
+  "split": 0,
+  "home": 5,
+  "meet": 223,
+  "t1404": {
+   "dens": 51,
+   "camps": 0,
+   "hideMiss": 5,
+   "fgDays": 1490,
+   "fgFood": 1147.5523110229676,
+   "fgHunt": 14.962500000000025,
+   "fgForage": 1268.2540493825902,
+   "leave": 1,
+   "home": 5,
+   "homeBody": 5,
+   "homeRec": 0,
+   "homeNone": 0,
+   "split": 0,
+   "splitN": 0,
+   "splitMiss": 0,
+   "lurk": 227,
+   "lurkMove": 0,
+   "lurkSup": 0,
+   "met": 224,
+   "metBodiless": 40,
+   "noChoke": 0
+  },
+  "gangsN": 14,
+  "denWalk": [
+   35,
+   10,
+   11
+  ],
+  "denStraight": [
+   33,
+   2,
+   1
+  ],
+  "campWalk": [
+   35,
+   10,
+   11,
+   10,
+   10,
+   10,
+   35,
+   10,
+   35,
+   10,
+   35,
+   10,
+   35,
+   11
+  ],
+  "usedPairs": 694,
+  "gangLife": 106.2,
+  "knobs": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1",
+   "T1431_RAID_BATTLE": "1",
+   "T1404_ROOT": "/root/wt/b1431"
+  },
+  "heapPeak": 1281,
+  "heap365": 1007,
+  "heapEnd": 1027,
+  "heap2000": null,
+  "heap1500": null,
+  "pairsMean": 485,
+  "pairsSeries": [
+   [
+    60,
+    651
+   ],
+   [
+    90,
+    651
+   ],
+   [
+    120,
+    651
+   ],
+   [
+    150,
+    651
+   ],
+   [
+    180,
+    651
+   ],
+   [
+    210,
+    651
+   ],
+   [
+    240,
+    651
+   ],
+   [
+    270,
+    651
+   ],
+   [
+    300,
+    378
+   ],
+   [
+    330,
+    378
+   ],
+   [
+    360,
+    651
+   ],
+   [
+    390,
+    651
+   ],
+   [
+    420,
+    378
+   ],
+   [
+    450,
+    378
+   ],
+   [
+    480,
+    378
+   ],
+   [
+    510,
+    651
+   ],
+   [
+    540,
+    249
+   ],
+   [
+    570,
+    536
+   ],
+   [
+    600,
+    249
+   ],
+   [
+    630,
+    249
+   ],
+   [
+    660,
+    249
+   ],
+   [
+    720,
+    328
+   ]
+  ],
+  "fellOther": 54,
+  "fellStarve": 0,
+  "joinN": 0,
+  "bExo": 5,
+  "loot1104Food": 3188.5,
+  "n0Sum": 72,
+  "y1": {
+   "fd": 485,
+   "gStarve": 0,
+   "lootN": 126,
+   "killed": 0,
+   "raided": 139,
+   "sent": 7713,
+   "foodImp": 121042.5,
+   "fgFood": 679.6,
+   "home": 5,
+   "split": 0,
+   "mPeak": 15,
+   "gMean": 2.48,
+   "pop365": 2977,
+   "empty360": 0,
+   "lastDay": 365,
+   "pairsMean": 606
+  },
+  "t1431": {
+   "n": 224,
+   "fled": 205,
+   "fight": 19,
+   "repel": 11,
+   "lost": 8,
+   "draw": 0,
+   "traderDead": 0,
+   "traderDeadWon": 0,
+   "escDead": 18,
+   "banditDead": 59,
+   "esc0": 129,
+   "secs": 444.50000000000006,
+   "ms": 0,
+   "happySum": 174.69971429254343,
+   "outmatched": 218,
+   "low": 206
+  }
+ },
+ "B_42": {
+  "tag": "B_42",
+  "day": 730,
+  "pop365": 3175,
+  "popEnd": 4242,
+  "alive": 48,
+  "empty": 3,
+  "fd": 359,
+  "dead": 2215,
+  "poor5": 125,
+  "gPeak": 3,
+  "gMean": 2.47,
+  "mPeak": 19,
+  "mEnd": 12,
+  "mMean": 13.47,
+  "gStarve": 0,
+  "disband": 6,
+  "denForm": 8,
+  "exo": 3,
+  "sup": 0,
+  "supDead": 0,
+  "lootN": 190,
+  "lootFood": 1554.8,
+  "lootAmt": 11426.6,
+  "killed": 0,
+  "raided": 203,
+  "sent": 16475,
+  "raidShare": 0.0123,
+  "foodImp": 351923.7,
+  "newCar": 16500,
+  "escPer": 1.159,
+  "escY1": 0.579,
+  "escY2": 1.656,
+  "warEnd": 121,
+  "palEnd": 2.11,
+  "pal365": 0.35,
+  "riskEnd": 0.924,
+  "fgFood": 1468.4,
+  "split": 0,
+  "home": 15,
+  "meet": 203,
+  "t1404": {
+   "dens": 51,
+   "camps": 0,
+   "hideMiss": 5,
+   "fgDays": 1805,
+   "fgFood": 1468.4672935107733,
+   "fgHunt": 0,
+   "fgForage": 1593.3766956880827,
+   "leave": 3,
+   "home": 15,
+   "homeBody": 15,
+   "homeRec": 2,
+   "homeNone": 0,
+   "split": 0,
+   "splitN": 0,
+   "splitMiss": 0,
+   "lurk": 210,
+   "lurkMove": 0,
+   "lurkSup": 0,
+   "met": 205,
+   "metBodiless": 41,
+   "noChoke": 0
+  },
+  "gangsN": 8,
+  "denWalk": [
+   35,
+   10,
+   15
+  ],
+  "denStraight": [
+   33,
+   2,
+   4
+  ],
+  "campWalk": [
+   35,
+   10,
+   15,
+   15,
+   35,
+   15,
+   35,
+   35
+  ],
+  "usedPairs": 668,
+  "gangLife": 225.1,
+  "knobs": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1",
+   "T1431_RAID_BATTLE": "1",
+   "T1404_ROOT": "/root/wt/b1431"
+  },
+  "heapPeak": 2176,
+  "heap365": 657,
+  "heapEnd": 805,
+  "heap2000": 596,
+  "heap1500": 596,
+  "pairsMean": 599,
+  "pairsSeries": [
+   [
+    60,
+    651
+   ],
+   [
+    90,
+    651
+   ],
+   [
+    120,
+    651
+   ],
+   [
+    150,
+    651
+   ],
+   [
+    180,
+    651
+   ],
+   [
+    210,
+    518
+   ],
+   [
+    240,
+    651
+   ],
+   [
+    270,
+    536
+   ],
+   [
+    300,
+    536
+   ],
+   [
+    330,
+    518
+   ],
+   [
+    360,
+    651
+   ],
+   [
+    390,
+    651
+   ],
+   [
+    420,
+    651
+   ],
+   [
+    450,
+    651
+   ],
+   [
+    480,
+    651
+   ],
+   [
+    510,
+    651
+   ],
+   [
+    540,
+    651
+   ],
+   [
+    570,
+    536
+   ],
+   [
+    600,
+    536
+   ],
+   [
+    630,
+    536
+   ],
+   [
+    660,
+    651
+   ],
+   [
+    690,
+    651
+   ],
+   [
+    720,
+    378
+   ]
+  ],
+  "fellOther": 13,
+  "fellStarve": 0,
+  "joinN": 2,
+  "bExo": 3,
+  "loot1104Food": 2625.5,
+  "n0Sum": 39,
+  "y1": {
+   "fd": 285,
+   "gStarve": 0,
+   "lootN": 94,
+   "killed": 0,
+   "raided": 106,
+   "sent": 7585,
+   "foodImp": 121935.5,
+   "fgFood": 659.4,
+   "home": 10,
+   "split": 0,
+   "mPeak": 15,
+   "gMean": 2.27,
+   "pop365": 3175,
+   "empty360": 3,
+   "lastDay": 365,
+   "pairsMean": 600
+  },
+  "t1431": {
+   "n": 205,
+   "fled": 185,
+   "fight": 20,
+   "repel": 2,
+   "lost": 18,
+   "draw": 0,
+   "traderDead": 0,
+   "traderDeadWon": 0,
+   "escDead": 25,
+   "banditDead": 15,
+   "esc0": 122,
+   "secs": 445.3,
+   "ms": 0,
+   "happySum": 169.17186381872585,
+   "outmatched": 203,
+   "low": 185
+  }
+ },
+ "B_7": {
+  "tag": "B_7",
+  "day": 730,
+  "pop365": 3450,
+  "popEnd": 4427,
+  "alive": 48,
+  "empty": 3,
+  "fd": 395,
+  "dead": 2980,
+  "poor5": 145,
+  "gPeak": 3,
+  "gMean": 1.94,
+  "mPeak": 16,
+  "mEnd": 5,
+  "mMean": 9.17,
+  "gStarve": 0,
+  "disband": 15,
+  "denForm": 16,
+  "exo": 1,
+  "sup": 0,
+  "supDead": 0,
+  "lootN": 154,
+  "lootFood": 1947.2,
+  "lootAmt": 9621.2,
+  "killed": 0,
+  "raided": 169,
+  "sent": 16789,
+  "raidShare": 0.0101,
+  "foodImp": 424052.1,
+  "newCar": 16814,
+  "escPer": 1.141,
+  "escY1": 0.697,
+  "escY2": 1.526,
+  "warEnd": 101,
+  "palEnd": 4.33,
+  "pal365": 0.59,
+  "riskEnd": 2.438,
+  "fgFood": 946.7,
+  "split": 0,
+  "home": 11,
+  "meet": 179,
+  "t1404": {
+   "dens": 51,
+   "camps": 0,
+   "hideMiss": 5,
+   "fgDays": 1423,
+   "fgFood": 946.5106395900505,
+   "fgHunt": 0,
+   "fgForage": 1082.0729605382958,
+   "leave": 2,
+   "home": 11,
+   "homeBody": 11,
+   "homeRec": 0,
+   "homeNone": 0,
+   "split": 0,
+   "splitN": 0,
+   "splitMiss": 0,
+   "lurk": 184,
+   "lurkMove": 0,
+   "lurkSup": 0,
+   "met": 181,
+   "metBodiless": 3,
+   "noChoke": 0
+  },
+  "gangsN": 16,
+  "denWalk": [
+   35,
+   10,
+   11
+  ],
+  "denStraight": [
+   33,
+   2,
+   1
+  ],
+  "campWalk": [
+   35,
+   10,
+   11,
+   11,
+   10,
+   35,
+   11,
+   10,
+   35,
+   11,
+   35,
+   35,
+   10,
+   11,
+   35,
+   35
+  ],
+  "usedPairs": 657,
+  "gangLife": 88.6,
+  "knobs": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1",
+   "T1431_RAID_BATTLE": "1",
+   "T1404_ROOT": "/root/wt/b1431"
+  },
+  "heapPeak": 1432,
+  "heap365": 972,
+  "heapEnd": 655,
+  "heap2000": null,
+  "heap1500": null,
+  "pairsMean": 540,
+  "pairsSeries": [
+   [
+    60,
+    651
+   ],
+   [
+    90,
+    651
+   ],
+   [
+    120,
+    651
+   ],
+   [
+    150,
+    651
+   ],
+   [
+    180,
+    651
+   ],
+   [
+    210,
+    518
+   ],
+   [
+    240,
+    217
+   ],
+   [
+    270,
+    378
+   ],
+   [
+    300,
+    651
+   ],
+   [
+    330,
+    651
+   ],
+   [
+    360,
+    651
+   ],
+   [
+    390,
+    651
+   ],
+   [
+    420,
+    536
+   ],
+   [
+    510,
+    328
+   ],
+   [
+    540,
+    536
+   ],
+   [
+    630,
+    651
+   ],
+   [
+    660,
+    536
+   ],
+   [
+    690,
+    536
+   ],
+   [
+    720,
+    328
+   ]
+  ],
+  "fellOther": 60,
+  "fellStarve": 0,
+  "joinN": 2,
+  "bExo": 1,
+  "loot1104Food": 1382.4,
+  "n0Sum": 80,
+  "y1": {
+   "fd": 316,
+   "gStarve": 0,
+   "lootN": 87,
+   "killed": 0,
+   "raided": 102,
+   "sent": 7778,
+   "foodImp": 103338.7,
+   "fgFood": 650.8,
+   "home": 11,
+   "split": 0,
+   "mPeak": 15,
+   "gMean": 2.35,
+   "pop365": 3450,
+   "empty360": 0,
+   "lastDay": 365,
+   "pairsMean": 584
+  },
+  "t1431": {
+   "n": 181,
+   "fled": 158,
+   "fight": 23,
+   "repel": 12,
+   "lost": 11,
+   "draw": 0,
+   "traderDead": 0,
+   "traderDeadWon": 0,
+   "escDead": 27,
+   "banditDead": 61,
+   "esc0": 91,
+   "secs": 562.3999999999999,
+   "ms": 0,
+   "happySum": 126.30433939937696,
+   "outmatched": 175,
+   "low": 158
+  }
+ },
+ "OFF_1020": {
+  "tag": "OFF_1020",
+  "day": 730,
+  "pop365": 3218,
+  "popEnd": 5463,
+  "alive": 51,
+  "empty": 0,
+  "fd": 205,
+  "dead": 2197,
+  "poor5": 47,
+  "gPeak": 3,
+  "gMean": 1.82,
+  "mPeak": 16,
+  "mEnd": 5,
+  "mMean": 9.12,
+  "gStarve": 60,
+  "disband": 16,
+  "denForm": 17,
+  "exo": 1,
+  "sup": 0,
+  "supDead": 0,
+  "lootN": 0,
+  "lootFood": 0,
+  "lootAmt": 0,
+  "killed": 0,
+  "raided": 0,
+  "sent": 17874,
+  "raidShare": 0.0,
+  "foodImp": 664221.0,
+  "newCar": 17899,
+  "escPer": 1.241,
+  "escY1": 0.585,
+  "escY2": 1.753,
+  "warEnd": 108,
+  "palEnd": 5.6,
+  "pal365": 0,
+  "riskEnd": 0,
+  "fgFood": 0,
+  "split": 0,
+  "home": 0,
+  "meet": 0,
+  "t1404": {},
+  "gangsN": 17,
+  "denWalk": [
+   935,
+   324,
+   423
+  ],
+  "denStraight": [
+   630,
+   314,
+   359
+  ],
+  "campWalk": [
+   935,
+   324,
+   423,
+   935,
+   324,
+   423,
+   324,
+   935,
+   423,
+   935,
+   324,
+   423,
+   935,
+   324,
+   423,
+   935,
+   324
+  ],
+  "usedPairs": 639,
+  "gangLife": 78.1,
+  "knobs": {
+   "T1404_ROOT": "/root/wt/m1431"
+  },
+  "heapPeak": 1335,
+  "heap365": 927,
+  "heapEnd": 878,
+  "heap2000": null,
+  "heap1500": null,
+  "pairsMean": 85,
+  "pairsSeries": [
+   [
+    60,
+    101
+   ],
+   [
+    90,
+    101
+   ],
+   [
+    120,
+    91
+   ],
+   [
+    180,
+    98
+   ],
+   [
+    210,
+    101
+   ],
+   [
+    240,
+    101
+   ],
+   [
+    270,
+    58
+   ],
+   [
+    330,
+    101
+   ],
+   [
+    360,
+    101
+   ],
+   [
+    390,
+    58
+   ],
+   [
+    420,
+    10
+   ],
+   [
+    450,
+    98
+   ],
+   [
+    480,
+    101
+   ],
+   [
+    510,
+    58
+   ],
+   [
+    540,
+    68
+   ],
+   [
+    570,
+    98
+   ],
+   [
+    600,
+    98
+   ]
+  ],
+  "fellOther": 0,
+  "fellStarve": 59,
+  "joinN": 10,
+  "bExo": 1,
+  "loot1104Food": 0,
+  "n0Sum": 86,
+  "y1": {
+   "fd": 196,
+   "gStarve": 23,
+   "lootN": 0,
+   "killed": 0,
+   "raided": 0,
+   "sent": 7830,
+   "foodImp": 151358.8,
+   "fgFood": 0,
+   "home": 0,
+   "split": 0,
+   "mPeak": 16,
+   "gMean": 1.85,
+   "pop365": 3218,
+   "empty360": 0,
+   "lastDay": 365,
+   "pairsMean": 90
+  },
+  "t1431": null
+ },
+ "OFF_42": {
+  "tag": "OFF_42",
+  "day": 730,
+  "pop365": 3562,
+  "popEnd": 5383,
+  "alive": 51,
+  "empty": 0,
+  "fd": 104,
+  "dead": 1847,
+  "poor5": 2,
+  "gPeak": 3,
+  "gMean": 1.82,
+  "mPeak": 16,
+  "mEnd": 5,
+  "mMean": 9.04,
+  "gStarve": 59,
+  "disband": 16,
+  "denForm": 17,
+  "exo": 0,
+  "sup": 0,
+  "supDead": 0,
+  "lootN": 0,
+  "lootFood": 0,
+  "lootAmt": 0,
+  "killed": 0,
+  "raided": 0,
+  "sent": 18461,
+  "raidShare": 0.0,
+  "foodImp": 553793.8,
+  "newCar": 18486,
+  "escPer": 1.468,
+  "escY1": 0.766,
+  "escY2": 2.014,
+  "warEnd": 108,
+  "palEnd": 3.97,
+  "pal365": 0,
+  "riskEnd": 0,
+  "fgFood": 0,
+  "split": 0,
+  "home": 0,
+  "meet": 0,
+  "t1404": {},
+  "gangsN": 17,
+  "denWalk": [
+   937,
+   328,
+   422
+  ],
+  "denStraight": [
+   630,
+   317,
+   362
+  ],
+  "campWalk": [
+   937,
+   328,
+   422,
+   937,
+   328,
+   422,
+   328,
+   937,
+   422,
+   937,
+   328,
+   422,
+   937,
+   328,
+   422,
+   937,
+   328
+  ],
+  "usedPairs": 684,
+  "gangLife": 78.1,
+  "knobs": {
+   "T1404_ROOT": "/root/wt/m1431"
+  },
+  "heapPeak": 1374,
+  "heap365": 1143,
+  "heapEnd": 1133,
+  "heap2000": null,
+  "heap1500": null,
+  "pairsMean": 85,
+  "pairsSeries": [
+   [
+    60,
+    101
+   ],
+   [
+    90,
+    101
+   ],
+   [
+    120,
+    91
+   ],
+   [
+    180,
+    98
+   ],
+   [
+    210,
+    101
+   ],
+   [
+    240,
+    101
+   ],
+   [
+    270,
+    58
+   ],
+   [
+    330,
+    101
+   ],
+   [
+    360,
+    101
+   ],
+   [
+    390,
+    58
+   ],
+   [
+    420,
+    10
+   ],
+   [
+    450,
+    98
+   ],
+   [
+    480,
+    101
+   ],
+   [
+    510,
+    58
+   ],
+   [
+    540,
+    68
+   ],
+   [
+    570,
+    98
+   ],
+   [
+    600,
+    98
+   ]
+  ],
+  "fellOther": 0,
+  "fellStarve": 59,
+  "joinN": 10,
+  "bExo": 0,
+  "loot1104Food": 0,
+  "n0Sum": 86,
+  "y1": {
+   "fd": 104,
+   "gStarve": 23,
+   "lootN": 0,
+   "killed": 0,
+   "raided": 0,
+   "sent": 8063,
+   "foodImp": 119820.8,
+   "fgFood": 0,
+   "home": 0,
+   "split": 0,
+   "mPeak": 16,
+   "gMean": 1.85,
+   "pop365": 3562,
+   "empty360": 0,
+   "lastDay": 365,
+   "pairsMean": 90
+  },
+  "t1431": null
+ },
+ "OFF_7": {
+  "tag": "OFF_7",
+  "day": 730,
+  "pop365": 3374,
+  "popEnd": 5336,
+  "alive": 51,
+  "empty": 0,
+  "fd": 393,
+  "dead": 2658,
+  "poor5": 72,
+  "gPeak": 3,
+  "gMean": 1.82,
+  "mPeak": 16,
+  "mEnd": 5,
+  "mMean": 9.04,
+  "gStarve": 59,
+  "disband": 16,
+  "denForm": 17,
+  "exo": 0,
+  "sup": 0,
+  "supDead": 0,
+  "lootN": 0,
+  "lootFood": 0,
+  "lootAmt": 0,
+  "killed": 0,
+  "raided": 0,
+  "sent": 17809,
+  "raidShare": 0.0,
+  "foodImp": 608648.3,
+  "newCar": 17834,
+  "escPer": 1.229,
+  "escY1": 0.606,
+  "escY2": 1.721,
+  "warEnd": 108,
+  "palEnd": 4.56,
+  "pal365": 0,
+  "riskEnd": 0,
+  "fgFood": 0,
+  "split": 0,
+  "home": 0,
+  "meet": 0,
+  "t1404": {},
+  "gangsN": 17,
+  "denWalk": [
+   937,
+   314,
+   413
+  ],
+  "denStraight": [
+   630,
+   305,
+   351
+  ],
+  "campWalk": [
+   937,
+   314,
+   413,
+   937,
+   314,
+   413,
+   314,
+   937,
+   413,
+   937,
+   314,
+   413,
+   937,
+   314,
+   413,
+   937,
+   314
+  ],
+  "usedPairs": 678,
+  "gangLife": 78.1,
+  "knobs": {
+   "T1404_ROOT": "/root/wt/m1431"
+  },
+  "heapPeak": 1342,
+  "heap365": 540,
+  "heapEnd": 1081,
+  "heap2000": null,
+  "heap1500": null,
+  "pairsMean": 87,
+  "pairsSeries": [
+   [
+    60,
+    101
+   ],
+   [
+    90,
+    101
+   ],
+   [
+    120,
+    91
+   ],
+   [
+    180,
+    98
+   ],
+   [
+    210,
+    101
+   ],
+   [
+    240,
+    101
+   ],
+   [
+    270,
+    58
+   ],
+   [
+    330,
+    101
+   ],
+   [
+    360,
+    101
+   ],
+   [
+    390,
+    58
+   ],
+   [
+    420,
+    10
+   ]
+  ],
+  "fellOther": 0,
+  "fellStarve": 59,
+  "joinN": 10,
+  "bExo": 0,
+  "loot1104Food": 0,
+  "n0Sum": 86,
+  "y1": {
+   "fd": 256,
+   "gStarve": 23,
+   "lootN": 0,
+   "killed": 0,
+   "raided": 0,
+   "sent": 7849,
+   "foodImp": 136225.7,
+   "fgFood": 0,
+   "home": 0,
+   "split": 0,
+   "mPeak": 16,
+   "gMean": 1.85,
+   "pop365": 3374,
+   "empty360": 0,
+   "lastDay": 365,
+   "pairsMean": 90
+  },
+  "t1431": null
+ },
+ "_oom_B_1020": {
+  "tag": "_oom_B_1020",
+  "day": 360,
+  "pop365": null,
+  "popEnd": 3016,
+  "alive": 51,
+  "empty": 0,
+  "fd": 453,
+  "dead": 1626,
+  "poor5": 154,
+  "gPeak": 3,
+  "gMean": 2.47,
+  "mPeak": 15,
+  "mEnd": 15,
+  "mMean": 12.35,
+  "gStarve": 0,
+  "disband": 1,
+  "denForm": 4,
+  "exo": 0,
+  "sup": 0,
+  "supDead": 0,
+  "lootN": 122,
+  "lootFood": 1770.9,
+  "lootAmt": 6447.3,
+  "killed": 0,
+  "raided": 135,
+  "sent": 7608,
+  "raidShare": 0.0177,
+  "foodImp": 119114.9,
+  "newCar": 7633,
+  "escPer": 0.598,
+  "escY1": 0.598,
+  "escY2": null,
+  "warEnd": 27,
+  "palEnd": 0,
+  "pal365": null,
+  "riskEnd": 3.649,
+  "fgFood": 668.4,
+  "split": 0,
+  "home": 5,
+  "meet": 134,
+  "t1404": {
+   "dens": 51,
+   "camps": 0,
+   "hideMiss": 5,
+   "fgDays": 891,
+   "fgFood": 668.3800250453329,
+   "fgHunt": 0,
+   "fgForage": 705.5088253812727,
+   "leave": 1,
+   "home": 5,
+   "homeBody": 5,
+   "homeRec": 0,
+   "homeNone": 0,
+   "split": 0,
+   "splitN": 0,
+   "splitMiss": 0,
+   "lurk": 138,
+   "lurkMove": 0,
+   "lurkSup": 0,
+   "met": 135,
+   "metBodiless": 0,
+   "noChoke": 0
+  },
+  "gangsN": 4,
+  "denWalk": [],
+  "denStraight": [],
+  "campWalk": [],
+  "usedPairs": null,
+  "gangLife": 222.5,
+  "knobs": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1",
+   "T1431_RAID_BATTLE": "1",
+   "T1404_ROOT": "/root/wt/b1431"
+  },
+  "heapPeak": 1171,
+  "heap365": null,
+  "heapEnd": 648,
+  "heap2000": null,
+  "heap1500": null,
+  "pairsMean": 607,
+  "pairsSeries": [
+   [
+    60,
+    651
+   ],
+   [
+    90,
+    651
+   ],
+   [
+    120,
+    651
+   ],
+   [
+    150,
+    651
+   ],
+   [
+    180,
+    651
+   ],
+   [
+    210,
+    651
+   ],
+   [
+    240,
+    651
+   ],
+   [
+    270,
+    651
+   ],
+   [
+    300,
+    378
+   ],
+   [
+    330,
+    378
+   ],
+   [
+    360,
+    651
+   ]
+  ],
+  "fellOther": 0,
+  "fellStarve": 0,
+  "joinN": 0,
+  "bExo": 0,
+  "loot1104Food": 1712.0,
+  "n0Sum": 20,
+  "y1": {
+   "fd": 453,
+   "gStarve": 0,
+   "lootN": 122,
+   "killed": 0,
+   "raided": 135,
+   "sent": 7608,
+   "foodImp": 119114.9,
+   "fgFood": 668.4,
+   "home": 5,
+   "split": 0,
+   "mPeak": 15,
+   "gMean": 2.47,
+   "pop365": null,
+   "empty360": 0,
+   "lastDay": 360,
+   "pairsMean": 606
+  },
+  "t1431": {
+   "n": 135,
+   "fled": 130,
+   "fight": 5,
+   "repel": 0,
+   "lost": 5,
+   "draw": 0,
+   "traderDead": 0,
+   "traderDeadWon": 0,
+   "escDead": 5,
+   "banditDead": 0,
+   "esc0": 106,
+   "secs": 102.6,
+   "ms": 0,
+   "happySum": 105.70007400012378,
+   "outmatched": 135,
+   "low": 130
+  }
+ }
+}
