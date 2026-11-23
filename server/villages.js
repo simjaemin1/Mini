@@ -6396,8 +6396,7 @@ function _t1182Escort(body,dtMs,players) {
     _t1182Walk(path,p,Math.min(path.len,path.prog+_t1182Step(dtMs),Math.max(path.prog,target)),dtMs);
   }
 }
-function tickCaravanBodies(now) { try { return _tickCaravanBodies0(now); } finally { if (T1441_DOOR_OWNER && state.deps.t1441WalkAs) state.deps.t1441WalkAs(null); } }   // ★[T1441 ②] 몸 고리가 끝나면 걷는 몸의 마을을 비운다
-function _tickCaravanBodies0(now) {
+function tickCaravanBodies(now) {
   const bodies = state.caravanBodies;
   const frameDtMs = Math.min(500, Math.max(1, now - (state._carTickAt || now)));
   state._carTickAt = now;
@@ -6499,6 +6498,7 @@ function _tickCaravanBodies0(now) {
     _escortMarch(body, dtMs, players);   // ★[convoy] 호위 종대 갱신(상단 진행도 기준 후미 추종)
     }   // ★[T1253] 알갱이 고리 끝
   }
+  if (T1441_DOOR_OWNER && state.deps.t1441WalkAs) state.deps.t1441WalkAs(null);   // ★[T1441 ②] 몸 고리가 끝나면 걷는 몸의 마을을 비운다
 }
 // ★[convoy 물리 행군 — 랩 동형] 호위 종대: 상단 진행도 뒤 20px(≈0.6칸) 간격으로 같은 경로를 추종(단일 종대 — 좁은 길 고증).
 //   각자 segIdx 캐시(e)로 caravanPointAt 단조 스캔 유지(O(1) 상각 — 상인 캐시 공유 시 매 틱 리셋 스캔이라 분리).
