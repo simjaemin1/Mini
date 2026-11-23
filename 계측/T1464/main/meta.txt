@@ -1,4 +1,0 @@
-core=/home/user/Mini/sim/battle-core.js
-env=
-cap=600
-started=2026-11-23T02:50:53.885Z
