@@ -15830,6 +15830,51 @@
    "core": false,
    "why": "브라우저(글자) — CI 밖(야간 · 전수)"
   },
+  "test-t1448-road-grid.js": {
+   "cls0": "다",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 43.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 46.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 46.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 46.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 47.3,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawnSync node",
+    "execFileSync node"
+   ],
+   "cls": "나",
+   "maxSec": 47.3,
+   "same5": true,
+   "core": true,
+   "why": "core"
+  },
   "test-t721-apply.js": {
    "cls0": "나",
    "why0": "child_process",
