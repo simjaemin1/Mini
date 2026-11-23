@@ -22,7 +22,7 @@ const HN = [];
   Module.prototype._compile = function (c, f) {
     if (f === VS) {
       for (const [a, b] of HOOKS) { const n = c.split(a).length - 1; HN.push(n); if (n === 1) c = c.replace(a, b); }
-      c += '\n;globalThis.__t1422VS = { needClear: (v) => _lifeNeedClear(v), lifeEcon: () => _lifeEcon(), state, stat: () => (typeof t1422Stat === \'function\' ? t1422Stat() : null) };\n';
+      c += '\n;globalThis.__t1422VS = { needClear: (v) => _lifeNeedClear(v), lifeEcon: () => _lifeEcon(), state, stat: () => (typeof t1422Stat === \'function\' ? t1422Stat() : null), stat51: () => (typeof _t1451St !== \'undefined\' ? JSON.parse(JSON.stringify(_t1451St)) : null) };\n';
     }
     return _c.call(this, c, f);
   }; }
@@ -50,6 +50,14 @@ globalThis.__t1422T = (npc, now, owned) => {
       for (const v of V) { const e = v.econ; if (!e || !e.npcs) continue; const n = e.npcs.length; pop += n; terr += (v._terrSet && v._terrSet.size) || 0; house += +e.housing || 0;
         if (n > 0) { live++; if (!((e.counts && e.counts.lumberjack) > 0)) lj0++; if (!((e.storage && e.storage.wood) >= 1)) w0++; const h = e.lastStats && e.lastStats.happiness; if (typeof h === 'number') { hs += h * n; hv.push(+h.toFixed(3)); } } }
       (rec.w || (rec.w = [])).push([d, pop, live, lj0, w0, terr, +house.toFixed(1), pop ? +(hs / pop).toFixed(4) : 0, rec.days % 30 === 0 ? hv : null]);
+      //   ★[T1451] 마을 스냅(첫 날 · 365 · 730) — 나무 고리 그루(`_t325Trees.N` · K) · 반지름별 나무(10 · 20 · 40 · 80 · 120칸 — 색인 `t325TreesAtCell`) · 갈 수 있는 땅(밭 + 밭 후보) · 영토 · 사람
+      if (rec.days === 1 || rec.days === 365 || rec.days === 730) {
+        const deps = VS.state.deps || {}, snap = [];
+        for (const v of V) { const e = v.econ; if (!e) continue; const T = v._t325Trees || {}; const rr = [0, 0, 0];
+          const RR = [10, 20, 40, 80, 120]; rr.length = RR.length; rr.fill(0); if (deps.t325TreesAtCell && v.ccx != null) { const M = RR[RR.length - 1]; for (let dy = -M; dy <= M; dy++) for (let dx = -M; dx <= M; dx++) { const r2 = dx * dx + dy * dy; if (r2 > M * M) continue; let a = null; try { a = deps.t325TreesAtCell(v.ccx + dx, v.ccy + dy); } catch (_) {} const n = a ? a.length : 0; if (!n) continue; for (let i = 0; i < RR.length; i++) if (r2 <= RR[i] * RR[i]) rr[i] += n; } }
+          snap.push([v.name, (e.npcs || []).length, T.N || 0, T.K || 0, ...rr, (v._farmSet ? v._farmSet.size : 0) + (v._potSet ? v._potSet.size : 0), v._terrSet ? v._terrSet.size : 0, (e.storage && e.storage.wood) || 0]); }
+        (rec.snap || (rec.snap = {}))[rec.days] = snap; }
+      { let tN = 0; for (const v of V) tN += (v._t325Trees && v._t325Trees.N) || 0; (rec.tn || (rec.tn = [])).push(tN); }
       rec.cpu = process.cpuUsage(); }
     const S = curS, j = npc.simJob, lab = npc._lifeAct || '(없음)';
     const l = LAST.get(npc); LAST.set(npc, now);
@@ -77,6 +85,6 @@ globalThis.__t1422T = (npc, now, owned) => {
     if (isRest && !vd.rest) { vd.rest = 1; const R = vd.row; R[1]++; if (vd.site || vd.clear || vd.food || vd.wood) R[2]++; R[3] += vd.site; R[4] += vd.clear; R[5] += vd.food; R[6] += vd.wood; }
   } catch (e) { rec.err = String(e && e.stack || e).slice(0, 400); }
 };
-function dump() { try { const VS = globalThis.__t1422VS; if (VS && VS.state && VS.state.deps) { /* 손잡이 계측(있으면) */ } rec.side = (VS && VS.stat) ? VS.stat() : null; fs.writeFileSync(OUT, JSON.stringify(rec)); } catch (e) {} }
+function dump() { try { const VS = globalThis.__t1422VS; if (VS && VS.state && VS.state.deps) { /* 손잡이 계측(있으면) */ } rec.side = (VS && VS.stat) ? VS.stat() : null; rec.s51 = (VS && VS.stat51) ? VS.stat51() : null; fs.writeFileSync(OUT, JSON.stringify(rec)); } catch (e) {} }
 process.on('exit', () => dump());
 process.on('SIGTERM', () => { dump(); process.exit(0); });
