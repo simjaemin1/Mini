@@ -1704,17 +1704,17 @@ function _t1404Land(g) {   // 은거지 땅(마을 땅 읽개 그대로 · 은�
 // ── ★[T1460] 둘레 실물 · 그날 있던 사람 ──
 function _t1460St() { return S.stats.t1460 || (S.stats.t1460 = { reads: 0, here: 0, away: 0, noBody: 0, food: 0, days: 0 }); }
 function _t1460Claim(g) {   // 이 은거지 몫인 칸 — 산 마을 생활권(마을 땅 읽개 둘레) 밖 · 다른 은거지보다 이 은거지에 가깝다(같으면 단 번호 작은 쪽)
-  const H = S.host, R = (H && H.t1460ScanR) || 140, cx = g.camp.cx, cy = g.camp.cy, L = 2 * R, vs = [], cs = [];
-  for (const v of (H && H.villages) || []) { if (!v.econ || !v.econ.npcs || !v.econ.npcs.length) continue; if (Math.abs(v.ccx - cx) <= L && Math.abs(v.ccy - cy) <= L) vs.push(v.ccx, v.ccy); }
-  for (const o of S.GANGS) { if (o === g || !o.camp || !((o.n | 0) > 0)) continue; if (Math.abs(o.camp.cx - cx) <= L && Math.abs(o.camp.cy - cy) <= L) cs.push(o.camp.cx, o.camp.cy, o.id); }
+  const H = S.host, R = (H && H.t1460ScanR) || 0, cx = g.camp.cx, cy = g.camp.cy, L = R + R, vs = [], cs = [];
+  for (const v of (H && H.villages) || []) { if (!v.econ || !v.econ.npcs || !v.econ.npcs.length) continue; if (Math.abs(v.ccx - cx) <= L && Math.abs(v.ccy - cy) <= L) vs.push([v.ccx, v.ccy]); }
+  for (const o of S.GANGS) { if (o === g || !o.camp || !((o.n | 0) > 0)) continue; if (Math.abs(o.camp.cx - cx) <= L && Math.abs(o.camp.cy - cy) <= L) cs.push([o.camp.cx, o.camp.cy, o.id]); }
   const R2 = R * R;
   const mine = (x, y) => {
-    for (let i = 0; i < vs.length; i += 2) { const dx = x - vs[i], dy = y - vs[i + 1]; if (dx * dx + dy * dy <= R2) return false; }
+    for (const q of vs) { const dx = x - q[0], dy = y - q[1]; if (dx * dx + dy * dy <= R2) return false; }
     const d0 = (x - cx) * (x - cx) + (y - cy) * (y - cy);
-    for (let i = 0; i < cs.length; i += 3) { const dx = x - cs[i], dy = y - cs[i + 1], d = dx * dx + dy * dy; if (d < d0 || (d === d0 && cs[i + 2] < g.id)) return false; }
+    for (const q of cs) { const dx = x - q[0], dy = y - q[1], d = dx * dx + dy * dy; if (d < d0 || (d === d0 && q[q.length - 1] < g.id)) return false; }
     return true;
   };
-  return { key: cx + ',' + cy + '|' + vs.join(',') + '|' + cs.join(','), mine };
+  return { key: cx + ',' + cy + '|' + vs.join(';') + '|' + cs.join(';'), mine };
 }
 function _t1460Read(g, C) { let land = null; try { land = S.host && S.host.t1460Land ? S.host.t1460Land(g.camp.cx, g.camp.cy, C.mine) : null; } catch (e) { land = null; } return land; }
 function _t1460Land(g) {   // 은거지 땅 — 둘레 실물(남의 칸 = 빈 땅) · 마을 · 이웃 은거지가 바뀌면 다시 읽는다(비영속)
