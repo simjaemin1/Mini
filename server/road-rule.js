@@ -77,16 +77,18 @@ function claimsDirty() { S.claimsDirty = true; }
 function _claimsBuild() {
   S.claimsDirty = false;
   for (const [, o] of S.claimIds) for (const k of o.cells) _blkAdd(KX(k), KY(k), -1);
-  S.claimCells.clear(); S.claimIds.clear();
+  S.claimCells.clear(); S.claimIds.clear(); S.pinN = 0;
   if (!S.claimsIter) return;
-  for (const [id, cells, marked, t, lvl, pass] of S.claimsIter()) {
+  for (const [id, cells, marked, t, lvl, pass, pin] of S.claimsIter()) {
     if (marked) continue;
     const L = [], o = { id, t: +t || 0, lvl: lvl === 3 ? 3 : 2, pass: !!pass, cells: L };
+    if (pin) { o.pin = true; S.pinN = (S.pinN | 0) + 1; }   // ★[T1470] 못(주인이 길을 받아들인 칸 — 끔 = 안 온다)
     for (const [x, y] of cells) { const k = K(x, y); S.claimCells.set(k, o); _blkAdd(x, y, 1); L.push(k); }
     S.claimIds.set(id, o);
   }
   S.ver++;
 }
+const pinOf = (v) => v === 2;   // ★[T1470] 사유지 칸 저장 값 → 못(2 = 주인이 길을 받아들임 · 1 = 내줌으로 지나는 칸)
 function claimAt(x, y) { if (S.claimsDirty) _claimsBuild(); return S.claimCells.get(K(x, y)) || null; }
 //   걸음(모드) — { U: 주인 없는 구조물을 비키나 · P2 · P3: null = 그 급 사유지 칸이 다 막는다 · 'all' = 다 지난다 · Set(id) = 그 사유지만 지난다 }
 const M1 = { U: true, P2: null, P3: null };    // 걸음 1 — 다 피해서(일반 길 구하기의 첫째 걸음)
@@ -472,7 +474,7 @@ function _fastSearch(job, m, s, M) {
   const e = J.ends(m.key); if (!e) return null;
   const src = vid === m.a ? { x: e[0], y: e[1] } : { x: e[2], y: e[3] }, seen = new Set(), tg = [];
   for (const o of job.touch) {
-    if (job.res.has(o.key) || (o.a !== vid && o.b !== vid)) continue;
+    if (job.res.has(o.key) || o.pins || (o.a !== vid && o.b !== vid)) continue;   // ★[T1470] 못 쌍은 제 마디로
     const other = o.a === vid ? o.b : o.a; if (seen.has(other)) continue;
     const eo = J.ends(o.key); if (!eo) continue;
     seen.add(other); const eb = MULT * _base(o.key, o.pts); tg.push(o.a === vid ? { id: other, x: eo[2], y: eo[3], rev: false, eb } : { id: other, x: eo[0], y: eo[1], rev: true, eb });   // eb = T1440 쌍 전체 다시 구하기의 3배 타원(같은 두 끝 · 같은 문턱)
@@ -492,6 +494,72 @@ function _segSearch(job, g, s, M) {
 }
 //   판정을 버리거나 다시 세울 때 — 쥔 버퍼를 놓는다
 function fastFree(job) { if (!job || !job.fs || !J || !J.multiFree) return; for (const SS of job.fs.S.values()) J.multiFree(SS); }
+//   ★★[T1470] 못 — 주인이 "길이 그대로 지나가게"를 고른 사유지 칸(claims 의 길이 지나는 칸 가운데 그 고름 · 끔 = 없음). 그 쌍의 지금 길이 지나는 못을 지나는 차례대로.
+//     못은 개인 사유지 급(마을 밖 2 · 마을 땅 3) — 이 판정의 급이 더 크면(마을 건물 등) 못이 내준다(판정 50 급 그대로) · 조각 안 칸은 못이 아니다(남의 칸은 못 잡는다).
+function _pinsOn(pts, Pc, cls) {
+  const out = [], seen = new Set();
+  if (!pts || pts.length < 2) return out;
+  for (let i = 1; i < pts.length; i++) R.cellsOf(pts[i - 1], pts[i], (x, y) => { const k = K(x, y), o = S.claimCells.get(k); if (o && o.pin && o.lvl >= cls && !Pc.has(k) && !seen.has(k)) { seen.add(k); out.push({ k, id: o.id, i }); } return false; });
+  return out;
+}
+//   못에서 나눈 마디로 새 길 — 조각에 안 닿는 마디는 지금 길 그대로 · 닿는 마디는 두 끝 사이를 그 걸음으로(T1466 켬이면 한 번 훑기 틀 · 끔이면 T1440 routeTemp) · 다 이으면 줄 검사
+//     돌려줌: 길 | null(못 잇는다 · 3배 넘음) | 'wait'(한 번 훑기가 몫을 다 썼다 — 이 일을 다시)
+function _pinRoute(job, m, M, t, left) {
+  const P = m.ref, pins = m.pins, Pc = new Set(job.piece.cells);
+  if (!t.sec) {
+    const B = [{ x: P[0].x, y: P[0].y, i: 1 }].concat(pins.map((q) => ({ x: KX(q.k) * SZ + SZ / 2, y: KY(q.k) * SZ + SZ / 2, i: q.i })));
+    const secs = [];
+    for (let j = 0; j < B.length; j++) {
+      const a = B[j], end = j + 1 < B.length ? B[j + 1] : null, pts = [{ x: a.x, y: a.y }];
+      const i1 = end ? end.i : P.length; for (let i = a.i; i < i1; i++) pts.push(P[i]);
+      pts.push(end ? { x: end.x, y: end.y } : P[P.length - 1]);
+      if (!end) pts.splice(pts.length - 1, 1);   // 마지막 마디 끝 = 지금 길 끝(위 줄에서 이미 넣었다)
+      let hit = false; for (let i = 1; i < pts.length && !hit; i++) R.cellsOf(pts[i - 1], pts[i], (x, y) => { if (Pc.has(K(x, y))) { hit = true; return true; } return false; });
+      secs.push({ pts, hit, len: plen(pts) });
+    }
+    t.sec = secs; t.si = 0;
+  }
+  const base = _base(m.key, P), secs = t.sec;
+  for (; t.si < secs.length; t.si++) {
+    const q = secs[t.si]; if (!q.hit || q.done) continue;
+    const other = secs.reduce((a, z, i) => a + (i === t.si ? 0 : z.len), 0);
+    if (MULT * base - other <= 0) return null;
+    //   먼저 창(그 마디에서 조각에 닿는 줄 앞 · 뒤로 WIN — T1440 창과 같은 자) 사이만 · 못 찾으면 마디 전체
+    if (!q.win) {
+      let i0 = -1, i1 = -1;
+      for (let i = 1; i < q.pts.length; i++) { let h = false; R.cellsOf(q.pts[i - 1], q.pts[i], (x, y) => { if (Pc.has(K(x, y))) { h = true; return true; } return false; }); if (h) { if (i0 < 0) i0 = i; i1 = i; } }
+      const back = (i, d) => { let p = q.pts[i]; for (let k = i; k > 0; k--) { const a = q.pts[k - 1], L = Math.hypot(p.x - a.x, p.y - a.y); if (L >= d) { const f = d / L; return { pt: { x: Math.round(p.x + (a.x - p.x) * f), y: Math.round(p.y + (a.y - p.y) * f) }, k: k - 1 }; } d -= L; p = a; } return { pt: q.pts[0], k: -1 }; };
+      const fwd = (i, d) => { let p = q.pts[i]; for (let k = i; k < q.pts.length - 1; k++) { const b = q.pts[k + 1], L = Math.hypot(b.x - p.x, b.y - p.y); if (L >= d) { const f = d / L; return { pt: { x: Math.round(p.x + (b.x - p.x) * f), y: Math.round(p.y + (b.y - p.y) * f) }, k: k + 1 }; } d -= L; p = b; } return { pt: q.pts[q.pts.length - 1], k: q.pts.length }; };
+      const ws = back(i0 - 1, WIN), we = fwd(i1, WIN);
+      const head = ws.k < 0 ? [] : q.pts.slice(0, ws.k + 1), tail = we.k >= q.pts.length ? [] : q.pts.slice(we.k);
+      q.win = { ws, we, head, tail, keep: plen(head.concat([ws.pt])) + plen([we.pt].concat(tail)), stage: 0 };
+    }
+    const W0 = q.win, whole = W0.stage === 1;
+    const a = whole ? q.pts[0] : W0.ws.pt, b = whole ? q.pts[q.pts.length - 1] : W0.we.pt, bound = MULT * base - other - (whole ? 0 : W0.keep);
+    let mid = null;
+    if (bound > 0) {
+      const ck = (M === M1 ? '1' : M === M2 ? '2' : 'J') + '|' + a.x + ',' + a.y + ',' + b.x + ',' + b.y, C0 = job.pinC || (job.pinC = new Map());
+      if (C0.has(ck) && (C0.get(ck).mid || C0.get(ck).bound >= bound)) mid = C0.get(ck).mid;
+      else {
+        if (job.fast && J.multiBegin) {
+          if (!t.SS) t.SS = J.multiBegin(job.piece, M, { x: a.x, y: a.y }, [{ id: 'pin', x: b.x, y: b.y, rev: false, eb: bound }], job.fast);
+          if (t.SS.ph !== 3 && !J.multiStep(t.SS, left, job.head)) return 'wait';
+          mid = t.SS.out.get('pin') || null; if (J.multiFree) J.multiFree(t.SS); t.SS = null;
+        } else mid = J.routeTemp(job.piece, a.x, a.y, b.x, b.y, M, bound);
+        if (mid && plen(mid) > bound) mid = null;
+        C0.set(ck, { mid, bound });
+      }
+    }
+    if (!mid || mid.length < 2) { if (!whole) { W0.stage = 1; t.si--; continue; } return null; }   // 창 안에 없으면 마디 전체로 한 번 더
+    const inner = mid.slice(1, mid.length - 1);
+    q.pts = whole ? [{ x: a.x, y: a.y }].concat(inner, [{ x: b.x, y: b.y }]) : W0.head.concat([W0.ws.pt], inner, [W0.we.pt], W0.tail);
+    q.len = plen(q.pts); q.done = true;
+  }
+  const out = [];
+  for (const q of secs) for (const p of q.pts) { const l = out[out.length - 1]; if (!l || l.x !== p.x || l.y !== p.y) out.push(p); }
+  t.sec = null;
+  return clearRoute(out, null, M) ? out : null;
+}
 function judgeStep(job, budgetMs) {
   const c0 = cpu();
   const over = () => budgetMs > 0 && cpu() - c0 >= budgetMs;   // 몫 = CPU 시간(가상 시계 판에서도 닳는다)
@@ -508,8 +576,11 @@ function judgeStep(job, budgetMs) {
   };
   const next = (m, s) => {   // 이 걸음에서 못 했다 — 다음 걸음(급이 허락하는 데까지)
     const n = s + 1;
+    if (m.pins && (n >= 3 || n > meta.max)) { const F = job.pinFail || (job.pinFail = new Set()); for (const q of m.pins) F.add(q.id); }   // ★[T1470] 못을 지나야 하는 쌍이 못 비켰다 — 못 주인을 적는다(물음 글)
+    if (m.pins && n >= 3 && n <= meta.max) { job.fail.push(m); st.stepFail++; if (meta.early) { job.res.clear(); job.stepOf.clear(); job.passBy.clear(); job.verdict = 'yield'; job.phase = 'done'; } return; }   // ★[T1470] 못 쌍은 걸음 1 · 2 까지(남의 사유지를 지나게 하지 않는다 — 걸음 3 · 4 는 남의 사유지가 내주는 걸음)
     if (n > meta.max) { job.fail.push(m); st.stepFail++; if (meta.early) { job.res.clear(); job.stepOf.clear(); job.passBy.clear(); job.verdict = 'yield'; job.phase = 'done'; } return; }   // early = 처음 내줌에서 끝(그 조각은 내준다 — 앞서 비킨 쌍도 길을 안 바꾼다)
-    if (n === 2) job.q.unshift({ k: 'rep', g: { a: m.pts[m.i0], b: m.pts[m.i1], members: [m], pend: [] }, s: 2 });   // 걸음 2 도 줄기 고쳐 잇기부터(같은 두 끝 = 같은 답 — 판정 안 메모)
+    if (n === 2 && m.pins) job.q.unshift({ k: 'pin', m, s: 2 });   // ★[T1470]
+    else if (n === 2) job.q.unshift({ k: 'rep', g: { a: m.pts[m.i0], b: m.pts[m.i1], members: [m], pend: [] }, s: 2 });   // 걸음 2 도 줄기 고쳐 잇기부터(같은 두 끝 = 같은 답 — 판정 안 메모)
     else job.q.unshift({ k: 's' + n, m, s: n });
   };
   try {
@@ -519,8 +590,11 @@ function judgeStep(job, budgetMs) {
       const G = new Map();
       const onP = (q) => Pc.has(K(Math.floor(q.x / SZ), Math.floor(q.y / SZ)));
       const bx0 = pieceBox(piece), pc = { x: (bx0[0] + bx0[2] + 1) / 2 * SZ, y: (bx0[1] + bx0[3] + 1) / 2 * SZ };
+      const pinned = [];
+      if (S.pinN) for (const m of job.touch) { const pins = _pinsOn(m.pts, Pc, meta.cls); if (pins.length) { m.pins = pins; job.pins = (job.pins | 0) + pins.length; } }   // ★[T1470] 그 쌍의 지금 길이 지나는 못(급이 이 판정 이상 · 지나는 차례)
       for (const m of job.touch) {
         m.ref = m.pts;                                                     // 저장된 길 물건(낡음 판정 · 창을 낸 사본과 따로)
+        if (m.pins) { pinned.push(m); continue; }   // ★[T1470] 못 쌍은 무리 밖(못에서 나눈 마디로 따로)
         while (m.i0 > 0 && onP(m.pts[m.i0])) m.i0--;                       // 조각이 꼭짓점 칸을 덮으면 마디를 한 칸씩 넓힌다(잇는 두 끝은 열린 칸)
         while (m.i1 < m.pts.length - 1 && onP(m.pts[m.i1])) m.i1++;
         _window(m, pc);
@@ -528,6 +602,7 @@ function judgeStep(job, budgetMs) {
         const g = G.get(gk); if (g) g.members.push(m); else G.set(gk, { a, b, members: [m], pend: [] });
       }
       job.groups = [...G.values()]; job.q = job.groups.map((g) => ({ k: 'rep', g, s: 1 })); job.phase = 'run';
+      for (const m of pinned) job.q.push({ k: 'pin', m, s: 1 });   // ★[T1470]
       if (job.fast) { _fastPairs(job); const at = new Map(job.groups.map((g, i) => [g, i])); job.q.sort((x, y) => at.get(x.g) - at.get(y.g)); }   // ★[T1466] 떠나는 마을 차수 · (한 칸 조각이면) 차수 큰 무리부터 — 줄을 그 차례로(일은 그대로)
     }
     //   일 줄(깊이 먼저) — 걸음 1: 줄기 고쳐 잇기 → 마디 다시 구하기 → 쌍 전체 · 못 하면 그 쌍은 걸음 2(쌍 전체) → 3 → 4 → 5 를 그 자리에서 내려간다
@@ -617,6 +692,13 @@ function judgeStep(job, budgetMs) {
         if (t.s === 2 && p2) m._p2 = p2;
         if (p2 && plen(p2) <= MULT * base) { ok(m, t.s, p2, M); job.fs.keys.add(m.key); }
         else { st.fullFail++; next(m, t.s); }
+      } else if (t.k === 'pin') {   // ★[T1470] 못 쌍 — 지금 길을 못에서 마디로 나누고, 조각에 닿는 마디만 그 걸음으로 다시 구한다(마디 두 끝 = 못 · 쌍 끝 · 3배 문턱 = 처음 길 × 3 − 나머지 마디)
+        const m = t.m; if (job.res.has(m.key)) continue;
+        const M = MS[t.s], r = _pinRoute(job, m, M, t, budgetMs > 0 ? Math.max(0.5, budgetMs - (cpu() - c0)) : 0);
+        if (r === 'wait') { job.q.unshift(t); return false; }
+        job.n.pin = (job.n.pin | 0) + 1; st.pin = (st.pin | 0) + 1;
+        if (r && plen(r) <= MULT * _base(m.key, m.ref)) { ok(m, t.s, r, M); job.pinOk = (job.pinOk | 0) + 1; }
+        else next(m, t.s);
       } else if (t.k === 's3' || t.k === 's4') {   // 걸음 3 · 4 — 그 급 사유지를 나중 선포부터 내주게 한다(문턱을 좁혀 가장 적게)
         const m = t.m; if (job.res.has(m.key)) continue;
         const lvl = t.k === 's3' ? 2 : 3; job.n[t.k]++;
@@ -693,6 +775,6 @@ module.exports = {
   pieceCell, pieceEdge, pieceRect, pieceCells, pieceBox, edgeCells, mark, unmark, isMarked,
   bindRoutes, rIndex, rUnindex, rClear, rTouching, rNear, rStats, clearLine, clearRoute, claimsOn, fixRoute, fixDoomed, setFastFix, sig,
   firstUse, firstGet, firstSet, firstCount,
-  bindJudge, judgeBegin, judgeStep, judgeNow, stale, staleMemo, stats, cpuList, fastFree,
+  bindJudge, judgeBegin, judgeStep, judgeNow, stale, staleMemo, stats, cpuList, fastFree, pinOf,
   _S: S, _R: R, _F: F, _st: st,
 };

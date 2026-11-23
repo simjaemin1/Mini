@@ -39,7 +39,8 @@ const { ZONES, WORLD, isNight, worldPhase, darknessLevel, findZoneAt, worldDista
 const db = require('./zone-local-db'); // 로컬 zone DB — players 없음
 const SimVillages = require('./villages'); // §4-4 NPC 마을 시뮬 — top-level은 상수뿐(실작업은 아래 init 호출, ENABLE_VILLAGES=0이면 완전 no-op)
 const T1238_ON = !!SimVillages.T1238_TERR_V2;
-const T1440_ROAD_RULE = !!SimVillages.T1440_ROAD_RULE;   // ★[T1440] 처음 길 — 놓는 순간 판정 · 길을 닫는 조각만 보호가 없다(villages.js 가 정한다 · '1' 만 켬 · 끔 기본 · 끔 = 모듈도 안 싣는다)
+const T1440_ROAD_RULE = !!SimVillages.T1440_ROAD_RULE;
+const T1470_ROAD_PIN = T1440_ROAD_RULE && process.env.T1470_ROAD_PIN === '1';   // ★[T1470] 길을 받아들인 땅은 길의 못(끔 기본 · 끔 = T1440 바이트 · T1440 켬 위에서만)   // ★[T1440] 처음 길 — 놓는 순간 판정 · 길을 닫는 조각만 보호가 없다(villages.js 가 정한다 · '1' 만 켬 · 끔 기본 · 끔 = 모듈도 안 싣는다)
 const RoadRule = T1440_ROAD_RULE ? require('./road-rule') : null;
 const T1423_BLOCK_REACT = !!SimVillages.T1423_BLOCK_REACT;   // ★[T1423 ⓑ] 길을 막으면 세계가 치운다(villages.js 가 정한다 · '1' 만 켬 · 끔 기본) · 맨 위에 둔다(지을 때 표를 고치는 줄이 읽는다)   // ★[T1238] 영토 v2 손잡이(villages.js 가 정한다 — T1207 켬 위에서만) · 맨 위에 둔다(부팅 중 콜라이더 술어가 읽어도 TDZ 0)
 const T1197_BODY = process.env.T1074_FOOD_DEBT !== '0' && process.env.T1197_MEAL_BODY === '1'; // ★[PM land1049] 끔 기본(`=1` 켬) — 켬 판 서버 1020 400날 인구 3,617 → 1,848 · 빈 마을 1 → 15(사냥 · 식사 몸 같이 · 가상 시계) · 켤 날 T1209 ·   // ★[T1197] econ `T1197_MEAL_BODY` 와 같은 글자(켬 기본 · `=0` 끔 · T1074 끔이면 안 선다) — 마을 몸 허기 면제 자리(`_gaugeStep`)
@@ -3582,7 +3583,7 @@ function spawnOneResource() {
       heldBy: row.held_by || null,
       stateAt: row.state_at | 0,
       createdAt: row.created_at | 0,
-      ...(row.t1440_pass ? { t1440pass: 1 } : {}),   // ★[T1440] 길이 지나는 칸(켬이 쓴 칸 — 끔 판엔 열이 없다 = 칸이 안 선다)
+      ...(row.t1440_pass ? { t1440pass: (T1470_ROAD_PIN && RoadRule.pinOf(row.t1440_pass)) ? 2 : 1 } : {}),   // ★[T1470] 2 = 못(주인이 길을 받아들인 칸)   // ★[T1440] 길이 지나는 칸(켬이 쓴 칸 — 끔 판엔 열이 없다 = 칸이 안 선다)
     });
     if (Deeds.ON) { const _c = claims.get(id); if (_c.kind === 'personal') _c.care = 'new'; }   // ★[T1305 → T1332] 돌봄 단계는 청크 줄에서 — 아래 `deedChunks` 싣기(그 표는 뒤에 선다)
   }
@@ -6517,7 +6518,7 @@ function _t1440ZoneBoot() {
   _t1440Booting = true;
   RoadRule.init({ W: Math.ceil(ZONE.zoneWidth / BUILDING_SIZE), H: Math.ceil(ZONE.zoneHeight / BUILDING_SIZE) });
   //   사유지 순회(급 · 선포 시각 · 길이 지나는 칸) — 구조물 급이 이 표를 읽으므로 먼저
-  RoadRule.claimsUse(function* () { for (const [id, c] of claims) { const pv = _t1440Private(c); _t1440CPv.set(id, pv); if (pv) yield [id, Claims.cellsOf(c), false, c.createdAt || 0, _t1440CLvl(id, c), !!c.t1440pass]; } });
+  RoadRule.claimsUse(function* () { for (const [id, c] of claims) { const pv = _t1440Private(c); _t1440CPv.set(id, pv); if (pv) yield [id, Claims.cellsOf(c), false, c.createdAt || 0, _t1440CLvl(id, c), !!c.t1440pass, T1470_ROAD_PIN && RoadRule.pinOf(c.t1440pass)]; } });
   const n = { rows: 0, U: 0, V: 0, P: 0, marked: 0, claims: 0, pass: 0 };
   try {
     for (const r of db.db.prepare("SELECT id, type, owner_id, owner_name, x, y, data FROM buildings WHERE type IN ('wall','door','fence','hut_site')").iterate()) {
@@ -6615,6 +6616,7 @@ function _t1440Choose(player, piece, sig) {
     for (const t of touch) for (let i = 1; i < t.pts.length; i++) SimVillages.__t1440.cells(t.pts[i - 1], t.pts[i], (x, y) => { const k = RoadRule.K(x, y); if (P.has(k)) pass.add(k); return false; });
     _t1440Zs.road.keep++; _t1440Zs.road.keepCells += pass.size;
     send(player.ws, { type: 'notice', text: '길을 그대로 둡니다. 이 칸은 길이 지나는 칸이 되고, 그 칸에 세운 막는 것은 길을 닫는 조각이 됩니다.' });
+    if (T1470_ROAD_PIN) send(player.ws, { type: 'notice', text: '이 땅은 길의 못이 됩니다.' });   // ★[T1470] 갑에게 한 줄
     return { job: null, pass, other: new Map(), keep: true };   // 판정 없음 — 길이 그 칸을 그대로 지난다(저장된 길 무변)
   }
   _t1440Zs.road.ask++;
@@ -6642,7 +6644,9 @@ function _t1440Gate(player, piece, how, meta, opts) {
   if (ok) { player._t1440Ok = null; _t1440Zs.confirm++; if (job.verdict === 'yield') _t1440Zs.yield++; else _t1440Zs.prot++; return { job, pass, other }; }
   const owners = new Map(); for (const cid of other.keys()) { const c = claims.get(cid); if (c) owners.set(c.ownerName || c.ownerPid, (owners.get(c.ownerName || c.ownerPid) || 0) + 1); }
   const parts = [];
-  if (pass.size) parts.push(`이 자리는 길이 지나는 칸입니다. 선포하면 길이 그대로 ${pass.size}칸을 지나고, 그 칸에 세운 막는 것은 길을 닫는 조각이 됩니다.`);
+  const pinOwn = (T1470_ROAD_PIN && job.pinFail && job.pinFail.size) ? [...new Set([...job.pinFail].map((cid) => { const c = claims.get(cid); return c ? (c.ownerName || c.ownerPid) : null; }).filter(Boolean))] : [];
+  if (pinOwn.length && pass.size) parts.push(`이 길은 ${pinOwn.join(' · ')}의 땅을 지나는 길입니다. 이 칸을 잡아도 길은 그대로 지나갑니다.`);   // ★[T1470] 을에게 한 줄(못 때문에 비켜 갈 수 없다 — 묻는 틀 그대로 · "그래도 하시겠습니까?"는 다짐 창이 붙인다)
+  else if (pass.size) parts.push(`이 자리는 길이 지나는 칸입니다. 선포하면 길이 그대로 ${pass.size}칸을 지나고, 그 칸에 세운 막는 것은 길을 닫는 조각이 됩니다.`);
   if (owners.size) parts.push(`여기에 지으면 길이 ${[...owners].map(([o, k]) => `${o}의 사유지 ${k}칸`).join(' · ')}을 지나게 됩니다.`);
   return _t1440Ask(player, sig, parts.join(' ') || '이것을 놓으면 길이 바뀝니다.');
 }
@@ -6675,8 +6679,8 @@ function _t1440PassClaim(c, notify, by) {
 }
 //   풀린 칸을 다시 잡았다 — 길이 지나는 칸은 새 판정이 정한다(옛 표시를 지운다 · 저장 칸 하나) · 그 칸 구조물 급 다시
 function _t1440Repass(c, g) {
-  const k = Claims.cellsOf(c)[0], np = (k && g && g.pass.has(RoadRule.K(k[0], k[1]))) ? 1 : 0;
-  if (np) c.t1440pass = 1; else delete c.t1440pass;
+  const k = Claims.cellsOf(c)[0], np = (k && g && g.pass.has(RoadRule.K(k[0], k[1]))) ? ((T1470_ROAD_PIN && g.keep) ? 2 : 1) : 0;   // ★[T1470] 그대로 둠 = 못
+  if (np) c.t1440pass = np; else delete c.t1440pass;
   try { if (c.dbId) db.t1440ClaimPass(c.dbId, np); } catch (e) {}
   RoadRule.claimsDirty(); _t1440Reclass(_t1440ClaimP(c).cells);
 }
@@ -13050,14 +13054,14 @@ function _t1392FirstLot(player) {
     const claim = { id, ownerPid: player.playerId, ownerName: player.name, x: c.x * S, y: c.y * S, w: S, h: S, kind: 'personal',
       guildTribeId: null, guildTribeName: null, createdAt: Date.now() };
     if (Deeds.ON) claim.care = 'new';
-    if (_g1440 && _g1440.pass.has(RoadRule.K(c.x, c.y))) claim.t1440pass = 1;   // ★[T1440] 내준 칸 = 길이 지나는 칸(Map 에 넣기 앞 — 사유지 표가 그대로 지나게 센다)
+    if (_g1440 && _g1440.pass.has(RoadRule.K(c.x, c.y))) claim.t1440pass = (T1470_ROAD_PIN && _g1440.keep) ? 2 : 1;   // ★[T1440] 내준 칸 = 길이 지나는 칸(Map 에 넣기 앞 — 사유지 표가 그대로 지나게 센다)   // ★[T1470] 그대로 둠 = 못
     claims.set(id, claim);
     claim.dbId = db.insertClaim({ owner_id: player.playerId, owner_name: player.name, x: claim.x, y: claim.y, w: S, h: S,
       kind: 'personal', guild_tribe_id: null, state: 'active', held_by: null });
     made.push(claim);
   }
   if (T1440_ROAD_RULE) for (const c of again) _t1440Repass(c, _g1440);   // ★[T1440] 다시 잡은 풀린 칸은 새 판정 그대로(정해진 것 5 — 길에 안 닿았으면 옛 표시를 지운다)
-  if (_g1440) { for (const c of made) if (c.t1440pass && c.dbId) { try { db.t1440ClaimPass(c.dbId, 1); } catch (e) {} } _t1440Done(_g1440, player); }   // ★[T1440] 길이 지나는 칸 저장 · 새 길
+  if (_g1440) { for (const c of made) if (c.t1440pass && c.dbId) { try { db.t1440ClaimPass(c.dbId, c.t1440pass); } catch (e) {} } _t1440Done(_g1440, player); }   // ★[T1440] 길이 지나는 칸 저장 · 새 길
   if (Deeds.ON) for (const c of made.concat(again)) _t1332Use(player, c.x + S / 2, c.y + S / 2, 'claim', Deeds.CFG.PT);   // 새 칸은 가득(+PT) — 칸마다(종전 한 칸 선포와 같은 셈 · ★[T1403] 다시 잡은 칸도 한 칸 길처럼 가득)
   savePlayer(player);
   sendInventory(player);
@@ -13238,7 +13242,7 @@ function tryClaim(player, kind = 'personal') {
     createdAt: Date.now(),
   };
   if (_t1305P) claim.care = 'new';   // ★[T1305 → T1332] 새 칸 = 그 청크를 쓴 것(아래 `_t1332Use` — 칸을 붙인 청크 = 짓기)
-  if (_g1440 && _g1440.pass.size) claim.t1440pass = 1;   // ★[T1440] 내줌 = 길이 지나는 칸(Map 에 넣기 앞)
+  if (_g1440 && _g1440.pass.size) claim.t1440pass = (T1470_ROAD_PIN && _g1440.keep) ? 2 : 1;   // ★[T1440] 내줌 = 길이 지나는 칸(Map 에 넣기 앞)   // ★[T1470] 그대로 둠 = 못(2)
   claims.set(id, claim);
   const dbId = db.insertClaim({
     owner_id: player.playerId,
@@ -13249,7 +13253,7 @@ function tryClaim(player, kind = 'personal') {
     state: 'active', held_by: null,
   });
   claim.dbId = dbId;
-  if (_g1440) { if (claim.t1440pass) { try { db.t1440ClaimPass(dbId, 1); } catch (e) {} } _t1440Done(_g1440, player); }   // ★[T1440] 길이 지나는 칸 저장(행 0) · 새 길 · 남의 사유지 내줌
+  if (_g1440) { if (claim.t1440pass) { try { db.t1440ClaimPass(dbId, claim.t1440pass); } catch (e) {} } _t1440Done(_g1440, player); }   // ★[T1440] 길이 지나는 칸 저장(행 0) · 새 길 · 남의 사유지 내줌
   if (_t1305P) _t1332Use(player, cx + SZ / 2, cy + SZ / 2, 'claim', Deeds.CFG.PT);   // ★[T1343] 새로 잡은 칸은 가득(+PT)
   savePlayer(player);
   sendInventory(player);
