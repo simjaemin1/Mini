@@ -40,5 +40,7 @@ for ax in [axes[0, 1], axes[1, 0], axes[1, 1]]:
     ax.legend()
 fig.suptitle('T1465: 10,950 completed game days; default flag remains OFF', fontsize=13)
 fig.savefig(root / '30년-재고와-생산.svg', metadata={'Date': None})
+svg = root / '30년-재고와-생산.svg'
+svg.write_text('\n'.join(line.rstrip() for line in svg.read_text().splitlines())+'\n')
 fig.savefig(root / '30년-재고와-생산.png', dpi=140)
 plt.close(fig)

@@ -1,0 +1,12 @@
+{
+  "acceptedAsThirtyYearRun": false,
+  "signal": "SIGKILL (exit status9 from /proc for both native nodes and their exec scheduling parents)",
+  "memoryCgroup": {
+    "oom": 0,
+    "oomKill": 0
+  },
+  "observed": "Local managed exec sessions were no longer available; the independent test process group survived. No JavaScript exception or heap-OOM message was logged. Exact external termination source was not established.",
+  "lastCompleteOnAnnualDay": 8395,
+  "offFinalMissing": true,
+  "recovery": "Both30-year conditions are rerun in isolated GitHub jobs with completed-day full-world snapshots, metric state, and daily depletion witness checkpoints. Partial23-year trajectory is supplemental only."
+}

@@ -1,0 +1,9 @@
+{
+  "fullDays": 60,
+  "resumeAt": 30,
+  "resumedDays": 30,
+  "touchedCells": 8,
+  "exactWorldFingerprints": 30,
+  "allMetricStateExact": true,
+  "dailyWitnessExact": true
+}
