@@ -1,0 +1,3 @@
+# 옛 코드 빨강 — 하네스 = 89d4f978a · 제품(server sim public lab) = c73f5cbb2 · 시한 600초
+빨강 ○ | test-t1452-food-ahead.js | RC=1 · ✓ 2 · ✗ 36 |   ✗ ① `ahead` 만 켬 · 없음 · `1` · `AHEAD` · `true` = 끔 · `harv` · `seen` = 장부 아님  ← ["","harv","seen","","","",""]
+# 합: 빨강 1 · 크래시 0 · 초록 0 · 모름 0 · 제품 무관 0

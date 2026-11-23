@@ -29,7 +29,7 @@ if (_OUT) {
     if (k == null) { k = V.length; vid.set(v, k); V.push({ name: v.name, d0: n, S: [], N: [], sh: [], fd: [], hv: [], ga: [], yf: [], nx: [], st: [], nd: [], ah: [], im: [], wx: '' }); }
     return V[k];
   };
-  const write = () => { try { fs.writeFileSync(OUT, JSON.stringify({ arm: ARM, server: SERVER, last: n, dfc: E.DAILY_FOOD_CONSUMPTION, se, err, vil: V })); } catch (e) { } };
+  const write = () => { try { fs.writeFileSync(OUT, JSON.stringify({ arm: ARM, server: SERVER, last: n, dfc: E.DAILY_FOOD_CONSUMPTION, se, err, stat: E.t1452Stat ? E.t1452Stat() : null, vil: V })); } catch (e) { } };   // stat = 장부 셈 횟수 · µs 합 · 가장 긴 µs · 쓴 칸 · 날(판 끝 · 06:00 UTC 뒤 판부터)
   const step = (world, day) => {
     if (!seasonSet && V2 && V2.SEASON_MULT && typeof E.t1419Season === 'function' && !E.T1419_FOOD_NEED) { E.t1419Season(V2.SEASON_MULT); seasonSet = true; }   // 끈 판 — (가)가 켠 판과 같은 철 배수를 보게(그 함수만 읽는 표)
     n++;

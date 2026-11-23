@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # T1452 판 그림 — 팔(끔 · 겪은 낙폭 · 앞날 장부 · 앞날 장부 값에만) × 세계(랩 800날 · 밭 세계 730날) · 시드 셋(1020 굵게 · 7 · 42 가늘게)
-#   ① 굶어 죽음 누계 ② 사람 ③ 기근 문 안 마을-날 %(30날 칸 · 그날 판정이 쓴 버틸 날 > 곳간 날치 — 훅 nd · 끔 = 30) ④ 비상 마을-날 %(30날 칸 · 장부 판)
+#   ① 굶어 죽음 누계 ② 사람 ③ 기근 문 안 마을-날 %(30날 칸 · 그날 판정이 쓴 버틸 날 > 곳간 날치 — 훅 nd · 끔 = 30) ④ 밭 세계 = 비상 마을-날 %(30날 칸 · 장부 판) · 랩 = 들여온 식량(밭이 없어 비상 0)
 #   훅 칸: <tag>-<seed>.t1452.json(곳간 · 사람 · 장부) · <tag>-<seed>.t1437.json(100날 줄 · 굶어 죽음)
 # 쓰는 법: python3 t1452_plot.py <out.png> <runs dir lab> <runs dir farm>
 import json, os, sys, gzip, math
@@ -72,6 +72,14 @@ def famine(v, i, N, dfc, arm):
     if nd is not None: return sd < nd
     return None
 
+def imports(d52):   # 들여온 식량(세계 합 · 30날 칸 · 하루 평균) — 랩 ④(밭이 없어 비상 0 — 대신 값 줄이 교역을 마르게 하나를 본다)
+    L = d52['last']; B = {}
+    for v in d52['vil']:
+        d0 = v.get('d0', 0)
+        for i, x in enumerate(v.get('im') or []):
+            k = (d0 + i) // 30; B[k] = B.get(k, 0) + (x or 0)
+    ks = sorted(B); return [k * 30 + 15 for k in ks], [B[k] / 30 for k in ks]
+
 def emerg(v, i, N, dfc, arm):
     a = v['ah'][i] if v.get('ah') and i < len(v['ah']) else None
     return None if not a else bool(a[3])
@@ -96,13 +104,15 @@ for col, (wn, D, ti) in enumerate((('랩(끔 세계) 800날', LABD, 0), ('밭 �
                 d37 = _load(f37); y = cumdead(d37); axs[0][col].plot(range(1, len(y) + 1), y, **kw)
             y = pop(d52); axs[1][col].plot(range(1, len(y) + 1), y, **kw)
             x, y = bins(d52, famine, arm); axs[2][col].plot(x, y, **kw)
-            if arm != 'seen' or True:
+            if ti == 0:
+                x, y = imports(d52); axs[3][col].plot(x, y, **kw)
+            else:
                 x, y = bins(d52, emerg, arm)
                 if x: axs[3][col].plot(x, y, **kw)
     axs[0][col].set_title(f'{wn} — ① 굶어 죽음 누계', loc='left', fontsize=11.5, color=INK)
     axs[1][col].set_title('② 사람', loc='left', fontsize=11.5, color=INK)
     axs[2][col].set_title('③ 기근 문 안 마을-날 %(곳간 날치 < 그날 버틸 날 · 끔 = 30 · 30날 칸)', loc='left', fontsize=10.5, color=INK)
-    axs[3][col].set_title('④ 비상 마을-날 %(지금 심어 골 앞에 못 거둠 · 장부 판 · 끔 = 재는 판)', loc='left', fontsize=10.5, color=INK)
+    axs[3][col].set_title(('④ 들여온 식량(세계 합 · 하루 평균 · 30날 칸 — 밭이 없어 비상 0)' if ti == 0 else '④ 비상 마을-날 %(지금 심어 골 앞에 못 거둠 · 장부 판 · 끔 = 재는 판)'), loc='left', fontsize=10.5, color=INK)
     for r in range(4): axs[r][col].yaxis.set_major_formatter(FuncFormatter(lambda v, _: f'{int(v):,}' if abs(v) >= 1000 else f'{v:g}'))
     axs[2][col].set_ylim(0, 100); axs[3][col].set_ylim(0, None)
     axs[3][col].set_xlabel('날', color=INK2, fontsize=9.5)

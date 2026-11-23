@@ -6,7 +6,8 @@
 #     (가)          모자람이라 함 ⇔ sd < ga(버틸 날)
 #     겪은 낙폭      모자람이라 함 ⇔ sd < ga + 여유분(T1437 고리 셈을 칸에서 따로 — x = sd − 빚 ÷ N · 지난 365날 꼭대기 → 바닥 · 한 해 전 = 가뭄 14)
 #     한 해 율       모자람이라 함 ⇔ yf < N × 하루치(T1421 출생 문의 율 — 한 사람 더 아닌 지금 사람)
-#     앞날 장부      모자람이라 함 ⇔ sd < need(켠 판 칸 ah[4])
+#     앞날 장부      모자람이라 함 ⇔ sd < need(켠 판 칸 ah[4] — 여유분까지 든 문 값)
+#     장부 골        모자람이라 함 ⇔ 0 밑 첫날(ah[9]) ≤ H(여유분 없이 — 예상 곳간 그 자체가 앞 H 날 안에 0 밑으로 가나)
 #   틀린 날 = 모자란데 넉넉하다 함(놓침) · 넉넉한데 모자라다 함(헛울림) — 마을-날 %(산 마을 · 끝 H 날 뺌)
 # 쓰는 법: python3 t1452_diag.py <out.json> <run.t1452.json[.gz]> … [--H 90] [--plot out.png]
 import json, sys, gzip, os, math
@@ -34,7 +35,7 @@ def buf_series(sd, sh, N, Y=365, dr=14):   # T1437 고리 셈(곳간 날치 − 
 
 def one(f, H):
     d = _load(f); dfc = d.get('dfc') or 1.0; tag = os.path.basename(f).split('.')[0]
-    rows = {'ga': [0, 0, 0], 'seen': [0, 0, 0], 'yf': [0, 0, 0], 'ah': [0, 0, 0]}   # [놓침, 헛울림, 날]
+    rows = {'ga': [0, 0, 0], 'seen': [0, 0, 0], 'yf': [0, 0, 0], 'ah': [0, 0, 0], 'ah0': [0, 0, 0]}   # [놓침, 헛울림, 날]
     by_type = {}
     for v in d['vil']:
         S, N, sh, ga, yf = v['S'], v['N'], v['sh'], v['ga'], v['yf']
@@ -47,7 +48,7 @@ def one(f, H):
             nxt[i] = nh
             if hungry[i]: nh = i
         bf = buf_series(sd, sh, N)
-        T = by_type.setdefault(typ(v['name']), {'ga': [0, 0, 0], 'seen': [0, 0, 0], 'yf': [0, 0, 0], 'ah': [0, 0, 0]})
+        T = by_type.setdefault(typ(v['name']), {'ga': [0, 0, 0], 'seen': [0, 0, 0], 'yf': [0, 0, 0], 'ah': [0, 0, 0], 'ah0': [0, 0, 0]})
         for i in range(L - H):
             if not N[i] or sd[i] is None: continue
             truth = nxt[i] is not None and nxt[i] - i <= H
@@ -56,6 +57,7 @@ def one(f, H):
             if yf[i] is not None: claims['yf'] = yf[i] < N[i] * dfc
             a = v.get('ah', [None] * L)[i] if v.get('ah') else None
             if a and len(a) > 4 and a[4] is not None: claims['ah'] = sd[i] < a[4]
+            if a and len(a) > 9: claims['ah0'] = bool(a[9]) and a[9] <= H
             for k, c in claims.items():
                 for R in (rows[k], T[k]):
                     R[2] += 1
@@ -113,10 +115,11 @@ def plot(files, out):
         ax.tick_params(colors=INK2, labelsize=8.5)
         ax.set_title(f"{wn} — {v['name']}(사람 가운데 {sorted(N)[len(N) // 2]}) · 붉은 칸 = 못 먹은 날", loc='left', fontsize=11, color=INK, pad=6)
         ax.set_ylabel('날치', color=INK2, fontsize=9)
-    axs[0].legend(frameon=False, fontsize=8.6, loc='upper right', ncol=3)
+    H_, L_ = axs[0].get_legend_handles_labels()
+    fig.legend(H_, L_, frameon=False, fontsize=9, loc='upper left', ncol=5, bbox_to_anchor=(0.02, 0.985 - 0.35 / fig.get_figheight()))   # 그림 머리 밑 한 줄(칸 위 선을 안 가린다)
     axs[-1].set_xlabel('날', color=INK2, fontsize=9.5)
-    fig.suptitle('T1452 진단 — 실제 곳간 날치와 지금 식 셋이 날마다 말한 "버틸 날"(이 선 밑이면 모자람이라 한다)', x=0.02, ha='left', fontsize=13, color=INK)
-    fig.tight_layout(rect=(0, 0, 1, 0.975))
+    fig.suptitle('T1452 진단 — 실제 곳간 날치와 지금 식 셋 · 앞날 장부가 날마다 말한 "버틸 날"(곳간 날치가 이 선 밑이면 모자람이라 한다)', x=0.02, ha='left', fontsize=13, color=INK)
+    fig.tight_layout(rect=(0, 0, 1, 1 - 0.9 / fig.get_figheight()))
     fig.savefig(out, dpi=170, facecolor=SURF)
     return out
 
