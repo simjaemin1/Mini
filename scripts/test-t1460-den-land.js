@@ -187,11 +187,11 @@ for (const [name, Bt] of Object.entries(BAITS)) {
   const red = n === 1 ? rows(name).filter((r) => !r[1]).map((r) => r[0]).sort() : null;
   BR[name] = { n, red, same: !!red && JSON.stringify(red) === JSON.stringify(RED[name].slice().sort()) };
 }
-const line = (k, what) => ok(BR[k].n === 1 && BR[k].same, `미끼 ${what} → 빨강 줄이 꼭 {${RED[k].join(', ')}}`, `바꾼 자리 ${BR[k].n} · 빨강 {${(BR[k].red || []).join(', ')}}`);
-line('fixed', 'ⓐ — 고정 읽개 사본(켬 갈래를 안 탄다 = 지금)');
-line('lurkEat', 'ⓑ — 길목에 선 몸이 몫을 받는 사본');
-line('twice', 'ⓒ — 마을과 같은 짐승을 두 번 세는 사본(마을 생활권을 안 뺀다)');
-line('grow', 'ⓓ — 둘레가 먹이는 수보다 무리가 커지는 사본(떠날 수 0)');
-line('starve', 'ⓔ — 도적이 굶어 죽는 사본(떠남 문을 안 연다 — 종전 굶음)');
+const red = (k) => `{${(BR[k].red || []).join(', ')}}`, okB = (k) => BR[k].n === 1 && BR[k].same;
+ok(okB('fixed'), '미끼 ⓐ — 고정 읽개 사본(켬 갈래를 안 탄다 = 지금) → 빨강 줄이 꼭 {①a, ①c}', `바꾼 자리 ${BR.fixed.n} · 빨강 ${red('fixed')}`);
+ok(okB('lurkEat'), '미끼 ⓑ — 길목에 선 몸이 몫을 받는 사본 → 빨강 줄이 꼭 {②a}', `바꾼 자리 ${BR.lurkEat.n} · 빨강 ${red('lurkEat')}`);
+ok(okB('twice'), '미끼 ⓒ — 마을과 같은 짐승을 두 번 세는 사본(마을 생활권을 안 뺀다) → 빨강 줄이 꼭 {①a}', `바꾼 자리 ${BR.twice.n} · 빨강 ${red('twice')}`);
+ok(okB('grow'), '미끼 ⓓ — 둘레가 먹이는 수보다 무리가 커지는 사본(떠날 수 0) → 빨강 줄이 꼭 {③b}', `바꾼 자리 ${BR.grow.n} · 빨강 ${red('grow')}`);
+ok(okB('starve'), '미끼 ⓔ — 도적이 굶어 죽는 사본(떠남 문을 안 연다 — 종전 굶음) → 빨강 줄이 꼭 {③b}', `바꾼 자리 ${BR.starve.n} · 빨강 ${red('starve')}`);
 console.log(`\n=== ${pass}/${pass + fail} 통과 ===`);
 process.exit(fail ? 1 : 0);
