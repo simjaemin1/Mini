@@ -11,7 +11,10 @@
 //   ② 날마다(econ 날이 바뀐 틱): 마을 인구 · 영토 · 목표(`_terrGrowCore` 와 같은 식) · 모자란 땅(카드 식 인구 × 32.67 − 영토 · 목표 − 영토) · 굶어 죽음(econ `_fdDeadTot` d0 뒤) ·
 //      막힌 칸(econ `_grudgeLand` — 지금도 그 사유지 칸인 것) · 둘레 칸 수 · 그날 새로 막힌 칸.
 //   ③ 그림 순간 — 막힌 칸이 사유지의 25 · 50 · 75 % 에 · N칸(10 · 30 · 100)에 처음 닿은 날 + d0 + 마지막 날: 그림 칸(영토 · d0 뒤 넓힌 칸 · 남의 영토 · 막힌 땅 · 사유지 · 막힌 칸).
-//   ⚠읽기만 — 사유지를 놓는 것 말고는 마을 · 존 상태를 한 칸도 안 바꾼다.
+//   ④ 30 % 판(덧붙임 셋 할 일) — `frac`(0 ~ 1): 토벌이 푸는 몫만 바꾼다 · 차례는 제품 `unclaimPick` 그대로(그 술어를 남은 칸 위에서 거듭 불러 앞에서부터 이어 붙인다 —
+//      칸마다 따로 매기는 차례(영토까지 · 중심까지 · y · x)라 이어 붙인 줄 = 한 번에 다 매긴 줄 · 차례 사본 0) · `sizes`: 마을마다 사유지 한 변을 돌려 가며(한 판에 크기 여럿).
+//      토벌마다(`rec.picks`) 푼 칸 · 그 칸이 마을 영토가 된 날(바뀐 날만 `tl`) · 날 줄에 명분(0/1) · 남은 사유지 칸 · 그림 순간 = 토벌 다음 날(풀린 칸 따로 표시).
+//   ⚠읽기만 — 사유지를 놓는 것(과 ④ 의 푸는 몫) 말고는 마을 · 존 상태를 한 칸도 안 바꾼다.
 'use strict';
 const path = require('path'), fs = require('fs'), Module = require('module');
 if (!process.env.T1447_PROBE_OUT || !/server[\\/]zone\.js$/.test(process.argv[1] || '')) return;
@@ -22,7 +25,7 @@ const OUT = process.env.T1447_PROBE_OUT;
 const CFG = Object.assign({ d0: 200, size: 3, gap: 3, classes: { S: 30, M: 100, L: 'top' }, per: 4,
   place: [['touch', 'grow'], ['gap', 'grow'], ['touch', 'away'], ['gap', 'away']], snapPct: [25, 50, 75], snapN: [10, 30, 100], margin: 14 },
   process.env.T1447_PROBE_CFG ? JSON.parse(fs.readFileSync(process.env.T1447_PROBE_CFG, 'utf8')) : {});
-const rec = { cfg: CFG, knob: process.env.T1447_PERSON_GRUDGE || '', placed: [], days: [], snaps: [], err: null, last: null };
+const rec = { cfg: CFG, knob: process.env.T1447_PERSON_GRUDGE || '', placed: [], days: [], snaps: [], picks: [], err: null, last: null };
 const save = () => { try { fs.writeFileSync(OUT, JSON.stringify(rec)); } catch (e) {} };
 const _p = Module._extensions['.js'];
 Module._extensions['.js'] = function (m, filename) {
@@ -117,14 +120,14 @@ function place(st, d) {
   for (const c of Hb.claims.values()) for (const [x, y] of (c.cells && c.cells.length ? c.cells : [[Math.floor(c.x / 32), Math.floor(c.y / 32)]])) taken.add(K(x, y));
   let n = 0;
   for (const [cls, list] of groups) list.forEach((v, i) => {
-    const [mode, side] = CFG.place[i % CFG.place.length];
+    const [mode, side] = CFG.place[i % CFG.place.length], S = CFG.sizes ? CFG.sizes[(rec.placed.length) % CFG.sizes.length] : CFG.size;
     const gd = growDir(st, v), th = side === 'grow' ? gd.th : gd.th + Math.PI;
-    const sp = findSpot(st, v, th, CFG.size, mode, CFG.gap, taken);
+    const sp = findSpot(st, v, th, S, mode, CFG.gap, taken);
     const ent = { cls, vid: v.dbId, vname: v.name, pop0: popOf(v), terr0: v._terrSet.size, target0: targetOf(v), fd0: v.econ._fdDeadTot || 0, ccx: v.ccx, ccy: v.ccy, mode, side, grow: gd, spot: sp };
     if (!sp) { ent.fail = true; rec.placed.push(ent); return; }
     n++;
     const pid = 'T1447P' + n, cells = [];
-    for (let y = sp.y0; y < sp.y0 + CFG.size; y++) for (let x = sp.x0; x < sp.x0 + CFG.size; x++) {
+    for (let y = sp.y0; y < sp.y0 + S; y++) for (let x = sp.x0; x < sp.x0 + S; x++) {
       const id = `t1447c_${n}_${x}_${y}`;
       Hb.claims.set(id, { id, ownerPid: pid, ownerName: '시험' + n, x: x * 32, y: y * 32, w: 32, h: 32, kind: 'personal', guildTribeId: null, guildTribeName: null, state: 'active', createdAt: 0 });
       cells.push([x, y]); taken.add(K(x, y));
@@ -135,7 +138,21 @@ function place(st, d) {
     T.push({ ent, v, terr0: new Set(v._terrSet), hit: {}, last: -1 });
   });
   placed = true; ix0 = d;
+  if (CFG.frac != null) {   // ④ 푸는 몫 — 제품 술어의 차례 그대로 앞에서 frac 만큼(올림 · 적어도 한 칸)
+    const G = require(path.join(ROOT, 'server', 'grudge')), orig = G.unclaimPick;
+    G.unclaimPick = function (cells, terr, ccx, ccy) {
+      const n = Math.max(1, Math.ceil(cells.length * CFG.frac)), out = [];
+      let rem = cells.slice();
+      while (out.length < n && rem.length) { const p = orig(rem, terr, ccx, ccy); if (!p.length) break; out.push(...p); const s = new Set(p); rem = rem.filter((k) => !s.has(k)); }
+      const pick = out.slice(0, n), v = (st.villages || []).find((w) => w._terrSet === terr), t = T.find((x) => x.v === v);
+      rec.picks.push({ d: curDay, vid: v ? v.dbId : null, vname: v ? v.name : null, i: t ? T.indexOf(t) : -1, n: pick.length, of: cells.length, cells: pick, tl: [] });
+      save();
+      return pick;
+    };
+  }
 }
+let curDay = -1;
+const liveOf = (pid) => { const Hb = Hz(), s = new Set(); if (Hb && Hb.claims) for (const c of Hb.claims.values()) if (c.ownerPid === pid && c.state !== 'released') s.add(K(Math.floor(c.x / 32), Math.floor(c.y / 32))); return s; };
 function snap(t, st, d, why) {
   const v = t.v, e = t.ent, M = CFG.margin, own = v._terrSet;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -151,8 +168,8 @@ function snap(t, st, d, why) {
     else if (others.some((w) => w._terrSet.has(k))) g[i] = 2;
     else if (ta.isBlocked(x, y)) g[i] = 1;
   }
-  const L = v.econ._grudgeLand && v.econ._grudgeLand[e.pid], blk = new Set(L ? L.c : []);
-  for (const [x, y] of e.cells) { const i = (y - y0) * W + (x - x0); g[i] = blk.has(K(x, y)) ? 6 : 5; }
+  const L = v.econ._grudgeLand && v.econ._grudgeLand[e.pid], blk = new Set(L ? L.c : []), live = liveOf(e.pid);
+  for (const [x, y] of e.cells) { const i = (y - y0) * W + (x - x0), k = K(x, y); g[i] = live.has(k) ? (blk.has(k) ? 6 : 5) : (own.has(k) ? 8 : 7); }   // 7 토벌로 풀린 빈 칸 · 8 풀린 뒤 마을이 가진 칸
   rec.snaps.push({ i: T.indexOf(t), why, d, x0, y0, W, H: Hh, g: g.join(''), line: lineOf(t, d) });
   save();
 }
@@ -185,14 +202,23 @@ function day(st, SV, d) {
   if (!placed && d >= CFG.d0) place(st, d);
   if (!placed) return;
   const G = require(path.join(ROOT, 'server', 'grudge'));
+  curDay = d;
   const row = { d, t: [] };
   for (const t of T) {
-    const L = lineOf(t, d); row.t.push([L.pop, L.terr, L.tgt, L.blk, L.fd, L.grown]);
+    const L = lineOf(t, d), r = [L.pop, L.terr, L.tgt, L.blk, L.fd, L.grown];
+    if (CFG.frac != null) { let cs = 0; try { cs = (SV.t1447Casus ? SV.t1447Casus(t.v, t.ent.pid) : G.casus(t.v.econ, t.ent.pid)).ok ? 1 : 0; } catch (e) {} r.push(cs, liveOf(t.ent.pid).size); }
+    row.t.push(r);
     const e = t.ent, pct = 100 * L.blk / e.size;
     if (d === ix0) snap(t, st, d, 'd0');
     for (const p of CFG.snapPct) if (pct >= p && !t.hit['p' + p]) { t.hit['p' + p] = d; snap(t, st, d, p + '%'); }
     for (const n of CFG.snapN) if (L.blk >= n && !t.hit['n' + n]) { t.hit['n' + n] = d; snap(t, st, d, n + '칸'); }
     if (L.blk > t.last) { t.last = L.blk; }
+  }
+  for (const p of rec.picks) {   // ④ 푼 칸 가운데 마을 영토가 된 칸 수(바뀐 날만) · 토벌 다음 날 그림
+    const t = T[p.i]; if (!t) continue;
+    const got = p.cells.filter((k) => t.v._terrSet.has(k)).length, lt = p.tl.length ? p.tl[p.tl.length - 1][1] : -1;
+    if (got !== lt) p.tl.push([d, got]);
+    if (d === p.d + 1) snap(t, st, d, '토벌 뒤');
   }
   rec.days.push(row);
   rec.last = { d, hits: T.map((t) => t.hit) };

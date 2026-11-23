@@ -15559,7 +15559,7 @@ function _t1447Chat(player, text) {
       for (const pid of Object.keys(L)) rows.set(pid, 1);
       for (const k of Object.keys(G)) { const pid = Grudge.pidOf(k); if (pid) rows.set(pid, 1); }
       const out = [];
-      for (const pid of rows.keys()) { const c = Grudge.casus(mine.econ, pid), h = Grudge.harmOf(mine.econ, pid); out.push(`${_t1447Who(pid)} — 막힌 칸 ${c.n}/${c.need === Infinity ? '-' : c.need}${c.ok ? ' · 토벌 명분 있음("/토벌 ' + _t1447Who(pid) + '")' : ''}${h >= 0.01 ? ` · 해코지 ${(h * 100).toFixed(0)}` : ''}`); }
+      for (const pid of rows.keys()) { const c = SimVillages.t1447Casus ? SimVillages.t1447Casus(mine, pid) : Grudge.casus(mine.econ, pid), h = Grudge.harmOf(mine.econ, pid); out.push(`${_t1447Who(pid)} — 막힌 칸 ${c.n}/${c.need === Infinity ? '-' : c.need}${c.ok ? ' · 토벌 명분 있음("/토벌 ' + _t1447Who(pid) + '")' : ''}${h >= 0.01 ? ` · 해코지 ${(h * 100).toFixed(0)}` : ''}`); }
       send(player.ws, { type: 'notice', text: out.length ? `🏘️ ${mine.name}이(가) 원한을 품은 사람 — ${out.join(' / ')}` : `🏘️ ${mine.name}이(가) 원한을 품은 사람이 없습니다.` });
     }
     return true;

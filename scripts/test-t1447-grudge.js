@@ -1,10 +1,11 @@
 // @regress
-// @bait 22
+// @bait 23
 // === scripts/test-t1447-grudge.js — T1447 마을이 사람에게 품는 원한(★재민 판정 55 · 56 · 57 · 58 · 59 · 61 · 손잡이 `T1447_PERSON_GRUDGE`) ==================
 // 판(운영 함수 그대로 · 사본 0):
 //   ㉮ 셈(`server/grudge.js` 순수) — ①a 사람 열쇠(마을 이름과 안 부딪힘 · econ JSON 왕복) ①b 길 막기 한 번 = 8 ÷ 50 × 0.45(일곱 번째에 문턱) · 주인 없는 땅 ½
 //      ①c 막힌 칸 = 사유지가 없었다면 그날 고른 위 want 칸 가운데 사유지 칸 ①d 명분 = 막힌 칸 ≥ min(⌈사유지 ½⌉, N) · 지금도 그 사유지 칸인 것만
 //      ①e 토벌 뒤 푸는 칸 = 마을 영토에 가까운 칸부터 30 %(올림 · 적어도 한 칸 · 결정론) ①f 해코지 원한 = 값 ÷ 원한 1 의 값 · 갚기 = 같은 식
+//      ①g 명분 문턱은 둘레를 넘지 않는다(7×7 = 둘레 24 < 절반 25 · N 30 — 둘레를 다 막으면 명분 · 물 · 산 쪽 둘레는 뺀다)
 //   ㉯ 마을(아이 · 마을 층 함수 그대로 · 꾸민 땅 · 꾸민 마을):
 //      ②a 넓힘이 소속 아닌 사람 사유지 칸을 못 가진다 · 막힌 칸을 센다(한 칸 한 번) · 처음 막힌 날 가입 권유(한 번)
 //      ②b 그 마을 사람 사유지는 덮는다(막힌 칸 0) ②c 토벌 — 명분 · 비용이 서면 몸이 걸어간다(가는 날 ≥ 걸음) · 닿으면 부숨 · 가까운 쪽 30 % 풂 · 땅 원한 0 ·
@@ -17,7 +18,7 @@
 //      ③f 그 마을 사람이 문턱을 넘으면 추방 ③g 권유 — 그 자리(그 마을 땅 · 제 사유지)에 왔을 때 한 번
 //      ③h 토벌 손 — 살피기 · 건물 전부 부숨(상자 짐은 바닥) · 고른 칸만 풂 · 짐은 값 · 무게 상한 · 바닥 짐만 ③i 플레이어 마을 촌장 알림은 접속 안 했어도 쌓여 남는다
 //   ㉱ 끔(손잡이 끔) — 사유지 칸 표 0 · 넓힘은 사유지를 덮는다(종전) · 마을 작물 = 벌점 3(종전) · 원한 0
-//   미끼(이 파일 안 · 자리 꼭 한 번 · 빨강 줄 단언) 스물둘 — 카드 · 덧붙임 둘 · 셋 · 다섯 · 여섯의 미끼 줄 그대로(아래 `BAITS`).
+//   미끼(이 파일 안 · 자리 꼭 한 번 · 빨강 줄 단언) 스물셋 — 카드 · 덧붙임 둘 · 셋 · 다섯 · 여섯의 미끼 줄 그대로 + 둘레 상한(그림 실험)(아래 `BAITS`).
 // 실행: node scripts/test-t1447-grudge.js
 'use strict';
 if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다
@@ -46,7 +47,8 @@ const BAITS = {
   landkeep: { file: VFILE, at: ["      if (vil && vil.econ) Grudge.landClear(vil.econ, job.pid);   // 판정 57 PM 결정", "      if (false) Grudge.landClear(vil.econ, job.pid);   // 미끼 — 토벌 뒤에도 땅 원한이 남는다 · 판정 57 PM 결정"] },
   nocasus: { file: VFILE, at: ["  if (!P.casus) return { ok: false, err: '명분이 없습니다. 그 땅이 우리 넓힘을 충분히 막고 있지 않습니다.', plan: P };", "  // 미끼 — 명분 없이도 서버가 받는다"] },
   nochief: { file: VFILE, at: ["    const e = vil.econ; if (!e || !e._grudgeLand || e.founder) continue;\n    for (const pid of Object.keys(e._grudgeLand)) {\n      if (_t1447Jobs", "    const e = vil.econ; if (!e || !e._grudgeLand) continue;   // 미끼 — 플레이어 마을 주민이 촌장 없이 간다\n    for (const pid of Object.keys(e._grudgeLand)) {\n      if (_t1447Jobs"] },
-  harmraid: { file: GFILE, at: ["  return { ok: blk.length > 0 && blk.length >= need, n: blk.length, size, need, cells };", "  return { ok: (blk.length > 0 && blk.length >= need) || harmShut(econ, pid), n: blk.length, size, need, cells };   // 미끼 — 해코지 원한만으로도 명분"] },
+  harmraid: { file: GFILE, at: ["  return { ok: blk.length > 0 && blk.length >= need, n: blk.length, size, need, rim, cells };", "  return { ok: (blk.length > 0 && blk.length >= need) || harmShut(econ, pid), n: blk.length, size, need, rim, cells };   // 미끼 — 해코지 원한만으로도 명분"] },
+  rimless: { file: GFILE, at: ["  const need = Math.min(Math.ceil(size * LAND_HALF), LAND_N, Math.max(1, rim));", "  const need = Math.min(Math.ceil(size * LAND_HALF), LAND_N);   // 미끼 — 둘레 상한이 없다(7×7 · 8×8 은 다 에워싸도 명분이 영영 안 선다)"] },
   chiefgone: { file: ZFILE, at: ["  const o = _t1447Owe.get(pid) || { lines: [], expel: [] }; if (o.lines.length < 12) o.lines.push(text); _t1447Owe.set(pid, o); _t1447Z.queued++;", "  _t1447Z.queued++;   // 미끼 — 촌장이 없는 동안 알림이 사라진다"] },
   freesame: { file: GFILE, at: ["const FREE_MUL = 0.5;", "const FREE_MUL = 1;   // 미끼 — 주인 없는 땅의 것도 같은 크기"] },
   nobuilder: { file: ZFILE, at: ["  const g = Grudge.BLOCK_G * (onClaim ? 1 : Grudge.FREE_MUL);", "  const g = onClaim ? Grudge.BLOCK_G : 0;   // 미끼 — 주인 없는 땅의 것은 세운 사람을 못 찾는다(원한 0)"] },
@@ -291,7 +293,25 @@ function zoneChild(bait, mode) {
   process.stdout.write('@@' + JSON.stringify(out) + '\n'); process.exit(0);
 }
 
+//   ①g 둘레 상한 — 7×7 사유지(둘레 24)를 23칸 · 24칸 막음 · 서쪽 물(둘레 19) — 본 판(셈)과 미끼 사본 아이(`--pure`)가 같은 줄을 잰다
+function rimCase(G) {
+  const sq = []; for (let y = 40; y < 47; y++) for (let x = 40; x < 47; x++) sq.push([x, y]);
+  G.ciBuild([{ cid: 7, pid: 'q', kind: 'personal', state: 'active', cells: sq }], 'u7');
+  const rim = sq.filter(([x, y]) => x === 40 || x === 46 || y === 40 || y === 46).map(([x, y]) => x + ',' + y);
+  const e = {}; for (const k of rim.slice(0, 23)) G.landAdd(e, 'q', k, 1);
+  const c23 = G.casus(e, 'q'); G.landAdd(e, 'q', rim[23], 1); const c24 = G.casus(e, 'q');
+  const wet = (x) => x >= 40;   // 서쪽(x 39)은 물 — 서쪽 줄 가운데 다섯 칸은 막힐 수 없다(모서리 둘은 위 · 아래로 닿는다)
+  const e2 = {}; for (const k of rim) { const [x, y] = k.split(',').map(Number); if (x === 40 && y > 40 && y < 46) continue; G.landAdd(e2, 'q', k, 1); }
+  const cw = G.casus(e2, 'q', wet), cd = G.casus(e2, 'q');
+  return { c23: [c23.n, c23.need, c23.ok], c24: [c24.n, c24.need, c24.ok, c24.rim], cw: [cw.n, cw.need, cw.ok, cw.rim], cd: [cd.n, cd.need, cd.ok] };
+}
+function pureChild(bait) {
+  baitHook(bait);
+  process.stdout.write('@@' + JSON.stringify(rimCase(require(GFILE))) + '\n'); process.exit(0);
+}
+
 if (process.argv[2] === '--vil') vilChild(process.argv[3], process.argv[4]);
+else if (process.argv[2] === '--pure') pureChild(process.argv[3]);
 else if (process.argv[2] === '--vil2') vilChild2(process.argv[3]);
 else if (process.argv[2] === '--zone') zoneChild(process.argv[3], process.argv[4]);
 else main();
@@ -307,7 +327,7 @@ function main() {
   const ok = (c, name, detail) => { if (c) { pass++; console.log(`  ✓ ${name}${detail ? ' — ' + detail : ''}`); } else { fail++; console.log(`  ✗ ${name}${detail ? ' — ' + detail : ''}`); } };
   let G = null; try { G = require(GFILE); } catch (e) { G = null; }   // 옛 코드(이 카드 전)엔 `server/grudge.js` 가 없다 — 셈 줄이 다 ✗ 로 선다(크래시 대신 빨강)
   console.log('[㉮ 셈 — grudge.js]');
-  if (!G) { for (const n of ['①a', '①b', '①c', '①d', '①e', '①f']) ok(false, `${n} 셈`, 'server/grudge.js 없음'); }
+  if (!G) { for (const n of ['①a', '①b', '①c', '①d', '①e', '①f', '①g']) ok(false, `${n} 셈`, 'server/grudge.js 없음'); }
   else {
   {
     const e = { name: '마을' }, k = G.pkey('홍길동');
@@ -351,6 +371,11 @@ function main() {
     const e = {}; G.harmAdd(e, 'p', G.gOfValue(30, 60)); const a = G.harmOf(e, 'p'); const paid = G.harmPay(e, 'p', G.gOfValue(20, 60)); const b = G.harmOf(e, 'p'); G.harmPay(e, 'p', 1);
     ok(Math.abs(a - 0.5) < 1e-12 && Math.abs(paid - 1 / 3) < 1e-9 && Math.abs(b - 1 / 6) < 1e-9 && !(e._grudge && Object.keys(e._grudge).length),
       '①f 해코지 원한 = 값 ÷ 원한 1 의 값(30 ÷ 60 = 0.5) · 갚기 = 같은 식(20 ÷ 60) · 다 갚으면 칸이 없다', `${a} → ${b.toFixed(4)}`);
+  }
+  {
+    const R = rimCase(G);
+    ok(R.c23[1] === 24 && !R.c23[2] && R.c24[2] && R.c24[3] === 24 && R.cw[3] === 19 && R.cw[1] === 19 && R.cw[2] && !R.cd[2],
+      '①g 명분 문턱은 둘레를 넘지 않는다 — 7×7(둘레 24 · 절반 25 · N 30): 23칸 막힘 0 · 24칸(다 에워쌈) 명분 · 서쪽이 물이면 둘레 19 · 19칸에 명분', JSON.stringify(R));
   }
 
   }
@@ -435,6 +460,7 @@ function main() {
   b = B('nocasus', 'vil2', '-', (r) => r.chiefNo.chiefGo && r.chiefNo.chiefGo.ok); ok(b.red, '미끼 명분 없는 상대에게 토벌이 나가는 사본(서버가 받는다) → ②g 빨강', `바꾼 자리 ${b.n}${b.why}`);
   b = B('nochief', 'vil2', '-', (r) => r.chief.go); ok(b.red, '미끼 플레이어 마을 주민이 촌장 없이 스스로 가는 사본 → ②g 빨강', `바꾼 자리 ${b.n}${b.why}`);
   b = B('harmraid', 'vil2', '-', (r) => r.harmOnly.go || r.harmOnly.casus); ok(b.red, '미끼 해코지 원한만으로 토벌이 나가는 사본 → ②e 빨강', `바꾼 자리 ${b.n}${b.why}`);
+  b = B('rimless', 'pure', '-', (r) => !!r.c24 && !r.c24[2]); ok(b.red, '미끼 둘레 상한이 없는 사본 → ①g 빨강(7×7 을 다 에워싸도 명분이 안 선다)', `바꾼 자리 ${b.n}${b.why}`);
   b = B('chiefgone', 'zone', '-', (r) => r.i.notes.length === 0); ok(b.red, '미끼 촌장이 없는 동안 알림이 사라지는 사본 → ③i 빨강', `바꾼 자리 ${b.n}${b.why}`);
   b = B('freesame', 'zone', '-', (r) => r.a.free === 0.072); ok(b.red, '미끼 주인 없는 땅의 것에 사유지 위 것과 같은 크기로 쌓이는 사본 → ③a 빨강', `바꾼 자리 ${b.n}${b.why}`);
   b = B('nobuilder', 'zone', '-', (r) => r.a.free === 0); ok(b.red, '미끼 세운 사람을 못 찾아 원한이 0 인 사본 → ③a 빨강', `바꾼 자리 ${b.n}${b.why}`);

@@ -98,7 +98,19 @@ function gOfValue(value, unit) { return (value > 0 && unit > 0) ? value / unit :
 // ── 명분(판정 59 — 지금 명분은 땅 하나) ─────────────────────────────────────
 //   막힌 칸(지금도 그 사유지 칸인 것)이 그 사유지의 절반(`LAND_HALF`)쯤 또는 N칸(`LAND_N`)쯤 — 먼저 닿는 쪽(판정 58 재민 기준).
 //   "그 사유지" = 막힌 칸이 든 그 사람 사유지 덩이(4방 이음)들의 칸 수. N 은 그림 실험을 보고 재민이 정한다 — PM 시작값 30.
+//   ★둘레 상한(그림 실험 — 보고 T1447 §4): 막힌 칸은 마을 영토에 닿은 칸이라 늘 그 덩이의 **둘레**(4방 이웃 하나라도 그 사람 사유지 밖이고 물 · 산이 아닌 칸)
+//     에서만 나온다(네모 한 변 s 면 4s − 4 — 3×3 = 8 · 6×6 = 20 · 12×12 = 44). 절반도 N 도 둘레보다 크면 마을이 사유지를 다 에워싸도 명분이 영영 안 선다
+//     (N 30 이면 7×7 · 8×8 · N 100 이면 7×7 ~ 25×25 네모) — 문턱은 둘레를 넘지 않는다(둘레를 다 막으면 명분). 그 밖의 크기는 종전 값 그대로.
+//     `free(x, y)`(마을 층이 준다 — 물 · 산이 아닌가) 가 없으면 사유지 밖이면 다 둘레로 센다.
 const LAND_HALF = 0.5, LAND_N = 30;
+function _rim(S, comp, free) {   // 덩이의 둘레 칸 수 — 4방 이웃 하나라도 그 사람 사유지 밖(이고 free 면 가질 수 있는 땅)
+  let n = 0;
+  for (const k of comp) {
+    const i = k.indexOf(','), x = +k.slice(0, i), y = +k.slice(i + 1);
+    for (const [nx, ny] of [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]]) if (!S.has(nx + ',' + ny) && (!free || free(nx, ny))) { n++; break; }
+  }
+  return n;
+}
 function _comps(S) {   // 칸 집합 → 덩이들(4방)
   const seen = new Set(), out = [];
   for (const k of S) {
@@ -110,14 +122,14 @@ function _comps(S) {   // 칸 집합 → 덩이들(4방)
   }
   return out;
 }
-function casus(econ, pid) {
+function casus(econ, pid, free) {
   const g = landOf(econ, pid), S = ciCellsOf(pid);
-  if (!g || !S) return { ok: false, n: 0, size: 0, need: Infinity };
+  if (!g || !S) return { ok: false, n: 0, size: 0, need: Infinity, rim: 0 };
   const blk = g.c.filter((k) => S.has(k)), bs = new Set(blk);
-  let size = 0; const cells = [];
-  for (const comp of _comps(S)) if (comp.some((k) => bs.has(k))) { size += comp.length; for (const k of comp) cells.push(k); }
-  const need = Math.min(Math.ceil(size * LAND_HALF), LAND_N);
-  return { ok: blk.length > 0 && blk.length >= need, n: blk.length, size, need, cells };
+  let size = 0, rim = 0; const cells = [];
+  for (const comp of _comps(S)) if (comp.some((k) => bs.has(k))) { size += comp.length; rim += _rim(S, comp, free); for (const k of comp) cells.push(k); }
+  const need = Math.min(Math.ceil(size * LAND_HALF), LAND_N, Math.max(1, rim));
+  return { ok: blk.length > 0 && blk.length >= need, n: blk.length, size, need, rim, cells };
 }
 //   토벌 뒤 푸는 칸(판정 57) — 그 마을 영토에 가까운 칸부터 `UNCLAIM_FRAC`(30 % · 올림 · 적어도 한 칸) · 같으면 마을 중심에 가까운 칸 · 같으면 칸 번호(y, x) — 결정론
 const UNCLAIM_FRAC = 0.3;

@@ -8829,11 +8829,17 @@ function _t1447Stand(vil, cells) {
   return best ? { x: best.x * SZ + SZ / 2, y: best.y * SZ + SZ / 2, cells: bd } : null;
 }
 //   결단 한 줄(촌장 화면 · 계측이 같이 쓴다) — 명분 · 비용 줄
+//   명분 셈 — 둘레(문턱 상한)에서 물 · 산 쪽은 뺀다(마을이 그쪽으로는 영영 못 닿는다 · grudge.js `casus` 머리 주석) · 존 `/원한` 줄도 이것을 부른다(같은 술어)
+function t1447Casus(vil, pid) {
+  if (!vil || !vil.econ) return { ok: false, n: 0, size: 0, need: Infinity, rim: 0 };
+  const ta = state.ta;
+  return Grudge.casus(vil && vil.econ, pid, ta && ta.isBlocked ? (x, y) => !ta.isBlocked(x, y) : null);
+}
 function t1447Plan(vil, pid) {
   const e = vil && vil.econ; if (!e) return { ok: false, why: 'novil' };
   const dp = state.deps; if (dp && dp.t1447ClaimIdx) dp.t1447ClaimIdx();
-  const c = Grudge.casus(e, pid);
-  const out = { pid, casus: c.ok, n: c.n, size: c.size, need: c.need };
+  const c = t1447Casus(vil, pid);
+  const out = { pid, casus: c.ok, n: c.n, size: c.size, need: c.need, rim: c.rim };
   const st = (c.cells && c.cells.length) ? _t1447Stand(vil, c.cells) : null; if (!st) return Object.assign(out, { ok: false, why: c.ok ? 'stand' : 'casus' });
   out.dist = +st.cells.toFixed(1);
   const sv = dp && dp.t1447Survey ? dp.t1447Survey(pid, c.cells) : { bld: 0, hits: 0 };
@@ -22016,7 +22022,7 @@ module.exports = { T1440_ROAD_RULE, t1440Touch, t1440Judge, t1440Step, t1440Appl
   artisanPerf,   // ★[T1196] 장인 작업장 관측
   __t740: () => state,   // ★[T1287 · T1280 회부 1] 생활층 지문 훅(`scripts/t740-side-hook.js`)의 공식 자리 — 읽기만 · 세계 0. 종전엔 훅이 컴파일 때 이 한 줄을 덧붙여서, 관찰기가 villages 를 먼저 실으면 훅이 못 붙었다(생활층 0일)
   _t1259WoodRadius, _t1259WoodCells,
-  t1243FieldClearMinAt, T1207_TERR_REAL, terrQuote, terrPlayerAdd, t1207Stat, T1447_GRUDGE, t1447Stat, t1447Harm, t1447HarmValue, t1447Value, t1447Unit, t1447Plan, t1447ChiefRaid, t1447Villages: () => state.villages || [], __t1447: { day: (now) => _t1447Day(now), jobs: _t1447Jobs, T: _t1447T, S: _t1447S, blocked: (...a) => _t1447Blocked(...a), plan: (v, p) => t1447Plan(v, p), grow: (v) => _terrGrowCore(v), canTake: (v, x, y) => _t1207CanTake(v, x, y), ppd: () => _t1079Ppd(),
+  t1243FieldClearMinAt, T1207_TERR_REAL, terrQuote, terrPlayerAdd, t1207Stat, T1447_GRUDGE, t1447Stat, t1447Harm, t1447HarmValue, t1447Value, t1447Unit, t1447Plan, t1447Casus, t1447ChiefRaid, t1447Villages: () => state.villages || [], __t1447: { day: (now) => _t1447Day(now), jobs: _t1447Jobs, T: _t1447T, S: _t1447S, blocked: (...a) => _t1447Blocked(...a), plan: (v, p) => t1447Plan(v, p), grow: (v) => _terrGrowCore(v), canTake: (v, x, y) => _t1207CanTake(v, x, y), ppd: () => _t1079Ppd(),
     setup: (o) => { const K = ['deps', 'villages', 'byDbId', 'byEcon', 'econV2', 'ta', 'world', 'zoneId', 'warCore', 'bodyExits', 'dayMs']; const k = {}; for (const n of K) k[n] = state[n]; if (o) for (const n of K) if (n in o) state[n] = o[n]; return k; } },   // ★[T1447] 하네스 · 판 계측(읽기 · 주입만) villageById, _t1207CellCost, _t1207Batch, _t1207Queue, _t1207BodyDone, _t1283BodyHaul, _t1207LogIn, _t1207Flush, _t1207CanTake, _terrAdd, _terrGrow,   // ★[T1207] 영토 확장 실물화 — 존(우클릭)과 하네스가 같은 함수를 부른다(사본 0)
   T1238_TERR_V2, T1302_TERR_BODY, T1329_TERR_CREW, t1238Pick, t1238Go, t1238CellNeed, t1238Drop, t1238Clear, t1238Place, t1238Cancel, t1238PullNeed, t1238Pull, t1238Info, t1238Stat, t1238StructAt, t1238LandAt, t1238MarkUse,   // ★[T1238] 영토 v2 — 존 · 클라 · 하네스가 같은 함수를 부른다
   t1238TakeVillageCrop, t1238PeekVillageCrop, t1238RegrowBlocked, t1238VilRadius,
