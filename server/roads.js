@@ -364,6 +364,20 @@ function clientRoads() { // welcome 1회 — 등급 셀 flat [cx,cy,lv,...] (밟
   }
   return out.length ? out : null;
 }
+// ★★[T1453 2026-11-23 · ★재민 11-22 판정 68] 칸 상자 하나의 등급 셀 — 손잡이 `T1453_VIEW_SEND`(zone.js · 끔 기본)가 welcome · 청크 몫을 지을 때만 부른다.
+//   `clientRoads` 와 **같은 식**(같은 날 `dayNow()` · 같은 게으른 감쇠 · 같은 문턱 · 읽기만 — 셀 값 · dirty · `S.sent` 무접촉)을 상자 안 칸에만 묻는다(줄 차례 · 1,024칸 = 청크 하나).
+//   `clientRoads` 는 글자 그대로 둔다(끔 = 종전 바이트 · T1448 이 같이 만지는 자리 — 충돌 줄을 줄인다). 두 길이 같은 답인지는 하네스가 청크마다 견준다(`test-t1453-load.js` Ⓒ).
+function clientRoadsIn(cx0, cy0, w, h, out) {
+  if (!S.ready) return out;
+  const t = dayNow(), x0 = Math.max(0, cx0), y0 = Math.max(0, cy0), x1 = Math.min(S.cellsW, cx0 + w), y1 = Math.min(S.cellsH, cy0 + h);
+  for (let cy = y0; cy < y1; cy++) for (let cx = x0; cx < x1; cx++) {
+    const r = S.cells.get(cy * S.cellsW + cx); if (!r) continue;
+    const v = (t > r.d) ? r.v * Math.pow(DK, t - r.d) : r.v;
+    const lv = v >= T2 ? 2 : (v >= T1 ? 1 : 0);
+    if (lv) out.push(cx, cy, lv);
+  }
+  return out;
+}
 // ★★[T630 2026-10-04] **하루 플러시를 틱 조각으로** — 길 일 훅 최대 80~111ms 의 주인이 이 함수였다(T605·T617 실측: 하루 1만 행 한 트랜잭션 34~88ms).
 //   ⓐ 날이 바뀐 그 틱에 **그날의 행을 얼린다**(dirty 키마다 그 순간의 v·d · 셀이 없으면 지움) — 종전이 그 틱에 쓰던 바로 그 값이다.
 //      dirty 는 새 집합으로 갈아 끼운다 ⇒ 그 뒤 찍힌 것은 다음 날 몫(종전과 같은 뜻: 종전도 플러시 뒤에 찍힌 것은 다음 날 썼다).
@@ -601,4 +615,4 @@ function pavedCount() { return S.ready ? S.paved.size : 0; }
 function pavedKeys() { return S.ready ? [...S.paved] : []; }
 module.exports = { t1382Dump, t1382Load,   // ★[T1382 ㉡] 길 닳음 모듈 메모리(존 종료 저장 · 다시 뜬 판)
   SPD,   // ★[T1241] 사건 시뮬 걸음 토막이 칸 빠르기를 읽는다(도장 없이 — `levelOf` 등급 → 배율 · 읽기만)
-  setEconDay, dayTick, roadDayPerf, retouchCell, unpaveSoonKeys, init, onGameTick, stampCell, stampEntityPx, speedMulOf, levelOf, courseCostMul, courseCostMin, courseCostMinIn, takeCoarseChanges, frozenView, coarseGen, isReady: () => S.ready, clientRoads, pavedNear, pavedCount, pavedKeys, ENABLED, _S: S };
+  setEconDay, dayTick, roadDayPerf, retouchCell, unpaveSoonKeys, init, onGameTick, stampCell, stampEntityPx, speedMulOf, levelOf, courseCostMul, courseCostMin, courseCostMinIn, takeCoarseChanges, frozenView, coarseGen, isReady: () => S.ready, clientRoads, clientRoadsIn, pavedNear, pavedCount, pavedKeys, ENABLED, _S: S };
