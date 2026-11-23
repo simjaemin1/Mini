@@ -3394,8 +3394,7 @@
    "child": [
     "execFileSync node",
     "spawnSync node"
-   ],
-   "srv": true
+   ]
   },
   "test-frontier-iron.js": {
    "cls0": "가",
