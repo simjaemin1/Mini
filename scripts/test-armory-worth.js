@@ -16,6 +16,7 @@
 //     C1 쥘 사람 술어 = war-core `warChampSlots`(값 함수와 편성이 같은 수를 읽는다)
 //     C2 편성 — 켬: 전사 수를 넘는 청동검은 칼을 찾는 다른 병사가 단검으로 쥔다 · 끔: 종전(안 쥔다)
 //     D1 사 모으는 문(`T1449_ARMORY_BUY` · 묶음 — 값 팔과 따로 선다): 받는 마을 병기고가 차면 무기를 안 싣는다 · 비면 싣는다 · 사 모으는 문 끔(묶음만) = 둘 다 싣는다(종전 묶음)
+//     D2 수출 주조가 읽는 순수출가(v2 `netExportValue`) — 칼 값 0 인 이웃은 안 센다(값표가 사겠다고 해도) · 끔 = 센다
 //     E1 병기고 크기 팔: 사람 × 0.72 → 전사 × 1.2(바닥 2)
 //     K  손잡이 — '1' 만 켬('true' · '0' = 끔) · 끔 = 값 함수가 붓는 문에 안 선다(묶음 판 그대로)
 'use strict';
@@ -106,6 +107,12 @@ if (process.env.T1449_CHILD) {
   // D1 — 사 모으는 문: 병기고 찬 마을 · 빈 마을
   { const probe = W2._t1188Probe; const full = mk(12, { storage: { weapon: 100 } }), empty = mk(12, { storage: { weapon: 0 } });
     out.D1 = { full: probe.returnGlutted(full, 'weapon'), empty: probe.returnGlutted(empty, 'weapon'), sFull: sw(full, 'sword'), sEmpty: sw(empty, 'sword') }; }
+  // D2 — 수출 주조가 읽는 순수출가(v2 `netExportValue`)도 같은 문: 이웃 b 가 칼 값 0(병기고 참)이면 그 이웃 값을 안 센다 · 값표는 사겠다는 판(전사 많음)
+  { const w = W2.createWorldV2({ seed: 42, villageCount: 3, infoRange: 5000 }), [a, b, c] = w.villages;
+    b.coord = { x: a.coord.x + 50, y: a.coord.y }; c.coord = { x: a.coord.x + 1e6, y: a.coord.y };
+    b._swordFrac = 1; b.counts.warrior = 200; a.storage.weapon = 0;
+    const nev = (wp) => { b.storage.weapon = wp; delete w._nevCache; return +W2.netExportValue(w, a, 'weapon').toFixed(6); };
+    out.D2 = { full: nev(200), empty: nev(0), sFull: (b.storage.weapon = 200, sw(b, 'sword')) }; }
   // E1 — 병기고 크기
   { const v = mk(20, { jobs: { warrior: 3 } }); out.E1 = { t: E.t1449ArmoryTarget ? +E.t1449ArmoryTarget(v).toFixed(4) : null, n: v.npcs.length }; }
   console.log = log; process.stdout.write(JSON.stringify(out)); process.exit(0);
@@ -130,6 +137,7 @@ function checks(on, off, bundle, buy, buyonly) {
   ok('C1', on.C1 && on.C1.every(([, a, b]) => a != null && a === b));
   ok('C2', on.C2 && bundle.C2 && on.C2.champion === 1 && bundle.C2.champion === 1 && bundle.C2.dagger === 0 && on.C2.dagger === 4 && on.C2.militia + on.C2.slinger === bundle.C2.militia + bundle.C2.slinger - 4);
   ok('D1', buy.D1 && buy.D1.full === true && buy.D1.empty === false && buyonly.D1 && buyonly.D1.full === true && buyonly.D1.empty === false && bundle.D1 && bundle.D1.full === false && bundle.D1.empty === false);
+  ok('D2', buy.D2 && buy.D2.full === 0 && buy.D2.empty > 0 && bundle.D2 && bundle.D2.full > 0 && bundle.D2.empty > 0);
   return R;
 }
 let pass = 0, fail = 0;
@@ -140,7 +148,8 @@ try {
   ok(on.knob.worth && !off.knob.worth && !bundle.knob.worth && !truth.knob.worth && !zero.knob.worth && buy.knob.buy && !on.knob.buy && size.knob.size && !on.knob.size, "K 손잡이 — '1' 만 켬", { on: on.knob, truth: truth.knob, zero: zero.knob });
   const R = checks(on, off, bundle, buy, buyonly);
   const DESC = { A1: '쥘 사람 0 = 값 0 · 안 붓는다', A2: '쥘 사람이 남으면 값 > 0 · 붓는다', A3: '전사 수만큼 쥐었으면 값 0', A4: '싸움 값 비 = battle-core 표', A5: '굶는 날 = 식량 손으로 잰다',
-    A6: '병기고 몫 상한을 안 읽는다', B2: '안 붓는 날 석공이 석검을 간다', B3: '주조 한 번 = 재료 한 번', C1: '쥘 사람 술어 = warChampSlots', C2: '편성 — 남는 청동은 단검(켬) · 끔 = 종전', D1: '사 모으는 문 — 찬 병기고는 안 싣는다' };
+    A6: '병기고 몫 상한을 안 읽는다', B2: '안 붓는 날 석공이 석검을 간다', B3: '주조 한 번 = 재료 한 번', C1: '쥘 사람 술어 = warChampSlots', C2: '편성 — 남는 청동은 단검(켬) · 끔 = 종전', D1: '사 모으는 문 — 찬 병기고는 안 싣는다',
+    D2: '수출 주조 순수출가 — 칼 값 0 인 이웃은 안 센다' };
   for (const [k, x] of Object.entries(R)) ok(x, `${k} ${DESC[k]}`, x ? undefined : { on: on[k], off: off[k], bundle: bundle[k], buy: buy[k], buyonly: buyonly[k] });
   //   끔 = 값 함수가 붓는 문에 안 선다: 끔 · 'true' · '0' 은 묶음 판과 같은 판(대장장이가 전사 0 마을에서도 재료로 붓는다 = 종전 묶음 줄)
   const strip = (x) => JSON.stringify({ A1: x.A1.t, A2: x.A2.t, B2: x.B2, B3: x.B3.t, C2: x.C2, D1: [x.D1.full, x.D1.empty] });
@@ -151,8 +160,8 @@ try {
   const SRC = fs.readFileSync(path.join(ROOT, ES), 'utf8'), V2S = fs.readFileSync(path.join(ROOT, V2), 'utf8');
   const i0 = SRC.indexOf('// ★★★[T1449 2026-11-23'), i1 = SRC.indexOf('function _t1398ExportSmiths(v)'), blk = i0 >= 0 && i1 > i0 ? SRC.slice(i0, i1) : '';
   const code = blk.split('\n').filter((l) => !/^\s*\/\//.test(l)).map((l) => l.replace(/\/\/.*$/, '')).join('\n');
-  ok(blk.length > 0 && !/BRONZE_ARMORY_FRAC|0\.45|MELEE_ARMORY_SECF/.test(code) && !/const [A-Z0-9_]*_PC\s*=/.test(code) && (V2S.match(/_t1449NoBuy\(/g) || []).length === 3,
-    'G 새 상한 0 · 새 수 0 — 값 블록에 병기고 몫 · 굶는 몫 문턱 · 새 _PC 가 없다 · 사 모으는 문 = 정의 하나 + 자리 둘', { blk: blk.length, noBuy: (V2S.match(/_t1449NoBuy\(/g) || []).length });
+  ok(blk.length > 0 && !/BRONZE_ARMORY_FRAC|0\.45|MELEE_ARMORY_SECF/.test(code) && !/const [A-Z0-9_]*_PC\s*=/.test(code) && (V2S.match(/_t1449NoBuy\(/g) || []).length === 4,
+    'G 새 상한 0 · 새 수 0 — 값 블록에 병기고 몫 · 굶는 몫 문턱 · 새 _PC 가 없다 · 사 모으는 문 = 정의 하나 + 자리 셋(귀로 고르기 · 귀로 닫개 · 순수출가)', { blk: blk.length, noBuy: (V2S.match(/_t1449NoBuy\(/g) || []).length });
   function bait(mut) {
     const [file, before, , key] = BAITS[mut];
     const src = fs.readFileSync(path.join(ROOT, file), 'utf8'), n = src.split(before).length - 1;

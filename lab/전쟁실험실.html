@@ -24639,6 +24639,7 @@ function netExportValue(world, from, res, room) {
     const pTo = (px(b)[res] || 0) * FORWARD_PRICE_MARGIN_NEV;
     if (!(pTo > 0)) continue;
     if (room && !(_t1313Room(b, res) > 0)) continue;   // ★[T1313 ⓑ] 빈자리 갈래 — 다 찬 이웃은 안 산다(끔 · 종전 갈래 = 이 줄 무동작)
+    if (_t1449NoBuy(b, res)) continue;   // ★[T1449 사 모으는 문] 켬 · 묶음 — 칼 값이 0 인 이웃은 안 산다(수출 주조가 읽는 순수출가도 받는 마을의 같은 값 함수 · 끔 = 무동작)
     const banditX0 = world.banditRouteRisk ? (world.banditRouteRisk(from, b) || 0) : 0;
     const raidProb = Math.min(RAID_MAX, RAID_BASE + banditX0 + (dist / 100) * (world.raidPer100 || RAID_PER_100));
     let expectedLossRatio = raidProb * 0.5;
