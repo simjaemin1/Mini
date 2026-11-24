@@ -1,0 +1,49 @@
+{
+ "node": "v22.23.0",
+ "sqliteAbi": 127,
+ "sqliteMemorySelect1": 1,
+ "processes": {
+  "campaign": {
+   "pid": 31810,
+   "command": [
+    "python3",
+    "/workspace/Mini/scripts/t1411-campaign.py",
+    "--root",
+    "/tmp/t1411",
+    "--repo",
+    "/workspace/Mini",
+    "--resume"
+   ],
+   "startNewSession": true,
+   "stdin": "DEVNULL"
+  },
+  "backup": {
+   "pid": 31811,
+   "command": [
+    "python3",
+    "/workspace/Mini/scripts/t1411-watch.py",
+    "--runs",
+    "/tmp/t1411/worlds",
+    "--out",
+    "/workspace/scratch/t1411"
+   ],
+   "startNewSession": true,
+   "stdin": "DEVNULL"
+  },
+  "finish": {
+   "pid": 31812,
+   "command": [
+    "python3",
+    "/workspace/Mini/scripts/t1411-finish.py",
+    "--root",
+    "/tmp/t1411",
+    "--repo",
+    "/workspace/Mini",
+    "--wait"
+   ],
+   "startNewSession": true,
+   "stdin": "DEVNULL"
+  }
+ },
+ "controllerSourceSha256": "c1d0f47c5ac0deb5d340bc7b9662c0545c88b430df9c84234bacba181c06ea0c"
+}

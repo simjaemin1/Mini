@@ -1,0 +1,118 @@
+{
+ "kind": "cloud-environment-interruption",
+ "observedEnvironmentPhase": "stopped/offline",
+ "connectivityBeforeStartup": "offline",
+ "productExitObserved": false,
+ "archive": "/workspace/scratch/t1411/interruptions/20261124T035656Z",
+ "previousInterruptionArchive": "/workspace/scratch/t1411/interruptions/20261123T024148Z",
+ "cases": {
+  "ON-1020": {
+   "checkpoint": 490,
+   "lastLoggedDay": 492,
+   "cap": "Infinity",
+   "partialFiles": [
+    {
+     "file": "seg-490.json.t1302-days.jsonl",
+     "sha256": "621131b33a82e4b8c62d0715f4f6b5050593ba140b4378ffaca6bb84769bb080",
+     "bytes": 23668
+    },
+    {
+     "file": "seg-490.json.t1329-days.jsonl",
+     "sha256": "6512ddf53a53c2276145923c24640eb1bb04f847a606cf580ac60266485ad6ce",
+     "bytes": 76304
+    },
+    {
+     "file": "seg-490.json.t1411-census.jsonl",
+     "sha256": "1888bbdbbb154b48bdfac7ad2cfd0f240627421fb3de3956e12e899c4f841422",
+     "bytes": 9021
+    },
+    {
+     "file": "seg-490.json.t1274-days.jsonl",
+     "sha256": "44083240dabb2289a891882fec38dc68ff8ce0b8fdabd0cec1bc5b43ce99b90b",
+     "bytes": 2328
+    },
+    {
+     "file": "seg-490.log",
+     "sha256": "4331b472a5b0b537f04b157ef922cf9a28b01b9f897bcf7fd51e653eb8ee0868",
+     "bytes": 352055
+    },
+    {
+     "file": "seg-490.json.t1274.json",
+     "sha256": "2adc37f78b984afb13e96896100f16f46503805d4381608faa9dca4840dc6781",
+     "bytes": 64771
+    },
+    {
+     "file": "seg-490.json.t1302-emigration.jsonl",
+     "sha256": "2c571de734ab99df9d5faa3accd056e6778db8341faa390942b7120ed843daf9",
+     "bytes": 46893
+    }
+   ],
+   "binaryCheckpointHashes": {
+    "state.json": "1ae297cba3a49f1066eebec42f6cd1195ba785d2fb36cb6bd3438bda0abc2113",
+    "w.db-wal": "1fec00fea35e0a4af6de40f277223747e9525d9a2b372da0ceb95f8510803670",
+    "w.db": "abf62aa75354a533fe9b9af0a3c57f040f66475e9a754891b1afbecf8f831765",
+    "day": "cbd02d97b0731d88c78d30c20d90492b2d4c3f2f983931c38fef2dedc7ce48d4",
+    "w.db-shm": "a2e2f37e891631e63442bc1f720a4d32b1075a1dc5a75332a23b42b02bbc734a",
+    "stop-490.json": "a1c769cc667db6c93881f117d310abea3707448a2463426281793477dda8257e",
+    "keep-490.json": "1c47db773da4a9e92d2c263f5c085f4b22d62a09368ce52c40828edc841a32db",
+    "phase-490.json": "e6264ec4a4ecccde2a2c6590df75f9b833d48e4a671961642e1498c60c585d01"
+   },
+   "preservedBinaryCheckpoint": "/workspace/scratch/t1411/interruptions/20261124T035656Z/binary-checkpoints/ON-1020",
+   "discardedObservedLedgerDays": [
+    491,
+    492
+   ],
+   "discardedObservedLedgerCpuSeconds": 927.006719,
+   "unobservedPartialCpuUnknown": true
+  },
+  "OFF-1020": {
+   "checkpoint": 500,
+   "lastLoggedDay": 502,
+   "cap": "Infinity",
+   "partialFiles": [
+    {
+     "file": "seg-500.json.t1274-days.jsonl",
+     "sha256": "b0a792f7930b7678f222391dcf54cc8635ed105c2c79f0371e5f21d54385a3f1",
+     "bytes": 2078
+    },
+    {
+     "file": "seg-500.log",
+     "sha256": "d5fd67c9e0233caf244e93f7ec2346f14874f9a0da3606b798af6ae970dcb691",
+     "bytes": 340134
+    },
+    {
+     "file": "seg-500.json.t1274.json",
+     "sha256": "de1efc92ef9e2cc6e0d62a7bc228bd9ee935edb8b65875884076197b36a63170",
+     "bytes": 62367
+    },
+    {
+     "file": "seg-500.json.t1302-days.jsonl",
+     "sha256": "862dc60843fac480751b5750abd1d209b0551f225de3f698eda5f839784e2658",
+     "bytes": 111195
+    },
+    {
+     "file": "seg-500.json.t1411-census.jsonl",
+     "sha256": "4835ec4cc4d1c988fe2185fafc2c0bed181e4a8a164bc49a90933cb8593c1852",
+     "bytes": 9022
+    }
+   ],
+   "binaryCheckpointHashes": {
+    "state.json": "4b7fe38c0a92e490a03d84c6409cc9b77b8a2413f6785609b201a936776e7ec7",
+    "phase-500.json": "84d79b6644b89db14b5519833a2056f0d091896473f09018319e71d652eeecfd",
+    "w.db-wal": "057943dd54871540d54711e77cc0b3525dcfe4557120b9d0364fefcb9f34de61",
+    "w.db": "fac12b70c41dc88e63ed989e6a6ad56583754239676b7408ab8a650888226b93",
+    "keep-500.json": "8a945365386a5d6c6c4d823689cf0a4f10d1cc56418b377e4b47cfe2d5081392",
+    "day": "0604cd3138feed202ef293e062da2f4720f77a05d25ee036a7a01c9cfcdd1f0a",
+    "stop-500.json": "130560cfb4479937e7f2325ab943c9375de0dac6f806ee2911eb0b456529fe6d",
+    "w.db-shm": "fb4de8f2b18a38441c1bddb82b9958eb5c502153fa6060cdec4f630a2084c7f1"
+   },
+   "preservedBinaryCheckpoint": "/workspace/scratch/t1411/interruptions/20261124T035656Z/binary-checkpoints/OFF-1020",
+   "discardedObservedLedgerDays": [
+    501,
+    502
+   ],
+   "discardedObservedLedgerCpuSeconds": 902.3653429999999,
+   "unobservedPartialCpuUnknown": true
+  }
+ }
+}

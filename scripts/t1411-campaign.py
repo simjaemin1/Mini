@@ -85,6 +85,8 @@ try:
     for name, expected in manifest['featureSource'].items():
         assert hashlib.sha256((root/'fast'/name).read_bytes()).hexdigest() == expected, name
         assert hashlib.sha256((repo/name).read_bytes()).hexdigest() == expected, 'working tree changed: ' + name
+    status['controller'] = dict(pid=os.getpid(), script=str(Path(__file__).resolve()),
+                              mode='resume-interrupted' if a.resume else 'new')
     status['stage'] = 'six-worlds'; heartbeat()
     queue = [(arm, seed) for seed in [1020, 7, 42] for arm in ['ON', 'OFF'] if f'{arm}-{seed}' not in status['worlds']]
     if a.resume:
