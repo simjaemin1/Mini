@@ -12,6 +12,7 @@
 //   판 자체가 T1466 켬이면(`job.fast`) 그 판정의 한 번 훑기 셈(훑기 수 · 꺼냄 · CPU)도 적는다.
 //   T1466_LAB=<econ 날> — 그날(마을 틱 뒤) 길 칸 전수: 지나는 쌍이 많은 칸 T1466_LAB_BUSY(기본 100 · 다리 포함) + 길 칸에서 고른 칸 T1466_LAB_RAND(기본 300 · 씨 1466)을
 //     하나씩 "그 칸 하나를 사유지로 선포한다면"(급 = 마을 땅이면 3 · 아니면 2 · 처음 내줌에서 끝 — 한 칸 선포 그 판정) T1440 판정 + 그림자 팔 · 세계 무변(놓지 않는다) · 끝나면 판을 닫는다.
+if (require.main === module) require('./lib-port').noCentral();   // [land1093 · PM] 규약 ⑯d — central 없이 존을 띄우는 자의 머리 줄(t1440-bot-probe 와 같은 꼴)
 'use strict';
 const path = require('path'), fs = require('fs'), Module = require('module');
 if (!process.env.T1466_JP_OUT || !/server[\\/]zone\.js$/.test(process.argv[1] || '')) return;
