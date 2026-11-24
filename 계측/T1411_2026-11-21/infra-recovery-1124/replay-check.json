@@ -1,0 +1,93 @@
+{
+ "kind": "daily-observation-replay-check",
+ "complete": true,
+ "scope": "All retained daily observation fields except the three named CPU/uptime fields; not a full-state fingerprint or an independent world.",
+ "cases": {
+  "ON-1020/t1274-days": {
+   "expectedDays": [
+    491,
+    492
+   ],
+   "matchedDays": [
+    491,
+    492
+   ],
+   "excludedTimingFields": [
+    "cpuSeconds",
+    "processCPUSeconds",
+    "uptimeSeconds"
+   ],
+   "differences": [],
+   "archivedFileSha256": "7ad141106d89d69bea443884234f1cbf2e789bc6e6d4f10c5171e6dce8d34a68"
+  },
+  "ON-1020/t1302-days": {
+   "expectedDays": [
+    491,
+    492
+   ],
+   "matchedDays": [
+    491,
+    492
+   ],
+   "excludedTimingFields": [],
+   "differences": [],
+   "archivedFileSha256": "16bf59d97bb5c58838d8a9584805ae56858b870e485b9db90efccad9c779e18b"
+  },
+  "ON-1020/t1411-census": {
+   "expectedDays": [
+    491,
+    492
+   ],
+   "matchedDays": [
+    491,
+    492
+   ],
+   "excludedTimingFields": [],
+   "differences": [],
+   "archivedFileSha256": "88371fb131eeb78b3d9cdcf7afcab182e6b2c3cda13ba3498f000195a214131b"
+  },
+  "OFF-1020/t1274-days": {
+   "expectedDays": [
+    501,
+    502
+   ],
+   "matchedDays": [
+    501,
+    502
+   ],
+   "excludedTimingFields": [
+    "cpuSeconds",
+    "processCPUSeconds",
+    "uptimeSeconds"
+   ],
+   "differences": [],
+   "archivedFileSha256": "b00d1c4404b027993f4c5455445e5a4c19cf69df4926a0fd1b48f76e2d85158d"
+  },
+  "OFF-1020/t1302-days": {
+   "expectedDays": [
+    501,
+    502
+   ],
+   "matchedDays": [
+    501,
+    502
+   ],
+   "excludedTimingFields": [],
+   "differences": [],
+   "archivedFileSha256": "c1cd4e9f9e6243e43f96a8fb924c259e09ee0576c10c7fc56bb2701d911bb117"
+  },
+  "OFF-1020/t1411-census": {
+   "expectedDays": [
+    501,
+    502
+   ],
+   "matchedDays": [
+    501,
+    502
+   ],
+   "excludedTimingFields": [],
+   "differences": [],
+   "archivedFileSha256": "3b2cb55a3996265e3989d2c53157dfc4b11059a8ab7b8633dd98d83c43b288d5"
+  }
+ }
+}
