@@ -989,6 +989,7 @@ function activateChunk(cx, cy) {
 
 // 비활성화 — 그 청크의 시드 자원만 제거 (수동 자원은 안 건드림)
 function deactivateChunk(cx, cy, liveKeys) {
+  if (T1453_VIEW_SEND) _t1453Forget(cx, cy);   // ★[T1453] 켬 — 켜졌는데 안 보낸 청크 적바림에서 뺀다
   const c = chunkManager.chunks.get(chunkManager.keyOf(cx, cy));
   if (!c) return;
   // AOI 건물: 비활성화 시 클라에서 제거 + 서버 메모리에서도 해제 (GC 폭주 수정).
@@ -1301,6 +1302,71 @@ function activeChunkBuildings() {
   const out = [];
   for (const k of activeChunkKeys) { const c = chunkManager.chunks.get(k); if (c) for (const b of c.buildings.values()) out.push(b); }
   return out;
+}
+// ★★★[T1453 2026-11-23 · ★재민 11-22 "새벌 들어가면 … 수십 초만에 들어가져.." · 판정 68] **길과 건물은 화면 둘레만 보낸다** —
+//   손잡이 `T1453_VIEW_SEND`(`=== '1'` 만 켬 · **끔 기본** · 끔 = 종전 welcome 글자 · 바이트 그대로 · 켬은 존을 다시 띄워야 선다 — 켤 날은 PM).
+//   종전 welcome 은 존 전체 등급 길(라이브 45만 칸 · 6.38 MB)과 켜진 청크 전부의 건물(라이브 5,806 · 1.44 MB)을 실었다(보고/T1446 §6).
+//   켬: welcome 엔 내 자리(관측 소켓은 보는 자리) **둘레 청크**만 싣는다 — 둘레 = 청크 구독 반지름(`ceil(CHUNK_ACTIVE_RADIUS / 청크)` = 2 · 있는 수 ·
+//   `updateActiveChunks` 와 같은 식 · 청크 경계에서 화면 끝(길 1,500px · 건물 1,900px)까지 늘 2,048px 넘게 남는다).
+//     ⓐ 길 — 둘레 청크의 등급 칸(`Roads.clientRoadsIn` — `clientRoads` 와 같은 식). 청크가 둘레에 새로 들면 그 청크 몫을 그 소켓에만 `road_cells`(있는 꼴)로 보낸다.
+//        보낸 청크는 소켓에 적어 두고 다시 안 보낸다(클라는 받은 길을 안 버린다 · 날마다 `road_cells` 방송은 종전 그대로 모두에게 — 받은 몫이 늘 새롭다).
+//     ⓑ 건물 — 둘레 청크 중 켜진 청크의 건물만 싣는다(종전 `activeChunkBuildings` 차례에서 둘레만 거른다). 켜졌는데 둘레 밖이라 안 실은 청크는 소켓에 적어 두고(`lack`)
+//        둘레에 들면 그 청크 건물을 그 소켓에만 `buildings_spawn`(있는 꼴)으로 보낸다. 그 사이 청크가 꺼지면(`buildings_removed` 방송) 적은 것을 지운다 —
+//        다시 켜지면 종전 켜짐 방송이 모두에게 간다(내 걸음이 켠 청크도 그 방송으로 온다 · 종전 그대로).
+//     ⓒ 청크 몫은 틱 머리 쪽지 앞(이 틱 자리 그대로) — 순간 이동 · 리스폰 · 존 넘김 뒤 첫 그림 전에 그 둘레 길이 먼저 닿는다.
+//   소켓 하나의 적바림 `ws._t1453` = { r: 길 보낸 청크 · lack: 켜졌는데 안 보낸 청크 · ck: 마지막 청크 }. 관측 소켓이 승격돼도 같은 소켓이라 잇는다. 재접속 = 새 welcome(새로 적는다).
+const T1453_VIEW_SEND = process.env.T1453_VIEW_SEND === '1';
+//   소켓 하나 되돌림(시험 · 맞대기) — 접속 주소에 `t1453full=1` 이면 그 소켓만 종전 welcome(존 전체 길 · 켜진 청크 건물 전부 · 적바림 0). 하네스가 같은 세계 · 같은 때에 두 꼴을 맞댄다.
+function _t1453On(url) { return T1453_VIEW_SEND && !(url && url.searchParams && url.searchParams.get('t1453full') === '1'); }
+function _t1453Keys(x, y) {   // 그 자리 둘레 청크 [키 · cx · cy] — updateActiveChunks 의 사람 둘레와 같은 식 · 같은 차례
+  const { cx: pcx, cy: pcy } = chunkManager.chunkXY(x, y), r = Math.ceil(CHUNK_ACTIVE_RADIUS / chunkManager.chunkSize), out = [];
+  for (let dx = -r; dx <= r; dx++) for (let dy = -r; dy <= r; dy++) {
+    const cx = pcx + dx, cy = pcy + dy;
+    if (cx < 0 || cy < 0 || cx >= chunkManager.colsX || cy >= chunkManager.colsY) continue;
+    out.push([chunkManager.keyOf(cx, cy), cx, cy]);
+  }
+  return out;
+}
+function _t1453RoadsOf(cx, cy, out) { const n = chunkManager.chunkSize / 32; return Roads.clientRoadsIn(cx * n, cy * n, n, n, out); }   // 칸 = 32px(Roads.init 과 같은 수)
+function _t1453WelRoads(ws, x, y) {   // welcome 길 — 둘레 청크만(소켓에 적는다 · 건물은 바로 뒤 `_t1453WelBlds`)
+  const keys = _t1453Keys(x, y), V = { r: new Set(), lack: new Set(), ck: null, keys };
+  const out = [];
+  for (const [k, cx, cy] of keys) { V.r.add(k); _t1453RoadsOf(cx, cy, out); }
+  const c0 = chunkManager.chunkXY(x, y); V.ck = c0.cx + '_' + c0.cy;
+  if (ws) ws._t1453 = V;
+  return out.length ? out : null;
+}
+function _t1453WelBlds(ws) {   // welcome 건물 — 켜진 청크(종전 차례) 중 둘레만 · 나머지 켜진 청크는 `lack`
+  const V = ws && ws._t1453, inV = new Set(V ? V.keys.map((e) => e[0]) : []), out = [];
+  for (const k of activeChunkKeys) {
+    const c = chunkManager.chunks.get(k); if (!c) continue;
+    if (inV.has(k)) { for (const b of c.buildings.values()) out.push(b); }
+    else if (V && c.buildings.size) V.lack.add(k);
+  }
+  if (V) V.keys = null;
+  return out;
+}
+function _t1453ViewOne(ws, x, y) {   // 소켓 하나 — 청크가 바뀐 판에만 둘레에 새로 든 청크 몫(길 · 안 보낸 건물)을 보낸다
+  const V = ws && ws._t1453; if (!V) return;
+  const c0 = chunkManager.chunkXY(x, y), ck = c0.cx + '_' + c0.cy;
+  if (V.ck === ck) return;
+  V.ck = ck;
+  const roads = [], blds = [];
+  for (const [k, cx, cy] of _t1453Keys(x, y)) {
+    if (!V.r.has(k)) { V.r.add(k); _t1453RoadsOf(cx, cy, roads); }
+    if (V.lack.has(k)) { V.lack.delete(k); const c = chunkManager.chunks.get(k); if (c) for (const b of c.buildings.values()) blds.push(b); }
+  }
+  if (roads.length) send(ws, { type: 'road_cells', cells: roads });
+  if (blds.length) send(ws, { type: 'buildings_spawn', buildings: blds });
+}
+function _t1453ViewTick() {   // 틱 쪽지 앞 — 사람(넘기는 중 뺌) · 관측 소켓
+  for (const p of players.values()) { if (p.isNpc || !p.ws || p.handingOff) continue; _t1453ViewOne(p.ws, p.x, p.y); }
+  for (const [ws, d] of observers) _t1453ViewOne(ws, d.viewerX, d.viewerY);
+}
+function _t1453Forget(cx, cy) {   // 청크가 꺼짐 — 켜졌는데 안 보낸 청크 적바림에서 뺀다(다시 켜지면 종전 켜짐 방송이 간다)
+  const k = chunkManager.keyOf(cx, cy);
+  for (const p of players.values()) { if (p.ws && p.ws._t1453) p.ws._t1453.lack.delete(k); }
+  for (const ws of observers.keys()) { if (ws._t1453) ws._t1453.lack.delete(k); }
 }
 
 // === Spatial index — 매 tick 재구축 ===
@@ -8199,13 +8265,13 @@ async function _acceptConnection(ws, req, C) {
       granStocks: SimVillages.granStocks(),      // ★곳간② 물리 재고 스냅샷(이후 gran_stock 델타) — 사다리 앞 짐더미 연출
       markets: SimVillages.marketVillages(),     // ★[10차 T4] 장마당 스냅샷 flat[ccx,ccy,…](이후 markets 방송) — 캐러밴 체류 중인 마을만
       banditCamps: Bandits.clientCamps(), // §11 도적: 소굴·야영 마커 1종 — 이후 bandit_camps가 변경분 방송
-      roads: Roads.clientRoads(), // §16 답압 길: 등급 셀 flat [cx,cy,lv,...] — 이후 road_cells가 변경분 방송
+      roads: _t1453On(url) ? _t1453WelRoads(ws, observers.get(ws).viewerX, observers.get(ws).viewerY) : Roads.clientRoads(), // §16 답압 길: 등급 셀 flat [cx,cy,lv,...] — 이후 road_cells가 변경분 방송 · ★[T1453] 켬 = 보는 자리 둘레 청크만
     soil: Soil.clientSoil(),    // [배치 20 B] 타일 상태: 기준선에서 벗어난 셀 flat [cx,cy,qv,geo,ore,...] — 이후 tile_state가 변경분 방송
       bridges: bridgePayload(), // ★[T527] 지은 다리 포함(0 이면 종전 그대로) · ★[다리 층] 통나무 널다리 셀 flat [cx,cy,...] — 정적(맵 사물)이라 welcome 1회
       ...(T1423_NO_BUILD ? { t1423NoBuild: SimVillages.t1406BridgeCells() } : {}),   // ★[T1423 ⓐ] 못 놓는 다리 칸 · 다리 머리 flat [cx,cy,…](㉮ 정본 칸 줄 · 켬에서만 칸이 선다)
       ...(T1440_ROAD_RULE ? { t1440: 1 } : {}),   // ★[T1440] 짓기 미리보기가 서버에 길을 묻는다(켬에서만 칸이 선다)
       ditches: ditchPayload(),         // ★[11차 T3 환호] 도랑 셀 flat [cx,cy,...] — 마을 소유 사물(부팅 후 불변)이라 welcome 1회
-      buildings: activeChunkBuildings(),
+      buildings: _t1453On(url) ? _t1453WelBlds(ws) : activeChunkBuildings(),   // ★[T1453] 켬 = 켜진 청크 중 둘레만
       rooms: Rooms.allRooms().map(Rooms.wireRoom),   // ★[배치 18 ①] 방은 서버가 판정한다 — 클라는 받아 쓰기만(사본 방지)
       worldClock: Object.assign({
         epoch: WORLD.worldEpoch,
@@ -8738,13 +8804,13 @@ async function _acceptConnection(ws, req, C) {
       granStocks: SimVillages.granStocks(),      // ★곳간② 물리 재고 스냅샷(이후 gran_stock 델타) — 사다리 앞 짐더미 연출
       markets: SimVillages.marketVillages(),     // ★[10차 T4] 장마당 스냅샷 flat[ccx,ccy,…](이후 markets 방송) — 캐러밴 체류 중인 마을만
     banditCamps: Bandits.clientCamps(), // §11 도적: 소굴·야영 마커 1종 — 이후 bandit_camps가 변경분 방송
-    roads: Roads.clientRoads(), // §16 답압 길: 등급 셀 flat [cx,cy,lv,...] — 이후 road_cells가 변경분 방송
+    roads: _t1453On(url) ? _t1453WelRoads(ws, player.x, player.y) : Roads.clientRoads(), // §16 답압 길: 등급 셀 flat [cx,cy,lv,...] — 이후 road_cells가 변경분 방송 · ★[T1453] 켬 = 내 자리 둘레 청크만
     soil: Soil.clientSoil(),    // [배치 20 B] 타일 상태: 기준선에서 벗어난 셀 flat [cx,cy,qv,geo,ore,...] — 이후 tile_state가 변경분 방송
     bridges: bridgePayload(), // ★[T527] 지은 다리 포함(0 이면 종전 그대로) · ★[다리 층] 통나무 널다리 셀 flat [cx,cy,...] — 정적(맵 사물)이라 welcome 1회
     ...(T1423_NO_BUILD ? { t1423NoBuild: SimVillages.t1406BridgeCells() } : {}),   // ★[T1423 ⓐ] 못 놓는 다리 칸 · 다리 머리 flat [cx,cy,…](㉮ 정본 칸 줄 · 켬에서만 칸이 선다)
     ...(T1440_ROAD_RULE ? { t1440: 1 } : {}),   // ★[T1440] 짓기 미리보기가 서버에 길을 묻는다(켬에서만 칸이 선다)
     ditches: ditchPayload(),         // ★[11차 T3 환호] 도랑 셀 flat [cx,cy,...] — 마을 소유 사물(부팅 후 불변)이라 welcome 1회
-    buildings: activeChunkBuildings(),
+    buildings: _t1453On(url) ? _t1453WelBlds(ws) : activeChunkBuildings(),   // ★[T1453] 켬 = 켜진 청크 중 둘레만
     rooms: Rooms.allRooms().map(Rooms.wireRoom),   // ★[배치 18 ①] 방은 서버가 판정한다 — 클라는 받아 쓰기만(사본 방지)
     groundItems: Array.from(groundItems.values()), // Phase 14.23
     mobs: Array.from(mobs.values()).map(m => ({ mid: m.mid, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, tameOwner: m.tameOwner || null, tameOwnerName: m.tameOwnerName || null })),
@@ -20276,6 +20342,7 @@ setInterval(() => {
     viewerState.seenMobs = newSeen;
     return result;
   }
+  if (T1453_VIEW_SEND) _t1453ViewTick();   // ★[T1453] 켬 — 둘레에 새로 든 청크 몫(길 · 안 보낸 건물)을 틱 쪽지 앞에
   for (const p of allPlayers) {
     if (p.isNpc) continue;  // NPC는 클라(ws) 없음 — 시야계산(queryCircle)·tick 송신 불필요. 600 NPC × queryCircle 핫스팟 제거 (러버밴딩 주원인)
     if (!p.viewerState) p.viewerState = { seenPlayers: new Set(), seenMobs: new Set() };

@@ -72,6 +72,49 @@
   //   `cap()` 뒤 한 프레임이 지나면 `capOut()` = 그 프레임의 정렬된 목록 서명(종류 · 자리 · z · 등급 · 건물 id — 끔 ↔ 켬 같음 대조) · `check()` = 색인이 목록을 그대로 비추나
   window.__t1446 = { on: () => T1446_ON, set: (v) => { T1446_ON = !!v; needsRedraw = true; return T1446_ON; }, stat: () => _t1446Stat(),
     cap: () => { _t1446CapOut = null; _t1446CapReq = 1; needsRedraw = true; return true; }, capOut: () => _t1446CapOut, check: () => _t1446Check() };
+  // ★[T1453] 자연물 막음 물음 시험 손잡이 — 켬 ↔ 끔 · 같음 대조(점마다 종전 Set 을 새로 구워 같은 점을 묻는다) · 다시 굽기 ms
+  window.__t1453 = {
+    nat: () => T1453_NAT_ON,
+    setNat: (v) => { T1453_NAT_ON = !!v; needsRedraw = true; return T1453_NAT_ON; },
+    stat: () => ({ nat: T1453_NAT_ON, asked: _t1453NatN, oldSet: _natBlockSet ? _natBlockSet.size : 0,
+      cc: [...conns.values()].map(c => (c.buildings && c.buildings._cc) ? c.buildings._cc.size : null) }),
+    //   pts = [[ax, ay], …](월드 px) → 종전(새로 구운 Set) · 켬 `_natBlocked` 답을 견준다
+    natCheck: (pts) => {
+      const was = T1453_NAT_ON; const out = { n: pts.length, diff: 0, hitOld: 0, hitNew: 0, nullN: 0, bad: [] };
+      try {
+        T1453_NAT_ON = false; _natBlockReset();
+        const a = pts.map(p => _natBlocked(p[0], p[1]));
+        T1453_NAT_ON = true;
+        for (let i = 0; i < pts.length; i++) {
+          if (_t1453NatCells(pts[i][0], pts[i][1]) === null) out.nullN++;
+          const b = _natBlocked(pts[i][0], pts[i][1]);
+          if (a[i]) out.hitOld++; if (b) out.hitNew++;
+          if (a[i] !== b) { out.diff++; if (out.bad.length < 10) out.bad.push([pts[i][0], pts[i][1], a[i], b]); }
+        }
+      } finally { T1453_NAT_ON = was; }
+      return out;
+    },
+    //   길 칸 · 건물 둘레 · 그 둘레 ±3칸에서 점을 뽑는다(존마다 · 시드 고정 — 하네스 같음 대조용)
+    natPts: (n, seed) => {
+      let r = (seed >>> 0) || 1; const rnd = () => { r = (r * 1103515245 + 12345) >>> 0; return r / 4294967296; };
+      const pts = [];
+      for (const c of conns.values()) {
+        if (!c.meta) continue;
+        const ox = c.meta.worldOffsetX, oy = c.meta.worldOffsetY || 0;
+        const rk = c.roads ? [...c.roads.keys()] : [], bs = c.buildings ? [...c.buildings.values()] : [];
+        for (let i = 0; i < n; i++) {
+          const d = () => (Math.floor(rnd() * 7) - 3) * 32 + Math.floor(rnd() * 32);
+          if (rk.length && rnd() < 0.5) { const k = rk[Math.floor(rnd() * rk.length)], ci = k.indexOf(','); pts.push([ox + (+k.slice(0, ci)) * 32 + d(), oy + (+k.slice(ci + 1)) * 32 + d()]); }
+          else if (bs.length) { const b = bs[Math.floor(rnd() * bs.length)]; pts.push([ox + b.x + d(), oy + b.y + d()]); }
+        }
+      }
+      return pts;
+    },
+    //   종전 Set 다시 굽기 한 판(ms) — 서명을 지우고 한 번 묻는다(켬이어도 종전 길로)
+    natRebuildMs: () => { const was = T1453_NAT_ON; T1453_NAT_ON = false; _natBlockReset(); const t0 = performance.now(); _natBlocked(0, 0); const ms = performance.now() - t0; T1453_NAT_ON = was; return ms; },
+    //   켬의 건물 칸 셈표 세우기(존마다 처음 한 번) ms
+    ccBuildMs: () => { let ms = 0; for (const c of conns.values()) { if (!c.meta || !c.buildings || !c.buildings._ccBuild) continue; const t0 = performance.now(); c.buildings._ccBuild(c.meta.worldOffsetX, c.meta.worldOffsetY || 0); ms += performance.now() - t0; } return ms; },
+  };
   _t1193LagLink();   // ★[T1193] 주소 `lag=<초>` 면 들어간 뒤 렉 보고 표 + 복사 단추(재민 Safari 링크 · 00-const) — 주소에 없으면 아무 일도 안 한다
 // @@moved-end:491
 // @@moved-begin:600
