@@ -3098,7 +3098,11 @@ function t1421FieldCap(v) {   // 갈 수 있는 땅이 한 해 내는 하루 식
   return land * (v._t1421PerCell || 0) / T1276_YEAR;
 }
 function t1421YearFood(v) { if (T1452_YEAR) { const A = t1452Read(v); if (A) return A.rate; } return totalFoodEquivalent(v) / T1276_YEAR + t1276FieldFlow(v) + (v._t1421O || 0); }   // ★[T1452 재는 팔 `T1452_YEAR`] 같은 장부의 율(끔 = 종전 줄)   // 한 해를 내다본 하루 식량(하루치/날)
+// ★[T1451] `T1451_FARM_CALL` — 밭이 그날 일을 안 부르면(생활층 `_t1451Call` = 0) 농부 1인 값 = 0(T1421 나눗수 `t1421FarmDays` = ∞ — 나눗수를 켠 판에서만 · 끔 = 1 · 칸 없음 = 1)
+const T1451_FARM_CALL = (typeof process !== 'undefined' && process.env) ? process.env.T1451_FARM_CALL === '1' : false;
+function t1451CallMul(v) { return (T1451_FARM_CALL && v && v._t1451Call === 0) ? 0 : 1; }
 function t1421FarmDays(v, n) {   // 나눗수(사람-날) — ⓐ 365 × 농부 · ⓑ 자라는 날 × 농부 · ⓒ 지난 한 해 밭 일손 날
+  if (!t1451CallMul(v)) return Infinity;   // ★[T1451] 그날 밭이 안 부르면 농사 값 0(나눗수 ∞ — 실현 배분 · 기근 블록 두 줄 같이 · 끔 = 이 줄 무동작)
   if (T1421_FARM_DIV === 'grow') return (v._t1421GAvg > 0 ? v._t1421GAvg : T1276_YEAR) * n;
   if (T1421_FARM_DIV === 'labor') return Math.max(1, v._t1421LabD || 0);
   return T1276_YEAR * n;
@@ -8551,7 +8555,7 @@ module.exports = {
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)
   actDemandLeft, actDemandCap, fishDemandLeft, woodDemandLeft, forageDemandLeft, T374_DEMAND_STOP,
   setLotHook,   // ★[T748] 고르게 대기 칸 로트 훅(존 서버 켬만 꽂는다 · 랩 null)
-  T368_FARM_ACT, T1221_FARM_LABOR, T1243_FARM_ON, T1374_NO_BYGRAIN, T1374_BIRTH_HARV, T1374_FAMINE_HARV, t1374NeedDays, T1408_FARM_VALUE, T1421_FARM_PRICE, T1421_FARM_DIV, T1421_FIELD_CAP, T1421_BIRTH_YEAR, t1421FarmDays, t1421FarmVal, t1421FoodPrice, t1421FieldCap, t1421YearFood, T1284_FARM_YIELD, T1276_FARM_K, t1276FieldFlow, t1276Note, T1260_FOOD_READS, T1279_COOK, T1286_COOK_SPARE, T1286_PRODK, t1286Cook: _t1286Cook, T1298_LEDGER, T1298_HEALTH, T1309_HEALTH_EATEN, T1309_DIVERSITY_EATEN, T1309_MOVE_CONS, t1309Group: _t1309Group, t1309EatenHealth: _t1309EatenHealth, t1298Moved: _t1298Moved, t1298Hw: _t1298Hw, t1298Carry: _t1298Carry, t1260FoodOf, t1260CookStaple: _t1260CookStaple, cookTarget, t368FoodPer: _t368FoodPer, t368EvenRelease, totalFoodProductionEquivalent,   // ★[T368] 농부 행위 — 손잡이 + 품목별 고르게 푸는 자리 + 생산 환산(하네스가 옮겨 적지 않는다 · 입구는 `harvestToGranary` 그대로)   // ★[T374] 그날 수요 — 몸통 하나 + 품목별 `D` 자리 셋 + 손잡이
+  T368_FARM_ACT, T1221_FARM_LABOR, T1243_FARM_ON, T1374_NO_BYGRAIN, T1374_BIRTH_HARV, T1374_FAMINE_HARV, t1374NeedDays, T1408_FARM_VALUE, T1451_FARM_CALL, t1451CallMul, T1421_FARM_PRICE, T1421_FARM_DIV, T1421_FIELD_CAP, T1421_BIRTH_YEAR, t1421FarmDays, t1421FarmVal, t1421FoodPrice, t1421FieldCap, t1421YearFood, T1284_FARM_YIELD, T1276_FARM_K, t1276FieldFlow, t1276Note, T1260_FOOD_READS, T1279_COOK, T1286_COOK_SPARE, T1286_PRODK, t1286Cook: _t1286Cook, T1298_LEDGER, T1298_HEALTH, T1309_HEALTH_EATEN, T1309_DIVERSITY_EATEN, T1309_MOVE_CONS, t1309Group: _t1309Group, t1309EatenHealth: _t1309EatenHealth, t1298Moved: _t1298Moved, t1298Hw: _t1298Hw, t1298Carry: _t1298Carry, t1260FoodOf, t1260CookStaple: _t1260CookStaple, cookTarget, t368FoodPer: _t368FoodPer, t368EvenRelease, totalFoodProductionEquivalent,   // ★[T368] 농부 행위 — 손잡이 + 품목별 고르게 푸는 자리 + 생산 환산(하네스가 옮겨 적지 않는다 · 입구는 `harvestToGranary` 그대로)   // ★[T374] 그날 수요 — 몸통 하나 + 품목별 `D` 자리 셋 + 손잡이
   T1419_FOOD_NEED, T1419_SITE, T1419_FOOD4, foodNeedDays, t1419Days, t1419Subs, t1419FlowDays, t1419Season, t1419Stat,   // ★[T1419] 식량 날 수 한 함수(위 머리말)
   T1437_SEEN, T1437_READS, T1437_BUF_AT, T1437_RULER, t1437Drought, t1437Day, t1437Short, t1437Buf, t1437Read, t1437DroughtDays: () => _t1437Dr,   // ★[T1437] 겪은 낙폭(위 머리말)
   T1452_AHEAD, T1452_LEDGER, T1452_AT, T1452_READS, T1452_YEAR, t1452Day, t1452Eat, t1452Rot, t1452Ahead, t1452Read, t1452Slack, t1452Stat, _t1419Parts, _t1419FlowAt,   // ★[T1452] 앞날 장부(위 머리말)

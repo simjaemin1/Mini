@@ -13510,7 +13510,7 @@
    "cls0": "가",
    "why0": "",
    "cls": "가",
-   "maxSec": 3.7,
+   "maxSec": 5.3,
    "same5": true,
    "core": true,
    "why": "core",
@@ -13518,31 +13518,31 @@
    "runs": [
     {
      "rc": 0,
-     "secs": 3.3,
+     "secs": 5.3,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 3.7,
+     "secs": 5,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 3.7,
+     "secs": 4.6,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 3.1,
+     "secs": 4.8,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 2.9,
+     "secs": 4.4,
      "green": true,
      "fails": []
     }
@@ -18898,6 +18898,51 @@
    "same5": true,
    "core": true,
    "why": "core"
+  },
+  "test-t1451-farm-side-wood.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": 2.7,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 2.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.2,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "execFileSync node"
+   ]
   }
  },
  "at": "2026-11-23"
