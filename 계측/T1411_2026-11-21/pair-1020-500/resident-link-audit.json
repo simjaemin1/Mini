@@ -1,0 +1,92 @@
+{
+ "passed": false,
+ "firstObservedDay": 467,
+ "affectedDays": [
+  467,
+  490
+ ],
+ "maxMissingResidents": 1,
+ "totalBodyPopulationMinimumRatio": 1,
+ "observations": [
+  {
+   "day": 467,
+   "population": 4414,
+   "bodies": 4414,
+   "missingPeople": [
+    {
+     "name": "광산3",
+     "population": 78,
+     "bodies": 77,
+     "identifiedBodies": 77,
+     "missingPeople": [
+      "n437"
+     ],
+     "emigration": 0,
+     "territory": 3475,
+     "physical": 1975,
+     "added": 0,
+     "queued": 5,
+     "wood": 0,
+     "happiness": 0.3590502213449336,
+     "housing": 33.14762050082676
+    }
+   ],
+   "villageBodyCountDifferences": [
+    {
+     "name": "광산3",
+     "population": 78,
+     "bodies": 77
+    },
+    {
+     "name": "임업6",
+     "population": 112,
+     "bodies": 113
+    }
+   ],
+   "nextDay": 468,
+   "nextDayMissingResidents": 0,
+   "source": "seg-460.json.t1302-days.jsonl.gz"
+  },
+  {
+   "day": 490,
+   "population": 4471,
+   "bodies": 4471,
+   "missingPeople": [
+    {
+     "name": "광산3",
+     "population": 61,
+     "bodies": 60,
+     "identifiedBodies": 60,
+     "missingPeople": [
+      "n439"
+     ],
+     "emigration": 5,
+     "territory": 3475,
+     "physical": 1975,
+     "added": 0,
+     "queued": 5,
+     "wood": 0,
+     "happiness": 0.21603606353377505,
+     "housing": 32.02270022657124
+    }
+   ],
+   "villageBodyCountDifferences": [
+    {
+     "name": "광산3",
+     "population": 61,
+     "bodies": 60
+    },
+    {
+     "name": "임업6",
+     "population": 111,
+     "bodies": 112
+    }
+   ],
+   "nextDay": 491,
+   "nextDayMissingResidents": 0,
+   "source": "seg-480.json.t1302-days.jsonl.gz"
+  }
+ ],
+ "cause": "unresolved; no pre-optimization comparator beyond day100; no attribution to T1411",
+ "scope": "Per-village resident/body identity at the ledger observation. Total body counts alone do not establish identity completeness."
+}

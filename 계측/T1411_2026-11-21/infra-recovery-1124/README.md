@@ -10,6 +10,8 @@
 
 켬491~492날·끔501~502날의 세 일일 관찰기를 각각2/2날 맞췄다. CPU·프로세스CPU 누계·uptime 세 필드만 제외했고 가상 시각도 일치했다. `replay-check.json`과 복구 전/후 원자료를 보존했다. 원본/후보100날 의미 보존 지문이나 독립 세계 횟수를 늘리는 자료가 아니다. 시드7·42의 네 팔은 기존 대기열에 그대로 둔다.
 
+복구 뒤 첫 켬490→500날·끔500→510날 마디가 실제 존 종료 코드0·가상 시계 오류0으로 닫혔다. `first-closed-segments.json`에 종료 메타를 보존했다. 이 종료 검사는 별도로 발견한467·490날 마을 ID 연결 누락을 초록으로 바꾸지 않는다(`../pair-1020-500/resident-link-audit.json`).
+
 ```sh
 python3 scripts/t1411-recovery-check.py --evidence 계측/T1411_2026-11-21/infra-recovery-1124 --runs 계측/T1411_2026-11-21/infra-recovery-1124/replayed --out /tmp/t1411/recovery-check-4.json
 ```
