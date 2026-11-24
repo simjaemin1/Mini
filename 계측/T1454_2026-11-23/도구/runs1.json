@@ -1,0 +1,17 @@
+[
+ {"tag":"SLOW_1020","seed":1020,"days":400,"probe":1,"env":{"T1438_DECAY":"1","T1454_SLOW":"1"}},
+ {"tag":"ON_1020","seed":1020,"days":400,"probe":1,"env":{"T1438_DECAY":"1"}},
+ {"tag":"SLOW_7","seed":7,"days":400,"probe":1,"env":{"T1438_DECAY":"1","T1454_SLOW":"1"}},
+ {"tag":"ON_7","seed":7,"days":400,"probe":1,"env":{"T1438_DECAY":"1"}},
+ {"tag":"SLOW_42","seed":42,"days":400,"probe":1,"env":{"T1438_DECAY":"1","T1454_SLOW":"1"}},
+ {"tag":"ON_42","seed":42,"days":400,"probe":1,"env":{"T1438_DECAY":"1"}},
+ {"tag":"OFF_7","seed":7,"days":400,"probe":1,"env":{}},
+ {"tag":"OFF_42","seed":42,"days":400,"probe":1,"env":{}},
+ {"tag":"OFF_1020","seed":1020,"days":400,"probe":1,"env":{}},
+ {"tag":"HD0_1020","seed":1020,"days":730,"probe":1,"ablate":"hd0","env":{"T1438_DECAY":"1","T1454_SLOW":"1"}},
+ {"tag":"HDON_1020","seed":1020,"days":730,"probe":1,"env":{"T1438_DECAY":"1","T1454_SLOW":"1"}},
+ {"tag":"HD0_7","seed":7,"days":730,"probe":1,"ablate":"hd0","env":{"T1438_DECAY":"1","T1454_SLOW":"1"}},
+ {"tag":"HDON_7","seed":7,"days":730,"probe":1,"env":{"T1438_DECAY":"1","T1454_SLOW":"1"}},
+ {"tag":"HD0_42","seed":42,"days":730,"probe":1,"ablate":"hd0","env":{"T1438_DECAY":"1","T1454_SLOW":"1"}},
+ {"tag":"HDON_42","seed":42,"days":730,"probe":1,"env":{"T1438_DECAY":"1","T1454_SLOW":"1"}}
+]

@@ -204,6 +204,10 @@
     const name = msg.name || '이것';
     if (!msg.parts || !msg.parts.length) { showNotice(`${name}은(는) 낡지 않습니다.`); return; }
     const lines = [];
+    //   ★[T1454] 시설 — 걸리는 시간 배수(서버가 셈 · 클라 셈 0) · 0 이면 고장 한 줄(왜 못 쓰는지)
+    if (msg.slow) lines.push(msg.slow.broken
+      ? { label: `고장 — 고쳐야 씁니다`, onClick: () => showNotice(`${name}이(가) 고장 났습니다. 아래 재료를 넣어 고치면 바로 다시 씁니다(가장 느린 데서부터).`) }
+      : { label: `낡음 ${Math.round((1 - msg.slow.x) * 100)}% — 걸리는 시간 ${msg.slow.mult.toFixed(2)}배`, onClick: () => showNotice(`${name} — 남은 몫 ${Math.round(msg.slow.x * 100)}% · 여기서 하는 일에 ${msg.slow.mult.toFixed(2)}배 걸립니다(나오는 양은 같습니다).`) });
     for (const p of msg.parts) {
       const pct = Math.round((p.v || 0) * 100);
       lines.push({ label: `${p.ko} ${pct}%`, onClick: () => showNotice(`${name} ${p.ko} ${pct}% — 지을 때 든 것: ${(p.items || []).join(' · ')}`) });
