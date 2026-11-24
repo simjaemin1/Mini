@@ -3955,6 +3955,7 @@ function _t671Shape(p) {
   p._t1302Terr = undefined;   // T1302: physical territory clearing cargo
   if (T1393_HUNT_CHASE) p._t1393Own = undefined;   // ★[T1393] 사냥판이 쥔 몸 표지(wildlife `_t1393Tick` — 켬일 때만 서는 칸 · test-body-fields 규약)
   if (T1393_HUNT_CHASE && process.env.T1416_CARRY_HOME === '1') { p._t1416H = undefined; p._t1416Go = undefined; p._t1416C = undefined; p._t1416Sp = undefined; }   // ★[T1416 ④] 사냥꾼 손 · 곳간 길 표지 · 둔 몫 · 실은 종(켬일 때만 서는 칸 · test-body-fields 규약)
+  if (T1393_HUNT_CHASE && process.env.T1416_CARRY_HOME === '1' && process.env.T1439_CALL_CARRY === '1') p._t1439H = undefined;   // ★[T1439] 불려 온 몸의 고기 손(villages `_t1439Step` — 켬일 때만 서는 칸 · test-body-fields 규약)
   p.oreLedger = undefined; p._t1180FullFish = undefined; p._t1181Haul = undefined; p._t1197M1 = undefined; p._t1197M0 = undefined; p._t1195At = undefined; p._t1212N = undefined; p._t1217H = undefined; p._t1217Stop = undefined;   /* ★[PM land1052 · T1220-K3] T1212 · T1217 몸 칸 셋 */   /* ★[PM land1050 · T1208-K4 회부 2] land1049 가 연 몸 칸 셋(T1197 끼니 · T1195 사냥) */   // ★[PM land1048 · T1188 · T1180 · T1181] 가지들이 보탠 몸 칸 셋 — 스폰 꼴에 미리(test-body-fields · 숨은 클래스 한 벌)
   if (T1422_SIDE) { p._t1422J = undefined; p._t1422D = undefined; p._t1422T = undefined; p._t1422At = undefined; }   // ★[T1422] 남는 시간 일 몸 칸 넷(villages `_t1422Side` — 손잡이 `T1422_SIDE_WORK` 켬일 때만 서는 칸 · 끔 = 이 줄 무동작 · test-body-fields 규약)
   if (T1144_LIFE_EVENT) p._t1144Sp = undefined;   // ★[T1144 ② · T1154] 어부 던짐 종의 지난 답(villages.js `_t1144SpGet` — 손잡이 켬일 때만 서는 칸 · 끔 = 이 줄 무동작)

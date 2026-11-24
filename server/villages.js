@@ -18083,6 +18083,7 @@ function _t743Gap(vil, npc, now) {
 function _t720Settle(vil, npc, now, S) {
   const E = _lifeEcon();
   if (T1416_CARRY_HOME && npc._t1416H) _t1416Deliver(vil, npc);   // ★[T1416 ④] 사냥꾼 손 → 곳간(끔 = 이 줄 안 선다)
+  if (T1439_CALL_CARRY && npc._t1416C) _t1439Call(vil, npc, now);   // ★[T1439 ⓑ] 그날 둔 몫이 남았다 — 마을에서 사람을 데려간다(끔 = 이 줄 안 선다)
   if (E.T724_MINE_ACT && npc.inventory && npc.inventory.ore_chunk > 0) _t724Deliver(vil, npc, 'dusk', now);   // ★[T757] 원석 손 → 곳간(T724 곳간 입구 그대로 · 곳간이 안 받은 몫은 손에 남는다)
   if (E.fishActOn(vil.econ) && (npc._t312U || 0) > 0) _t312Deliver(vil, npc);
   if (_t368ItemsOn() && npc._t368H) _t368Deliver(vil, npc, 'gran');
@@ -19055,6 +19056,54 @@ const _t1393On = () => T1393_HUNT_CHASE && T1331_BEAST_BODY;
 //   `_t1195Put` 과 같은 입구: 열량 칸은 econ `meat` 열량으로 · 나머지는 낱개 그대로 · econ `huntToGranary`). 해 질 녘엔 든 손을 같은 길로(어부 · 나무꾼 · 광부 손과 같은 정산).
 //   하루 경계 `_t1195HuntIn` ① 은 켬에서 잡은 수가 0 이라 안 넣는다(두 길 0). 새 수 0 — 손 상한은 짐 정본(`carry.CFG.CAP_KG`)을 사냥판이 읽는다.
 const T1416_CARRY_HOME = T1393_HUNT_CHASE && T1331_BEAST_BODY && process.env.T1416_CARRY_HOME === '1';
+// ★★[T1439] 잡은 짐승 — 마을에서 사람을 데려간다(wildlife `T1439_CALL_CARRY` 머리말 ⓑ · 같은 env · 끔 = 무동작).
+//   쏜 사냥꾼이 제 짐을 곳간에 넣은 순간(`_t720Settle`) 그날 둔 몫이 남았으면 ⌈남은 kg ÷ 한 사람 짐⌉ − 1 명(사냥꾼 자신이 한 짐 — 다시 간다)을 고른다:
+//     차례 = 그날 일감 없이 쉬는 몸('휴식' 라벨 — 남는 시간이 있는 몸 · T1422 곁일 차례의 글자: 가지 `batch/side-work-1121` 은 아직 main 밖이라 그 문은 안 부른다 · 회부)
+//            → 다른 사냥꾼(판에 안 든 몸) → 그 밖 몸. 거름 = 나설 수 있는 몸(`_t561Fit`) · 일감 몸(`_lifeTask`) · 교역 · 출정 몸은 건너뛴다.
+//   불려 온 몸 = 생활층 일감 'meat'(둔 몫 조각 하나 — 제 짐 상한까지): 사체 자리까지 걷고('사람 부르러'를 받아 '고기 가지러') · 닿으면 그날 몫을 손(`_t1439H`)에 지고 ·
+//     곳간 사다리까지 걸어와 넣는다('고기 나르는 중' → 곳간). 그 시간 동안 제 일을 못 한다(일감이 있는 몸은 직업 갈래에 안 닿는다). 날이 바뀌어 닿으면 썩음 = 헛걸음(센다).
+const T1439_CALL_CARRY = T1416_CARRY_HOME && process.env.T1439_CALL_CARRY === '1';
+const _t1439V = { calls: 0, want: 0, got: 0, short: 0, bodyMs: 0, walkMs: 0, deliverKg: 0, miss: 0, byJob: {} };
+let _t1439W = null; function _t1439Wl() { if (_t1439W === null) { try { _t1439W = require('./wildlife').T1439 || false; } catch (e) { _t1439W = false; } } return _t1439W || null; }
+function _t1439Call(vil, npc, now) {
+  const C = npc._t1416C, W = _t1439Wl(); if (!C || !(C.kg > 0) || !W) return 0;
+  const cap = W.cap(); if (!(cap > 0)) return 0;
+  const want = Math.ceil(C.kg / cap - 1e-9); if (!(want > 0)) return 0;   // 카드 글자 그대로 — 데려갈 수 = ⌈남은 kg ÷ 한 사람 짐⌉(사냥꾼은 길잡이 · 둔 몫은 불린 몸들이 다 진다 → 사냥꾼 둔 몫이 비면 사냥꾼은 다시 사냥판으로)
+  const pl = state.deps && state.deps.players; if (!pl) return 0;
+  const tiers = [[], [], []];
+  for (const pid of (vil.npcPids || [])) {
+    const p = pl.get(pid); if (!p || p === npc || !_t561Fit(p) || p._lifeTask || p.state === 'trading' || p._warDraft || p._t1416H || p._t1416C || p._t1439H || p._huntOn || p._t1393Own) continue;   // 판에 든 사냥꾼 · 손이 찬 몸도 건너뛴다
+    if (p._lifeAct === '휴식') tiers[0].push(p); else if (p.simJob === 'hunter') tiers[1].push(p); else tiers[2].push(p);
+  }
+  const pick = []; for (const T of tiers) for (const p of T) { if (pick.length >= want) break; pick.push(p); }
+  _t1439V.calls++; _t1439V.want += want; _t1439V.got += pick.length; if (pick.length < want) _t1439V.short++;
+  for (const p of pick) {   // 조각 — 둔 몫에서 한 사람 짐만큼(품목 차례 그대로)을 떼어 그 몸의 일감에
+    const part = { x: C.x, y: C.y, d: C.d, kg: 0, it: {}, t0: C.t0, trips: 1, sp: C.sp };
+    for (const k in C.it) { const w = _t1439Kg(k); let n = 0; while (n < C.it[k] && part.kg + w <= cap + 1e-9) { part.kg = +(part.kg + w).toFixed(3); n++; } if (n > 0) part.it[k] = n; }
+    if (!(part.kg > 0)) break;   // 무게 있는 짐을 하나라도 질 때만 뗀다
+    for (const k in part.it) { C.it[k] -= part.it[k]; if (!(C.it[k] > 0)) delete C.it[k]; } C.kg = +(C.kg - part.kg).toFixed(3);
+    p._lifeTask = { k: 'meat', px: C.x * 32, py: C.y * 32, C: part, at: now, w0: now, home: 0 };
+    _t1439V.byJob[p.simJob || '-'] = (_t1439V.byJob[p.simJob || '-'] || 0) + 1;
+  }
+  if (!(C.kg > 0)) npc._t1416C = null;
+  return pick.length;
+}
+let _t1439Wt = null; function _t1439Kg(k) { if (_t1439Wt === null) { try { _t1439Wt = require('./weights'); } catch (e) { _t1439Wt = false; } } return (_t1439Wt && _t1439Wt.kgOf(k)) || 0; }
+//   불려 온 몸의 하루 — 일감 'meat'(사체로) → 닿으면 싣기 → 'meat' home(곳간 사다리로) → 넣기. 걸음은 몸 걸음(목표 좌표 · 순간이동 0).
+function _t1439Step(vil, npc, now, t) {
+  const el = Math.min(3000, now - (t.at || now)); t.at = now; _t1439V.bodyMs += el;
+  if (!t.home) {
+    if (Math.hypot(npc.x - t.px, npc.y - t.py) > 44) { _t1439V.walkMs += el; npc.behavior = 'wander'; npc.targetX = t.px; npc.targetY = t.py; npc.gatherTarget = null; _lifeAct(npc, '고기 가지러'); return true; }
+    const W = _t1439Wl(), r = W ? W.load(npc, t.C, now) : { got: 0, miss: 1 };
+    if (r.miss) _t1439V.miss++;
+    if (!(npc._t1439H && npc._t1439H.kg > 0)) { npc._lifeTask = null; npc._t1439H = null; return false; }   // 헛걸음 — 빈손 귀가(다음 결정)
+    const g = _t1207From(vil); t.home = 1; t.px = g.x; t.py = g.y;
+  }
+  if (Math.hypot(npc.x - t.px, npc.y - t.py) > 44) { _t1439V.walkMs += el; npc.behavior = 'wander'; npc.targetX = t.px; npc.targetY = t.py; npc.gatherTarget = null; _lifeAct(npc, '고기 나르는 중'); return true; }
+  const kg = (npc._t1439H && npc._t1439H.kg) || 0, keep = npc._t1416H; npc._t1416H = npc._t1439H; _t1416Deliver(vil, npc); npc._t1416H = keep; npc._t1439H = null;
+  _t1439V.deliverKg = +(_t1439V.deliverKg + kg).toFixed(3); npc._lifeTask = null; _lifeAct(npc, '저장'); return true;
+}
+function t1439Stat() { return JSON.parse(JSON.stringify(_t1439V)); }
 const _t1416Stat = { trips: 0, kg: 0, units: 0, items: {}, sp: {} };
 function _t1429Spill(S) {   // 다시 뜬 판에서 저장된 몸 줄이 지금 몸보다 많을 때 — 손은 저장된 자리에 · 둔 몫은 제자리에 땅 더미로(wildlife)
   let W = null; try { W = require('./wildlife'); } catch (e) {} if (!W || !W.t1429Ground) return;
@@ -20339,7 +20388,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   const dayFrac = fv / dayR;   // 낮 진행률 0~1(랩 상수의 서버 환산 축)
   // 반일 오후(랩 7991 퇴근길 징발 — 일>건축>휴식): 미완공 집터 있으면 전 직업 건축 합류(상한 없음 — 랩 동형), 없으면 자택 휴식
   if (npc._half && dayFrac >= SCH_HALF_R && !(_T1422_K && npc._t1422D === bday)) {   // ★[T1422] 켬 = 오늘 남는 시간 일을 받은 몸은 그 일을 한다(끔 = 뒤 항 거짓)
-    if (!(npc._lifeTask && npc._lifeTask.k === 'build')) {
+    if (!(npc._lifeTask && (npc._lifeTask.k === 'build' || npc._lifeTask.k === 'meat'))) {   // ★[T1439] 고기 나르는 몸은 반일 오후에도 마저 나른다('meat' 은 켬일 때만 선다)
       _lifeDropTask(vil, npc);
       if (vil._site && !_lifeEcon().T400_BUILD_ACT) { vil._buildCrew++; t1399Bump(vil); npc._lifeTask = { k: 'build', px: (vil._site.cx - 2.5) * SZ, py: (vil._site.cy - 0.5) * SZ, prog: 0 }; npc._workT = now; }   // ★[T400] 켬이면 징발 0 — 집은 크루 둘이 나르고 짓는다
       else if (vil._psite) { vil._psiteCrew = (vil._psiteCrew || 0) + 1; t1399Bump(vil); npc._lifeTask = { k: 'build', ps: 1, px: (vil._psite.cx - 2.5) * SZ, py: (vil._psite.cy - 0.5) * SZ, prog: 0 }; npc._workT = now; }   // ★[11차 T4] 마을 일감이 없을 때만 의뢰 집터로(마을 우선 — 랩 ④ 규약)
@@ -20357,6 +20406,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   // ══ 진행 중 작업(개간·건설 — 현장 실시간 노동) ══
   const t = npc._lifeTask;
   if (t) {
+    if (T1439_CALL_CARRY && t.k === 'meat') return _t1439Step(vil, npc, now, t);   // ★[T1439 ⓑ] 불려 온 몸 — 사체 ↔ 곳간(끔 = 이 일감이 안 선다)
     if (t.k === 'build' && !(t.ps ? vil._psite : vil._site)) { npc._lifeTask = null; return false; }   // 완공/소멸 → 해산
     if (t.k === 'build' && !t.ps && _lifeEcon().T400_BUILD_ACT) { _lifeDropTask(vil, npc); return true; }   // ★[T400] 마을 집터 시공은 하루 장부가 진다(몸의 진척 0 — 이중 진척 금지)
     const d = Math.hypot(npc.x - t.px, npc.y - t.py);
@@ -22192,7 +22242,8 @@ function __rumorProbe() {
     rumor: Object.assign({}, L.rumorStats) };
 }
 
-module.exports = { t1406PathCell: (cx, cy, vil) => _t1406PathCell(cx, cy, vil || null), T1406_KEEP_PATHS, artisanPerf,   // ★[T1196] 장인 작업장 관측
+module.exports = { T1439_CALL_CARRY, t1439Stat, _t1439Probe: { call: (vil, npc, now) => _t1439Call(vil, npc, now), step: (vil, npc, now, t) => _t1439Step(vil, npc, now, t) },   // ★[T1439] 마을에서 데려가기(하네스 · 관찰)
+  t1406PathCell: (cx, cy, vil) => _t1406PathCell(cx, cy, vil || null), T1406_KEEP_PATHS, artisanPerf,   // ★[T1196] 장인 작업장 관측
   T1438_DECAY, t1438HouseAt, t1438HitHouse, t1438RepairHouse, t1438Stat, __t1438: { villageDay: (v) => _t1438VilDay(v), find: _t1438Find, parts: _t1438Parts, collapse: _t1438Collapse, V: _t1438V, load: (b) => _t1438Load(b), ded: (v) => _t1438Ded(v), fp: (type, cx, cy) => _vbFootprint(type, cx, cy),
   setup: (o) => { const K = ['deps', 'villages', 'db', 'zoneId']; const k = {}; for (const n of K) k[n] = state[n]; if (o) for (const n of K) if (n in o) state[n] = o[n]; return k; } },   // ★[T1438] 마을 집 · 곳간 낡음(하네스 · 판 계측 — 읽기 · 주입만)
   T1422_SIDE_WORK, t1422Stat, _t1422Probe: { side: (vil, npc, now, why) => _t1422Side(vil, npc, now, why), handsIn: (vil) => _t1422In(vil), kinds: () => _T1422_K ? [..._T1422_K] : [] },   // ★[T1422] 남는 시간 문(하네스 · 관찰기)
