@@ -23623,7 +23623,7 @@ module.exports = { T1451_SITES, T1451_CREW_FREE, T1451_FARM_CALL, t1451Stat: () 
   LAND_SCAN_R,   // ★[T135] 부존 스캔 반경 — 나무 층이 생활권 숲 셀 수를 유도할 때 읽는다(사본 0)
   __labProbe: {
     // ★[T1468] 랩 땅 굽기 — 같은 규약(최소 주입구 하나 · 정본 고르기 함수를 그대로 부른다 · 굽기가 후보 · 점수 · 막힘 규칙을 다시 적으면 그게 사본이다)
-    _t1468Probe: { setup: (o) => { const k = { ta: state.ta, villages: state.villages }; if (o) { if ('ta' in o) state.ta = o.ta; if ('villages' in o) state.villages = o.villages; } return k; },
+    _t1468Probe: { use: (o) => { const k = { ta: state.ta, villages: state.villages }; if (o) { if ('ta' in o) state.ta = o.ta; if ('villages' in o) state.villages = o.villages; } return k; },
       pick: (vil, target) => _terrPick(vil, target), growCore: (vil) => _terrGrowCore(vil), get GROW_MAX() { return TERR_GROW_MAX_PER_DAY; } },   // `growCore` = 서버 넓히기 하루(하네스 ④ — 고르기가 같은 함수인지 맞댄다)
     get t772Stat() { return T772_ON ? Object.assign({}, _t772Stat) : null; },   // ★[T772] 켬만 — 귀환 다리 · 집 도착 · 늦음(관찰기가 읽는다)
     makeTerrainAdapter, extractLandParamsApprox, findOpenCenter, pickSeedVillages,

@@ -146,10 +146,10 @@ function main() {
     return;
   }
   const V = seeds.map((s) => ({ name: s.name, ccx: s.ccx, ccy: s.ccy, _terrSet: new FrontierSet((s.layout.territory || []).map((c) => c[0] + ',' + c[1])), econ: { land: { size: 1e9 }, npcs: [], founder: null } }));
-  const keep = P._t1468Probe.setup({ ta, villages: V });
+  const keep = P._t1468Probe.use({ ta, villages: V });
   const start = V.map((v) => v._terrSet.size);
   const g = growAll(P, V, (round, active) => { if (round % 50 === 0) process.stderr.write(`  바퀴 ${round} · 아직 넓히는 마을 ${active.filter(Boolean).length} · ${((Date.now() - t0) / 1000).toFixed(0)}초\n`); });
-  P._t1468Probe.setup(keep);
+  P._t1468Probe.use(keep);
   const head = { v: 1, card: 'T1468', zone: Z, sig, seedsSig, growMax: P._t1468Probe.GROW_MAX, rounds: g.round, sec: +((Date.now() - t0) / 1000).toFixed(1), seedsFile: path.basename(SEEDS) };
   const rows = V.map((v, i) => {
     const s0 = ((seeds[i].layout && seeds[i].layout.territory) || []).map((c) => c[0] + ',' + c[1]);

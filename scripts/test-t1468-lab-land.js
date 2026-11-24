@@ -91,7 +91,7 @@ if (process.argv[2] === '--hand') {
   const mk = () => H.vils.map((h) => ({ name: h.name, ccx: h.ccx, ccy: h.ccy, _terrSet: new B.FrontierSet(h.cells), econ: { land: { size: 1e9 }, npcs: [], founder: null } }));
   const out = {};
   // ③ 끝까지 함께 넓히기
-  const V = mk(); const keep = P._t1468Probe.setup({ ta: H.ta, villages: V });
+  const V = mk(); const keep = P._t1468Probe.use({ ta: H.ta, villages: V });
   const g = B.growAll(P, V);
   const a = V[0]._terrSet.all, b = V[1]._terrSet.all; let both = 0, blk = 0;
   for (const k of a) { if (b.has(k)) both++; }
@@ -99,9 +99,9 @@ if (process.argv[2] === '--hand') {
   out.three = { both, blk, sum: a.size + b.size, free: H.free, rounds: g.round };
   // ④ 한 번 고르기 — `pick`(굽기가 부르는 그것)의 결과(마을 C · 첫 바퀴)
   const C = { name: H.c.name, ccx: H.c.ccx, ccy: H.c.ccy, _terrSet: new B.FrontierSet(H.c.cells), econ: { land: { size: 1e9 }, npcs: [], founder: null } };
-  P._t1468Probe.setup({ ta: H.ta, villages: [C] });
+  P._t1468Probe.use({ ta: H.ta, villages: [C] });
   out.pick = P._t1468Probe.pick(C, Infinity);
-  P._t1468Probe.setup(keep);
+  P._t1468Probe.use(keep);
   // ④ 글자: 굽기에 제 점수식이 없다 · 서버 넓히기가 `_terrPick` 하나를 부른다
   const BS = fs.readFileSync(path.join(ROOT, 'scripts', 't1468-land-bake.js'), 'utf8'), VS = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8');
   out.text = { bakeNoScore: !/fertW|distW|Math\.hypot\([^)]*\)\s*\*\s*0\.1|3\.5\s*\*/.test(BS), bakeCallsProbe: /_t1468Probe\.pick\(/.test(BS), coreCallsPick: /function _terrGrowCore[\s\S]{0,4000}?_terrPick\(vil, target\)/.test(VS) };
@@ -115,11 +115,11 @@ if (process.argv[2] === '--core') {
   const Vm = require(path.join(ROOT, 'server', 'villages.js')), P = Vm.__labProbe;
   const H = handMap();
   const V = [H.c].map((h) => ({ name: h.name, ccx: h.ccx, ccy: h.ccy, _terrSet: new Set(h.cells), econ: { land: { size: 1e9 }, npcs: new Array(1e5), founder: null } }));   // 목표 · 상한이 하루 몫을 안 막게(땅 · 사람 끝없음)
-  const keep = P._t1468Probe.setup({ ta: H.ta, villages: V });
+  const keep = P._t1468Probe.use({ ta: H.ta, villages: V });
   const before = new Set(V[0]._terrSet);
   let added = null;
   if (P._t1468Probe.growCore) { P._t1468Probe.growCore(V[0], Infinity); added = [...V[0]._terrSet].filter((k) => !before.has(k)); }
-  P._t1468Probe.setup(keep);
+  P._t1468Probe.use(keep);
   process.stdout.write('\n' + JSON.stringify({ added }));
   process.exit(0);
 }
