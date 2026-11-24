@@ -1,0 +1,5 @@
+[
+ {"tag":"G3","seed":1020,"days":600,"env":{"T1447_PERSON_GRUDGE":"1"},"cfg":{"d0":200,"size":3,"per":4}},
+ {"tag":"G12","seed":1020,"days":600,"env":{"T1447_PERSON_GRUDGE":"1"},"cfg":{"d0":200,"size":12,"per":4}},
+ {"tag":"G6","seed":1020,"days":600,"env":{"T1447_PERSON_GRUDGE":"1"},"cfg":{"d0":200,"size":6,"per":4}}
+]

@@ -1,0 +1,49 @@
+
+=== backup-live — 라이브 DB 매일 스냅샷 · 복원(T907) ===
+① 스냅샷
+  ✓ 도는 durango 컨테이너(central · 존)마다 한 벌 — durango 밖은 안 건드린다  rc=0 20261123-095725-hanbando 20261123-095725-central
+  ✓ SHA256SUMS = 사본 .db 의 sha256
+  ✓ ★meta 의 표마다 행 수 = 원본(진짜 SQLite 온라인 백업) · quick_check ok  {"chunks":400,"items":120,"players":30}
+  ✓ 사본 폴더 = .db · SHA256SUMS · meta 셋뿐(검사가 남긴 빈 -wal · -shm 안 남김)  SHA256SUMS meta.txt world-hanbando.db
+  ✓ ★비밀 0 — 출력 · meta 에 컨테이너 env 비밀 없음(DB_PATH 만)
+  ✓ 한 줄 — 대상 · 크기 · 검사 · 표 · 행    ✓ central → …/20261123-095725-central · 12.0 KB · 검사 ok · 표 2 · 행 15 · 4ms · sha fd9b4720ddb6 |   ✓ hanbando → …/20261123-095725-hanbando · 32.0 KB · 검사 ok · 표 3 · 행 550 · 7ms · sha f131e63d8915
+
+② 보관 — BACKUP_KEEP 벌만
+  ✓ ★네 벌 뒤 대상마다 새것 두 벌 · 첫 벌은 지웠다  20261123-095727-hanbando 20261123-095728-hanbando
+  ✓ `-replaced`(복원이 옮긴 옛 DB)는 셈 밖 — 안 지운다
+
+③ 복원
+  ✓ 이름을 잘못 치면(nippon) 안 멈추고 DB 무변
+  ✓ ★바로 치면 — 놓은 DB 바이트 = 스냅샷(sha) · 표마다 행 수 = 스냅샷 · /health  rc=0
+  ✓ 복원한 DB 를 다시 열어 센 행 수 = 첫 스냅샷의 원본 행 수(스냅샷 뒤 77 행은 빠졌다)  {"chunks":400,"items":120,"players":30}
+  ✓ ★지금 DB 는 안 지운다 — `-replaced/` 로 옮겼다(sha = 복원 앞)  20261123-095729-hanbando-replaced
+  ✓ 멈춤 → 켬 차례 · 그 존만(central 은 그대로)  stop durango-zone-hanbando | start durango-zone-hanbando
+
+④ 깨진 사본 · 남의 사본
+  ✓ ★바이트 하나 바뀐 사본 → 멈추기 앞에 거절 · DB 무변
+  ✓ 남의 대상 사본(hanbando → central) 거절
+
+⑤ --install · --uninstall · --status
+  ✓ ★두 번 깔아도 표 붙은 줄 하나(나중 시각 03:05) · 남의 줄 그대로  5 3 * * * cd <repo> && bash scripts/backup-live.sh >> <_daily>/backup.log 2>&1 # durango-backup-live
+  ✓ 틀린 시각(7:5)은 거절 · crontab 무변
+  ✓ --status 가 그 줄을 찍는다
+  ✓ --uninstall — 그 줄만 뺐다
+  ✓ 그 줄 하나뿐인 crontab 도 --uninstall rc 0 · 빈 crontab(마른 연습이 잡은 판)  rc=0
+
+⑥ ★자명 통과 금지 — sha 확인 줄을 뺀 미끼
+  ✓ [미끼] sha 확인을 뺀 사본은 깨진 사본을 멈추고 놓는다 — ④ 가 문다  rc=0
+
+⑦ [T919] 갱신 앞 사본 — 라벨 · --dry · --last · bash -s
+  ✓ ★라벨이 meta(`label=`) · ✓ 줄에 — 글자 [A-Za-z0-9 ._:-] 밖은 거른다(따옴표 · $ · 역따옴표 0 · 셸에 안 닿는다)  label=update-live aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa b…
+  ✓ ★--dry — 아무것도 안 쓴다(폴더 무변) · 보관 3 이면 다섯 벌 중 옛 셋을 "뗄 옛것" 으로 찍는다  20261123-095733-hanbando 20261123-095732.2-hanbando 20261123-095732-hanbando
+  ✓ ★--last <대상> update-live — 라벨 붙은 것 중 가장 새 사본(그 뒤 라벨 없는 매일 사본 셋은 건너뛴다)  …/20261123-095732.2-hanbando
+  ✓ 앞머리 없으면 가장 새 것 · 없는 대상 · 안 맞는 앞머리는 rc 1
+  ✓ `cat backup-live.sh | bash -s`(update-live 가 서울 판을 도쿄에 흘리는 꼴)도 돈다 — BASH_SOURCE 빔(마른 연습이 잡음)
+
+⑧ [T1142] 단계 보관 — 날 14 · 주 12 · 달 영구(`keep_of` 를 떼어 400날 가짜 목록에)
+  ✓ ★최근 14날은 그 날 것 전부(배포 날 두 벌 다)
+  ✓ ★그 앞 12주는 ISO 주마다 가장 새것 하나
+  ✓ ★더 옛것은 달마다 가장 이른 것 영구 · 400날 440벌 → 42벌  42
+  ✓ BACKUP_KEEP=7 이면 종전 꼴(새것 일곱)  7
+
+=== PASS 30 / FAIL 0 ===

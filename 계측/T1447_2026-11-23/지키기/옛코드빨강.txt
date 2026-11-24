@@ -1,0 +1,3 @@
+# 옛 코드 빨강 — 하네스 = c3da7b392 · 제품(server sim public lab) = 0039b7cb5 · 시한 600초
+빨강 ○ | test-t1447-grudge.js | RC=1 · ✓ 0 · ✗ 34 |   ✗ ①a 셈 — server/grudge.js 없음
+# 합: 빨강 1 · 크래시 0 · 초록 0 · 모름 0 · 제품 무관 0

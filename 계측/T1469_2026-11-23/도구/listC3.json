@@ -1,0 +1,41 @@
+[
+ {
+  "tag": "MD_42y",
+  "seed": 42,
+  "days": 365,
+  "heap": 4608,
+  "env": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1",
+   "T1460_DEN_LAND": "1",
+   "T1469_DEN_MOVE": "1"
+  }
+ },
+ {
+  "tag": "WN_1020",
+  "seed": 1020,
+  "days": 360,
+  "kind": "war",
+  "env": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1"
+  }
+ },
+ {
+  "tag": "WM_1020",
+  "seed": 1020,
+  "days": 360,
+  "kind": "war",
+  "env": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1",
+   "T1469_DEN_MOVE": "1"
+  }
+ }
+]

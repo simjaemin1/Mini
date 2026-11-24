@@ -1,0 +1,28 @@
+PASS default undefined
+PASS default 
+PASS default 0
+PASS default 1
+PASS default yes
+[econ-sim-v2] specialty.js 통합: 276종 → 총 296 TRADABLE
+PASS knob on in this harness
+PASS expected bite wait = the plan() wait at its mean draw (same rate line) · halves the bites when the stock halves (CPUE)
+PASS whole fish from the same ledger: k = min(n, whole fish the disc still holds) · nothing when not even one
+PASS value: food debt → one unit = one person-day of debt (1 ÷ (N × die days)) · rest hour = leisure weight ÷ (N × H)
+PASS value: no debt → surplus = max(fish price, food price, net export) × best (happiness slope ÷ price) · goods nobody has are not a trade
+PASS leisure base: act fishers count by their rested person-days, formula jobs by the idle fraction (population-weighted)
+PASS hour prices: same hour → same table · new hour, same granary → same table · changed granary → priced again · trade and net export read it
+PASS batch day: with food debt the fishers fish past the old demand, draw the very fish from the ledger, and the granary gets what the ledger lost
+PASS batch day: no debt and nothing worth buying → every fisher rests from the first hour (rested person-days = roster) · nothing drawn
+PASS batch day: a half-empty spot gives fewer fish in the hour than a full one (CPUE) and an empty spot stops the day
+PASS rest goes to econ: _t1217Day writes the rested person-days the leisure base reads
+PASS knob on: no demand gate, no village quota (the ledger counts but does not cap)
+PASS knob off (subprocess): demand gate and quota as before, no hour prices, no hour host
+PASS body: the same hour predicate (stop at an empty spot), and a stopped body rests for the rest of that day
+PASS site choice: fishers go where the fish are (best bite ratio among the shore sites) · an emptied water is left for one that still holds fish
+PASS village ledger (bucket): regrows by the same logistic, spreads only into water buckets, keeps the deficit total while spreading
+PASS mutant nochoose is caught
+PASS mutant nodraw is caught
+PASS mutant nostop is caught
+PASS mutant nocpue is caught
+PASS mutant norest is caught
+PASS 26 / FAIL 0

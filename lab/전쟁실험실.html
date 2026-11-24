@@ -5071,7 +5071,7 @@ function createLedger(opts) {
       const s = st(r.vid), c = calendarOf(day), k = day - (c.dayOfSeason - 1);
       if (s.slainK === k) continue;
       s.slainK = k;
-      commit(s, [{ day, vid: r.vid | 0, type: 'SLAIN', item: r.by === 'wild' ? 'wild' : 'other', mag: 1, meta: null }], out);
+      commit(s, [{ day, vid: r.vid | 0, type: 'SLAIN', item: r.by === 'wild' ? 'wild' : 'other', mag: 1, meta: (r.b || r.n) ? { n: r.n || null, b: r.b || null } : null }], out);   // ★[T1461] 켬 = 누가 · 무엇에게(끔 = 칸 없음 = null 그대로)
     }
 
     // ⑦ 의뢰 — 부족 **래치**가 서 있으면 걸려 있고, 회복하면 거둔다(사건 에지가 아니라 상태)
@@ -5662,7 +5662,7 @@ const LINES = {
   EMPTIED: () => '마을에 사람이 하나도 안 남았다네. 빈 움집만 서 있네.',
   // ── ★[T590 2026-10-03] 굶어 죽음 — 다섯 필드로만(㉝) · 누가 몇이 아니라 일이 났다는 것(그 철 첫 몸)
   STARVED: () => '끝내 굶어 죽은 이가 나왔다네.',
-  SLAIN: (ev) => (ev.item === 'wild' ? '짐승에게 물려 죽은 이가 나왔다네.' : '쓰러져 끝내 일어나지 못한 이가 나왔다네.'),   // ★[T1432]
+  SLAIN: (ev) => (ev.item === 'wild' && ev.meta && ev.meta.b ? `${ev.meta.n || '마을 사람'}${josa(ev.meta.n || '마을 사람', '이', '가')} ${ev.meta.b}에게 당했네.` : (ev.item === 'wild' ? '짐승에게 물려 죽은 이가 나왔다네.' : '쓰러져 끝내 일어나지 못한 이가 나왔다네.')),   // ★[T1432] · ★[T1461] 켬 = "○○가 범에게 당했네"
   RESCUED: (ev) => {
     const who = String(ev.item || '');
     if (!who || who === 'village') return '쓰러진 이를 마을 사람들이 쉼터로 옮겼다네.';
@@ -5706,7 +5706,7 @@ const NEWS_LINES = {
   DISSOLVED: () => '굶주림 끝에 남은 사람들이 마을을 버리고 도적이 되었습니다.',
   EMPTIED: () => '마을에 사람이 하나도 남지 않았습니다.',
   STARVED: () => '굶어 죽은 사람이 나왔습니다.',
-  SLAIN: (ev) => (ev.item === 'wild' ? '짐승에게 물려 죽은 사람이 나왔습니다.' : '쓰러져 끝내 일어나지 못한 사람이 나왔습니다.'),   // ★[T1432]
+  SLAIN: (ev) => (ev.item === 'wild' && ev.meta && ev.meta.b ? `${ev.meta.n || '마을 사람'}${josa(ev.meta.n || '마을 사람', '이', '가')} ${ev.meta.b}에게 당했습니다.` : (ev.item === 'wild' ? '짐승에게 물려 죽은 사람이 나왔습니다.' : '쓰러져 끝내 일어나지 못한 사람이 나왔습니다.')),   // ★[T1432] · ★[T1461]
   RESCUED: (ev) => {
     const who = String(ev.item || '');
     if (!who || who === 'village') return '쓰러진 사람을 마을 사람들이 쉼터로 옮겼습니다.';
@@ -13742,6 +13742,11 @@ const EXPAND_PRICE_FOODEQ = { wood: 1.67, stone: 2.14 };   // 투자판단용 �
 //     그 MC 의 나무 · 돌 → 식량 환산은 손으로 적은 정적 값(위 `EXPAND_PRICE_FOODEQ` — 2026-07-03 · "v2 BASE 상대가와 일치")이라
 //     세계가 부유해져 식량 값이 내리고(0.3) 나무 값이 올라도(1.3) 땅값 셈이 그걸 모른다.
 //   켬 — MC 의 환산을 **그 마을의 그날 그림자 값**(v2 `_priceCache` — 교역이 쓰는 그 값 · 나무 ÷ 식량 · 돌 ÷ 식량)으로. 값이 없으면(v1 홀로 · 첫날) 종전 정적 값. 새 수 0.
+// ★★[T1457 2026-11-23 · ★재민 11-22 판정 73 "그러자.." = 가 · T1426 회부 3] 손잡이 `T1457_NO_K_DEATH`(끔 기본 · `'1'` 만 켬 · 끔 = 종전 바이트) — **식이 사람을 지우지 않는다.**
+//   T1426 진단: 랩 평형 세계는 N ÷ K = 1.15 ~ 1.20 에 서 있고 죽음의 절반 넘게(해마다 3 ~ 6 %)가 θ-로지스틱의 K 넘김 음수 몫(아래 인구 줄 `_logiTerm` < 0 →
+//     `_dPAccum` 음수 → "기아 사망" 고리가 가장 늙은 사람부터 지움)이다 — 나이 · 굶음 · 싸움 · 짐승이 아닌 식의 죽음.
+//   켬 — 그 음수 몫을 0 으로(태어남 쪽 식 · K 셈 · 다른 몫은 그대로 · 새 수 0). 죽음은 있는 길만: 자연사(T1206) · 굶음(식량 빚 T1074) · 싸움 · 짐승.
+const T1457_NO_K_DEATH = (typeof process !== 'undefined' && process.env && process.env.T1457_NO_K_DEATH === '1');
 const T1426_EXPAND_PRICE = (typeof process !== 'undefined' && process.env && process.env.T1426_EXPAND_PRICE === '1');
 function t1426ExpandPx(v) {   // 나무 · 돌의 식량 환산(그날 그림자 값) · 없으면 null(종전 정적 값)
   const p = v._priceCache;
@@ -14956,7 +14961,8 @@ function buildActOn(v) { return !!(T400_BUILD_ACT && v && v._t400Live); }
 function houseDayBuild(v, N, fe) {
   const houseTarget = N * HOUSE_BUFFER;
   if (!(v.housing < houseTarget)) return 0;
-  const slack = T1437_READS.house ? (fe > N * t1437Read(v, 40, 'house') ? 1.0 : (fe > N * t1437Read(v, 25, 'house') ? 0.5 : 0.15))   // ★[T1437 재는 팔 'house'] 같은 자(끔 = 아래 종전 줄)
+  const slack = T1452_READS.house ? t1452Slack(v, fe > N * 40 ? 1.0 : (fe > N * 25 ? 0.5 : 0.15))   // ★[T1452 재는 팔 'house'] 창 안 골을 바로(끔 = 아래 줄)
+    : T1437_READS.house ? (fe > N * t1437Read(v, 40, 'house') ? 1.0 : (fe > N * t1437Read(v, 25, 'house') ? 0.5 : 0.15))   // ★[T1437 재는 팔 'house'] 같은 자(끔 = 아래 종전 줄)
     : fe > N * 40 ? 1.0 : (fe > N * 25 ? 0.5 : 0.15);
   return Math.min(houseTarget - v.housing, N * HOUSE_BUILD_MAX * slack);
 }
@@ -15485,7 +15491,7 @@ function t1374NeedDays(v, day) { if (T1419_FOOD_NEED) return t1419Days(v, day, n
 //     값의 기준만 "지난 30날 실제 먹은 흐름"(`_t1419Eat` — 먹은 식량 환산 EMA · `_consEMA` 와 같은 창 29/30 · 1/30) — 날로 = 30 × 먹은 흐름 ÷ 하루 먹을 것.
 //   T1374 · T1297 · T1319 · T1346 의 날 수 함수(`t1374NeedDays` · `t1297NeedDays` · `t1319MigNeedDays`)는 켬이면 이 함수를 읽는다(둘이 다른 답을 내는 세계 0).
 //   새 수 0 — 1(내일) · 한 해(달력) · 철 배수(v2 표) · 일 정본 · 흐름 창(`_consEMA` 의 30). 판정 밖(부패 물리 `tickDecay` · 몸 낫기 `npcRegenMul`)은 안 건드린다(보고 §1 다음 거리).
-const T1419_FOOD_NEED = (() => { const x = (typeof process !== 'undefined' && process.env) ? process.env.T1419_FOOD_NEED : undefined; return x === 'harv' || x === 'flow' || x === 'seen' ? x : ''; })();   // ★[T1437] 'seen' = (가) + 겪은 낙폭(T1437 머리말)
+const T1419_FOOD_NEED = (() => { const x = (typeof process !== 'undefined' && process.env) ? process.env.T1419_FOOD_NEED : undefined; return x === 'harv' || x === 'flow' || x === 'seen' || x === 'ahead' ? x : ''; })();   // ★[T1437] 'seen' = (가) + 겪은 낙폭(T1437 머리말) · ★[T1452] 'ahead' = 앞날 장부(T1452 머리말)
 const T1419_SITE = { ref: '값의 기준', famine: '기근 문', mason: '기근 문', rescue: '기근 문', foodsec: '기근 문', birth: '출생 문', mig: '이주 문', keep: '갈무리', switch: '전환 빠르기', pace: '전환 빠르기', depart: '출발 문' };
 const T1419_FOOD4 = { food: 1, fish: 1, meat: 1, cooked_food: 1 };   // 식량 4류(v2 `FOOD_CLASSES` 와 같은 넷 — 값의 기준 · 출발 문이 이 넷의 생존 목표만 걷는다 · 그 밖 생존필수재는 30 그대로)
 const _T1419_WIN = 30;   // (나) 흐름 창 — `_consEMA` 의 그 수(29/30 · 1/30) · 새 수 아님
@@ -15503,12 +15509,10 @@ function _t1419Segs(d0, H) {
   return segs;
 }
 function _t1419Mul(s) { return (_t1419SM && _t1419SM[s]) || {}; }
-function foodNeedDays(v, day) {   // (가) 다음 먹을 것이 들어올 때까지 버틸 날(위 머리말 ⓐ ~ ⓓ)
-  _t1419St.calls++;
-  const d0 = Math.floor(+day || 0), c = v && v._t1419N;
-  if (c && c.day === d0) return c.d;
+// (가)의 흐름 몫 — 오늘 드는 식량(제 생산 + 들여온 것)을 일 넷으로 나눈 무게 · 오늘 철 배수(위 머리말 ⓐ ~ ⓒ). `foodNeedDays` 와 T1452 새 마을 흐름이 같이 읽는다(식 하나).
+function _t1419Parts(v, d0) {
   const N = (v && v.npcs && v.npcs.length) || 0;
-  if (!(N > 0)) return 1;
+  if (!(N > 0)) return null;
   const C = N * DAILY_FOOD_CONSUMPTION, L = v._origLand || v.land || {}, k = v.counts || {};
   const f = L.fertility || 0, wd = L.wood || 0, st = L.stone || 0;
   let fy = 0, fyF = 0;
@@ -15519,15 +15523,28 @@ function foodNeedDays(v, day) {   // (가) 다음 먹을 것이 들어올 때까
   const farmW = typeof v._t1374Next === 'number' && v._t1374Next > d0;   // 밭 세계 — 다음 거둠까지만 · 밭 몫 뺌
   const P = Math.max(0, C + ((v.surplusEMA && v.surplusEMA.food) || 0)), I = Math.max(0, v._importEMA || 0);
   const Cal = _t1149C();
-  const H = farmW ? v._t1374Next - d0 : ((Cal && Cal.ON && typeof Cal.dateOf === 'function') ? Cal.dateOf(d0).yearLen : T1276_YEAR);
+  const Y = (Cal && Cal.ON && typeof Cal.dateOf === 'function') ? Cal.dateOf(d0).yearLen : T1276_YEAR;
   const m0 = _t1419Mul(Cal && typeof Cal.seasonOf === 'function' ? Cal.seasonOf(d0) : 'spring');
-  const q = (m, key) => (m[key] || 1) / (m0[key] || 1);
-  const qF = (m) => { const a = (m.fertility || 1) * f + (m.wood || 1) * wd + (m.stone || 1) * st, b = (m0.fertility || 1) * f + (m0.wood || 1) * wd + (m0.stone || 1) * st; return b > 0 ? a / b : 1; };
+  return { C, f, wd, st, w, W, farmW, P, I, Y, m0 };
+}
+function _t1419FlowAt(F, s) {   // 철 s 의 하루 드는 식량(위 몫 × 그 철 배수 ÷ 오늘 철 배수)
+  const { f, wd, st, w, W, farmW, P, I, m0 } = F, m = _t1419Mul(s);
+  const q = (mm, key) => (mm[key] || 1) / (m0[key] || 1);
+  const qF = (mm) => { const a = (mm.fertility || 1) * f + (mm.wood || 1) * wd + (mm.stone || 1) * st, b = (m0.fertility || 1) * f + (m0.wood || 1) * wd + (m0.stone || 1) * st; return b > 0 ? a / b : 1; };
+  return I + (W > 0 ? P * ((farmW ? 0 : w[0] * q(m, 'fertility')) + w[1] * q(m, 'water') + w[2] * q(m, 'game') + w[3] * qF(m)) / W : (farmW ? 0 : P));
+}
+function foodNeedDays(v, day) {   // (가) 다음 먹을 것이 들어올 때까지 버틸 날(위 머리말 ⓐ ~ ⓓ)
+  _t1419St.calls++;
+  const d0 = Math.floor(+day || 0), c = v && v._t1419N;
+  if (c && c.day === d0) return c.d;
+  const F = _t1419Parts(v, d0);
+  if (!F) return 1;
+  const C = F.C, farmW = F.farmW;
+  const H = farmW ? v._t1374Next - d0 : F.Y;
   let S = 0, best = 0, left = H;
   for (const [s, n] of _t1419Segs(d0, H)) {
     const len = Math.min(n, left); if (!(len > 0)) break;
-    const m = _t1419Mul(s);
-    const p = I + (W > 0 ? P * ((farmW ? 0 : w[0] * q(m, 'fertility')) + w[1] * q(m, 'water') + w[2] * q(m, 'game') + w[3] * qF(m)) / W : (farmW ? 0 : P));
+    const p = _t1419FlowAt(F, s);
     S += (C - p) * len; if (S > best) best = S;
     left -= len;
   }
@@ -15549,6 +15566,12 @@ function t1419Days(v, day, legacy, tag) {   // ★[T1419] 식량 날 수 한 함
   if (!T1419_FOOD_NEED) return legacy;
   _t1419St.tags[tag] = (_t1419St.tags[tag] || 0) + 1;
   if (T1419_FOOD_NEED === 'flow') return tag === 'ref' ? t1419FlowDays(v) : 0;
+  if (T1452_AHEAD) {   // ★[T1452] 앞날 장부(아래 머리말) — 버틸 날 = (오늘 곳간 − 창 안의 골) ÷ 하루치 + 여유분 · 재는 팔 `T1452_AT` = 적은 자리만 장부 · 그 밖 (가)
+    const _da = day == null ? ((v && v._world && v._world.day) || 0) : day;
+    if (T1452_AT && !T1452_AT[tag]) return foodNeedDays(v, _da);
+    const A = t1452Ahead(v, _da);
+    return A ? A.need : foodNeedDays(v, _da);
+  }
   const _dd = day == null ? ((v && v._world && v._world.day) || 0) : day, _d = foodNeedDays(v, _dd);
   if (T1437_BUF_AT && !T1437_BUF_AT[tag] && v && v._t1419N && v._t1419N.b && v._t1419N.day === Math.floor(+_dd || 0)) return _d - v._t1419N.b;   // ★[T1437 재는 팔 `T1437_BUF_AT`] 여유분은 적은 자리에만(그 밖 자리 = (가) · 끔 = 이 줄 무동작)
   return _d;
@@ -15611,6 +15634,143 @@ function t1437Buf(v, d0) {   // 겪은 낙폭 날 수(위 ⓑ · ⓒ)
   return b;
 }
 function t1437Read(v, x, tag) { return (T1437_READS[tag] && v) ? x * t1419Days(v, null, 30, tag) / 30 : x; }   // 재는 팔 — 그 문의 수를 같은 자로(위 머리말)
+
+// ★★★[T1452 2026-11-23 · 지시 T1452 · ★재민 11-22 "비상 또는 여유분을 정확히 계산해야 할 거 같은데..? 농삿일은 자라는데 시간이 걸리니까.. … 지금 이런 값들을 정확하게 계산하고 있는 거 맞아..?"]
+//   손잡이 값 `T1419_FOOD_NEED=ahead`(끔 기본 — `harv` · `flow` · `seen` · 끔은 이 절을 한 줄도 안 부른다 = 종전 바이트)
+//   앞날 장부 — 마을마다 오늘부터 한 해(달력 `yearLen`) 날마다 예상 곳간(식량 환산 `totalFoodEquivalent`):
+//     S(k) = S(k − 1) − 썩을 것 − 먹을 것 + 들어올 것
+//       먹을 것 = 지금 사람 × 하루치(사람이 느는 것은 안 넣는다 — 출생 · 이주 문이 이 값을 읽는다)
+//       썩을 것 = 부패 정본(v2 `tickDecay`)이 실제로 썩힌 몫의 율(그날 썩은 식량 ÷ 부패 줄 앞 곳간 · 흐름 창 30 으로 접음) × S(k − 1)
+//       들어올 것 = 있는 것만:
+//         ⓐ 이미 심어 자라는 밭 — 생활층이 날마다 적는 칸 `_t1452Fm` = {익는 날: 식량}(작물 정본 `readyDay` × 칸 소출 · 익었는데 안 거둔 칸 = 내일)
+//         ⓑ 자라는 시간이 없는 흐름 — **지난 한 해 같은 날 실제로 든 것**(곳간 차에서 밭 거둠 · 먹은 것 · 썩은 것을 걷어 낸 몫 — 고리 `hI` 하루 한 칸) ·
+//            이력이 한 해가 안 된 날은 (가)의 흐름(지금 일 넷 × 철 배수 — `_t1419FlowAt` · 같은 식)
+//         ⓒ 길 위의 짐 — 이 마을로 오는 캐러밴의 식량(도착 날 · `world.caravans` · v1 짐 · v2 바구니)
+//   골 = 예상 곳간의 가장 낮은 곳 · 모자람 = 골이 0 밑으로 내려간 깊이(날치) · 골까지 날.
+//   여유분(뜻밖의 몫) = 지난 한 해 날마다 "어제 아침 예상한 하루 차 − 실제 하루 차(못 먹은 몫은 바닥을 더 판 것으로)"를 날치로 누적한 줄(`hX`)의
+//     꼭대기 → 그 뒤 바닥 가장 깊은 차 — 계획한 감소(거둔 것을 먹어 줄이는 것)는 예상에 이미 들어 빠진다. 새 마을 = 날씨 정본의 가장 긴 가뭄(T1437 과 같은 수).
+//   비상(밭 세계만 — 랩은 밭 일도 자라는 시간이 없다) = 예상 곳간이 0 밑으로 내려가는 첫날이 "지금 심으면 거둘 가장 이른 날"(생활층 `_t1452Sow` — 이 달 심을 수 있는 작물 ·
+//     없으면 = 심을 철이 아님) 앞이다 — 그때 기근 블록은 밭 일을 빼고 자라는 시간 없는 식량 일(어로 · 사냥 · 채집)을 고른다. 골 앞에 거둘 수 있으면 종전 줄(밭 일 포함).
+//   읽는 자리(T1419 한 함수 — 판정 줄 36): 버틸 날 = (오늘 곳간 − 창 안의 골) ÷ 하루치 + 여유분 ·
+//     창 = 한 해(랩) · 밭 세계 = 새로 심어 거둘 수 있는 가장 이른 날까지(생활층 `_t1452Rel` — 앞 열두 달 그 달 심을 수 있는 작물이 익는 가장 이른 날 · 그 뒤는 심는 일이 메운다).
+//   하루에 쓰는 칸은 둘(고리 `hI` · `hX` 의 어제 칸 · 밭 칸은 생활층 · 캐러밴은 길 위) — 365칸을 다시 그리지 않는다. 골 · 여유분은 그날 처음 읽을 때 한 번 훑는다(셈 `t1452Stat`).
+//   새 수 0 — 한 해(달력) · 흐름 창 30(`_consEMA`) · 가뭄 날(날씨 표) · 하루치(정본) · 철 배수(v2 표)만 쓴다. 고리 칸 값은 1/1000 로 둥근다(저장 크기 — 결정적).
+//   재는 팔(끔 기본 · 'ahead' 일 때만 · 판정 PM · 재민):
+//     `T1452_AT` = 장부를 읽을 자리(`T1419_SITE` 열쇠 · 쉼표) — 적은 자리만 장부 · 그 밖 (가)(값에만 = `ref`)
+//     `T1452_READS` = 'house'(집 짓기 문 — 창 안 골이 여유분 위면 1 · 밑이면 여유분만큼 깊어질 때까지 곧게 0.15 로) · 'mine'(기근 블록 광부 길 — 창 안 골 ≥ 0 · 풍부광맥은 ≥ 여유분)
+//     `T1452_YEAR=1` = 한 해 출생 문(`t1421YearFood`)이 같은 장부의 율((곳간 + 한 해 들어올 것 − 썩을 것) ÷ 한 해)을 읽는다(할 일 5)
+const T1452_AHEAD = T1419_FOOD_NEED === 'ahead';
+//   재는 판 `T1452_SHADOW=1`(끔 기본 · 손잡이 끔 판에서만 뜻) = 장부만 곁에서 꾸린다(틱 머리 · 끼니 · 썩음 · 생활층 칸) — 읽는 자리는 하나도 안 바뀐다(세계 = 끈 판 · 진단이 같은 세계에서 넷을 견준다)
+const T1452_LEDGER = T1452_AHEAD || !!(typeof process !== 'undefined' && process.env && process.env.T1452_SHADOW === '1');
+const T1452_AT = (() => { const x = (T1452_AHEAD && typeof process !== 'undefined' && process.env && process.env.T1452_AT) || ''; if (!x) return null; const o = {}; for (const t of String(x).split(',').map((u) => u.trim()).filter(Boolean)) o[t] = 1; return o; })();
+const T1452_READS = (() => { const x = (T1452_AHEAD && typeof process !== 'undefined' && process.env && process.env.T1452_READS) || ''; const s = new Set(String(x).split(',').map((t) => t.trim()).filter(Boolean)); return { house: s.has('house'), mine: s.has('mine') }; })();
+const T1452_YEAR = !!(T1452_AHEAD && typeof process !== 'undefined' && process.env && process.env.T1452_YEAR === '1');
+const _T1452_CAP = 366;   // 고리 칸 수 = 달력 한 해의 가장 긴 길이(윤년)
+const _t1452St = { evals: 0, us: 0, maxUs: 0, writes: 0, days: 0 };
+const _t1452Now = () => ((typeof performance !== 'undefined' && performance && typeof performance.now === 'function') ? performance.now() : Date.now());
+function _t1452Ix(d) { return ((d % _T1452_CAP) + _T1452_CAP) % _T1452_CAP; }
+function _t1452Nf(R, d, d0, Y, F, s) {   // ⓑ 날 d 의 자라는 시간 없는 흐름 — 지난 한 해 같은 날(이력 안) · 없으면 (가) 흐름(철 s)
+  const b = d - Y;
+  if (b >= d0 - R.hL && b <= d0 - 1) return R.hI[_t1452Ix(b)];
+  if (b === d0 && R.hL >= Y) return R.hI[_t1452Ix(d0 - 1)];   // 한 해 끝 날(같은 날 지난해 = 오늘 · 아직 안 셈) = 어제 칸
+  return F ? _t1419FlowAt(F, s) : 0;
+}
+function _t1452Cv(v, d0) {   // ⓒ 길 위의 짐 — {도착 날: 식량}
+  const W = v && v._world, L = W && W.caravans, out = {};
+  if (!L || !L.length) return out;
+  const add = (t, res, amt) => { if (!(t > d0) || !(amt > 0)) return; const f = amt * storageFoodPer(v, res); if (f > 0) out[t] = (out[t] || 0) + f; };
+  for (const c of L) {
+    if (!c || c._done) continue;
+    if (c.basket) {   // v2 바구니(T1136) — 가는 길 = 받는 마을에 짐 · 오는 길 = 보낸 마을에 돌아올 짐
+      if (c.state === 'outbound') { if (c.to === v) for (const it of c.basket) add(c.arriveDay, it.res, it.amt); if (c.from === v && c._t1136 && c._t1136.ret) for (const it of c._t1136.ret) add(c.arriveDay + (c._t1136.tBack || 0), it.res, it.amt); }
+      else if (c.state === 'inbound' && c.from === v && c._retBasket) for (const it of c._retBasket) add(c.returnArriveDay, it.res, it.amt);
+    } else {   // v1 짐 하나씩
+      if (c.state === 'outbound' && c.to === v) add(c.arriveDay, c.giveRes, c.giveAmt || 0);
+      if (c.from === v && (c.state === 'outbound' || c.state === 'inbound')) add(c.returnArriveDay, c.wantRes, c._received != null ? c._received : (c.wantAmt || 0));
+    }
+  }
+  return out;
+}
+function _t1452Buf(R, d0, Y) {   // 여유분 — 지난 한 해 `hX` 의 꼭대기 → 그 뒤 바닥 가장 깊은 차 · 이력이 한 해가 안 되면 가장 긴 가뭄
+  if (R.hL < Y) return _t1437Dr || 0;
+  let pk = -Infinity, dd = 0;
+  for (let d = d0 - Y; d <= d0 - 1; d++) { const x = R.hX[_t1452Ix(d)]; if (x > pk) pk = x; else if (pk - x > dd) dd = pk - x; }
+  return dd;
+}
+function _t1452In(v, R, d, d0, Y, F, s, cv) {   // 날 d 에 들어올 것(ⓐ + ⓑ + ⓒ)
+  const fm = v._t1452Fm;
+  return (fm && fm[d] ? fm[d] : 0) + _t1452Nf(R, d, d0, Y, F, s) + (cv[d] || 0);
+}
+function _t1452Pred(v, R, d0, S1, N) {   // 오늘 하루 차 예상(내일 아침 뜻밖의 차를 잴 자) — 들어올 것 − 먹을 것 − 썩을 것
+  const Y = _t1437Year(d0), F = R.hL < Y ? _t1419Parts(v, d0) : null, Cal = _t1149C();
+  const s = Cal && typeof Cal.seasonOf === 'function' ? Cal.seasonOf(d0) : 'spring';
+  const C = N * DAILY_FOOD_CONSUMPTION;
+  R.pN = _t1452In(v, R, d0, d0, Y, F, s, _t1452Cv(v, d0 - 1)) - C - R.rho * Math.max(0, S1);
+  R.pC = C;
+}
+function t1452Day(v, day) {   // 마을 틱 머리 — 어제 칸 하나(실제 흐름 · 뜻밖의 차) · 오늘 하루 차 예상
+  const N = (v.npcs && v.npcs.length) || 0;
+  if (!(N > 0)) { if (v._t1452) v._t1452 = null; return; }   // 빈 마을 = 장부를 지운다(다시 서면 새 마을)
+  const d0 = Math.floor(+day || 0), S1 = totalFoodEquivalent(v);
+  let R = v._t1452;
+  if (!R) {
+    R = v._t1452 = { d: d0, S: S1, fT: v._t368FoodTot || 0, eat: 0, gap: 0, rot: 0, rotB: 0, rho: 0, rn: 0, hL: 0, hI: new Array(_T1452_CAP).fill(0), hX: new Array(_T1452_CAP).fill(0), x: 0, pN: null, pC: 0, w: 0, out: null };
+    _t1452Pred(v, R, d0, S1, N);
+    return;
+  }
+  if (R.d === d0) return;   // 하루 한 번
+  const g = d0 - R.d;
+  if (g > 0) {
+    const farm = (v._t368FoodTot || 0) - R.fT;
+    const nf = (S1 - R.S) - farm + R.eat + R.rot;   // 자라는 시간 없는 흐름 = 곳간 차 − 밭 거둠 + 먹은 것 + 썩은 것
+    if (R.rotB > 0) { const r = Math.max(0, R.rot) / R.rotB; R.rho = R.rn ? R.rho + (r - R.rho) / _T1419_WIN : r; R.rn = 1; }   // 썩음 율 = 썩은 식량 ÷ 그때 곳간(부패 줄 앞) — 흐름 창으로 접는다
+    if (g === 1 && R.pN != null && R.pC > 0) R.x += ((S1 - R.S) - R.gap - R.pN) / R.pC;   // 뜻밖의 차(날치) — 못 먹은 몫은 바닥을 더 판 것 · 하루 넘게 뜬 날은 지난 채로 버린다(재민 10-14)
+    const m = Math.min(g, _T1452_CAP);
+    for (let k = g - m; k < g; k++) { const d = R.d + k; R.hI[_t1452Ix(d)] = Math.round(nf / g * 1000) / 1000; R.hX[_t1452Ix(d)] = Math.round(R.x * 1000) / 1000; R.w += 2; _t1452St.writes += 2; }
+    R.hL = Math.min(_T1452_CAP, R.hL + g);
+  }
+  R.d = d0; R.S = S1; R.fT = v._t368FoodTot || 0; R.eat = 0; R.gap = 0; R.rot = 0; R.rotB = 0; R.out = null;
+  _t1452St.days++;
+  _t1452Pred(v, R, d0, S1, N);
+}
+function t1452Eat(v, eaten, gap) { const R = v._t1452; if (R) { R.eat += Math.max(0, eaten || 0); R.gap += Math.max(0, gap || 0); } }   // 끼니 줄 — 먹은 식량(곳간 차) · 못 먹은 몫
+function t1452Rot(v, lost, base) { const R = v && v._t1452; if (R && base > 0) { R.rot += Math.max(0, lost); R.rotB += base; } }   // v2 부패 줄 — 그날 썩은 식량(곳간 차) · 그때 곳간
+function t1452Ahead(v, day) {   // 앞날 장부 — { 골 깊이(날치 · 0 밑 = 모자람) · 골까지 날 · 여유분 · 비상 · 버틸 날 · 창 안 골 · 30/90/180날 예상 곳간 · 한 해 율 } · `day` 는 부르는 쪽 날(장부는 제 날로 센다)
+  const R = v && v._t1452;
+  if (!R) return null;
+  const d0 = R.d;   // 장부의 날 = 마지막 틱 머리(그날 머리 앞에 물으면 어제 머리 장부 — 아직 안 적은 칸을 읽지 않는다)
+  if (R.out && R.out.day === d0) return R.out;
+  const N = (v.npcs && v.npcs.length) || 0, C = N * DAILY_FOOD_CONSUMPTION;
+  if (!(C > 0)) return null;
+  const t0 = _t1452Now();
+  const Y = _t1437Year(d0), F = R.hL < Y ? _t1419Parts(v, d0) : null, cv = _t1452Cv(v, d0);
+  const rel = (typeof v._t1452Rel === 'number' && v._t1452Rel > d0) ? Math.min(Y, v._t1452Rel - d0) : Y;   // 창 끝(밭 세계)
+  let x = R.S, minW = x, minF = x, kF = 0, k0 = 0, k = 0, sIn = 0, sRot = 0, p30 = null, p90 = null, p180 = null;
+  for (const [s, n] of _t1419Segs(d0, Y)) {
+    for (let j = 0; j < n; j++) {
+      k++;
+      const d = d0 + k, inK = _t1452In(v, R, d, d0, Y, F, s, cv), rot = R.rho * Math.max(0, x);
+      x = x - rot + inK - C; sIn += inK; sRot += rot;
+      if (k <= rel && x < minW) minW = x;
+      if (x < minF) { minF = x; kF = k; }
+      if (!k0 && x < 0) k0 = k;
+      if (k === 30) p30 = x; else if (k === 90) p90 = x; else if (k === 180) p180 = x;
+    }
+  }
+  const buf = _t1452Buf(R, d0, Y);
+  const sow = typeof v._t1452Sow === 'number' ? v._t1452Sow : null;
+  const emerg = !!(T1243_FARM_ON && k0 > 0 && (sow == null || d0 + k0 < sow));
+  R.out = { day: d0, depth: minF / C, toTrough: kF, buf, emerg, need: (R.S - minW) / C + buf, minW: minW / C, k0, rel, p30, p90, p180, rate: (R.S + sIn - sRot) / Y };
+  const us = (_t1452Now() - t0) * 1000; _t1452St.evals++; _t1452St.us += us; if (us > _t1452St.maxUs) _t1452St.maxUs = us;
+  return R.out;
+}
+function t1452Read(v) { return t1452Ahead(v, (v && v._world && v._world.day) || 0); }   // 그날 장부(문 · 피커가 읽는다)
+function t1452Slack(v, legacy) {   // ★[T1452 재는 팔 'house'] 집 짓기 여유 — 창 안 골이 여유분 위면 1 · 밑이면 여유분만큼 깊어질 때까지 곧게 종전 바닥(0.15)으로
+  const A = t1452Read(v); if (!A) return legacy;
+  const m = A.minW - A.buf;
+  return m >= 0 ? 1.0 : Math.max(0.15, 1 + m / Math.max(1, A.buf));
+}
+function t1452Stat() { return Object.assign({}, _t1452St); }
 function _t1374FieldCrop(r) { const C = _crops(); return !!(C && C.T1201_BRONZE_SET && C.T1201_BRONZE_SET.has(r)); }
 const T1284_FARM_YIELD = T1243_FARM_ON && (typeof process !== 'undefined' && process.env) && process.env.T1284_FARM_YIELD === '1';
 const T1276_FARM_K = T1243_FARM_ON && (typeof process !== 'undefined' && process.env) && process.env.T1276_FARM_K === '1';
@@ -15676,8 +15836,12 @@ function t1421FieldCap(v) {   // 갈 수 있는 땅이 한 해 내는 하루 식
   if (v._t1421StandN > 0 && v._t1276Stand > 0) v._t1421PerCell = v._t1276Stand / v._t1421StandN;
   return land * (v._t1421PerCell || 0) / T1276_YEAR;
 }
-function t1421YearFood(v) { return totalFoodEquivalent(v) / T1276_YEAR + t1276FieldFlow(v) + (v._t1421O || 0); }   // 한 해를 내다본 하루 식량(하루치/날)
+function t1421YearFood(v) { if (T1452_YEAR) { const A = t1452Read(v); if (A) return A.rate; } return totalFoodEquivalent(v) / T1276_YEAR + t1276FieldFlow(v) + (v._t1421O || 0); }   // ★[T1452 재는 팔 `T1452_YEAR`] 같은 장부의 율(끔 = 종전 줄)   // 한 해를 내다본 하루 식량(하루치/날)
+// ★[T1451] `T1451_FARM_CALL` — 밭이 그날 일을 안 부르면(생활층 `_t1451Call` = 0) 농부 1인 값 = 0(T1421 나눗수 `t1421FarmDays` = ∞ — 나눗수를 켠 판에서만 · 끔 = 1 · 칸 없음 = 1)
+const T1451_FARM_CALL = (typeof process !== 'undefined' && process.env) ? process.env.T1451_FARM_CALL === '1' : false;
+function t1451CallMul(v) { return (T1451_FARM_CALL && v && v._t1451Call === 0) ? 0 : 1; }
 function t1421FarmDays(v, n) {   // 나눗수(사람-날) — ⓐ 365 × 농부 · ⓑ 자라는 날 × 농부 · ⓒ 지난 한 해 밭 일손 날
+  if (!t1451CallMul(v)) return Infinity;   // ★[T1451] 그날 밭이 안 부르면 농사 값 0(나눗수 ∞ — 실현 배분 · 기근 블록 두 줄 같이 · 끔 = 이 줄 무동작)
   if (T1421_FARM_DIV === 'grow') return (v._t1421GAvg > 0 ? v._t1421GAvg : T1276_YEAR) * n;
   if (T1421_FARM_DIV === 'labor') return Math.max(1, v._t1421LabD || 0);
   return T1276_YEAR * n;
@@ -17642,6 +17806,7 @@ function pickInitialJob(v) {
 function tickVillage(v, day) {
   if (T1276_FARM_K) t1276Note(v);   // ★[T1276] 한 해 창 기록(끔 = 무동작)
   if (T1437_SEEN) t1437Day(v, day);   // ★[T1437] 겪은 낙폭 고리 — 그날 아침 칸(빈 마을 = 지움 · 끔 = 무동작)
+  if (T1452_LEDGER) t1452Day(v, day);   // ★[T1452] 앞날 장부 — 어제 칸 · 오늘 하루 차 예상(빈 마을 = 지움 · 끔 = 무동작)
   migrateOre(v);
   if (t1226On()) { v._t1226F0 = (v.counts && v.counts.farmer) || 0; v._t1226F0d = day; }   // ★[T1226 ⑫] 켬 = 이 마을 틱 머리 농부 수(이웃 피커가 마을 차례와 무관하게 읽는다 · 끔 = 무동작)
   if (v.npcs.length === 0) return;
@@ -18456,6 +18621,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
   //   공격 징발에 붙인다(방어 소집은 안 붙는다 — 제 마을 곳간을 먹는다) ⇒ 끔이면 이 줄은 `N` 그대로 = 비트 동일.
   // ★[T1074] 켬 = 하루 몫은 사람마다(적응만큼 덜) + 남은 식량으로 갚을 빚 — 한 번의 섭식 정본 호출(식단 기록 한 번) · 먹은 몫을 사람마다 나눈다
   // ★[T1197] 켬 = 끼니 둘 · 몸 게이지(위 T1197 머리글) — 빚 장부(T1074)는 게이지의 거울로 그 안에서 선다 · 끔 = null = 아래 종전 줄
+  const _t52e = T1452_LEDGER ? totalFoodEquivalent(v) : 0;   // ★[T1452] 끼니 앞 곳간(먹은 식량 = 차 · 끔 = 무동작)
   const _t97 = (T1197_MEAL_BODY && _t1197()) ? t1197Day(v, day) : null;
   const _fdE = (!_t97 && T1074_FOOD_DEBT) ? _fdEaters(v) : null, _fdN = _fdE ? _fdNeed(_fdE) : null;
   const foodNeed = _t97 ? _t97.need : _fdN ? _fdN.need : _t423EatN(v, N) * DAILY_FOOD_CONSUMPTION;
@@ -18464,6 +18630,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
   const foodGap = _t97 ? _t97.short : _fdDay ? _fdDay.shortTotal : consumeFood(v, foodNeed);  // 남으면 굶주림
   if (T1419_FOOD_NEED === 'flow') t1419Eat(v, foodNeed - foodGap);   // ★[T1419 (나)] 먹은 흐름(끔 · (가) = 무동작)
   if (T1437_SEEN) t1437Short(v, foodGap);   // ★[T1437] 못 먹은 몫 누계(끔 = 무동작)
+  if (T1452_LEDGER) t1452Eat(v, _t52e - totalFoodEquivalent(v), foodGap);   // ★[T1452] 먹은 식량 · 못 먹은 몫(끔 = 무동작)
   // 도구 마모 — tool dependent NPC만
   // ★★★[T180 2026-09-12 · 이 파일의 유일한 접점] **도구 수명을 밖에서 물어본다.**
   //   T163(②)·T173(①)이 서로 다른 방향에서 같은 곳을 가리켰다 — 움직이는 것은 `도구≈0` 일수다.
@@ -18845,6 +19012,7 @@ if (_t1113LQ !== 1) v._t1113LowDays = (v._t1113LowDays || 0) + 1;   // 계측 �
     const _Knf = Math.max(POP_MIN, T1373_HOME_CAP ? fuelK : Math.min(slotK, fuelK));   // ★[T1373 ⓐ] 켬 = 땅으로 지우는 몫 0(땔감 넘김만)
     _logiTerm = Math.min(0, POP_GROWTH_RATE * _homeN * (1 - Math.pow(_homeN / Math.max(1, _Knf), LOGISTIC_THETA)));
   }
+  if (T1457_NO_K_DEATH && _logiTerm < 0) _logiTerm = 0;   // ★[T1457] 켬 = 부양력을 넘은 몫이 사람을 지우지 않는다(태어남 쪽 · K 셈은 그대로 · 끔 = 이 줄 무동작)
   let dP = _logiTerm;
   if (T1206_NAT_DEATH) { const _ne = t1206Expected(v); dP += _ne; v._natExp = _ne; }   // ★[T1206 ②] 출생 다시 맞춤 — 그날 기대 자연사만큼(같은 생명표 · K 의 평형은 그대로)
   // 굶주림: 흐름 음수 + 창고 식량_equiv 부족
@@ -20000,14 +20168,15 @@ function pickDeficitJob_rational(v, world) {
     //     **그대로 두고**, 부얼타운만 탈출구를 하나 더 갖는다 — 광산6(비옥 0.26·부양력 0.80·구리 90%)이
     //     비옥 기준으론 "농사 가능"이라 굶어 죽던 그 틈만 정확히 메운다.
     const _cantFarm = ((v.land.fertility || 0) < 0.2) || (BOOMGATE_ON && isBoomtown(v.land));
-    if (_cantFarm && foodEquiv > N * (T1437_READS.mine ? t1437Read(v, 6, 'mine') : 6)) {   // ★[T1437 재는 팔 'mine'] 같은 자(끔 = 6)
+    const _A52 = T1452_READS.mine ? t1452Read(v) : null;   // ★[T1452 재는 팔 'mine'] 창 안 골을 바로(끔 = null = 아래 종전 줄)
+    if (_cantFarm && (_A52 ? _A52.minW >= 0 : foodEquiv > N * (T1437_READS.mine ? t1437Read(v, 6, 'mine') : 6))) {   // ★[T1437 재는 팔 'mine'] 같은 자(끔 = 6)
       if (Math.max(v.land.ore || 0, v.land.obsidian || 0, v.land.jade || 0) > 0.3 && hasSlot(v, 'miner', cap, counts)) return 'miner';   // ★S1 광부=금속 전담 ★S5 흑요석·옥 산지도 채굴해 교역(부얼타운 자금)
     }
     // ★풍부광맥 예외: 광맥이 매우 풍부(ore>0.35) + 하드기근(18일치) 아님 + 채광노동 상한(4%) 미만이면
     //   식량 게이트가 소수 광부를 허용. 광산 취락이 식량 약간 양보하고 광맥을 캐는 역사 패턴. 상한+하드플로어로 붕괴 방지.
     const mineLabor = (counts.miner || 0);
     const richVein = Math.max(v.land.ore || 0, v.land.obsidian || 0, v.land.jade || 0, v.land.tin || 0) > 0.35;   // ★S1 광맥(ore) ★S5 +특수산지(흑요석·옥) ★청동 희소성 +주석산지
-    if (richVein && foodEquiv > N * (T1437_READS.mine ? t1437Read(v, 18, 'mine') : 18) && mineLabor < N * 0.04 && hasSlot(v, 'miner', cap, counts)) return 'miner';   // ★[T1437 재는 팔 'mine'] 같은 자(끔 = 18)
+    if (richVein && (_A52 ? _A52.minW >= _A52.buf : foodEquiv > N * (T1437_READS.mine ? t1437Read(v, 18, 'mine') : 18)) && mineLabor < N * 0.04 && hasSlot(v, 'miner', cap, counts)) return 'miner';   // ★[T1437 재는 팔 'mine'] 같은 자(끔 = 18)
     // ★★[T717 ③ 2026-10-13 · 손잡이 `T717_FUEL_GATE` 기본 끔] **기근 문 안의 땔감 한 명.**
     //   이 블록(식량 30일치 밑)은 식량 넷만 고른다 — 지키는 것은 **굶음**이다(위 주석: 강제 30일 버퍼 · 게이트 완화 실험은 인구·특화 둘 다 악화).
     //   그런데 이 세계는 거의 늘 이 블록 안에 있어(맬서스 상한) 나무꾼이 안 선다 — T702: 직업 판단 955번 중 나무꾼 27 · 숲 마을 177번 중 1 ·
@@ -20031,6 +20200,7 @@ function pickDeficitJob_rational(v, world) {
     if (T1156_SPECIALTY_JOB && _t1156Quote) {
       for (const q of _t1156Quote(v, world)) if (hasSlot(v, q.job, cap, counts)) foodOpts.push([q.job, q.foodPerDay]);
     }
+    if (T1452_AHEAD && (!T1452_AT || T1452_AT.famine)) { const _A = t1452Read(v); if (_A && _A.emerg) { const _i = foodOpts.findIndex((o) => o[0] === 'farmer'); if (_i >= 0) foodOpts.splice(_i, 1); } }   // ★[T1452] 비상(지금 심어도 골 앞에 못 거둔다) = 밭 일을 뺀다 — 기근 문이 장부를 읽는 판만(재는 팔 `T1452_AT` 에 famine 이 없으면 이 블록은 (가) 그대로) · 끔 = 무동작
     foodOpts.sort((a, b) => b[1] - a[1]);
     if (foodOpts.length > 0) return foodOpts[0][0];
   }
@@ -21093,6 +21263,7 @@ module.exports = {
   T1283_WOOD_DEMAND, t1283Wood,   // ★[T1283] 나무 모자람 → 직업 고르기(끔 기본 · `'1'` 켬)
   T1148_FUEL_JOB, t1148Cold,   // ★[T1148] 추위 빚(끔 기본 · `'1'` 켬)
   T1135_FUEL_EQ, FIREWOOD_PC_SRC, woodShareD, woodFormulaOff,   // ★[T1135] 땔감 평형(끔 기본 · `'1'` 켬) · 고증 d · 나무꾼 분자 · 수식 목재 걷어냄
+  T1457_NO_K_DEATH,   // ★[T1457] 식이 사람을 지우지 않는다(끔 기본) — 하네스
   T1426_EXPAND_PRICE, t1426ExpandPx, EXPAND_PRICE_FOODEQ,   // ★[T1426 ④] 땅값 셈을 그날 그림자 값으로(끔 기본) — 하네스
   T1046_WOOD_SHARE,   // ★[T1046] 나무꾼 안전망 = 출생 문과 같은 주거 상한(끔 기본 · `'1'` 켬)
   T932_SMELT_CONT, t932Stat,   // ★[T932] 제련 날 마을 하루 결함 손잡이(켬 기본) + 계측 칸(관찰기 `t932-smelt-probe` 가 읽는다 — 행동 무관)
@@ -21123,9 +21294,10 @@ module.exports = {
   forageToGranary, forageActOn, forageActItemsOf, foragerYieldsFor, T347_FORAGE_ACT,   // ★[T347] 채집 행위 — 문 셋 + 믹스 정본 + 손잡이(하네스가 표를 옮겨 적지 않는다)
   actDemandLeft, actDemandCap, fishDemandLeft, woodDemandLeft, forageDemandLeft, T374_DEMAND_STOP,
   setLotHook,   // ★[T748] 고르게 대기 칸 로트 훅(존 서버 켬만 꽂는다 · 랩 null)
-  T368_FARM_ACT, T1221_FARM_LABOR, T1243_FARM_ON, T1374_NO_BYGRAIN, T1374_BIRTH_HARV, T1374_FAMINE_HARV, t1374NeedDays, T1408_FARM_VALUE, T1421_FARM_PRICE, T1421_FARM_DIV, T1421_FIELD_CAP, T1421_BIRTH_YEAR, t1421FarmDays, t1421FarmVal, t1421FoodPrice, t1421FieldCap, t1421YearFood, T1284_FARM_YIELD, T1276_FARM_K, t1276FieldFlow, t1276Note, T1260_FOOD_READS, T1279_COOK, T1286_COOK_SPARE, T1286_PRODK, t1286Cook: _t1286Cook, T1298_LEDGER, T1298_HEALTH, T1309_HEALTH_EATEN, T1309_DIVERSITY_EATEN, T1309_MOVE_CONS, t1309Group: _t1309Group, t1309EatenHealth: _t1309EatenHealth, t1298Moved: _t1298Moved, t1298Hw: _t1298Hw, t1298Carry: _t1298Carry, t1260FoodOf, t1260CookStaple: _t1260CookStaple, cookTarget, t368FoodPer: _t368FoodPer, t368EvenRelease, totalFoodProductionEquivalent,   // ★[T368] 농부 행위 — 손잡이 + 품목별 고르게 푸는 자리 + 생산 환산(하네스가 옮겨 적지 않는다 · 입구는 `harvestToGranary` 그대로)   // ★[T374] 그날 수요 — 몸통 하나 + 품목별 `D` 자리 셋 + 손잡이
+  T368_FARM_ACT, T1221_FARM_LABOR, T1243_FARM_ON, T1374_NO_BYGRAIN, T1374_BIRTH_HARV, T1374_FAMINE_HARV, t1374NeedDays, T1408_FARM_VALUE, T1451_FARM_CALL, t1451CallMul, T1421_FARM_PRICE, T1421_FARM_DIV, T1421_FIELD_CAP, T1421_BIRTH_YEAR, t1421FarmDays, t1421FarmVal, t1421FoodPrice, t1421FieldCap, t1421YearFood, T1284_FARM_YIELD, T1276_FARM_K, t1276FieldFlow, t1276Note, T1260_FOOD_READS, T1279_COOK, T1286_COOK_SPARE, T1286_PRODK, t1286Cook: _t1286Cook, T1298_LEDGER, T1298_HEALTH, T1309_HEALTH_EATEN, T1309_DIVERSITY_EATEN, T1309_MOVE_CONS, t1309Group: _t1309Group, t1309EatenHealth: _t1309EatenHealth, t1298Moved: _t1298Moved, t1298Hw: _t1298Hw, t1298Carry: _t1298Carry, t1260FoodOf, t1260CookStaple: _t1260CookStaple, cookTarget, t368FoodPer: _t368FoodPer, t368EvenRelease, totalFoodProductionEquivalent,   // ★[T368] 농부 행위 — 손잡이 + 품목별 고르게 푸는 자리 + 생산 환산(하네스가 옮겨 적지 않는다 · 입구는 `harvestToGranary` 그대로)   // ★[T374] 그날 수요 — 몸통 하나 + 품목별 `D` 자리 셋 + 손잡이
   T1419_FOOD_NEED, T1419_SITE, T1419_FOOD4, foodNeedDays, t1419Days, t1419Subs, t1419FlowDays, t1419Season, t1419Stat,   // ★[T1419] 식량 날 수 한 함수(위 머리말)
   T1437_SEEN, T1437_READS, T1437_BUF_AT, T1437_RULER, t1437Drought, t1437Day, t1437Short, t1437Buf, t1437Read, t1437DroughtDays: () => _t1437Dr,   // ★[T1437] 겪은 낙폭(위 머리말)
+  T1452_AHEAD, T1452_LEDGER, T1452_AT, T1452_READS, T1452_YEAR, t1452Day, t1452Eat, t1452Rot, t1452Ahead, t1452Read, t1452Slack, t1452Stat, _t1419Parts, _t1419FlowAt,   // ★[T1452] 앞날 장부(위 머리말)
   forageRegrowR, forageRegrowPerDay, actRegrowPerDay,   // ★[T347] 재생 — T341 과 **같은 몸통**(`_actRegrowR`), 분자만 갈린다   // ★[T325] 나무꾼 행위 · ★[T341] 예산식은 지웠다(나무는 개체다) — 남은 것은 게이트와 **재생 유도 둘**
   T100_ANCHOR_N, T100_HARVEST_PER_FARMER_YEAR, T100_K, T100_FIELD_YIELD,   // ★[T100 4판] 앵커 하나 · 실측 하나 · 유도값 하나 · 손잡이 — 생활층(`villages.js`)과 하네스가 **여기서만** 읽는다(사본 0)
   T1159_HOME_N, t1159HomeN,
@@ -24267,6 +24439,7 @@ const CLAY_DAILY_PC = 0.02;        // 1인당 일일 진흙(장독 유지 — �
 const POTTERY_DECAY_SAVE = 0.3;    // 완전 충족 시 부패 −30%(질그릇 밀폐 — 상한)
 const POTTERY_FOODS = { food: 1, cooked_food: 1, fish: 1, meat: 1, fruit: 1, vegetable: 1, mushroom: 1, wheat: 1, rice: 1, barley: 1 };
 function tickDecay(v) {
+  const _t52r = v1.T1452_LEDGER ? v1.totalFoodEquivalent(v) : 0;   // ★[T1452] 썩음 앞 곳간(그날 썩은 식량 = 차 · 끔 = 무동작)
   if(T1188_ORE_SPLIT)v1.migrateOre(v);
   const N = v.npcs.length || 1;
   // 옹기: 진흙 흐름 소비 → 충족률 EMA(~50일 관성 — 독은 한 번 빚으면 오래감)
@@ -24316,6 +24489,7 @@ function tickDecay(v) {
     const rate = Math.min(0.95, baseRate * (1 + excess * 5) * (POTTERY_FOODS[r] ? _potMul : 1));
     v.storage[r] = s * (1 - rate);
   }
+  if (v1.T1452_LEDGER) v1.t1452Rot(v, _t52r - v1.totalFoodEquivalent(v), _t52r);   // ★[T1452] 그날 썩은 식량 · 그때 곳간(앞날 장부의 썩음 율 · 끔 = 무동작)
 }
 
 // === 날씨 단기 이벤트 (매 day 작은 확률) ===
@@ -24326,7 +24500,7 @@ const WEATHER_KINDS = [
   { name: '🌈풍요', mult: { fertility: 1.25, game: 1.2 }, days: [5, 10] },
   { name: '🌫️안개', mult: { game: 0.7, water: 1.1 }, days: [4, 8] },
 ];
-if (v1.T1437_SEEN) v1.t1437Drought(WEATHER_KINDS);   // ★[T1437] 켬('seen') = 새 마을 여유분 = 이 표의 가장 긴 가뭄 날(끔 = 이 줄 무동작)
+if (v1.T1437_SEEN || v1.T1452_LEDGER) v1.t1437Drought(WEATHER_KINDS);   // ★[T1437] 켬('seen') = 새 마을 여유분 = 이 표의 가장 긴 가뭄 날(끔 = 이 줄 무동작) · ★[T1452] 'ahead' 도 같은 수
 function tickWeather(world, day) {
   // v2 r7: 마을마다 독립 phase로 다양화 — 좌표를 seed offset으로 사용해 동조화 방지.
   for (let i = 0; i < world.villages.length; i++) _weatherRollOne(world.villages[i], day);
@@ -24883,6 +25057,7 @@ module.exports = {
   tickRecovery, recoveryFoodThreshold, recoveryFoodHave,
   // ★[T299] 둘째 화물·관문의 문 — 하네스와 `lab-wiring-check [H]` 가 엔진 **기본이 끔인지** 실측한다(사본 0)
   cargoTwoOn, cargoTwoGateOn, _legProfitPerUnit,
+  killTrader,   // ★[T1461] 행상 피살과 같은 문(짐승에게 쓰러진 캐러반 상인 — 서버가 같은 함수를 부른다 · 사본 0)
   // ★★[T525] 존 경계 넘기 뼈대 — 호스트(존 서버·자)가 **같은 두 함수**로 스텁을 만든다(답하는 쪽 스냅 · 받는 쪽 스텁 · 사본 0)
   T525_CROSS_ZONE, xzoneSnapshot, xzoneStub,
   T1030_XZ_MARKET,   // ★[T1030] 교차 존 장(팔 켬일 때만 · 끔 기본) — 서버(재기동 메타가 이웃 존 캐러밴을 잇는다)가 같은 손잡이를 읽는다

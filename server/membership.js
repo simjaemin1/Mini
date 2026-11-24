@@ -151,14 +151,18 @@ function onDeliver(player, r, vid) {
 //   ★소속을 앉히는 **한 줄**. `accept`(남의 마을에 드는 문)와 `seatFounder`(세운 사람)가 같이 쓴다 — 사본 0.
 function _seat(player, v) {
   player.member = { zone: (H && H.ZONE_ID) || null, vid: v | 0, name: _villageName(v), since: _day() };   // ★[T779] 하루 몫 장부 칸 0
+  if (H && typeof H.t1447OnSeat === 'function') { try { H.t1447OnSeat(player, v | 0); } catch (e) {} }   // ★[T1447] 들면 그 마을의 땅 원한은 지운다(덮이니 원인이 사라진다 · 판정 56) — 끔 = 칸 없음 · 무동작
   return player.member;
 }
+// ★[T1447] 그 마을의 해코지 원한이 문턱 위면 드는 문 전부가 막는다(땅 원한은 안 막는다 — 판정 56) · 끔 = 칸 없음 = 늘 null
+function _t1447Err(player, v) { return (H && typeof H.t1447JoinErr === 'function' && v != null) ? H.t1447JoinErr(player, v | 0) : null; }
 function accept(player, vid) {
   if (!ready() || !player) return { ok: false, err: '아직 준비가 되지 않았습니다.' };
   if (memberOf(player)) return { ok: false, err: '이미 다른 마을 사람입니다. 먼저 "/탈퇴"라고 적으십시오.' };
   const _ce = _coolErr(player); if (_ce) return { ok: false, err: _ce };   // ★[T1137] 다시 들기 1시간(끔 = 늘 null)
   const v = (vid == null) ? player._memberOfferVid : (vid | 0);
   if (v == null) return { ok: false, err: '촌장이 아직 마을 사람이 되라고 권하지 않았습니다.' };
+  { const _ge = _t1447Err(player, v); if (_ge) return { ok: false, err: _ge }; }
   const k = contribOf(player.playerId);
   if (k < CFG.N_MEMBER) return { ok: false, err: `아직 이릅니다. 기여가 ${k}만큼 쌓였고 ${CFG.N_MEMBER}이 되어야 합니다.` };
   _seat(player, v);
@@ -202,6 +206,7 @@ function seatGuildMember(player) {
     if (d < bd) { bd = d; best = vil; }
   }
   if (!best) return null;
+  if (_t1447Err(player, best.dbId | 0)) return null;   // ★[T1447] 배경 앉히기도 같은 문
   _seat(player, best.dbId | 0);
   return player.member;
 }
@@ -211,6 +216,7 @@ function seatByInvite(player, vid) {
   if (!ready() || !player || vid == null) return { ok: false, err: '아직 준비가 되지 않았습니다.' };
   if (memberOf(player)) return { ok: false, err: '이미 다른 마을 사람입니다.' };
   const _ce = _coolErr(player); if (_ce) return { ok: false, err: _ce };   // ★[T1137] 다시 들기 1시간(끔 = 늘 null)
+  { const _ge = _t1447Err(player, vid); if (_ge) return { ok: false, err: _ge }; }
   _seat(player, vid | 0);
   player._memberOfferVid = null;
   return { ok: true, member: player.member };
@@ -262,6 +268,7 @@ function join(player, vid) {
   const g = _nearVil(player, vid);
   if (g.err) return { ok: false, err: g.err };
   const v = g.vil.dbId | 0;
+  { const _ge = _t1447Err(player, v); if (_ge) return { ok: false, err: _ge }; }
   //   초대제 마을(T785)은 부름으로만 — 종전 `/소속` 막음과 같은 말
   if (VillageKin.ON && typeof VillageKin.joinModeOfVid === 'function' && VillageKin.joinModeOfVid(v) === 'invite') {
     return { ok: false, err: `${g.vil.name || ''}은(는) 부름을 받아야 들 수 있습니다. 마을 사람에게 "/초대"를 청하십시오.` };
