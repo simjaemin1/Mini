@@ -46,7 +46,9 @@ def main():
         for tree in [root/'fast', repo]:
             assert hashlib.sha256((tree/f).read_bytes()).hexdigest() == expected, str(tree/f)
     out = data/'six-worlds'
-    command(['python3', 'scripts/t1411-collect.py', '--runs', str(root/'worlds'), '--out', str(out)])
+    # Preserve known resident identity findings as RED, not a silent pass or a
+    # reason to lose all six actual outcomes. Other strict checks still apply.
+    command(['python3', 'scripts/t1411-collect.py', '--runs', str(root/'worlds'), '--out', str(out), '--report-link-gaps'])
     summary = read(out/'summary.json')
     assert set(summary) == set(names)
     for name in names:
@@ -74,6 +76,7 @@ def main():
                 archive(f, dst/(f.name+'.gz'))
     shutil.copyfile(root/'campaign.json', out/'campaign.json')
     failed = [n for n in names if summary[n]['failed']]
+    identity_red = [n for n in names if summary[n].get('residentLinkAudit', {}).get('passed') is False]
     campaign = read(root/'campaign.json')
     recoveries = {n: e.get('infrastructureResumes', []) for n, e in campaign['worlds'].items() if e.get('infrastructureResumes')}
     recovery_count = sum(len(entries) for entries in recoveries.values())
@@ -88,6 +91,13 @@ def main():
     for name in names:
         r = summary[name]
         text.append('| '+' | '.join(map(str, [name, r['days'], r['done'], r['failed'], fmt(r.get('pop')), fmt(r.get('cpuMeanAll'))]))+' |')
+    if identity_red:
+        text += ['\n**마을 사람 ID 연결 점검 빨강**: 집계는 `--report-link-gaps`로 실제 결과와 빨강 관측을 함께 보존했다. '
+                 '기본 엄격 검사는 유지하며 이 모드에서도 passed=false다. 정상 프로세스 종료와 ID 연결 검사는 별도다.\n',
+                 '| 팔 | ID 연결 누락 관측 날 | 최대 누락 |', '|---|---|---:|']
+        for name in identity_red:
+            audit = summary[name]['residentLinkAudit']
+            text.append('| '+name+' | '+', '.join(map(str, audit['affectedDays']))+' | '+str(audit['maxMissingResidents'])+' |')
     if recovery_count:
         text += ['\n환경 중단 뒤의 체크포인트 복구 이력은 팔별 '+str(recovery_count)+'건이다. '
                  '실제 종료 코드를 관측한 세계 실패와 구분해 `infrastructure-resumes.json`에 보존했다. '
@@ -118,7 +128,8 @@ def main():
     lines[0] = ('CPU 동일100날 99.012→100.488초/날(관측 +1.5%·30초 목표 미달·전체 개선 확인 못 함) · '
                 '잔여 꼭대기 메인 몸/걸음 준비/공간 색인 · 두 해 3시드 실제 결과 §5 · '
                 f'종료 실패 {len(failed)}/6 · 환경 복구 이력 {recovery_count}건(팔별) · 완공 0·끔비 원표 §5 · 지문 100/100 · '
-                '끈 판 1/1(경제·생활층 400/400) · 하네스 14종 초록 · 미끼 2/2 · 회부 0 · 기본 켬 채택 요청 0')
+                '끈 판 1/1(경제·생활층 400/400) · 하네스 14종 초록 · 미끼 2/2 · '
+                f'마을 ID 연결 빨강 {len(identity_red)}팔 · 회부 {1 if identity_red else 0} · 기본 켬 채택 요청 0')
     body = '\n'.join(lines)+'\n'
     body = body.replace('## 0. 진행 상태', '## 0. 결과 상태')
     body = body.replace('제품 후보 `768d740b0` 고정 · 아직 완료/채택 보고가 아님',
@@ -126,6 +137,11 @@ def main():
     body = body.replace('후보 경제·모든 마을 필드 지문 100/100 같음 · ON/OFF 1020 진행 중·나머지 4팔 대기',
                         f'지문 100/100 같음 · 6팔 종료 관측 · 목표 완료 {6-len(failed)}·실제 중단 {len(failed)} (§5)')
     body = body.replace('3시드 730날 양팔 · 최종 승인 대기 커밋', '기본 켬 여부는 재민 님 판정 · 전체 속도 개선 확인 못 함')
+    body = '\n'.join(
+        f'| 후보·긴 판 | 지문100/100 · 6팔 종료 관측 · 정상 목표 완료 {6-len(failed)}·실제 중단 {len(failed)} · ID 연결 빨강 {len(identity_red)}팔 (§5) |'
+        if line.startswith('| 후보·긴 판 |') else
+        f'| 판정 대기 | 성능 목표 미달 · 기본 켬 제안0 · 마을 ID 연결 회부 {1 if identity_red else 0} |'
+        if line.startswith('| 남은 것 |') else line for line in body.splitlines())+'\n'
     report.write_text(body)
     command(['git', 'diff', '--check'])
     if a.commit_push:

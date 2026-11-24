@@ -1,0 +1,17 @@
+{
+ "kind": "offline-finisher-replacement-only",
+ "oldPid": 33309,
+ "newPid": 35380,
+ "command": [
+  "python3",
+  "/workspace/Mini/scripts/t1411-finish.py",
+  "--root",
+  "/tmp/t1411",
+  "--repo",
+  "/workspace/Mini",
+  "--wait"
+ ],
+ "worldsRestarted": 0,
+ "reason": "preserve resident-link RED in final exported results",
+ "sourceSha256": "9f0d350999390e324c7c913fd7c62ed869004e8f053a47dca267f7957317e16e"
+}

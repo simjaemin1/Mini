@@ -5,7 +5,10 @@ add trace, accepted emigrations) are separately accumulated and cross-checked.
 """
 import argparse,json,csv,statistics,subprocess,re
 from pathlib import Path
-p=argparse.ArgumentParser();p.add_argument('--runs',type=Path,required=True);p.add_argument('--out',type=Path,required=True);p.add_argument('--allow-live',action='store_true');p.add_argument('--cases',help='comma-separated diagnostic cases; default is the six 730-day arms');a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True)
+from t1411_resident_audit import resident_link_audit
+p=argparse.ArgumentParser();p.add_argument('--runs',type=Path,required=True);p.add_argument('--out',type=Path,required=True);p.add_argument('--allow-live',action='store_true');p.add_argument('--cases',help='comma-separated diagnostic cases; default is the six 730-day arms')
+p.add_argument('--report-link-gaps',action='store_true',help='export resident identity violations as explicit RED findings; default strict identity check remains unchanged')
+a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True)
 expected=a.cases.split(',') if a.cases else [f'{arm}-{seed}' for seed in [1020,7,42] for arm in ['OFF','ON']]
 allruns={};dailyout=[];vilout=[]
 rd=lambda f:json.loads(f.read_text())
@@ -23,7 +26,7 @@ for name in expected:
  starts=[s['from'] for s in P.get('segs',[])]
  if a.allow_live or failed:
   starts=sorted(set(starts+[int(f.name.split('-')[1].split('.')[0]) for f in d.glob('seg-*.log')]))
- rows=[];villast={};zeroStreak={};worstZero={};zeroDays={};byvilDone={};starveBase=0;traceBase=0;batchBase=0;emigrations=[];errors=[];meta=[]
+ rows=[];villast={};zeroStreak={};worstZero={};zeroDays={};byvilDone={};starveBase=0;traceBase=0;batchBase=0;emigrations=[];errors=[];meta=[];linkDetails=[]
  for start in sorted(starts):
   base=d/f'seg-{start}.json'
   rr=lines(Path(str(base)+'.t1274-days.jsonl'))
@@ -46,7 +49,10 @@ for name in expected:
     completed=t['body'],completedWood=t['wood'],placedWood=None,scheduledAwakeAtLedger=census.get(day,{}).get('scheduledAwakeAtLedger'),doneDay=inc if tr else 0,zeroVillages=z if tr else None,zeroNeverCompleted=sum(v['done']==0 for v in tr['vils']) if tr else None,zeroWithQueue=zq if tr else None,zeroWithWoodOwed=zw if tr else None,zeroDryWoodOwed=zdry if tr else None,emptyQueueWithNeed=emptyneed if tr else None,
     traceAdded=traceBase+br['added'],batchCalls=batchBase+br['batchCalls'],bodyStarve=starveBase+r['bodyStarve'],debtDeaths=r['debtDeaths'],
     emigrationCumulative=r['emigrationCumulative'],emigrationDay=r['emigration'],bornDay=r['born'],missingResidents=sum(len(v['missingPeople']) for v in br['villages']) if is_on else None)
-   if is_on:assert row['traceAdded']==row['completed'],(name,day,'actual expansion trace closure')
+   if is_on:
+    assert row['traceAdded']==row['completed'],(name,day,'actual expansion trace closure')
+    missing=[dict(name=v['name'],population=v['population'],bodies=v['bodies'],missingPeople=v['missingPeople']) for v in br['villages'] if v['missingPeople']]
+    if missing:linkDetails.append(dict(day=day,villages=missing))
    rows.append(row)
   if rr:
    starveBase+=rr[-1]['bodyStarve'];traceBase+=bodyrows[rr[-1]['day']]['added'];batchBase+=bodyrows[rr[-1]['day']]['batchCalls']
@@ -61,10 +67,10 @@ for name in expected:
  if not rows:
   allruns[name]=dict(done=False,failed=failed,days=0,target=P['days'],actualExit=actualExit,launch=launch,checkpoint=P['ck']);continue
  assert failed or not errors,(name,errors[:3])
+ identityAudit=resident_link_audit(rows,enforce=not a.allow_live and not failed,report_gaps=a.report_link_gaps,details=linkDetails) if is_on else dict(applicable=False,passed=None,status='not-applicable')
  if not a.allow_live and not failed:
   if is_on:
    assert min(r['bodies']/r['pop'] for r in rows if r['pop'])>=1,(name,'body cap')
-   assert max(r['missingResidents'] for r in rows)==0,(name,'resident without linked physical body')
  if not a.allow_live and not failed:
   assert len(rows)==P['days'] and len(P['segs'])==(P['days']+P['every']-1)//P['every']
   assert all(s['code']==0 for s in P['segs'])
@@ -104,7 +110,7 @@ for name in expected:
   cpuMeanAll=statistics.mean(r['cpuSeconds'] for r in rows),completed=last['completed'],completedWood=last['completedWood'],
   minBodyRatio=min(r['bodies']/r['pop'] for r in rows if r['pop']),maxBodyGap=max(r['pop']-r['bodies'] for r in rows),maxMissingResidents=max(r['missingResidents'] for r in rows) if is_on else None,batchCalls=last['batchCalls'],observerErrors=len(errors),
   launch=launch,segments=P.get('segs'),clockExitMeta=meta,
-  actualExit=actualExit,failureEvidence=failureEvidence,
+  actualExit=actualExit,failureEvidence=failureEvidence,residentLinkAudit=identityAudit,
   emptyQueuePositiveNeedVillageDays=sum(r['emptyQueueWithNeed'] or 0 for r in rows),villageWorst=sorted([dict(village=n,zeroDays=zeroDays[n],maxConsecutiveZero=worstZero[n],completed=villast[n]) for n in villast],key=lambda r:(-r['maxConsecutiveZero'],r['completed'])))
  dailyout.extend(rows)
 for name,r in allruns.items():

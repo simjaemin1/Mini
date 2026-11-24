@@ -1,0 +1,103 @@
+{
+ "kind": "offline-immutable-checkpoint-read",
+ "checkpointDay": 490,
+ "physicalWorldsLaunched": 0,
+ "snapshot": "/workspace/scratch/t1411/interruptions/20261124T035656Z/binary-checkpoints/ON-1020",
+ "snapshotHashesUnchanged": {
+  "state.json": "1ae297cba3a49f1066eebec42f6cd1195ba785d2fb36cb6bd3438bda0abc2113",
+  "w.db-wal": "1fec00fea35e0a4af6de40f277223747e9525d9a2b372da0ceb95f8510803670",
+  "w.db": "abf62aa75354a533fe9b9af0a3c57f040f66475e9a754891b1afbecf8f831765",
+  "day": "cbd02d97b0731d88c78d30c20d90492b2d4c3f2f983931c38fef2dedc7ce48d4",
+  "w.db-shm": "a2e2f37e891631e63442bc1f720a4d32b1075a1dc5a75332a23b42b02bbc734a",
+  "stop-490.json": "a1c769cc667db6c93881f117d310abea3707448a2463426281793477dda8257e",
+  "keep-490.json": "1c47db773da4a9e92d2c263f5c085f4b22d62a09368ce52c40828edc841a32db",
+  "phase-490.json": "e6264ec4a4ecccde2a2c6590df75f9b833d48e4a671961642e1498c60c585d01"
+ },
+ "warLog": [
+  "D466 포로 탈출 — n437 임업6→광산3 도보 귀향(거리 265·p 0.39%)",
+  "D467 포로 귀향(도보 이송 도착) — n437 → 광산3",
+  "D489 포로 탈출 — n439 임업6→광산3 도보 귀향(거리 265·p 0.39%)",
+  "D490 포로 귀향(도보 이송 도착) — n439 → 광산3"
+ ],
+ "villages": {
+  "광산3": {
+   "villageId": 3,
+   "population": 61,
+   "checkpointDay": 490,
+   "savedBodies": 60,
+   "people": [
+    {
+     "id": "n437",
+     "age": 26.34246575342427,
+     "currentJob": "farmer",
+     "captive": null
+    },
+    {
+     "id": "n439",
+     "age": 32.34246575342471,
+     "currentJob": "farmer",
+     "captive": null
+    }
+   ],
+   "bodies": [
+    {
+     "pid": "p23698",
+     "econId": "n437",
+     "simVillageId": 3,
+     "npcHomeX": 45264,
+     "npcHomeY": 24944
+    }
+   ]
+  },
+  "임업6": {
+   "villageId": 17,
+   "population": 111,
+   "checkpointDay": 490,
+   "savedBodies": 112,
+   "people": [],
+   "bodies": [
+    {
+     "pid": "p23005",
+     "econId": "n439",
+     "simVillageId": 17,
+     "npcHomeX": 48976,
+     "npcHomeY": 18224
+    }
+   ]
+  }
+ },
+ "unchangedBaseAndCandidateFiles": {
+  "sim/war-core.js": "b873a5f91a798d8e70be7f24cf07f158f11186ab18510a2d819d799c24ec05a0",
+  "scripts/t1302-observe.js": "61b7603e5c239048a6a432a8aed3eb9bc197f71a6c2d52212b47be0921f1eec6"
+ },
+ "source": {
+  "sim/war-core.js": {
+   "sha256": "b873a5f91a798d8e70be7f24cf07f158f11186ab18510a2d819d799c24ec05a0",
+   "excerpts": [
+    {
+     "firstLine": 417,
+     "text": "// _capComplete — 포로 귀향 확정(econ): npc 객체를 승자 econ→고향 econ으로 splice 복귀 + captive 해제.\nfunction _capComplete(fromVil, toVil, npc) {\n  const fe = fromVil && fromVil.econ, te = toVil && toVil.econ; if (!fe || !te || !fe.npcs || !te.npcs) return false;\n  const ni = fe.npcs.indexOf(npc); if (ni < 0) return false;\n  if (fe.npcs.length <= 1) return false;   // 억류 마을 최후 1인 보존\n  fe.npcs.splice(ni, 1); if (fe.counts && npc.currentJob) fe.counts[npc.currentJob] = Math.max(0, (fe.counts[npc.currentJob] || 0) - 1);\n  fe._capOutTot = (fe._capOutTot || 0) + 1;   // ★[T1315] 억류 마을에서 귀향으로 빠진 포로도 같은 칸(그 마을에서 포로로 빠진 사람 — 서버 몸 꼬리표 `captive`)\n  te.npcs.push(npc); if (te.counts) te.counts[npc.currentJob] = (te.counts[npc.currentJob] || 0) + 1;\n  delete npc.captive;\n  return true;\n}\n// ═══════════ ★[T403] 무기 반출/반납 장부 — 소집 = 곳간에서 꺼낸다 · 복귀 = 내려놓는다 (손잡이 끔) ═══════════"
+    },
+    {
+     "firstLine": 1128,
+     "text": "  // ═══════════ ★[3파 포로 §18] 일일 처리(동화·탈출·몸값·추상 이송 — 랩 warCaptiveDaily 서버 어댑터) ═══════════\n  //   결정론(makeRng — 랩 _warCapRng 동형 시드). 화면 층(agent 동반·도보 연출)은 호스트(villages P3) 몫 —\n  //   여기선 추상 이송 큐(world._capTransit — 비영속: 재부팅 유실분은 esc 마킹으로 재큐, 아래 ⓪′)만.\n  function warCaptiveDaily(day) {\n    if (!WAR_CAP_ON) return;\n    const st = stats();\n    const TQ = world._capTransit || (world._capTransit = []);\n    for (let i = TQ.length - 1; i >= 0; i--) { const t = TQ[i]; if (day < t.eta) continue; TQ.splice(i, 1); if (_capComplete(t.from, t.to, t.npc)) log(day, '포로 귀향(도보 이송 도착) — ' + (t.npc.id || '?') + ' → ' + (t.to.name || '?')); }   // ⓪이송 도착\n    for (let vi = 0; vi < villages.length; vi++) {"
+    }
+   ]
+  },
+  "server/villages.js": {
+   "sha256": "ce4d8c7f1f157d64297e93f3b69df3cc7773a62c16bc0e9139d1ff56a589477e",
+   "excerpts": [
+    {
+     "firstLine": 11584,
+     "text": "      if (late > _t731Stat.lateMax) _t731Stat.lateMax = late;\n      if (!vil.econ || !state.world.villages.includes(vil.econ)) return;   // 창 가운데 사라진 마을 — 건너뛴다\n      _lifeHandsIn(vil);\n      mute(() => W.P.village(vil.econ));\n      vil._t731Day = W.D;\n    }, 'econ:vil');\n    addV('pop', () => { if (vil.econ && state.villages.includes(vil)) _popOne(vil); });\n    _lifeDayJobs([vil], addV);\n  }\n  if (T.tail) {\n    for (const ev of W.extra) add('econ', () => { if (state.world.villages.includes(ev)) mute(() => W.P.village(ev)); }, 'econ:vil');   // 존 마을에 안 묶인 econ 마을(있으면 · 꼬리 앞)\n    if (T698_BOUNDARY_SLICE && typeof W.P.tradeSteps === 'function') {\n      let g = null;\n      add('econ', () => { let done = false; mute(() => { if (!g) g = W.P.tradeSteps(); done = g.next().done; }); return done ? undefined : 'retry'; }, 'econ:trade');\n    } else add('econ', () => mute(() => W.P.trade()), 'econ:trade');\n    add('econ', () => mute(() => W.P.caravans()), 'econ:caravan');\n    add('econ', () => { mute(() => { W.P.tail(); _econDayWar(); }); _econDayAfter(); }, 'econ:tail');\n    if (state.xzone) add('xzone', () => _xzDayOut());"
+    },
+    {
+     "firstLine": 11696,
+     "text": "function _econDayWar() {\n  // P1: 전쟁 econ 층 — tickWorldV2 직후 구동(오늘 세운 동원정지/봉쇄/원한제재가 내일 틱에 반영). phase='battle'는 skip(교전 중).\n  //   ★[T284] 결단이 전쟁을 끝냈으면(항복·철수) 그 자리에서 실체를 정리·정산한다(_warAfterDaily).\n  if (state.war) { const _sb = (state.war.stats().surrender) || 0; _t1168WriteAmmo(); state.war.daily(state.world.day); try { _warAfterDaily(_sb); } catch (e) { console.error(`[${state.zoneId}] ⚔️ 결단 뒤 정리 실패:`, e.message); }\n    if (_t476On()) { try { _t476Decide(state.world.day); } catch (e) { console.error(`[${state.zoneId}] 🏴 [T476] 토벌 결단 실패:`, e.message); } } }   // ★[T476] 토벌 결단(끔이면 한 줄)\n}\nfunction _econDayAfter() {"
+    }
+   ]
+  }
+ },
+ "conclusion": "At captive return, the economy roster has moved n439 to 광산3 while its saved body remains in 임업6. Daily population synchronization precedes war.daily in the local-midnight schedule. Resident-link audit remains RED; no product fix or default change.",
+ "limits": "The body location is directly verified at checkpoint490. The day467 ledger pattern and captive-return log agree; no checkpoint467 body snapshot was inspected. No pre-optimization500-day comparator exists."
+}

@@ -1,0 +1,1 @@
+{"kind": "offline-actual-prefix-check", "physicalWorldsLaunched": 0, "strictDefaultRejectsActualGaps": true, "reportModeRetainsRed": true, "first400StrictPass": true, "previous500MetricsUnchanged": true, "incomplete730NotPromoted": true, "affectedDays": [467, 490], "helperSha256": "76a1a9ba0c7bf1f624493cd9b1df793c393cbe3ede4609fc076b8d357bf29f43"}
