@@ -52,7 +52,7 @@ console.log('\n① 종류 · 식 한 자리');
   const m = [1, 0.5, 0.25, 1e-9, 0].map((x) => (D.t1454Slow ? D.t1454Slow(x) : NaN));
   ok(m[0] === 1 && Math.abs(m[1] - 5 / 3) < 1e-12 && m[2] === 2.5 && Math.abs(m[3] - 5) < 1e-6 && m[4] === Infinity, '① 식 — 새것 1배 · 절반 1.67 · 넷에 하나 2.5 · 0 바로 위 5배(발산 0) · 0 = 끊김', m.map((x) => isFinite(x) ? x.toFixed(3) : '∞').join(' · '));
   const all = ['server/zone.js', 'server/villages.js', 'server/decay.js'].map(rd).join('\n');
-  ok((all.match(/\(1 \+ T1454_A\) \/ /g) || []).length === 1 && !/1 \/ \(?x \+ 0\.25/.test(all), '① 식은 한 자리(`decay.js`) — 존 · 마을 사본 0');
+  ok((all.match(/\(1 \+ (?:T1454_A|SLOW_A)\) \/ /g) || [])   /* [land1093 · PM] T1454 가지와 합치며 식 한 자리가 `(1 + SLOW_A) / (v + SLOW_A)`(T1454 쪽 이름)로 접혔다 — 두 이름 모두 한 번만 */.length === 1 && !/1 \/ \(?x \+ 0\.25/.test(all), '① 식은 한 자리(`decay.js`) — 존 · 마을 사본 0');
 }
 
 //   아이 세계(마을 쪽) — 작은 지도(가로 물 띠 · 다리 둘: 낡는 마을 다리 · 먼 처음 다리) · 마을 넷(양쪽 둘씩)
