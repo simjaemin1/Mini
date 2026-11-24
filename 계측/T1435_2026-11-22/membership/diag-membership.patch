@@ -1,0 +1,40 @@
+diff --git a/scripts/e2e-membership.js b/scripts/diag-membership.js
+index e5ff80f76..fb1c3c0e9 100644
+--- a/scripts/e2e-membership.js
++++ b/scripts/diag-membership.js
+@@ -124,6 +124,7 @@ async function waitHttp(url, tries = 900) {
+     });
+   };
+   wire(page);
++  global.__diagSent = []; const __t0 = Date.now(); page.on('websocket', (ws) => { ws.on('framesent', (f) => { const t = String(f.payload || ''); if (/village_brief|인출/.test(t)) global.__diagSent.push((Date.now() - __t0) + ':' + t.slice(0, 60)); }); ws.on('framereceived', (f) => { const t = String(f.payload || ''); if (/"village_brief"|너무 멉니다|사람이 열지/.test(t)) global.__diagSent.push((Date.now() - __t0) + '<' + t.slice(0, 50)); }); });
+   const snap = async (n) => { const f = path.join(SHOTS, n + '.png'); await page.screenshot({ path: f }); shots.push(f); return f; };
+ 
+   async function enter() {
+@@ -138,6 +139,7 @@ async function waitHttp(url, tries = 900) {
+   await enter();
+   ok(await page.evaluate(() => !!(window.__getMyAbs && window.__getMyAbs())), '존 입장 — 내 좌표 수신');
+ 
++  console.log('DIAG0 afterEnter=' + JSON.stringify(await page.evaluate(() => ({ lb: (window.__evLastBrief || {}).vid, near: window.__evNearVid, day: window.__evGameDay, minD: (window.__evDbg || {}).minD }))));
+   const { DatabaseSync } = require('node:sqlite');
+   const zdb = new DatabaseSync(ZDB);
+   const rows = zdb.prepare('SELECT id, name, cx, cy FROM villages WHERE zone = ?').all('hanbando');
+@@ -205,6 +207,11 @@ async function waitHttp(url, tries = 900) {
+   ok(await warpTo(V, 30), `① ${V.name} 마을 중심 도착`);
+   ok((await contrib()) === 0, `① 처음엔 누적 기여 0 (아래가 자명 통과가 아니다)`);
+ 
++  { const t0 = Date.now(); const W = process.env.DIAG_WAIT === '1';
++    const st = async () => page.evaluate(() => ({ lb: (window.__evLastBrief || {}).vid, near: window.__evNearVid, day: window.__evGameDay }));
++    const s0 = await st(); let s1 = s0;
++    if (W) for (let i = 0; i < 60; i++) { s1 = await st(); if (s1.lb === V.id) break; await sleep(250); }
++    console.log('DIAG sent=' + JSON.stringify(global.__diagSent) + ' vid=' + V.id + ' at⑦start=' + JSON.stringify(s0) + ' afterWait=' + JSON.stringify(s1) + ' waitMs=' + (Date.now() - t0)); }
+   // ── ⑦ 자명 통과 방지 — 소속 전에도 곳간은 안 열린다(촌장 문) ────────────────────────
+   {
+     const before = await inv();
+@@ -212,6 +219,7 @@ async function waitHttp(url, tries = 900) {
+     await say('/인출');
+     const n = await notices();
+     ok(n.some((t) => NPC_NO.test(t)), `⑦ 곳간은 촌장만 — \`/인출\` 이 거절된다(NPC 마을 = 사람 촌장 없음)`, JSON.stringify(n.filter((t) => /사람이 열지 않습니다|촌장만|마을에서 너무 멉니다/.test(t)).slice(-1)));
++    await sleep(3000); console.log('DIAG2 ' + JSON.stringify(global.__diagSent));
+     const after = await inv();
+     ok((after.food | 0) === (before.food | 0), `⑦b 거절이 말뿐이 아니다 — 곡식이 안 들어왔다`, `food ${before.food | 0} → ${after.food | 0}`);
+   }
