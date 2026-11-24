@@ -1,0 +1,14 @@
+# 베이스 0039b7cb5(batch/block-react2-1122 · T1440) 깨끗한 나무 — test-granary-add.js
+ReferenceError: T1440_ROAD_RULE is not defined
+    at Object._lifeGranAdd (evalmachine.<anonymous>:94:3)
+    at Object.<anonymous> (/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/basewt/scripts/test-granary-add.js:110:9)
+    at Module._compile (node:internal/modules/cjs/loader:1781:14)
+    at Object..js (node:internal/modules/cjs/loader:1913:10)
+    at Module.load (node:internal/modules/cjs/loader:1505:32)
+    at Function._load (node:internal/modules/cjs/loader:1309:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49
+
+Node.js v22.23.4
+RC=0
