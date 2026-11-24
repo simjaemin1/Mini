@@ -618,10 +618,12 @@ db.exec(`
 const stmtGetRoutes = db.prepare('SELECT pair, pts FROM trade_routes WHERE zone = ? AND sig = ?');
 const stmtUpsertRoute = db.prepare('INSERT INTO trade_routes (zone, pair, sig, pts) VALUES (?, ?, ?, ?) ON CONFLICT(zone, pair) DO UPDATE SET sig = excluded.sig, pts = excluded.pts');
 const stmtClearRoutes = db.prepare('DELETE FROM trade_routes WHERE zone = ?');
+const stmtDelRoute = db.prepare('DELETE FROM trade_routes WHERE zone = ? AND pair = ?');   // ★[T1455] 다리 몫만 — 끊긴 다리를 지나던 쌍 하나
 const stmtCountRoutes = db.prepare('SELECT COUNT(*) AS n FROM trade_routes WHERE zone = ?');
 function getTradeRoutes(zone, sig) { return stmtGetRoutes.all(zone, String(sig)); }
 function upsertTradeRoute(zone, pair, sig, ptsJson) { stmtUpsertRoute.run(zone, String(pair), String(sig), ptsJson === null ? null : String(ptsJson)); }
 function clearTradeRoutes(zone) { return stmtClearRoutes.run(zone).changes | 0; }
+// [land1093 · PM] deleteTradeRoute 는 T1440 쪽(아래)이 같은 SQL 로 이미 정의 — T1455 쪽 같은 이름 함수는 뺐다(stmtDelRoute 는 남김)
 function countTradeRoutes(zone) { return (stmtCountRoutes.get(zone) || {}).n | 0; }
 // ★★[T1440] 처음 길(쌍마다 길이 · 줄 — 3배의 기준) · 쌍 하나 지우기 · 사유지 칸 "길이 지나는 칸" — 손잡이 `T1440_ROAD_RULE` 켬에서만 부른다
 //   (표 · 열은 처음 부를 때 — CREATE TABLE IF NOT EXISTS · 열은 T45 규약대로 PRAGMA 로 보고 붙인다 · 구DB 안전 · 끔 = 표 0 · 열 0 · 행 0)

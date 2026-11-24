@@ -200,11 +200,33 @@ function scalePlace(pf, f) {
 // 지붕 몫 → 몸의 실내 배율: f = 1 이면 실내 배율 그대로 · 0 이면 바깥(1) · 그 사이 곧게(몸 `body.js` 가 부른다)
 function indoorMult(mult, f) { return f >= 1 ? mult : (f > 0 ? 1 + (mult - 1) * f : 1); }
 
+// ── ★★[T1455 2026-11-23 · ★재민 11-22 판정 71] 마을이 놓은 다리 — 종류 하나(부위 하나 · 재료 = 나무) ─────────────────────────────
+//   몸 = 공정 표(`bridge-stages.js` — 말뚝 = 기둥 · 널 = 판자)의 그 다리 몫 그대로(물 칸 수 · 다리 칸 수로 다리마다 다르다 · 새 수 0).
+//   빠르기 = 나무(가운데 15해) · 수리 = 넣은 나무 몫(`shareOf` — 통나무 하나 = 그 다리를 지을 때 든 통나무 낱개 가운데 하나).
+//   처음부터 있던 다리(존 설정 `bridges`)는 이 종류가 아니다 — 주인 · 든 재료 · 태어난 날이 없다(세계의 일부 · 안 낡는다).
+const _brKind = new Map();
+function bridgeKind(span, nCells) {
+  const key = (span | 0) + ':' + (nCells | 0);
+  if (_brKind.has(key)) return _brKind.get(key);
+  let B = null; try { B = require('./bridge-stages'); } catch (e) {}
+  const items = {};
+  if (B) for (const st of B.bridgeStages(span, nCells)) for (const [k, n] of Object.entries(st.need || {})) items[k] = (items[k] || 0) + n;
+  const k = { type: 'vbridge', multi: false, stages: B ? B.bridgeStages(span, nCells).length : 0, parts: [part('body', '다리(말뚝 · 널)', items, 'wood')] };
+  _brKind.set(key, k);
+  return k;
+}
+// ── ★[T1454 식 — 재민 11-22 판정 69 "1/(x+a) 꼴 · 0 근처에서 발산하지 않게 · 0 이면 고장"] 걸리는 시간 배수 한 자리 ──────────────
+//   m(x) = (1 + a) ÷ (x + a) · x = 남은 몫(0 초과 ~ 1) · x ≤ 0 = 고장(Infinity — 못 쓴다 · 다리는 끊김).
+//   a = 0.25 — 재민 11-22 꼴 · PM 시작값(T1454 정해진 것 3 · 출처 없는 수 · 재민 거부권): 절반 1.67배 · 넷에 하나 2.5배 · 0 바로 위 5배.
+//   ⚠T1454 가지(`batch/decay-slow-1122`)가 아직 없어 T1455 가 같은 식을 이 한 자리에 둔다 — 합칠 때 이 두 줄이 그 가지의 한 자리로 접힌다(사본 0).
+const T1454_A = 0.25;
+function t1454Slow(x) { return x > 0 ? (1 + T1454_A) / ((x < 1 ? x : 1) + T1454_A) : Infinity; }
 // 낡는 종류 이름(진단 표 · 클라 우클릭 "손질…" 한 줄이 뜨는 종류 — 서버 표에서 뽑는다 · 클라 사본 0)
 function typesList() {
   const names = new Set([...HUT_TYPES, 'granary', 'guild_granary', 'well', 'charcoal_kiln', ...Object.keys(_Z.cost || {}), ...Object.keys(_Z.extra || {})]);
   return [...names].filter((t) => !!kindOf(t, null)).sort();
 }
 const api = { ON, SET, SETS, MAT, ITEM_MAT, EXCLUDE, yearDays, perDay, recipes, rawOf, matsOf, part, partRate, init, kindOf, hutParts, costOf, typesList,
-  readFrac, readParts, readHp, acceptsItem, shareOf, qtyFor, scalePlace, indoorMult, HUT_TYPES };
+  readFrac, readParts, readHp, acceptsItem, shareOf, qtyFor, scalePlace, indoorMult, HUT_TYPES,
+  bridgeKind, T1454_A, t1454Slow };   // ★[T1455]
 module.exports = api;
