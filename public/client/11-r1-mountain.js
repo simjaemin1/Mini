@@ -1813,6 +1813,9 @@
   //   길·건축물은 셀 집합으로 한 번만 굽고, 목록 크기가 바뀔 때만 다시 굽는다.
   let _natBlockSet = null, _natBlockSig = '';
   function _natBlocked(ax, ay) {
+    const _q = T1453_NAT_ON ? _t1453NatCells(ax, ay) : null;   // ★[T1453] 켬 — 길 칸 · 건물 3×3 을 색인에 칸으로 묻는다(null = 못 묻는다 → 아래 종전 Set 길)
+    if (_q === true) return true;
+    if (_q === null) {
     let sig = '';
     for (const c of conns.values()) {
       if (!c.meta) continue;
@@ -1835,6 +1838,7 @@
       }
     }
     if (_natBlockSet.has(Math.floor(ax / CL_BUILDING_SIZE) + ',' + Math.floor(ay / CL_BUILDING_SIZE))) return true;
+    }
     for (const c of conns.values()) {
       if (!c.meta) continue;
       const ox = c.meta.worldOffsetX, oy = c.meta.worldOffsetY || 0;
@@ -1851,6 +1855,8 @@
     }
     return false;
   }
+  //   ★[T1453] 시험 손잡이 — 종전 Set 을 다음 물음에 새로 굽게 한다(`__t1453.natCheck` 같음 대조 · `natRebuildMs` 다시 굽기 ms)
+  function _natBlockReset() { _natBlockSig = ''; _natBlockSet = null; }
   let _natPending = 0;                   // ★[T920] 켬 — 이번 판 끝에 아직 안 지은 시야 청크 수(계측 · `__natDbg.pending`)
   const _natLastC = [0, 0];              // 이번 프레임 카메라 중심(절대 월드 px) — __shoreProbe 기본값
   // ★★[T920 2026-10-24 · ★T937 켬 기본 — PM 10-26] 손잡이 `T920_NAT_BUDGET`(서버 env → welcome `uiCfg.natBudget` · 켬 기본 · 되돌림 `=0` = 종전 그대로).
@@ -2072,6 +2078,29 @@
   const _t1423NoAbs = new Set();
   // ★[T1440] 짓기 미리보기 — 서버의 답(그 조각 열쇠 · 'free' | 'road' | 'closing' | 'protected' | 'others' | 'refuse' | 'checking') · 켬인 존만(welcome `t1440`) · 클라 재계산 0
   const _t1440P = { on: false, key: null, at: 0, st: null, stKey: null };
+  // ★★[T1455] 마을이 놓은 다리(서버 `t1455_bridges` · welcome `t1455`) — 절대 칸 → 그 다리 기록 { i, walk, cut, x, owner, gone }.
+  //   끊긴 칸은 `_bridgeAbs` 에서 빠진다(서버 단일 술어의 미러 — 끊긴 다리를 건너는 예측 0) · 걸음 예측은 서버 걸음 배율 한 자리와 같은 수(`t1455WalkMultAt`).
+  const _t1455Abs = new Map();
+  function t1455WalkMultAt(x, y) {
+    if (!_t1455Abs.size) return 1;
+    const r = _t1455Abs.get(Math.floor(x / CL_BUILDING_SIZE) + ',' + Math.floor(y / CL_BUILDING_SIZE));
+    return r && !r.cut ? r.walk : 1;
+  }
+  function t1455At(x, y) { return _t1455Abs.size ? (_t1455Abs.get(Math.floor(x / CL_BUILDING_SIZE) + ',' + Math.floor(y / CL_BUILDING_SIZE)) || null) : null; }
+  function t1455Recv(c, list) {   // 30-n-net 이 부른다(welcome · 방송) — 콜라이더 미러 · 렌더 집합(끊긴 칸 = `c.bridgesCut`)
+    const z = c.meta || {}, ox = (z.worldOffsetX || 0) / CL_BUILDING_SIZE, oy = (z.worldOffsetY || 0) / CL_BUILDING_SIZE;
+    if (!c.bridges) c.bridges = new Set();
+    if (!c.bridgesCut) c.bridgesCut = new Set();
+    for (const r of (list || [])) {
+      const cells = r.cells || [];
+      for (let i = 0; i + 1 < cells.length; i += 2) {
+        const lk = cells[i] + ',' + cells[i + 1], ak = (ox + cells[i]) + ',' + (oy + cells[i + 1]);
+        _t1455Abs.set(ak, r);
+        if (r.cut) { _bridgeAbs.delete(ak); c.bridges.delete(lk); c.bridgesCut.add(lk); }
+        else { _bridgeAbs.add(ak); c.bridges.add(lk); c.bridgesCut.delete(lk); }
+      }
+    }
+  }
   const _t1441P = { on: false, key: null, at: 0, vil: '', vKey: null };   // ★[T1441 ①] 남의 마을 땅 미리보기(서버 답 — 켬인 존만 `.on`)
   // ★[11차 T3 환호] 도랑 절대 셀 집합 — 서버 DITCH_CELLS 미러. 다리와 **같은 이유로** 미러가 필수다:
   //   서버 isTerrainBlockedLocal이 도랑에서 막는데 클라 예측이 안 막으면 도랑 위로 걸어 들어갔다가

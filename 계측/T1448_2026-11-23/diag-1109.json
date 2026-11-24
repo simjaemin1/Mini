@@ -1,0 +1,236 @@
+{
+ "db": "w1109.db",
+ "made": "T1448",
+ "probes": {
+  "base": {
+   "probe": "base",
+   "cellsW": 2188,
+   "cellsH": 4063,
+   "day": 1245985,
+   "rows": 680359,
+   "heapBase": 4.8,
+   "gcMs": 4.792351
+  },
+  "cells": {
+   "probe": "cells",
+   "cellsW": 2188,
+   "cellsH": 4063,
+   "day": 1245985,
+   "rows": 680359,
+   "heapBase": 4.8,
+   "buildMs": 428,
+   "cellsMB": 64.4,
+   "n": 680359,
+   "gcMs": 44.229415,
+   "cellsGoneMB": 0
+  },
+  "noi": {
+   "probe": "noi",
+   "cellsW": 2188,
+   "cellsH": 4063,
+   "day": 1245985,
+   "rows": 680359,
+   "heapBase": 4.8,
+   "initMs": 2038,
+   "n": {
+    "cells": 680359,
+    "paved": 175999,
+    "coarse": 36219,
+    "bootUnpaved": 1747,
+    "g1": 104546,
+    "g2": 175999
+   },
+   "heapInit": 76,
+   "initMB": 71.2
+  },
+  "full": {
+   "probe": "full",
+   "cellsW": 2188,
+   "cellsH": 4063,
+   "day": 1245985,
+   "rows": 680359,
+   "heapBase": 4.8,
+   "initMs": 2213,
+   "n": {
+    "cells": 680359,
+    "paved": 175999,
+    "coarse": 36219,
+    "bootUnpaved": 1747,
+    "g1": 104546,
+    "g2": 175999,
+    "sent": 280545
+   },
+   "heapInit": 111.3,
+   "initMB": 106.5,
+   "sentMB": 14,
+   "gcMs": 50.486659,
+   "clientMs": 69,
+   "clientCells": 280545,
+   "clientJsonMB": 2.9,
+   "dumpMs": 498,
+   "dumpMB": 31.9,
+   "dumpParts": {
+    "cells": 19.7,
+    "coarse": 0.4,
+    "paved": 1.3,
+    "dirty": 0,
+    "lastDay": 0,
+    "coarseGen": 0,
+    "stats": 0,
+    "bootUnpaved": 0,
+    "chgOn": 0,
+    "chg": 0,
+    "I": 10.5
+   },
+   "dumpHeldMB": 136.5,
+   "loadMs": 791,
+   "parts": [
+    [
+     "sent",
+     14
+    ],
+    [
+     "coarse",
+     1.7
+    ],
+    [
+     "paved",
+     5
+    ],
+    [
+     "dirty",
+     0
+    ],
+    [
+     "bootUnpaved",
+     0
+    ],
+    [
+     "cells",
+     81.7
+    ]
+   ],
+   "heapFull": 279.3,
+   "afterAll": 172,
+   "gcMsAfterClear": 87.922977
+  },
+  "grid": {
+   "probe": "grid",
+   "cellsW": 2188,
+   "cellsH": 4063,
+   "day": 1245985,
+   "rows": 680359,
+   "heapBase": 4.8,
+   "buildMs": 717,
+   "gridHeapMB": 5.2,
+   "gridBufMB": 52.7,
+   "gridMB": 57.9,
+   "chunks": 4108,
+   "dueDays": 291,
+   "gcMs": 12.686552,
+   "keep": 564806
+  }
+ },
+ "spread": {
+  "16": {
+   "chunks": 12297,
+   "gradedChunks": 5640,
+   "area": 256,
+   "fill": {
+    "p10": 9,
+    "p50": 31,
+    "p90": 153,
+    "max": 256
+   },
+   "hist": {
+    "<1%": 280,
+    "1-5%": 1505,
+    "5-20%": 6697,
+    "20-50%": 2381,
+    "50%+": 1434
+   },
+   "arrayMB": 36,
+   "arrayMBf32": 24,
+   "cellsPerChunk": 55
+  },
+  "32": {
+   "chunks": 4108,
+   "gradedChunks": 2338,
+   "area": 1024,
+   "fill": {
+    "p10": 23,
+    "p50": 85,
+    "p90": 412,
+    "max": 1024
+   },
+   "hist": {
+    "<1%": 193,
+    "1-5%": 1177,
+    "5-20%": 1846,
+    "20-50%": 561,
+    "50%+": 331
+   },
+   "arrayMB": 48.1,
+   "arrayMBf32": 32.1,
+   "cellsPerChunk": 166
+  },
+  "64": {
+   "chunks": 1298,
+   "gradedChunks": 941,
+   "area": 4096,
+   "fill": {
+    "p10": 64,
+    "p50": 276,
+    "p90": 1221,
+    "max": 4069
+   },
+   "hist": {
+    "<1%": 84,
+    "1-5%": 444,
+    "5-20%": 547,
+    "20-50%": 151,
+    "50%+": 72
+   },
+   "arrayMB": 60.8,
+   "arrayMBf32": 40.6,
+   "cellsPerChunk": 524
+  },
+  "128": {
+   "chunks": 396,
+   "gradedChunks": 341,
+   "area": 16384,
+   "fill": {
+    "p10": 168,
+    "p50": 934,
+    "p90": 4827,
+    "max": 9114
+   },
+   "hist": {
+    "<1%": 38,
+    "1-5%": 146,
+    "5-20%": 140,
+    "20-50%": 71,
+    "50%+": 1
+   },
+   "arrayMB": 74.3,
+   "arrayMBf32": 49.5,
+   "cellsPerChunk": 1718
+  }
+ },
+ "zoneCells": 8889844,
+ "grades": {
+  "rows": 680359,
+  "g1": 104546,
+  "g2": 175999,
+  "under8": 399814,
+  "deadAtDay": 268142,
+  "ageDays": {
+   "2-7": 193966,
+   "0-1": 179507,
+   "540+": 188317,
+   "8-30": 49585,
+   "31-138": 17488,
+   "139-540": 51496
+  }
+ }
+}

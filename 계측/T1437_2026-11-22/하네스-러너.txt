@@ -1,0 +1,29 @@
+# touched 하네스(touched-harness.js b9dffb94 --list — 57) · 최종 나무(내용 커밋 c0d2e3a1)
+## 1 ~ 11(순차 판 · touched-harness --run -j 1 · test-harness-lint 까지 — 그 뒤는 끊고 둘로 나눠 다시)
+  test-armor-cap.js   ✓ RC=0
+  test-body-exit.js   ✓ RC=0
+  test-body-fields.js   ✓ RC=0
+  test-coll-grid.js   ✓ RC=0
+  test-day-deaths.js   ✓ RC=0
+  test-draft-famine.js   ✓ RC=0
+  test-econ-fieldyield.js   ✓ RC=0
+  test-forage-act.js   ✓ RC=0
+  test-frontier-iron.js   ✓ RC=0
+  test-happy-converge.js   ✓ RC=0
+  test-harness-lint.js   ✓ RC=0
+=== 102건 중 PASS 102 · FAIL 0 ===
+  [소요] 983초
+## 12 ~ 34(run-regress.sh)
+=== 러너 요약 ===
+  통과 23: test-hp-src.js test-lon-day.js test-no-shield.js test-physical-forage-plan.js test-picker-tables.js test-seed-reserve.js test-smelt-return.js test-stone-consumption-flow.js test-stone-independent-budget.js test-stone-real.js test-t1046-wood-share.js test-t1054-decay-wood.js test-t1074-food-debt.js test-t1075-happy-eq.js test-t1113-low-happy.js test-t1148-fuel-job.js test-t1149-winter.js test-t1159-home-n.js test-t1179-crop-season.js test-t1180-produce-defaults.js test-t1188-ore-split.js test-t1195-hunt-real.js test-t1197-meal-body.js
+  실패 0: 없음
+  걸린 시간 상위(초): test-stone-real.js 9 · test-seed-reserve.js 7 · test-t1179-crop-season.js 2 · test-t1180-produce-defaults.js 2 · test-t1188-ore-split.js 2 · test-hp-src.js 1 · test-lon-day.js 1 · test-no-shield.js 1 · test-smelt-return.js 1 · test-t1054-decay-wood.js 1
+  걸린 시간 합: 하네스 32초 · 러너 전체 44초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 1번 × 8초 · 건넘 23번(앞 판이 남긴 아이 없음)
+## 35 ~ 57(run-regress.sh)
+=== 러너 요약 ===
+  통과 23: test-t1198-birth-body.js test-t1205-happy.js test-t1206-natural-death.js test-t1226-job-flex.js test-t1238-terr-v2.js test-t1266-ore-body.js test-t1325-one-rot.js test-t1333-alloy-order.js test-t1336-crop-eq.js test-t1344-bronze-mix.js test-t1346-birth-flow.js test-t1373-home-cap.js test-t1385-bronze-nocap.js test-t1388-farm-gap.js test-t1398-bronze-band.js test-t1419-food-need.js test-t1437-food-buffer.js test-t860-catch-dry.js test-t924-debt-cap.js test-t931-slotk-ema.js test-t958-house-real.js test-war-world.js test-wood-step1.js
+  실패 0: 없음
+  걸린 시간 상위(초): test-war-world.js 225 · test-t1344-bronze-mix.js 32 · test-t1437-food-buffer.js 25 · test-t860-catch-dry.js 24 · test-t924-debt-cap.js 22 · test-t1419-food-need.js 17 · test-t931-slotk-ema.js 11 · test-t1333-alloy-order.js 9 · test-t1238-terr-v2.js 7 · test-t1266-ore-body.js 7
+  걸린 시간 합: 하네스 397초 · 러너 전체 414초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 2번 × 8초 · 건넘 22번(앞 판이 남긴 아이 없음)

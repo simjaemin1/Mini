@@ -1,0 +1,4 @@
+[
+ {"tag":"SPARE_42","seed":42,"days":360,"probe":1,"ablate":"spare","env":{"T1438_DECAY":"1","T1438_DECAY_SET":"mid"}},
+ {"tag":"SPARE_7","seed":7,"days":400,"probe":1,"ablate":"spare","env":{"T1438_DECAY":"1","T1438_DECAY_SET":"mid"}}
+]

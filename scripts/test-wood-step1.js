@@ -138,7 +138,7 @@ console.log('\n③ 기근 문 안의 땔감 한 명 — 정본 `pickDeficitJob_r
 {
   const C = codeOf(SRC);
   const pick = (C.match(/function pickDeficitJob_rational\(v, world\) \{[\s\S]*?\n\}/) || [''])[0];
-  const fam = pick.slice(pick.indexOf('if (foodEquiv < N * 30) {'), pick.indexOf('const foodOpts = ['));
+  const fam = pick.slice(pick.indexOf("if (foodEquiv < N * t1419Days(v, null, 30, 'famine')) {"), pick.indexOf('const foodOpts = ['));
   ok(/function fuelGateOn\(\) \{ const x = _allocKnob\('T717_FUEL_GATE'\); return x !== null && x !== '0'; \}/.test(C),
     'ⓐ 손잡이 `T717_FUEL_GATE` — 서버 env · 랩 `window` 같은 문(`_allocKnob`) · 미설정 · `0` = 끔');
   ok(/if \(fuelGateOn\(\) && v\._fuelCov !== undefined && v\._fuelCov < 1 && \(counts\.lumberjack \|\| 0\) < 1 && foodEquiv > N \* 6\s*&& hasSlot\(v, 'lumberjack', cap, counts\)\) return 'lumberjack';/.test(fam),

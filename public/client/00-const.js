@@ -208,6 +208,303 @@ function cropSprite(stage, crop) {
         _t1193Mq.addEventListener('change', () => { _t1193Mq = null; resizeCanvas(); _t1193Apply(); }, { once: true }); } catch (e) { _t1193Mq = null; }
     }
   }
+  // ★★[T1446 2026-11-22 · ★재민 11-22 밤 "아직도 핑이 심한데 왜 그러냐고.."] **화면 안 것만 훑는 색인** — 손잡이 `T1446_VIEW_INDEX`(켬 기본 · 끔 = 종전 글자).
+  //   종전: 렌더 모으기(`34-m-renderloop`)가 프레임마다 존 전체 길(라이브 456,479칸 — 칸마다 글자 키를 쪼갰다)과 건물(5,806)을 다 돌고 화면 밖을 버렸다.
+  //   켬: 길 · 건물 목록이 바뀔 때(welcome · road_cells · `__roadFeed` · buildings_* · building_*) 상자(32칸 = 1,024px) 색인을 **같이** 고치고,
+  //     프레임은 화면 상자에 걸친 상자만 돈다(화면 상자 ±1,500px = 94칸 ⇒ 상자 4×4 남짓).
+  //     ⓐ 목록은 그대로 Map 이다(Map 을 이은 갈래 — `get` · `has` · `size` · 순회를 쓰는 다른 자리 무변) · 칸 키는 넣을 때 한 번만 쪼갠다(프레임 글자 쪼개기 0).
+  //     ⓑ 그리는 집합 · 차례 · 값이 종전과 같다 — 상자에서 꺼낸 것도 종전 고리 몸통(같은 컬링 식)을 그대로 지나고, 넣은 차례(`seq` = Map 순회 차례 —
+  //        있던 키를 다시 넣으면 자리 그대로 · 지웠다 다시 넣으면 맨 뒤)로 줄 세워 민다 ⇒ z 가 같은 것끼리의 그리는 차례까지 같다.
+  //     ⓒ 색인이 못 담는 값(정수 아닌 칸 · 등급 1~7 밖 · ±16,384칸 밖 · 색인과 목록이 어긋남)이 한 번이라도 오면 그 목록은 `_bad` —
+  //        비울(clear · welcome) 때까지 종전 고리로 돈다(같음이 먼저). 건물 자리가 수가 아니거나 범위 밖이면 그 건물만 늘 꺼내는 상자(`_t1446Odd`)에 둔다.
+  //   켜는 길: 주소 `?T1446_VIEW_INDEX=0`(짧게 `?t1446=0`) = 끔(목록이 맨 Map — 종전 그대로) · 없거나 `=1` = 켬.
+  //     같은 판 대조는 시험 손잡이 `__t1446.set(false|true)`(99-main 이 건다) — 색인은 그대로 고치고 그리는 길만 바꾼다(끔으로 띄운 판은 다시 접속해야 색인이 선다).
+  const _t1446Q = (() => { try { const q = new URLSearchParams(location.search); const v = q.has('T1446_VIEW_INDEX') ? q.get('T1446_VIEW_INDEX') : q.get('t1446');
+    return v === '0' ? false : v === '1' ? true : null; } catch (e) { return null; } })();
+  let T1446_ON = _t1446Q !== false;
+  const T1446_BOX = 32;                             // 상자 한 변(칸) = 1,024px
+  //   건물 여유(px) — 건물 고리가 화면 상자(VIEW_RADIUS) 밖 건물로 하는 일의 가장 먼 자리(큰집 지붕 캐리어 +300 · 곳간 · 움집 지붕 +200 ·
+  //   마당 소품 +144 · 계단 +64 · 벽 +32 · 실내 NPC 가림 = 화면 안 NPC 를 품은 발자국 8칸 +256)보다 넉넉히.
+  const T1446_BPAD = 400;
+  const _t1446Odd = -1;                             // 늘 꺼내는 건물 상자(자리가 수가 아니거나 범위 밖)
+  function _t1446Bk(bx, by) { return (bx + 512) * 1024 + (by + 512); }   // 상자 열쇠(작은 정수) — bx · by ∈ [−512, 511](존 로컬 ±16,384칸 · 가장 큰 존이 4,063칸)
+  function _t1446Ok(v) { return v > -16384 && v < 16384 && v === Math.floor(v); }   // 칸이 색인 범위 안 정수인가
+  // 길 — 키 'cx,cy'(존 로컬 칸 — 클라가 수 둘로 짓는다) → 등급(1 · 2). 상자마다 두 배열 { k: 상자 안 자리 (cx&31)·32 + (cy&31) · s: seq·8 + 등급 } — 넣은 차례(seq 차례).
+  class _T1446CellMap extends Map {
+    constructor() { super(); this._ix = new Map(); this._seq = 0; this._bad = false; }
+    set(k, v) {
+      if (!this._bad) {
+        const ci = k.indexOf(','), cx = +k.slice(0, ci), cy = +k.slice(ci + 1);
+        if (ci < 0 || !_t1446Ok(cx) || !_t1446Ok(cy) || !(v >= 1 && v <= 7 && v === Math.floor(v))) this._bad = true;
+        else {
+          const bk = _t1446Bk(Math.floor(cx / T1446_BOX), Math.floor(cy / T1446_BOX)), ik = (cx & 31) * 32 + (cy & 31);
+          let B = this._ix.get(bk);
+          if (!B) this._ix.set(bk, (B = { k: [], s: [], m: new Uint8Array(1024) }));
+          if (super.has(k)) { const i = B.k.indexOf(ik); if (i < 0) this._bad = true; else B.s[i] = B.s[i] - (B.s[i] % 8) + v; }   // 있던 칸 — 자리(seq) 그대로 · 등급만
+          else { B.k.push(ik); B.s.push(++this._seq * 8 + v); B.m[ik] = 1; }
+        }
+      }
+      return super.set(k, v);
+    }
+    delete(k) {
+      if (!this._bad && super.has(k)) {
+        const ci = k.indexOf(','), cx = +k.slice(0, ci), cy = +k.slice(ci + 1);
+        const bk = _t1446Bk(Math.floor(cx / T1446_BOX), Math.floor(cy / T1446_BOX)), B = this._ix.get(bk);
+        const i = B ? B.k.indexOf((cx & 31) * 32 + (cy & 31)) : -1;
+        if (i >= 0) B.m[B.k[i]] = 0;   // ★[T1453] 자리표 — 지운 칸(아래 종전 줄 그대로 — T1446 하네스 미끼 ② 자리)
+        if (i < 0) this._bad = true;
+        else { B.k.splice(i, 1); B.s.splice(i, 1); if (!B.k.length) this._ix.delete(bk); }
+      }
+      return super.delete(k);
+    }
+    clear() { this._ix.clear(); this._bad = false; return super.clear(); }
+    //   ★[T1453] 칸 (cx, cy) 에 길이 있나 — 상자 하나 · 자리표(`m` — 상자 안 1,024칸 · 넣고 지울 때 같이 고친다) 한 칸(글자 0)
+    _has(cx, cy) {
+      if (!(cx > -16384 && cx < 16384 && cy > -16384 && cy < 16384)) return false;
+      const B = this._ix.get(_t1446Bk(Math.floor(cx / T1446_BOX), Math.floor(cy / T1446_BOX)));
+      return !!B && B.m[(cx & 31) * 32 + (cy & 31)] === 1;
+    }
+    //   welcome 한 번에 — flat [cx, cy, lv, …] 를 종전 고리와 **같은 키 · 같은 차례**로 넣고 색인은 수로 바로 세운다(키를 다시 쪼개지 않는다).
+    //   같은 칸이 두 번 온 판(Map 은 첫 자리 · 끝 값)은 다 넣은 뒤 Map 차례로 색인을 다시 세운다(`_rebuild` — 서버는 칸마다 한 번 보낸다).
+    _load(flat) {
+      if (this.size || this._bad) { for (let i = 0; i < flat.length; i += 3) this.set(flat[i] + ',' + flat[i + 1], flat[i + 2]); return this; }
+      let n = 0;
+      for (let i = 0; i < flat.length; i += 3) {
+        const cx = flat[i], cy = flat[i + 1], v = flat[i + 2];
+        super.set(cx + ',' + cy, v);
+        if (this._bad) continue;
+        if (!(_t1446Ok(cx) && _t1446Ok(cy) && v >= 1 && v <= 7 && v === Math.floor(v))) { this._bad = true; continue; }
+        const bk = _t1446Bk(Math.floor(cx / T1446_BOX), Math.floor(cy / T1446_BOX));
+        let B = this._ix.get(bk);
+        if (!B) this._ix.set(bk, (B = { k: [], s: [], m: new Uint8Array(1024) }));
+        const ik = (cx & 31) * 32 + (cy & 31); B.k.push(ik); B.s.push(++this._seq * 8 + v); B.m[ik] = 1; n++;
+      }
+      if (!this._bad && n !== this.size) this._rebuild();
+      return this;
+    }
+    _rebuild() {
+      this._ix.clear(); this._bad = false;
+      for (const [k, v] of super.entries()) {
+        const ci = k.indexOf(','), cx = +k.slice(0, ci), cy = +k.slice(ci + 1);
+        if (ci < 0 || !_t1446Ok(cx) || !_t1446Ok(cy) || !(v >= 1 && v <= 7 && v === Math.floor(v))) { this._bad = true; return; }
+        const bk = _t1446Bk(Math.floor(cx / T1446_BOX), Math.floor(cy / T1446_BOX));
+        let B = this._ix.get(bk);
+        if (!B) this._ix.set(bk, (B = { k: [], s: [], m: new Uint8Array(1024) }));
+        const ik = (cx & 31) * 32 + (cy & 31); B.k.push(ik); B.s.push(++this._seq * 8 + v); B.m[ik] = 1;
+      }
+    }
+  }
+  // 건물 — 키 id → 건물(자리 b.x · b.y = 존 로컬 px). 상자마다 세 배열 { s: seq · b: 건물 · id }(seq 차례) · `_at`(id → 상자 열쇠).
+  //   ★[T1453] 막음 칸 셈표 `_cc` — **종전 Set 과 같은 식**으로 월드 칸을 센다: 건물마다 floor((ox + b.x)/32) ± 1 × floor((oy + b.y)/32) ± 1 아홉 칸 → 그 칸을 덮는 건물 수.
+  //     ox · oy(존 원점)는 목록이 모르므로 처음 물을 때 받아 통째로 한 번 세우고(`_ccBuild` — 존마다 한 번) 그 뒤로는 넣고 지울 때 아홉 칸씩 고친다.
+  //     `_cell` = id → 가운데 칸 [bx, by] · 칸이 수가 아니면(종전 Set 도 'NaN' 열쇠라 수인 칸은 안 막았다) 안 센다 · 건물이 객체가 아니거나 범위 밖이면 `_ccBad`(종전 Set 길).
+  function _t1453Ck(cx, cy) { return (cx + 16384) * 32768 + (cy + 16384); }   // 칸 열쇠(작은 정수) — |cx| · |cy| < 16,384
+  class _T1446BldMap extends Map {
+    constructor() { super(); this._ix = new Map(); this._at = new Map(); this._seq = 0; this._bad = false; this._cc = null; this._cell = null; this._ccOx = 0; this._ccOy = 0; this._ccBad = false; }
+    _ccBuild(ox, oy) {
+      this._cc = new Map(); this._cell = new Map(); this._ccOx = ox; this._ccOy = oy; this._ccBad = false;
+      for (const [id, b] of super.entries()) this._ccAdd(id, b);
+    }
+    _ccBump(bx, by, d) {
+      for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
+        const k = _t1453Ck(bx + i, by + j), n = (this._cc.get(k) || 0) + d;
+        if (n > 0) this._cc.set(k, n); else this._cc.delete(k);
+      }
+    }
+    _ccAdd(id, b) {
+      if (!this._cc) return;
+      this._ccDel(id);
+      if (b == null) { this._ccBad = true; return; }
+      const bx = Math.floor((this._ccOx + b.x) / 32), by = Math.floor((this._ccOy + b.y) / 32);   // 종전 `_natBlocked` 와 같은 식
+      if (!Number.isFinite(bx) || !Number.isFinite(by)) return;
+      if (!(bx > -16380 && bx < 16380 && by > -16380 && by < 16380)) { this._ccBad = true; return; }
+      this._cell.set(id, [bx, by]); this._ccBump(bx, by, 1);
+    }
+    _ccDel(id) {
+      if (!this._cc) return;
+      const o = this._cell.get(id);
+      if (o) { this._cell.delete(id); this._ccBump(o[0], o[1], -1); }
+    }
+    //   월드 칸 (acx, acy) 가 어느 건물의 3×3 안인가(종전 Set 의 건물 몫과 같은 답 · 칸 하나)
+    _near(acx, acy) { return acx > -16384 && acx < 16384 && acy > -16384 && acy < 16384 && this._cc.has(_t1453Ck(acx, acy)); }
+    set(id, b) {
+      this._ccAdd(id, b);
+      if (!this._bad) {
+        const P = T1446_BOX * 32, bx = Math.floor((b ? b.x : NaN) / P), by = Math.floor((b ? b.y : NaN) / P);
+        const bk = (bx >= -512 && bx < 512 && by >= -512 && by < 512) ? _t1446Bk(bx, by) : _t1446Odd;
+        const ok = this._at.get(id);
+        if (ok === undefined) {
+          if (super.has(id)) this._bad = true;
+          else { let B = this._ix.get(bk); if (!B) this._ix.set(bk, (B = { s: [], b: [], id: [] })); B.s.push(++this._seq); B.b.push(b); B.id.push(id); this._at.set(id, bk); }
+        } else {
+          const O = this._ix.get(ok), i = O ? O.id.indexOf(id) : -1;
+          if (i < 0) this._bad = true;
+          else if (ok === bk) O.b[i] = b;                // 같은 상자 — 그 자리 그대로(종전 Map 도 있던 키는 자리 그대로)
+          else {                                         // 다른 상자로 — seq 그대로, 새 상자 안 seq 차례 자리에
+            const sq = O.s[i]; O.s.splice(i, 1); O.b.splice(i, 1); O.id.splice(i, 1); if (!O.s.length) this._ix.delete(ok);
+            let B = this._ix.get(bk); if (!B) this._ix.set(bk, (B = { s: [], b: [], id: [] }));
+            let j = B.s.length; while (j > 0 && B.s[j - 1] > sq) j--;
+            B.s.splice(j, 0, sq); B.b.splice(j, 0, b); B.id.splice(j, 0, id); this._at.set(id, bk);
+          }
+        }
+      }
+      return super.set(id, b);
+    }
+    delete(id) {
+      this._ccDel(id);
+      if (!this._bad) {
+        const ok = this._at.get(id);
+        if (ok !== undefined) {
+          const O = this._ix.get(ok), i = O ? O.id.indexOf(id) : -1;
+          if (i < 0) this._bad = true;
+          else { O.s.splice(i, 1); O.b.splice(i, 1); O.id.splice(i, 1); if (!O.s.length) this._ix.delete(ok); this._at.delete(id); }
+        } else if (super.has(id)) this._bad = true;
+      }
+      return super.delete(id);
+    }
+    clear() { this._ix.clear(); this._at.clear(); this._bad = false; this._cc = null; this._cell = null; this._ccBad = false; return super.clear(); }
+  }
+  function _t1446NewRoads() { return T1446_ON ? new _T1446CellMap() : new Map(); }
+  function _t1446NewBlds() { return T1446_ON ? new _T1446BldMap() : new Map(); }
+  //   그리는 길이 색인을 쓰나 — 켬이고 색인 갈래이고 어긋남이 없을 때만(아니면 종전 고리)
+  function _t1446Use(m) { return T1446_ON && !!m && !!m._ix && !m._bad; }
+  // ★★[T1453 2026-11-23 · ★재민 11-22 "핑이 너무 심한데..?" · 판정 68] **자연물 막음을 칸으로 묻는다** — 손잡이 `T1453_NAT_QUERY`(켬 기본 · 끔 = 종전 글자).
+  //   종전 `_natBlocked`(11-r1-mountain): 길 · 건물 수 서명이 바뀔 때마다 존 전체 길(라이브 456,479칸) + 건물 3×3 을 글자 Set 으로 통째로 다시 굽고
+  //   (WebKit 248 ms · Chromium 166 ms 한 판 — T1446 §5), 소품 하나 물을 때마다 서명 글자를 새로 지었다.
+  //   켬: 그 Set 대신 T1446 색인에 그 칸을 묻는다 — 길 = 상자 자리표 한 칸(`_has`) · 건물 3×3 = 칸 셈표 아홉 칸(`_near`). 다시 굽기 0 · 서명 0.
+  //     ⓐ 같은 뜻 — 종전 Set 열쇠는 길 = (round(ox/32) + 칸) · 건물 = floor((ox + b.x)/32) ± 1 이다. 같은 식을 그대로 쓴다(길은 거꾸로 빼고 · 건물은 같은 식으로 센다).
+  //        색인 없는 목록(T1446 끔) · 어긋남(`_bad`) · 칸 범위 밖 · 자리가 수가 아닌 물음은 null — 부른 쪽이 종전 Set 길로 간다(같음이 먼저).
+  //     ⓑ 종전 Set 은 수 서명이 안 바뀌면(같은 수만큼 생기고 사라진 판) 옛 길을 그대로 썼다 — 켬은 늘 지금 길을 본다(그 판만 다르다 · 보고 T1453).
+  //   주소 `?T1453_NAT_QUERY=0`(짧게 `?t1453n=0`) = 끔 · 시험 손잡이 `__t1453.setNat(false|true)`(99-main).
+  const _t1453Q = (() => { try { const q = new URLSearchParams(location.search); const v = q.has('T1453_NAT_QUERY') ? q.get('T1453_NAT_QUERY') : q.get('t1453n');
+    return v === '0' ? false : v === '1' ? true : null; } catch (e) { return null; } })();
+  let T1453_NAT_ON = _t1453Q !== false;
+  let _t1453NatN = 0;                               // 물은 칸 수(누적 · `__t1453.stat()`)
+  function _t1453NatCells(ax, ay) {   // true = 길 칸이거나 건물 3×3 안 · false = 아님 · null = 못 묻는다(종전 Set 길)
+    const acx = Math.floor(ax / 32), acy = Math.floor(ay / 32);
+    if (!Number.isFinite(acx) || !Number.isFinite(acy)) return null;
+    let hit = false;
+    for (const c of conns.values()) {
+      if (!c.meta) continue;
+      const ox = c.meta.worldOffsetX, oy = c.meta.worldOffsetY || 0;
+      if (!Number.isFinite(ox) || !Number.isFinite(oy)) return null;
+      const R = c.roads, B = c.buildings;
+      if (R && R.size && !(R._ix && !R._bad)) return null;
+      if (B && B.size) {
+        if (!B._ix) return null;
+        if (!B._cc || B._ccOx !== ox || B._ccOy !== oy) B._ccBuild(ox, oy);   // 존마다 처음 한 번(건물 수 × 아홉)
+        if (B._ccBad) return null;
+      }
+      if (hit) continue;
+      //   길 — 종전 열쇠 (round(ox/32) + cx) 를 거꾸로: 로컬 칸 = 월드 칸 − round(ox/32)
+      if (R && R.size && R._has(acx - Math.round(ox / 32), acy - Math.round(oy / 32))) hit = true;
+      else if (B && B.size && B._near(acx, acy)) hit = true;
+    }
+    _t1453NatN++;
+    return hit;
+  }
+  // 화면 상자 안 길 — 칸 가운데(ax = ox + cx·32 + 16)가 화면 상자 안인 칸(**종전 컬링 식 그대로**: `Math.abs(ax − wcx) > R` 면 버린다)을
+  //   **넣은 차례**로 `_t1446RQ` 에 담는다. 훑는 상자는 화면 상자 ± 1px(부동소수 여유)에 걸친 것만 · 넘치면 null(부른 쪽이 종전 고리).
+  const _t1446RQ = { n: 0, cx: new Int32Array(1 << 14), cy: new Int32Array(1 << 14), lv: new Int8Array(1 << 14), sk: new Float64Array(1 << 14) };
+  function _t1446Cells(m, ox, oy, wcx, wcy, R) {
+    const Q = _t1446RQ, P = T1446_BOX * 32, CAP = 1 << 14;
+    const bx0 = Math.max(-512, Math.floor((wcx - R - ox - 17) / P)), bx1 = Math.min(511, Math.floor((wcx + R - ox - 15) / P));
+    const by0 = Math.max(-512, Math.floor((wcy - R - oy - 17) / P)), by1 = Math.min(511, Math.floor((wcy + R - oy - 15) / P));
+    let n = 0;
+    for (let bx = bx0; bx <= bx1; bx++) {
+      const cx0 = bx * T1446_BOX;
+      for (let by = by0; by <= by1; by++) {
+        const B = m._ix.get(_t1446Bk(bx, by)); if (!B) continue;
+        const cy0 = by * T1446_BOX, K = B.k, S = B.s;
+        for (let i = 0; i < K.length; i++) {
+          const cx = cx0 + (K[i] >> 5), cy = cy0 + (K[i] & 31);
+          const ax = ox + cx * 32 + 16, ay = oy + cy * 32 + 16;
+          if (Math.abs(ax - wcx) > R || Math.abs(ay - wcy) > R) continue;
+          if (n >= CAP) return null;
+          const sv = S[i], lv = sv % 8;
+          Q.cx[n] = cx; Q.cy[n] = cy; Q.lv[n] = lv; Q.sk[n] = ((sv - lv) / 8) * CAP + n; n++;
+        }
+      }
+    }
+    Q.sk.subarray(0, n).sort();
+    Q.n = n; return Q;
+  }
+  // 화면 상자 안 건물 — 자리(ox + b.x, oy + b.y)가 [x0, x1] × [y0, y1](여유 `T1446_BPAD` 는 부른 쪽이 넣는다)에 든 건물 + 늘 꺼내는 상자를 **넣은 차례**로
+  //   (종전 고리 몸통이 그대로 컬링 · 움집 렉트 · 실내 NPC 가림을 한다 · 넘치면 null = 종전 고리).
+  const _t1446BS = new Float64Array(1 << 16), _t1446BC = [], _t1446BQ = [];
+  function _t1446Blds(m, ox, oy, x0, x1, y0, y1) {
+    const P = T1446_BOX * 32, CAP = 1 << 16, C = _t1446BC; C.length = 0;
+    const bx0 = Math.max(-512, Math.floor((x0 - ox) / P)), bx1 = Math.min(511, Math.floor((x1 - ox) / P));
+    const by0 = Math.max(-512, Math.floor((y0 - oy) / P)), by1 = Math.min(511, Math.floor((y1 - oy) / P));
+    let n = 0;
+    for (let bx = bx0; bx <= bx1; bx++) for (let by = by0; by <= by1; by++) {
+      const B = m._ix.get(_t1446Bk(bx, by)); if (!B) continue;
+      for (let i = 0; i < B.s.length; i++) {
+        const b = B.b[i], ax = ox + b.x, ay = oy + b.y;
+        if (ax < x0 || ax > x1 || ay < y0 || ay > y1) continue;
+        if (n >= CAP) return null;
+        _t1446BS[n] = B.s[i] * CAP + n; C.push(b); n++;
+      }
+    }
+    const O = m._ix.get(_t1446Odd);
+    if (O) for (let i = 0; i < O.s.length; i++) { if (n >= CAP) return null; _t1446BS[n] = O.s[i] * CAP + n; C.push(O.b[i]); n++; }
+    const S = _t1446BS.subarray(0, n); S.sort();
+    const out = _t1446BQ; out.length = n;
+    for (let i = 0; i < n; i++) out[i] = C[S[i] % CAP];
+    C.length = 0;
+    return out;
+  }
+  // 시험 손잡이 몫(99-main 의 `__t1446` 가 부른다) — 다음 프레임의 정렬된 목록 서명(`cap`) · 목록 · 색인 크기(`stat`)
+  let _t1446CapReq = 0, _t1446CapOut = null;
+  function _t1446Sig(list) {
+    const out = [];
+    for (const it of list) out.push(it.kind + '|' + it.wx + '|' + it.wy + '|' + it.z + '|' + (it.lv === undefined ? '' : it.lv) + '|' + (it.b ? it.b.id : '')
+      + '|' + (it.key === undefined ? '' : it.key) + '|' + (it.cellN === undefined ? '' : it.cellN) + '|' + (it.pid === undefined ? '' : it.pid));
+    return out;
+  }
+  function _t1446Stat() {
+    const out = [];
+    for (const [zid, c] of conns) {
+      const R = c.roads, B = c.buildings;
+      let rMax = 0, bMax = 0;
+      if (R && R._ix) for (const x of R._ix.values()) if (x.k.length > rMax) rMax = x.k.length;
+      if (B && B._ix) for (const x of B._ix.values()) if (x.s.length > bMax) bMax = x.s.length;
+      out.push({ zone: zid, ox: c.meta ? c.meta.worldOffsetX : null, oy: c.meta ? (c.meta.worldOffsetY || 0) : null,
+        roads: R ? R.size : 0, roadIx: !!(R && R._ix), roadBad: !!(R && R._bad), roadBoxes: R && R._ix ? R._ix.size : 0, roadBoxMax: rMax,
+        blds: B ? B.size : 0, bldIx: !!(B && B._ix), bldBad: !!(B && B._bad), bldBoxes: B && B._ix ? B._ix.size : 0, bldBoxMax: bMax,
+        bldOdd: B && B._ix && B._ix.get(_t1446Odd) ? B._ix.get(_t1446Odd).s.length : 0 });
+    }
+    return { on: T1446_ON, q: _t1446Q, conns: out };
+  }
+  //   색인이 목록을 그대로 비추나 — 길: 칸 · 등급 · 차례(seq 차례 = Map 차례) · 건물: id · 같은 건물 · 상자 · 차례(하네스 `__t1446.check()`)
+  function _t1446Check() {
+    const out = [];
+    for (const [zid, c] of conns) {
+      const R = c.roads, B = c.buildings;
+      if (R && R._ix && !R._bad) {
+        const all = [];
+        for (const [bk, X] of R._ix) { const bx = Math.floor(bk / 1024) - 512, by = (bk % 1024) - 512;
+          for (let i = 0; i < X.k.length; i++) all.push([(X.s[i] - X.s[i] % 8) / 8, bx * 32 + (X.k[i] >> 5), by * 32 + (X.k[i] & 31), X.s[i] % 8]); }
+        all.sort((a, b) => a[0] - b[0]);
+        let i = 0, why = all.length !== R.size ? `수 ${all.length} ≠ ${R.size}` : '';
+        if (!why) for (const [k, v] of R) { const e = all[i++]; if (k !== e[1] + ',' + e[2] || v !== e[3]) { why = `${i - 1}번째 ${k}=${v} ≠ ${e[1]},${e[2]}=${e[3]}`; break; } }
+        out.push({ zone: zid, list: 'roads', n: R.size, ok: !why, why });
+      }
+      if (B && B._ix && !B._bad) {
+        const all = [];
+        for (const [bk, X] of B._ix) for (let i = 0; i < X.s.length; i++) all.push([X.s[i], X.id[i], X.b[i], bk]);
+        all.sort((a, b) => a[0] - b[0]);
+        let i = 0, why = all.length !== B.size ? `수 ${all.length} ≠ ${B.size}` : '';
+        if (!why) for (const [id, b] of B) {
+          const e = all[i++], bx = Math.floor(b.x / 1024), by = Math.floor(b.y / 1024);
+          const bk = (bx >= -512 && bx < 512 && by >= -512 && by < 512) ? _t1446Bk(bx, by) : _t1446Odd;
+          if (id !== e[1] || b !== e[2] || bk !== e[3]) { why = `${i - 1}번째 ${id} ≠ ${e[1]}`; break; }
+        }
+        out.push({ zone: zid, list: 'buildings', n: B.size, ok: !why, why });
+      }
+    }
+    return out;
+  }
   function _hidpiDbg() {   // ★[T1193] 시험 손잡이 `window.__hidpiDbg()`(99-main 이 건다) — 손잡이 · 화면 배율 · 뒤판 · CSS 크기 · 뒤판 넓이
     return { on: HIDPI > 1, d: HIDPI, want: _t1193Want(), q: _t1193Q, dpr: window.devicePixelRatio, back: [canvas.width, canvas.height], css: [W0, H0],
              mpx: +((canvas.width * canvas.height) / 1e6).toFixed(2), nn: _t1193NN };
@@ -644,8 +941,11 @@ function cropSprite(stage, crop) {
   window.__frameCapture = (sec = 60, opt) => new Promise((resolve) => {
     if (window.__fcOn) { console.warn('[frame] 이미 도는 중'); resolve(null); return; }
     const L = [['tile', '_tileAcc'], ['water', '_waterAcc'], ['mt', '_mtAcc'], ['nat', '_natAcc'], ['ent', '_entAcc'], ['hud', '_hudAcc']];
+    //   ★[T1446] "그 밖 렌더" 쪼갬 — 길 훑기 · 건물 훑기 · 그 밖 목록(모으기의 나머지) · 방·지붕 · 정렬 · 그리기 앞(자연물 그림 · 원경 · 안개 판 얹기) · 안개(시야 다각형 · 본 칸) ·
+    //     몸 뒤(안개 밖 나머지 — 말풍선 · 화살 · 날씨 · 밤 · 화살표) · 개울. `34-m-renderloop` 가 `__fcOn` 일 때만 쌓는다(끄면 종전 그대로).
+    const L2 = [['rd', '_rdAcc'], ['bd', '_bdAcc'], ['ls', '_lsAcc'], ['rm', '_rmAcc'], ['so', '_soAcc'], ['pre', '_preAcc'], ['fog', '_fogAcc'], ['post', '_postAcc'], ['strm', '_strmAcc']];
     const PM = (typeof performance !== 'undefined' && performance.memory) ? performance.memory : null;   // 크롬만 — Safari 는 없다(GC 추정 칸이 null)
-    const snap = () => { const o = { r: window.__fcRenderMs, m: window.__fcMsgMs, mn: window.__fcMsgN, heap: PM ? PM.usedJSHeapSize : null }; for (const [k, g] of L) o[k] = +(window[g] || 0); return o; };
+    const snap = () => { const o = { r: window.__fcRenderMs, m: window.__fcMsgMs, mn: window.__fcMsgN, heap: PM ? PM.usedJSHeapSize : null }; for (const [k, g] of L) o[k] = +(window[g] || 0); for (const [k, g] of L2) o[k] = +(window[g] || 0); return o; };
     window.__fcRenderMs = 0; window.__fcMsgMs = 0; window.__fcMsgN = 0; window.__fcPong = []; window.__fcTick = []; window.__fcOn = true;
     const frames = [], hid = [];
     const onVis = () => hid.push({ t: performance.now(), hidden: document.hidden });
@@ -678,7 +978,9 @@ function cropSprite(stage, crop) {
         view: [innerWidth, innerHeight], zoom: typeof ZOOM !== 'undefined' ? ZOOM : null, zone: typeof primaryZoneId !== 'undefined' ? primaryZoneId : null, hidden: hid,
         frames: { n: frames.length, fps: +(frames.length / sec).toFixed(1), p50: q(dts, 0.5), p95: q(dts, 0.95), p99: q(dts, 0.99), max: q(dts, 1),
           long50: longF.length, long100: frames.filter((f) => f.dt > 100).length,
-          sum: { dt: sumK('dt'), render: sumK('r'), msg: sumK('m'), tile: sumK('tile'), water: sumK('water'), mt: sumK('mt'), nat: sumK('nat'), ent: sumK('ent'), hud: sumK('hud') } },
+          sum: { dt: sumK('dt'), render: sumK('r'), msg: sumK('m'), tile: sumK('tile'), water: sumK('water'), mt: sumK('mt'), nat: sumK('nat'), ent: sumK('ent'), hud: sumK('hud'),
+                 ...Object.fromEntries(L2.map(([k]) => [k, sumK(k)])) },   // ★[T1446] 쪼갠 층
+          per: Object.fromEntries(['r', 'tile', 'water', 'mt', 'nat', 'ent', ...L2.map(([k]) => k)].map((k) => [k, q(frames.map((f) => f[k] || 0), 0.5)])) },   // ★[T1446] 층마다 프레임당 중앙값(ms)
         //   ★[T913] GC 추정 — 힙(크롬 `performance.memory`)이 앞 판보다 **줄어든** 판 = 그 사이 GC 가 돈 판. 그 판들의 브라우저 몫(dt − render − msg − hud)을 더한다.
         heap: PM ? (() => { const g = frames.filter((f) => f.gc); return { gcFrames: g.length, gcOther: +g.reduce((a, f) => a + Math.max(0, f.dt - f.r - f.m - f.hud), 0).toFixed(1), gcLong50: g.filter((f) => f.dt > 50).length }; })() : null,
         //   ★[T913] 받은 틱 — 받아 처리한 간격(클라 시계) · 서버가 보낸 간격(서버 시계 `t`)
@@ -689,7 +991,8 @@ function cropSprite(stage, crop) {
           return { n: ticks.length, rcv: { p50: q(rcv, 0.5), p95: q(rcv, 0.95), max: q(rcv, 1), spikes: late(rcv, rM).length, lateMs: lateMs(rcv, rM) },
                    srv: { p50: q(srv, 0.5), p95: q(srv, 0.95), max: q(srv, 1), spikes: late(srv, sM).length, lateMs: lateMs(srv, sM) } }; })(),
         longFrames: longF.map((f) => ({ t: +(f.t - t0).toFixed(0), dt: +f.dt.toFixed(1), render: +f.r.toFixed(1), msg: +f.m.toFixed(1), msgN: f.mn,
-          tile: +f.tile.toFixed(1), water: +f.water.toFixed(1), mt: +f.mt.toFixed(1), nat: +f.nat.toFixed(1), ent: +f.ent.toFixed(1), hud: +f.hud.toFixed(1), gc: f.gc ? 1 : 0, other: +(f.dt - f.r - f.m).toFixed(1) })),
+          tile: +f.tile.toFixed(1), water: +f.water.toFixed(1), mt: +f.mt.toFixed(1), nat: +f.nat.toFixed(1), ent: +f.ent.toFixed(1), hud: +f.hud.toFixed(1), gc: f.gc ? 1 : 0, other: +(f.dt - f.r - f.m).toFixed(1),
+          ...Object.fromEntries(L2.map(([k]) => [k, +(f[k] || 0).toFixed(1)])) })),   // ★[T1446] 쪼갠 층
         pong: { n: pong.length, split: pong.filter((p) => typeof p.srv === 'number').length, rtt: { p50: q(rtts, 0.5), p95: q(rtts, 0.95), max: q(rtts, 1) },
           net: { p50: q(pong.filter((p) => typeof p.net === 'number').map((p) => p.net), 0.5), p95: q(pong.filter((p) => typeof p.net === 'number').map((p) => p.net), 0.95) },
           srv: { p50: q(pong.filter((p) => typeof p.srv === 'number').map((p) => p.srv), 0.5), p95: q(pong.filter((p) => typeof p.srv === 'number').map((p) => p.srv), 0.95),
@@ -714,6 +1017,7 @@ function cropSprite(stage, crop) {
       const s = snap();
       if (prevT != null) frames.push({ t: ts, dt: ts - prevT, r: s.r - prev.r, m: s.m - prev.m, mn: s.mn - prev.mn, tile: s.tile - prev.tile, water: s.water - prev.water, mt: s.mt - prev.mt, nat: s.nat - prev.nat,
         ent: s.ent - prev.ent, hud: s.hud - prev.hud, gc: s.heap != null && prev.heap != null && s.heap < prev.heap });
+      if (prevT != null) { const f = frames[frames.length - 1]; for (const [k] of L2) f[k] = s[k] - prev[k]; }   // ★[T1446] 쪼갠 층
       prevT = ts; prev = s;
       if (ts - t0 < sec * 1000) requestAnimationFrame(step); else finish();
     };
@@ -782,6 +1086,11 @@ function cropSprite(stage, crop) {
       const pct = (x, d) => +(100 * x / d).toFixed(1);
       const table = rows.map(([k, v]) => ({ '층': k, '합 ms': +v.toFixed(0), '프레임당 ms': +(v / Math.max(1, F.frames.n)).toFixed(2), '몫 %': pct(v, dt),
         '긴 프레임 몫 %': LF.length ? pct(lrow[k], ldt) : null }));
+      //   ★[T1446] "그 밖 렌더" 쪼갬 — 프레임당 ms(합 ÷ 판 수) · 그 밖 렌더 안 몫 % · 나머지 = 그 밖 렌더 − 쪼갠 층 합(머리 · 훅 · 지면 앞 일)
+      const SPL = [['길 훑기', 'rd'], ['건물 훑기', 'bd'], ['그 밖 목록', 'ls'], ['방·지붕', 'rm'], ['정렬', 'so'], ['그리기 앞', 'pre'], ['안개', 'fog'], ['몸 뒤', 'post'], ['개울', 'strm']];
+      const spSum = SPL.reduce((a, [, k]) => a + (S[k] || 0), 0), fN = Math.max(1, F.frames.n);
+      const split = SPL.map(([name, k]) => ({ '층': name, '합 ms': +(S[k] || 0).toFixed(0), '프레임당 ms': +((S[k] || 0) / fN).toFixed(2), '그 밖 렌더 안 %': restR > 0 ? pct(S[k] || 0, restR) : null }))
+        .concat([{ '층': '나머지', '합 ms': +Math.max(0, restR - spSum).toFixed(0), '프레임당 ms': +(Math.max(0, restR - spSum) / fN).toFixed(2), '그 밖 렌더 안 %': restR > 0 ? pct(Math.max(0, restR - spSum), restR) : null }]);
       const V = F.verdict, T = F.ticks;
       const ev = { '서버': +(T.srv.lateMs || 0).toFixed(0), '클라': +LF.reduce((a, f) => a + (f.dt - 16.7), 0).toFixed(0),
                    '망': +F.spikes.filter((x) => x.who === '망').reduce((a, x) => a + (x.net || 0), 0).toFixed(0) };
@@ -803,13 +1112,15 @@ function cropSprite(stage, crop) {
         `판정: ${verdict}`,
         `프레임: ${F.frames.n}판 · ${F.frames.fps}fps · p50 ${F.frames.p50} · p95 ${F.frames.p95} · max ${F.frames.max}ms · >50ms ${F.frames.long50} · >100ms ${F.frames.long100}`,
         `층(합 ms · 몫 %): ` + table.map((r) => `${r['층']} ${r['합 ms']}(${r['몫 %']}%)`).join(' · '),
+        `그 밖 렌더 쪼갬(프레임당 ms · 그 밖 렌더 안 %): ` + split.map((r) => `${r['층']} ${r['프레임당 ms']}(${r['그 밖 렌더 안 %']}%)`).join(' · ')
+          + (typeof T1446_ON !== 'undefined' ? ` · 화면 색인 ${T1446_ON ? '켬' : '끔'}` : ''),   // ★[T1446] 길 훑기 · 건물 훑기가 이 줄에 보인다
         LF.length ? `긴 프레임(>50ms ${LF.length}판)만 몫 %: ` + table.map((r) => `${r['층']} ${r['긴 프레임 몫 %']}`).join(' · ') : `긴 프레임(>50ms) 0`,
         H ? `GC 추정(힙이 준 판): ${H.gcFrames}판 · 그 판 브라우저 몫 ${H.gcOther}ms · 그중 긴 프레임 ${H.gcLong50}` : `GC 추정: 이 브라우저는 힙을 안 알려 준다(Safari) — 브라우저 몫에 들어 있다`,
         `틱: 받음 ${T.n}개 · 간격 p50 ${T.rcv.p50} · p95 ${T.rcv.p95} · max ${T.rcv.max}ms · 늦음 ${T.rcv.spikes} | 서버 보냄 간격 p50 ${T.srv.p50} · p95 ${T.srv.p95} · max ${T.srv.max}ms · 늦음 ${T.srv.spikes}`,
         `핑: ${F.pong.n}개 · p50 ${F.pong.rtt.p50} · p95 ${F.pong.rtt.p95} · max ${F.pong.rtt.max}ms · 몫 중앙 클라 ${F.parts.clientBlock.p50} · 서버 ${F.parts.server.p50} · 망 ${F.parts.net.p50}`,
         MEM.text,   // ★[T926] 힙 · 캐시 한 줄
       ].join('\n');
-      const res = { verdict, main: quiet ? null : main, evidence: ev, table, text: txt, frame: F, mem: MEM.val };
+      const res = { verdict, main: quiet ? null : main, evidence: ev, table, split, text: txt, frame: F, mem: MEM.val };   // ★[T1446] split = 그 밖 렌더 쪼갬
       window.__lagReportText = txt; window.__lagReportResult = res;
       console.table(table);
       console.log(txt);

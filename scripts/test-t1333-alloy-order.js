@@ -42,8 +42,8 @@ if (ARM) {
       nobronze: ['sim/economy-sim.js', '  if (bronze && !(best.bronzeness > 0)) return 0;', ''],   // 청동 아닌 배합(구리 + 은)을 보고도 구리를 부른다
       thinfree: ['sim/economy-sim.js', '  if (!_weaponThin(v)) return false;   // 곳간에 무기가 쌓였으면', '  if (false) return false;   // 곳간에 무기가 쌓였으면'],   // 과잉 방지 없이 붓는다
       oppall: ['sim/economy-sim-v2.js', '  world.netExportFn = (v, res) => ((v1.T1333_ALLOY_ORDER && !_t1333CanExport(v, res)) ? 0 : netExportValue(world, v, res));', '  world.netExportFn = (v, res) => netExportValue(world, v, res);'],   // 못 파는 재화도 순수출가를 기회비용으로
-      addflow: ['sim/economy-sim-v2.js', 'target = _fishTarget(v,r,Math.max(subs * 30, buffer, flowT, derivT) + buildT);\n    // ★식량 다양성',
-        'target = _fishTarget(v,r,Math.max(subs * 30, buffer, flowT, derivT) + buildT + (v1.T1333_ALLOY_ORDER && derivT > 0 ? flowT : 0));\n    // ★식량 다양성'],
+      addflow: ['sim/economy-sim-v2.js', "target = _fishTarget(v,r,Math.max(subs * _t1419Sub(v, r, 'ref'), buffer, flowT, derivT) + buildT);\n    // ★식량 다양성",
+        "target = _fishTarget(v,r,Math.max(subs * _t1419Sub(v, r, 'ref'), buffer, flowT, derivT) + buildT + (v1.T1333_ALLOY_ORDER && derivT > 0 ? flowT : 0));\n    // ★식량 다양성"],
       market: ['sim/economy-sim.js', "  const basePrice = (k) => (BASE_VALUE[k] > 0 ? BASE_VALUE[k] : 1);\n  const best = _meltSearch(stHypo, basePrice);", '  const basePrice = (k) => ((v._priceCache && v._priceCache[k] > 0) ? v._priceCache[k] : (BASE_VALUE[k] > 0 ? BASE_VALUE[k] : 1));\n  const best = _meltSearch(stHypo, basePrice);'],   // 그날 값표(시장가)로 문을 본다
       expfree: ['sim/economy-sim.js', '  return !!(best && best.score > 0);\n}', '  return !!best;\n}'],
       wsall: ['sim/economy-sim.js', "function t1333WsFree(r) { return !!(T1333_WS_INPUT && (r === 'ore' || OreGoods.isOre(r) || _MELT_METALS.includes(r))); }", 'function t1333WsFree(r) { return !!T1333_WS_INPUT; }'],   // 모든 재화를 상한 밖으로

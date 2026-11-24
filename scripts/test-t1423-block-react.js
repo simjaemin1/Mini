@@ -35,7 +35,7 @@ const BAITS = {
   noGate: { file: ZFILE, at: ["const T1423_NO_BUILD = process.env.T1423_NO_BUILD === '1';", "const T1423_NO_BUILD = false && process.env.T1423_NO_BUILD === '1';   // 미끼 ㉠ — 지형 문을 뺀다"] },
   allFence: { file: VFILE, at: ['const cut = !rp, ratio = cut ? null : (oldLen > 0 ? newLen / oldLen : 1), block = cut || ratio > T1423_RATIO;', 'const cut = !rp, ratio = cut ? null : (oldLen > 0 ? newLen / oldLen : 1), block = true;   // 미끼 ㉡ — 모든 울타리에 반응한다'] },
   afar: { file: VFILE, at: ['const _t1423A = _t1423h ? _t1423Ahead(body, body.prog, Math.min(body.len, body.prog + CARAVAN_REPAIR_LOOKAHEAD_PX)) : null;', 'const _t1423A = _t1423h ? _t1423Ahead(body, body.prog, body.len) : null;   // 미끼 ㉢ — 길 전체를 안다(멀리서 저절로)'] },
-  instant: { file: VFILE, at: ['if (!alive.every((pid) => _t1423Arrived(state.bodyExits && state.bodyExits.get(pid)))) continue;', 'if (false) continue;   // 미끼 ㉣ — 닿기를 안 기다린다(순간 삭제)'] },
+  instant: { file: VFILE, at: ['if (!alive.every((pid) => _t1423Arrived(state.bodyExits && state.bodyExits.get(pid)))) continue;\n      job.arriveDay = d; S.arrive++; job.hit = [];', 'if (false) continue;   // 미끼 ㉣ — 닿기를 안 기다린다(순간 삭제)\n      job.arriveDay = d; S.arrive++; job.hit = [];'] },   // ★[T1447] 자리 글자를 다음 줄까지 늘렸다 — T1447 토벌 사다리가 같은 걷기 문 줄을 쓴다(뜻 무변)
 };
 function baitHook(name) {
   const bait = name && name !== '-' ? BAITS[name] : null; if (!bait) return;
@@ -230,7 +230,7 @@ let pass = 0, fail = 0;
 const ok = (c, name, info) => { if (c) pass++; else fail++; console.log(`${c ? '  ✓' : '  ✗'} ${name}${info ? ' — ' + info : ''}`); };
 const run = (mode, bait, env) => {
   const r = spawnSync(process.execPath, ['--experimental-sqlite', __filename, mode, bait || '-'], { cwd: ROOT, encoding: 'utf8', timeout: 300000, maxBuffer: 64 << 20,
-    env: Object.assign({}, process.env, { T1423_NO_BUILD: '', T1423_BLOCK_REACT: '', T1423_REACT_MEET: '' }, env || {}) });
+    env: Object.assign({}, process.env, { T1423_NO_BUILD: '', T1423_BLOCK_REACT: '', T1423_REACT_MEET: '', T1305_DEEDS: '0' /* [land1093 · PM] deeds-on-bots(T1458)가 사유지 켬 기본으로 바꿨다 — 이 하네스는 종전 기본(한 칸 선포 문)에서 잰다 */ }, env || {}) });
   const line = (r.stdout || '').split('\n').find((l) => l.startsWith('@@'));
   if (!line) return { err: `rc ${r.status} · ${String(r.stderr || '').slice(-600)}` };
   return JSON.parse(line.slice(2));

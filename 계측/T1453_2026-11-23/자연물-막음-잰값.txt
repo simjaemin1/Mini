@@ -1,0 +1,3 @@
+zone 기동 (1438ms · 아이가 제 입으로 말했다) boot 1726 ms
+chromium entered true {"reb":247.6000000005588,"cc":2.1000000005587935,"offMs":0.0914,"onMs":0.1063,"asked":215,"chk":{"n":3000,"diff":0,"hitOld":2187,"hitNew":2187,"nullN":0,"bad":[]},"chunkMs":0.075,"viewChunks":156,"propsA":131,"propsB":131,"same":true,"stat":{"nat":true,"asked":734120,"oldSet":458254,"cc":[6689]},"dbg":{"props":131,"fringe":0}} errs []
+webkit entered true {"reb":355,"cc":4,"offMs":0.1875,"onMs":0.0859,"asked":215,"chk":{"n":3000,"diff":0,"hitOld":2187,"hitNew":2187,"nullN":0,"bad":[]},"chunkMs":0.082,"viewChunks":156,"propsA":131,"propsB":131,"same":true,"stat":{"nat":true,"asked":731049,"oldSet":458254,"cc":[6689]},"dbg":{"props":131,"fringe":0}} errs []

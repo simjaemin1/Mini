@@ -1,0 +1,446 @@
+# 만진 함수 → 하네스 (touched-harness · base c73f5cbb · 갈림점 c73f5cbb2)
+· 바뀐 코드 파일 5 · 이름 40(물린 것 30 · 흔한 이름 뺌 0) · 바뀐 하네스 2 · 규약 다섯 · **돌릴 하네스 78**(@regress 아님 3: test-physical-forage-plan.js test-stone-consumption-flow.js test-stone-independent-budget.js)
+  server/villages.js: _lifeHeadlessDay _t1276Stand _t1374Next _t1452Fb _t1452Sow
+  sim/economy-engine.browser.js: T1419_FOOD_NEED T1452_AHEAD T1452_AT T1452_LEDGER T1452_READS T1452_SHADOW T1452_YEAR _T1452_CAP _t1419FlowAt _t1419Mul _t1419Parts _t1452Buf _t1452Cv _t1452In _t1452Ix _t1452Nf _t1452Now _t1452Pred _t1452St foodNeedDays houseDayBuild pickDeficitJob_rational t1419Days t1421YearFood t1437Read t1452Ahead t1452Day t1452Eat t1452Read t1452Rot t1452Slack t1452Stat tickDecay tickVillage
+  sim/economy-sim-v2.js: tickDecay
+  sim/economy-sim.js: T1419_FOOD_NEED T1452_AHEAD T1452_AT T1452_LEDGER T1452_READS T1452_SHADOW T1452_YEAR _T1452_CAP _t1419FlowAt _t1419Mul _t1419Parts _t1452Buf _t1452Cv _t1452In _t1452Ix _t1452Nf _t1452Now _t1452Pred _t1452St foodNeedDays houseDayBuild pickDeficitJob_rational t1419Days t1421YearFood t1437Read t1452Ahead t1452Day t1452Eat t1452Read t1452Rot t1452Slack t1452Stat tickVillage
+  계측/T1452_2026-11-23/t1452hook.js: t1452hook
+· 이름 → 하네스 수: T1419_FOOD_NEED 3 · T1452_AHEAD 1 · T1452_AT 1 · T1452_LEDGER 2 · T1452_READS 1 · T1452_SHADOW 1 · T1452_YEAR 1 · _T1452_CAP 1 · _lifeHeadlessDay 9 · _t1276Stand 3 · _t1374Next 2 · _t1419FlowAt 1 · _t1452Ix 1 · _t1452Nf 1 · _t1452Sow 1 · foodNeedDays 3 · houseDayBuild 2 · pickDeficitJob_rational 5 · t1419Days 9 · t1421YearFood 2 · t1437Read 1 · t1452Ahead 1 · t1452Day 1 · t1452Eat 1 · t1452Read 1 · t1452Rot 1 · t1452Slack 1 · t1452Stat 1 · tickDecay 7 · tickVillage 47
+· 바뀐 하네스: test-t1437-food-buffer.js test-t1452-food-ahead.js
+· 돌릴 하네스: e2e-village.js test-armor-cap.js test-body-exit.js test-body-fields.js test-build-act.js test-coll-grid.js test-day-deaths.js test-draft-famine.js test-econ-fieldyield.js test-farm-act.js test-fish-act.js test-forage-act.js test-frontier-iron.js test-happy-converge.js test-harness-lint.js test-headless-parity.js test-hp-src.js test-lon-day.js test-no-shield.js test-one-decay.js test-one-target.js test-physical-forage-plan.js test-picker-tables.js test-psite-server.js test-seed-reserve.js test-smelt-return.js test-stone-consumption-flow.js test-stone-independent-budget.js test-stone-real.js test-t1046-wood-share.js test-t1054-decay-wood.js test-t1074-food-debt.js test-t1075-happy-eq.js test-t1113-low-happy.js test-t1148-fuel-job.js test-t1149-winter.js test-t1152-market.js test-t1159-home-n.js test-t1179-crop-season.js test-t1180-produce-defaults.js test-t1188-ore-split.js test-t1195-hunt-real.js test-t1197-meal-body.js test-t1198-birth-body.js test-t1205-happy.js test-t1206-natural-death.js test-t1212-farm-clock.js test-t1224-econ-farm.js test-t1226-job-flex.js test-t1238-terr-v2.js test-t1243-farm-on.js test-t1266-ore-body.js test-t1325-one-rot.js test-t1333-alloy-order.js test-t1336-crop-eq.js test-t1344-bronze-mix.js test-t1346-birth-flow.js test-t1373-home-cap.js test-t1374-farm-winter.js test-t1385-bronze-nocap.js test-t1388-farm-gap.js test-t1398-bronze-band.js test-t1404-bandit-live.js test-t1405-leave-rare.js test-t1407-tin-world.js test-t1408-farm-4000.js test-t1419-food-need.js test-t1421-farm-4000b.js test-t1437-food-buffer.js test-t1452-food-ahead.js test-t860-catch-dry.js test-t924-debt-cap.js test-t931-slotk-ema.js test-t958-house-real.js test-village-found.js test-war-world.js test-wood-flow.js test-wood-step1.js
+##### e2e-village.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+=== 마을 건립 실클라 E2E: 51 통과 / 0 실패 ✅ ===
+=== 마을 건립 실클라 E2E: 51 통과 / 0 실패 ✅ ===
+  [소요] 190초
+  ✓ RC=0
+##### test-armor-cap.js #####
+결과: PASS
+  [소요] 0초
+  ✓ RC=0
+##### test-body-exit.js #####
+=== 49건 중 PASS 49 · FAIL 0 ===
+  [소요] 0초
+  ✓ RC=0
+##### test-body-fields.js #####
+=== 14 통과 / 0 실패 ===
+  ✓ ★자명 통과 금지 — `??=` 꼴도 문다 · 읽기(`==`)는 안 문다  zone.js:20516 npc._t673Bait2
+  ✓ ★[T1140 ③-가] 자명 통과 금지 — 값 하나(`nextDecisionAt: 1`)를 바꾸면 문다
+  ✓ ⑳ 판정 칸 쓰기 자리를 다 셌다(자명 통과 아님)  전체 462 · 걸음 문 안 260 · 문 밖 202(표 내림 75 · 까닭 127)
+=== 14 통과 / 0 실패 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-build-act.js #####
+  ✓ ④ [전제] 판 안에서 집이 실제로 선다(0 이면 아래가 자명 통과다)  집 3·0·6
+  [소요] 4초
+  ✓ RC=0
+##### test-coll-grid.js #####
+=== 결과: 20 PASS / 0 FAIL ===
+  ✓ ② [전제 · 자명 통과 금지] 걸음이 **실제로 막힌다** · 옛 격자 질의의 셋에 하나 넘게에 **밭·마당이 섞였다**  막힘 10476/40000 · 밭 섞임 4525/10000
+=== 결과: 20 PASS / 0 FAIL ===
+  [소요] 13초
+  ✓ RC=0
+##### test-day-deaths.js #####
+  ✓ ⓑ ★자명 통과 금지 — 빈 날 옛 칸은 전날 값 그대로다(구멍이 정말 있다)  옛 칸 2
+  ✓ ⓔ [전제] 관찰기 파일을 실제로 훑었다(0 이면 아래가 자명 통과다)  209개
+  ✓ ⓔ 자명 통과 금지 — 옛 읽기 한 줄을 넣은 미끼는 문다(주석 줄은 안 문다)  1줄
+=== 13건 중 PASS 13 · FAIL 0 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-draft-famine.js #####
+15 통과 · 0 실패
+15 통과 · 0 실패
+  [소요] 10초
+  ✓ RC=0
+##### test-econ-fieldyield.js #####
+⑦ ★이 하네스가 실패할 줄 아는가
+=== 결과: 206 PASS / 0 FAIL ===
+  · [상황] 심을 수 없는 날(겨울)이 실제로 있다 — 자명 통과 금지  90일
+  ✓ ⑩ 그 날 수가 실제 달력 위에 앉는다(휴면 T99 를 통과한 값)
+  ✓ ㉑ [자명 통과 금지] 이 입력은 종전이라면 **실제로 버렸을** 입력이다  버림 145.0
+=== 결과: 206 PASS / 0 FAIL ===
+  [소요] 42초
+  ✓ RC=0
+##### test-farm-act.js #####
+=== 결과: 78 PASS / 0 FAIL ===
+  ✓ ② [자명 통과 금지] 작물 표 ↔ 앵커 비가 **1 이 아니다**(같은 수로 만든 항등이 아니다 — 그 차가 보고의 발견이다)  0.4484
+  ✓ ⑤ [자명 통과 금지] 끈 판은 헤드리스가 **밭을 실제로 돈다**(파종 30) · 존 술어에 **안 닿는다**(끈 팔 무변)  30건 · 술어 0회
+  ✓ ⑫ [전제 · 자명 통과 금지] 판이 실제로 벤다(일괄이 **나무를 쓰러뜨린다**) · 관측자를 세운 판은 새 술어로 **관측 마을**이다  일괄 36그루
+=== 결과: 78 PASS / 0 FAIL ===
+  [소요] 18초
+  ✓ RC=0
+##### test-fish-act.js #####
+=== 결과: 86 PASS / 0 FAIL ===
+  ✓ ⑨ ★★걸린 뒤에도 **셀 예산을 통과해야** 곳간에 든다(창이 예산을 못 늘린다)
+=== 결과: 86 PASS / 0 FAIL ===
+  [소요] 1초
+  ✓ RC=0
+##### test-forage-act.js #####
+=== 결과: 251 PASS / 0 FAIL ===
+  ✓ ⓔ ★미끼 — kcal 문 한 줄을 뺀 몸통은 **벌집을 넣는다**(ⓐ 가 빨갛다 · 자명 통과 아님) · 미끼 바꾼 자리 1  정본 berry_bush·herb·mushroom_patch·greens_patch · 미끼 berry_bush·herb·mushroom_patch·beehive·greens_patch
+  ✓ ⓔ [자명 통과 금지] `else` 를 지운 미끼(손이 하루에 두 번 든다)면 갈래 검사가 **문다** · 미끼 바꾼 자리 1  문다
+  ✓ ㉑ [전제 · 자명 통과 금지] 판이 한도에 걸린다 — 1짐 × 짐당 개체 × econ 2 < 군락 40 · 끔은 T561 칸이 안 선다  짐 1 · 짐당 13 · 한도 26 · 딴 26
+=== 결과: 251 PASS / 0 FAIL ===
+  [소요] 19초
+  ✓ RC=0
+##### test-frontier-iron.js #####
+=== 프런티어 철 하네스: 11 통과 / 0 실패 ✅ ===
+  ✓ ★플레이어 층은 본다 — oreProbAt = 0.53 (검사가 자명하게 통과하지 않는다)
+  ✓   시작 시점 소비 EMA 는 0 (검사가 자명하게 통과하지 않는다)
+=== 프런티어 철 하네스: 11 통과 / 0 실패 ✅ ===
+  [소요] 2초
+  ✓ RC=0
+##### test-happy-converge.js #####
+  ✓ ⑤-2 `=0` 은 다르다(되돌림 문이 산다 · 자명 통과 금지)
+=== T1134 수렴: 통과 20 · 실패 0 ===
+  [소요] 0초
+  ✓ RC=0
+##### test-harness-lint.js #####
+  ✗ ★★⑲b 새 `@regress` 하네스는 `// @bait <n>` 표지 · 미끼 판정 줄(`미끼` + `바꾼 자리`)이 꼭 n 개 — 미끼는 파일 안에  test-t1452-food-ahead.js(count 1/7)
+=== 102건 중 PASS 101 · FAIL 1 ===
+  ✓ ⑳ [전제] `@harness-only` 표지를 단 하네스가 실제로 있다(0 이면 아래가 자명 통과다)  test-ci-changes.js test-ci-list.js test-harness-bite.js test-notice-mark.js
+  ✓ ★⑳ 자명 통과 금지 — 제품 부름 셋은 물고 · 주석 · scripts 자리는 보낸다  req=hit,join=hit,rel=hit,cmt=none,scr=none
+  ✓ ★㉑ 자명 통과 금지 — 안 지우는 셋은 물고 · 지우는 넷은 보낸다  mk=hit,anon=hit,pidJson=hit,rm=none,lib=none,pidDb=none,own=none
+=== 102건 중 PASS 101 · FAIL 1 ===
+  [소요] 1236초
+  ✗ RC=1 · 결과줄 142개 → **실패로 센다**
+##### test-headless-parity.js #####
+결과: PASS
+  [소요] 0초
+  ✓ RC=0
+##### test-hp-src.js #####
+=== 54 통과 / 0 실패 ===
+  ✓ [상황] 세 파일을 실제로 읽었다(못 읽으면 아래가 자명 통과다)  zone 1259737 · net 109441 · wildlife 126076
+  ✓ ★⓪ 자명 통과 금지 — 직접 대입 한 줄을 되살리면 잡힌다
+  ✓ [상황] `server/villages.js` 를 실제로 읽었다(못 읽으면 아래가 자명 통과다)  villages 1541822
+=== 54 통과 / 0 실패 ===
+  [소요] 2초
+  ✓ RC=0
+##### test-lon-day.js #####
+=== 22건 중 PASS 22 · FAIL 0 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-no-shield.js #####
+=== 보호막 걷기 손잡이 하네스: 12 통과 / 0 실패 ✅ ===
+  ✓ 끔 — 보호막이 압력을 지운다(이 판이 정말 보호막을 부른다 · 자명 통과 금지)  지운 압력 합 67.74
+  ✓ 나이 1,000일 마을도 굶어 죽는다(같음이 "아무 일 없음"의 같음이 아니다 · 자명 통과 금지)  굶어 죽음 80
+  ✓ 플레이어 마을도 굶어 죽는다(같음이 "아무 일 없음"의 같음이 아니다 · 자명 통과 금지)  굶어 죽음 80
+=== 보호막 걷기 손잡이 하네스: 12 통과 / 0 실패 ✅ ===
+  [소요] 2초
+  ✓ RC=0
+##### test-one-decay.js #####
+=== 17 통과 / 0 실패 ===
+=== 17 통과 / 0 실패 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-one-target.js #####
+=== 결과: 24 PASS / 0 FAIL ===
+  ✓ ⓕ [자명 통과 금지] 정산 문을 뺀 사본은 켬에서도 정산 ≠ 결정 ⇒ ⓑ 가 빨개진다 · 미끼 바꾼 자리 1  1789/3228 칸
+=== 결과: 24 PASS / 0 FAIL ===
+  [소요] 22초
+  ✓ RC=0
+##### test-physical-forage-plan.js #####
+PASS physical forage plan survives without formula production
+  [소요] 0초
+  ✓ RC=0
+##### test-picker-tables.js #####
+결과: PASS
+  [소요] 0초
+  ✓ RC=0
+##### test-psite-server.js #####
+[⑨ ★실행 — 실서버에서 자리 확정이 실패하면 무엇이 사라지나]
+  ✓ ★★확정이 실패해도 **던지지 않는다** — 던지면 존 서버가 내려간다 
+  ✓ ⓒ-2 (전제) 그 마을에 **완공집이 있다** — 2채(0채면 아래가 0 === 0 자명 통과다)
+  ✓   [자명 통과 금지] 완공집을 한 채 더하면 명부가 정확히 정원만큼 늘어난다 — 상수를 실제로 곱한다
+  ✓   되돌림은 명시 `=0` 둘 — [자명 통과 금지] 그 판에 위 주장을 대면 거짓이다
+결과: PASS
+  [소요] 36초
+  ✓ RC=0
+##### test-seed-reserve.js #####
+=== 결과: 27 PASS / 0 FAIL ===
+  ✓ ⓖ 미끼 [자명 통과 금지] 비축이 서는 줄을 뺀 v1 사본 — 켬에서도 비축 없음 ⇒ ⓑ · ⓓ 가 빨개진다  바꾼 자리 1 · 비축 null
+  ✓ ⓖ 미끼 [자명 통과 금지] 발주 후보 자리를 종전 읽기로 되돌린 v2 사본 — 켬에서도 발주가 비축을 판다 ⇒ ⓓ 가 빨개진다  바꾼 자리 1 · 발주 침범 2 · 식 맞음 51/85
+=== 결과: 27 PASS / 0 FAIL ===
+  [소요] 10초
+  ✓ RC=0
+##### test-smelt-return.js #####
+  ✓ ⓒ ★자명 통과 금지 — 끔 판은 같은 자로 빨강: 나이 0명(꼬리가 안 돈다 · 종전 결함)  0/10
+=== 17건 중 PASS 17 · FAIL 0 ===
+  [소요] 0초
+  ✓ RC=0
+##### test-stone-consumption-flow.js #####
+PASS actual material consumption and recipe-based planning
+  [소요] 0초
+  ✓ RC=0
+##### test-stone-independent-budget.js #####
+PASS independent mineral budget and body-only host
+  [소요] 0초
+  ✓ RC=0
+##### test-stone-real.js #####
+  [소요] 13초
+  ✓ RC=0
+##### test-t1046-wood-share.js #####
+=== 12건 중 PASS 12 · FAIL 0 ===
+  [소요] 0초
+  ✓ RC=0
+##### test-t1054-decay-wood.js #####
+  ✓ ⓑ′ [자명 통과 금지] 원석을 남긴 미끼(`T1054_KEEP_ORE=1`) — 끔 판 목재가 집 줄 밖으로 준다(픽스처 비움이 문다)  끝 59.58
+=== 통과 18 · 실패 0 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-t1074-food-debt.js #####
+  ✓ ⑦ 대조 — 끔이면 같은 마을에 옛 굶주림 줄이 선다(위가 자명 통과가 아니다)  [-9.017,-8.713,-8.352,-7.963,-7.662]
+=== 18건 중 PASS 18 · FAIL 0 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-t1075-happy-eq.js #####
+  ✓ ④ 전제 — 빚 죽음이 난 날이 있다(아니면 아래가 자명 통과다)  419
+  ✓ ⑤ 대조 — 끔이면 불행 몫이 기근 고리 압력에 그대로 더해진다(위가 자명 통과가 아니다)
+=== 15건 중 PASS 15 · FAIL 0 ===
+  [소요] 2초
+  ✓ RC=0
+##### test-t1113-low-happy.js #####
+  ✓ ③-0 전제 — 하루 산출에 식량 · 식량 외가 둘 다 있다(아래가 자명 통과가 아니다)  {"nf":["hemp"],"fd":["food","wheat","rice","barley"]}
+  ✓ ⑤-2 [대조] 켬 판은 달라진다(자명 통과 금지)
+=== T1113: 통과 20 · 실패 0 ===
+  [소요] 0초
+  ✓ RC=0
+##### test-t1148-fuel-job.js #####
+18 통과 · 0 실패
+  ✓ ③ ★자명 통과 금지 — 곳간이 넉넉하면 빚 ≤ 0 · 수입이 하루 수요를 넘으면 며칠치 ∞(JSON null)  -999745 · -11635
+18 통과 · 0 실패
+  [소요] 1초
+  ✓ RC=0
+##### test-t1149-winter.js #####
+  ✓ ★③ 전제 — 끔이면 곳간 40일치로도 여름 스무 날에 사람이 는다(아래가 자명 통과가 아니다)  20 → 33
+=== 12건 중 PASS 12 · FAIL 0 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-t1152-market.js #####
+  ✓ 윤년(2월 29일)이면 겨울이 하루 길어 고비가 깊다 · 종전 30날과 다르다(자명 통과 아님)  18.94 < 19.11
+  ✓ 날마다 다르다(달력 — 자명 통과 아님)
+=== 32건 중 PASS 32 · FAIL 0 ===
+  [소요] 10초
+  ✓ RC=0
+##### test-t1159-home-n.js #####
+결과: 10 통과 / 0 실패
+결과: 10 통과 / 0 실패
+  [소요] 1초
+  ✓ RC=0
+##### test-t1179-crop-season.js #####
+  ✓ ⑤ 켬 — 두 해에 실제로 거둔다(아래 위가 자명 통과가 아니다)  수확 21 · 곳간에 든 42475.4
+=== 8건 중 PASS 8 · FAIL 0 ===
+  [소요] 3초
+  ✓ RC=0
+##### test-t1180-produce-defaults.js #####
+PASS mutant removing arrival check is caught
+PASS mutant restoring formula production is caught
+PASS mutant restoring per-cell fish fractions is caught
+PASS 23 / FAIL 0
+  [소요] 5초
+  ✓ RC=0
+##### test-t1188-ore-split.js #####
+PASS mutant site is caught
+PASS mutant bulk is caught
+PASS mutant smelt is caught
+PASS 29 / FAIL 0
+  [소요] 5초
+  ✓ RC=0
+##### test-t1195-hunt-real.js #####
+PASS mutant formula is caught
+PASS mutant refund is caught
+PASS mutant reach is caught
+PASS 17 / FAIL 0
+  [소요] 2초
+  ✓ RC=0
+##### test-t1197-meal-body.js #####
+=== T1197 결과: 28 통과 · 0 실패 ===
+  ✓ [자명 통과 금지] 몸 길이 저녁 끼니를 건너뛴 사본은 갈린다  0.520
+=== T1197 결과: 28 통과 · 0 실패 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-t1198-birth-body.js #####
+=== T1198 결과: 47 통과 · 0 실패 ===
+  ✓ [자명 통과 금지] 맨 앞 몸은 그대로 서 있다(맨 앞을 눕히는 사본이면 갈린다)
+=== T1198 결과: 47 통과 · 0 실패 ===
+  [소요] 5초
+  ✓ RC=0
+##### test-t1205-happy.js #####
+  ✓ ⑦-2 `=0` 은 다르다(되돌림 문이 산다 · 자명 통과 금지)
+=== T1205 행복 식: 통과 30 · 실패 0 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-t1206-natural-death.js #####
+=== T1206 결과: 16 통과 · 0 실패 ===
+  ✓ [자명 통과 금지] 다른 날들 = 다른 사람(씨가 날을 읽는다)  30명
+=== T1206 결과: 16 통과 · 0 실패 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-t1212-farm-clock.js #####
+16 통과 · 0 실패
+  ✓ ① ★자명 통과 금지 — 끔이면 판 자 생활 날의 달이 3월(2³¹ 넘는 날) · 켬이면 econ 날의 달  끔 3월 · 켬 econ 400날 4월
+16 통과 · 0 실패
+  [소요] 2초
+  ✓ RC=0
+##### test-t1224-econ-farm.js #####
+  ✓ ③ 대조 — 끔이면 몸 갈래 몫 = 몸 1 의 못 한 하루뿐(자명 통과 금지)  {"bud":1010}
+=== T1224 몸 없는 농부: 통과 10 · 실패 0 ===
+  [소요] 2초
+  ✓ RC=0
+##### test-t1226-job-flex.js #####
+결과: 59 통과 / 0 실패
+  ✓ 굶는 마을 — 7날 안에도 또 옮긴다(자명 통과 아님)  36번 · 가장 짧은 사이 1
+  ✓ 마을 차례를 뒤집어도 같은 사람이 같은 일로(30날 · 옮김이 있던 날이 있어야 자명 통과 아님)  30/30 · 옮김 있던 날 30
+결과: 59 통과 / 0 실패
+  [소요] 3초
+  ✓ RC=0
+##### test-t1238-terr-v2.js #####
+  [찌꺼기] /tmp 에서 죽은 판 이름 DB 3개 지움(3 MB)
+  ✓ ★켬 = 부서진 울타리는 콜라이더 통과(종전엔 부서져도 막았다 — 회부)
+=== T1238: 117건 중 PASS 117 · FAIL 0 ===
+  [소요] 7초
+  ✓ RC=0
+##### test-t1243-farm-on.js #####
+85 통과 · 0 실패
+  ✓ ② ★자명 통과 금지 — 끈 묶음 + 밭 산출만 켠 판의 작물 없는 수확 = `T100_K` 그대로  5.342 = K 5.342
+85 통과 · 0 실패
+  [소요] 3384초
+  ✓ RC=0
+##### test-t1266-ore-body.js #####
+=== 63 통과 / 0 실패 ===
+=== 63 통과 / 0 실패 ===
+  [소요] 11초
+  ✓ RC=0
+##### test-t1325-one-rot.js #####
+  [소요] 3초
+  ✓ RC=0
+##### test-t1333-alloy-order.js #####
+  [소요] 16초
+  ✓ RC=0
+##### test-t1336-crop-eq.js #####
+  [소요] 0초
+  ✓ RC=0
+##### test-t1344-bronze-mix.js #####
+  [소요] 53초
+  ✓ RC=0
+##### test-t1346-birth-flow.js #####
+  [소요] 1초
+  ✓ RC=0
+##### test-t1373-home-cap.js #####
+  [소요] 1초
+  ✓ RC=0
+##### test-t1374-farm-winter.js #####
+5 통과 · 0 실패
+5 통과 · 0 실패
+  [소요] 971초
+  ✓ RC=0
+##### test-t1385-bronze-nocap.js #####
+  [소요] 2초
+  ✓ RC=0
+##### test-t1388-farm-gap.js #####
+7 통과 · 0 실패
+7 통과 · 0 실패
+  [소요] 2초
+  ✓ RC=0
+##### test-t1398-bronze-band.js #####
+T1398 19/19 PASS · 미끼 8
+  [소요] 2초
+  ✓ RC=0
+##### test-t1404-bandit-live.js #####
+=== 20/20 통과 ===
+  [소요] 12초
+  ✓ RC=0
+##### test-t1405-leave-rare.js #####
+  [소요] 41초
+  ✓ RC=0
+##### test-t1407-tin-world.js #####
+결과: 59 통과 · 0 실패
+결과: 59 통과 · 0 실패
+  [소요] 6초
+  ✓ RC=0
+##### test-t1408-farm-4000.js #####
+6 통과 · 0 실패
+6 통과 · 0 실패
+  [소요] 2초
+  ✓ RC=0
+##### test-t1419-food-need.js #####
+결과: 20 통과 / 0 실패
+  ✓ ② [전제] 끔 작은 세계 40날이 돌았다(산 마을 ≥ 6 — 0 이면 아래가 자명 통과다)
+결과: 20 통과 / 0 실패
+  [소요] 17초
+  ✓ RC=0
+##### test-t1421-farm-4000b.js #####
+10 통과 · 0 실패
+10 통과 · 0 실패
+  [소요] 1초
+  ✓ RC=0
+##### test-t1437-food-buffer.js #####
+결과: 28 통과 / 0 실패
+  ✓ ② [전제] 끔 작은 세계 40날이 돌았다(산 마을 ≥ 6 — 0 이면 아래가 자명 통과다)
+  ✓ ⑥ [전제] 저장 앞 마을(380날)의 여유분이 겪은 값(가뭄 날 아님 — 같으면 아래가 자명 통과다)
+결과: 28 통과 / 0 실패
+  [소요] 25초
+  ✓ RC=0
+##### test-t1452-food-ahead.js #####
+결과: 38 통과 / 0 실패
+  ✓ ② [전제] 끔 작은 세계 40날이 돌았다(산 마을 ≥ 6 — 0 이면 아래가 자명 통과다)
+결과: 38 통과 / 0 실패
+  [소요] 16초
+  ✓ RC=0
+##### test-t860-catch-dry.js #####
+  ✓ ⑤ 켬 — 보존식(건어물 · 훈제육)이 실제로 선다(자명 통과 금지)  끔 0.00 → 켬 4.59
+=== 25/25 통과 ===
+  [소요] 23초
+  ✓ RC=0
+##### test-t924-debt-cap.js #####
+20 통과 · 0 실패
+20 통과 · 0 실패
+  [소요] 21초
+  ✓ RC=0
+##### test-t931-slotk-ema.js #####
+결과: 39 통과 / 0 실패
+결과: 39 통과 / 0 실패
+  [소요] 10초
+  ✓ RC=0
+##### test-t958-house-real.js #####
+=== 통과 24 · 실패 0 ===
+  [소요] 1초
+  ✓ RC=0
+##### test-village-found.js #####
+=== 마을 건립 하네스: 51 통과 / 0 실패 ✅ ===
+  ✓ ★NPC 창설은 종전대로 8명 — 8 (검사가 자명하게 통과하지 않는다)
+  ✓ ★검사 전제 — 이 마을 곳간엔 식량이 100000 있다(문턱 미달로 자명 통과하지 않는다)
+=== 마을 건립 하네스: 51 통과 / 0 실패 ✅ ===
+  [소요] 4초
+  ✓ RC=0
+##### test-war-world.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 8초 쉰다
+  [찌꺼기] /tmp 에서 죽은 판 이름 DB 6개 지움(37 MB)
+[test] 🐂 교역로 A* 실패: 공격A↔방어B — 실체 생략(econ은 그대로 진행)
+[test] 🐂 교역로 A* 실패: 소굴#9↔공격A — 실체 생략(econ은 그대로 진행)
+[test] 🐂 교역로 A* 실패: 공격A↔소굴#9 — 실체 생략(econ은 그대로 진행)
+결과: 191 통과 / 0 실패
+  ✓ ⓑ 대조 — 옛 모양 문자열엔 같은 검사가 문다(자명 통과 아님)
+  ✓ ⓤ ★미끼① — 날을 바꾸면 자리가 바뀐다(씨가 실제로 날을 본다 · 위 칸은 자명 통과가 아니다)  날 400 hash 2902772331 · 날 451 hash 23927852
+  ✓ ⓤ ★미끼③ — 끝나기 전에 자르면 "끝났다"가 안 선다(판정이 상태를 본다 · 자명 통과 0)  300틱: 끝 undefined · 교전 0틱
+결과: 191 통과 / 0 실패
+  [소요] 184초
+  ✓ RC=0
+##### test-wood-flow.js #####
+=== 결과: 18 PASS / 0 FAIL ===
+  ✓ ⓕ [자명 통과 금지] 판정 줄을 뺀 사본은 켬에서도 통나무 가드 참 · 목표 = 닻 ⇒ ⓑ · ⓒ 가 빨개진다 · 미끼 바꾼 자리 1  가드 true · 목표 12
+=== 결과: 18 PASS / 0 FAIL ===
+  [소요] 1초
+  ✓ RC=0
+##### test-wood-step1.js #####
+=== 결과: 25 PASS / 0 FAIL ===
+=== 결과: 25 PASS / 0 FAIL ===
+  [소요] 1초
+  ✓ RC=0
+
+=== 러너 요약 ===
+  통과 77: e2e-village.js test-armor-cap.js test-body-exit.js test-body-fields.js test-build-act.js test-coll-grid.js test-day-deaths.js test-draft-famine.js test-econ-fieldyield.js test-farm-act.js test-fish-act.js test-forage-act.js test-frontier-iron.js test-happy-converge.js test-headless-parity.js test-hp-src.js test-lon-day.js test-no-shield.js test-one-decay.js test-one-target.js test-physical-forage-plan.js test-picker-tables.js test-psite-server.js test-seed-reserve.js test-smelt-return.js test-stone-consumption-flow.js test-stone-independent-budget.js test-stone-real.js test-t1046-wood-share.js test-t1054-decay-wood.js test-t1074-food-debt.js test-t1075-happy-eq.js test-t1113-low-happy.js test-t1148-fuel-job.js test-t1149-winter.js test-t1152-market.js test-t1159-home-n.js test-t1179-crop-season.js test-t1180-produce-defaults.js test-t1188-ore-split.js test-t1195-hunt-real.js test-t1197-meal-body.js test-t1198-birth-body.js test-t1205-happy.js test-t1206-natural-death.js test-t1212-farm-clock.js test-t1224-econ-farm.js test-t1226-job-flex.js test-t1238-terr-v2.js test-t1243-farm-on.js test-t1266-ore-body.js test-t1325-one-rot.js test-t1333-alloy-order.js test-t1336-crop-eq.js test-t1344-bronze-mix.js test-t1346-birth-flow.js test-t1373-home-cap.js test-t1374-farm-winter.js test-t1385-bronze-nocap.js test-t1388-farm-gap.js test-t1398-bronze-band.js test-t1404-bandit-live.js test-t1405-leave-rare.js test-t1407-tin-world.js test-t1408-farm-4000.js test-t1419-food-need.js test-t1421-farm-4000b.js test-t1437-food-buffer.js test-t1452-food-ahead.js test-t860-catch-dry.js test-t924-debt-cap.js test-t931-slotk-ema.js test-t958-house-real.js test-village-found.js test-war-world.js test-wood-flow.js test-wood-step1.js
+  실패 1: test-harness-lint.js(rc=1)
+  걸린 시간 상위(초): test-t1243-farm-on.js 3384 · test-harness-lint.js 1236 · test-t1374-farm-winter.js 971 · e2e-village.js 190 · test-war-world.js 184 · test-t1344-bronze-mix.js 53 · test-econ-fieldyield.js 42 · test-t1405-leave-rare.js 41 · test-psite-server.js 36 · test-t1437-food-buffer.js 25
+  걸린 시간 합: 하네스 6489초 · 러너 전체 6520초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 3번 × 8초 · 건넘 76번(앞 판이 남긴 아이 없음)

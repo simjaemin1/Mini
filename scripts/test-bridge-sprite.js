@@ -16,7 +16,8 @@ const SRC = require('./client-src.js').readClientSrc();
 // ── 클라 원문에서 판정식 4줄을 잘라내 함수로 감싼다(드리프트 방지: 원문이 바뀌면 여기가 먼저 깨진다) ──
 const m = SRC.match(/const cnt = \(dx, dy\) => \{[\s\S]*?const bs = 'bridge_'[^\n]*\n/);
 if (!m) { console.error('✗ client.js에서 다리 타일 판정식을 찾지 못함 — 규약이 바뀌었는지 확인'); process.exit(1); }
-const pick = new Function('bcx', 'bcy', 'c', m[0] + 'return bs;');
+// [land1093 · PM] T1455 가 판정식을 `_bhas`(끊긴 다리 칸도 이웃으로 셈 · 클라 34-m-renderloop 767행)로 읽게 바꿨다 — 같은 한 줄을 앞에 둔다(끊긴 칸 없으면 종전 `c.bridges.has` 와 같다)
+const pick = new Function('bcx', 'bcy', 'c', 'const _bc = c.bridgesCut || null, _bhas = (k) => c.bridges.has(k) || (!!_bc && _bc.has(k));' + m[0] + 'return bs;');
 
 let fail = 0;
 const chk = (cond, msg) => { console.log((cond ? '  ✓ ' : '  ✗ ') + msg); if (!cond) fail++; };

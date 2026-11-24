@@ -1,0 +1,62 @@
+=== battle-core ↔ 전투실험실 복사 정확성 검증 (4시드 × 10병력 = 40케이스, dt=0.05, ≤4000틱) ===
+  각 케이스: [전투실험실] dead/win/tick  vs  [battle-core] dead/win/tick → 일치?
+
+청동편성 족장1+창방패6 vs 도끼6석검4                시드  1: [실험실] A死 5 B死 6 B     29.2s | [core] A死 5 B死 6 B   120.05s → ✗ 불일치
+청동편성 족장1+창방패6 vs 도끼6석검4                시드 42: [실험실] A死 5 B死 6 B   120.05s | [core] A死 4 B死 6 B   120.05s → ✗ 불일치
+청동편성 족장1+창방패6 vs 도끼6석검4                시드100: [실험실] A死 4 B死 6 B   120.05s | [core] A死 4 B死 6 B   120.05s → ✓
+청동편성 족장1+창방패6 vs 도끼6석검4                시드777: [실험실] A死 4 B死 6 B   120.05s | [core] A死 4 B死 6 B   120.05s → ✓
+석기편성 석검8 vs 도끼6석검2 (평지)                시드  1: [실험실] A死 4 B死 6 A     20.8s | [core] A死 4 B死 6 A     20.8s → ✓
+석기편성 석검8 vs 도끼6석검2 (평지)                시드 42: [실험실] A死 7 B死 4 B     17.2s | [core] A死 7 B死 4 B     17.2s → ✓
+석기편성 석검8 vs 도끼6석검2 (평지)                시드100: [실험실] A死 5 B死 6 A    24.95s | [core] A死 5 B死 6 A    24.95s → ✓
+석기편성 석검8 vs 도끼6석검2 (평지)                시드777: [실험실] A死 6 B死 2 B     14.7s | [core] A死 6 B死 2 B     14.7s → ✓
+궁수혼합 창방패6궁5 vs 도끼4석검4궁3                시드  1: [실험실] A死 3 B死 5 A    37.95s | [core] A死 3 B死 5 A    37.95s → ✓
+궁수혼합 창방패6궁5 vs 도끼4석검4궁3                시드 42: [실험실] A死 2 B死 4 A    50.95s | [core] A死 2 B死 4 A    50.95s → ✓
+궁수혼합 창방패6궁5 vs 도끼4석검4궁3                시드100: [실험실] A死 2 B死 5 A    45.05s | [core] A死 2 B死 5 A    45.05s → ✓
+궁수혼합 창방패6궁5 vs 도끼4석검4궁3                시드777: [실험실] A死 2 B死 5 A       43s | [core] A死 2 B死 5 A       43s → ✓
+시가전 창6석검4 vs 도끼4석검4궁3 (village)        시드  1: [실험실] A死 1 B死 6 A    16.85s | [core] A死 3 B死 7 A    18.95s → ✗ 불일치
+시가전 창6석검4 vs 도끼4석검4궁3 (village)        시드 42: [실험실] A死 2 B死 6 A    16.05s | [core] A死 6 B死 7 A    30.55s → ✗ 불일치
+시가전 창6석검4 vs 도끼4석검4궁3 (village)        시드100: [실험실] A死 2 B死 6 A     10.9s | [core] A死 4 B死 7 A     19.3s → ✗ 불일치
+시가전 창6석검4 vs 도끼4석검4궁3 (village)        시드777: [실험실] A死 4 B死 5 A     32.7s | [core] A死 5 B死 7 A       34s → ✗ 불일치
+대칭 창방패8 vs 창방패8                        시드  1: [실험실] A死 8 B死 5 B     29.2s | [core] A死 8 B死 5 B     29.2s → ✓
+대칭 창방패8 vs 창방패8                        시드 42: [실험실] A死 5 B死 7 A    25.75s | [core] A死 5 B死 7 A    25.75s → ✓
+대칭 창방패8 vs 창방패8                        시드100: [실험실] A死 3 B死 8 A    25.25s | [core] A死 3 B死 8 A    25.25s → ✓
+대칭 창방패8 vs 창방패8                        시드777: [실험실] A死 5 B死 7 A    27.05s | [core] A死 5 B死 7 A    27.05s → ✓
+대형 방패벽 창10(wall) vs 도끼10               시드  1: [실험실] A死10 B死 5 B     20.9s | [core] A死10 B死 5 B     20.9s → ✓
+대형 방패벽 창10(wall) vs 도끼10               시드 42: [실험실] A死10 B死 5 B     21.4s | [core] A死10 B死 5 B     21.4s → ✓
+대형 방패벽 창10(wall) vs 도끼10               시드100: [실험실] A死10 B死 4 B    20.65s | [core] A死10 B死 5 B     20.9s → ✗ 불일치
+대형 방패벽 창10(wall) vs 도끼10               시드777: [실험실] A死10 B死 4 B     20.6s | [core] A死10 B死 4 B     20.6s → ✓
+숲 궁수10 vs 도끼8 (forest)                 시드  1: [실험실] A死 5 B死 1 B     35.4s | [core] A死 6 B死 3 B     36.6s → ✗ 불일치
+숲 궁수10 vs 도끼8 (forest)                 시드 42: [실험실] A死 5 B死 1 B     36.8s | [core] A死 0 B死 3 A    27.25s → ✗ 불일치
+숲 궁수10 vs 도끼8 (forest)                 시드100: [실험실] A死 6 B死 1 B     33.4s | [core] A死 1 B死 4 A    32.65s → ✗ 불일치
+숲 궁수10 vs 도끼8 (forest)                 시드777: [실험실] A死 7 B死 0 B     35.7s | [core] A死 0 B死 5 A     32.6s → ✗ 불일치
+장창 vs 방패 pike10 vs spear10             시드  1: [실험실] A死10 B死 4 B     24.3s | [core] A死10 B死 4 B     24.3s → ✓
+장창 vs 방패 pike10 vs spear10             시드 42: [실험실] A死 9 B死 1 B     21.7s | [core] A死 9 B死 1 B     21.7s → ✓
+장창 vs 방패 pike10 vs spear10             시드100: [실험실] A死 8 B死 2 B    22.25s | [core] A死 8 B死 2 B    22.25s → ✓
+장창 vs 방패 pike10 vs spear10             시드777: [실험실] A死 7 B死 7 B     29.7s | [core] A死 7 B死 7 B     29.7s → ✓
+원형 방진 창8궁4(circle) vs 도끼8              시드  1: [실험실] A死11 B死 3 B    33.65s | [core] A死11 B死 3 B    33.65s → ✓
+원형 방진 창8궁4(circle) vs 도끼8              시드 42: [실험실] A死 8 B死 8 A     31.1s | [core] A死 8 B死 8 A     31.1s → ✓
+원형 방진 창8궁4(circle) vs 도끼8              시드100: [실험실] A死 8 B死 1 B     25.1s | [core] A死 8 B死 1 B     25.1s → ✓
+원형 방진 창8궁4(circle) vs 도끼8              시드777: [실험실] A死 7 B死 7 A    24.05s | [core] A死 7 B死 7 A    24.05s → ✓
+종대 석검10(column) vs 창방패8                시드  1: [실험실] A死10 B死 5 B    19.75s | [core] A死 7 B死 1 B     16.9s → ✗ 불일치
+종대 석검10(column) vs 창방패8                시드 42: [실험실] A死 7 B死 4 B     20.6s | [core] A死 9 B死 5 B     21.6s → ✗ 불일치
+종대 석검10(column) vs 창방패8                시드100: [실험실] A死10 B死 5 B    20.05s | [core] A死 8 B死 3 B     17.2s → ✗ 불일치
+종대 석검10(column) vs 창방패8                시드777: [실험실] A死 9 B死 5 B     21.4s | [core] A死 8 B死 7 A    22.35s → ✗ 불일치
+
+=== 결과: 25/40 일치 ❌ 15건 불일치 ===
+
+불일치 상세:
+  · 청동편성 족장1+창방패6 vs 도끼6석검4 #1: L{win:B,dA:5,dB:6,t:29.2} vs C{win:B,dA:5,dB:6,t:120.05} (start L=7/10 C=7/10)
+  · 청동편성 족장1+창방패6 vs 도끼6석검4 #42: L{win:B,dA:5,dB:6,t:120.05} vs C{win:B,dA:4,dB:6,t:120.05} (start L=7/10 C=7/10)
+  · 시가전 창6석검4 vs 도끼4석검4궁3 (village) #1: L{win:A,dA:1,dB:6,t:16.85} vs C{win:A,dA:3,dB:7,t:18.95} (start L=10/11 C=10/11)
+  · 시가전 창6석검4 vs 도끼4석검4궁3 (village) #42: L{win:A,dA:2,dB:6,t:16.05} vs C{win:A,dA:6,dB:7,t:30.55} (start L=10/11 C=10/11)
+  · 시가전 창6석검4 vs 도끼4석검4궁3 (village) #100: L{win:A,dA:2,dB:6,t:10.9} vs C{win:A,dA:4,dB:7,t:19.3} (start L=10/11 C=10/11)
+  · 시가전 창6석검4 vs 도끼4석검4궁3 (village) #777: L{win:A,dA:4,dB:5,t:32.7} vs C{win:A,dA:5,dB:7,t:34} (start L=10/11 C=10/11)
+  · 대형 방패벽 창10(wall) vs 도끼10 #100: L{win:B,dA:10,dB:4,t:20.65} vs C{win:B,dA:10,dB:5,t:20.9} (start L=10/10 C=10/10)
+  · 숲 궁수10 vs 도끼8 (forest) #1: L{win:B,dA:5,dB:1,t:35.4} vs C{win:B,dA:6,dB:3,t:36.6} (start L=10/8 C=10/8)
+  · 숲 궁수10 vs 도끼8 (forest) #42: L{win:B,dA:5,dB:1,t:36.8} vs C{win:A,dA:0,dB:3,t:27.25} (start L=10/8 C=10/8)
+  · 숲 궁수10 vs 도끼8 (forest) #100: L{win:B,dA:6,dB:1,t:33.4} vs C{win:A,dA:1,dB:4,t:32.65} (start L=10/8 C=10/8)
+  · 숲 궁수10 vs 도끼8 (forest) #777: L{win:B,dA:7,dB:0,t:35.7} vs C{win:A,dA:0,dB:5,t:32.6} (start L=10/8 C=10/8)
+  · 종대 석검10(column) vs 창방패8 #1: L{win:B,dA:10,dB:5,t:19.75} vs C{win:B,dA:7,dB:1,t:16.9} (start L=10/8 C=10/8)
+  · 종대 석검10(column) vs 창방패8 #42: L{win:B,dA:7,dB:4,t:20.6} vs C{win:B,dA:9,dB:5,t:21.6} (start L=10/8 C=10/8)
+  · 종대 석검10(column) vs 창방패8 #100: L{win:B,dA:10,dB:5,t:20.05} vs C{win:B,dA:8,dB:3,t:17.2} (start L=10/8 C=10/8)
+  · 종대 석검10(column) vs 창방패8 #777: L{win:B,dA:9,dB:5,t:21.4} vs C{win:A,dA:8,dB:7,t:22.35} (start L=10/8 C=10/8)

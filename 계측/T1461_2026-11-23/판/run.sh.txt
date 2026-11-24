@@ -1,0 +1,7 @@
+# usage: run.sh TAG SEED DAYS KNOB(0/1)
+TAG=$1; SEED=$2; DAYS=$3; K=$4
+FW="T1243_FARM_ON=1,T1316_BODY_CLOCK=1,T1316_SUBSTEP=1,T1326_HUNT_CLOCK=1,T1351_MINE_CLOCK=1,VILLAGE_NPC_CAP=Infinity,T1195_HUNT_REAL=1,T1331_BEAST_BODY=1,T1331_BEAST_SCALE=5000,T1393_HUNT_CHASE=1,T1432_NPC_DEATH=1"
+[ "$K" = 1 ] && FW="$FW,T1461_BEAST_UNSEEN=1"
+cd /root/t1461 && unshare -n bash -c "python3 /tmp/t1341/loup.py && cd /root/t1461 && T1461_PROBE_OUT=/tmp/t1461run/$TAG.probe.json T1432_HITS_OUT=/tmp/t1461run/$TAG.hits.json NODE_OPTIONS='--max-old-space-size=4096 --require /tmp/t1432run/hits.js --require /root/t1461/scripts/t1461-beast-probe.js' node scripts/t1331-run.js /tmp/t1461run $TAG hanbando $SEED $DAYS --env '$FW'" > /tmp/t1461run/$TAG.out 2>&1
+rm -f /tmp/t1461run/$TAG.db /tmp/t1461run/$TAG.db-wal /tmp/t1461run/$TAG.db-shm
+echo "$TAG $(date +%H:%M)" >> /tmp/t1461run/done.txt

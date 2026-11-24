@@ -1,0 +1,8 @@
+
+=== T1351 — 판 시계 광부 수요 문 ===
+  ✓ ① T1351 — 끔 기본 · 켬 = 판 시계 몸 축 광부 마을만(운영 시계 · 몸 축 끔 = 안 선다)  {"u0":{"k":false,"has":true,"fast":false,"live":false},"u1":{"k":true,"has":true,"fast":true,"live":false},"uN":{"k":true,"has":true,"fast":false,"live":false}}
+  ✓ ② T1351 켬 — 판 시계 50날: 곳간에 든 원석 ÷ 수요 D ≥ 0.85 · 광부 몸이 친 kg > 0  0.911 · 1997 kg
+  ✓ ③ 바늘 = villages.js 에 정확히 한 곳(없거나 둘이면 사본이 엉뚱한 까닭으로 빨강)  1
+  ✓ ③ 미끼 — 바꾼 자리 1곳(수요 문 켬 갈래 `if (false)`)인 사본은 ② 의 줄이 빨강(몫 < 0.6)  0.464
+
+4 통과 · 0 실패

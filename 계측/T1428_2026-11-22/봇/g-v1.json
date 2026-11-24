@@ -1,0 +1,7142 @@
+{
+ "tag": "spring-day-panel-own-guide",
+ "oldBot": false,
+ "panelBot": true,
+ "season": "spring",
+ "seasonDay": 46,
+ "start": "day",
+ "chief": false,
+ "questFixture": false,
+ "econDays": 0,
+ "warmDbSec": 0,
+ "pickVid": 1,
+ "capMin": 35,
+ "gate": 260,
+ "keep": 324,
+ "consts": {
+  "BODY_R": 6,
+  "TRUNK_MAX": 9,
+  "ROCK_R": 14,
+  "GATHER": 48,
+  "SPEED": 64,
+  "GATE": 260
+ },
+ "milestones": {
+  "물": {
+   "t": 57.1,
+   "min": 0.95,
+   "thirst": "78→100",
+   "how": "map"
+  },
+  "첫 열매": {
+   "t": 111.6,
+   "min": 1.86,
+   "how": "berry_bush",
+   "berry": 2
+  },
+  "첫 섬유": {
+   "t": 111.6,
+   "min": 1.86,
+   "how": "berry_bush"
+  },
+  "첫 밥": {
+   "t": 111.9,
+   "min": 1.86,
+   "how": "berry",
+   "hunger": "51→56"
+  },
+  "안내 자리(나무)": {
+   "t": 148.7,
+   "min": 2.48,
+   "d": 0,
+   "alt": false
+  },
+  "칸 다음 막힘": {
+   "t": 149.9,
+   "min": 2.5,
+   "item": "조잡한 돌도끼 만들기"
+  },
+  "조잡한 돌도끼(칸 따라 손 제작)": {
+   "t": 203,
+   "min": 3.38
+  },
+  "첫 통나무": {
+   "t": 280.4,
+   "min": 4.67,
+   "how": "tree",
+   "wood": 6
+  },
+  "안내 자리(바위)": {
+   "t": 322.5,
+   "min": 5.38,
+   "d": 1,
+   "alt": false
+  },
+  "조잡한 돌괭이(칸 따라 손 제작)": {
+   "t": 472.3,
+   "min": 7.87
+  },
+  "첫 돌": {
+   "t": 585.8,
+   "min": 9.76,
+   "how": "rock"
+  },
+  "집터": {
+   "t": 933.7,
+   "min": 15.56,
+   "x": 14804,
+   "y": 75979,
+   "cost": {
+    "wood": 12,
+    "stone": 8
+   }
+  },
+  "곡괭이(손 제작)": {
+   "t": 1140.6,
+   "min": 19.01
+  },
+  "안내 자리(내 터)": {
+   "t": 1187.2,
+   "min": 19.79
+  },
+  "움집터(① 굴착)": {
+   "t": 1207.2,
+   "min": 20.12,
+   "small": true
+  },
+  "도끼(칸 따라 손 제작)": {
+   "t": 1465.8,
+   "min": 24.43
+  },
+  "움집 ② 단계": {
+   "t": 1496.5,
+   "min": 24.94
+  },
+  "움집 ③ 단계": {
+   "t": 1498.1,
+   "min": 24.97
+  },
+  "안내 자리(갈대)": {
+   "t": 1507.1,
+   "min": 25.12
+  },
+  "첫 갈대": {
+   "t": 1510.4,
+   "min": 25.17,
+   "fiber": 1
+  },
+  "안내 자리(움집터)": {
+   "t": 1539.7,
+   "min": 25.66
+  },
+  "움집 완공": {
+   "t": 1540.2,
+   "min": 25.67,
+   "small": true
+  },
+  "첫 잠자리": {
+   "t": 1540.2,
+   "min": 25.67,
+   "how": "내 움집(완공)"
+  }
+ },
+ "blockers": [
+  {
+   "k": "첫 도구|30분 안 미도달",
+   "need": "첫 도구",
+   "reason": "30분 안 미도달",
+   "t": 1540.3
+  },
+  {
+   "k": "첫 불|30분 안 미도달",
+   "need": "첫 불",
+   "reason": "30분 안 미도달",
+   "t": 1540.3
+  }
+ ],
+ "breaches": [
+  {
+   "t": 118.4,
+   "near": 1,
+   "greet": true,
+   "minD": 248
+  },
+  {
+   "t": 150.7,
+   "near": null,
+   "greet": true,
+   "minD": 1063
+  },
+  {
+   "t": 181.1,
+   "near": null,
+   "greet": true,
+   "minD": 2429
+  },
+  {
+   "t": 211.7,
+   "near": null,
+   "greet": true,
+   "minD": 2602
+  },
+  {
+   "t": 241.9,
+   "near": null,
+   "greet": true,
+   "minD": 965
+  },
+  {
+   "t": 272.5,
+   "near": null,
+   "greet": true,
+   "minD": 827
+  },
+  {
+   "t": 303.2,
+   "near": null,
+   "greet": true,
+   "minD": 552
+  },
+  {
+   "t": 333.9,
+   "near": null,
+   "greet": true,
+   "minD": 974
+  },
+  {
+   "t": 364,
+   "near": null,
+   "greet": true,
+   "minD": 682
+  },
+  {
+   "t": 394.4,
+   "near": null,
+   "greet": true,
+   "minD": 1353
+  },
+  {
+   "t": 425,
+   "near": null,
+   "greet": true,
+   "minD": 2299
+  },
+  {
+   "t": 455.4,
+   "near": null,
+   "greet": true,
+   "minD": 3262
+  },
+  {
+   "t": 485.6,
+   "near": null,
+   "greet": true,
+   "minD": 3218
+  },
+  {
+   "t": 516,
+   "near": null,
+   "greet": true,
+   "minD": 2129
+  },
+  {
+   "t": 546.9,
+   "near": null,
+   "greet": true,
+   "minD": 1176
+  },
+  {
+   "t": 577.4,
+   "near": null,
+   "greet": true,
+   "minD": 732
+  },
+  {
+   "t": 607.7,
+   "near": null,
+   "greet": true,
+   "minD": 665
+  },
+  {
+   "t": 638.2,
+   "near": null,
+   "greet": true,
+   "minD": 840
+  },
+  {
+   "t": 668.8,
+   "near": null,
+   "greet": true,
+   "minD": 1141
+  },
+  {
+   "t": 699.5,
+   "near": null,
+   "greet": true,
+   "minD": 882
+  },
+  {
+   "t": 729.8,
+   "near": null,
+   "greet": true,
+   "minD": 693
+  },
+  {
+   "t": 760.6,
+   "near": null,
+   "greet": true,
+   "minD": 988
+  },
+  {
+   "t": 790.7,
+   "near": null,
+   "greet": true,
+   "minD": 699
+  },
+  {
+   "t": 821.1,
+   "near": null,
+   "greet": true,
+   "minD": 693
+  },
+  {
+   "t": 851.9,
+   "near": null,
+   "greet": true,
+   "minD": 1344
+  },
+  {
+   "t": 882.2,
+   "near": null,
+   "greet": true,
+   "minD": 2058
+  },
+  {
+   "t": 912.9,
+   "near": null,
+   "greet": true,
+   "minD": 2576
+  },
+  {
+   "t": 945.4,
+   "near": null,
+   "greet": true,
+   "minD": 2194
+  },
+  {
+   "t": 975.6,
+   "near": null,
+   "greet": true,
+   "minD": 925
+  },
+  {
+   "t": 1005.9,
+   "near": null,
+   "greet": true,
+   "minD": 584
+  },
+  {
+   "t": 1036,
+   "near": null,
+   "greet": true,
+   "minD": 1125
+  },
+  {
+   "t": 1066.3,
+   "near": null,
+   "greet": true,
+   "minD": 2623
+  },
+  {
+   "t": 1096.8,
+   "near": null,
+   "greet": true,
+   "minD": 1428
+  },
+  {
+   "t": 1127.2,
+   "near": null,
+   "greet": true,
+   "minD": 560
+  },
+  {
+   "t": 1157.3,
+   "near": null,
+   "greet": true,
+   "minD": 596
+  },
+  {
+   "t": 1187.9,
+   "near": null,
+   "greet": true,
+   "minD": 2186
+  },
+  {
+   "t": 1218,
+   "near": null,
+   "greet": true,
+   "minD": 1955
+  },
+  {
+   "t": 1248.1,
+   "near": null,
+   "greet": true,
+   "minD": 812
+  },
+  {
+   "t": 1280.9,
+   "near": null,
+   "greet": true,
+   "minD": 873
+  },
+  {
+   "t": 1311.4,
+   "near": null,
+   "greet": true,
+   "minD": 646
+  },
+  {
+   "t": 1342.1,
+   "near": null,
+   "greet": true,
+   "minD": 1616
+  },
+  {
+   "t": 1374.9,
+   "near": null,
+   "greet": true,
+   "minD": 2580
+  },
+  {
+   "t": 1405.1,
+   "near": null,
+   "greet": true,
+   "minD": 2878
+  },
+  {
+   "t": 1435.2,
+   "near": null,
+   "greet": true,
+   "minD": 2702
+  },
+  {
+   "t": 1466.8,
+   "near": null,
+   "greet": true,
+   "minD": 1893
+  },
+  {
+   "t": 1498.5,
+   "near": null,
+   "greet": true,
+   "minD": 2112
+  },
+  {
+   "t": 1530.7,
+   "near": null,
+   "greet": true,
+   "minD": 2595
+  }
+ ],
+ "samples": [
+  {
+   "t": 2,
+   "ph": 0.571,
+   "night": false,
+   "x": 14832,
+   "y": 78704,
+   "hunger": 56,
+   "thirst": 91,
+   "cold": 0.0095,
+   "fatigue": 0,
+   "wet": 0.0254,
+   "mood": {},
+   "fps": null,
+   "mm": 1
+  },
+  {
+   "t": 7.2,
+   "ph": 0.574,
+   "night": false,
+   "x": 14931,
+   "y": 78674,
+   "hunger": 56,
+   "thirst": 90,
+   "cold": 0.0187,
+   "fatigue": 0,
+   "wet": 0.0223,
+   "mood": {},
+   "fps": 31.9,
+   "mm": 1
+  },
+  {
+   "t": 12.1,
+   "ph": 0.578,
+   "night": false,
+   "x": 15220,
+   "y": 78629,
+   "hunger": 55,
+   "thirst": 89,
+   "cold": 0.0332,
+   "fatigue": 0,
+   "wet": 0.0191,
+   "mood": {},
+   "fps": 54.8,
+   "mm": 1
+  },
+  {
+   "t": 17.1,
+   "ph": 0.581,
+   "night": false,
+   "x": 15399,
+   "y": 78437,
+   "hunger": 55,
+   "thirst": 88,
+   "cold": 0.0479,
+   "fatigue": 0,
+   "wet": 0.0164,
+   "mood": {},
+   "fps": 54.4,
+   "mm": 1
+  },
+  {
+   "t": 22.1,
+   "ph": 0.585,
+   "night": false,
+   "x": 15513,
+   "y": 78178,
+   "hunger": 55,
+   "thirst": 86,
+   "cold": 0.0654,
+   "fatigue": 0,
+   "wet": 0.0133,
+   "mood": {},
+   "fps": 55.4,
+   "mm": 1
+  },
+  {
+   "t": 27.2,
+   "ph": 0.588,
+   "night": false,
+   "x": 15711,
+   "y": 77980,
+   "hunger": 55,
+   "thirst": 85,
+   "cold": 0.0823,
+   "fatigue": 0,
+   "wet": 0.0101,
+   "mood": {},
+   "fps": 31.4,
+   "mm": 1
+  },
+  {
+   "t": 32.1,
+   "ph": 0.592,
+   "night": false,
+   "x": 15759,
+   "y": 77688,
+   "hunger": 55,
+   "thirst": 84,
+   "cold": 0.0984,
+   "fatigue": 0,
+   "wet": 0.0069,
+   "mood": {},
+   "fps": 55.8,
+   "mm": 1
+  },
+  {
+   "t": 37.2,
+   "ph": 0.595,
+   "night": false,
+   "x": 15809,
+   "y": 77391,
+   "hunger": 54,
+   "thirst": 83,
+   "cold": 0.1139,
+   "fatigue": 0,
+   "wet": 0.0037,
+   "mood": {},
+   "fps": 52.1,
+   "mm": 1
+  },
+  {
+   "t": 42.3,
+   "ph": 0.599,
+   "night": false,
+   "x": 15881,
+   "y": 77095,
+   "hunger": 54,
+   "thirst": 82,
+   "cold": 0.1287,
+   "fatigue": 0,
+   "wet": 0.0005,
+   "mood": {},
+   "fps": 51,
+   "mm": 1
+  },
+  {
+   "t": 47.4,
+   "ph": 0.602,
+   "night": false,
+   "x": 15901,
+   "y": 76809,
+   "hunger": 54,
+   "thirst": 80,
+   "cold": 0.143,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 41,
+   "mm": 1
+  },
+  {
+   "t": 52.2,
+   "ph": 0.606,
+   "night": false,
+   "x": 15983,
+   "y": 76544,
+   "hunger": 54,
+   "thirst": 79,
+   "cold": 0.1564,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 43,
+   "mm": 1
+  },
+  {
+   "t": 57.5,
+   "ph": 0.609,
+   "night": false,
+   "x": 16142,
+   "y": 76402,
+   "hunger": 53,
+   "thirst": 100,
+   "cold": 0.1693,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 48.6,
+   "mm": 1
+  },
+  {
+   "t": 62.2,
+   "ph": 0.613,
+   "night": false,
+   "x": 16075,
+   "y": 76487,
+   "hunger": 53,
+   "thirst": 98,
+   "cold": 0.1818,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 48.6,
+   "mm": 1
+  },
+  {
+   "t": 67.2,
+   "ph": 0.616,
+   "night": false,
+   "x": 15804,
+   "y": 76599,
+   "hunger": 53,
+   "thirst": 97,
+   "cold": 0.1913,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 51.4,
+   "mm": 1
+  },
+  {
+   "t": 72.2,
+   "ph": 0.62,
+   "night": false,
+   "x": 15571,
+   "y": 76668,
+   "hunger": 53,
+   "thirst": 96,
+   "cold": 0.2028,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 47.2,
+   "mm": 1
+  },
+  {
+   "t": 77.2,
+   "ph": 0.623,
+   "night": false,
+   "x": 15285,
+   "y": 76745,
+   "hunger": 52,
+   "thirst": 95,
+   "cold": 0.2142,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 50,
+   "mm": 1
+  },
+  {
+   "t": 82.2,
+   "ph": 0.627,
+   "night": false,
+   "x": 15047,
+   "y": 76843,
+   "hunger": 52,
+   "thirst": 93,
+   "cold": 0.2248,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 40,
+   "mm": 1
+  },
+  {
+   "t": 87.2,
+   "ph": 0.63,
+   "night": false,
+   "x": 14929,
+   "y": 77034,
+   "hunger": 52,
+   "thirst": 92,
+   "cold": 0.235,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 48,
+   "mm": 1
+  },
+  {
+   "t": 92.2,
+   "ph": 0.633,
+   "night": false,
+   "x": 14676,
+   "y": 77185,
+   "hunger": 52,
+   "thirst": 91,
+   "cold": 0.2418,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 52.8,
+   "mm": 1
+  },
+  {
+   "t": 97.2,
+   "ph": 0.637,
+   "night": false,
+   "x": 14447,
+   "y": 77245,
+   "hunger": 51,
+   "thirst": 90,
+   "cold": 0.2403,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 53.4,
+   "mm": 1
+  },
+  {
+   "t": 102.2,
+   "ph": 0.64,
+   "night": false,
+   "x": 14127,
+   "y": 77245,
+   "hunger": 51,
+   "thirst": 88,
+   "cold": 0.2371,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 53.6,
+   "mm": 1
+  },
+  {
+   "t": 107.2,
+   "ph": 0.644,
+   "night": false,
+   "x": 14059,
+   "y": 77448,
+   "hunger": 51,
+   "thirst": 87,
+   "cold": 0.2341,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 56.2,
+   "mm": 1
+  },
+  {
+   "t": 113.1,
+   "ph": 0.647,
+   "night": false,
+   "x": 13967,
+   "y": 77549,
+   "hunger": 61,
+   "thirst": 94,
+   "cold": 0.2312,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 55.9,
+   "mm": 1
+  },
+  {
+   "t": 117.3,
+   "ph": 0.651,
+   "night": false,
+   "x": 13919,
+   "y": 77791,
+   "hunger": 61,
+   "thirst": 93,
+   "cold": 0.2284,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 50.8,
+   "mm": 1
+  },
+  {
+   "t": 122.3,
+   "ph": 0.654,
+   "night": false,
+   "x": 13874,
+   "y": 78094,
+   "hunger": 60,
+   "thirst": 92,
+   "cold": 0.2262,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 55.8,
+   "mm": 1
+  },
+  {
+   "t": 127.4,
+   "ph": 0.658,
+   "night": false,
+   "x": 13893,
+   "y": 78413,
+   "hunger": 60,
+   "thirst": 91,
+   "cold": 0.2237,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 55,
+   "mm": 1
+  },
+  {
+   "t": 132.3,
+   "ph": 0.661,
+   "night": false,
+   "x": 14002,
+   "y": 78679,
+   "hunger": 60,
+   "thirst": 89,
+   "cold": 0.2212,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 53.8,
+   "mm": 1
+  },
+  {
+   "t": 137.3,
+   "ph": 0.665,
+   "night": false,
+   "x": 14219,
+   "y": 78819,
+   "hunger": 60,
+   "thirst": 88,
+   "cold": 0.2189,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57.9,
+   "mm": 1
+  },
+  {
+   "t": 142.4,
+   "ph": 0.668,
+   "night": false,
+   "x": 14532,
+   "y": 78819,
+   "hunger": 59,
+   "thirst": 87,
+   "cold": 0.2166,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 56.8,
+   "mm": 1
+  },
+  {
+   "t": 147.9,
+   "ph": 0.672,
+   "night": false,
+   "x": 14786,
+   "y": 78742,
+   "hunger": 59,
+   "thirst": 86,
+   "cold": 0.2151,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 50.8,
+   "mm": 1
+  },
+  {
+   "t": 152.4,
+   "ph": 0.675,
+   "night": false,
+   "x": 14893,
+   "y": 78815,
+   "hunger": 59,
+   "thirst": 85,
+   "cold": 0.2161,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 48.8,
+   "mm": 1
+  },
+  {
+   "t": 157.4,
+   "ph": 0.679,
+   "night": false,
+   "x": 14816,
+   "y": 79065,
+   "hunger": 59,
+   "thirst": 83,
+   "cold": 0.2232,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.4,
+   "mm": 1
+  },
+  {
+   "t": 162.4,
+   "ph": 0.682,
+   "night": false,
+   "x": 14759,
+   "y": 79346,
+   "hunger": 58,
+   "thirst": 82,
+   "cold": 0.2329,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.2,
+   "mm": 1
+  },
+  {
+   "t": 167.4,
+   "ph": 0.686,
+   "night": false,
+   "x": 14824,
+   "y": 79545,
+   "hunger": 58,
+   "thirst": 81,
+   "cold": 0.2426,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 54.8,
+   "mm": 1
+  },
+  {
+   "t": 172.4,
+   "ph": 0.689,
+   "night": false,
+   "x": 14948,
+   "y": 79807,
+   "hunger": 58,
+   "thirst": 80,
+   "cold": 0.252,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57.2,
+   "mm": 1
+  },
+  {
+   "t": 177.4,
+   "ph": 0.693,
+   "night": false,
+   "x": 15053,
+   "y": 80023,
+   "hunger": 58,
+   "thirst": 79,
+   "cold": 0.261,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 55.8,
+   "mm": 1
+  },
+  {
+   "t": 182.4,
+   "ph": 0.696,
+   "night": false,
+   "x": 15030,
+   "y": 80327,
+   "hunger": 57,
+   "thirst": 78,
+   "cold": 0.2696,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57.2,
+   "mm": 1
+  },
+  {
+   "t": 187.4,
+   "ph": 0.7,
+   "night": false,
+   "x": 15054,
+   "y": 80399,
+   "hunger": 57,
+   "thirst": 77,
+   "cold": 0.2779,
+   "fatigue": 0.0002,
+   "wet": 0,
+   "mood": {},
+   "fps": 57.8,
+   "mm": 1
+  },
+  {
+   "t": 192.4,
+   "ph": 0.703,
+   "night": true,
+   "x": 15093,
+   "y": 80438,
+   "hunger": 57,
+   "thirst": 76,
+   "cold": 0.2908,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.2,
+   "mm": 1
+  },
+  {
+   "t": 197.4,
+   "ph": 0.706,
+   "night": true,
+   "x": 15325,
+   "y": 80615,
+   "hunger": 57,
+   "thirst": 76,
+   "cold": 0.3015,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57.8,
+   "mm": 1
+  },
+  {
+   "t": 202.4,
+   "ph": 0.71,
+   "night": true,
+   "x": 15405,
+   "y": 80714,
+   "hunger": 61,
+   "thirst": 79,
+   "cold": 0.3161,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.4,
+   "mm": 1
+  },
+  {
+   "t": 207.4,
+   "ph": 0.713,
+   "night": true,
+   "x": 15344,
+   "y": 80557,
+   "hunger": 66,
+   "thirst": 82,
+   "cold": 0.3266,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 54.5,
+   "mm": 1
+  },
+  {
+   "t": 212.4,
+   "ph": 0.717,
+   "night": true,
+   "x": 15220,
+   "y": 80292,
+   "hunger": 66,
+   "thirst": 82,
+   "cold": 0.3384,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 55.8,
+   "mm": 1
+  },
+  {
+   "t": 217.4,
+   "ph": 0.72,
+   "night": true,
+   "x": 15092,
+   "y": 80023,
+   "hunger": 66,
+   "thirst": 81,
+   "cold": 0.3497,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.8,
+   "mm": 1
+  },
+  {
+   "t": 222.4,
+   "ph": 0.724,
+   "night": true,
+   "x": 14928,
+   "y": 79786,
+   "hunger": 65,
+   "thirst": 81,
+   "cold": 0.3606,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 56.6,
+   "mm": 0.9982
+  },
+  {
+   "t": 227.4,
+   "ph": 0.727,
+   "night": true,
+   "x": 14722,
+   "y": 79593,
+   "hunger": 65,
+   "thirst": 80,
+   "cold": 0.3709,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.2,
+   "mm": 0.9965
+  },
+  {
+   "t": 232.4,
+   "ph": 0.731,
+   "night": true,
+   "x": 14493,
+   "y": 79413,
+   "hunger": 65,
+   "thirst": 80,
+   "cold": 0.3809,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57.8,
+   "mm": 0.9949
+  },
+  {
+   "t": 237.4,
+   "ph": 0.734,
+   "night": true,
+   "x": 14389,
+   "y": 79138,
+   "hunger": 64,
+   "thirst": 79,
+   "cold": 0.3893,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.8,
+   "mm": 0.9934
+  },
+  {
+   "t": 242.4,
+   "ph": 0.738,
+   "night": true,
+   "x": 14199,
+   "y": 78939,
+   "hunger": 64,
+   "thirst": 78,
+   "cold": 0.3878,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 50.2,
+   "mm": 0.9937
+  },
+  {
+   "t": 247.5,
+   "ph": 0.741,
+   "night": true,
+   "x": 14115,
+   "y": 78702,
+   "hunger": 64,
+   "thirst": 78,
+   "cold": 0.3806,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 52.4,
+   "mm": 0.9949
+  },
+  {
+   "t": 252.4,
+   "ph": 0.745,
+   "night": true,
+   "x": 14159,
+   "y": 78405,
+   "hunger": 64,
+   "thirst": 77,
+   "cold": 0.3751,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.8,
+   "mm": 0.9958
+  },
+  {
+   "t": 257.4,
+   "ph": 0.748,
+   "night": true,
+   "x": 14159,
+   "y": 78084,
+   "hunger": 63,
+   "thirst": 77,
+   "cold": 0.3684,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57,
+   "mm": 0.9969
+  },
+  {
+   "t": 262.4,
+   "ph": 0.752,
+   "night": true,
+   "x": 14159,
+   "y": 77765,
+   "hunger": 63,
+   "thirst": 76,
+   "cold": 0.362,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 53.2,
+   "mm": 0.998
+  },
+  {
+   "t": 267.7,
+   "ph": 0.755,
+   "night": true,
+   "x": 14104,
+   "y": 77451,
+   "hunger": 63,
+   "thirst": 76,
+   "cold": 0.3558,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57.1,
+   "mm": 0.999
+  },
+  {
+   "t": 272.5,
+   "ph": 0.759,
+   "night": true,
+   "x": 13972,
+   "y": 77205,
+   "hunger": 62,
+   "thirst": 75,
+   "cold": 0.3499,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 52,
+   "mm": 1
+  },
+  {
+   "t": 277.6,
+   "ph": 0.762,
+   "night": true,
+   "x": 13787,
+   "y": 77044,
+   "hunger": 62,
+   "thirst": 75,
+   "cold": 0.3448,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 53.9,
+   "mm": 1
+  },
+  {
+   "t": 282.5,
+   "ph": 0.766,
+   "night": true,
+   "x": 13768,
+   "y": 76994,
+   "hunger": 62,
+   "thirst": 74,
+   "cold": 0.3422,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 50,
+   "mm": 1
+  },
+  {
+   "t": 287.5,
+   "ph": 0.769,
+   "night": true,
+   "x": 13776,
+   "y": 76982,
+   "hunger": 62,
+   "thirst": 74,
+   "cold": 0.3419,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 51.2,
+   "mm": 1
+  },
+  {
+   "t": 292.5,
+   "ph": 0.773,
+   "night": true,
+   "x": 13945,
+   "y": 77151,
+   "hunger": 61,
+   "thirst": 73,
+   "cold": 0.3394,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.2,
+   "mm": 1
+  },
+  {
+   "t": 297.5,
+   "ph": 0.776,
+   "night": true,
+   "x": 13959,
+   "y": 77357,
+   "hunger": 61,
+   "thirst": 73,
+   "cold": 0.3342,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59,
+   "mm": 1
+  },
+  {
+   "t": 302.5,
+   "ph": 0.779,
+   "night": true,
+   "x": 13795,
+   "y": 77521,
+   "hunger": 61,
+   "thirst": 72,
+   "cold": 0.3293,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 54.6,
+   "mm": 1
+  },
+  {
+   "t": 307.5,
+   "ph": 0.783,
+   "night": true,
+   "x": 13624,
+   "y": 77692,
+   "hunger": 60,
+   "thirst": 72,
+   "cold": 0.3224,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 51.2,
+   "mm": 1
+  },
+  {
+   "t": 312.5,
+   "ph": 0.786,
+   "night": true,
+   "x": 13452,
+   "y": 77864,
+   "hunger": 60,
+   "thirst": 71,
+   "cold": 0.3155,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.6,
+   "mm": 1
+  },
+  {
+   "t": 317.5,
+   "ph": 0.79,
+   "night": true,
+   "x": 13281,
+   "y": 78035,
+   "hunger": 60,
+   "thirst": 70,
+   "cold": 0.3112,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57,
+   "mm": 1
+  },
+  {
+   "t": 322.5,
+   "ph": 0.793,
+   "night": true,
+   "x": 13172,
+   "y": 78180,
+   "hunger": 60,
+   "thirst": 70,
+   "cold": 0.308,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 55,
+   "mm": 1
+  },
+  {
+   "t": 327.5,
+   "ph": 0.797,
+   "night": true,
+   "x": 13169,
+   "y": 78187,
+   "hunger": 59,
+   "thirst": 70,
+   "cold": 0.304,
+   "fatigue": 0.0001,
+   "wet": 0,
+   "mood": {},
+   "fps": 53.4,
+   "mm": 1
+  },
+  {
+   "t": 332.5,
+   "ph": 0.8,
+   "night": true,
+   "x": 13104,
+   "y": 78198,
+   "hunger": 59,
+   "thirst": 69,
+   "cold": 0.3003,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 53.6,
+   "mm": 1
+  },
+  {
+   "t": 337.5,
+   "ph": 0.804,
+   "night": true,
+   "x": 13017,
+   "y": 78285,
+   "hunger": 59,
+   "thirst": 69,
+   "cold": 0.2985,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 53.8,
+   "mm": 1
+  },
+  {
+   "t": 342.5,
+   "ph": 0.807,
+   "night": true,
+   "x": 13123,
+   "y": 78366,
+   "hunger": 69,
+   "thirst": 76,
+   "cold": 0.2983,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 37.8,
+   "mm": 1
+  },
+  {
+   "t": 347.5,
+   "ph": 0.811,
+   "night": true,
+   "x": 13314,
+   "y": 78452,
+   "hunger": 68,
+   "thirst": 75,
+   "cold": 0.2953,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58,
+   "mm": 1
+  },
+  {
+   "t": 352.5,
+   "ph": 0.814,
+   "night": true,
+   "x": 13504,
+   "y": 78532,
+   "hunger": 68,
+   "thirst": 75,
+   "cold": 0.2919,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57.8,
+   "mm": 1
+  },
+  {
+   "t": 357.5,
+   "ph": 0.818,
+   "night": true,
+   "x": 13699,
+   "y": 78611,
+   "hunger": 68,
+   "thirst": 74,
+   "cold": 0.2887,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.4,
+   "mm": 1
+  },
+  {
+   "t": 362.5,
+   "ph": 0.821,
+   "night": true,
+   "x": 13890,
+   "y": 78692,
+   "hunger": 68,
+   "thirst": 74,
+   "cold": 0.2855,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.8,
+   "mm": 1
+  },
+  {
+   "t": 367.5,
+   "ph": 0.825,
+   "night": true,
+   "x": 13987,
+   "y": 78823,
+   "hunger": 67,
+   "thirst": 73,
+   "cold": 0.2825,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 55,
+   "mm": 1
+  },
+  {
+   "t": 372.5,
+   "ph": 0.828,
+   "night": true,
+   "x": 13761,
+   "y": 78823,
+   "hunger": 67,
+   "thirst": 73,
+   "cold": 0.2802,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.4,
+   "mm": 1
+  },
+  {
+   "t": 377.5,
+   "ph": 0.832,
+   "night": true,
+   "x": 13546,
+   "y": 78811,
+   "hunger": 67,
+   "thirst": 72,
+   "cold": 0.2775,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 56,
+   "mm": 1
+  },
+  {
+   "t": 382.5,
+   "ph": 0.835,
+   "night": true,
+   "x": 13346,
+   "y": 78743,
+   "hunger": 66,
+   "thirst": 72,
+   "cold": 0.2751,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57.4,
+   "mm": 1
+  },
+  {
+   "t": 387.5,
+   "ph": 0.839,
+   "night": true,
+   "x": 13149,
+   "y": 78676,
+   "hunger": 66,
+   "thirst": 71,
+   "cold": 0.2753,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 56.7,
+   "mm": 1
+  },
+  {
+   "t": 392.5,
+   "ph": 0.842,
+   "night": true,
+   "x": 12923,
+   "y": 78676,
+   "hunger": 66,
+   "thirst": 71,
+   "cold": 0.2815,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.4,
+   "mm": 1
+  },
+  {
+   "t": 397.5,
+   "ph": 0.845,
+   "night": true,
+   "x": 12765,
+   "y": 78795,
+   "hunger": 66,
+   "thirst": 70,
+   "cold": 0.2944,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57.6,
+   "mm": 1
+  },
+  {
+   "t": 402.5,
+   "ph": 0.849,
+   "night": true,
+   "x": 12681,
+   "y": 78927,
+   "hunger": 65,
+   "thirst": 70,
+   "cold": 0.3075,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 53.8,
+   "mm": 1
+  },
+  {
+   "t": 407.5,
+   "ph": 0.852,
+   "night": true,
+   "x": 12604,
+   "y": 79112,
+   "hunger": 65,
+   "thirst": 69,
+   "cold": 0.3201,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.8,
+   "mm": 1
+  },
+  {
+   "t": 412.5,
+   "ph": 0.856,
+   "night": true,
+   "x": 12604,
+   "y": 79338,
+   "hunger": 65,
+   "thirst": 69,
+   "cold": 0.3322,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.4,
+   "mm": 1
+  },
+  {
+   "t": 417.5,
+   "ph": 0.859,
+   "night": true,
+   "x": 12440,
+   "y": 79368,
+   "hunger": 64,
+   "thirst": 68,
+   "cold": 0.3437,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 53.8,
+   "mm": 1
+  },
+  {
+   "t": 422.5,
+   "ph": 0.863,
+   "night": true,
+   "x": 12213,
+   "y": 79368,
+   "hunger": 64,
+   "thirst": 68,
+   "cold": 0.3548,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.8,
+   "mm": 0.9992
+  },
+  {
+   "t": 427.5,
+   "ph": 0.866,
+   "night": true,
+   "x": 12013,
+   "y": 79371,
+   "hunger": 64,
+   "thirst": 67,
+   "cold": 0.3633,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 55.6,
+   "mm": 0.9978
+  },
+  {
+   "t": 432.5,
+   "ph": 0.87,
+   "night": true,
+   "x": 11996,
+   "y": 79478,
+   "hunger": 64,
+   "thirst": 67,
+   "cold": 0.3736,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 56.4,
+   "mm": 0.9961
+  },
+  {
+   "t": 437.5,
+   "ph": 0.873,
+   "night": true,
+   "x": 11884,
+   "y": 79657,
+   "hunger": 63,
+   "thirst": 66,
+   "cold": 0.3835,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57.6,
+   "mm": 0.9944
+  },
+  {
+   "t": 442.5,
+   "ph": 0.877,
+   "night": true,
+   "x": 11771,
+   "y": 79827,
+   "hunger": 63,
+   "thirst": 66,
+   "cold": 0.3929,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.2,
+   "mm": 0.9928
+  },
+  {
+   "t": 447.5,
+   "ph": 0.88,
+   "night": true,
+   "x": 11689,
+   "y": 79976,
+   "hunger": 63,
+   "thirst": 65,
+   "cold": 0.4019,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 54,
+   "mm": 0.9913
+  },
+  {
+   "t": 452.5,
+   "ph": 0.884,
+   "night": true,
+   "x": 11491,
+   "y": 79922,
+   "hunger": 62,
+   "thirst": 65,
+   "cold": 0.4106,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.2,
+   "mm": 0.9899
+  },
+  {
+   "t": 457.5,
+   "ph": 0.887,
+   "night": true,
+   "x": 11321,
+   "y": 79922,
+   "hunger": 62,
+   "thirst": 64,
+   "cold": 0.419,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.2,
+   "mm": 0.9885
+  },
+  {
+   "t": 462.6,
+   "ph": 0.891,
+   "night": true,
+   "x": 11316,
+   "y": 80033,
+   "hunger": 62,
+   "thirst": 64,
+   "cold": 0.427,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 54.2,
+   "mm": 0.9872
+  },
+  {
+   "t": 467.5,
+   "ph": 0.894,
+   "night": true,
+   "x": 11119,
+   "y": 80022,
+   "hunger": 62,
+   "thirst": 63,
+   "cold": 0.4346,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59,
+   "mm": 0.9859
+  },
+  {
+   "t": 472.5,
+   "ph": 0.898,
+   "night": true,
+   "x": 10998,
+   "y": 80018,
+   "hunger": 71,
+   "thirst": 100,
+   "cold": 0.4419,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 56.2,
+   "mm": 0.9847
+  },
+  {
+   "t": 477.5,
+   "ph": 0.901,
+   "night": true,
+   "x": 11173,
+   "y": 80018,
+   "hunger": 71,
+   "thirst": 99,
+   "cold": 0.4475,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 55.4,
+   "mm": 0.9838
+  },
+  {
+   "t": 482.5,
+   "ph": 0.904,
+   "night": true,
+   "x": 11387,
+   "y": 80044,
+   "hunger": 71,
+   "thirst": 99,
+   "cold": 0.4542,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57.8,
+   "mm": 0.9826
+  },
+  {
+   "t": 487.5,
+   "ph": 0.908,
+   "night": true,
+   "x": 11583,
+   "y": 79994,
+   "hunger": 70,
+   "thirst": 98,
+   "cold": 0.4607,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59,
+   "mm": 0.9816
+  },
+  {
+   "t": 492.5,
+   "ph": 0.911,
+   "night": true,
+   "x": 11779,
+   "y": 79924,
+   "hunger": 70,
+   "thirst": 97,
+   "cold": 0.4669,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57.8,
+   "mm": 0.9805
+  },
+  {
+   "t": 497.5,
+   "ph": 0.915,
+   "night": true,
+   "x": 12004,
+   "y": 79924,
+   "hunger": 70,
+   "thirst": 97,
+   "cold": 0.4729,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59,
+   "mm": 0.9795
+  },
+  {
+   "t": 502.5,
+   "ph": 0.918,
+   "night": true,
+   "x": 12228,
+   "y": 79924,
+   "hunger": 69,
+   "thirst": 96,
+   "cold": 0.4786,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.6,
+   "mm": 0.9786
+  },
+  {
+   "t": 507.5,
+   "ph": 0.922,
+   "night": true,
+   "x": 12433,
+   "y": 79878,
+   "hunger": 69,
+   "thirst": 95,
+   "cold": 0.4842,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59,
+   "mm": 0.9776
+  },
+  {
+   "t": 512.5,
+   "ph": 0.925,
+   "night": true,
+   "x": 12596,
+   "y": 79732,
+   "hunger": 69,
+   "thirst": 95,
+   "cold": 0.4894,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57.8,
+   "mm": 0.9768
+  },
+  {
+   "t": 517.5,
+   "ph": 0.929,
+   "night": true,
+   "x": 12806,
+   "y": 79699,
+   "hunger": 69,
+   "thirst": 94,
+   "cold": 0.4945,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59,
+   "mm": 0.9759
+  },
+  {
+   "t": 522.5,
+   "ph": 0.932,
+   "night": true,
+   "x": 12973,
+   "y": 79564,
+   "hunger": 68,
+   "thirst": 94,
+   "cold": 0.4993,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.2,
+   "mm": 0.9751
+  },
+  {
+   "t": 527.7,
+   "ph": 0.936,
+   "night": true,
+   "x": 13193,
+   "y": 79540,
+   "hunger": 68,
+   "thirst": 93,
+   "cold": 0.5039,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.6,
+   "mm": 0.9744
+  },
+  {
+   "t": 532.5,
+   "ph": 0.939,
+   "night": true,
+   "x": 13361,
+   "y": 79422,
+   "hunger": 68,
+   "thirst": 92,
+   "cold": 0.5075,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57,
+   "mm": 0.9738
+  },
+  {
+   "t": 537.5,
+   "ph": 0.943,
+   "night": true,
+   "x": 13476,
+   "y": 79377,
+   "hunger": 67,
+   "thirst": 92,
+   "cold": 0.5117,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 53,
+   "mm": 0.973
+  },
+  {
+   "t": 542.5,
+   "ph": 0.946,
+   "night": true,
+   "x": 13618,
+   "y": 79255,
+   "hunger": 67,
+   "thirst": 91,
+   "cold": 0.5158,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59,
+   "mm": 0.9724
+  },
+  {
+   "t": 547.5,
+   "ph": 0.95,
+   "night": true,
+   "x": 13772,
+   "y": 79127,
+   "hunger": 67,
+   "thirst": 91,
+   "cold": 0.5166,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 56,
+   "mm": 0.9722
+  },
+  {
+   "t": 552.5,
+   "ph": 0.953,
+   "night": true,
+   "x": 13911,
+   "y": 78960,
+   "hunger": 66,
+   "thirst": 90,
+   "cold": 0.5089,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57.2,
+   "mm": 0.9735
+  },
+  {
+   "t": 557.5,
+   "ph": 0.957,
+   "night": true,
+   "x": 13996,
+   "y": 78779,
+   "hunger": 66,
+   "thirst": 89,
+   "cold": 0.4967,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 54,
+   "mm": 0.9755
+  },
+  {
+   "t": 562.5,
+   "ph": 0.96,
+   "night": true,
+   "x": 13861,
+   "y": 78612,
+   "hunger": 66,
+   "thirst": 89,
+   "cold": 0.485,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.2,
+   "mm": 0.9775
+  },
+  {
+   "t": 567.5,
+   "ph": 0.964,
+   "night": true,
+   "x": 13703,
+   "y": 78453,
+   "hunger": 65,
+   "thirst": 88,
+   "cold": 0.4736,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 52,
+   "mm": 0.9794
+  },
+  {
+   "t": 572.5,
+   "ph": 0.967,
+   "night": true,
+   "x": 13511,
+   "y": 78373,
+   "hunger": 65,
+   "thirst": 87,
+   "cold": 0.457,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 56.4,
+   "mm": 0.9822
+  },
+  {
+   "t": 577.5,
+   "ph": 0.97,
+   "night": true,
+   "x": 13331,
+   "y": 78298,
+   "hunger": 65,
+   "thirst": 87,
+   "cold": 0.4481,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59,
+   "mm": 0.9836
+  },
+  {
+   "t": 582.5,
+   "ph": 0.974,
+   "night": true,
+   "x": 13237,
+   "y": 78229,
+   "hunger": 64,
+   "thirst": 86,
+   "cold": 0.4384,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 48,
+   "mm": 0.9853
+  },
+  {
+   "t": 587.6,
+   "ph": 0.977,
+   "night": true,
+   "x": 13254,
+   "y": 78246,
+   "hunger": 64,
+   "thirst": 86,
+   "cold": 0.4291,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 50.4,
+   "mm": 0.9868
+  },
+  {
+   "t": 592.5,
+   "ph": 0.981,
+   "night": true,
+   "x": 13347,
+   "y": 78320,
+   "hunger": 64,
+   "thirst": 85,
+   "cold": 0.4202,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57.4,
+   "mm": 0.9883
+  },
+  {
+   "t": 597.5,
+   "ph": 0.984,
+   "night": true,
+   "x": 13448,
+   "y": 78382,
+   "hunger": 64,
+   "thirst": 85,
+   "cold": 0.4116,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.2,
+   "mm": 0.9897
+  },
+  {
+   "t": 602.5,
+   "ph": 0.988,
+   "night": true,
+   "x": 13538,
+   "y": 78473,
+   "hunger": 63,
+   "thirst": 84,
+   "cold": 0.3999,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.6,
+   "mm": 0.9917
+  },
+  {
+   "t": 607.7,
+   "ph": 0.991,
+   "night": true,
+   "x": 13630,
+   "y": 78565,
+   "hunger": 63,
+   "thirst": 83,
+   "cold": 0.3883,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 54.8,
+   "mm": 0.9936
+  },
+  {
+   "t": 612.7,
+   "ph": 0.995,
+   "night": true,
+   "x": 13731,
+   "y": 78625,
+   "hunger": 63,
+   "thirst": 83,
+   "cold": 0.3811,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 51.2,
+   "mm": 0.9948
+  },
+  {
+   "t": 617.5,
+   "ph": 0.998,
+   "night": true,
+   "x": 13835,
+   "y": 78667,
+   "hunger": 62,
+   "thirst": 82,
+   "cold": 0.3741,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 50.2,
+   "mm": 0.996
+  },
+  {
+   "t": 622.5,
+   "ph": 0.002,
+   "night": false,
+   "x": 13944,
+   "y": 78712,
+   "hunger": 62,
+   "thirst": 82,
+   "cold": 0.3679,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 55,
+   "mm": 0.997
+  },
+  {
+   "t": 627.5,
+   "ph": 0.005,
+   "night": false,
+   "x": 13991,
+   "y": 78807,
+   "hunger": 62,
+   "thirst": 81,
+   "cold": 0.3594,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 56,
+   "mm": 0.9984
+  },
+  {
+   "t": 632.6,
+   "ph": 0.009,
+   "night": false,
+   "x": 13881,
+   "y": 78822,
+   "hunger": 62,
+   "thirst": 80,
+   "cold": 0.3514,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 56.4,
+   "mm": 0.9998
+  },
+  {
+   "t": 637.5,
+   "ph": 0.012,
+   "night": false,
+   "x": 13755,
+   "y": 78822,
+   "hunger": 61,
+   "thirst": 79,
+   "cold": 0.3436,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 54.2,
+   "mm": 1
+  },
+  {
+   "t": 642.5,
+   "ph": 0.016,
+   "night": false,
+   "x": 13629,
+   "y": 78826,
+   "hunger": 61,
+   "thirst": 79,
+   "cold": 0.3362,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 54.8,
+   "mm": 1
+  },
+  {
+   "t": 647.5,
+   "ph": 0.019,
+   "night": false,
+   "x": 13512,
+   "y": 78804,
+   "hunger": 61,
+   "thirst": 78,
+   "cold": 0.3291,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 54.5,
+   "mm": 1
+  },
+  {
+   "t": 652.5,
+   "ph": 0.023,
+   "night": false,
+   "x": 13399,
+   "y": 78766,
+   "hunger": 60,
+   "thirst": 77,
+   "cold": 0.3225,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 56.4,
+   "mm": 1
+  },
+  {
+   "t": 657.6,
+   "ph": 0.026,
+   "night": false,
+   "x": 13286,
+   "y": 78727,
+   "hunger": 60,
+   "thirst": 76,
+   "cold": 0.317,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 53.8,
+   "mm": 1
+  },
+  {
+   "t": 662.5,
+   "ph": 0.029,
+   "night": false,
+   "x": 13181,
+   "y": 78672,
+   "hunger": 60,
+   "thirst": 76,
+   "cold": 0.3131,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.4,
+   "mm": 1
+  },
+  {
+   "t": 667.5,
+   "ph": 0.033,
+   "night": false,
+   "x": 13077,
+   "y": 78613,
+   "hunger": 60,
+   "thirst": 75,
+   "cold": 0.3111,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.6,
+   "mm": 1
+  },
+  {
+   "t": 672.5,
+   "ph": 0.036,
+   "night": false,
+   "x": 13054,
+   "y": 78601,
+   "hunger": 59,
+   "thirst": 74,
+   "cold": 0.3114,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 55.4,
+   "mm": 1
+  },
+  {
+   "t": 677.5,
+   "ph": 0.04,
+   "night": false,
+   "x": 13147,
+   "y": 78690,
+   "hunger": 59,
+   "thirst": 73,
+   "cold": 0.3108,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 54,
+   "mm": 1
+  },
+  {
+   "t": 682.5,
+   "ph": 0.043,
+   "night": false,
+   "x": 13256,
+   "y": 78738,
+   "hunger": 59,
+   "thirst": 73,
+   "cold": 0.3094,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 55,
+   "mm": 1
+  },
+  {
+   "t": 687.6,
+   "ph": 0.047,
+   "night": false,
+   "x": 13373,
+   "y": 78766,
+   "hunger": 59,
+   "thirst": 72,
+   "cold": 0.306,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57.4,
+   "mm": 1
+  },
+  {
+   "t": 692.6,
+   "ph": 0.05,
+   "night": false,
+   "x": 13476,
+   "y": 78828,
+   "hunger": 58,
+   "thirst": 72,
+   "cold": 0.3011,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57.4,
+   "mm": 1
+  },
+  {
+   "t": 697.5,
+   "ph": 0.054,
+   "night": false,
+   "x": 13603,
+   "y": 78829,
+   "hunger": 58,
+   "thirst": 71,
+   "cold": 0.2959,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 52.6,
+   "mm": 1
+  },
+  {
+   "t": 702.5,
+   "ph": 0.057,
+   "night": false,
+   "x": 13728,
+   "y": 78829,
+   "hunger": 58,
+   "thirst": 70,
+   "cold": 0.2904,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 39.4,
+   "mm": 1
+  },
+  {
+   "t": 707.6,
+   "ph": 0.061,
+   "night": false,
+   "x": 13856,
+   "y": 78829,
+   "hunger": 57,
+   "thirst": 69,
+   "cold": 0.2852,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 56.8,
+   "mm": 1
+  },
+  {
+   "t": 712.5,
+   "ph": 0.064,
+   "night": false,
+   "x": 13984,
+   "y": 78829,
+   "hunger": 57,
+   "thirst": 69,
+   "cold": 0.2801,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 53.6,
+   "mm": 1
+  },
+  {
+   "t": 717.6,
+   "ph": 0.068,
+   "night": false,
+   "x": 13956,
+   "y": 78744,
+   "hunger": 57,
+   "thirst": 68,
+   "cold": 0.2753,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 53.4,
+   "mm": 1
+  },
+  {
+   "t": 722.5,
+   "ph": 0.071,
+   "night": false,
+   "x": 13846,
+   "y": 78699,
+   "hunger": 57,
+   "thirst": 67,
+   "cold": 0.2706,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57.8,
+   "mm": 1
+  },
+  {
+   "t": 727.6,
+   "ph": 0.075,
+   "night": false,
+   "x": 13736,
+   "y": 78653,
+   "hunger": 56,
+   "thirst": 67,
+   "cold": 0.2662,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57.4,
+   "mm": 1
+  },
+  {
+   "t": 732.8,
+   "ph": 0.078,
+   "night": false,
+   "x": 13621,
+   "y": 78608,
+   "hunger": 56,
+   "thirst": 66,
+   "cold": 0.2619,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 56.3,
+   "mm": 1
+  },
+  {
+   "t": 737.5,
+   "ph": 0.082,
+   "night": false,
+   "x": 13517,
+   "y": 78562,
+   "hunger": 56,
+   "thirst": 65,
+   "cold": 0.2587,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 55.6,
+   "mm": 1
+  },
+  {
+   "t": 742.5,
+   "ph": 0.085,
+   "night": false,
+   "x": 13407,
+   "y": 78517,
+   "hunger": 56,
+   "thirst": 65,
+   "cold": 0.2547,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58,
+   "mm": 1
+  },
+  {
+   "t": 747.6,
+   "ph": 0.089,
+   "night": false,
+   "x": 13296,
+   "y": 78471,
+   "hunger": 55,
+   "thirst": 64,
+   "cold": 0.2509,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 56.2,
+   "mm": 1
+  },
+  {
+   "t": 752.6,
+   "ph": 0.092,
+   "night": false,
+   "x": 13187,
+   "y": 78427,
+   "hunger": 55,
+   "thirst": 63,
+   "cold": 0.2473,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 55.8,
+   "mm": 1
+  },
+  {
+   "t": 757.6,
+   "ph": 0.095,
+   "night": false,
+   "x": 13110,
+   "y": 78373,
+   "hunger": 55,
+   "thirst": 63,
+   "cold": 0.2444,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 52.2,
+   "mm": 1
+  },
+  {
+   "t": 762.5,
+   "ph": 0.099,
+   "night": false,
+   "x": 13065,
+   "y": 78264,
+   "hunger": 55,
+   "thirst": 62,
+   "cold": 0.2423,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57.8,
+   "mm": 1
+  },
+  {
+   "t": 767.6,
+   "ph": 0.102,
+   "night": false,
+   "x": 13019,
+   "y": 78154,
+   "hunger": 54,
+   "thirst": 62,
+   "cold": 0.2406,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57.8,
+   "mm": 1
+  },
+  {
+   "t": 772.5,
+   "ph": 0.106,
+   "night": false,
+   "x": 13055,
+   "y": 78106,
+   "hunger": 54,
+   "thirst": 61,
+   "cold": 0.2394,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 50.8,
+   "mm": 1
+  },
+  {
+   "t": 777.6,
+   "ph": 0.109,
+   "night": false,
+   "x": 13146,
+   "y": 78014,
+   "hunger": 54,
+   "thirst": 60,
+   "cold": 0.2367,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 55.4,
+   "mm": 1
+  },
+  {
+   "t": 782.5,
+   "ph": 0.113,
+   "night": false,
+   "x": 13236,
+   "y": 77924,
+   "hunger": 54,
+   "thirst": 60,
+   "cold": 0.2337,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 55.2,
+   "mm": 1
+  },
+  {
+   "t": 787.6,
+   "ph": 0.116,
+   "night": false,
+   "x": 13327,
+   "y": 77833,
+   "hunger": 53,
+   "thirst": 59,
+   "cold": 0.2308,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57.6,
+   "mm": 1
+  },
+  {
+   "t": 792.7,
+   "ph": 0.12,
+   "night": false,
+   "x": 13421,
+   "y": 77739,
+   "hunger": 53,
+   "thirst": 58,
+   "cold": 0.228,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57.8,
+   "mm": 1
+  },
+  {
+   "t": 797.6,
+   "ph": 0.123,
+   "night": false,
+   "x": 13515,
+   "y": 77665,
+   "hunger": 53,
+   "thirst": 58,
+   "cold": 0.2257,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57.6,
+   "mm": 1
+  },
+  {
+   "t": 802.6,
+   "ph": 0.127,
+   "night": false,
+   "x": 13623,
+   "y": 77620,
+   "hunger": 53,
+   "thirst": 57,
+   "cold": 0.2183,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 53.6,
+   "mm": 1
+  },
+  {
+   "t": 807.5,
+   "ph": 0.13,
+   "night": false,
+   "x": 13726,
+   "y": 77562,
+   "hunger": 53,
+   "thirst": 57,
+   "cold": 0.2132,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "thirst": 1
+   },
+   "fps": 52.4,
+   "mm": 1
+  },
+  {
+   "t": 812.6,
+   "ph": 0.134,
+   "night": false,
+   "x": 13816,
+   "y": 77473,
+   "hunger": 52,
+   "thirst": 56,
+   "cold": 0.2111,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "thirst": 1
+   },
+   "fps": 52.8,
+   "mm": 1
+  },
+  {
+   "t": 817.6,
+   "ph": 0.137,
+   "night": false,
+   "x": 13907,
+   "y": 77382,
+   "hunger": 52,
+   "thirst": 56,
+   "cold": 0.2092,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "thirst": 1
+   },
+   "fps": 55.2,
+   "mm": 1
+  },
+  {
+   "t": 822.6,
+   "ph": 0.141,
+   "night": false,
+   "x": 14007,
+   "y": 77316,
+   "hunger": 52,
+   "thirst": 55,
+   "cold": 0.2073,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "thirst": 1
+   },
+   "fps": 53.2,
+   "mm": 1
+  },
+  {
+   "t": 827.5,
+   "ph": 0.144,
+   "night": false,
+   "x": 14097,
+   "y": 77226,
+   "hunger": 52,
+   "thirst": 54,
+   "cold": 0.2055,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "thirst": 1
+   },
+   "fps": 58.2,
+   "mm": 1
+  },
+  {
+   "t": 832.5,
+   "ph": 0.148,
+   "night": false,
+   "x": 14186,
+   "y": 77134,
+   "hunger": 51,
+   "thirst": 54,
+   "cold": 0.2038,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "thirst": 1
+   },
+   "fps": 56,
+   "mm": 1
+  },
+  {
+   "t": 837.6,
+   "ph": 0.151,
+   "night": false,
+   "x": 14218,
+   "y": 77018,
+   "hunger": 51,
+   "thirst": 53,
+   "cold": 0.2027,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "thirst": 1
+   },
+   "fps": 50.4,
+   "mm": 1
+  },
+  {
+   "t": 842.5,
+   "ph": 0.155,
+   "night": false,
+   "x": 14224,
+   "y": 76893,
+   "hunger": 51,
+   "thirst": 53,
+   "cold": 0.2052,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1,
+    "thirst": 1
+   },
+   "fps": 58,
+   "mm": 1
+  },
+  {
+   "t": 847.6,
+   "ph": 0.158,
+   "night": false,
+   "x": 14267,
+   "y": 76781,
+   "hunger": 51,
+   "thirst": 52,
+   "cold": 0.2105,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1,
+    "thirst": 1
+   },
+   "fps": 58.4,
+   "mm": 1
+  },
+  {
+   "t": 852.6,
+   "ph": 0.161,
+   "night": false,
+   "x": 14341,
+   "y": 76693,
+   "hunger": 50,
+   "thirst": 52,
+   "cold": 0.2201,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1,
+    "thirst": 1
+   },
+   "fps": 56.2,
+   "mm": 1
+  },
+  {
+   "t": 857.6,
+   "ph": 0.165,
+   "night": false,
+   "x": 14352,
+   "y": 76568,
+   "hunger": 50,
+   "thirst": 51,
+   "cold": 0.2304,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1,
+    "thirst": 1
+   },
+   "fps": 55.4,
+   "mm": 1
+  },
+  {
+   "t": 862.6,
+   "ph": 0.168,
+   "night": false,
+   "x": 14421,
+   "y": 76468,
+   "hunger": 50,
+   "thirst": 50,
+   "cold": 0.2402,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1,
+    "thirst": 1
+   },
+   "fps": 57.6,
+   "mm": 1
+  },
+  {
+   "t": 867.7,
+   "ph": 0.172,
+   "night": false,
+   "x": 14477,
+   "y": 76360,
+   "hunger": 50,
+   "thirst": 50,
+   "cold": 0.2497,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1,
+    "thirst": 1
+   },
+   "fps": 58.4,
+   "mm": 1
+  },
+  {
+   "t": 872.6,
+   "ph": 0.175,
+   "night": false,
+   "x": 14534,
+   "y": 76258,
+   "hunger": 50,
+   "thirst": 49,
+   "cold": 0.2588,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "thirst": 1,
+    "hunger": 1
+   },
+   "fps": 52.8,
+   "mm": 1
+  },
+  {
+   "t": 877.6,
+   "ph": 0.179,
+   "night": false,
+   "x": 14598,
+   "y": 76167,
+   "hunger": 49,
+   "thirst": 49,
+   "cold": 0.2675,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "thirst": 1,
+    "hunger": 1
+   },
+   "fps": 38.2,
+   "mm": 1
+  },
+  {
+   "t": 882.6,
+   "ph": 0.182,
+   "night": false,
+   "x": 14627,
+   "y": 76050,
+   "hunger": 49,
+   "thirst": 48,
+   "cold": 0.2763,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "thirst": 1,
+    "hunger": 1
+   },
+   "fps": 39.9,
+   "mm": 1
+  },
+  {
+   "t": 887.7,
+   "ph": 0.186,
+   "night": false,
+   "x": 14677,
+   "y": 75954,
+   "hunger": 49,
+   "thirst": 48,
+   "cold": 0.2843,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "thirst": 1,
+    "hunger": 1
+   },
+   "fps": 40,
+   "mm": 1
+  },
+  {
+   "t": 892.7,
+   "ph": 0.189,
+   "night": false,
+   "x": 14746,
+   "y": 75853,
+   "hunger": 49,
+   "thirst": 47,
+   "cold": 0.2905,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "thirst": 1,
+    "hunger": 1
+   },
+   "fps": 38.4,
+   "mm": 1
+  },
+  {
+   "t": 898.2,
+   "ph": 0.193,
+   "night": false,
+   "x": 14790,
+   "y": 75784,
+   "hunger": 48,
+   "thirst": 47,
+   "cold": 0.2997,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "thirst": 1,
+    "hunger": 1
+   },
+   "fps": 44,
+   "mm": 1
+  },
+  {
+   "t": 902.7,
+   "ph": 0.196,
+   "night": false,
+   "x": 14879,
+   "y": 75750,
+   "hunger": 48,
+   "thirst": 46,
+   "cold": 0.3053,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "thirst": 1,
+    "hunger": 1
+   },
+   "fps": 43.4,
+   "mm": 1
+  },
+  {
+   "t": 907.9,
+   "ph": 0.2,
+   "night": false,
+   "x": 14951,
+   "y": 75649,
+   "hunger": 48,
+   "thirst": 46,
+   "cold": 0.3121,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "thirst": 1,
+    "hunger": 1
+   },
+   "fps": 45.1,
+   "mm": 1
+  },
+  {
+   "t": 912.7,
+   "ph": 0.203,
+   "night": false,
+   "x": 14985,
+   "y": 75652,
+   "hunger": 48,
+   "thirst": 100,
+   "cold": 0.3186,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 40.8,
+   "mm": 1
+  },
+  {
+   "t": 917.8,
+   "ph": 0.207,
+   "night": false,
+   "x": 14985,
+   "y": 75782,
+   "hunger": 47,
+   "thirst": 99,
+   "cold": 0.325,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 38.6,
+   "mm": 1
+  },
+  {
+   "t": 922.9,
+   "ph": 0.21,
+   "night": false,
+   "x": 14937,
+   "y": 75886,
+   "hunger": 47,
+   "thirst": 98,
+   "cold": 0.33,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 39.4,
+   "mm": 1
+  },
+  {
+   "t": 927.8,
+   "ph": 0.214,
+   "night": false,
+   "x": 14830,
+   "y": 75929,
+   "hunger": 47,
+   "thirst": 97,
+   "cold": 0.3357,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 35.4,
+   "mm": 1
+  },
+  {
+   "t": 932.8,
+   "ph": 0.217,
+   "night": false,
+   "x": 14804,
+   "y": 75979,
+   "hunger": 47,
+   "thirst": 96,
+   "cold": 0.3411,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 39.6,
+   "mm": 1
+  },
+  {
+   "t": 937.8,
+   "ph": 0.221,
+   "night": false,
+   "x": 14804,
+   "y": 75979,
+   "hunger": 57,
+   "thirst": 99,
+   "cold": 0.3466,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 30.4,
+   "mm": 1
+  },
+  {
+   "t": 942.8,
+   "ph": 0.224,
+   "night": false,
+   "x": 14804,
+   "y": 75979,
+   "hunger": 56,
+   "thirst": 98,
+   "cold": 0.352,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 42.6,
+   "mm": 0.9997
+  },
+  {
+   "t": 947.8,
+   "ph": 0.228,
+   "night": false,
+   "x": 14832,
+   "y": 75986,
+   "hunger": 56,
+   "thirst": 97,
+   "cold": 0.3568,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 31,
+   "mm": 0.9989
+  },
+  {
+   "t": 952.8,
+   "ph": 0.231,
+   "night": false,
+   "x": 14728,
+   "y": 76052,
+   "hunger": 56,
+   "thirst": 97,
+   "cold": 0.3615,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 41.4,
+   "mm": 0.9981
+  },
+  {
+   "t": 957.8,
+   "ph": 0.235,
+   "night": false,
+   "x": 14540,
+   "y": 76248,
+   "hunger": 56,
+   "thirst": 96,
+   "cold": 0.3651,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 46.5,
+   "mm": 0.9975
+  },
+  {
+   "t": 962.8,
+   "ph": 0.238,
+   "night": false,
+   "x": 14396,
+   "y": 76479,
+   "hunger": 55,
+   "thirst": 95,
+   "cold": 0.3694,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 46,
+   "mm": 0.9968
+  },
+  {
+   "t": 967.8,
+   "ph": 0.241,
+   "night": false,
+   "x": 14317,
+   "y": 76750,
+   "hunger": 55,
+   "thirst": 94,
+   "cold": 0.3736,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 58.8,
+   "mm": 0.9961
+  },
+  {
+   "t": 972.8,
+   "ph": 0.245,
+   "night": false,
+   "x": 14240,
+   "y": 77006,
+   "hunger": 55,
+   "thirst": 93,
+   "cold": 0.3746,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 60,
+   "mm": 0.9959
+  },
+  {
+   "t": 977.8,
+   "ph": 0.248,
+   "night": false,
+   "x": 14043,
+   "y": 77225,
+   "hunger": 55,
+   "thirst": 92,
+   "cold": 0.3672,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 58.4,
+   "mm": 0.9971
+  },
+  {
+   "t": 982.8,
+   "ph": 0.252,
+   "night": false,
+   "x": 13869,
+   "y": 77455,
+   "hunger": 54,
+   "thirst": 92,
+   "cold": 0.3587,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 59.8,
+   "mm": 0.9985
+  },
+  {
+   "t": 987.8,
+   "ph": 0.255,
+   "night": false,
+   "x": 13653,
+   "y": 77671,
+   "hunger": 54,
+   "thirst": 91,
+   "cold": 0.3499,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 59.4,
+   "mm": 1
+  },
+  {
+   "t": 992.8,
+   "ph": 0.259,
+   "night": false,
+   "x": 13439,
+   "y": 77886,
+   "hunger": 54,
+   "thirst": 90,
+   "cold": 0.3419,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 59.6,
+   "mm": 1
+  },
+  {
+   "t": 997.8,
+   "ph": 0.262,
+   "night": false,
+   "x": 13226,
+   "y": 78099,
+   "hunger": 54,
+   "thirst": 89,
+   "cold": 0.3345,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 59.8,
+   "mm": 1
+  },
+  {
+   "t": 1002.8,
+   "ph": 0.266,
+   "night": false,
+   "x": 13370,
+   "y": 77954,
+   "hunger": 53,
+   "thirst": 88,
+   "cold": 0.3274,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 57.6,
+   "mm": 1
+  },
+  {
+   "t": 1007.8,
+   "ph": 0.269,
+   "night": false,
+   "x": 13585,
+   "y": 77740,
+   "hunger": 53,
+   "thirst": 88,
+   "cold": 0.3205,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 60,
+   "mm": 1
+  },
+  {
+   "t": 1012.8,
+   "ph": 0.273,
+   "night": false,
+   "x": 13799,
+   "y": 77525,
+   "hunger": 53,
+   "thirst": 87,
+   "cold": 0.3117,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 58.6,
+   "mm": 1
+  },
+  {
+   "t": 1017.8,
+   "ph": 0.276,
+   "night": false,
+   "x": 13992,
+   "y": 77302,
+   "hunger": 52,
+   "thirst": 86,
+   "cold": 0.3055,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 60,
+   "mm": 1
+  },
+  {
+   "t": 1022.8,
+   "ph": 0.28,
+   "night": false,
+   "x": 13752,
+   "y": 77245,
+   "hunger": 52,
+   "thirst": 85,
+   "cold": 0.2996,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 60,
+   "mm": 1
+  },
+  {
+   "t": 1027.8,
+   "ph": 0.283,
+   "night": false,
+   "x": 13470,
+   "y": 77279,
+   "hunger": 52,
+   "thirst": 84,
+   "cold": 0.2939,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 60.2,
+   "mm": 1
+  },
+  {
+   "t": 1032.8,
+   "ph": 0.287,
+   "night": false,
+   "x": 13207,
+   "y": 77378,
+   "hunger": 52,
+   "thirst": 84,
+   "cold": 0.2904,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 59.2,
+   "mm": 1
+  },
+  {
+   "t": 1037.8,
+   "ph": 0.29,
+   "night": false,
+   "x": 13012,
+   "y": 77503,
+   "hunger": 52,
+   "thirst": 83,
+   "cold": 0.2894,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 56.6,
+   "mm": 1
+  },
+  {
+   "t": 1042.8,
+   "ph": 0.294,
+   "night": false,
+   "x": 12727,
+   "y": 77454,
+   "hunger": 51,
+   "thirst": 82,
+   "cold": 0.2936,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 60,
+   "mm": 1
+  },
+  {
+   "t": 1047.8,
+   "ph": 0.297,
+   "night": false,
+   "x": 12513,
+   "y": 77301,
+   "hunger": 51,
+   "thirst": 81,
+   "cold": 0.3008,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 59.6,
+   "mm": 1
+  },
+  {
+   "t": 1052.8,
+   "ph": 0.301,
+   "night": false,
+   "x": 12315,
+   "y": 77172,
+   "hunger": 51,
+   "thirst": 80,
+   "cold": 0.3078,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 57.6,
+   "mm": 1
+  },
+  {
+   "t": 1057.8,
+   "ph": 0.304,
+   "night": false,
+   "x": 12048,
+   "y": 77112,
+   "hunger": 51,
+   "thirst": 80,
+   "cold": 0.3145,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 59.8,
+   "mm": 1
+  },
+  {
+   "t": 1062.8,
+   "ph": 0.307,
+   "night": false,
+   "x": 11831,
+   "y": 76977,
+   "hunger": 50,
+   "thirst": 79,
+   "cold": 0.3209,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 58.4,
+   "mm": 1
+  },
+  {
+   "t": 1067.8,
+   "ph": 0.311,
+   "night": false,
+   "x": 11669,
+   "y": 76788,
+   "hunger": 50,
+   "thirst": 78,
+   "cold": 0.3271,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 59.8,
+   "mm": 1
+  },
+  {
+   "t": 1072.8,
+   "ph": 0.314,
+   "night": false,
+   "x": 11705,
+   "y": 76883,
+   "hunger": 60,
+   "thirst": 85,
+   "cold": 0.333,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.2,
+   "mm": 1
+  },
+  {
+   "t": 1077.8,
+   "ph": 0.318,
+   "night": false,
+   "x": 11929,
+   "y": 77065,
+   "hunger": 60,
+   "thirst": 85,
+   "cold": 0.3375,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 60,
+   "mm": 1
+  },
+  {
+   "t": 1082.8,
+   "ph": 0.321,
+   "night": false,
+   "x": 12228,
+   "y": 77065,
+   "hunger": 59,
+   "thirst": 84,
+   "cold": 0.343,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 60,
+   "mm": 1
+  },
+  {
+   "t": 1087.8,
+   "ph": 0.325,
+   "night": false,
+   "x": 12509,
+   "y": 77064,
+   "hunger": 59,
+   "thirst": 83,
+   "cold": 0.3483,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.4,
+   "mm": 1
+  },
+  {
+   "t": 1092.8,
+   "ph": 0.328,
+   "night": false,
+   "x": 12784,
+   "y": 77123,
+   "hunger": 59,
+   "thirst": 82,
+   "cold": 0.3533,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.8,
+   "mm": 0.9994
+  },
+  {
+   "t": 1097.8,
+   "ph": 0.332,
+   "night": false,
+   "x": 13049,
+   "y": 77095,
+   "hunger": 59,
+   "thirst": 82,
+   "cold": 0.3582,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 60,
+   "mm": 0.9986
+  },
+  {
+   "t": 1102.8,
+   "ph": 0.335,
+   "night": false,
+   "x": 13286,
+   "y": 77226,
+   "hunger": 58,
+   "thirst": 81,
+   "cold": 0.3603,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 60,
+   "mm": 0.9983
+  },
+  {
+   "t": 1107.8,
+   "ph": 0.339,
+   "night": false,
+   "x": 13587,
+   "y": 77226,
+   "hunger": 58,
+   "thirst": 80,
+   "cold": 0.3546,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 60,
+   "mm": 0.9992
+  },
+  {
+   "t": 1112.8,
+   "ph": 0.342,
+   "night": false,
+   "x": 13886,
+   "y": 77226,
+   "hunger": 58,
+   "thirst": 79,
+   "cold": 0.3482,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.6,
+   "mm": 1
+  },
+  {
+   "t": 1117.8,
+   "ph": 0.346,
+   "night": false,
+   "x": 13926,
+   "y": 77389,
+   "hunger": 58,
+   "thirst": 79,
+   "cold": 0.3404,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 60,
+   "mm": 1
+  },
+  {
+   "t": 1122.8,
+   "ph": 0.349,
+   "night": false,
+   "x": 13713,
+   "y": 77602,
+   "hunger": 57,
+   "thirst": 78,
+   "cold": 0.333,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 60,
+   "mm": 1
+  },
+  {
+   "t": 1127.8,
+   "ph": 0.353,
+   "night": false,
+   "x": 13503,
+   "y": 77812,
+   "hunger": 57,
+   "thirst": 77,
+   "cold": 0.3234,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 60,
+   "mm": 1
+  },
+  {
+   "t": 1132.8,
+   "ph": 0.356,
+   "night": false,
+   "x": 13291,
+   "y": 78024,
+   "hunger": 57,
+   "thirst": 76,
+   "cold": 0.3168,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 60,
+   "mm": 1
+  },
+  {
+   "t": 1137.8,
+   "ph": 0.36,
+   "night": false,
+   "x": 13170,
+   "y": 78185,
+   "hunger": 56,
+   "thirst": 76,
+   "cold": 0.3104,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 56.6,
+   "mm": 1
+  },
+  {
+   "t": 1142.8,
+   "ph": 0.363,
+   "night": false,
+   "x": 13241,
+   "y": 78100,
+   "hunger": 56,
+   "thirst": 75,
+   "cold": 0.3043,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.8,
+   "mm": 1
+  },
+  {
+   "t": 1147.8,
+   "ph": 0.366,
+   "night": false,
+   "x": 13465,
+   "y": 77877,
+   "hunger": 56,
+   "thirst": 74,
+   "cold": 0.2984,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.8,
+   "mm": 1
+  },
+  {
+   "t": 1152.8,
+   "ph": 0.37,
+   "night": false,
+   "x": 13688,
+   "y": 77654,
+   "hunger": 56,
+   "thirst": 74,
+   "cold": 0.2927,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 60,
+   "mm": 1
+  },
+  {
+   "t": 1157.8,
+   "ph": 0.373,
+   "night": false,
+   "x": 13912,
+   "y": 77430,
+   "hunger": 55,
+   "thirst": 73,
+   "cold": 0.2866,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 60,
+   "mm": 1
+  },
+  {
+   "t": 1162.8,
+   "ph": 0.377,
+   "night": false,
+   "x": 14122,
+   "y": 77204,
+   "hunger": 55,
+   "thirst": 72,
+   "cold": 0.2815,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.8,
+   "mm": 1
+  },
+  {
+   "t": 1167.8,
+   "ph": 0.38,
+   "night": false,
+   "x": 14219,
+   "y": 76928,
+   "hunger": 55,
+   "thirst": 71,
+   "cold": 0.2772,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 60,
+   "mm": 1
+  },
+  {
+   "t": 1172.8,
+   "ph": 0.384,
+   "night": false,
+   "x": 14340,
+   "y": 76672,
+   "hunger": 55,
+   "thirst": 71,
+   "cold": 0.2812,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.8,
+   "mm": 1
+  },
+  {
+   "t": 1177.8,
+   "ph": 0.387,
+   "night": false,
+   "x": 14476,
+   "y": 76410,
+   "hunger": 54,
+   "thirst": 70,
+   "cold": 0.2891,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.4,
+   "mm": 1
+  },
+  {
+   "t": 1182.8,
+   "ph": 0.391,
+   "night": false,
+   "x": 14618,
+   "y": 76161,
+   "hunger": 54,
+   "thirst": 69,
+   "cold": 0.2966,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.6,
+   "mm": 1
+  },
+  {
+   "t": 1187.9,
+   "ph": 0.394,
+   "night": false,
+   "x": 14798,
+   "y": 75985,
+   "hunger": 54,
+   "thirst": 69,
+   "cold": 0.3037,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 55.6,
+   "mm": 1
+  },
+  {
+   "t": 1192.9,
+   "ph": 0.398,
+   "night": false,
+   "x": 14544,
+   "y": 76052,
+   "hunger": 54,
+   "thirst": 68,
+   "cold": 0.3093,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.4,
+   "mm": 1
+  },
+  {
+   "t": 1197.9,
+   "ph": 0.401,
+   "night": false,
+   "x": 14418,
+   "y": 76144,
+   "hunger": 53,
+   "thirst": 67,
+   "cold": 0.3159,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.2,
+   "mm": 1
+  },
+  {
+   "t": 1202.8,
+   "ph": 0.405,
+   "night": false,
+   "x": 14619,
+   "y": 76072,
+   "hunger": 63,
+   "thirst": 75,
+   "cold": 0.3222,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.2,
+   "mm": 1
+  },
+  {
+   "t": 1208.2,
+   "ph": 0.408,
+   "night": false,
+   "x": 14797,
+   "y": 75987,
+   "hunger": 63,
+   "thirst": 74,
+   "cold": 0.3295,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 56.2,
+   "mm": 1
+  },
+  {
+   "t": 1212.9,
+   "ph": 0.412,
+   "night": false,
+   "x": 14748,
+   "y": 76035,
+   "hunger": 63,
+   "thirst": 73,
+   "cold": 0.3342,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 54.2,
+   "mm": 1
+  },
+  {
+   "t": 1217.8,
+   "ph": 0.415,
+   "night": false,
+   "x": 14618,
+   "y": 76184,
+   "hunger": 63,
+   "thirst": 73,
+   "cold": 0.3398,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.4,
+   "mm": 1
+  },
+  {
+   "t": 1222.8,
+   "ph": 0.419,
+   "night": false,
+   "x": 14491,
+   "y": 76338,
+   "hunger": 62,
+   "thirst": 72,
+   "cold": 0.3452,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.6,
+   "mm": 1
+  },
+  {
+   "t": 1227.8,
+   "ph": 0.422,
+   "night": false,
+   "x": 14374,
+   "y": 76508,
+   "hunger": 62,
+   "thirst": 71,
+   "cold": 0.3503,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 60,
+   "mm": 0.9999
+  },
+  {
+   "t": 1232.8,
+   "ph": 0.426,
+   "night": false,
+   "x": 14349,
+   "y": 76716,
+   "hunger": 62,
+   "thirst": 70,
+   "cold": 0.3553,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 60,
+   "mm": 0.9991
+  },
+  {
+   "t": 1237.8,
+   "ph": 0.429,
+   "night": false,
+   "x": 14261,
+   "y": 76887,
+   "hunger": 61,
+   "thirst": 70,
+   "cold": 0.3582,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 60,
+   "mm": 0.9986
+  },
+  {
+   "t": 1242.8,
+   "ph": 0.432,
+   "night": false,
+   "x": 14184,
+   "y": 77073,
+   "hunger": 61,
+   "thirst": 69,
+   "cold": 0.3558,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 60,
+   "mm": 0.999
+  },
+  {
+   "t": 1247.8,
+   "ph": 0.436,
+   "night": false,
+   "x": 14039,
+   "y": 77231,
+   "hunger": 61,
+   "thirst": 68,
+   "cold": 0.3482,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 60,
+   "mm": 1
+  },
+  {
+   "t": 1252.8,
+   "ph": 0.439,
+   "night": false,
+   "x": 13922,
+   "y": 77401,
+   "hunger": 61,
+   "thirst": 68,
+   "cold": 0.3405,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.8,
+   "mm": 1
+  },
+  {
+   "t": 1257.8,
+   "ph": 0.443,
+   "night": false,
+   "x": 13768,
+   "y": 77555,
+   "hunger": 60,
+   "thirst": 67,
+   "cold": 0.3331,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 60,
+   "mm": 1
+  },
+  {
+   "t": 1262.8,
+   "ph": 0.446,
+   "night": false,
+   "x": 13614,
+   "y": 77710,
+   "hunger": 60,
+   "thirst": 66,
+   "cold": 0.3242,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 60,
+   "mm": 1
+  },
+  {
+   "t": 1267.8,
+   "ph": 0.45,
+   "night": false,
+   "x": 13459,
+   "y": 77864,
+   "hunger": 60,
+   "thirst": 66,
+   "cold": 0.3161,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 60,
+   "mm": 1
+  },
+  {
+   "t": 1272.8,
+   "ph": 0.453,
+   "night": false,
+   "x": 13305,
+   "y": 78018,
+   "hunger": 59,
+   "thirst": 65,
+   "cold": 0.3097,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.6,
+   "mm": 1
+  },
+  {
+   "t": 1277.8,
+   "ph": 0.457,
+   "night": false,
+   "x": 13172,
+   "y": 78155,
+   "hunger": 59,
+   "thirst": 65,
+   "cold": 0.3048,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.2,
+   "mm": 1
+  },
+  {
+   "t": 1282.8,
+   "ph": 0.46,
+   "night": false,
+   "x": 13214,
+   "y": 78131,
+   "hunger": 59,
+   "thirst": 64,
+   "cold": 0.2989,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57.2,
+   "mm": 1
+  },
+  {
+   "t": 1287.8,
+   "ph": 0.464,
+   "night": false,
+   "x": 13345,
+   "y": 78001,
+   "hunger": 59,
+   "thirst": 63,
+   "cold": 0.2932,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 60,
+   "mm": 1
+  },
+  {
+   "t": 1292.8,
+   "ph": 0.467,
+   "night": false,
+   "x": 13475,
+   "y": 77870,
+   "hunger": 58,
+   "thirst": 63,
+   "cold": 0.2879,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 60.2,
+   "mm": 1
+  },
+  {
+   "t": 1297.8,
+   "ph": 0.471,
+   "night": false,
+   "x": 13606,
+   "y": 77740,
+   "hunger": 58,
+   "thirst": 62,
+   "cold": 0.2827,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.8,
+   "mm": 1
+  },
+  {
+   "t": 1302.8,
+   "ph": 0.474,
+   "night": false,
+   "x": 13736,
+   "y": 77609,
+   "hunger": 58,
+   "thirst": 61,
+   "cold": 0.2747,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 60,
+   "mm": 1
+  },
+  {
+   "t": 1307.8,
+   "ph": 0.478,
+   "night": false,
+   "x": 13867,
+   "y": 77479,
+   "hunger": 58,
+   "thirst": 61,
+   "cold": 0.2701,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 60.2,
+   "mm": 1
+  },
+  {
+   "t": 1312.8,
+   "ph": 0.481,
+   "night": false,
+   "x": 13992,
+   "y": 77346,
+   "hunger": 57,
+   "thirst": 60,
+   "cold": 0.2657,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.8,
+   "mm": 1
+  },
+  {
+   "t": 1317.8,
+   "ph": 0.485,
+   "night": false,
+   "x": 14112,
+   "y": 77214,
+   "hunger": 57,
+   "thirst": 59,
+   "cold": 0.2622,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.8,
+   "mm": 1
+  },
+  {
+   "t": 1322.8,
+   "ph": 0.488,
+   "night": false,
+   "x": 14210,
+   "y": 77070,
+   "hunger": 57,
+   "thirst": 59,
+   "cold": 0.2582,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 60,
+   "mm": 1
+  },
+  {
+   "t": 1327.8,
+   "ph": 0.492,
+   "night": false,
+   "x": 14223,
+   "y": 76891,
+   "hunger": 57,
+   "thirst": 58,
+   "cold": 0.2566,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.8,
+   "mm": 1
+  },
+  {
+   "t": 1332.8,
+   "ph": 0.495,
+   "night": false,
+   "x": 14306,
+   "y": 76741,
+   "hunger": 56,
+   "thirst": 58,
+   "cold": 0.2614,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.8,
+   "mm": 1
+  },
+  {
+   "t": 1337.8,
+   "ph": 0.498,
+   "night": false,
+   "x": 14342,
+   "y": 76582,
+   "hunger": 56,
+   "thirst": 57,
+   "cold": 0.2699,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 60,
+   "mm": 1
+  },
+  {
+   "t": 1342.8,
+   "ph": 0.502,
+   "night": false,
+   "x": 14443,
+   "y": 76439,
+   "hunger": 56,
+   "thirst": 56,
+   "cold": 0.2782,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "thirst": 1
+   },
+   "fps": 60,
+   "mm": 1
+  },
+  {
+   "t": 1347.9,
+   "ph": 0.505,
+   "night": false,
+   "x": 14509,
+   "y": 76281,
+   "hunger": 56,
+   "thirst": 56,
+   "cold": 0.2861,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "thirst": 1
+   },
+   "fps": 58.4,
+   "mm": 1
+  },
+  {
+   "t": 1352.8,
+   "ph": 0.509,
+   "night": false,
+   "x": 14596,
+   "y": 76145,
+   "hunger": 55,
+   "thirst": 55,
+   "cold": 0.2938,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "thirst": 1
+   },
+   "fps": 59.8,
+   "mm": 1
+  },
+  {
+   "t": 1357.9,
+   "ph": 0.512,
+   "night": false,
+   "x": 14662,
+   "y": 75999,
+   "hunger": 55,
+   "thirst": 55,
+   "cold": 0.2997,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "thirst": 1
+   },
+   "fps": 59.6,
+   "mm": 1
+  },
+  {
+   "t": 1362.9,
+   "ph": 0.516,
+   "night": false,
+   "x": 14728,
+   "y": 75841,
+   "hunger": 55,
+   "thirst": 54,
+   "cold": 0.3067,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "thirst": 1
+   },
+   "fps": 59.2,
+   "mm": 1
+  },
+  {
+   "t": 1367.9,
+   "ph": 0.519,
+   "night": false,
+   "x": 14848,
+   "y": 75709,
+   "hunger": 55,
+   "thirst": 54,
+   "cold": 0.3135,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "thirst": 1
+   },
+   "fps": 59.2,
+   "mm": 1
+  },
+  {
+   "t": 1372.8,
+   "ph": 0.523,
+   "night": false,
+   "x": 14984,
+   "y": 75634,
+   "hunger": 54,
+   "thirst": 53,
+   "cold": 0.3199,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "thirst": 1
+   },
+   "fps": 59.2,
+   "mm": 1
+  },
+  {
+   "t": 1377.9,
+   "ph": 0.526,
+   "night": false,
+   "x": 14876,
+   "y": 75634,
+   "hunger": 54,
+   "thirst": 99,
+   "cold": 0.3262,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57.4,
+   "mm": 1
+  },
+  {
+   "t": 1382.9,
+   "ph": 0.53,
+   "night": false,
+   "x": 14806,
+   "y": 75497,
+   "hunger": 54,
+   "thirst": 98,
+   "cold": 0.3321,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.6,
+   "mm": 1
+  },
+  {
+   "t": 1387.8,
+   "ph": 0.533,
+   "night": false,
+   "x": 14684,
+   "y": 75363,
+   "hunger": 54,
+   "thirst": 98,
+   "cold": 0.3378,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59,
+   "mm": 1
+  },
+  {
+   "t": 1392.9,
+   "ph": 0.537,
+   "night": false,
+   "x": 14580,
+   "y": 75238,
+   "hunger": 53,
+   "thirst": 97,
+   "cold": 0.3432,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.6,
+   "mm": 1
+  },
+  {
+   "t": 1397.8,
+   "ph": 0.54,
+   "night": false,
+   "x": 14417,
+   "y": 75187,
+   "hunger": 53,
+   "thirst": 96,
+   "cold": 0.3485,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.6,
+   "mm": 1
+  },
+  {
+   "t": 1402.9,
+   "ph": 0.544,
+   "night": false,
+   "x": 14244,
+   "y": 75157,
+   "hunger": 53,
+   "thirst": 95,
+   "cold": 0.3525,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.2,
+   "mm": 0.9996
+  },
+  {
+   "t": 1407.9,
+   "ph": 0.547,
+   "night": false,
+   "x": 14069,
+   "y": 75179,
+   "hunger": 53,
+   "thirst": 94,
+   "cold": 0.3573,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59,
+   "mm": 0.9988
+  },
+  {
+   "t": 1412.8,
+   "ph": 0.551,
+   "night": false,
+   "x": 14016,
+   "y": 75059,
+   "hunger": 52,
+   "thirst": 93,
+   "cold": 0.3619,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.4,
+   "mm": 0.998
+  },
+  {
+   "t": 1417.9,
+   "ph": 0.554,
+   "night": false,
+   "x": 13891,
+   "y": 75100,
+   "hunger": 52,
+   "thirst": 92,
+   "cold": 0.3663,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57.8,
+   "mm": 0.9973
+  },
+  {
+   "t": 1422.9,
+   "ph": 0.558,
+   "night": false,
+   "x": 13755,
+   "y": 75213,
+   "hunger": 52,
+   "thirst": 92,
+   "cold": 0.3706,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.6,
+   "mm": 0.9966
+  },
+  {
+   "t": 1427.9,
+   "ph": 0.561,
+   "night": false,
+   "x": 13596,
+   "y": 75276,
+   "hunger": 52,
+   "thirst": 91,
+   "cold": 0.3747,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.8,
+   "mm": 0.9959
+  },
+  {
+   "t": 1432.9,
+   "ph": 0.564,
+   "night": false,
+   "x": 13480,
+   "y": 75321,
+   "hunger": 51,
+   "thirst": 90,
+   "cold": 0.3787,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.2,
+   "mm": 0.9952
+  },
+  {
+   "t": 1437.8,
+   "ph": 0.568,
+   "night": false,
+   "x": 13406,
+   "y": 75470,
+   "hunger": 51,
+   "thirst": 89,
+   "cold": 0.3824,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.8,
+   "mm": 0.9946
+  },
+  {
+   "t": 1442.9,
+   "ph": 0.571,
+   "night": false,
+   "x": 13393,
+   "y": 75650,
+   "hunger": 51,
+   "thirst": 88,
+   "cold": 0.386,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 60,
+   "mm": 0.994
+  },
+  {
+   "t": 1447.8,
+   "ph": 0.575,
+   "night": false,
+   "x": 13307,
+   "y": 75784,
+   "hunger": 51,
+   "thirst": 88,
+   "cold": 0.3888,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 59.6,
+   "mm": 0.9935
+  },
+  {
+   "t": 1452.9,
+   "ph": 0.578,
+   "night": false,
+   "x": 13285,
+   "y": 75926,
+   "hunger": 50,
+   "thirst": 87,
+   "cold": 0.3921,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 58.2,
+   "mm": 0.993
+  },
+  {
+   "t": 1457.8,
+   "ph": 0.582,
+   "night": false,
+   "x": 13357,
+   "y": 76078,
+   "hunger": 50,
+   "thirst": 86,
+   "cold": 0.3953,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 59.2,
+   "mm": 0.9924
+  },
+  {
+   "t": 1462.8,
+   "ph": 0.585,
+   "night": false,
+   "x": 13357,
+   "y": 76262,
+   "hunger": 50,
+   "thirst": 85,
+   "cold": 0.3984,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {
+    "hunger": 1
+   },
+   "fps": 59.6,
+   "mm": 0.9919
+  },
+  {
+   "t": 1467.8,
+   "ph": 0.589,
+   "night": false,
+   "x": 13412,
+   "y": 76238,
+   "hunger": 60,
+   "thirst": 92,
+   "cold": 0.4013,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.4,
+   "mm": 0.9915
+  },
+  {
+   "t": 1472.8,
+   "ph": 0.592,
+   "night": false,
+   "x": 13676,
+   "y": 76148,
+   "hunger": 59,
+   "thirst": 91,
+   "cold": 0.4041,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 60,
+   "mm": 0.991
+  },
+  {
+   "t": 1477.8,
+   "ph": 0.596,
+   "night": false,
+   "x": 13977,
+   "y": 76148,
+   "hunger": 59,
+   "thirst": 91,
+   "cold": 0.4068,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 60,
+   "mm": 0.9905
+  },
+  {
+   "t": 1482.9,
+   "ph": 0.599,
+   "night": false,
+   "x": 14231,
+   "y": 76057,
+   "hunger": 59,
+   "thirst": 90,
+   "cold": 0.4094,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.8,
+   "mm": 0.9901
+  },
+  {
+   "t": 1487.9,
+   "ph": 0.603,
+   "night": false,
+   "x": 14532,
+   "y": 76057,
+   "hunger": 59,
+   "thirst": 89,
+   "cold": 0.4113,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 56.6,
+   "mm": 0.9898
+  },
+  {
+   "t": 1492.8,
+   "ph": 0.606,
+   "night": false,
+   "x": 14763,
+   "y": 76050,
+   "hunger": 58,
+   "thirst": 88,
+   "cold": 0.4137,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 54,
+   "mm": 0.9894
+  },
+  {
+   "t": 1497.9,
+   "ph": 0.61,
+   "night": false,
+   "x": 14763,
+   "y": 76050,
+   "hunger": 58,
+   "thirst": 87,
+   "cold": 0.416,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 54.8,
+   "mm": 0.989
+  },
+  {
+   "t": 1502.9,
+   "ph": 0.613,
+   "night": false,
+   "x": 14940,
+   "y": 75873,
+   "hunger": 58,
+   "thirst": 87,
+   "cold": 0.4182,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 56,
+   "mm": 0.9886
+  },
+  {
+   "t": 1507.8,
+   "ph": 0.617,
+   "night": false,
+   "x": 15079,
+   "y": 75723,
+   "hunger": 57,
+   "thirst": 86,
+   "cold": 0.4203,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 56.2,
+   "mm": 0.9883
+  },
+  {
+   "t": 1512.9,
+   "ph": 0.62,
+   "night": false,
+   "x": 15087,
+   "y": 75698,
+   "hunger": 57,
+   "thirst": 99,
+   "cold": 0.4223,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.8,
+   "mm": 0.9879
+  },
+  {
+   "t": 1517.8,
+   "ph": 0.623,
+   "night": false,
+   "x": 15056,
+   "y": 75666,
+   "hunger": 57,
+   "thirst": 98,
+   "cold": 0.4242,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 55.6,
+   "mm": 0.9876
+  },
+  {
+   "t": 1522.9,
+   "ph": 0.627,
+   "night": false,
+   "x": 15057,
+   "y": 75678,
+   "hunger": 57,
+   "thirst": 97,
+   "cold": 0.4261,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 59.2,
+   "mm": 0.9873
+  },
+  {
+   "t": 1527.9,
+   "ph": 0.63,
+   "night": false,
+   "x": 15024,
+   "y": 75634,
+   "hunger": 56,
+   "thirst": 97,
+   "cold": 0.4279,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 57.6,
+   "mm": 0.987
+  },
+  {
+   "t": 1532.9,
+   "ph": 0.634,
+   "night": false,
+   "x": 15024,
+   "y": 75747,
+   "hunger": 56,
+   "thirst": 96,
+   "cold": 0.4292,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.2,
+   "mm": 0.9868
+  },
+  {
+   "t": 1537.9,
+   "ph": 0.637,
+   "night": false,
+   "x": 14882,
+   "y": 75938,
+   "hunger": 56,
+   "thirst": 95,
+   "cold": 0.4309,
+   "fatigue": 0,
+   "wet": 0,
+   "mood": {},
+   "fps": 58.2,
+   "mm": 0.9865
+  },
+  {
+   "t": 1540.3,
+   "ph": 0.639,
+   "night": false,
+   "x": 14804,
+   "y": 75981,
+   "hunger": 56,
+   "thirst": 95,
+   "cold": 0.4305,
+   "fatigue": 0.0004,
+   "wet": 0,
+   "mood": {},
+   "fps": 54.7,
+   "mm": 0.9866
+  }
+ ],
+ "stage1": {
+  "hunger": {
+   "first": 107.2,
+   "max": 1,
+   "maxAt": 107.2,
+   "out": 113.1
+  },
+  "thirst": {
+   "first": 807.5,
+   "max": 1,
+   "maxAt": 807.5,
+   "out": 912.7
+  },
+  "cold": {
+   "first": null,
+   "max": 0,
+   "maxAt": null,
+   "out": null
+  },
+  "fatigue": {
+   "first": null,
+   "max": 0,
+   "maxAt": null,
+   "out": null
+  },
+  "injury": {
+   "first": null,
+   "max": 0,
+   "maxAt": null,
+   "out": null
+  }
+ },
+ "legs": [
+  {
+   "t": 56,
+   "kind": "drink",
+   "how": "map",
+   "ok": true,
+   "reason": null,
+   "sec": 52.5
+  },
+  {
+   "t": 70.9,
+   "kind": "explore",
+   "need": "berry",
+   "ok": true,
+   "reason": null,
+   "sec": 13.5
+  },
+  {
+   "t": 82.3,
+   "kind": "explore",
+   "need": "berry",
+   "ok": true,
+   "reason": null,
+   "sec": 11
+  },
+  {
+   "t": 93.7,
+   "kind": "explore",
+   "need": "berry",
+   "ok": true,
+   "reason": null,
+   "sec": 10.8
+  },
+  {
+   "t": 106.2,
+   "kind": "explore",
+   "need": "berry",
+   "ok": true,
+   "reason": null,
+   "sec": 12.1
+  },
+  {
+   "t": 111.6,
+   "kind": "gather",
+   "item": "berry",
+   "res": "berry_bush",
+   "ok": true,
+   "d": {
+    "berry": 2,
+    "fiber": 1,
+    "twig": 1
+   },
+   "reason": null,
+   "hits": 2,
+   "chip": 0,
+   "sec": 5.1
+  },
+  {
+   "t": 163,
+   "kind": "explore",
+   "need": "pebble",
+   "ok": true,
+   "reason": null,
+   "sec": 12.7
+  },
+  {
+   "t": 174.5,
+   "kind": "explore",
+   "need": "pebble",
+   "ok": true,
+   "reason": null,
+   "sec": 10.7
+  },
+  {
+   "t": 202.2,
+   "kind": "gather",
+   "item": "fiber",
+   "res": "berry_bush",
+   "ok": true,
+   "d": {
+    "fiber": 1,
+    "twig": 1,
+    "berry": 2,
+    "seed_turnip": 1
+   },
+   "reason": null,
+   "hits": 2,
+   "chip": 0,
+   "sec": 11.1
+  },
+  {
+   "t": 280.4,
+   "kind": "guide-gather",
+   "item": "wood",
+   "res": "tree",
+   "ok": true,
+   "d": {
+    "twig": 1,
+    "wood": 6
+   },
+   "reason": null,
+   "hits": 2,
+   "chip": 0,
+   "sec": 3.4
+  },
+  {
+   "t": 285.1,
+   "kind": "guide-gather",
+   "item": "wood",
+   "res": "tree",
+   "ok": true,
+   "d": {
+    "wood": 6,
+    "twig": 1
+   },
+   "reason": null,
+   "hits": 2,
+   "chip": 0,
+   "sec": 4
+  },
+  {
+   "t": 337.5,
+   "kind": "gather",
+   "item": "fiber",
+   "res": "berry_bush",
+   "ok": true,
+   "d": {
+    "twig": 1,
+    "berry": 2,
+    "fiber": 1,
+    "seed_perilla": 1
+   },
+   "reason": null,
+   "hits": 2,
+   "chip": 0,
+   "sec": 7.1
+  },
+  {
+   "t": 397.9,
+   "kind": "explore",
+   "need": "fiber",
+   "ok": true,
+   "reason": null,
+   "sec": 59.3
+  },
+  {
+   "t": 413.6,
+   "kind": "explore",
+   "need": "fiber",
+   "ok": true,
+   "reason": null,
+   "sec": 15
+  },
+  {
+   "t": 427.7,
+   "kind": "explore",
+   "need": "fiber",
+   "ok": true,
+   "reason": null,
+   "sec": 13.6
+  },
+  {
+   "t": 444.1,
+   "kind": "explore",
+   "need": "fiber",
+   "ok": true,
+   "reason": null,
+   "sec": 15.9
+  },
+  {
+   "t": 458.6,
+   "kind": "gather",
+   "item": "fiber",
+   "res": "berry_bush",
+   "ok": true,
+   "d": {
+    "fiber": 1,
+    "twig": 1,
+    "berry": 2,
+    "seed_curled_mallow": 1
+   },
+   "reason": null,
+   "hits": 2,
+   "chip": 0,
+   "sec": 14
+  },
+  {
+   "t": 470.5,
+   "kind": "drink",
+   "how": "pool",
+   "ok": true,
+   "reason": null,
+   "sec": 11.5
+  },
+  {
+   "t": 585.8,
+   "kind": "guide-gather",
+   "item": "stone",
+   "res": "rock",
+   "ok": true,
+   "d": {
+    "stone": 8
+   },
+   "reason": null,
+   "hits": 4,
+   "chip": 0,
+   "sec": 5.6
+  },
+  {
+   "t": 585.9,
+   "kind": "lot-preview-blocked",
+   "cells": 0,
+   "gate": true
+  },
+  {
+   "t": 896.1,
+   "kind": "drink",
+   "how": "map",
+   "ok": false,
+   "reason": "slow",
+   "sec": 126.9
+  },
+  {
+   "t": 909.3,
+   "kind": "drink",
+   "how": "edge",
+   "ok": true,
+   "reason": null,
+   "sec": 12.3
+  },
+  {
+   "t": 932.6,
+   "kind": "gather",
+   "item": "berry",
+   "res": "berry_bush",
+   "ok": true,
+   "d": {
+    "twig": 1,
+    "seed_turnip": 1,
+    "berry": 2,
+    "fiber": 1
+   },
+   "reason": null,
+   "hits": 2,
+   "chip": 0,
+   "sec": 20.8
+  },
+  {
+   "t": 948.5,
+   "kind": "gather",
+   "item": "wood",
+   "res": "tree",
+   "ok": true,
+   "d": {
+    "twig": 1,
+    "wood": 7
+   },
+   "reason": null,
+   "hits": 2,
+   "chip": 0,
+   "sec": 3.7
+  },
+  {
+   "t": 1037,
+   "kind": "explore",
+   "need": "berry",
+   "ok": true,
+   "reason": null,
+   "sec": 38.4
+  },
+  {
+   "t": 1048.6,
+   "kind": "explore",
+   "need": "berry",
+   "ok": true,
+   "reason": null,
+   "sec": 11.2
+  },
+  {
+   "t": 1059.7,
+   "kind": "explore",
+   "need": "berry",
+   "ok": true,
+   "reason": null,
+   "sec": 10.8
+  },
+  {
+   "t": 1069.6,
+   "kind": "gather",
+   "item": "berry",
+   "res": "berry_bush",
+   "ok": true,
+   "d": {
+    "fiber": 1,
+    "twig": 1,
+    "berry": 2
+   },
+   "reason": null,
+   "hits": 2,
+   "chip": 0,
+   "sec": 9.6
+  },
+  {
+   "t": 1140.3,
+   "kind": "gather",
+   "item": "stone",
+   "res": "rock",
+   "ok": true,
+   "d": {
+    "stone": 6
+   },
+   "reason": null,
+   "hits": 3,
+   "chip": 0,
+   "sec": 4.6
+  },
+  {
+   "t": 1197.8,
+   "kind": "gather",
+   "item": "berry",
+   "res": "berry_bush",
+   "ok": true,
+   "d": {
+    "fiber": 1,
+    "twig": 1,
+    "berry": 2
+   },
+   "reason": null,
+   "hits": 2,
+   "chip": 0,
+   "sec": 10.2
+  },
+  {
+   "t": 1211,
+   "kind": "gather",
+   "item": "wood",
+   "res": "tree",
+   "ok": true,
+   "d": {
+    "wood": 6,
+    "twig": 1
+   },
+   "reason": null,
+   "hits": 2,
+   "chip": 0,
+   "sec": 3.2
+  },
+  {
+   "t": 1279.6,
+   "kind": "gather",
+   "item": "stone",
+   "res": "rock",
+   "ok": true,
+   "d": {
+    "stone": 2
+   },
+   "reason": null,
+   "hits": 1,
+   "chip": 0,
+   "sec": 3.3
+  },
+  {
+   "t": 1372.4,
+   "kind": "drink",
+   "how": "map",
+   "ok": true,
+   "reason": null,
+   "sec": 92.5
+  },
+  {
+   "t": 1392.4,
+   "kind": "explore",
+   "need": "berry",
+   "ok": true,
+   "reason": null,
+   "sec": 17.7
+  },
+  {
+   "t": 1413.2,
+   "kind": "explore",
+   "need": "berry",
+   "ok": true,
+   "reason": null,
+   "sec": 20.7
+  },
+  {
+   "t": 1431,
+   "kind": "explore",
+   "need": "berry",
+   "ok": true,
+   "reason": null,
+   "sec": 17.6
+  },
+  {
+   "t": 1449.2,
+   "kind": "explore",
+   "need": "berry",
+   "ok": true,
+   "reason": null,
+   "sec": 17.8
+  },
+  {
+   "t": 1465.1,
+   "kind": "gather",
+   "item": "berry",
+   "res": "berry_bush",
+   "ok": true,
+   "d": {
+    "fiber": 1,
+    "twig": 1,
+    "berry": 2,
+    "seed_lettuce": 1
+   },
+   "reason": null,
+   "hits": 2,
+   "chip": 0,
+   "sec": 15.6
+  },
+  {
+   "t": 1495.4,
+   "kind": "guide-gather",
+   "item": "wood",
+   "res": "tree",
+   "ok": true,
+   "d": {
+    "wood": 9,
+    "twig": 1
+   },
+   "reason": null,
+   "hits": 2,
+   "chip": 0,
+   "sec": 3.9
+  }
+ ],
+ "notes": [
+  "3.5s 지도(M)로 물 — 2651px",
+  "111.6s [열매] 찾음(berry) — 탐색 누적 47초 → 0",
+  "186.8s [칸] 찾음(pebble) — 탐색 누적 23초 → 0",
+  "458.6s [칸] 찾음(fiber) — 탐색 누적 104초 → 0",
+  "670.1s [자] 영토 밖 — 외곽선 바깥 40칸 중 가까운 데로 못 감 slow",
+  "768s [자] 영토 밖 — 곧장 막혀 45° 틀어 돌아감",
+  "769.2s 지도(M)로 물 — 3203px",
+  "943.9s 간이 움집 터파기 실패",
+  "998.1s [칸] 화살이 데려갔던 rock 자리로 돌아감 ",
+  "1069.6s [열매] 찾음(berry) — 탐색 누적 60초 → 0",
+  "1135.3s [칸] 화살이 데려갔던 rock 자리로 돌아감 ",
+  "1275.9s [칸] 화살이 데려갔던 rock 자리로 돌아감 ",
+  "1279.9s 지도(M)로 물 — 3134px",
+  "1465.1s [열매] 찾음(berry) — 탐색 누적 74초 → 0",
+  "1540.2s [칸] 움집 완공 — 판 끝(--guide · 온보딩의 끝까지 잰다)"
+ ],
+ "errors": [],
+ "explore": {
+  "legs": 17,
+  "sec": 308.771
+ },
+ "shots": [],
+ "bootAt": 1795327978361,
+ "village": {
+  "vid": 1,
+  "name": "농촌1",
+  "ch": "mining",
+  "anchor": {
+   "x": 14032,
+   "y": 78032
+  },
+  "arrive": {
+   "x": 14832,
+   "y": 78704,
+   "kind": "road"
+  },
+  "arriveToAnchor": 1045
+ },
+ "villages": [
+  {
+   "vid": 1,
+   "name": "농촌1",
+   "ax": 14032,
+   "ay": 78032
+  },
+  {
+   "vid": 2,
+   "name": "어촌2",
+   "ax": 52976,
+   "ay": 12016
+  },
+  {
+   "vid": 3,
+   "name": "임업2",
+   "ax": 38032,
+   "ay": 99152
+  },
+  {
+   "vid": 4,
+   "name": "광산4",
+   "ax": 41136,
+   "ay": 42576
+  }
+ ],
+ "shelter": {
+  "x": 14640,
+  "y": 78384,
+  "toAnchor": 703,
+  "inTerr": true,
+  "wake": {
+   "x": 14640,
+   "y": 78384,
+   "kind": "shelter"
+  }
+ },
+ "arrival": {
+  "at": 1795328019974,
+  "phase": 0.5694,
+  "night": false,
+  "x": 14832,
+  "y": 78704,
+  "toArrive": 0,
+  "hunger": 56,
+  "thirst": 91,
+  "inv": {},
+  "cal": {
+   "day": 0,
+   "year": 1,
+   "month": 3,
+   "dom": 1,
+   "isLeap": false,
+   "dayOfYear": 59,
+   "yearDays": 365,
+   "yearStart": -59,
+   "yearEnd": 305,
+   "season": "spring",
+   "seasonKo": "봄",
+   "dayOfSeason": 1,
+   "seasonDays": 92,
+   "label": "1년 3월 1일 (봄)"
+  },
+  "wx": {
+   "cold": 0.4685,
+   "ko": "쌀쌀함",
+   "emo": "🌬",
+   "night": false,
+   "tempC": 18,
+   "shelter": 0.7764,
+   "cut": 0.5047,
+   "insC": 0,
+   "wind": -0.082,
+   "exp": 0,
+   "precip": 0,
+   "wet": 0.0254,
+   "cover": 0.4,
+   "indoor": false
+  }
+ },
+ "ditchCells": 809,
+ "view": {
+  "corners": [
+   {
+    "x": -720,
+    "y": -80
+   },
+   {
+    "x": -80,
+    "y": -720
+   },
+   {
+    "x": 720,
+    "y": 80
+   },
+   {
+    "x": 80,
+    "y": 720
+   }
+  ]
+ },
+ "panelSeq": [
+  {
+   "t": 2.8,
+   "ps": "gather:집터 재료 모으기→"
+  },
+  {
+   "t": 149.9,
+   "ps": "tool:조잡한 돌도끼 만들기"
+  },
+  {
+   "t": 203,
+   "ps": "tool:조잡한 돌도끼 손에 들기"
+  },
+  {
+   "t": 203.4,
+   "ps": "gather:집터 재료 모으기→"
+  },
+  {
+   "t": 323.8,
+   "ps": "tool:조잡한 돌괭이 만들기"
+  },
+  {
+   "t": 472.3,
+   "ps": "tool:조잡한 돌괭이 손에 들기"
+  },
+  {
+   "t": 472.7,
+   "ps": "gather:집터 재료 모으기→"
+  },
+  {
+   "t": 585.8,
+   "ps": "claim:집터 잡기"
+  },
+  {
+   "t": 933.7,
+   "ps": "build:간이 움집 짓기"
+  },
+  {
+   "t": 944,
+   "ps": "tool:조잡한 돌도끼 손에 들기"
+  },
+  {
+   "t": 944.4,
+   "ps": "tool:나무 벌목"
+  },
+  {
+   "t": 948.5,
+   "ps": "tool:조잡한 돌괭이 손에 들기"
+  },
+  {
+   "t": 948.9,
+   "ps": "tool:바위 채굴"
+  },
+  {
+   "t": 1140.3,
+   "ps": "tool:곡괭이 만들기"
+  },
+  {
+   "t": 1140.6,
+   "ps": "build:간이 움집 짓기→"
+  },
+  {
+   "t": 1187.2,
+   "ps": "build:간이 움집 짓기"
+  },
+  {
+   "t": 1197.9,
+   "ps": "build:간이 움집 짓기→"
+  },
+  {
+   "t": 1206.5,
+   "ps": "build:간이 움집 짓기"
+  },
+  {
+   "t": 1207.2,
+   "ps": "tool:조잡한 돌도끼 손에 들기"
+  },
+  {
+   "t": 1207.6,
+   "ps": "tool:나무 벌목"
+  },
+  {
+   "t": 1211,
+   "ps": "tool:조잡한 돌괭이 손에 들기"
+  },
+  {
+   "t": 1211.4,
+   "ps": "tool:바위 채굴"
+  },
+  {
+   "t": 1279.6,
+   "ps": "tool:도끼 만들기"
+  },
+  {
+   "t": 1465.8,
+   "ps": "craft:기둥 만들기"
+  },
+  {
+   "t": 1466.1,
+   "ps": "gather:나무 모으기→"
+  },
+  {
+   "t": 1495.4,
+   "ps": "craft:기둥 만들기"
+  },
+  {
+   "t": 1495.7,
+   "ps": "site:굴립주 기둥 세우기(기둥 2)"
+  },
+  {
+   "t": 1496.6,
+   "ps": "craft:서까래 만들기"
+  },
+  {
+   "t": 1497.5,
+   "ps": "site:도리·서까래 골조(서까래 5·풀 3)"
+  },
+  {
+   "t": 1498.1,
+   "ps": "gather:풀 모으기→"
+  },
+  {
+   "t": 1514.6,
+   "ps": "craft:이엉 만들기"
+  },
+  {
+   "t": 1515,
+   "ps": "gather:풀 모으기→"
+  },
+  {
+   "t": 1522.1,
+   "ps": "craft:이엉 만들기"
+  },
+  {
+   "t": 1522.4,
+   "ps": "gather:풀 모으기→"
+  },
+  {
+   "t": 1530.1,
+   "ps": "craft:이엉 만들기"
+  },
+  {
+   "t": 1530.4,
+   "ps": "site:이엉 지붕 잇기(이엉 3)→"
+  },
+  {
+   "t": 1539.7,
+   "ps": "site:이엉 지붕 잇기(이엉 3)"
+  }
+ ],
+ "gatedSeen": {
+  "berry": {
+   "legs": 11,
+   "legsWithGated": 0,
+   "maxGated": 0
+  },
+  "pebble": {
+   "legs": 2,
+   "legsWithGated": 0,
+   "maxGated": 0
+  },
+  "fiber": {
+   "legs": 4,
+   "legsWithGated": 0,
+   "maxGated": 0
+  }
+ },
+ "guide": [
+  {
+   "t": 112.2,
+   "do": "gather",
+   "res": "tree",
+   "why": null,
+   "target": {
+    "x": 424846,
+    "y": 128722
+   }
+  },
+  {
+   "t": 149.9,
+   "do": "tool",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 163,
+   "do": "tool",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 174.5,
+   "do": "tool",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 184.3,
+   "do": "tool",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 190.9,
+   "do": "tool",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 202.7,
+   "do": "tool",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 203,
+   "do": "tool",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 203.4,
+   "do": "gather",
+   "res": "tree",
+   "why": null,
+   "target": {
+    "x": 423715,
+    "y": 126991
+   }
+  },
+  {
+   "t": 280.5,
+   "do": "gather",
+   "res": "tree",
+   "why": null,
+   "target": {
+    "x": 423715,
+    "y": 126991
+   }
+  },
+  {
+   "t": 285.1,
+   "do": "gather",
+   "res": "rock",
+   "why": null,
+   "target": {
+    "x": 423179,
+    "y": 128202
+   }
+  },
+  {
+   "t": 323.8,
+   "do": "tool",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 330.1,
+   "do": "tool",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 338,
+   "do": "tool",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 397.9,
+   "do": "tool",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 413.6,
+   "do": "tool",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 427.7,
+   "do": "tool",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 444.1,
+   "do": "tool",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 472.1,
+   "do": "tool",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 472.4,
+   "do": "tool",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 472.7,
+   "do": "gather",
+   "res": "rock",
+   "why": null,
+   "target": {
+    "x": 423179,
+    "y": 128202
+   }
+  },
+  {
+   "t": 585.8,
+   "do": "claim",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 933.3,
+   "do": "claim",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 933.7,
+   "do": "small_hut",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 944,
+   "do": "tool",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 944.4,
+   "do": "tool",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 948.5,
+   "do": "tool",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 948.9,
+   "do": "tool",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 1070,
+   "do": "tool",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 1135.3,
+   "do": "tool",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 1140.3,
+   "do": "tool",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 1140.6,
+   "do": "goto",
+   "res": null,
+   "why": "build",
+   "target": {
+    "x": 424784,
+    "y": 125968
+   }
+  },
+  {
+   "t": 1198.4,
+   "do": "goto",
+   "res": null,
+   "why": "build",
+   "target": {
+    "x": 424784,
+    "y": 125968
+   }
+  },
+  {
+   "t": 1206.5,
+   "do": "small_hut",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 1207.2,
+   "do": "tool",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 1207.6,
+   "do": "tool",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 1211.1,
+   "do": "tool",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 1211.4,
+   "do": "tool",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 1275.9,
+   "do": "tool",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 1465.6,
+   "do": "tool",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 1465.9,
+   "do": "craft_item",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 1466.1,
+   "do": "gather",
+   "res": "tree",
+   "why": null,
+   "target": {
+    "x": 424746,
+    "y": 126030
+   }
+  },
+  {
+   "t": 1495.4,
+   "do": "craft_item",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 1495.8,
+   "do": "hut_adv",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 1496.6,
+   "do": "craft_item",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 1496.9,
+   "do": "craft_item",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 1497.2,
+   "do": "craft_item",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 1497.5,
+   "do": "hut_adv",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 1498.1,
+   "do": "reed",
+   "res": "reed",
+   "why": null,
+   "target": {
+    "x": 425072,
+    "y": 125680
+   }
+  },
+  {
+   "t": 1514.7,
+   "do": "craft_item",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 1515,
+   "do": "reed",
+   "res": "reed",
+   "why": null,
+   "target": {
+    "x": 425072,
+    "y": 125680
+   }
+  },
+  {
+   "t": 1522.1,
+   "do": "craft_item",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 1522.4,
+   "do": "reed",
+   "res": "reed",
+   "why": null,
+   "target": {
+    "x": 425072,
+    "y": 125680
+   }
+  },
+  {
+   "t": 1530.1,
+   "do": "craft_item",
+   "res": null,
+   "why": null,
+   "target": null
+  },
+  {
+   "t": 1530.4,
+   "do": "goto",
+   "res": null,
+   "why": "site",
+   "target": {
+    "x": 424784,
+    "y": 125968
+   }
+  },
+  {
+   "t": 1539.7,
+   "do": "hut_adv",
+   "res": null,
+   "why": null,
+   "target": null
+  }
+ ],
+ "panelFirst": [
+  {
+   "t": 149.9,
+   "item": "조잡한 돌도끼 만들기",
+   "guide": "조잡한 돌도끼가 있어야 나무를 벨 수 있습니다. 자갈 2개, 잔가지 1개, 풀 2개로 제작 창에서 만들 수 있습니다. 지금 자갈 0개, 잔가지 1개, 풀 1개가 있습니다.",
+   "step": {
+    "do": "fetch",
+    "what": "pebble",
+    "verb": "chop",
+    "make": "crude_axe",
+    "res": null
+   }
+  },
+  {
+   "t": 203,
+   "item": "조잡한 돌도끼 손에 들기",
+   "guide": "조잡한 돌도끼를 손에 들어야 나무를 벨 수 있습니다. 가방에서 골라 손에 드십시오. 가방은 [I] 키로 엽니다.",
+   "step": {
+    "do": "equip",
+    "what": "crude_axe",
+    "verb": "chop",
+    "make": null,
+    "res": null
+   }
+  },
+  {
+   "t": 323.8,
+   "item": "조잡한 돌괭이 만들기",
+   "guide": "조잡한 돌괭이가 있어야 돌을 캘 수 있습니다. 자갈 3개, 잔가지 1개, 풀 2개로 제작 창에서 만들 수 있습니다. 자갈은 바위 곁에서 맨손으로 주울 수 있습니다. 지금 자갈 2개, 잔가지 4개, 풀 0개가 있습니다.",
+   "step": {
+    "do": "fetch",
+    "what": "pebble",
+    "verb": "quarry",
+    "make": "crude_pick",
+    "res": null
+   }
+  },
+  {
+   "t": 472.3,
+   "item": "조잡한 돌괭이 손에 들기",
+   "guide": "조잡한 돌괭이를 손에 들어야 돌을 캘 수 있습니다. 가방에서 골라 손에 드십시오. 가방은 [I] 키로 엽니다.",
+   "step": {
+    "do": "equip",
+    "what": "crude_pick",
+    "verb": "quarry",
+    "make": null,
+    "res": null
+   }
+  },
+  {
+   "t": 944.4,
+   "item": "나무 벌목",
+   "guide": "곡괭이를 만들려면 나무 3개, 돌 5개가 있어야 합니다. 지금 나무 0개, 돌 0개가 있습니다. 나무 곁에서 [E] 키로 나무를 벨 수 있습니다.",
+   "step": {
+    "do": "gather",
+    "what": "wood",
+    "verb": "chop",
+    "make": "pickaxe",
+    "res": "tree"
+   }
+  },
+  {
+   "t": 948.9,
+   "item": "바위 채굴",
+   "guide": "곡괭이를 만들려면 나무 3개, 돌 5개가 있어야 합니다. 지금 나무 7개, 돌 0개가 있습니다. 바위 곁에서 [E] 키로 돌을 캘 수 있습니다.",
+   "step": {
+    "do": "gather",
+    "what": "stone",
+    "verb": "quarry",
+    "make": "pickaxe",
+    "res": "rock"
+   }
+  },
+  {
+   "t": 1140.3,
+   "item": "곡괭이 만들기",
+   "guide": "재료가 다 있습니다. 제작 창에서 곡괭이를 만드십시오. 제작 창은 [K] 키로 엽니다.",
+   "step": {
+    "do": "craft",
+    "what": "pickaxe",
+    "verb": null,
+    "make": null,
+    "res": null
+   }
+  },
+  {
+   "t": 1279.6,
+   "item": "도끼 만들기",
+   "guide": "재료가 다 있습니다. 제작 창에서 도끼를 만드십시오. 제작 창은 [K] 키로 엽니다.",
+   "step": {
+    "do": "craft",
+    "what": "axe",
+    "verb": null,
+    "make": null,
+    "res": null
+   }
+  }
+ ],
+ "panel": [
+  {
+   "t": 149.9,
+   "item": "조잡한 돌도끼 만들기",
+   "do": "fetch",
+   "what": "pebble"
+  },
+  {
+   "t": 163,
+   "item": "조잡한 돌도끼 만들기",
+   "do": "fetch",
+   "what": "pebble"
+  },
+  {
+   "t": 174.5,
+   "item": "조잡한 돌도끼 만들기",
+   "do": "fetch",
+   "what": "pebble"
+  },
+  {
+   "t": 184.3,
+   "item": "조잡한 돌도끼 만들기",
+   "do": "fetch",
+   "what": "pebble"
+  },
+  {
+   "t": 190.9,
+   "item": "조잡한 돌도끼 만들기",
+   "do": "fetch",
+   "what": "fiber"
+  },
+  {
+   "t": 202.7,
+   "item": "조잡한 돌도끼 만들기",
+   "do": "craft",
+   "what": "crude_axe"
+  },
+  {
+   "t": 203,
+   "item": "조잡한 돌도끼 손에 들기",
+   "do": "equip",
+   "what": "crude_axe"
+  },
+  {
+   "t": 323.8,
+   "item": "조잡한 돌괭이 만들기",
+   "do": "fetch",
+   "what": "pebble"
+  },
+  {
+   "t": 330.1,
+   "item": "조잡한 돌괭이 만들기",
+   "do": "fetch",
+   "what": "fiber"
+  },
+  {
+   "t": 338,
+   "item": "조잡한 돌괭이 만들기",
+   "do": "fetch",
+   "what": "fiber"
+  },
+  {
+   "t": 397.9,
+   "item": "조잡한 돌괭이 만들기",
+   "do": "fetch",
+   "what": "fiber"
+  },
+  {
+   "t": 413.6,
+   "item": "조잡한 돌괭이 만들기",
+   "do": "fetch",
+   "what": "fiber"
+  },
+  {
+   "t": 427.7,
+   "item": "조잡한 돌괭이 만들기",
+   "do": "fetch",
+   "what": "fiber"
+  },
+  {
+   "t": 444.1,
+   "item": "조잡한 돌괭이 만들기",
+   "do": "fetch",
+   "what": "fiber"
+  },
+  {
+   "t": 472.1,
+   "item": "조잡한 돌괭이 만들기",
+   "do": "craft",
+   "what": "crude_pick"
+  },
+  {
+   "t": 472.4,
+   "item": "조잡한 돌괭이 손에 들기",
+   "do": "equip",
+   "what": "crude_pick"
+  },
+  {
+   "t": 944,
+   "item": "조잡한 돌도끼 손에 들기",
+   "do": "equip",
+   "what": "crude_axe"
+  },
+  {
+   "t": 944.4,
+   "item": "나무 벌목",
+   "do": "gather",
+   "what": "wood"
+  },
+  {
+   "t": 948.5,
+   "item": "조잡한 돌괭이 손에 들기",
+   "do": "equip",
+   "what": "crude_pick"
+  },
+  {
+   "t": 948.9,
+   "item": "바위 채굴",
+   "do": "gather",
+   "what": "stone"
+  },
+  {
+   "t": 1070,
+   "item": "바위 채굴",
+   "do": "gather",
+   "what": "stone"
+  },
+  {
+   "t": 1135.3,
+   "item": "바위 채굴",
+   "do": "gather",
+   "what": "stone"
+  },
+  {
+   "t": 1140.3,
+   "item": "곡괭이 만들기",
+   "do": "craft",
+   "what": "pickaxe"
+  },
+  {
+   "t": 1207.2,
+   "item": "조잡한 돌도끼 손에 들기",
+   "do": "equip",
+   "what": "crude_axe"
+  },
+  {
+   "t": 1207.6,
+   "item": "나무 벌목",
+   "do": "gather",
+   "what": "wood"
+  },
+  {
+   "t": 1211.1,
+   "item": "조잡한 돌괭이 손에 들기",
+   "do": "equip",
+   "what": "crude_pick"
+  },
+  {
+   "t": 1211.4,
+   "item": "바위 채굴",
+   "do": "gather",
+   "what": "stone"
+  },
+  {
+   "t": 1275.9,
+   "item": "바위 채굴",
+   "do": "gather",
+   "what": "stone"
+  },
+  {
+   "t": 1465.6,
+   "item": "도끼 만들기",
+   "do": "craft",
+   "what": "axe"
+  }
+ ],
+ "stucks": [
+  {
+   "t": 534.3,
+   "at": {
+    "x": 13376,
+    "y": 79418
+   },
+   "cell": {
+    "x": 418,
+    "y": 2481
+   },
+   "near": [],
+   "terr": false,
+   "wall": ""
+  }
+ ],
+ "walk": {
+  "px": 60864,
+  "sec": 1380.7,
+  "pxPerSec": 44.1
+ },
+ "notices": [
+  {
+   "t": 0.6,
+   "x": "시계 세움 — {\"day\":46,\"night\":null} · {\"cold\":0.4685,\"ko\":\"쌀쌀함\",\"emo\":\"\",\"night\":false,\"tempC\""
+  },
+  {
+   "t": 56.1,
+   "x": "물을 마셨습니다(갈증 +22). 낚시는 Shift+F로 합니다."
+  },
+  {
+   "t": 111.7,
+   "x": "베리을(를) 먹었습니다(허기 +5)"
+  },
+  {
+   "t": 111.9,
+   "x": "베리을(를) 먹었습니다(허기 +5)"
+  },
+  {
+   "t": 117.7,
+   "x": "농촌1 촌장 — 별일 없네. 자네도 몸 성히 지내게."
+  },
+  {
+   "t": 118.1,
+   "x": "농촌1 촌장 — 낯선 얼굴이군. 어디서 왔나."
+  },
+  {
+   "t": 148.7,
+   "x": "조잡한 돌도끼가 있어야 나무를 벨 수 있습니다. 자갈 2개, 잔가지 1개, 풀 2개로 제작 창에서 만들 수 있습니다."
+  },
+  {
+   "t": 183.3,
+   "x": "숲 바닥에서 잔가지 1을(를) 주웠습니다(남은 양 3.0)."
+  },
+  {
+   "t": 185.8,
+   "x": "바위 곁에서 자갈 1을(를) 주웠습니다(남은 양 3.0)."
+  },
+  {
+   "t": 186.8,
+   "x": "바위 곁에서 자갈 1을(를) 주웠습니다(남은 양 2.0)."
+  },
+  {
+   "t": 187.8,
+   "x": "바위 곁에서 자갈 1을(를) 주웠습니다(남은 양 1.0)."
+  },
+  {
+   "t": 188.8,
+   "x": "바위 곁에서 자갈 1을(를) 주웠습니다(남은 양 0.1)."
+  },
+  {
+   "t": 189.9,
+   "x": "바위 곁은(는) 다 훑었습니다. 잠시 뒤 다시 자라니 옆을 찾아보십시오."
+  },
+  {
+   "t": 202.3,
+   "x": "베리을(를) 먹었습니다(허기 +5)"
+  },
+  {
+   "t": 202.5,
+   "x": "베리을(를) 먹었습니다(허기 +5)"
+  },
+  {
+   "t": 202.7,
+   "x": "조잡한 돌도끼을(를) 만들어 가방에 넣었습니다."
+  },
+  {
+   "t": 322.6,
+   "x": "조잡한 돌괭이가 있어야 돌을 캘 수 있습니다. 자갈 3개, 잔가지 1개, 풀 2개로 제작 창에서 만들 수 있습니다. 자갈은 바위 곁에서 맨손으로 주울 수 있습니다"
+  },
+  {
+   "t": 325,
+   "x": "바위 곁에서 자갈 1을(를) 주웠습니다(남은 양 3.0)."
+  },
+  {
+   "t": 326,
+   "x": "바위 곁에서 자갈 1을(를) 주웠습니다(남은 양 2.0)."
+  },
+  {
+   "t": 327,
+   "x": "바위 곁에서 자갈 1을(를) 주웠습니다(남은 양 1.0)."
+  },
+  {
+   "t": 328.1,
+   "x": "바위 곁에서 자갈 1을(를) 주웠습니다(남은 양 0.1)."
+  },
+  {
+   "t": 329.1,
+   "x": "바위 곁은(는) 다 훑었습니다. 잠시 뒤 다시 자라니 옆을 찾아보십시오."
+  },
+  {
+   "t": 337.6,
+   "x": "베리을(를) 먹었습니다(허기 +5)"
+  },
+  {
+   "t": 337.9,
+   "x": "베리을(를) 먹었습니다(허기 +5)"
+  },
+  {
+   "t": 470.6,
+   "x": "물을 마셨습니다 (+갈증 회복)"
+  },
+  {
+   "t": 471.6,
+   "x": "베리을(를) 먹었습니다(허기 +5)"
+  },
+  {
+   "t": 471.9,
+   "x": "베리을(를) 먹었습니다(허기 +5)"
+  },
+  {
+   "t": 472.1,
+   "x": "조잡한 돌괭이을(를) 만들어 가방에 넣었습니다."
+  },
+  {
+   "t": 909.4,
+   "x": "물을 마셨습니다(갈증 +30)."
+  },
+  {
+   "t": 910.5,
+   "x": "물을 마셨습니다(갈증 +25)."
+  },
+  {
+   "t": 932.8,
+   "x": "베리을(를) 먹었습니다(허기 +5)"
+  },
+  {
+   "t": 933.1,
+   "x": "베리을(를) 먹었습니다(허기 +5)"
+  },
+  {
+   "t": 933.4,
+   "x": "개인 사유지 아홉 칸(3×3)을 두었습니다(나무 12 · 돌 8 · 내 땅 9칸 — 안 돌보면 버티는 날 296일). 이제 이 터에 간이 움집을 지을 수 있습니다"
+  },
+  {
+   "t": 933.8,
+   "x": "① 수혈 굴착(터파기)에는 곡괭이가 있어야 합니다."
+  },
+  {
+   "t": 1069.6,
+   "x": "베리을(를) 먹었습니다(허기 +5)"
+  },
+  {
+   "t": 1069.8,
+   "x": "베리을(를) 먹었습니다(허기 +5)"
+  },
+  {
+   "t": 1140.3,
+   "x": "곡괭이을(를) 만들어 가방에 넣었습니다."
+  },
+  {
+   "t": 1197.9,
+   "x": "베리을(를) 먹었습니다(허기 +5)"
+  },
+  {
+   "t": 1198.2,
+   "x": "베리을(를) 먹었습니다(허기 +5)"
+  },
+  {
+   "t": 1206.6,
+   "x": "① 수혈 굴착(터파기)을(를) 마쳤습니다. 다음은 ② 굴립주 기둥 세우기(기둥 2)입니다. 움집터를 누르십시오."
+  },
+  {
+   "t": 1372.4,
+   "x": "물을 마셨습니다(갈증 +30)."
+  },
+  {
+   "t": 1373.5,
+   "x": "물을 마셨습니다(갈증 +17)."
+  },
+  {
+   "t": 1465.2,
+   "x": "베리을(를) 먹었습니다(허기 +5)"
+  },
+  {
+   "t": 1465.4,
+   "x": "베리을(를) 먹었습니다(허기 +5)"
+  },
+  {
+   "t": 1465.6,
+   "x": "도끼을(를) 만들어 가방에 넣었습니다."
+  },
+  {
+   "t": 1465.9,
+   "x": "기둥 (통나무 3 → 굴립주 기둥 1)을(를) 마쳤습니다."
+  },
+  {
+   "t": 1495.5,
+   "x": "기둥 (통나무 3 → 굴립주 기둥 1)을(를) 마쳤습니다."
+  },
+  {
+   "t": 1495.8,
+   "x": "② 굴립주 기둥 세우기(기둥 2)을(를) 마쳤습니다. 다음은 ③ 도리·서까래 골조(서까래 5·풀 3)입니다."
+  },
+  {
+   "t": 1496.7,
+   "x": "서까래 (통나무 1 → 서까래 2)을(를) 마쳤습니다."
+  },
+  {
+   "t": 1497,
+   "x": "서까래 (통나무 1 → 서까래 2)을(를) 마쳤습니다."
+  },
+  {
+   "t": 1497.3,
+   "x": "서까래 (통나무 1 → 서까래 2)을(를) 마쳤습니다."
+  },
+  {
+   "t": 1497.6,
+   "x": "③ 도리·서까래 골조(서까래 5·풀 3)을(를) 마쳤습니다. 다음은 ④ 이엉 지붕 잇기(이엉 3)입니다."
+  },
+  {
+   "t": 1508.4,
+   "x": "물을 마셨습니다(갈증 +14)."
+  },
+  {
+   "t": 1509.4,
+   "x": "갈대 군락에서 풀 1을(를) 주웠습니다(남은 양 3.0)."
+  },
+  {
+   "t": 1510.5,
+   "x": "갈대 군락에서 풀 1을(를) 주웠습니다(남은 양 2.0)."
+  },
+  {
+   "t": 1511.5,
+   "x": "갈대 군락에서 풀 1을(를) 주웠습니다(남은 양 1.0)."
+  },
+  {
+   "t": 1512.6,
+   "x": "갈대 군락에서 풀 1을(를) 주웠습니다(남은 양 0.1)."
+  },
+  {
+   "t": 1513.6,
+   "x": "갈대 군락은(는) 다 훑었습니다. 잠시 뒤 다시 자라니 옆을 찾아보십시오."
+  },
+  {
+   "t": 1514.8,
+   "x": "이엉 (풀 4 → 이엉 1 — 맨손 엮기)을(를) 마쳤습니다."
+  },
+  {
+   "t": 1517,
+   "x": "갈대 군락에서 풀 1을(를) 주웠습니다(남은 양 3.0)."
+  },
+  {
+   "t": 1518,
+   "x": "갈대 군락에서 풀 1을(를) 주웠습니다(남은 양 2.0)."
+  },
+  {
+   "t": 1519.1,
+   "x": "갈대 군락에서 풀 1을(를) 주웠습니다(남은 양 1.0)."
+  },
+  {
+   "t": 1520.1,
+   "x": "갈대 군락에서 풀 1을(를) 주웠습니다(남은 양 0.1)."
+  },
+  {
+   "t": 1521.1,
+   "x": "갈대 군락은(는) 다 훑었습니다. 잠시 뒤 다시 자라니 옆을 찾아보십시오."
+  },
+  {
+   "t": 1522.2,
+   "x": "이엉 (풀 4 → 이엉 1 — 맨손 엮기)을(를) 마쳤습니다."
+  },
+  {
+   "t": 1524.9,
+   "x": "갈대 군락에서 풀 1을(를) 주웠습니다(남은 양 3.0)."
+  },
+  {
+   "t": 1526,
+   "x": "갈대 군락에서 풀 1을(를) 주웠습니다(남은 양 2.0)."
+  },
+  {
+   "t": 1527,
+   "x": "갈대 군락에서 풀 1을(를) 주웠습니다(남은 양 1.0)."
+  },
+  {
+   "t": 1528.1,
+   "x": "갈대 군락에서 풀 1을(를) 주웠습니다(남은 양 0.1)."
+  },
+  {
+   "t": 1529.1,
+   "x": "갈대 군락은(는) 다 훑었습니다. 잠시 뒤 다시 자라니 옆을 찾아보십시오."
+  },
+  {
+   "t": 1530.2,
+   "x": "이엉 (풀 4 → 이엉 1 — 맨손 엮기)을(를) 마쳤습니다."
+  },
+  {
+   "t": 1539.8,
+   "x": "간이 움집이 다 지어졌습니다. 구덩이를 파고 기둥 넷을 세우고 뼈대를 엮고 이엉을 덮었습니다."
+  }
+ ],
+ "final": {
+  "inv": {
+   "wood": 5,
+   "stone": 1,
+   "fiber": 1,
+   "twig": 12,
+   "pebble": 3,
+   "seed_turnip": 2,
+   "seed_perilla": 1,
+   "seed_curled_mallow": 1,
+   "seed_lettuce": 1,
+   "rafter": 1
+  },
+  "tools": [
+   {
+    "id": "tmwrg2ig11",
+    "type": "crude_axe",
+    "d": 11,
+    "max": 25
+   },
+   {
+    "id": "tmwrg8aan2",
+    "type": "crude_pick",
+    "d": 9,
+    "max": 25
+   },
+   {
+    "id": "tmwrgmlvx3",
+    "type": "pickaxe",
+    "d": 97,
+    "max": 100
+   },
+   {
+    "id": "tmwrgtkvq4",
+    "type": "axe",
+    "d": 95,
+    "max": 100
+   }
+  ],
+  "eq": "tmwrg2ig11",
+  "g": {
+   "hunger": 56,
+   "thirst": 95,
+   "vp": 0,
+   "stam": 1,
+   "stamLock": false,
+   "canSprint": true,
+   "recover": 0.9566
+  },
+  "body": {
+   "hunger": 55.66,
+   "thirst": 94.51,
+   "cold": 0.4305,
+   "fatigue": 0.0004,
+   "wet": 0,
+   "injury": 0,
+   "morale": 0.0751,
+   "stam": 1,
+   "stamLock": false,
+   "canSprint": true,
+   "recover": 0.9566,
+   "recoverParts": [
+    {
+     "axis": "hunger",
+     "ko": "배고픔",
+     "emo": "🍖",
+     "sev": 0.443,
+     "recover": 0.9566
+    }
+   ],
+   "herb": false,
+   "moveMult": 0.9866,
+   "workMult": 0.9783,
+   "floored": false,
+   "parts": [
+    {
+     "axis": "cold",
+     "ko": "추위",
+     "emo": "🥶",
+     "sev": 0.431,
+     "move": 0.9866,
+     "work": 0.9695
+    },
+    {
+     "axis": "morale",
+     "ko": "사기",
+     "emo": "✨",
+     "sev": 0.075,
+     "move": 1,
+     "work": 1.009
+    }
+   ],
+   "moodles": [],
+   "aftermath": null,
+   "sick": {
+    "P": 0.0002,
+    "B": 0.0067,
+    "theta": 0.4617,
+    "hpPerH": 0
+   }
+  },
+  "near": null,
+  "greet": {
+   "vid": 1,
+   "kind": "greet",
+   "lines": [
+    "낯선 얼굴이군. 어디서 왔나.",
+    "지금은 급한 일이 없네. 모닥불 곁에서 쉬게."
+   ]
+  },
+  "quest": null
+ },
+ "perf": {
+  "loop": {
+   "p50": 10.13,
+   "p95": 12.73,
+   "p99": 24.22,
+   "max": 1094.71,
+   "n": 142962
+  },
+  "clock": null
+ },
+ "keepMin": 137,
+ "fps": {
+  "min": 30.4,
+  "p10": 48.8,
+  "med": 57.6,
+  "under20": 0,
+  "n": 308
+ }
+}

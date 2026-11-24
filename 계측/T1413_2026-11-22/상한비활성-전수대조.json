@@ -1,0 +1,21 @@
+{
+  "matchedSeedPairs": 144,
+  "commonFields": [
+    "empty",
+    "emptied",
+    "harv",
+    "kg",
+    "kgHD",
+    "end",
+    "killed",
+    "predKill",
+    "trimmed",
+    "hDead",
+    "inj",
+    "shots",
+    "over",
+    "kb"
+  ],
+  "differences": [],
+  "result": "identical across every shared output field for all nonbinding-cap pairs"
+}

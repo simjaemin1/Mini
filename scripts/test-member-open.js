@@ -21,6 +21,7 @@
 // 실행: node scripts/test-member-open.js
 'use strict';
 if (require.main === module) require('./lib-port').noCentral();   // [T1288] central 없이 존을 띄운다 — 존이 기본 localhost:3010(나란히 돌면 남의 central)에 붙지 않게 닿지 않는 주소를 준다
+process.env.T1392_FIRST_LOT = process.env.T1392_FIRST_LOT || '0';   // ★[T1428] 이 판은 한 칸 선포를 전제로 쓴다 — 첫 집터(-on 가지에서 돌봄과 같이 켬 기본 후보)는 글자로 끈다(제 하네스 test-t1392-first-lot · e2e-first30 이 잰다)
 const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');

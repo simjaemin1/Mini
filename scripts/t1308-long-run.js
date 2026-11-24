@@ -88,7 +88,7 @@ function commitCk(day) {
 
 function preloads() {
   const pre = [...(VCLOCK ? ['t745-vclock.js'] : []), 't722-stop-hook.js', 't740-side-hook.js', 't1308-keep-hook.js'].map((f) => `--require ${path.join(__dirname, f)}`);
-  return pre.concat(process.env.NODE_OPTIONS ? [process.env.NODE_OPTIONS] : []).join(' ');
+  return require('./lib-heap').withHeap(pre.concat(process.env.NODE_OPTIONS ? [process.env.NODE_OPTIONS] : []).join(' '));   // ★[T1426 ⑤ⓑ] 긴 판 힙(기본 6 GB · 준 값 그대로 · `LONG_RUN_HEAP_MB=0` 끔)
 }
 
 async function segment(from) {

@@ -46,7 +46,7 @@ const run = (mode) => {
   let o = ''; try { o = execFileSync(process.execPath, [__filename], { env: Object.assign({}, process.env, { __T1402N: '1', T1402_NOHOME: mode, DB_PATH: db, PORT: String(require('./lib-port').port(37790)) }), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 300000 }); } catch (e) { o = String((e && e.stdout) || ''); }
   const m = /@@T1402N (\{.*\})/.exec(o); return m ? JSON.parse(m[1]) : {};
 };
-const A = run('one'), B = run('none');
+const A = run('one'), B = run('none'), C = run('home');
 const ROWS = [
   ['s1', 'ⓐ 첫 칸 하나 · 집 없음 → 옆 칸'],
   ['s2', 'ⓑ 3×3 · 간이 움집 하나 · 본거지 안 고름 → 옆 칸'],
@@ -54,8 +54,8 @@ const ROWS = [
   ['s4a', 'ⓓ 두 조각 · 고른 집(왼)의 발자국을 내놓아 본거지가 풀림 · 오른 조각에 집 하나 남음 → 왼 조각 옆'], ['s4b', 'ⓓ 〃 → 오른 조각 옆'],
   ['s5a', 'ⓔ 집 없이 땅이 둘로 갈라짐 → 왼 조각 옆'], ['s5b', 'ⓔ 〃 → 오른 조각 옆'],
 ];
-console.log('=== T1402 본거지가 없을 때 — ㉮ one(PM 안 · 기본) / ㉯ none ===');
-console.log('| 꼴 | ㉮ one | ㉯ none |');
-console.log('|---|---|---|');
-for (const [k, name] of ROWS) console.log(`| ${name} | ${A[k] || '-'} | ${B[k] || '-'} |`);
-const J = arg('--json', null); if (J) fs.writeFileSync(J, JSON.stringify({ one: A, none: B }, null, 1));
+console.log('=== 본거지가 없을 때 — ㉰ home(★T1428 기본 · 먼저 지은 집이 든 덩이) / ㉮ one / ㉯ none ===');
+console.log('| 꼴 | ㉰ home | ㉮ one | ㉯ none |');
+console.log('|---|---|---|---|');
+for (const [k, name] of ROWS) console.log(`| ${name} | ${C[k] || '-'} | ${A[k] || '-'} | ${B[k] || '-'} |`);
+const J = arg('--json', null); if (J) fs.writeFileSync(J, JSON.stringify({ home: C, one: A, none: B }, null, 1));

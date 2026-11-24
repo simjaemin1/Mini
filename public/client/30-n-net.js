@@ -806,7 +806,7 @@
       meta: null,
       resources: new Map(),
       claims: new Map(),
-      buildings: new Map(),
+      buildings: _t1446NewBlds(),   // ★[T1446] 켬 = 화면 상자 색인을 같이 고치는 Map(끔 = 종전 `new Map()`)
       mobs: new Map(),
       groundItems: new Map(), // Phase 14.23 — 바닥 떨어진 아이템
       others: new Map(),
@@ -983,8 +983,9 @@
         // §11 도적: 소굴·야영 마커(welcome 1회, 이후 bandit_camps가 변경분 방송)
         c.banditCamps = (msg.banditCamps && msg.banditCamps.length) ? msg.banditCamps : null;
         // §16 답압 길: 등급 셀 flat [cx,cy,lv,...](welcome 1회, 이후 road_cells가 변경분 방송)
-        c.roads = new Map();
-        if (msg.roads) for (let i = 0; i < msg.roads.length; i += 3) c.roads.set(msg.roads[i] + ',' + msg.roads[i + 1], msg.roads[i + 2]);
+        c.roads = _t1446NewRoads();   // ★[T1446] 켬 = 화면 상자 색인을 같이 세우는 Map(끔 = 종전 `new Map()`)
+        if (msg.roads && c.roads._load) c.roads._load(msg.roads);   // ★[T1446] 켬 — 같은 키 · 같은 차례 · 색인은 수로 바로(끔이면 아래 종전 한 줄)
+        else if (msg.roads) for (let i = 0; i < msg.roads.length; i += 3) c.roads.set(msg.roads[i] + ',' + msg.roads[i + 1], msg.roads[i + 2]);
         // ★[배치 20 B] 타일 상태: 기준선에서 **벗어난 셀만** flat [cx,cy,qv,geo,ore,...](welcome 1회,
         //   이후 tile_state 가 변경분 방송). 손 안 댄 셀은 여기 없고 `SoilBase.baseAt` 로 계산한다.
         c.soil = new Map();
@@ -1007,6 +1008,7 @@
           _t1423NoAbs.on = true;
           for (let i = 0; i + 1 < msg.t1423NoBuild.length; i += 2) _t1423NoAbs.add(((msg.zone.worldOffsetX / CL_BUILDING_SIZE) + msg.t1423NoBuild[i]) + ',' + (((msg.zone.worldOffsetY || 0) / CL_BUILDING_SIZE) + msg.t1423NoBuild[i + 1]));
         }
+        if (msg.t1455) t1455Recv(c, msg.t1455);   // ★[T1455] 마을 다리 낡음(끊긴 칸 · 걸음 배수)
         // ★[11차 T3 환호] 도랑 셀 flat [cx,cy,…] — 서버 콜라이더 미러 + 타일 렌더 원천(마을 소유 사물, welcome 1회)
         c.ditches = new Set();
         if (msg.ditches) for (let i = 0; i + 1 < msg.ditches.length; i += 2) {
@@ -1330,6 +1332,8 @@
         c.bridges.add(cells[i] + ',' + cells[i + 1]);
         _bridgeAbs.add(((z.worldOffsetX || 0) / CL_BUILDING_SIZE + cells[i]) + ',' + ((z.worldOffsetY || 0) / CL_BUILDING_SIZE + cells[i + 1]));
       }
+    } else if (msg.type === 't1455_bridges') {          // ★[T1455] 마을 다리 — 그날 값 · 끊김 · 되살림(welcome 과 같은 문)
+      t1455Recv(c, msg.list || []);
     } else if (msg.type === 'buildings_removed') {      // 배치 제거 — 청크 비활성화 (서버는 메모리 유지)
       const ids = msg.ids || [];
       for (let i = 0; i < ids.length; i++) c.buildings.delete(ids[i]);
@@ -1401,7 +1405,7 @@
       c.banditCamps = (msg.camps && msg.camps.length) ? msg.camps : null;
     } else if (msg.type === 'road_cells') {
       // §16 답압 길: 게임일 1회 변경분(등급 전이 셀만) — lv 0=풀 복귀(삭제)
-      if (!c.roads) c.roads = new Map();
+      if (!c.roads) c.roads = _t1446NewRoads();   // ★[T1446]
       const rc = msg.cells || [];
       for (let i = 0; i < rc.length; i += 3) { const k = rc[i] + ',' + rc[i + 1]; if (rc[i + 2]) c.roads.set(k, rc[i + 2]); else c.roads.delete(k); }
       _gtInvalidateCells(c, rc, 3);
@@ -1499,6 +1503,13 @@
         b.data.hp = msg.hp;
         b.data.damaged = msg.damaged;
       }
+    } else if (msg.type === 't1438_wear') {   // ★[T1438] 움집 부위 값(서버가 5% 걸음마다 알린다 · 그림 · 이름표가 읽는다 · 클라 셈 0)
+      const b = c.buildings.get(msg.id);
+      if (b) b.wear = msg.wear;
+    } else if (msg.type === 't1455_info') {   // ★[T1455] 마을 다리 손질 줄의 답(고르는 줄은 46-h-verbs)
+      if (typeof t1455OnInfo === 'function') t1455OnInfo(msg);
+    } else if (msg.type === 't1438_info') {   // ★[T1438] 손질 — 부위별 내구 · 넣을 재료(우클릭 "손질…" 의 답 · 고르는 줄은 46-h-verbs)
+      if (typeof t1438OnInfo === 'function') t1438OnInfo(msg);
     } else if (msg.type === 'arrow_spawn') {
       // Phase 5-I: 화살 발사체 — 절대좌표로 저장, 클라가 등속 외삽 (서버는 spawn/remove만 보냄)
       if (!window._arrows) window._arrows = new Map();

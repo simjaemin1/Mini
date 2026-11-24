@@ -1,0 +1,38 @@
+{
+  "total": 1152,
+  "inherited": 419,
+  "newMeasured": 733,
+  "profiles": [
+    {
+      "cap": "lab",
+      "r": 0.002,
+      "pairedHolds": 20
+    },
+    {
+      "cap": "free",
+      "r": 0.002,
+      "pairedHolds": 16
+    },
+    {
+      "cap": "lab",
+      "r": 0.0004,
+      "pairedHolds": 17
+    },
+    {
+      "cap": "lab",
+      "r": 0.0006,
+      "pairedHolds": 17
+    }
+  ],
+  "capEffects": {
+    "matchedSeedRows": 288,
+    "emptyMetricChanged": 67,
+    "anyOutcomeChanged": 144,
+    "holdChanged": 8,
+    "nonbindingRowsVerified": 144,
+    "matchedConditions": 144,
+    "emptyMetricChangedConditions": 40,
+    "anyOutcomeChangedConditions": 72,
+    "pairedHoldChangedConditions": 4
+  }
+}
