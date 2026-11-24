@@ -78,7 +78,7 @@ async function labMake(day) {
   return f;
 }
 async function labArm(arm, file) {
-  const env = labEnv(Object.assign({}, arm.env, { T1420_OBS: path.join(OUT, `${arm.name}.obs.json`), T1420_FP: path.join(OUT, `${arm.name}.fp.json`) }, GROW ? { T1426_GROW: path.join(OUT, `${arm.name}.grow.json`) } : {}, FPWIN ? { T1420_FP_FROM: FPWIN[0], T1420_FP_TO: FPWIN[1] } : {}, file ? { T1420_LOAD: file } : {}, STALE_OK ? { T1420_ALLOW_STALE: '1' } : {}));
+  const env = labEnv(Object.assign({}, arm.env, { T1420_OBS: path.join(OUT, `${arm.name}.obs.json`), T1420_FP: path.join(OUT, `${arm.name}.fp.json`) }, GROW ? { T1426_GROW: path.join(OUT, `${arm.name}.grow.json`) } : {}, A.includes('--grow-vils') ? { T1426_GROW_VILS: path.join(OUT, `${arm.name}.vils.json`) } : {}, FPWIN ? { T1420_FP_FROM: FPWIN[0], T1420_FP_TO: FPWIN[1] } : {}, file ? { T1420_LOAD: file } : {}, STALE_OK ? { T1420_ALLOW_STALE: '1' } : {}));
   env.NODE_OPTIONS = require('./lib-heap').withHeap(env.NODE_OPTIONS || process.env.NODE_OPTIONS);   // ★[T1426] 긴 랩 팔(10,000날 — 인구 1만 넘음)
   const r = await run([path.join(__dirname, 't17-metrics.js'), String(DAYS), String(SEED)], env, path.join(OUT, `${arm.name}.log`));
   const lg = fs.readFileSync(path.join(OUT, `${arm.name}.log`), 'utf8');

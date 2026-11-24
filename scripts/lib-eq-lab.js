@@ -209,12 +209,13 @@ function bindT17(ctx) {
   const saveDir = E.T1420_SAVE_DIR || cacheDir();
   const fp = E.T1420_FP ? [] : null, obs = E.T1420_OBS ? [] : null, fk = E.T1420_FPKEYS ? +E.T1420_FPKEYS : null, keys = {};
   const fpFrom = +(E.T1420_FP_FROM || 0), fpTo = E.T1420_FP_TO ? +E.T1420_FP_TO : Infinity;   // ★[T1426] 지문 날 창(긴 판에서 되살림 견줌 날만)
-  const GR = E.T1426_GROW ? require('./lib-eq-grow') : null, grow = GR ? [] : null;   // ★[T1426] 성장 길 관측(인구 식 몫 · 땅 · 죽음 갈래)
+  const GR = (E.T1426_GROW || E.T1426_GROW_VILS) ? require('./lib-eq-grow') : null, grow = E.T1426_GROW ? [] : null, gv = E.T1426_GROW_VILS ? [] : null;   // ★[T1457] 마을마다 줄   // ★[T1426] 성장 길 관측(인구 식 몫 · 땅 · 죽음 갈래)
   const saved = [];
   const flush = () => {
     if (fp) fs.writeFileSync(E.T1420_FP, JSON.stringify({ card: 'T1420', zone, seed, sig: codeSig(), loaded, fp, keys }));
     if (obs) fs.writeFileSync(E.T1420_OBS, JSON.stringify({ card: 'T1420', zone, seed, sig: codeSig(), loaded,
       cols: OBS_COLS, rows: obs }));
+    if (gv) fs.writeFileSync(E.T1426_GROW_VILS, JSON.stringify({ card: 'T1457', zone, seed, names: world.villages.map((v) => v.name), cols: GR.VCOLS, days: gv }));
     if (grow) fs.writeFileSync(E.T1426_GROW, JSON.stringify({ card: 'T1426', zone, seed, sig: codeSig(), loaded, cols: GR.COLS, rows: grow }));
   };
   return {
@@ -223,6 +224,7 @@ function bindT17(ctx) {
       const w = world;
       if (fp && w.day >= fpFrom && w.day <= fpTo) fp.push(fpDay(w));
       if (grow) grow.push(GR.growDay(w));
+      if (gv) gv.push([w.day, GR.vilDay(w)]);
       if (obs) obs.push(obsDay(w, ctx.econ));
       if (fk != null && w.day === fk) { keys.world = fpKeys(w, -1); keys.v = w.villages.map((_, i) => fpKeys(w, i)); }
       if (saveAt.has(w.day)) {
@@ -231,7 +233,7 @@ function bindT17(ctx) {
         saved.push(Object.assign({ file: f, ms: Date.now() - t0 }, r));
         out(`[T1420] 저장 ${f} — 날 ${w.day} · ${r.bytes} B(날것 ${r.raw}) · sha ${r.sha} · ${Date.now() - t0}ms`);
       }
-      if ((fp || obs || grow) && w.day % 100 === 0) flush();
+      if ((fp || obs || grow || gv) && w.day % 100 === 0) flush();
     },
     end() { flush(); if (E.T1420_SAVED) fs.writeFileSync(E.T1420_SAVED, JSON.stringify(saved)); },
   };
