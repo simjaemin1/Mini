@@ -1,0 +1,15 @@
+{"day":100,"pop":2488,"live":51,"vills":51,"rssMB":900,"heapMB":402,"heapLimitMB":6192,"dbMB":87,"secPerDay":2.56,"secDayMax":110.75,"tickMaxMs":60297}
+{"day":200,"pop":3300,"live":51,"vills":51,"rssMB":1814,"heapMB":1179,"heapLimitMB":6192,"dbMB":100,"secPerDay":1.43,"secDayMax":2.8,"tickMaxMs":57647}
+{"day":300,"pop":3365,"live":51,"vills":51,"rssMB":1922,"heapMB":560,"heapLimitMB":6192,"dbMB":106,"secPerDay":1.15,"secDayMax":1.7,"tickMaxMs":43017}
+{"day":400,"pop":3345,"live":51,"vills":51,"rssMB":2077,"heapMB":664,"heapLimitMB":6192,"dbMB":110,"secPerDay":1.28,"secDayMax":12.35,"tickMaxMs":64290}
+{"day":500,"pop":4167,"live":51,"vills":51,"rssMB":3018,"heapMB":1903,"heapLimitMB":6192,"dbMB":117,"secPerDay":2.27,"secDayMax":4.86,"tickMaxMs":88114}
+{"day":600,"pop":5503,"live":51,"vills":51,"rssMB":3228,"heapMB":2342,"heapLimitMB":6192,"dbMB":132,"secPerDay":3.69,"secDayMax":12.48,"tickMaxMs":141734}
+{"day":700,"pop":5521,"live":51,"vills":51,"rssMB":2447,"heapMB":1017,"heapLimitMB":6192,"dbMB":142,"secPerDay":5.45,"secDayMax":53.12,"tickMaxMs":198642}
+{"day":800,"pop":6418,"live":51,"vills":51,"rssMB":2772,"heapMB":1323,"heapLimitMB":6192,"dbMB":148,"secPerDay":6.33,"secDayMax":61.06,"tickMaxMs":328833}
+{"day":900,"pop":7016,"live":51,"vills":51,"rssMB":2993,"heapMB":1631,"heapLimitMB":6192,"dbMB":157,"secPerDay":6.62,"secDayMax":14.34,"tickMaxMs":272328}
+{"day":1000,"pop":7204,"live":51,"vills":51,"rssMB":3980,"heapMB":2660,"heapLimitMB":6192,"dbMB":162,"secPerDay":8.61,"secDayMax":62.29,"tickMaxMs":306016}
+{"day":1100,"pop":6965,"live":51,"vills":51,"rssMB":4049,"heapMB":2670,"heapLimitMB":6192,"dbMB":164,"secPerDay":7.8,"secDayMax":17.38,"tickMaxMs":317022}
+{"day":1200,"pop":7645,"live":51,"vills":51,"rssMB":3135,"heapMB":1793,"heapLimitMB":6192,"dbMB":167,"secPerDay":8.44,"secDayMax":23.48,"tickMaxMs":339302}
+{"day":1300,"pop":7940,"live":51,"vills":51,"rssMB":3610,"heapMB":1950,"heapLimitMB":6192,"dbMB":172,"secPerDay":56.49,"secDayMax":278.43,"tickMaxMs":4045859}
+{"day":1400,"pop":7656,"live":51,"vills":51,"rssMB":4265,"heapMB":2057,"heapLimitMB":6192,"dbMB":174,"secPerDay":94.23,"secDayMax":112.03,"tickMaxMs":3927748}
+{"day":1460,"pop":7520,"live":51,"vills":51,"rssMB":5274,"heapMB":2663,"heapLimitMB":6192,"dbMB":174,"secPerDay":94.65,"secDayMax":119.52,"tickMaxMs":3601330}
