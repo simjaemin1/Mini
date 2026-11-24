@@ -1002,6 +1002,7 @@
           c.bridges.add(k);
           _bridgeAbs.add(((msg.zone.worldOffsetX / CL_BUILDING_SIZE) + msg.bridges[i]) + ',' + (((msg.zone.worldOffsetY || 0) / CL_BUILDING_SIZE) + msg.bridges[i + 1]));
         }
+        if (msg.t1441) _t1441P.on = true;   // ★[T1441 ①] 짓기 미리보기가 서버에 남의 마을 땅을 묻는다(켬인 존만)
         if (msg.t1440) _t1440P.on = true;   // ★[T1440] 짓기 미리보기가 서버에 길을 묻는다(켬인 존만)
         if (msg.t1423NoBuild) {   // ★[T1423 ⓐ] 못 놓는 다리 칸 · 다리 머리(서버 ㉮ 칸 줄 — 다리 미러와 같은 셈으로 절대 칸에) · 켬인 존만 보낸다
           _t1423NoAbs.on = true;
@@ -1345,6 +1346,9 @@
     } else if (msg.type === 'claim_updated') {
       // Phase 4d-16-a: 영토 cell sub-type 변경 (예: NPC personal 분배)
       c.claims.set(msg.claim.id, msg.claim);
+    } else if (msg.type === 't1441_peek') {
+      // ★[T1441 ①] 남의 마을 땅인가(서버 `_t1441Foreign` 그 술어의 답 — 마을 이름 · 아니면 '')
+      _t1441P.vil = msg.vil || ''; _t1441P.vKey = msg.key;
     } else if (msg.type === 't1440_peek') {
       // ★[T1440] 짓기 미리보기의 서버 답(그 조각 열쇠 그대로 — 고스트가 지금 열쇠와 같을 때만 그린다)
       _t1440P.st = msg.st; _t1440P.stKey = msg.key;

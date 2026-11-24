@@ -35,6 +35,8 @@ const ItemLabel = require(path.join(__dirname, 'itemlabel'));   // ★[T159] 재
 const VillageKin = require(path.join(__dirname, 'village-kin'));   // ★[T785] 마을 칸(촌장) — 켬에서만 읽는다(끔 = 이 줄들 무동작) · ★[T809] 곳간 문은 T779 가 걷었다
 
 const _num = (k, d) => { const v = parseFloat(process.env[k]); return Number.isFinite(v) ? v : d; };
+// ★[T1441 · ★재민 11-22 판정 53] 추방 뒤 다시 들기 = 2시간(탈퇴는 1시간 그대로) — 손잡이 `T1441_EXPEL_2H`('1' 만 켬 · 끔 기본 · 끔 = 종전 1시간 공통).
+const T1441_EXPEL_2H = process.env.T1441_EXPEL_2H === '1';
 const CFG = {
   // 소속 문턱 — K-2 확정(12). 빈터(3)는 온보딩 정본(`ONB_LOT_AFTER`)이 갖는다.
   N_MEMBER: Math.max(1, _num('MEMBER_N', 12) | 0),
@@ -85,9 +87,10 @@ function _now() { return (H && typeof H.now === 'function') ? H.now() : Date.now
 /** 다시 들 수 있을 때까지 남은 ms(0 = 지금 들 수 있다) — 켬에서만 선다(끔 = 늘 0 · 종전 문). */
 function coolLeft(player) {
   if (!T1137 || !player) return 0;
+  const _h = (H && H.t1441Hold) ? (H.t1441Hold(player) || 0) : 0;   // ★[T1441 ⑤] NPC 마을에서 내보내진 사람 — 벌점이 50 아래로 내려올 때까지(존이 준다 · 끔 = 칸 없음)
   const t = Number(player.memberCool);
-  if (!Number.isFinite(t) || t <= 0) return 0;
-  return Math.max(0, t - _now());
+  if (!Number.isFinite(t) || t <= 0) return _h;
+  return Math.max(_h, Math.max(0, t - _now()));
 }
 /** 남은 시간을 사람이 읽는 말로(분 · 올림). */
 function coolText(ms) {
@@ -96,6 +99,7 @@ function coolText(ms) {
 }
 function _coolErr(player) {
   const left = coolLeft(player);
+  if (left > 0 && H && H.t1441Hold && H.t1441Hold(player) >= left) return `마을에서 내보내진 뒤 적대감이 아직 높습니다. 적대감이 내려올 때까지(${coolText(left)}쯤) 마을에 들 수 없습니다.`;   // ★[T1441 ⑤]
   return left > 0 ? `마을을 떠난 지 얼마 되지 않았습니다. ${coolText(left)} 뒤에 다시 들 수 있습니다.` : null;
 }
 function ready() { return !!H; }
@@ -152,6 +156,7 @@ function onDeliver(player, r, vid) {
 function _seat(player, v) {
   player.member = { zone: (H && H.ZONE_ID) || null, vid: v | 0, name: _villageName(v), since: _day() };   // ★[T779] 하루 몫 장부 칸 0
   if (H && typeof H.t1447OnSeat === 'function') { try { H.t1447OnSeat(player, v | 0); } catch (e) {} }   // ★[T1447] 들면 그 마을의 땅 원한은 지운다(덮이니 원인이 사라진다 · 판정 56) — 끔 = 칸 없음 · 무동작
+  if (H && H.t1441Seat) { try { H.t1441Seat(player); } catch (e) {} }   // ★[T1441 ⑥] 다시 들면 말미를 닫는다 · 존의 소속 사본(켬 손잡이가 있을 때만 존이 준다)
   return player.member;
 }
 // ★[T1447] 그 마을의 해코지 원한이 문턱 위면 드는 문 전부가 막는다(땅 원한은 안 막는다 — 판정 56) · 끔 = 칸 없음 = 늘 null
@@ -234,8 +239,10 @@ function leave(player, why) {
   if (!m) return { ok: false, err: '속한 마을이 없습니다.' };
   player.member = null;
   player._memberOfferVid = null;
-  if (T1137) player.memberCool = _now() + CFG.REJOIN_MS;   // ★[T1137] 탈퇴 · 추방 = 다시 들기 1시간(몸 칸 — 재접속 · 넘기에 따라간다)
-  return { ok: true, was: m, contrib: contribOf(player.playerId), why: why || 'self' };
+  if (T1137) player.memberCool = _now() + CFG.REJOIN_MS * ((T1441_EXPEL_2H && why === 'expel') ? 2 : 1);   // ★[T1137] 탈퇴 · 추방 = 다시 들기 1시간(몸 칸 — 재접속 · 넘기에 따라간다) · ★[T1441 · 판정 53] 켬 = 추방만 2시간
+  const _r = { ok: true, was: m, contrib: contribOf(player.playerId), why: why || 'self' };
+  if (H && H.t1441Leave) { try { H.t1441Leave(player, _r); } catch (e) {} }   // ★[T1441 ⑥] 말미(그 마을 땅 위 내 땅) · 존의 소속 사본
+  return _r;
 }
 // ★추방 — **촌장이 한다**. 최소 조건만: 그 마을 사람이어야 하고, 쫓는 쪽이 그 마을 사람이어야 한다.
 //   남용 경로(대량 추방·재가입 폭주)는 §5 대로 유보다 — 여기서 짐작으로 막지 않는다.
@@ -494,7 +501,7 @@ function handleChat(player, text) {
   if (cmd === '/탈퇴') {
     const r = leave(player, 'self');
     _send(player, r.ok ? `🏘️ ${r.was.name || '마을'}을 떠났습니다. 쌓은 기여 ${r.contrib}은 그대로 남습니다.`
-      + (T1137 ? ` 다시 들려면 ${coolText(CFG.REJOIN_MS)}을 기다려야 합니다. 영토 안에 잡아 둔 내 땅은 그대로 내 것입니다.` : '') : `🏘️ ${r.err}`);
+      + (T1137 ? ` 다시 들려면 ${coolText(CFG.REJOIN_MS)}을 기다려야 합니다.${(H && H.t1441Grace) ? '' : ' 영토 안에 잡아 둔 내 땅은 그대로 내 것입니다.'}` : '') : `🏘️ ${r.err}`);   // ★[T1441 ⑥] 켬 = 땅 줄은 말미 알림이 따로 한 줄(그 마을 땅 위 내 땅이 있을 때만)
     return true;
   }
   if (cmd === '/추방') {
