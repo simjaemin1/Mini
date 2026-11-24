@@ -47,7 +47,7 @@
 //   그 말을 들은 바위는 짐이 안 늘었어도 못 가는 바위로 치지 않는다(깎인 몫이 바위 장부에 남아 다음 돌괭이가 잇는다). 끔 판은 그 말이 안 와 종전 차례 그대로다.
 //
 // 실행: node scripts/e2e-first30.js --season spring|summer|winter --start day|night [--cap 30] [--out /tmp/t511/x.json]
-//          [--chief] [--quest-fixture] [--warm-db <초>] [--vid <n>] [--econ-days <n>] [--no-align] [--headed]
+//          [--chief] [--quest-fixture] [--warm-db <초>] [--vid <n>] [--villages <수|all>[:<vid>]] [--econ-days <n>] [--no-align] [--headed]
 //          [--shots <디렉터리>] [--shot-size 1280x800] [--old-bot] [--panel-bot]
 //        node scripts/e2e-first30.js --no-align --reach 448,704,960 [--reach-dirs 8] [--shots <dir>]   (쉼터 길 시험 — 본판 대신 · T1093)
 //        node scripts/e2e-first30.js --table <json…|디렉터리>        (표 입 — 세계를 안 띄운다)
@@ -82,7 +82,11 @@ const QFIX = argv.includes('--quest-fixture');
 const ECON_DAYS = +val('--econ-days', '0');
 // ★`--vid <n>` — 시작 화면 **지도에서 고르기**(`__onbPick` → 「나루터로 간다」 · §9.1 의 다른 문). 기본은 "아무 곳이나(추천)" 원클릭.
 //   촌장 판을 촌장 없는 판과 **같은 마을**에 세우려고 쓴다(추천은 세계가 고르므로 하루 뒤엔 바뀔 수 있다).
-const PICK = val('--vid', null) == null ? null : +val('--vid', null);
+// ★[T1476] `--villages <수|all>[:<vid>]` — 세계의 마을 수(존 `VILLAGE_MAX`)와 내릴 마을(`--vid` 와 같다 · 둘 다 주면 `--vid` 가 이긴다).
+//   `all` = 전수 시딩(라이브와 같은 50곳 · 존 정본의 env `SEED_ALL=1`). 안 주면 종전 그대로(`VILLAGE_MAX 4` · 마을 넷).
+const _VIL = (() => { const m = /^(all|\d+)(?::(\d+))?$/.exec(String(val('--villages', '') || '')); return m ? { n: m[1], vid: m[2] == null ? null : +m[2] } : null; })();
+const ZONE_VILLAGE_ENV = _VIL ? (_VIL.n === 'all' ? { VILLAGE_MAX: '4', SEED_ALL: '1' } : { VILLAGE_MAX: String(Math.max(1, +_VIL.n)) }) : { VILLAGE_MAX: '4' };
+const PICK = val('--vid', null) != null ? +val('--vid', null) : (_VIL && _VIL.vid != null ? _VIL.vid : null);
 // ★`--warm-db <초>` — **산 세계** 흉내(촌장의 첫 의뢰가 설 자리). 새 세계는 econ 첫날이라 게시판이 비고 픽스처조차
 //   "갚을 잉여가 있는 소비 품목이 없다(econ day 1)"로 거절된다(실측). ⇒ 두 번 띄운다:
 //   ① 같은 DB 로 존을 `VILLAGE_DAY_MS=500` 으로 n 초 돌려 마을 살림만 산다(econ 이 마을 행에 제 상태를 저장한다 — `econ_state`)
@@ -1367,7 +1371,7 @@ async function sampleOnce() {
   const upC = FB.waitUp(cen, /central server up on/, { name: 'central' });
   if (WARMDB) {   // ① 산 세계 — 줄인 하루로 n 초 돌리고 내린다(같은 DB)
     const z1 = boot('zone-warm', 'zone.js', { PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
-      VILLAGE_MAX: '4', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0', VILLAGE_DAY_MS: '500' });
+      ...ZONE_VILLAGE_ENV, ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0', VILLAGE_DAY_MS: '500' });
     const u1 = await FB.waitUp(z1, /zone server up on/, { name: 'zone-warm', capMs: 300000 });
     if (!u1.ok) { say('데우기 존 기동 실패'); process.exit(1); }
     await sleep(WARMDB * 1000);
@@ -1376,7 +1380,7 @@ async function sampleOnce() {
     say(`  산 세계 — 줄인 하루(0.5초)로 ${WARMDB}초 살고 내렸다(같은 DB로 보통 존을 다시 띄운다)`);
   }
   const zon = boot('zone', 'zone.js', { PORT: String(ZPORT), ZONE_ID: 'hanbando', DB_PATH: ZDB, CENTRAL_URL: `http://localhost:${CPORT}`,
-    VILLAGE_MAX: '4', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0', E2E_GIVE: '1', ...(OWN ? { T1341_OWN_HOUSE: '1' } : {}) });
+    ...ZONE_VILLAGE_ENV, ENABLE_BANDITS: '0', ENABLE_ROADS: '0', ENABLE_WILDLIFE: '0', E2E_GIVE: '1', ...(OWN ? { T1341_OWN_HOUSE: '1' } : {}) });
   const upZ = FB.waitUp(zon, /zone server up on/, { name: 'zone', capMs: 300000 });
   const a = await upC, b = await upZ;
   if (!a.ok || !b.ok) { say(`기동 실패 central=${a.ok} zone=${b.ok} ${a.why || ''} ${b.why || ''}`); process.exit(1); }

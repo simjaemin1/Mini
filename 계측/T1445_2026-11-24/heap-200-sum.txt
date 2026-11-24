@@ -1,0 +1,63 @@
+노드 12,770,118 · 종류마다(자기 크기 MB):
+  array                     185,481      367.3
+  object                  2,855,120      129.7
+  string                  4,696,927      128.0
+  native                     10,056      126.7
+  number                  4,502,239       72.0
+  code                       60,042       11.1
+  hidden                    182,705       11.1
+  object shape               87,621        8.7
+  concatenated string       163,690        5.2
+  closure                    25,312        1.5
+  sliced string                 476        0.0
+  symbol                        336        0.0
+  synthetic                      43        0.0
+  regexp                         61        0.0
+  bigint                          9        0.0
+
+위 45 (종류 · 이름 → 수 · MB):
+  array        ''                                                                            7,485     339.0
+  native       'system / JSArrayBufferData'                                                  9,831     126.2
+  object       'Object'                                                                  2,635,177     121.1
+  number       'heap number'                                                             4,502,239      72.0
+  array        '(object elements)'                                                         176,608      24.3
+  hidden       'system / PropertyArray'                                                    165,904      10.4
+  object       'Array'                                                                     183,971       5.9
+  object shape 'system / Map'                                                               81,502       5.9
+  concatenated string '(concatenated string)'                                                     163,690       5.2
+  array        '(object properties)'                                                         1,342       4.0
+  string       '// ==================================================================            1       3.1
+  object shape 'system / DescriptorArray'                                                    3,754       2.6
+  string       '// 존 서버 — 한 지역의 시뮬레이션을 권위적으로 처리\n// 환경변수 ZONE_ID, PORT 로 어떤 존을 띄울지 결정            1       2.5
+  code         '(script line ends)'                                                            280       1.4
+  code         ''                                                                              454       1.1
+  string       '#!/usr/bin/env node\n/**\n * NPC 마을 자율 경제 시뮬레이션\n *\n * 검증 목표:\n *  1            1       1.1
+  object       'ArrayBuffer'                                                                 9,860       0.9
+  code         'system / BytecodeArray'                                                      1,910       0.7
+  code         'system / FeedbackVector'                                                     1,401       0.6
+  code         'system / TrustedByteArray'                                                   4,142       0.5
+  object       'system / Context'                                                            7,287       0.5
+  code         '(code relocation info)'                                                      1,852       0.5
+  code         'system / ScopeInfo'                                                          4,282       0.5
+  object       'Uint16Array'                                                                 5,063       0.5
+  string       '// ==================================================================            1       0.5
+  code         '(code deopt data)'                                                             690       0.4
+  native       'Node / histogram'                                                                1       0.4
+  object       'Uint8Array'                                                                  3,672       0.4
+  string       'barley'                                                                     14,431       0.3
+  code         'system / TrustedFixedArray'                                                    447       0.3
+  closure      'get'                                                                         5,804       0.3
+  string       'wheat'                                                                      13,363       0.3
+  closure      'set'                                                                         5,700       0.3
+  string       '// ==================================================================            1       0.3
+  code         '(context local names)'                                                          33       0.3
+  string       'PRICE_DROP'                                                                  8,821       0.3
+  string       '// ==================================================================            1       0.3
+  hidden       'system / WeakArrayList'                                                      1,293       0.2
+  string       'water_dropwort'                                                              7,673       0.2
+  code         'system / FeedbackCell'                                                       9,596       0.2
+  code         'system / WeakFixedArray'                                                     2,058       0.2
+  code         '(constant pool)'                                                             1,813       0.2
+  string       'chive'                                                                       9,323       0.2
+  string       '// ══════════════════════════════════════════════════════════════════            1       0.2
+  string       'npc_hanbando'                                                                6,469       0.2

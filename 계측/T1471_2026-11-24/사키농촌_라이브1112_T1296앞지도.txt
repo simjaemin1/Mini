@@ -1,0 +1,92 @@
+@ 가운데 · 대문자 = 마을 건물 행 첫 글자 · ! = 바위 칸 위 건물 · # 바위 · ^ 영토인 바위 · , 영토 · x 0 ~ 127 · y 1875 ~ 1965
+                               ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,YYYYYYGGGG,,,Y,,,,,,YYYYY,,,YYYYYYGGGG,,,,,,,,,,,,,,,,,,,,,
+                              ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,YYYYYYGGGG,,,Y,,,,,,YYYYY,,,YYYYYYGGGG,,,,,,,,,,,,,,,,,,,,,
+                             ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,YYYYYY,,,,,YYYYYYYYYYYY,,,,,YYYYYY,,,,,,,,,,,,,,,,,,,,,,,
+                            ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,YYYYYYYYYYYY,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+                            ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,YYYYYYYGGGGY,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+                           ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,YYYYYYYGGGGY,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+                          ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,YYYYYYGGGG,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+                          ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,YYYYYYGGGG,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+                         ,,,,,,,,,,,,,,,,,,,,,,,,,#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,YYYYYY,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+                         ,,,,,,,,,,,,,,,,,,,,,,,,,#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+                        ,,,,,,,,,,,,,,,,,,,,,,,,,,#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,DD,,,,,,,,,,,,,,,,,,,
+                        ,,,,,,,,,,,,,,,,,,,,,,,,,,#,,,,,,,,,,,,,,,,,,,,,,,,,,,DD,,,,,,,,,,,,,,,,,,,,,,,,,,DDD,,,,,,,,,,,,,,,,,,,
+                       ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,DDDD,,,,,,,,,,,,,,,,,,,,,,,,DDDD,,,,,,,,,,,,,,,,,,,
+                      ,,,,,,,,,,,,,,,,,,,,,,,,,,,#,,,,,,,,,,,,,,,,,,,,,,,,,,DDDDDD,,,,,,,,,,,,,,,,,,,,,,DDDDDD,,,,,,,,,,,,,,,,,,
+                      ,,,,,,,,,,,,,,,,,,,,,,,,,,,#,,,,,,,,,,,,,,,,DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD,,,,,,,,,,,,,,,,,
+                      ,,,,,,,,,,,,,,,YYYYYY,,,,,,#,,,,,,,,,,,,,,,DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD,,,,,,,,,,,,,,,,
+                     ,,,,,,,,,,,,,,,,,,,,YYYY,,,,#,,,,,,,,,,,,,,DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD,,,,,,,,,,,,,,,
+                     ,,,,,,,,,,,,,,,,,,,,YYYY,,,##,,,,,,,,,,DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD,,,,,,,,,,,,,,
+                    ,,,,,,,,,,,,,,Y,,,,,,YYYYY,,##,,,,,,,,,,DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD,,,,,,,,,,,,,
+                    ,,,,,,,,,,,,,,Y,,,,,,YYYYY,,##,,,,,,,,,DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD,,,,,,,,,,,,
+                   ,,,,,,,,,,,,,,,YYYYYYYYYYYY,###,,,,,,,,DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD,,,,,,,,,,,
+                   ,,,,,,,,,,,,,,,YYYYYYYYYYYY,###,,,,,,,DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD,,,,,,,,,,
+                   ,,,,,,,,,,,,,,,YYYYYYYGGGGY,###,,,,,,DDDDDDDDDDDDDD,DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD,,,,,,,,,
+                  ,,,,,,,,,,,,,,,,YYYYYYYGGGGY####,,,,,,DD,,,,,,,,DDD,,,DD,,,,,,,,DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD,,,,,,,,,
+                  ,,,,,,,,,,,,,,,,,YYYYYYGGGG,####,,,,,DD,,,,,,,,,,D,,,,,,,,,,,,,,,DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD,,,,,,,,
+                  ,,,,,,,,,,,,,,,,,YYYYYYGGGG#####,,,,DD,,,YYYYYY,,,,,,,,,,YYYYYY,,,DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD,,,,,,,
+                  ,,,,,,,,,,,,,,,,,,,YYYYYY,,#####,,,DD,,,,,,,,YYYY,,,,,,,,,,,,YYYY,,DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD,,,,,,,
+                 ,,,,,,,,,,,,,,,,,,,,,,,,,,,######,,,,,,,,,,,,,YYYY,,,,,,,,,,,,YYYY,,,DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD,,,,,,
+                 ,,,,,,,,,,,,,,,,,,,,,,,,,,,######,,,,,,Y,,,,,,YYYYY,,,,Y,,,,,,YYYYY,,DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD,,,,,,
+                 ,,,,,,,,,,,,,,,,,,,,,,,,,,#######,,,,,,Y,,,,,,YYYYY,,,,Y,,,,,,YYYYY,,DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD,,,,,
+                 ,,,,,,,,,,,,,,,,,,,,,,,,,########,,,,,,YYYYYYYYYYYY,,,,YYYYYYYYYYYY,,DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD,,,,,
+                ,,,,,,,,,,,,,,,,,,,,,,,,,,########,,,,,,YYYYYYYYYYYY,,,,YYYYYYYYYYYY,,DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD,,,,,
+                ,,,,,,,,,,,,,,,,,,,,,,,,,#########,,,,,,YYYYYYYGGGGY,,,,YYYYYYYGGGGY,,DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD,,,,
+                ,,,,,,,,,,,,,,,,,,,,,,,,#########,,,,,,,YYYYYYYGGGGY,,,,YYYYYYYGGGGY,,,,,,DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD,,,
+                ,,,,,,,,,,,,,,,,,,,,,,,,#########,,,,,,,,YYYYYYGGGG,,,,,,YYYYYYGGGG,,,,G,,,,,DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD,,,
+                ,,,,,,,,,,,,,,,,,,,,,,,##########,,,,,,,,YYYYYYGGGG,,,,,,YYYYYYGGGG,PPPPPP,,,,DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD,,
+                ,,,,,,,,,,,,,,,,,,,,,,###########,,,,,,,,,,YYYYYY,,,,,,,,,,YYYYYY,PPPPPPPPPP,,,DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD,
+               ,,,,,,,,,,,,,,,,,,,,,,############,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,GPPPPPPPPPPPPPP,,DDDDDDDD,,,,,,,,DDDDDDDDDD,,,DD,
+               ,,,,,,,,,,,,,,,,,,,,,#############,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,PPPPPPPPPPPPPPPP,,DDDDDD,,,,,,,,,,DDDDDDDDD,,,,DD
+               ,,,,,,,,,,,,,,,,,,,,##############,,,,,,,,,,,,,,,,,,YYYYYY,,,,,,PPPPPPPPPPPPPPPP,,,DDDD,,,YYYYYY,,,DDD,,DDD,,,,,D
+               ,,,,,,,,,,,,,,,,,,,,##############,,,,,,,,,,,,,,,,,,,,,,YYYY,,,PPPPPPPPPPPPPPPPPP,,DDDDD,,,,,,YYYY,,D,,,,DD,,,,,,
+               ,,,,,,,,,,,,,,,,,,################,,,,,,,,,,,,,,,,,,,,,,YYYY,,,PPPPP,,,,,,,,PPPPP,,DDDDD,,,,,,YYYY,,,,,,,,,,,,,,,
+               ,,,,,,,,,,,,,,,,,#################,,,,,,,,,,,,,,,Y,,,,,,YYYYYGPPPPPP,,,,,,,,PPPPPP,,,,,Y,,,,,,YYYYY,,,,,,,,,,,,,,
+               ,,,,,,,,,,,,,,,,##################,,,,,,,,,,,,,,,Y,,,,,,YYYYY,PPPPPP,,,,,,,,PPPPPP,,,,,Y,,,,,,YYYYY,,,,,,,YYYYYY,
+               ,,,,,,,,,,,,,,,###################,,,,,,,,,,,,,,,YYYYYYYYYYYY,PPPPPP,,,,,,,,PPPPPP,,,,,YYYYYYYYYYYY,,,,,,,,,,,YYY
+               ,,,,,,,,,,,,,,####################,,,,,,,,,,,,,,,YYYYYYYYYYYY,PPPPPP,,,,@,,,PPPPPP,G,,,YYYYYYYYYYYY,,,,,,,,,,,YYY
+               ,,,,,,,,,,,,,#####################,,,,,,,,,,,,,,,YYYYYYYGGGGY,PPPPPP,,,,,,,,PPPPPP,,,,,YYYYYYYGGGGY,,,,Y,,,,,,YYY
+               ,,,,,,,,,,,#######################,,,,,,,,,,,,,,,YYYYYYYGGGGY,PPPPPP,,,,,,,,PPPPPP,,,,,YYYYYYYGGGGY,,,,Y,,,,,,YYY
+               ,,,,,,,,,,########################,,,,,,,,,,,,,,,,YYYYYYGGGG,,,PPPPP,,,,,,,,PPPPP,,,,,,,YYYYYYGGGG,,,,,YYYYYYYYYY
+               ,,,,,,,,##########################,,,,,,,,,,,,,,,,YYYYYYGGGG,,,PPPPPPPPPPPPPPPPPP,,,,,,,YYYYYYGGGG,,,,,YYYYYYYYYY
+               ,,,,,,############################,,,,,,,,,,,,,,,,,,YYYYYY,,,,,,PPPPPPPPPPPPPPPP,,,,,,,,,,YYYYYY,,,,,,,YYYYYYYGGG
+               ,,,,,#############################,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,PPPPPPPPPPPPPPPP,,,,,,,,,,,,,,,,,,,,,,,YYYYYYYGGG
+               ,,################################,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,PPPPPPPPPPPPPP,,,,,,,,,,,,,,,,,,,,,,,,,YYYYYYGGG
+               ##################################,,,,,,,,,,YYYYYY,,,,,,,,,,YYYYYY,PPPPPPPPPP,YYYYYY,,,,,,,,,,,,,,,,,,,,YYYYYYGGG
+             ####################################,,,,,,,,,,,,,,YYYY,,,,,,,,,,,,YYYY,PPPPPP,,,,,,,YYYY,,,,,,,,,,,,,,,,,,,,YYYYYY,
+         #######################################,,,,,,,,,,,,,,,YYYY,,,,,,,,,,,,YYYY,,,,,,,,,,,,,,YYYY,,,,,,,,YYYYYY,,,,,,,,,,,,,
+     ###########################################,,,,,,,,Y,,,,,,YYYYY,,,,Y,,,,,,YYYYY,,,,,,Y,,,,,,YYYYY,,,,,,,,,,,YYYY,,,,,,,,,,,
+################################################,,,,,,,,Y,,,,,,YYYYY,,,,Y,,,,,,YYYYY,,,,,,Y,,,,,,YYYYY,,,,,,,,,,,YYYY,,,,,,,,,,Y
+################################################,,,,,,,,YYYYYYYYYYYY,,,,YYYYYYYYYYYY,,,,,,YYYYYYYYYYYY,,,,Y,,,,,,YYYYY,,,,,,,,,,
+################################################,,,,,,,,YYYYYYYYYYYY,,,,YYYYYYYYYYYY,,,,,,YYYYYYYYYYYY,,,,Y,,,,,,YYYYY,,,,,,,,,,
+################################################,,,,,,,,YYYYYYYGGGGY,,,,YYYYYYYGGGGY,,,,,,YYYYYYYGGGGY,,,,YYYYYYYYYYYY,,,,,,Y,,,
+################################################,,,,,,,,YYYYYYYGGGGY,,,,YYYYYYYGGGGY,,,,,,YYYYYYYGGGGY,,,,YYYYYYYYYYYY,,,,,,Y,,,
+################################################,,,,,,,,,YYYYYYGGGG,,,,,,YYYYYYGGGG,,,,,,,,YYYYYYGGGG,,,,,YYYYYYYGGGGY,,,,,,YYYY
+################################################,,,,,,,,,YYYYYYGGGG,,,,,,YYYYYYGGGG,,,,,,,,YYYYYYGGGG,,,,,YYYYYYYGGGGY,,,,,,YYYY
+################################################,,,,,,,,,,,YYYYYY,,,,,,,,,,YYYYYY,,,,,,,,,,,,YYYYYY,,,,,,,,YYYYYYGGGG,,,,,,,YYYY
+################################################,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,YYYYYYGGGG,,,,,,,YYYY
+################################################,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,YYYYYY,,,,,,,,,,YYY
+################################################,,,YYYYYY,,,,,,,,,,YYYYYY,,,,,,,,,,YYYYYY,,,,,,,,,,YYYYYY,,,,,,,,,,,,,,,,,,,,YYY
+################################################,,,,,,,YYYY,,,,,,,,,,,,YYYY,,,,,,,,,,,,YYYY,,,,,,,,,,,,YYYY,,,,,,,,,,,,,,,,,,,,Y
+################################################,,,,,,,YYYY,,,,,,,,,,,,YYYY,,,,,,,,,,,,YYYY,,,,,,,,,,,,YYYY,,,,,,,,YYYYYY,,,,,,,
+################################################Y,,,,,,YYYYY,,,,Y,,,,,,YYYYY,,,,Y,,,,,,YYYYY,,,,Y,,,,,,YYYYY,,,,,,,,,,,YYYY,,,,,
+################################################Y,,,,,,YYYYY,,,,Y,,,,,,YYYYY,,,,Y,,,,,,YYYYY,,,,Y,,,,,,YYYYY,,,,,,,,,,,YYYY,,,,,
+################################################YYYYYYYYYYYY,,,,YYYYYYYYYYYY,,,,YYYYYYYYYYYY,,,,YYYYYYYYYYYY,,,,Y,,,,,,YYYYY,,,,
+################################################YYYYYYYYYYYY,,,,YYYYYYYYYYYY,,,,YYYYYYYYYYYY,,,,YYYYYYYYYYYY,,,,Y,,,,,,YYYYY,,,,
+################################################YYYYYYYGGGGY,,,,YYYYYYYGGGGY,,,,YYYYYYYGGGGY,,,,YYYYYYYGGGGY,,,,YYYYYYYYYYYY,,,,
+################################################YYYYYYYGGGGY,,,,YYYYYYYGGGGY,,,,YYYYYYYGGGGY,,,,YYYYYYYGGGGY,,,,YYYYYYYYYYYY,,,,
+################################################,YYYYYYGGGG,,,,,,YYYYYYGGGG,,,,,,YYYYYYGGGG,,,,,,YYYYYYGGGG,,,,,YYYYYYYGGGGY,,,,
+###############################################,,YYYYYYGGGG,,,,,,YYYYYYGGGG,,,,,,YYYYYYGGGG,,,,,,YYYYYYGGGG,,,,,YYYYYYYGGGGY,,,,
+###############################################,,,,YYYYYY,,,,,,,,,,YYYYYY,,,,,,,,,,YYYYYY,,,,,,,,,,YYYYYY,,,,,,,,YYYYYYGGGG,,,,,
+###############################################,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,YYYYYYGGGG,,,,,
+###############################################,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,YYYYYY,,,,,,,
+###############################################,,,,,,,,,,YYYYYY,,,,,,,,,,YYYYYY,,,,,,,,,,YYYYYY,,,,,,,,,,YYYYYY,,,,,,,,,,,,,,,,,
+###############################################,,,,,,,,,,,,,,YYYY,,,,,,,,,,,,YYYY,,,,,,,,,,,,YYYY,,,,,,,,,,,,YYYY,,,,,,,,,,,,,,,
+###############################################,,,,,,,,,,,,,,YYYY,,,,,,,,,,,,YYYY,,,,,,,,,,,,YYYY,,,,,,,,,,,,YYYY,,,,,,,,,,,,,,,
+###############################################,,,,,,,Y,,,,,,YYYYY,,,,Y,,,,,,YYYYY,,,,Y,,,,,,YYYYY,,,,Y,,,,,,YYYYY,,,,,,,,,,,,,,
+###############################################,,,,,,,Y,,,,,,YYYYY,,,,Y,,,,,,YYYYY,,,,Y,,,,,,YYYYY,,,,Y,,,,,,YYYYY,,,,,,,,,,,,,,
+###############################################,,,,,,,YYYYYYYYYYYY,,,,YYYYYYYYYYYY,,,,YYYYYYYYYYYY,,,,YYYYYYYYYYYY,,,,,,,,,,,,,,
+###############################################,,,,,,,YYYYYYYYYYYY,,,,YYYYYYYYYYYY,,,,YYYYYYYYYYYY,,,,YYYYYYYYYYYY,,,,,,,,,,,,,,
+###############################################,,,,,,,YYYYYYYGGGGY,,,,YYYYYYYGGGGY,,,,YYYYYYYGGGGY,,,,YYYYYYYGGGGY,,,,,,,,,,,,,,
+###############################################,,,,,,,YYYYYYYGGGGY,,,,YYYYYYYGGGGY,,,,YYYYYYYGGGGY,,,,YYYYYYYGGGGY,,,,,,,,,,,,,,
+###############################################,,,,,,,,YYYYYYGGGG,,,,,,YYYYYYGGGG,,,,,,YYYYYYGGGG,,,,,,YYYYYYGGGG,,,,,,,,,,,,,,,

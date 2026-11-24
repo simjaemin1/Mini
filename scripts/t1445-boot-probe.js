@@ -5,7 +5,7 @@
 //
 // 쓰는 법(맥 · 컨테이너 · ★라이브 서버에서 돌리지 않는다):
 //   node scripts/t1445-boot-probe.js --db <world-hanbando.db> --central <central.db> --out <폴더> [--ref <커밋>] [--secs 600]
-//        [--limit 1500] [--off <꺼진 시간 ms>] [--gc] [--term] [--env K=V,K2=V2]
+//        [--limit 1500] [--off <꺼진 시간 ms>] [--gc] [--term] [--env K=V,K2=V2] [--zflags '<존 node 깃발 · %OUT = 판 폴더>']
 //   · DB 는 사본을 떠서 쓴다(원본 무접촉 · `--keep` 이면 떠 둔 사본을 남긴다 — 종료 저장 뒤 다시 띄우기를 이을 때)
 //   · `--ref` = 그 커밋을 git worktree 로 떠서 띄운다(없으면 이 트리) — land1076 `664a622b` ↔ land1089 `01df9e8f9` 나란히
 //   · 존 깃발: `--trace-gc` 늘(봉우리는 GC 줄의 앞 · 뒤 크기로) · `--max-old-space-size=<limit>`(라이브 3.9 GB 기계의 기본 ≈ 1,500)
@@ -33,6 +33,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const c = spawn(process.execPath, ['--experimental-sqlite', path.join(tree, 'server/central.js')], { cwd: tree, stdio: 'ignore', env: { ...env0, PORT: String(CP), DB_PATH: path.join(dd, 'central.db'), PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' } });
   await sleep(2000);
   const flags = ['--experimental-sqlite', '--trace-gc'].concat(LIMIT ? [`--max-old-space-size=${LIMIT}`] : []).concat(has('--gc') ? ['--expose-gc'] : []);
+  for (const z of (opt('--zflags', '') || '').split(' ').filter(Boolean)) flags.push(z.replace('%OUT', OUTD));   // ★[T1445 · 11-24] 존 덧 깃발(`--heapsnapshot-near-heap-limit=1 --diagnostic-dir=%OUT` …)
   const zenv = { ...env0, ...extra, ZONE_ID: 'hanbando', PORT: String(ZP), DB_PATH: path.join(dd, 'world-hanbando.db'), CENTRAL_HOST: 'localhost', CENTRAL_PORT: String(CP),
     NODE_OPTIONS: `--require ${path.join(__dirname, 't1445-boot-mem.cjs')}`, T1445_MEM_OUT: path.join(OUTD, 'mem.jsonl'), T1445_META_OUT: path.join(OUTD, 'meta.jsonl'), ...(has('--gc') ? { T1445_LOGGC: '1' } : {}),
     ...(OFF && saved ? { T1445_NOW0: String(saved + +OFF) } : {}) };

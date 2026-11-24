@@ -11,7 +11,7 @@ const COLS = ['d', 'N', 'K', 'slot', 'prod', 'fuel', 'housing',
   'logi', 'hunger', 'health', 'happy', 'prestige', 'natExp', 'dP',
   'landSize', 'expCells', 'expToday', 'mbmcStop',
   'natDead', 'fdDead', 'dead', 'emig', 'hMean', 'healthMean', 'prestMean',
-  'maxN', 'n200', 'n300', 'n400', 'healthNeg'];   // ★[T1457] 가장 큰 마을 · 200 · 300 · 400 넘는 마을 수(판정 76 덧붙임) · 건강 몫의 음수 합(K 넘김 밖의 식 죽음)
+  'maxN', 'n200', 'n300', 'n400', 'healthNeg', 'mapFull'];   // ★[T1468] `mapFull` = 지도 끝에 닿은 마을 수(`_t1468Full` · 켬만) · ★[T1457] 가장 큰 마을 · 200 · 300 · 400 넘는 마을 수(판정 76 덧붙임) · 건강 몫의 음수 합(K 넘김 밖의 식 죽음)
 function growDay(world) {
   const r = new Array(COLS.length).fill(0); const I = (k) => COLS.indexOf(k);
   r[0] = world.day;
@@ -42,6 +42,7 @@ function growDay(world) {
     if (N > r[I('maxN')]) r[I('maxN')] = N;
     if (N > 200) r[I('n200')]++; if (N > 300) r[I('n300')]++; if (N > 400) r[I('n400')]++;
     if (dd && dd.health < 0) r[I('healthNeg')] += dd.health;
+    if (v._t1468Full != null) r[I('mapFull')]++;
     if (v.lastStats && N > 0) { nv++; r[I('hMean')] += v.lastStats.happiness || 0; r[I('healthMean')] += v.lastStats.health || 0; r[I('prestMean')] += v.lastStats.prestige || 0; }
   }
   for (const k of ['hMean', 'healthMean', 'prestMean']) r[I(k)] = nv ? +(r[I(k)] / nv).toFixed(4) : 0;
