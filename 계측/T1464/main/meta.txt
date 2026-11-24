@@ -1,0 +1,7 @@
+core=/home/user/Mini/sim/battle-core.js
+env=
+cap=600
+started=2026-11-23T02:50:53.885Z
+finished=2026-11-23T03:11:55.248Z cells=237 wallMs=1064266
+finished=2026-11-23T03:20:16.519Z cells=467 wallMs=1565536
+finished=2026-11-23T03:24:56.336Z cells=393 wallMs=1845343
