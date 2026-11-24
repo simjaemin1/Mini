@@ -1,0 +1,13 @@
+test-t1445-boot-flood.js rc=0 19s === T1445 부팅 죽음 고리 6 통과 · 0 실패 ===
+test-t1381-walk-heap.js rc=0 44s === T1381 걸음 탐색 힙: 9 통과 / 0 실패 ===
+test-war-world.js rc=0 188s 결과: 191 통과 / 0 실패
+test-t1338-war-tick.js rc=0 5s === T1338 큰 전투 무거운 틱: 12 통과 / 0 실패 ===
+test-t1349-war-stall.js rc=0 4s === T1349 긴 판 멈춤: 8 통과 / 0 실패 ===
+test-war-nosnap.js rc=0 (다시 — 아이 판 T1381_WALK_HEAP=0 고정) === 결과: 61 PASS / 0 FAIL ===
+test-t1330-war-path.js rc=0 16s === T1330 큰 교전 몸 길찾기: 7 통과 / 0 실패 ===
+test-t1167-war-persist.js rc=0 2s === PASS 14 / FAIL 0 ===
+test-t1183-physical-war.js rc=0 0s 16 통과 / 0 실패
+test-t1184-war-owner.js rc=0 1s 결과: 4 통과 / 0 실패
+test-t1315-war-corpse.js rc=0 1s === T1315: 통과 25 · 실패 0 ===
+test-harness-lint.js rc=0 85s === 102건 중 PASS 102 · FAIL 0 ===
+ALLDONE

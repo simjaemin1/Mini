@@ -16297,6 +16297,51 @@
    "why": "srv",
    "why0": "존 · central · listen · fixture-boot"
   },
+  "test-t1445-boot-flood.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "나",
+   "maxSec": 20.8,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 20.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 20.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 20.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 18.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 20,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "execFileSync node"
+   ]
+  },
   "test-t1446-view-index.js": {
    "cls0": "라",
    "why0": "playwright · browser-driver",
@@ -16305,37 +16350,6 @@
    "same5": null,
    "core": false,
    "why": "브라우저(글자) — CI 밖(야간 · 전수)"
-  },
-  "test-t1453-load.js": {
-   "cls0": "라",
-   "why0": "playwright · browser-driver",
-   "cls": "라",
-   "maxSec": null,
-   "same5": null,
-   "core": false,
-   "why": "브라우저(글자) — CI 밖(야간 · 전수)"
-  },
-  "test-t1455-bridge-decay.js": {
-   "cls0": "다",
-   "why0": "존 · central · listen · fixture-boot",
-   "cls": "다",
-   "maxSec": 15.9,
-   "same5": null,
-   "core": false,
-   "why": "서버 1판만 잼",
-   "runs": [
-    {
-     "rc": 0,
-     "secs": 15.9,
-     "green": true,
-     "fails": []
-    }
-   ],
-   "dyn": "다",
-   "child": [
-    "execFileSync node",
-    "spawnSync node"
-   ]
   },
   "test-t1447-grudge.js": {
    "cls0": "다",
@@ -16381,6 +16395,283 @@
    "srv": true,
    "core": false,
    "why": "srv"
+  },
+  "test-t1448-road-grid.js": {
+   "cls0": "다",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 43.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 46.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 46.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 46.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 47.3,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawnSync node",
+    "execFileSync node"
+   ],
+   "cls": "나",
+   "maxSec": 47.3,
+   "same5": true,
+   "core": true,
+   "why": "core"
+  },
+  "test-t1451-farm-side-wood.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": 2.7,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 2.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.2,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "execFileSync node"
+   ]
+  },
+  "test-t1452-food-ahead.js": {
+   "cls0": "나",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 32.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 32.4,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 36.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 32.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 32.5,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawnSync node"
+   ],
+   "cls": "나",
+   "maxSec": 36.9,
+   "same5": true,
+   "core": true,
+   "why": "core"
+  },
+  "test-t1453-load.js": {
+   "cls0": "라",
+   "why0": "playwright · browser-driver",
+   "cls": "라",
+   "maxSec": null,
+   "same5": null,
+   "core": false,
+   "why": "브라우저(글자) — CI 밖(야간 · 전수)"
+  },
+  "test-t1454-slow.js": {
+   "cls0": "다",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 12.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 11.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 12.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 12.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 12.4,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "다",
+   "child": [
+    "spawnSync node"
+   ],
+   "cls": "다",
+   "maxSec": 12.7,
+   "same5": true,
+   "srv": true,
+   "core": false,
+   "why": "srv"
+  },
+  "test-t1455-bridge-decay.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "다",
+   "maxSec": 15.9,
+   "same5": null,
+   "core": false,
+   "why": "서버 1판만 잼",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 15.9,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "다",
+   "child": [
+    "execFileSync node",
+    "spawnSync node"
+   ]
+  },
+  "test-t1461-beast-unseen.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "다",
+   "maxSec": 120.1,
+   "same5": null,
+   "core": false,
+   "why": "서버 120.1초 > 60초 — CI 밖(야간 · 전수)",
+   "runs": [
+    {
+     "rc": 124,
+     "secs": 120.1,
+     "green": false,
+     "fails": []
+    }
+   ],
+   "dyn": "다",
+   "child": [
+    "spawnSync node",
+    "spawn node"
+   ]
+  },
+  "test-t1467-us-all.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "나",
+   "maxSec": 1.8,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 1.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 1.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 1.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 1.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 1.5,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawnSync node"
+   ]
   },
   "test-t721-apply.js": {
    "cls0": "나",
@@ -18697,253 +18988,7 @@
     "spawnSync node"
    ],
    "srv": true
-  },
-  "test-t1461-beast-unseen.js": {
-   "cls0": "다",
-   "why0": "존 · central · listen · fixture-boot",
-   "cls": "다",
-   "maxSec": 120.1,
-   "same5": null,
-   "core": false,
-   "why": "서버 120.1초 > 60초 — CI 밖(야간 · 전수)",
-   "runs": [
-    {
-     "rc": 124,
-     "secs": 120.1,
-     "green": false,
-     "fails": []
-    }
-   ],
-   "dyn": "다",
-   "child": [
-    "spawnSync node",
-    "spawn node"
-   ]
-  },
-  "test-t1467-us-all.js": {
-   "cls0": "다",
-   "why0": "존 · central · listen · fixture-boot",
-   "cls": "나",
-   "maxSec": 1.8,
-   "same5": true,
-   "core": true,
-   "why": "core",
-   "runs": [
-    {
-     "rc": 0,
-     "secs": 1.6,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 1.6,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 1.8,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 1.8,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 1.5,
-     "green": true,
-     "fails": []
-    }
-   ],
-   "dyn": "나",
-   "child": [
-    "spawnSync node"
-   ]
-  },
-  "test-t1452-food-ahead.js": {
-   "cls0": "나",
-   "runs": [
-    {
-     "rc": 0,
-     "secs": 32.7,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 32.4,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 36.9,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 32.8,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 32.5,
-     "green": true,
-     "fails": []
-    }
-   ],
-   "dyn": "나",
-   "child": [
-    "spawnSync node"
-   ],
-   "cls": "나",
-   "maxSec": 36.9,
-   "same5": true,
-   "core": true,
-   "why": "core"
-  },
-  "test-t1454-slow.js": {
-   "cls0": "다",
-   "runs": [
-    {
-     "rc": 0,
-     "secs": 12.1,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 11.8,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 12.5,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 12.7,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 12.4,
-     "green": true,
-     "fails": []
-    }
-   ],
-   "dyn": "다",
-   "child": [
-    "spawnSync node"
-   ],
-   "cls": "다",
-   "maxSec": 12.7,
-   "same5": true,
-   "srv": true,
-   "core": false,
-   "why": "srv"
-  },
-  "test-t1448-road-grid.js": {
-   "cls0": "다",
-   "runs": [
-    {
-     "rc": 0,
-     "secs": 43.7,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 46.8,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 46.5,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 46.9,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 47.3,
-     "green": true,
-     "fails": []
-    }
-   ],
-   "dyn": "나",
-   "child": [
-    "spawnSync node",
-    "execFileSync node"
-   ],
-   "cls": "나",
-   "maxSec": 47.3,
-   "same5": true,
-   "core": true,
-   "why": "core"
-  },
-  "test-t1451-farm-side-wood.js": {
-   "cls0": "나",
-   "why0": "child_process",
-   "cls": "나",
-   "maxSec": 2.7,
-   "same5": true,
-   "core": true,
-   "why": "core",
-   "runs": [
-    {
-     "rc": 0,
-     "secs": 2.7,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 2.3,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 2.2,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 2.6,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 2.2,
-     "green": true,
-     "fails": []
-    }
-   ],
-   "dyn": "나",
-   "child": [
-    "execFileSync node"
-   ]
   }
  },
- "at": "2026-11-23"
+ "at": "2026-11-24"
 }

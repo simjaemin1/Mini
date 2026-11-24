@@ -11,9 +11,19 @@ if (Z && process.env.T1445_NOW0) {
   Date.now = () => real() - r0 + n0;
   global.Date = class extends _D { constructor(...a) { if (a.length === 0) super(Date.now()); else super(...a); } static now() { return real() - r0 + n0; } };
 }
+if (Z && process.env.T1445_HPROF_AT) {   // ★[11-24] 힙 표본 프로파일 — "<시작 초>;<멈춤 초>" 사이에 만들어져 멈춤 때 아직 산 것(표본 · 쌓인 자리 · 스냅숏보다 메모리 작게) → <T1445_SNAP_DIR>/hprof-<시작>-<멈춤>.json
+  const [a0, a1] = process.env.T1445_HPROF_AT.split(/[;,]/).map(Number), dir = process.env.T1445_SNAP_DIR || '.';
+  const ins = require('inspector'), ses = new ins.Session(); ses.connect();
+  setTimeout(() => ses.post('HeapProfiler.startSampling', { samplingInterval: +(process.env.T1445_HPROF_IV || 32768) }, () => {}), a0 * 1000).unref();
+  setTimeout(() => ses.post('HeapProfiler.stopSampling', (e, r) => { try { require('fs').writeFileSync(require('path').join(dir, `hprof-${a0}-${a1}.json`), JSON.stringify(r && r.profile)); } catch (x) {} }), a1 * 1000).unref();
+}
+if (Z && process.env.T1445_SNAP_AT) {   // ★[11-24] 힙 스냅숏 — 띄운 뒤 그 초(쉼표로 여럿)마다 한 장(`<T1445_SNAP_DIR>/snap-<초>.heapsnapshot` · 읽기만 · 쓰는 동안 존이 멎는다)
+  const v8s = require('v8'), dir = process.env.T1445_SNAP_DIR || '.', t0s = Date.now();
+  for (const s of process.env.T1445_SNAP_AT.split(/[;,]/).map(Number).filter((x) => x > 0)) setTimeout(() => { try { const f = require('path').join(dir, `snap-${s}.heapsnapshot`); v8s.writeHeapSnapshot(f); require('fs').appendFileSync(require('path').join(dir, 'snap.log'), `${s} ${Math.round((Date.now() - t0s) / 1000)} ${f}\n`); } catch (e) {} }, s * 1000).unref();
+}
 if (Z && OUT) {
   const fs = require('fs'), v8 = require('v8'), hr = () => Number(process.hrtime.bigint() / 1000000n), t0 = hr(), f = OUT.replace('%p', String(process.pid));
-  const put = (tag) => { const m = process.memoryUsage(), h = v8.getHeapStatistics(); try { fs.appendFileSync(f, JSON.stringify({ t: hr() - t0, tag, rss: m.rss >> 20, heap: m.heapUsed >> 20, tot: m.heapTotal >> 20, ext: m.external >> 20, lim: Math.round(h.heap_size_limit / 1048576) }) + '\n'); } catch (e) {} };
+  const put = (tag) => { const m = process.memoryUsage(), h = v8.getHeapStatistics(); try { fs.appendFileSync(f, JSON.stringify({ t: hr() - t0, tag, rss: Math.round(m.rss / 1048576), heap: m.heapUsed >> 20, tot: m.heapTotal >> 20, ext: m.external >> 20, lim: Math.round(h.heap_size_limit / 1048576) }) + '\n'); } catch (e) {} };
   put('start'); setInterval(() => put(''), +(process.env.T1445_EVERY || 5000)).unref();
   if (process.env.T1445_LOGGC && typeof global.gc === 'function') {
     const lim = +(process.env.T1445_LOGGC_S || 70) * 1000, ol = console.log;
