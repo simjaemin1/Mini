@@ -874,6 +874,18 @@ function _t1331Show() {
 //     하루 경계 `_t1195HuntIn` ① 이 정본 드롭 kg 그대로 곳간에(T1195).
 //   ⚠끔 = 이 절이 한 번도 안 불린다(`tick` 첫 줄 · `T1393` 거짓).
 const T1393 = T1331 && process.env.T1393_HUNT_CHASE === '1';
+// ★★[T1461 2026-11-23 · T1432 회부 1 · 2 · 3 · PM 11-22 · ★재민 판정 36] 보는 사람이 없어도 짐승은 사람을 친다 — 손잡이 `T1461_BEAST_UNSEEN`('1' 만 켬 · `T1432_NPC_DEATH` 안 ·
+//   사냥판(T1393) 세계 — 짐승이 몸으로 사는 세계). 끔 = 아래 한 줄도 안 돈다(깨우는 이 = 일하는 사냥꾼 · 활성 자리 사람 — 종전).
+//   종전: 판을 깨우는 이가 **일하는 사냥꾼 몸**과 **보는 사람 곁 사람**뿐이었다(아래 `_t1393Tick` 1) — 채집꾼 · 나무꾼 · 농부 · 캐러밴 · 다쳐 귀가하는 사냥꾼은
+//     짐승 몸 곁에 서 있어도 판에 안 들어 맞을 수가 없었다(보는 이 없는 판 야생 피해 0타 · 사냥꾼은 HP 60 밑이면 판에서 놓여 다시 안 맞는다 — 랩은 요양 귀가 중에도 맞는다).
+//   켬: 마을 밖(제 마을 영토 칸 밖 — 마을이 묻는다 `H.t1461Out`)에 서 있는 NPC 몸(캐러밴 · 마을 없는 몸 포함 · 출정 몸은 전투 층 몫 — 위 `simWar` 줄)도 깨우는 이다 —
+//     '사람' 대리(사냥 두뇌 없음 · 보는 사람 곁 사람과 같은 갈래)로 판에 들어가 같은 블록 규칙(지각 · 습격 · `hurtNPC` 피해 · 요양 귀가)을 탄다. 새 확률 식 0 · 새 수 0.
+//     짐승 몸이 그 둘레에 없으면 판이 안 선다(그 자리 무리터가 없으면 `homeAt` null) — 몸과 몸이 실제로 만나야 맞는다.
+const T1461 = T1393 && process.env.T1432_NPC_DEATH === '1' && process.env.T1461_BEAST_UNSEEN === '1';
+function _t1461Waker(p, hunter, h) { const Hh = h || H; return T1461 && p.isNpc && !hunter && !p._bxExit && !!(Hh && Hh.t1461Out && Hh.t1461Out(p)); }   // 마을 밖 NPC 몸 = 깨우는 이(사냥꾼은 제 갈래 · 걸어 나가는 몸 · 주검은 아님)
+let _t1461G = null;
+function _t1461Near(cx, cy) { if (!_t1461G) return true; const bx = (cx / 64) | 0, by = (cy / 64) | 0, R = Math.ceil(T1393_SEE / 64); for (let ix = bx - R; ix <= bx + R; ix++) for (let iy = by - R; iy <= by + R; iy++) if (_t1461G.has(ix * 65536 + iy)) return true; return false; }
+const _t1461St = { farSkip: 0, ticks: 0, wakers: 0, wakerPeak: 0, byKind: { hunter: 0, out: 0, car: 0, lone: 0 }, hits: 0, dmg: 0, outHits: 0 };
 const T1393_SEE = 216;   // `_hunterBrain` 방심 포착 반경(그 줄 `calm3 ? 216` 글자 — 하네스가 같은 글자인지 본다)
 const _t1393F = new Map();      // 판 키(무리터) → { key, s(블록 상태), gm, ag: Set(대리), scan }
 const _t1393Px = new Map();     // 사냥꾼 · 사람 pid → 대리(블록 agent)
@@ -1154,17 +1166,27 @@ function _t1393Tick(now) {
   let actN = null; if (act.size && cm.keyOf(3, 7) === '3_7') { actN = new Set(); for (const k of act) { const i = k.indexOf('_'); const cx = +k.slice(0, i), cy = +k.slice(i + 1); if (!Number.isInteger(cx) || !Number.isInteger(cy)) { actN = null; break; } actN.add(cx * 1048576 + cy); } }
   const on = actN ? (x, y) => actN.has(Math.floor(x / cs) * 1048576 + Math.floor(y / cs)) : (x, y) => act.has(cm.keyOf(Math.floor(x / cs), Math.floor(y / cs)));
   _t1393St.ticks++;
+  if (T1461) _t1461St.ticks++;
   if (T1416_WAKE_PRE) _t1416Pre(B);
   if (T1416_BEAST_WALL && _t1416BldT !== _t1393St.ticks) { _t1416BldT = _t1393St.ticks; _t1416Bld = (H.t1416Bldg && H.t1416Bldg()) || (() => false); _t1416Edge = H.t1416Edge || null; }
+  //   ★[T1461] 사람을 칠 수 있는 짐승 몸(호전 brave > 0)이 있는 칸 통(64 · 깨움 반경 묶음) — 1게임분에 한 번 다시 짓는다(깨움 박자와 같은 TICK_HZ 틱). 마을 밖 몸은 그 둘레에 그런 몸이 있을 때만 판에 든다(없으면 맞을 일 0 — 판을 안 세운다 · 값만 아낀다)
+  if (T1461 && (!_t1461G || (_t1393St.ticks % ((H.TICK_HZ | 0) || 30)) === 1)) {
+    _t1461G = new Set();
+    for (const b of B.W.bodies.values()) { if (b.mat || b.tr) continue; const em = _t1393Em[b.sp], D = em && MOB_DEF[em]; if (!D || !(D.brave > 0)) continue; _t1461G.add(((b.cx / 64) | 0) * 65536 + ((b.cy / 64) | 0)); }
+  }
   // 1) 깨우는 이 — 일하는 사냥꾼 몸 · 사람(활성) → 대리 · 판
   const live = new Set();
   for (const p of H.players.values()) {
     if (T1416_CARRY_HOME && (p._t1416H || p._t1416C) && !_t1429Who.has(p.pid)) _t1429Who.set(p.pid, { rp: p, vid: p.simVillageId, x: p.x / 32, y: p.y / 32 });   // ★[T1429] 손 · 둔 몫 장부
     if (p.hp <= 0 || p.isDown || p.handingOff || p.simWar) continue;
     const hunter = p.isNpc && p.simJob === 'hunter' && p._huntOn && !(T1416_CARRY_HOME && p._t1416Go);   // ★[T1416 ④] 곳간에 지고 가는 몸은 판이 안 쥔다(놓는다)
-    if (p.isNpc ? !hunter : !H.isPositionActive(p.x, p.y)) continue;
+    let out = _t1461Waker(p, hunter);   // ★[T1461] 켬 = 마을 밖에 선 NPC 몸도 깨우는 이(사람 대리)
+    if (out && !_t1461Near(p.x / 32, p.y / 32)) { out = false; _t1461St.farSkip++; }   // 둘레(깨움 반경)에 사람을 칠 수 있는 짐승 몸이 없다 — 판 0
+    if (p.isNpc ? !(hunter || out) : !H.isPositionActive(p.x, p.y)) continue;
+    if (T1461) { _t1461St.wakers++; const k = hunter ? 'hunter' : (p.simCaravan ? 'car' : (p.simVillageId == null ? 'lone' : 'out')); _t1461St.byKind[k]++; }
     let pr = _t1393Px.get(p.pid);
     if (!pr) { pr = { job: 'hunter', state: 'idle', home: { cx: 0, cy: 0 }, _arm: 0, _real: p, _fk: null, _t1393: 1 }; _t1393Px.set(p.pid, pr); }
+    if (T1461) pr._t1461 = out ? 1 : 0;   // ★[T1461] 마을 밖 몸(사냥꾼 · 사람 아님) — 사람을 칠 수 있는 종만 깨운다(아래 2)
     if (hunter) {
       const ws = p._workSite;
       if (!pr._own) { if (!ws || Math.hypot(p.x - ws.x, p.y - ws.y) > 900) { if (p._t1393Own) p._t1393Own = 0; continue; } pr._own = 1; p._t1393Own = 1; pr.px = p.x / 32; pr.py = p.y / 32; pr._tx = null; pr._carcSeen = pr._carc = null; pr._bm = pr._tgt = pr._cm = null; pr.dwell = 0; }   // 일터에 닿았다 — 판이 몸을 쥔다
@@ -1201,6 +1223,7 @@ function _t1393Tick(now) {
         const l = grid.get(ix * 65536 + iy); if (!l) continue;
         for (const b of l) {
           if (b.mat) continue; const em = _t1393Em[b.sp]; if (!em) continue;
+          if (T1461 && pr._t1461 && !(MOB_DEF[em] && MOB_DEF[em].brave > 0)) continue;   // ★[T1461] 마을 밖 몸이 깨우는 종 = 사람을 칠 수 있는 종(호전 brave > 0 — 🐗 · 🐺 · 🐯)만 · 사슴 · 토끼는 그 몸을 못 친다(깨워도 맞는 일 0 — 값만 든다 · 규칙 무변)
           const R = _t1393R(em); if ((b.cx + 0.5 - pr.px) ** 2 + (b.cy + 0.5 - pr.py) ** 2 > R * R) continue;
           if (nPrey >= MOB_CAP) { _t1393St.cap++; continue; }
           _t1393Wake(B, F, b, em); nPrey++;
@@ -1271,7 +1294,7 @@ function _t1393Tick(now) {
       const rp = a._real; if (!rp) continue;
       if (a.state === 'work' && a._own) { own++; if (H.t1393Put) { H.t1393Put(rp, a.px * 32, a.py * 32); _t1393St.put++; } rp._huntSpd = a._hold ? 0.02 : (a.sneak ? 0.5 : ((a.action === '추적' || a.action === '회수') ? 2 : 1.25)); if (a.action && rp._lifeAct !== a.action) { rp._lifeAct = a.action; rp._lifeActAt = Date.now(); } }
       const d = a._hp0 - a.hp;
-      if (d > 0.01) { _stats.hits++; try { H.damagePlayer(rp, Math.round(d), 'wild:' + (a.action || '습격')); } catch (e) {} }
+      if (d > 0.01) { _stats.hits++; if (T1461) { _t1461St.hits++; _t1461St.dmg += d; if (rp.isNpc && a.state !== 'work') _t1461St.outHits++; } try { H.damagePlayer(rp, Math.round(d), 'wild:' + (a.action || '습격')); } catch (e) {} }
       if (T1416_CARRY_HOME && a._t1416Go && !a.rest && !a._dead) { rp._t1416Go = 1; _t1416St.goHome++; }   // ★[T1416 ④] 곳간 길로 — 생활층이 T720 문으로 걷긴다(아래 줄이 몸을 놓는다)
       if (a.rest || a._dead || (T1416_CARRY_HOME && a._t1416Go)) { if (a._own) { a._own = 0; rp._t1393Own = 0; rp._huntSpd = 0; } F.ag.delete(a); _t1393Px.delete(rp.pid); }   // 다쳐 물러남 · 죽음 — 몸을 놓는다(존 요양 · 귀가 문)
     }
@@ -1467,6 +1490,8 @@ Object.defineProperty(module.exports, 'enabled', { get() { return ENABLED; }, en
 module.exports.preyIds = Object.freeze(MOB_PREY.map((t) => MAIN_TYPE[t]));
 if (T1331) { module.exports.t1331Stat = () => Object.assign({ mat: _t1331Mat.size }, _t1331St); module.exports.t1331Adopt = (m, b) => { _t1331Mat.set(m.mid, b); }; }
 if (T1393) module.exports.t1393Stat = () => Object.assign({ on: true, fieldsNow: _t1393F.size }, _t1393St);
+if (T1461) module.exports.t1461Stat = () => Object.assign({}, _t1461St, { byKind: Object.assign({}, _t1461St.byKind) });   // ★[T1461]
+module.exports.T1461 = T1461; module.exports._t1461Waker = _t1461Waker;   // ★[T1461] 하네스가 같은 술어를 부른다
 //   ★[T1416] 켬 손잡이 · 셈(깨움 CPU 표본 · 미리 훑기 · 1유닛 걸음 · 벽 칸 질의 · 손 · 둔 몫) — 사냥판 켬만
 if (T1393) module.exports.t1416Stat = () => { const w = _t1416St.wakeUs.slice().sort((x, y) => x - y), q = (p) => (w.length ? w[Math.min(w.length - 1, Math.floor(p * w.length))] : null);
   return Object.assign({ pre: T1416_WAKE_PRE, unit: T1416_FIELD_UNIT, wall: T1416_BEAST_WALL, carry: T1416_CARRY_HOME, preLeft: _t1416Q ? _t1416Q.length : null }, _t1416St, { wakeUs: undefined, wakeP50: q(0.5), wakeP99: q(0.99), wakeMax: w.length ? w[w.length - 1] : null }); };   // ★[T1393] 켬만 — 사냥판 셈(끔 = 칸 없음)
