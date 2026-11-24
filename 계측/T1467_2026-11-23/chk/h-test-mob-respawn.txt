@@ -1,0 +1,35 @@
+
+=== 몹 죽음 길 셋의 다시 낳기 — T987(`T987_MOB_RESPAWN` 켬 · 끔 × HOSTILES_ON 끔 · 켬) ===
+  ✓ [상황] 판 넷 다 섰다(자식 결과)  on-meek ㅇ · on-hostile ㅇ · off-meek ㅇ · off-hostile ㅇ
+  ✓ ★ 다시 낳기 문 `respawnMobLater` 가 있다(세 길이 부를 한 함수 · 없으면 T987 앞 트리 — 아래 표는 그래도 잰다)  on-meek ㅇ · on-hostile ㅇ · off-meek ㅇ · off-hostile ㅇ
+
+① 상황
+  ✓ [상황] 손잡이 · HOSTILES_ON 이 판대로 섰다  on-meek true/false · on-hostile true/true · off-meek false/false · off-hostile false/true
+  ✓ [상황] 판마다 몹 열둘이 다 죽었다(죽음 길 셋 × 몹 넷 · 진짜 함수)  reindeer_wild · wolf · 야생 그림자 둘
+  [관찰] on-meek: npc:dbMeek=1 npc:dbFierce=0 npc:wildMeek=0 npc:wildFierce=0 arrow:dbMeek=1 arrow:dbFierce=0 arrow:wildMeek=0 arrow:wildFierce=0 player:dbMeek=1 player:dbFierce=0 player:wildMeek=0 player:wildFierce=0
+  [관찰] on-hostile: npc:dbMeek=1 npc:dbFierce=1 npc:wildMeek=0 npc:wildFierce=0 arrow:dbMeek=1 arrow:dbFierce=1 arrow:wildMeek=0 arrow:wildFierce=0 player:dbMeek=1 player:dbFierce=1 player:wildMeek=0 player:wildFierce=0
+  [관찰] off-meek: npc:dbMeek=1 npc:dbFierce=0 npc:wildMeek=1 npc:wildFierce=0 arrow:dbMeek=0 arrow:dbFierce=0 arrow:wildMeek=0 arrow:wildFierce=0 player:dbMeek=1 player:dbFierce=0 player:wildMeek=0 player:wildFierce=0
+  [관찰] off-hostile: npc:dbMeek=1 npc:dbFierce=1 npc:wildMeek=1 npc:wildFierce=1 arrow:dbMeek=0 arrow:dbFierce=0 arrow:wildMeek=0 arrow:wildFierce=0 player:dbMeek=1 player:dbFierce=1 player:wildMeek=0 player:wildFierce=0
+
+② 켬 — 한 규칙(야생 그림자 아님 ∧ (HOSTILES_ON ∨ 순한 종)) · 세 길이 같다
+  ✓ ★★② on-meek — 다시 낳기 표가 한 규칙 그대로 · 걸린 타이머는 다 15000ms(종전 두 길의 그 수)  npc:dbMeek=1 npc:dbFierce=0 npc:wildMeek=0 npc:wildFierce=0 arrow:dbMeek=1 arrow:dbFierce=0 arrow:wildMeek=0 arrow:wildFierce=0 player:dbMeek=1 player:dbFierce=0 player:wildMeek=0 player:wildFierce=0
+  ✓ ★② on-meek — 세 길(NPC · 화살 · 사람 공격)이 몹마다 같은 답(사본 0 — 한 함수)
+  ✓ ★★② on-hostile — 다시 낳기 표가 한 규칙 그대로 · 걸린 타이머는 다 15000ms(종전 두 길의 그 수)  npc:dbMeek=1 npc:dbFierce=1 npc:wildMeek=0 npc:wildFierce=0 arrow:dbMeek=1 arrow:dbFierce=1 arrow:wildMeek=0 arrow:wildFierce=0 player:dbMeek=1 player:dbFierce=1 player:wildMeek=0 player:wildFierce=0
+  ✓ ★② on-hostile — 세 길(NPC · 화살 · 사람 공격)이 몹마다 같은 답(사본 0 — 한 함수)
+
+③ 화살로 죽인 순한 DB 몹 — 15초 뒤 같은 종(카드 ②)
+  ✓ ★③ 끔 — 화살 죽음은 다시 낳기 0(종전 — 결함 재현)
+  ✓ ★★③ 켬 — 화살 죽음도 다시 낳기 1 · 15000ms
+  [관찰] 켬 화살 reindeer_wild → 선 몹 [{"type":"reindeer_wild","dbId":true,"wild":false}] · 방송 [{"type":"reindeer_wild","owner":"null","ownerName":"null"}]
+  ✓ ★★③ 켬 — 그 타이머가 같은 종 하나를 세우고(DB 행 · 야생 아님) `mob_spawn` 을 낸다(주인 칸 null — NPC 길 글자)
+  ✓ ③ 켬 — 걸린 타이머 전부(세 길 · 두 판)가 같은 종 하나 · `mob_spawn` 하나  9개
+
+④ 끔 — 종전 글자 그대로의 표(위가 자명 통과가 아니다)
+  ✓ ★④ off-meek — 화살 0 · NPC 는 야생 그림자도 낳음 · 사람 공격은 거름(종전 두 글자)  npc:dbMeek=1 npc:dbFierce=0 npc:wildMeek=1 npc:wildFierce=0 arrow:dbMeek=0 arrow:dbFierce=0 arrow:wildMeek=0 arrow:wildFierce=0 player:dbMeek=1 player:dbFierce=0 player:wildMeek=0 player:wildFierce=0
+  ✓ ★④ off-hostile — 화살 0 · NPC 는 야생 그림자도 낳음 · 사람 공격은 거름(종전 두 글자)  npc:dbMeek=1 npc:dbFierce=1 npc:wildMeek=1 npc:wildFierce=1 arrow:dbMeek=0 arrow:dbFierce=0 arrow:wildMeek=0 arrow:wildFierce=0 player:dbMeek=1 player:dbFierce=1 player:wildMeek=0 player:wildFierce=0
+  ✓ ★④ 끔 · HOSTILES_ON — NPC 가 잡은 늑대 그림자에 DB 늑대가 다시 선다(종전 두 길이 갈린 자리 — 켬은 ⑤)
+
+⑤ 야생 그림자 — 켬에선 어느 길로 죽여도 안 선다
+  ✓ ★⑤ 켬 — 야생 그림자 열둘(세 길 × 두 종 × 두 판)은 다시 낳기 0(개체 수는 랩 생태가 쥔다)
+
+=== 16건 중 PASS 16 · FAIL 0 ===

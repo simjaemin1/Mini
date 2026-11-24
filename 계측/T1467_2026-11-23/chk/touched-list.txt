@@ -1,0 +1,9 @@
+# 만진 함수 → 하네스 (touched-harness · base 89c31065a · 갈림점 89c31065a)
+· 바뀐 코드 파일 4 · 이름 14(물린 것 10 · 흔한 이름 뺌 0) · 바뀐 하네스 1 · 규약 다섯 · **돌릴 하네스 29**
+  scripts/t1467-touch-hook.cjs: t1467-touch-hook
+  scripts/t646-anatomy.js: T646_WINS WINS table
+  scripts/us-line.js: (이름 없음)
+  server/zone.js: T1316_BODY_CLOCK T1467_STILL _t67Put _t67Q _t67Qi _t67st _wwCut _wwPre _wwPreOne walkPerf
+· 이름 → 하네스 수: T1316_BODY_CLOCK 3 · T1467_STILL 1 · _t67Put 1 · _t67Q 1 · _t67Qi 1 · _t67st 1 · _wwCut 2 · _wwPre 5 · _wwPreOne 3 · table 17
+· 바뀐 하네스: test-t1467-us-all.js
+· 돌릴 하네스: test-backup-live.js test-body-fields.js test-coll-grid.js test-farm-act.js test-farm-metrics.js test-fish-act.js test-forage-act.js test-harness-lint.js test-hp-src.js test-indoor-on.js test-lab-alloc.js test-live-lag-net.js test-lon-day.js test-mob-respawn.js test-move-soa.js test-seed-hp.js test-t1126-rock-yield.js test-t1128-kcal-tidy.js test-t1192-fish-species.js test-t1217-margin.js test-t1243-farm-on.js test-t1246-food-price.js test-t1278-perf.js test-t1336-crop-eq.js test-t1351-mine-clock.js test-t1374-farm-winter.js test-t1425-ruler.js test-t1467-us-all.js test-winter.js

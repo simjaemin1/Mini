@@ -1,0 +1,17 @@
+== st 1020
+pos-days.jsonl: 30/30 다름 []
+world-days.jsonl: 30/30 다름 []
+body: 32/32 다름 []
+== st 7
+pos-days.jsonl: 30/30 다름 []
+world-days.jsonl: 30/30 다름 []
+body: 32/32 다름 []
+== st 42
+pos-days.jsonl: 30/30 다름 []
+world-days.jsonl: 30/30 다름 []
+body: 32/32 다름 []
+== off 1020
+pos-days.jsonl: 30/30 다름 []
+world-days.jsonl: 30/30 다름 []
+body: 32/32 다름 []
+boards done 10:25:58

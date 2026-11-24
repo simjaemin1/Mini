@@ -1,0 +1,29 @@
+
+=== 덜 벤 시드 자연물의 hp — 재기동 · 청크 껐다 켬 (T978) ===
+
+① 술어
+  ✓ `T978_SEED_HP` 는 `!== '0'` — 켬 기본 · 되돌림 `=0`
+  ✓ env 를 읽는 자리 하나  1
+  ✓ 적는 자리 = 시드 개체 hp 를 깎는 두 자리(NPC 채집 · 플레이어 채집 — DB 개체 `updateResourceHp` 의 else)
+  ✓ 지우는 자리 = 부분 수확 장부와 같은 두 자리(벰 · 되살림)
+  ✓ 서는 자리 = `activateChunk` · 같은 종 · 낳은 hp 가 상한
+  ✓ 표는 처음 부를 때 짓는다(끔 = 표 없음)
+② 판 넷(켬 · 끔 × SIGTERM · SIGKILL)
+  · on-SIGTERM: 친 개체 tree 3→2 · berry_bush 2→1 · rock 236→235 · 죽음 0 · DB 3011728B · 표 true 줄 3 · 다시 띄움 3952ms(장부 3)
+  · on-SIGKILL: 친 개체 tree 3→2 · berry_bush 2→1 · rock 236→235 · 죽음 SIGKILL · DB 3003488B · 표 true 줄 3 · 다시 띄움 3913ms(장부 3)
+  · off-SIGTERM: 친 개체 tree 3→2 · berry_bush 2→1 · rock 236→235 · 죽음 0 · DB 2970528B · 표 false 줄 null · 다시 띄움 3963ms(장부 0)
+  · off-SIGKILL: 친 개체 tree 3→2 · berry_bush 2→1 · rock 236→235 · 죽음 SIGKILL · DB 2958168B · 표 false 줄 null · 다시 띄움 3891ms(장부 0)
+  ✓ [상황] 판마다 시드 나무를 쳐서 hp 가 줄었다(0 이 안 됐다)  3 · 3 · 3 · 3
+  ✓ [상황] 아이는 제 몸에 보낸 신호로 죽었다(SIGKILL = 정리 0 · SIGTERM = 존의 종료 처리가 받아 0 으로 나간다)  code 0 · SIGKILL · code 0 · SIGKILL
+  ✓ [상황] 멀리 가면 그 청크 개체가 세계에서 빠진다(ⓐ 가 뜻이 있다)
+  ✓ ⓐ 켬 — 청크를 껐다 켜도 친 hp 그대로(같은 판 안)
+  ✓ ⓐ ★끔 — 청크를 껐다 켜면 온전해진다(종전 결함이 보인다)
+  ✓ ③ ★켬 · SIGTERM — 다시 띄우면 친 hp 그대로  tree 2 · berry_bush 1 · rock 235
+  ✓ ③ ★켬 · SIGKILL — 다시 띄우면 친 hp 그대로(쓰는 그 순간 DB 에 든다 · 버퍼 0)  tree 2 · berry_bush 1 · rock 235
+  ✓ ③ ★끔(`=0`) — 다시 띄우면 온전하다(SIGTERM · SIGKILL 둘 다 잃는다 · 결함이 보인다)
+  ✓ ④ 켬 — `seed_hp` 표 줄 = 친 개체 수(온전한 개체는 안 적는다)  3 · 3
+  ✓ ④ 끔 — `seed_hp` 표가 안 생긴다(DB 무변)
+
+  표 ④ — DB(파일 + WAL) 켬 3011728 · 3003488B ↔ 끔 2970528 · 2958168B · 다시 띄운 판 require→첫 활성 켬 3952 · 3913ms ↔ 끔 3963 · 3891ms
+
+=== 통과 16 · 실패 0 ===
