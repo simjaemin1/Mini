@@ -1,0 +1,140 @@
+{
+ "stage": "six-worlds",
+ "worlds": {
+  "ON-1020": {
+   "pid": 31814,
+   "command": [
+    "python3",
+    "/tmp/t1411/method-v2/t1411-run.py",
+    "ON",
+    "--tree",
+    "/tmp/t1411/fast",
+    "--out",
+    "/tmp/t1411/worlds",
+    "--tag",
+    "ON",
+    "--seed",
+    "1020",
+    "--days",
+    "730",
+    "--census",
+    "--set",
+    "T1411_TERR_FAST=1"
+   ],
+   "infrastructureResumes": [
+    {
+     "checkpoint": 250,
+     "evidence": "/workspace/scratch/t1411/interruptions/20261121T172313Z/interruption.json",
+     "previousPid": 17139
+    },
+    {
+     "checkpoint": 350,
+     "evidence": "/workspace/scratch/t1411/interruptions/20261122T023920Z/interruption.json",
+     "previousPid": 12896
+    },
+    {
+     "checkpoint": 460,
+     "evidence": "/workspace/scratch/t1411/interruptions/20261123T024148Z/interruption.json",
+     "previousPid": 677
+    },
+    {
+     "checkpoint": 490,
+     "evidence": "/workspace/scratch/t1411/interruptions/20261124T035656Z/interruption.json",
+     "previousPid": 32793
+    }
+   ]
+  },
+  "OFF-1020": {
+   "pid": 31815,
+   "command": [
+    "python3",
+    "/tmp/t1411/method-v2/t1411-run.py",
+    "OFF",
+    "--tree",
+    "/tmp/t1411/fast",
+    "--out",
+    "/tmp/t1411/worlds",
+    "--tag",
+    "OFF",
+    "--seed",
+    "1020",
+    "--days",
+    "730",
+    "--census"
+   ],
+   "infrastructureResumes": [
+    {
+     "checkpoint": 210,
+     "evidence": "/workspace/scratch/t1411/interruptions/20261121T172313Z/interruption.json",
+     "previousPid": 31136
+    },
+    {
+     "checkpoint": 350,
+     "evidence": "/workspace/scratch/t1411/interruptions/20261122T023920Z/interruption.json",
+     "previousPid": 12897
+    },
+    {
+     "checkpoint": 470,
+     "evidence": "/workspace/scratch/t1411/interruptions/20261123T024148Z/interruption.json",
+     "previousPid": 678
+    },
+    {
+     "checkpoint": 500,
+     "evidence": "/workspace/scratch/t1411/interruptions/20261124T035656Z/interruption.json",
+     "previousPid": 32794
+    }
+   ]
+  }
+ },
+ "diagnostics": {
+  "late-profile-1020": {
+   "pid": 25579,
+   "command": [
+    "python3",
+    "/workspace/Mini/scripts/t1411-late-profile.py",
+    "--root",
+    "/tmp/t1411"
+   ],
+   "sharedPrefixThrough": 90,
+   "exit": 0,
+   "checkpoint": 100,
+   "done": true,
+   "lastStatus": "2026-11-21T05:30:09.884Z · late-profile-1020 · 끝 — 100날 · 마디 10 · 묶음 json.sbc.json json.t740.json t1230.json t1243.json t1251.json\n"
+  }
+ },
+ "fingerprint30": true,
+ "controllerReattachments": [
+  {
+   "at": "2026-11-23T05:56:22.869593+00:00",
+   "wrappers": {
+    "ON-1020": {
+     "pid": 32793,
+     "start": "2895480"
+    },
+    "OFF-1020": {
+     "pid": 32794,
+     "start": "2895480"
+    }
+   },
+   "zones": [
+    {
+     "pid": 44982,
+     "start": "3788871",
+     "wrapper": 32794
+    },
+    {
+     "pid": 45193,
+     "start": "3806814",
+     "wrapper": 32793
+    }
+   ],
+   "worldsReplayed": 0,
+   "actualWorldExitsUsed": true
+  }
+ ],
+ "controller": {
+  "pid": 31810,
+  "script": "/workspace/Mini/scripts/t1411-campaign.py",
+  "mode": "resume-interrupted"
+ }
+}
