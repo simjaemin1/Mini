@@ -1003,6 +1003,39 @@ const EXPAND_PRICE_FOODEQ = { wood: 1.67, stone: 2.14 };   // 투자판단용 �
 //     그 MC 의 나무 · 돌 → 식량 환산은 손으로 적은 정적 값(위 `EXPAND_PRICE_FOODEQ` — 2026-07-03 · "v2 BASE 상대가와 일치")이라
 //     세계가 부유해져 식량 값이 내리고(0.3) 나무 값이 올라도(1.3) 땅값 셈이 그걸 모른다.
 //   켬 — MC 의 환산을 **그 마을의 그날 그림자 값**(v2 `_priceCache` — 교역이 쓰는 그 값 · 나무 ÷ 식량 · 돌 ÷ 식량)으로. 값이 없으면(v1 홀로 · 첫날) 종전 정적 값. 새 수 0.
+// ★★[T1468 2026-11-23 · ★재민 11-23 판정 81 "그래 나" · T1426 회부 1] 손잡이 `T1468_LAB_LAND`(끔 기본 · 끔 = 종전 바이트 · 판만 — 켬 판정 안 함)
+//   랩 `v.land.size` 는 지도에 안 묶였다(길드가 MB/MC 만 맞으면 끝없이 산다 · 서버는 칸을 몸으로 넓히고 물 · 산 · 남의 영토에 막힌다).
+//   켬 — 땅의 정본은 지도 하나: `scripts/t1468-land-bake.js` 가 서버 정본 고르기(`villages._terrPick` · 사본 0)로 51마을을 함께 넓혀 구운 표
+//   (`sim/lab-land-hanbando.json` · 마을 이름 → 지도가 허락하는 끝 칸 수 · 넓힌 차례대로 25칸 한 덩이의 비옥도)를 읽는다(t17 · 두 랩 HTML 이 같은 표 —
+//   번들이 그 JSON 을 그대로 싣는다). 표에 없는 마을(다른 존 · 새로 선 마을)은 종전 그대로.
+//     `'1'` / `'area'` = 넓이만: 한 칸 사기 전 `size + 1/25 > 끝 ÷ 25` 이면 그날 멈춤(MB/MC 문은 그대로 — 지도 안에서 살지 말지를 정한다 · 손 수 넷 무변).
+//     `'q'` = 질까지: 넓이 + 다음 칸의 실제 비옥도 — 한계 질 q = 다음 덩이 비옥도 ÷ 시딩 영토 평균 비옥도(합성 `(s/s0)^-β` 대신) · 유효 땅 = 바닥 + 산 덩이 q 합.
+const T1468_LAB_LAND = (typeof process !== 'undefined' && process.env && process.env.T1468_LAB_LAND) || '';
+const T1468_ON = T1468_LAB_LAND === '1' || T1468_LAB_LAND === 'area' || T1468_LAB_LAND === 'q';
+const T1468_Q = T1468_LAB_LAND === 'q';
+let _t1468Tab;   // undefined = 아직 안 읽음 · null = 표 없음
+function t1468Table() {
+  if (_t1468Tab !== undefined) return _t1468Tab;
+  try { _t1468Tab = require('./lab-land-hanbando.json'); } catch (e) { _t1468Tab = null; }
+  if (_t1468Tab && !_t1468Tab._byName) {
+    const by = {};
+    for (const r of _t1468Tab.villages || []) {
+      const q = []; let cum = 0; const cumQ = [0];
+      const raw = typeof atob === 'function' ? Array.from(atob(r.q || ''), (c) => c.charCodeAt(0)) : Array.from(Buffer.from(r.q || '', 'base64'));
+      const f0 = Math.max(1e-6, (r.fert0 || 0) / 255);
+      for (const b of raw) { const x = (b / 255) / f0; q.push(x); cum += x; cumQ.push(cum); }
+      by[r.name] = { max: r.end / EXPAND_CELLS_PER_SLOT, start: r.start / EXPAND_CELLS_PER_SLOT, q, cumQ };
+    }
+    Object.defineProperty(_t1468Tab, '_byName', { value: by, enumerable: false });
+  }
+  return _t1468Tab;
+}
+function t1468Row(v) {   // 그 마을의 구운 줄(켬 · 표 · 이름이 있을 때만) — 없으면 null(종전 그대로)
+  if (!T1468_ON || !v || !v.land) return null;
+  const T = t1468Table();
+  return (T && T._byName[v.name]) || null;
+}
+function t1468SlotIdx(v) { return Math.max(0, Math.floor((v.land.size - (v.land.baseSize || 1)) + 1e-9)); }   // 바닥 위로 산 덩이(25칸) 차례
 // ★★[T1457 2026-11-23 · ★재민 11-22 판정 73 "그러자.." = 가 · T1426 회부 3] 손잡이 `T1457_NO_K_DEATH`(끔 기본 · `'1'` 만 켬 · 끔 = 종전 바이트) — **식이 사람을 지우지 않는다.**
 //   T1426 진단: 랩 평형 세계는 N ÷ K = 1.15 ~ 1.20 에 서 있고 죽음의 절반 넘게(해마다 3 ~ 6 %)가 θ-로지스틱의 K 넘김 음수 몫(아래 인구 줄 `_logiTerm` < 0 →
 //     `_dPAccum` 음수 → "기아 사망" 고리가 가장 늙은 사람부터 지움)이다 — 나이 · 굶음 · 싸움 · 짐승이 아닌 식의 죽음.
@@ -4079,6 +4112,7 @@ const UNCAPPED = 1e9;   // 사실상 무제한 — 직업 수는 시장(한계�
 //   랩(공간)이 실측값을 주면(v.land.liveLand) 지형이 진실 — 합성 감쇠는 스탠드얼론 전용.
 function marginalLandQ(v) {
   if (v.land.marginalQ != null) return v.land.marginalQ;   // 공간 프론티어 실측(있으면 우선)
+  if (T1468_Q) { const R = t1468Row(v); if (R) { const i = t1468SlotIdx(v); return i < R.q.length ? R.q[i] : (R.q.length ? R.q[R.q.length - 1] : 1); } }   // ★[T1468 질까지] 다음 덩이의 실제 비옥도 ÷ 시딩 평균(표가 싣은 덩이 너머 = 마지막 덩이 · 지도 끝 너머는 위 끝 검사가 막는다)
   const s0 = v.land.baseSize || 1;
   return Math.pow(Math.max(1, v.land.size / s0), -LAND_Q_BETA);
 }
@@ -4087,6 +4121,7 @@ function effectiveLandSize(v) {
   if (v.land.liveLand) return v.land.size;   // 랩: land.fertility가 실측 평균이라 희석 이미 반영 → 이중적용 금지
   const s0 = v.land.baseSize || 1, s = v.land.size;
   if (s <= s0) return s;
+  if (T1468_Q) { const R = t1468Row(v); if (R && R.q.length) { const u = s - s0, n = R.q.length, i = Math.min(Math.floor(u), n), last = R.q[n - 1]; return s0 + R.cumQ[i] + (i < n ? (u - i) * R.q[i] : (u - n) * last); } }   // ★[T1468 질까지] 바닥 + 산 덩이의 실제 질 합
   if (v._effSizeCache && v._effSizeCache.s === s) return v._effSizeCache.val;
   const b = LAND_Q_BETA;
   const val = s0 + (s0 / (1 - b)) * (Math.pow(s / s0, 1 - b) - 1);
@@ -4229,7 +4264,9 @@ function tryExpandTerritory(v, day) {
   // ★★[T1238 ①] 서버가 영토를 몸으로 치르는 판(`v._t1238Land` — 서버가 켬에서만 심는다)이면 금고로 땅을 안 산다(같은 땅을 두 번 치르지 않는다 ·
   //   econ 땅 크기는 서버 영토에서 읽는다). 표지가 없으면(끔 · 랩 · 헤드리스 하네스) 종전 그대로. 위 세 줄은 읽기만이다(자리 셈 — 부작용 0).
   if (v._t1238Land) return;
+  const _t1468 = T1468_ON ? t1468Row(v) : null;   // ★[T1468] 켬 = 지도가 허락하는 끝(구운 표) · 끔 · 표 없음 = null(종전 그대로)
   for (let ci = 0; ci < EXPAND_CELLS_PER_DAY; ci++) {
+    if (_t1468 && v.land.size + 1 / EXPAND_CELLS_PER_SLOT > _t1468.max + 1e-9) { if (v._t1468Full == null) v._t1468Full = day; return; }   // 지도 끝 — 더 살 칸이 없다(MB/MC 앞에서 · 금고는 안 쓴다)
     const cost = expandCost(v);   // 슬롯(size +1) 명목 비용 — 셀 지불은 아래서 ÷25
     // ★MB/MC 투자 게이트(K_MAX 천장 대체) — 확장은 '금고 차면 무조건'이 아니라 수지 맞을 때만.
     //   MB = 한계 size 1단위의 일일 식량-eq 잠재산출(q×식량직 자리×자리당 산출) × 회수기간.
@@ -8524,6 +8561,7 @@ module.exports = {
   T1283_WOOD_DEMAND, t1283Wood,   // ★[T1283] 나무 모자람 → 직업 고르기(끔 기본 · `'1'` 켬)
   T1148_FUEL_JOB, t1148Cold,   // ★[T1148] 추위 빚(끔 기본 · `'1'` 켬)
   T1135_FUEL_EQ, FIREWOOD_PC_SRC, woodShareD, woodFormulaOff,   // ★[T1135] 땔감 평형(끔 기본 · `'1'` 켬) · 고증 d · 나무꾼 분자 · 수식 목재 걷어냄
+  T1468_LAB_LAND, t1468Table, t1468Row,   // ★[T1468] 랩 땅을 지도에(끔 기본) — 하네스
   T1457_NO_K_DEATH,   // ★[T1457] 식이 사람을 지우지 않는다(끔 기본) — 하네스
   T1426_EXPAND_PRICE, t1426ExpandPx, EXPAND_PRICE_FOODEQ,   // ★[T1426 ④] 땅값 셈을 그날 그림자 값으로(끔 기본) — 하네스
   T1046_WOOD_SHARE,   // ★[T1046] 나무꾼 안전망 = 출생 문과 같은 주거 상한(끔 기본 · `'1'` 켬)

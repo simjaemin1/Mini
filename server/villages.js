@@ -9212,6 +9212,18 @@ function _terrGrowCore(vil) {
   if (T1207_TERR_REAL && vil.econ && vil.econ.founder) return 0;   // ★[T1207 ③] 플레이어 마을은 집을 지어도 영토가 저절로 안 붙는다 — 영토는 우클릭 넓히기(`terrPlayerAdd`)로만
   const target = _terrGrowTarget(vil); if (target == null) return 0;
   if (vil._terrSet.size >= target) return 0;
+  const picked = _terrPick(vil, target);
+  if (!picked) return 0;
+  if (!picked.length) { if (T1207_TERR_REAL && vil.econ) vil.econ._t1207Need = 0; return 0; }
+  //   ★[T1207 ④] 켬 = 고른 셀(고르는 법 · 목표 · 상한은 위 그대로)을 **값을 치른 만큼만** 더한다 — 곳간의 통나무(말뚝) · 몸 하나의 하루(개간).
+  //     관측 마을은 몸이 가서 하고(`_t1181Task` 'terr') · 헤드리스는 명부 일괄(`_t1207Batch` — T449 · T491 꼴). 끔 = 고른 셀 전부(종전 그대로).
+  const take = T1207_TERR_REAL ? _t1207Pay(vil, picked) : picked;
+  if (!take.length) return 0;
+  return _terrAdd(vil, take, target, T1207_TERR_REAL);
+}
+// ★[T1468] 영토 넓히기의 **고르기**(경계 후보 · 막힘 · 남의 영토 · 점수 · 하루 몫) — `_terrGrowCore` 에서 떼어 낸 몸통(글자 · 차례 그대로 · 사본 0).
+//   랩 땅 굽기(`scripts/t1468-land-bake.js`)가 `__labProbe._t1468Probe.pick` 으로 **이 함수**를 부른다. 후보가 없으면 null.
+function _terrPick(vil, target) {
   const ta = state.ta, own = vil._terrSet, ccx = vil.ccx, ccy = vil.ccy;
   const fertW = 3.5, compactW = 0, distW = 0.1;
   const K = (x, y) => x + ',' + y;
@@ -9239,15 +9251,9 @@ function _terrGrowCore(vil) {
     }
   }
   if (_gB && _gB.size) _t1447Blocked(vil, cand, _gB, Math.min(target - own.size, TERR_GROW_MAX_PER_DAY));   // ★[T1447] 사유지가 없었다면 오늘 가졌을 칸 가운데 사유지 칸 = 막힌 칸(한 번만 센다)
-  if (!cand.size) return 0;
+  if (!cand.size) return null;
   const want = Math.min(target - own.size, TERR_GROW_MAX_PER_DAY);
-  const picked = [...cand.entries()].sort((a, b) => b[1] - a[1]).slice(0, want).map((e) => e[0]);
-  if (!picked.length) { if (T1207_TERR_REAL && vil.econ) vil.econ._t1207Need = 0; return 0; }
-  //   ★[T1207 ④] 켬 = 고른 셀(고르는 법 · 목표 · 상한은 위 그대로)을 **값을 치른 만큼만** 더한다 — 곳간의 통나무(말뚝) · 몸 하나의 하루(개간).
-  //     관측 마을은 몸이 가서 하고(`_t1181Task` 'terr') · 헤드리스는 명부 일괄(`_t1207Batch` — T449 · T491 꼴). 끔 = 고른 셀 전부(종전 그대로).
-  const take = T1207_TERR_REAL ? _t1207Pay(vil, picked) : picked;
-  if (!take.length) return 0;
-  return _terrAdd(vil, take, target, T1207_TERR_REAL);
+  return [...cand.entries()].sort((a, b) => b[1] - a[1]).slice(0, want).map((e) => e[0]);
 }
 
 //   영토에 셀을 더한다(메모리 · DB 행 · 이웃 반지름 · 집터 캐시 · 개간 · 경작 몫) — `_terrGrow`(종전 · T1207 일괄) · T1207 몸 완공 · 플레이어 넓히기가 같은 몸통(사본 0).
@@ -23803,6 +23809,9 @@ module.exports = { T1451_SITES, T1451_CREW_FREE, T1451_FARM_CALL, t1451Stat: () 
     vbFootprint: (t, cx, cy) => _vbFootprint(t, cx, cy) },   // ★[T315] 발자국 정본(순수) — 간격 유도 ⓐ항이 발자국을 덮나 하네스가 직접 본다
   LAND_SCAN_R,   // ★[T135] 부존 스캔 반경 — 나무 층이 생활권 숲 셀 수를 유도할 때 읽는다(사본 0)
   __labProbe: {
+    // ★[T1468] 랩 땅 굽기 — 같은 규약(최소 주입구 하나 · 정본 고르기 함수를 그대로 부른다 · 굽기가 후보 · 점수 · 막힘 규칙을 다시 적으면 그게 사본이다)
+    _t1468Probe: { use: (o) => { const k = { ta: state.ta, villages: state.villages }; if (o) { if ('ta' in o) state.ta = o.ta; if ('villages' in o) state.villages = o.villages; } return k; },
+      pick: (vil, target) => _terrPick(vil, target), growCore: (vil) => _terrGrowCore(vil), get GROW_MAX() { return TERR_GROW_MAX_PER_DAY; } },   // `growCore` = 서버 넓히기 하루(하네스 ④ — 고르기가 같은 함수인지 맞댄다)
     get t772Stat() { return T772_ON ? Object.assign({}, _t772Stat) : null; },   // ★[T772] 켬만 — 귀환 다리 · 집 도착 · 늦음(관찰기가 읽는다)
     makeTerrainAdapter, extractLandParamsApprox, findOpenCenter, pickSeedVillages,
     t593Namer: _t593Namer, t593Kind: _t593Kind, get T593_LABEL() { return T593_LABEL; },   // ★[T593 ⑤] 자·표 기계가 **그 함수**로 이름을 짓는다(사본 0)
