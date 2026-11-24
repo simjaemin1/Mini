@@ -1,0 +1,5 @@
+core=/home/user/Mini/sim/battle-core.js
+env=T995_BACK_AMMO=0
+cap=600
+started=2026-11-23T02:53:11.634Z
+finished=2026-11-23T02:59:23.278Z cells=46 wallMs=312306

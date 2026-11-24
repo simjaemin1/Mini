@@ -36,7 +36,7 @@ const TPL = process.env.T646_TPL || '/tmp/t646/tpl/tpl-t100.db';
 const SLICE_S = parseInt(process.env.T646_SLICE_S || '30', 10), SLICES = parseInt(process.env.T646_SLICES || '6', 10);
 const LEAD_S = parseInt(process.env.T646_LEAD_S || '150', 10);
 const DAY = 1440000;
-const CONF = { cap40: { VILLAGE_NPC_CAP: '40' }, inf: {} };   // 종전 상한 기본(40 · T538 추신3 의 되돌림 값) ↔ 지금 기본(무제한)
+const CONF = { cap40: { VILLAGE_NPC_CAP: '40' }, inf: {}, cap16: { VILLAGE_NPC_CAP: '16' } };   // ★[T1425] cap16 = 마을당 몸 16(틀 세계 ≈ 800 몸 — 몸 수에 따른 덩이 기울기)   // 종전 상한 기본(40 · T538 추신3 의 되돌림 값) ↔ 지금 기본(무제한)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const rmdb = (f) => { for (const s of ['', '-wal', '-shm']) { try { fs.unlinkSync(f + s); } catch (e) {} } };
 fs.mkdirSync(DIR, { recursive: true });
@@ -516,7 +516,7 @@ async function run(conf, tag, probe) {
     }
     windows.push({ W: 'boot', slices });
   }
-  const WINS = [['day', 0.10, 0.62], ['night', 0.72, 0.97]];
+  const WINS = [['day', 0.10, 0.62], ['night', 0.72, 0.97]].filter(([w]) => !process.env.T646_WINS || process.env.T646_WINS.split(',').includes(w));   // ★[T1467] `T646_WINS=day` = 낮 창만(바닥 · 몸 수 기울기 판 — 판 하나 ≈ 9분)
   let days0 = null;   // ★[T945] 밤 창 머리(무효화 순간)의 `econTick.days`
   for (const [W, lo, hi] of WINS) {
     let ph = null, inv = null;
@@ -607,7 +607,7 @@ function table() {
     const pop = A.popN / A.n, us = (ms) => +(ms / A.n * 1000 / pop).toFixed(3);
     const p50s = w.slices.map((s) => s.p50).filter((x) => x != null), p95s = w.slices.map((s) => s.p95).filter((x) => x != null);
     const tqs = []; for (const sl of w.slices) for (const x of sl.ana) if (x.tq) tqs.push(x.tq);   // ★[T1140] 조각마다 틱 본문 분위(구간 시계)
-    const r = { conf: j.conf, tag: j.tag, probe: j.probe, ref: j.ref || null, W: w.W, pop: Math.round(pop), ticks: A.n, step: A.step || null, stepBr: A.stepBr || null, tickP50: R.median(p50s), tickP95: R.median(p95s), totUs: us(A.tot),
+    const r = { conf: j.conf, tag: j.tag, probe: j.probe, ref: j.ref || null, prof: !!(j.lines && j.lines.file), W: w.W, pop: Math.round(pop), ticks: A.n, step: A.step || null, stepBr: A.stepBr || null, tickP50: R.median(p50s), tickP95: R.median(p95s), totUs: us(A.tot),
       tq: tqs.length ? { n: tqs.length, p50: R.median(tqs.map((x) => x.p50)), p95: R.median(tqs.map((x) => x.p95)), p99: R.median(tqs.map((x) => x.p99)), max: Math.max(...tqs.map((x) => x.max)) } : null,
       segUs: Object.fromEntries(Object.entries(A.seg).map(([k, v]) => [k, us(v)])), segSumUs: us(Object.values(A.seg).reduce((s, v) => s + v, 0)),
       subUs: Object.fromEntries(Object.entries(A.sub).map(([k, v]) => [k, us(v)])), subN: Object.fromEntries(Object.entries(A.subN).map(([k, v]) => [k, +(v / A.n).toFixed(1)])),

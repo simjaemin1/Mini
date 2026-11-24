@@ -1,0 +1,556 @@
+{
+  "complete": true,
+  "total": 1152,
+  "inherited": 419,
+  "newMeasured": 733,
+  "scope": "cap lab/free at r=.002; historical rate comparison at default cap lab",
+  "profiles": [
+    {
+      "cap": "lab",
+      "r": 0.002,
+      "rawRows": 288,
+      "rawHolds": 51,
+      "pairedConditions": 144,
+      "pairedHolds": 20,
+      "pairedHoldsWithoutHarvest": 9,
+      "pairedHoldsWithZeroHarvestSeed": 13,
+      "strongest": [
+        {
+          "sp": "🦌",
+          "found": true,
+          "exch": 500,
+          "share": "0.1",
+          "nh": 17,
+          "intensity": 1.7000000000000002,
+          "kgPerHunterYear": [
+            58.23529411764706,
+            34.94117647058823
+          ],
+          "meanKg": 46.588235294117645,
+          "personDays": [
+            28.5234093637455,
+            17.1140456182473
+          ],
+          "meanPersonDays": 22.818727490996398,
+          "endRatios": [
+            0.9664,
+            0.984
+          ],
+          "hunterDeaths": [
+            0,
+            0
+          ],
+          "zeroHarvest": false,
+          "ties": 1
+        },
+        {
+          "sp": "🐗",
+          "found": true,
+          "exch": 500,
+          "share": "1",
+          "nh": 1,
+          "intensity": 1,
+          "kgPerHunterYear": [
+            0,
+            8
+          ],
+          "meanKg": 4,
+          "personDays": [
+            0,
+            3.9183673469387754
+          ],
+          "meanPersonDays": 1.9591836734693877,
+          "endRatios": [
+            1,
+            0.9983
+          ],
+          "hunterDeaths": [
+            0,
+            0
+          ],
+          "zeroHarvest": false,
+          "ties": 4
+        },
+        {
+          "sp": "🐇",
+          "found": false
+        }
+      ],
+      "strongestProductive": [
+        {
+          "sp": "🦌",
+          "found": true,
+          "exch": 500,
+          "share": "0.1",
+          "nh": 17,
+          "intensity": 1.7000000000000002,
+          "kgPerHunterYear": [
+            58.23529411764706,
+            34.94117647058823
+          ],
+          "meanKg": 46.588235294117645,
+          "personDays": [
+            28.5234093637455,
+            17.1140456182473
+          ],
+          "meanPersonDays": 22.818727490996398,
+          "endRatios": [
+            0.9664,
+            0.984
+          ],
+          "hunterDeaths": [
+            0,
+            0
+          ],
+          "zeroHarvest": false,
+          "ties": 1
+        },
+        {
+          "sp": "🐗",
+          "found": true,
+          "exch": 500,
+          "share": "0.25",
+          "nh": 3,
+          "intensity": 0.75,
+          "kgPerHunterYear": [
+            80,
+            137.33333333333334
+          ],
+          "meanKg": 108.66666666666667,
+          "personDays": [
+            39.183673469387756,
+            67.26530612244898
+          ],
+          "meanPersonDays": 53.224489795918366,
+          "endRatios": [
+            0.9448,
+            0.9009
+          ],
+          "hunterDeaths": [
+            0,
+            0
+          ],
+          "zeroHarvest": false,
+          "ties": 1
+        },
+        {
+          "sp": "🐇",
+          "found": false
+        }
+      ]
+    },
+    {
+      "cap": "free",
+      "r": 0.002,
+      "rawRows": 288,
+      "rawHolds": 43,
+      "pairedConditions": 144,
+      "pairedHolds": 16,
+      "pairedHoldsWithoutHarvest": 9,
+      "pairedHoldsWithZeroHarvestSeed": 11,
+      "strongest": [
+        {
+          "sp": "🦌",
+          "found": true,
+          "exch": 187000,
+          "share": "1",
+          "nh": 1,
+          "intensity": 1,
+          "kgPerHunterYear": [
+            0,
+            0
+          ],
+          "meanKg": 0,
+          "personDays": [
+            0,
+            0
+          ],
+          "meanPersonDays": 0,
+          "endRatios": [
+            1,
+            1
+          ],
+          "hunterDeaths": [
+            0,
+            0
+          ],
+          "zeroHarvest": true,
+          "ties": 1
+        },
+        {
+          "sp": "🐗",
+          "found": true,
+          "exch": 500,
+          "share": "1",
+          "nh": 1,
+          "intensity": 1,
+          "kgPerHunterYear": [
+            20,
+            32
+          ],
+          "meanKg": 26,
+          "personDays": [
+            9.795918367346939,
+            15.673469387755102
+          ],
+          "meanPersonDays": 12.73469387755102,
+          "endRatios": [
+            0.9911,
+            0.9872
+          ],
+          "hunterDeaths": [
+            12,
+            24
+          ],
+          "zeroHarvest": false,
+          "ties": 4
+        },
+        {
+          "sp": "🐇",
+          "found": false
+        }
+      ],
+      "strongestProductive": [
+        {
+          "sp": "🦌",
+          "found": true,
+          "exch": 500,
+          "share": "0.1",
+          "nh": 3,
+          "intensity": 0.30000000000000004,
+          "kgPerHunterYear": [
+            869,
+            682
+          ],
+          "meanKg": 775.5,
+          "personDays": [
+            425.6326530612245,
+            334.0408163265306
+          ],
+          "meanPersonDays": 379.83673469387753,
+          "endRatios": [
+            0.9037,
+            0.9287
+          ],
+          "hunterDeaths": [
+            0,
+            0
+          ],
+          "zeroHarvest": false,
+          "ties": 1
+        },
+        {
+          "sp": "🐗",
+          "found": true,
+          "exch": 500,
+          "share": "1",
+          "nh": 1,
+          "intensity": 1,
+          "kgPerHunterYear": [
+            20,
+            32
+          ],
+          "meanKg": 26,
+          "personDays": [
+            9.795918367346939,
+            15.673469387755102
+          ],
+          "meanPersonDays": 12.73469387755102,
+          "endRatios": [
+            0.9911,
+            0.9872
+          ],
+          "hunterDeaths": [
+            12,
+            24
+          ],
+          "zeroHarvest": false,
+          "ties": 2
+        },
+        {
+          "sp": "🐇",
+          "found": false
+        }
+      ]
+    },
+    {
+      "cap": "lab",
+      "r": 0.0004,
+      "rawRows": 288,
+      "rawHolds": 48,
+      "pairedConditions": 144,
+      "pairedHolds": 17,
+      "pairedHoldsWithoutHarvest": 9,
+      "pairedHoldsWithZeroHarvestSeed": 11,
+      "strongest": [
+        {
+          "sp": "🦌",
+          "found": true,
+          "exch": 500,
+          "share": "0.1",
+          "nh": 17,
+          "intensity": 1.7000000000000002,
+          "kgPerHunterYear": [
+            58.23529411764706,
+            34.94117647058823
+          ],
+          "meanKg": 46.588235294117645,
+          "personDays": [
+            28.5234093637455,
+            17.1140456182473
+          ],
+          "meanPersonDays": 22.818727490996398,
+          "endRatios": [
+            0.953,
+            0.973
+          ],
+          "hunterDeaths": [
+            0,
+            0
+          ],
+          "zeroHarvest": false,
+          "ties": 1
+        },
+        {
+          "sp": "🐗",
+          "found": true,
+          "exch": 500,
+          "share": "1",
+          "nh": 1,
+          "intensity": 1,
+          "kgPerHunterYear": [
+            0,
+            8
+          ],
+          "meanKg": 4,
+          "personDays": [
+            0,
+            3.9183673469387754
+          ],
+          "meanPersonDays": 1.9591836734693877,
+          "endRatios": [
+            1,
+            0.997
+          ],
+          "hunterDeaths": [
+            0,
+            0
+          ],
+          "zeroHarvest": false,
+          "ties": 3
+        },
+        {
+          "sp": "🐇",
+          "found": false
+        }
+      ],
+      "strongestProductive": [
+        {
+          "sp": "🦌",
+          "found": true,
+          "exch": 500,
+          "share": "0.1",
+          "nh": 17,
+          "intensity": 1.7000000000000002,
+          "kgPerHunterYear": [
+            58.23529411764706,
+            34.94117647058823
+          ],
+          "meanKg": 46.588235294117645,
+          "personDays": [
+            28.5234093637455,
+            17.1140456182473
+          ],
+          "meanPersonDays": 22.818727490996398,
+          "endRatios": [
+            0.953,
+            0.973
+          ],
+          "hunterDeaths": [
+            0,
+            0
+          ],
+          "zeroHarvest": false,
+          "ties": 1
+        },
+        {
+          "sp": "🐗",
+          "found": true,
+          "exch": 500,
+          "share": "0.25",
+          "nh": 1,
+          "intensity": 0.25,
+          "kgPerHunterYear": [
+            40,
+            36
+          ],
+          "meanKg": 38,
+          "personDays": [
+            19.591836734693878,
+            17.632653061224488
+          ],
+          "meanPersonDays": 18.612244897959183,
+          "endRatios": [
+            0.9844,
+            0.9848
+          ],
+          "hunterDeaths": [
+            0,
+            0
+          ],
+          "zeroHarvest": false,
+          "ties": 1
+        },
+        {
+          "sp": "🐇",
+          "found": false
+        }
+      ]
+    },
+    {
+      "cap": "lab",
+      "r": 0.0006,
+      "rawRows": 288,
+      "rawHolds": 48,
+      "pairedConditions": 144,
+      "pairedHolds": 17,
+      "pairedHoldsWithoutHarvest": 9,
+      "pairedHoldsWithZeroHarvestSeed": 11,
+      "strongest": [
+        {
+          "sp": "🦌",
+          "found": true,
+          "exch": 500,
+          "share": "0.1",
+          "nh": 17,
+          "intensity": 1.7000000000000002,
+          "kgPerHunterYear": [
+            58.23529411764706,
+            34.94117647058823
+          ],
+          "meanKg": 46.588235294117645,
+          "personDays": [
+            28.5234093637455,
+            17.1140456182473
+          ],
+          "meanPersonDays": 22.818727490996398,
+          "endRatios": [
+            0.955,
+            0.9747
+          ],
+          "hunterDeaths": [
+            0,
+            0
+          ],
+          "zeroHarvest": false,
+          "ties": 1
+        },
+        {
+          "sp": "🐗",
+          "found": true,
+          "exch": 500,
+          "share": "1",
+          "nh": 1,
+          "intensity": 1,
+          "kgPerHunterYear": [
+            0,
+            8
+          ],
+          "meanKg": 4,
+          "personDays": [
+            0,
+            3.9183673469387754
+          ],
+          "meanPersonDays": 1.9591836734693877,
+          "endRatios": [
+            1,
+            0.9972
+          ],
+          "hunterDeaths": [
+            0,
+            0
+          ],
+          "zeroHarvest": false,
+          "ties": 3
+        },
+        {
+          "sp": "🐇",
+          "found": false
+        }
+      ],
+      "strongestProductive": [
+        {
+          "sp": "🦌",
+          "found": true,
+          "exch": 500,
+          "share": "0.1",
+          "nh": 17,
+          "intensity": 1.7000000000000002,
+          "kgPerHunterYear": [
+            58.23529411764706,
+            34.94117647058823
+          ],
+          "meanKg": 46.588235294117645,
+          "personDays": [
+            28.5234093637455,
+            17.1140456182473
+          ],
+          "meanPersonDays": 22.818727490996398,
+          "endRatios": [
+            0.955,
+            0.9747
+          ],
+          "hunterDeaths": [
+            0,
+            0
+          ],
+          "zeroHarvest": false,
+          "ties": 1
+        },
+        {
+          "sp": "🐗",
+          "found": true,
+          "exch": 500,
+          "share": "0.25",
+          "nh": 1,
+          "intensity": 0.25,
+          "kgPerHunterYear": [
+            40,
+            36
+          ],
+          "meanKg": 38,
+          "personDays": [
+            19.591836734693878,
+            17.632653061224488
+          ],
+          "meanPersonDays": 18.612244897959183,
+          "endRatios": [
+            0.9851,
+            0.9857
+          ],
+          "hunterDeaths": [
+            0,
+            0
+          ],
+          "zeroHarvest": false,
+          "ties": 1
+        },
+        {
+          "sp": "🐇",
+          "found": false
+        }
+      ]
+    }
+  ],
+  "capEffects": {
+    "matchedSeedRows": 288,
+    "emptyMetricChanged": 67,
+    "anyOutcomeChanged": 144,
+    "holdChanged": 8,
+    "nonbindingRowsVerified": 144,
+    "matchedConditions": 144,
+    "emptyMetricChangedConditions": 40,
+    "anyOutcomeChangedConditions": 72,
+    "pairedHoldChangedConditions": 4
+  }
+}

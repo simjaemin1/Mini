@@ -1,0 +1,4 @@
+# 옛 코드 빨강 — 하네스 = b1c9918 · 제품(server sim public lab) = e9ce8cb · 시한 600초
+빨강 ○ | test-t1461-beast-unseen.js | RC=1 · ✓ 1 · ✗ 13 |   ✗ 손잡이 `T1461_BEAST_UNSEEN` — `1` 만 켬 · `T1432_NPC_DEATH` 안(존 · 마을 · 야생 같은 글자)
+# 합: 빨강 1 · 크래시 0 · 초록 0 · 모름 0 · 제품 무관 0
+rc=0

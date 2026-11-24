@@ -1,0 +1,3 @@
+# 옛 코드 빨강 — 하네스 = 875d292ce · 제품(server sim public lab) = 8de2cae04 · 시한 900초
+빨강 ○ | test-t1446-view-index.js | RC=1 · ✓ 0 · ✗ 1 |   ✗ Ⓐ1 들어간다(라이브 크기 welcome)
+# 합: 빨강 1 · 크래시 0 · 초록 0 · 모름 0 · 제품 무관 0

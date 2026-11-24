@@ -1,0 +1,44 @@
+[
+ {
+  "name": "d100",
+  "srcBytes": 70283264,
+  "up": true,
+  "why": "",
+  "bootSec": 30.3,
+  "rssPeakMB": 610,
+  "firstTick": {
+   "ms": 138.171,
+   "n": 2,
+   "sinceUpSec": 0.42
+  },
+  "rep": 1
+ },
+ {
+  "name": "d400",
+  "srcBytes": 128299008,
+  "up": true,
+  "why": "",
+  "bootSec": 37.7,
+  "rssPeakMB": 812,
+  "firstTick": {
+   "ms": 87.588,
+   "n": 1,
+   "sinceUpSec": 0.15
+  },
+  "rep": 1
+ },
+ {
+  "name": "dEnd",
+  "srcBytes": 140673024,
+  "up": true,
+  "why": "",
+  "bootSec": 33.6,
+  "rssPeakMB": 819,
+  "firstTick": {
+   "ms": 49.57,
+   "n": 1,
+   "sinceUpSec": 0.13
+  },
+  "rep": 1
+ }
+]

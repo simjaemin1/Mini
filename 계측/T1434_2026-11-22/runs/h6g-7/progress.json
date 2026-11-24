@@ -1,0 +1,29 @@
+{
+ "v": 1,
+ "tag": "h6g",
+ "seed": 7,
+ "days": 1460,
+ "every": 1460,
+ "dir": "/home/user/t1434/run/h6g-7",
+ "ck": 1460,
+ "segs": [
+  {
+   "from": 0,
+   "to": 1460,
+   "sec": 16210.2,
+   "code": 0,
+   "at": "2026-11-22T14:53:25.483Z"
+  }
+ ],
+ "done": true,
+ "env": {
+  "NODE_OPTIONS": "--max-old-space-size=6144 -r /home/user/Mini/계측/T1434_2026-11-22/t1434-observe.js",
+  "T400_BUILD_ACT": "0",
+  "VILLAGE_CARAVAN_MAX": "0",
+  "T745_VCLOCK": "1",
+  "T1434_OBS": "/home/user/t1434/run/h6g-7/obs"
+ },
+ "started": "2026-11-22T10:23:15.269Z",
+ "tries": 0,
+ "ended": "2026-11-22T14:53:25.971Z"
+}

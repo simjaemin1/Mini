@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress   ← 통합 러너가 이 표를 보고 자기 목록을 만든다(scripts/run-regress.sh · 표 없으면 안 돈다)
-// @bait 4
+// @bait 5
 // === scripts/test-t1389-deeds-on.js — 사유지 돌봄 켬 준비(★T1389): 값 같은 빠른 셈 · 틱 예산 잇기 · 복도 막힘 ㉡ · 부재 훑기 시각 · 계량기 뒤늦은 보냄 ==========
 //
 // ★지키는 것
@@ -87,9 +87,9 @@ if (MODE === 'pure') {
 
 // ── 아이 ③ 숫자 상한(S0 = 9) 문구 — 켬 · 끔 둘 다(부모가 `T1305_DEEDS` 를 준다) ──
 if (MODE === 'cap') {
-  Object.assign(process.env, { ZONE_ID: 'hanbando', ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', CLAIM_ABSENCE: '0' });
+  Object.assign(process.env, { ZONE_ID: 'hanbando', ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', CLAIM_ABSENCE: '0', T1392_FIRST_LOT: '0' });   // ★[T1428] 첫 집터(-on 켬 기본 후보)는 글자로 끈다 — 이 판은 숫자 한도만 잰다
   const _l = console.log, _w = console.warn, _e = console.error; console.log = () => {}; console.warn = () => {}; console.error = () => {};
-  const Zone = require(path.join(ROOT, 'server', 'zone.js'));
+  const Zone = require(process.env.__T1389_ZONE || path.join(ROOT, 'server', 'zone.js'));
   console.log = _l; console.warn = _w; console.error = _e;
   const H = Zone.__testBind(), SZ = H.BUILDING_SIZE, R = {};
   try {
@@ -111,7 +111,7 @@ if (MODE === 'cap') {
 
 // ── 아이 ② 존(정본 경로 · 켬) ──
 if (MODE === 'zone') {
-  Object.assign(process.env, { ZONE_ID: 'hanbando', ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', CLAIM_ABSENCE: '1', T1305_DEEDS: '1', T1305_CARE_S: '1' });
+  Object.assign(process.env, { ZONE_ID: 'hanbando', ENABLE_VILLAGES: '0', ENABLE_WILDLIFE: '0', ENABLE_BANDITS: '0', ENABLE_ROADS: '0', CLAIM_ABSENCE: '1', T1305_DEEDS: '1', T1305_CARE_S: '1', T1392_FIRST_LOT: '0', T1402_SPLIT_OK: '0' });   // ★[T1428] 첫 집터 · 갈라짐(-on 에서 켬 기본 후보)은 글자로 끈다 — 이 판의 땅 꼴은 한 칸 선포로 짓는다
   const _l = console.log, _w = console.warn, _e = console.error; console.log = () => {}; console.warn = () => {}; console.error = () => {};
   const Zone = require(process.env.__T1389_ZONE || path.join(ROOT, 'server', 'zone.js'));
   console.log = _l; console.warn = _w; console.error = _e;
@@ -201,7 +201,7 @@ if (MODE === 'zone') {
   show(RZ, 'f_trail', 'ⓕ 계량기 — 1초 안 두 번째 보냄은 1초 끝에 보낸다(둘째 칸 직후 N = 2)');
   {
     const on = run('cap', { T1305_DEEDS: '1' }), off = run('cap', { T1305_DEEDS: '0' }), a = on && on.cap, b = off && off.cap;
-    ok(!!a && !!b && a.on === true && a.live === 12 && a.cap === 0 && b.on === false && b.live === 9 && b.cap === 3 && /한도 9/.test(b.text), 'ⓖ 숫자 상한(S0 = 9) — 켬: 12칸 다 서고 "한도" 문구 0 · 끔: 9칸에서 멈추고 "한도 9" 그대로',
+    ok(!!a && !!b && a.on === true && a.live === 12 && a.cap === 0 && b.on === false && b.cap === 0, 'ⓖ 숫자 한도 9 지움(★T1428 -on · 판정 28) — 켬: 12칸 다 서고 "한도" 문구 0 · 끔(`=0`)도 한도 문구 0(넓히기는 끔의 마을 땅 문이 막는다)',
       a && b ? `켬 ${a.live}칸 · 한도 문구 ${a.cap} / 끔 ${b.live}칸 · 한도 문구 ${b.cap}(${b.text})` : String((on && on.err) || (off && off.err) || '아이 판 없음'));
   }
   // ★미끼 셋 — 사본은 server/ 에(상대 require 그대로) · 판 끝에 지운다
@@ -232,6 +232,13 @@ if (MODE === 'zone') {
     const n = ZS.split(from).length - 1, fz = tmp('claim', '-zone');
     const RB = withFiles([[fz, ZS.split(from).join("  if (why === 'claim') Deeds.addPts(P, w, pts == null ? Deeds.CFG.PT : pts);")]], () => run('zone', { __T1389_ZONE: fz }));
     ok(n === 1 && !!RB && RB.h_reclaim === false && RB.e_absence === true, '★미끼 ④ — 선포의 +PT 를 일한 점수 길(빚부터)로 되돌린 존 사본 → ⓗ 빨강(ⓔ 는 초록)', `바꾼 자리 ${n} · h_reclaim=${RB && RB.h_reclaim} e_absence=${RB && RB.e_absence} · ${RB ? (RB['h_reclaim#'] || RB.err || '') : ''}`);
+  }
+  {   // ★[T1428 -on] 한도 9 가 남은 사본(개인 한도를 9 로) → ⓖ 빨강
+    const f1 = "  const max = kind === 'temporary' ? CLAIM_SLOT_TEMPORARY_START : (kind === 'guild' ? CLAIM_SLOT_GUILD_START : Infinity);   // ★[T1428 -on] 개인 = 숫자 한도 없음", t1 = "  const max = kind === 'temporary' ? CLAIM_SLOT_TEMPORARY_START : (kind === 'guild' ? CLAIM_SLOT_GUILD_START : 9);";
+    const k = ZS.split(f1).length - 1, fz = tmp('cap9', '-zone');
+    let A = null; try { fs.writeFileSync(fz, ZS.split(f1).join(t1)); A = run('cap', { T1305_DEEDS: '1', __T1389_ZONE: fz }); } finally { try { fs.unlinkSync(fz); } catch (e) {} }
+    const c = A && A.cap;
+    ok(k === 1 && !!c && (c.live !== 12 || c.cap > 0), '★미끼 ⑤ — 개인 숫자 한도 9 가 남은 존 사본 → ⓖ 빨강(켬에서도 9칸에서 멈춘다)', `바꾼 자리 ${k} · 켬 ${c ? c.live : '-'}칸 · 한도 문구 ${c ? c.cap : '-'}`);
   }
   console.log(`\n=== T1389 사유지 켬 준비: ${pass} 통과 / ${fail} 실패 ===`);
   process.exit(fail ? 1 : 0);

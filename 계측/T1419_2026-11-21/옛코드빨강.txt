@@ -1,0 +1,3 @@
+# 옛 코드 빨강 — 하네스 = 17e4333a · 제품(server sim public lab) = dc04f60d · 시한 600초
+빨강 ○ | test-t1419-food-need.js | RC=1 · ✓ 1 · ✗ 19 |   ✗ ① 없음 · `1` · `true` · `HARV` = 끔 · `harv` · `flow` 만 켬  ← [null,null,null,null,null,null]
+# 합: 빨강 1 · 크래시 0 · 초록 0 · 모름 0 · 제품 무관 0

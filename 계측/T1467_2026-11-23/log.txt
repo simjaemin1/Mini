@@ -1,0 +1,19 @@
+cnt1 done 04:30:54
+start pil 04:30:54
+killed pil at base2 (v1 shape) 05:42:07
+※ 03:59 기동 확인 존(T1467_STILL 시범 손잡이)이 04:00~05:43 내내 살아 있었다(15 % CPU) — pil 판 base1 · st1 · wqst1 은 그 탓 섞임 · 버림
+start pil2 05:46:59
+done pil2 07:19:01
+start fst 07:19:01
+done fst 07:27:09
+start fwk 07:27:09
+done fwk 07:35:15
+start c16 07:35:15
+done c16 07:51:31
+start x4k 07:51:31
+done x4k 07:59:39
+start x10k 07:59:39
+done x10k 08:07:49
+rulers done 08:07:49
+start main-1020 08:07:49
+start st-1020 08:07:49

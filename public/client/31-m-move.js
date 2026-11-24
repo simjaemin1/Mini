@@ -184,7 +184,7 @@
     // ★★적분 — 공유 모듈. 서버 zone.js 가 **같은 함수를 같은 인자로** 부른다.
     const _mv = window.MoveModel.stepMove(
       myVel, { wx: wx, wy: wy, sprint: canSprintClient, bodyMult: bodyMult, aim: !!aim,
-               groundMult: (typeof streamWalkMultAt === 'function') ? streamWalkMultAt(myAbsPredicted.x, myAbsPredicted.y) : 1 },   // ★[T585] 개울 칸 ×0.5 — 서버와 같은 칸(내 몸이 선 칸)·같은 수
+               groundMult: (typeof streamWalkMultAt === 'function' ? streamWalkMultAt(myAbsPredicted.x, myAbsPredicted.y) : 1) * ((typeof t1455WalkMultAt === 'function') ? t1455WalkMultAt(myAbsPredicted.x, myAbsPredicted.y) : 1) },   // ★[T1455] × 낡은 마을 다리(서버 걸음 배율 한 자리와 같은 칸 · 같은 수 — 다리가 없으면 1)   // ★[T585] 개울 칸 ×0.5 — 서버와 같은 칸(내 몸이 선 칸)·같은 수
       dt, _moveParams);
     myVel.vx = _mv.vx; myVel.vy = _mv.vy;
     let stepVx = _mv.vx, stepVy = _mv.vy;

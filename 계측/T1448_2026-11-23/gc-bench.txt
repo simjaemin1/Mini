@@ -1,0 +1,20 @@
+== map
+map heapMB 64.4 abMB 0.0 gcBase 3.63 gc 47.93 
+(node:20824) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+== c32
+c32 heapMB 2.5 abMB 52.2 gcBase 3.35 gc 5.10 
+(node:20831) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+== c16
+c16 heapMB 7.4 abMB 39.0 gcBase 3.11 gc 8.53 
+(node:20839) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+== slab16
+slab16 heapMB 0.9 abMB 39.8 gcBase 2.92 gc 3.54 
+(node:20846) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+== slab32
+slab32 heapMB 0.3 abMB 55.3 gcBase 3.16 gc 3.78 
+(node:20853) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)

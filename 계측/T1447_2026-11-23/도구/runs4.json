@@ -1,0 +1,3 @@
+[
+ {"tag":"PRICE2","seed":1020,"days":400,"env":{"T1447_PERSON_GRUDGE":"1","T1447_NO_RAID":"1"},"cfg":{"noClaims":true,"prices":[100,200,300,400]}}
+]

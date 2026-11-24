@@ -80,6 +80,7 @@ const ROUTES = {
   //   ⇒ 판정이 `회부9` → `닫힘DEV_AS` 로 간다. **갈래는 안 바뀐다**(62·공개 16 그대로).
   'zone GET ^/startinfo':                    ['공개', '닫힘DEV_AS'],
   'zone GET ^/lifedbg':                      ['안문', '닫힘'],
+  'zone GET ^/decaydbg':                     ['안문', '닫힘'],   // ★[T1438] 구조물 낡음 관측(읽기만 · 존 셈 + 마을 집 표 · `InternalDoor.isInternal` 겹 · 손잡이 끔이어도 문은 선다 — 답은 칸만)
   'zone GET ^/roomdbg':                      ['안문', '닫힘'],
   'zone GET =/metrics': ['안문', '닫힘'],
   'zone POST =/ghost_sync': ['안문', '닫힘'],

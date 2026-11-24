@@ -1,0 +1,112 @@
+e2e-char3d.js rc=0 368s   ✓ ⓑ 미끼 · 자명 통과 금지 — 걷기(엉덩이 원점 · 발이 번갈아 나간다)는 발 가운데 자가 물고 · 0.9배 몸(배율 한 칸�
+e2e-first30.js rc=124 900s 
+e2e-forage-village.js rc=0 95s === 13건 중 PASS 13 · FAIL 0 ===
+e2e-mtcorridor.js rc=0 78s === 통로(갱) E2E: 통과 15 · 실패 0 ===
+e2e-pid-collide.js rc=0 4s === PASS 13 / FAIL 0 ===
+e2e-rumor.js rc=0 168s === 59건 중 PASS 59 · FAIL 0 ===
+test-bigmap-cells.js rc=0 39s === 30건 중 PASS 30 · FAIL 0 ===
+test-body-chunks.js rc=0 1s === 결과: 27 PASS / 0 FAIL ===
+test-body-fields.js rc=0 1s === 14 통과 / 0 실패 ===
+test-body.js rc=0 11s === 324건 중 PASS 324 · FAIL 0 ===
+test-bridge-act.js rc=1 15s 
+test-carrier.js rc=0 2s === 54건 중 PASS 54 · FAIL 0 ===
+test-claim-v2.js rc=0 18s === PASS 100 / FAIL 0 ===
+test-coll-grid.js rc=0 21s === 결과: 20 PASS / 0 FAIL ===
+test-craft.js rc=0 9s === 38건 중 PASS 38 · FAIL 0 ===
+test-crops.js rc=0 4s === 결과: 170 PASS / 0 FAIL ===
+test-distmatrix.js rc=1 407s === 거리행렬 하네스: 46 통과 / 1 실패 ❌ ===
+test-donate.js rc=0 31s === 42건 중 PASS 42 · FAIL 0 ===
+test-doors.js rc=0 5s === 문 전수 하네스: 45 통과 / 0 실패 ✅ ===
+test-downed.js rc=0 346s === 180건 중 PASS 180 · FAIL 0 ===
+test-drop-kg.js rc=0 12s === 56건 중 PASS 56 · FAIL 0 ===
+test-dusk-stamp.js rc=0 4s === 결과: 21 PASS / 0 FAIL ===
+test-emptystart.js rc=0 20s === 41건 중 PASS 41 · FAIL 0 ===
+test-farm-act.js rc=0 30s === 결과: 78 PASS / 0 FAIL ===
+test-fell-loot.js rc=0 6s === 결과: 31 PASS / 0 FAIL ===
+test-fishing.js rc=0 91s === 120건 중 PASS 120 · FAIL 0 ===
+test-food-sick.js rc=0 21s === 42건 중 PASS 42 · FAIL 0 ===
+test-forage-act.js rc=0 29s === 결과: 251 PASS / 0 FAIL ===
+test-furnace.js rc=0 2s === 노·숯가마 E2E: 85 통과 / 0 실패 ✅ ===
+test-game-meat.js rc=0 11s === 54건 중 PASS 54 · FAIL 0 ===
+test-ghost-tree.js rc=0 6s === 결과: 9 PASS / 0 FAIL ===
+test-granary-age.js rc=0 74s === 31건 중 PASS 31 · FAIL 0 ===
+test-granary-item.js rc=0 29s === 42건 중 PASS 42 · FAIL 0 ===
+test-granary-rot.js rc=0 28s === 28건 중 PASS 28 · FAIL 0 ===
+test-hall-units.js rc=0 43s === 23건 중 PASS 23 · FAIL 0 ===
+test-handoff-body.js rc=0 400s === 94 통과 / 0 실패 ===
+test-harness-lint.js rc=0 74s === 102건 중 PASS 102 · FAIL 0 ===
+test-hp-src.js rc=0 2s === 54 통과 / 0 실패 ===
+test-index-named.js rc=0 2s === 결과: 7 PASS / 0 FAIL ===
+test-inv-ground.js rc=0 3s === 28건 중 PASS 28 · FAIL 0 ===
+test-kcal.js rc=0 3s === 65건 중 PASS 65 · FAIL 0 ===
+test-ledger.js rc=0 3s === 통과 48 · 실패 0 ===
+test-lib-port.js rc=0 10s === 21건 중 PASS 21 · FAIL 0 ===
+test-local-midnight-window.js rc=0 194s === 12건 중 PASS 12 · FAIL 0 ===
+test-local-midnight.js rc=0 12s === 14건 중 PASS 14 · FAIL 0 ===
+test-lon-day.js rc=0 1s === 22건 중 PASS 22 · FAIL 0 ===
+test-member-open.js rc=0 50s   ✓ [상황] 한 개를 내도 한 개 이상 받는 짝이 있다(자명 통과 금지)  {"it":"berry","res":"fruit","take":"food"}
+test-mining.js rc=0 8s 결과: PASS
+test-mob-hp-door.js rc=0 7s === 19건 중 PASS 19 · FAIL 0 ===
+test-mob-hp-restart.js rc=0 30s === 20건 중 PASS 20 · FAIL 0 ===
+test-mob-respawn.js rc=0 9s === 16건 중 PASS 16 · FAIL 0 ===
+test-move-soa.js rc=0 124s === 결과: 287 PASS / 0 FAIL ===
+test-newcomers.js rc=0 3s === PASS 56 / FAIL 0 ===
+test-npc-wild-sync.js rc=0 6s === 10건 중 PASS 10 · FAIL 0 ===
+test-physical-stone-cycle.js rc=0 6s PASS unobserved canonical rock → actual hit/body/movement/timed storage
+test-preserve-carry.js rc=0 22s === 결과: 41 PASS / 0 FAIL ===
+test-preserve.js rc=0 8s === 결과: 70 PASS / 0 FAIL ===
+test-psite-server.js rc=0 34s 결과: PASS
+test-recut.js rc=0 144s === 결과: 24 PASS / 0 FAIL ===
+test-regrow-block.js rc=0 3s === 결과: 24 PASS / 0 FAIL ===
+test-regrow.js rc=0 21s === 101건 중 PASS 101 · FAIL 0 ===
+test-road-tail.js rc=0 8s === 결과: 7 PASS / 0 FAIL ===
+test-salt.js rc=0 4s === 결과: 73 PASS / 0 FAIL ===
+test-seed-hp.js rc=0 67s === 통과 16 · 실패 0 ===
+test-shelter.js rc=0 101s === PASS 47 / FAIL 0 ===
+test-spoil2.js rc=0 6s === 결과: 38 PASS / 0 FAIL ===
+test-streams.js rc=1 38s === 54건 중 PASS 53 · FAIL 1 ===
+test-t1065-tool-gate.js rc=0 5s === T1065: 통과 43 · 실패 0 ===
+test-t1066-village-fire.js rc=0 5s === 통과 14 · 실패 0 ===
+test-t1085-assign-job.js rc=0 58s === T1085: 통과 37 · 실패 0 ===
+test-t1093-shelter-roof.js rc=0 68s 결과: 19 통과 · 0 실패
+test-t1118-rack-age.js rc=0 28s === 결과: 50 PASS / 0 FAIL ===
+test-t1120-next-tool.js rc=0 11s === T1120: 85건 중 PASS 85 · FAIL 0 ===
+test-t1126-rock-yield.js rc=0 16s === T1126: 52건 중 PASS 52 · FAIL 0 ===
+test-t1128-kcal-tidy.js rc=0 10s === 24건 중 PASS 24 · FAIL 0 ===
+test-t1132-hall-view.js rc=0 23s === 18건 중 PASS 18 · FAIL 0 ===
+test-t1146-stone-rule.js rc=0 13s === T1146: 45건 중 PASS 45 · FAIL 0 ===
+test-t1186-blade-wear.js rc=0 8s === T1186: 40건 중 PASS 40 · FAIL 0 ===
+test-t1213-terr-supply.js rc=0 2s === T1213: 19건 중 PASS 19 · FAIL 0 ===
+test-t1238-terr-v2.js rc=0 9s === T1238: 117건 중 PASS 117 · FAIL 0 ===
+test-t1245-seeds.js rc=0 2s PASS 18 / FAIL 0
+test-t1273-clock-rest.js rc=0 90s === PASS 104 / FAIL 0 ===
+test-t1386-deeds-debt.js rc=0 9s === T1386 사유지 빚: 14 통과 / 0 실패 ===
+test-t1389-deeds-on.js rc=0 42s === T1389 사유지 켬 준비: 13 통과 / 0 실패 ===
+test-t1402-deeds-split.js rc=0 28s === T1402 땅 갈라짐 · 본거지: 14 통과 / 0 실패 ===
+test-t1402-deeds-uptime.js rc=0 57s === T1402 사유지 판정 둘: 8 통과 / 0 실패 ===
+test-t1402-deeds-work.js rc=0 15s === T1402 사유지 일: 9 통과 / 0 실패 ===
+test-t1414-ocr-tmpdir.js rc=0 17s === 13건 중 PASS 13 · FAIL 0 ===
+test-t1438-decay.js rc=0 21s 결과: 24 통과 · 0 실패
+test-t1455-bridge-decay.js rc=0 12s 35 통과 · 0 실패
+test-t762-sync.js rc=0 3s === 결과: 14 PASS / 0 FAIL ===
+test-t989-chunk-save.js rc=0 24s === 통과 9 · 실패 0 ===
+test-tame.js rc=0 3s === 길들이기 게이트: 11 통과 / 0 실패 ✅ ===
+test-terraincache.js rc=0 5s === PASS 26 / FAIL 0 ===
+test-tidal.js rc=0 2s === 123건 중 PASS 123 · FAIL 0 ===
+test-trade.js rc=0 36s === 68건 중 PASS 68 · FAIL 0 ===
+test-village-found.js rc=0 6s === 마을 건립 하네스: 51 통과 / 0 실패 ✅ ===
+test-village-view.js rc=0 51s 결과: PASS 132 · FAIL 0
+test-weight.js rc=0 74s === 64건 중 PASS 64 · FAIL 0 ===
+test-well-art.js rc=0 3s   ✓ ⑥ 자명 통과 금지 — 곳 말고 다른 낱말이 갈리면 비교가 문다
+test-well.js rc=0 4s 
+test-wild-door.js rc=0 18s === 26건 중 PASS 26 · FAIL 0 ===
+test-wood-act.js rc=0 10s === 결과: 159 PASS / 0 FAIL ===
+test-wood-step1.js rc=0 2s === 결과: 25 PASS / 0 FAIL ===
+test-zone-fauna.js rc=0 143s === 39건 중 PASS 39 · FAIL 0 ===
+DONE
+(고친 뒤 혼자) test-bridge-act.js rc=0 16s 
+(고친 뒤 혼자) test-distmatrix.js rc=0 460s === 거리행렬 하네스: 47 통과 / 0 실패 ✅ ===
+(고친 뒤 혼자) test-streams.js rc=0 43s === 54건 중 PASS 54 · FAIL 0 ===
+(고친 뒤 혼자) test-t1455-bridge-decay.js rc=0 12s 35 통과 · 0 실패
+(고친 뒤 혼자) DONE
+(혼자 다시) e2e-first30.js rc=0 1923s (혼자 · 시한 2400초로 다시) 걸음 53264px / 944.7s · 오류 0

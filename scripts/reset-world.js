@@ -66,10 +66,17 @@ function cmdDb(file) {
   if (T.has('villages')) {
     const villages = count(d, 'SELECT COUNT(*) FROM villages');
     const maxDay = villages ? count(d, 'SELECT MAX(day) FROM villages') : null;
-    const terr = T.has('village_buildings') ? count(d, "SELECT COUNT(*) FROM village_buildings WHERE type = 'terr'") : null;
-    const contested = T.has('village_buildings')
+    let terr = T.has('village_buildings') ? count(d, "SELECT COUNT(*) FROM village_buildings WHERE type = 'terr'") : null;
+    let contested = T.has('village_buildings')
       ? count(d, "SELECT COUNT(*) FROM (SELECT cx, cy FROM village_buildings WHERE type = 'terr' GROUP BY cx, cy HAVING COUNT(DISTINCT village_id) > 1)")
       : null;
+    //   ★[T1433] 영토 묶음 행(`terrseq`)이 있는 DB — 행이 아니라 되읽은 칸을 센다(마을마다 칸 행 + 묶음 행 · 두 마을 이상이 가진 칸)
+    if (T.has('village_buildings') && count(d, "SELECT COUNT(*) FROM village_buildings WHERE type = 'terrseq'")) {
+      const V = require('./t1433-terr-migrate').readTerr(d), seen = new Map();
+      terr = V.reduce((n, v) => n + v.cur.size, 0);
+      for (const v of V) for (const k of v.cur.keys()) seen.set(k, (seen.get(k) || 0) + 1);
+      contested = [...seen.values()].filter((n) => n > 1).length;
+    }
     const rows = {};
     for (const t of ['buildings', 'claims', 'roads', 'trade_routes', 'village_chronicle', 'village_events', 'onboarding']) if (T.has(t)) rows[t] = count(d, `SELECT COUNT(*) FROM ${t}`);
     d.close();

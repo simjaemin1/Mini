@@ -1,0 +1,37 @@
+{
+  "main": "61ea8d62",
+  "priorBranch": "d21407f8",
+  "restored": {
+    "lab/사냥실험실.html": {
+      "sha256": "219e4871e911f4632b8da0f0d4c84f67612e346f66d45fa512a1965e0199103d",
+      "equalsPriorBranch": true
+    },
+    "scripts/t1396-hunt-lab.js": {
+      "sha256": "1a12962c600041e1aec59e2c103858befbd9bb4d5b82f08dd4173fa2c0ac09e8",
+      "equalsPriorBranch": true
+    },
+    "scripts/test-t1396-hunt-lab.js": {
+      "sha256": "ea3d1b396a2f9e4d109830b90813299c43f2f7b4241d3841ebc6213fb0079db9",
+      "equalsPriorBranch": true
+    },
+    "sim/hunt-check.js": {
+      "sha256": "6a4491803b77beddd24d428812842c61b9db470c37604657c1f0613be4c53f49",
+      "equalsPriorBranch": true
+    },
+    "sim/_hunt-trace.js": {
+      "sha256": "43b30533ca05fa1763e6eeea83d2c8fd4989da6f1635aa97d930a0c1a5a235b3",
+      "equalsPriorBranch": true
+    },
+    "sim/rebuild-huntlab.py": {
+      "sha256": "19f66c6f49a3444e6adfca313b7416943901b5154fefd752d0c24080e7f07baa",
+      "equalsPriorBranch": true
+    }
+  },
+  "defaultCodeSameAsMain": {
+    "server": true,
+    "public": true,
+    "sim/economy-sim.js": true,
+    "sim/economy-sim-v2.js": true,
+    "sim/war-core.js": true
+  }
+}

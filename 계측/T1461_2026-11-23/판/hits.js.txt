@@ -1,0 +1,13 @@
+// 판 자 탐침(제품 무변) — 야생 층이 몸에 낸 피해를 센다(wildlife host.damagePlayer 를 감싼다)
+const path = require('path'), fs = require('fs');
+const out = process.env.T1432_HITS_OUT; if (out) {
+  const Mod = require('module'); const orig = Mod.prototype.require;
+  let done = false;
+  Mod.prototype.require = function (id) { const r = orig.apply(this, arguments);
+    if (!done && /wildlife(\.js)?$/.test(id) && r && typeof r.init === 'function') { done = true; const i0 = r.init;
+      r.init = function (H) { if (H && typeof H.damagePlayer === 'function') { const d0 = H.damagePlayer; const S = { hits: 0, npcHits: 0, dmg: 0, lethal: 0, minHp: 1e9, src: {} };
+        H.damagePlayer = function (p, d, src) { S.hits++; if (p && p.isNpc) { S.npcHits++; S.dmg += d; const k = String(src || '').slice(0, 12); S.src[k] = (S.src[k] || 0) + 1; const h1 = (p.hp || 0) - d; if (h1 < S.minHp) S.minHp = h1; if (p.hp > 0 && h1 <= 0) S.lethal++; } return d0.apply(this, arguments); };
+        const w = () => { try { fs.writeFileSync(out, JSON.stringify(S)); } catch (e) {} }; setInterval(w, 30000).unref(); process.on('exit', w); }
+        return i0.apply(this, arguments); }; }
+    return r; };
+}

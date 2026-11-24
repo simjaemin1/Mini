@@ -671,6 +671,7 @@ let RUN9 = null;
       players: world.players, mobs: world.mobs, buildings: world.buildings, activeChunkKeys, chunkManager, stairCellCache, qtBuildings,
       qtColl: qtBuildings,   // ★[T449 ③] 받침 술어(`hasFloorSupportAt`)가 이제 벽 질의 격자를 본다 — 여기선 같은 모의 격자(종류는 술어가 거른다 · 판정은 `test-coll-grid`)
       T385_ONE_SWEEP: on, T689_GC: GC9, BUILDING_SIZE: BS, FLOOR_HEIGHT: FH, HUNGER_MAX: 100, THIRST_MAX: 100,
+      T1467_STILL: false, _t67st: { sweep: 0 },   // ★[T1467] 서 있는 몸 건넘 손잡이 — 제품 기본(끔) 그대로(바퀴 몸통이 읽는 이름)
       T774_ACTIVE_COL: false, _t774I: 0, _t774Act: null,   // ★[T774] 활성 열 — 한 바퀴(`_sweepOne`)가 읽는 손잡이 · 이 판은 끔 갈래(열 증인은 `T774_ACTIVE_COL=1 node scripts/t738-witness.js`)
       T761_CLOCKS: { on: false, wx: false, mob: false, temp: false },   // ★[T761 · PM 착지 10-15] 몸 기온 · 몹 밤 현지 시계 갈래 — 제품 기본(끔) 그대로
       T823_FREEZE_SHELL: true,    // ★[T823 · PM 착지 10-21 · ★T831 켬 기본] 떠난 몸 껍데기 거르기 — 제품 기본(켬) 그대로(이 판 몸은 다 `handingOff: false` — 어느 쪽이든 같은 값)
@@ -692,6 +693,7 @@ let RUN9 = null;
       wearEquipment: (p, slot) => { p._wear = (p._wear || 0) + 1; },
       zoneGameDay: () => 12, Lots: { isLot: () => false, reconcile: () => {} },
       weatherFor: (p) => ({ t: (p.x | 0) % 10 }), moveMultOf: (p) => 1,
+      T1438_DECAY: false, _t1438Roof: () => 1,   // ★[T1438] 몸 줄 지붕 몫(존 한 자리 · 끔 기본 — 끔이면 칸이 안 선다 · 켠 판은 `test-t1438-decay`)
       _followPayload: (p) => {                       // ★벗의 **x·y** 만 읽는다 — 일곱 단계 중 누구도 안 쓰는 칸(표 그대로)
         const f = p._follow; if (!f) return null; const t = onlineById.get(f.id); if (!t) return null;
         if (bait === 'hp') return { follow: { v: t.hp } };      // ★미끼 ① — 같은 틱에 HP 단계가 쓰는 칸
@@ -1923,7 +1925,7 @@ console.log('\n⑳ T461 걸음 문 WASM 커널 — 1,000틱 뒤 전원 좌표 �
   // ★제품 글자를 뜬다: 이동 문(`movePlayerStep`) · 커널 앞문(`_wwPre`) · 뒷문(`_wwPost`) — 커널은 `server/walk-wasm.js`(제품 껍데기) 그대로.
   const MV = T1145P + body('movePlayerStep'), POST = body('_wwPost');   // ★[T1145] 열 손잡이 이름을 앞에(이동 문 · 앞문 묶음마다 한 번)
   //   ★[T689] 앞문 몸통이 `_wwPreOne` 으로 나뉘었다(손잡이 `T689_GC` · 켬 = `players.forEach`) — 둘을 같이 뜬다 · 판 손잡이는 이 프로세스 env(끔·켬 두 번 돌린다)
-  const PRE = T1145P + 'const T689_GC = ' + (process.env.T689_GC === '1') + ';\nlet _wwCut = false;\nconst T774_ACTIVE_COL = false; let _t774I = 0; const _t774Act = null;\n' + body('_wwPre') + '\n' + body('_wwPreOne');   // ★[T774] 앞문이 읽는 활성 열 손잡이 — 이 판은 끔 갈래
+  const PRE = T1145P + 'const T689_GC = ' + (process.env.T689_GC === '1') + ';\nlet _wwCut = false;\nconst T774_ACTIVE_COL = false; let _t774I = 0; const _t774Act = null;\nconst T1467_STILL = false;\n' + body('_wwPre') + '\n' + body('_wwPreOne');   // ★[T774] 앞문이 읽는 활성 열 손잡이 — 이 판은 끔 갈래
   const ISS = body('_wwIsStill'), SPOST = body('_wwStillPost');   // ★[T672] 서 있는 몸 거름 · 뒷일(앞문이 부른다 · 끔이면 안 열린다)
   const T672P = ['T672_WALK_CUT', '_wwStill', '_wwStill0', '_wwNoRes', '_wwTC', '_wwResGen', '_wwVerify'];
   const t672A = (on, gen) => [!!on, [], [], [], { src: null, rx: null, gen: -1, k: 0, hit: 0, miss: 0, treeBad: 0, still: 0, stillBad: 0 }, gen || 0, false];

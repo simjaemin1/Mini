@@ -1,0 +1,3 @@
+# 옛 코드 빨강 — 하네스 = 1f1227fb · 제품(server sim public lab) = 01df9e8f · 시한 600초
+빨강 ○ | test-t1433-terr-rows.js | RC=1 · ✓ 3 · ✗ 18 |   ✗ 글 꼴 모듈(`server/terr-rows.js`)이 있다  Cannot find module '/tmp/ocr.zvisVb/w/server/terr-rows.js'
+# 합: 빨강 1 · 크래시 0 · 초록 0 · 모름 0 · 제품 무관 0
