@@ -1,0 +1,7 @@
+key,g,A,B,mA,mB,dt,inj,n,winA,winB,draw,open,openWhy,loserDead,loserDeadAtDec,loserDeadEdge,edgeMed,edgeOpen,loserFled,winnerDead,preContactRout,preRoutA,preRoutB,deadA,deadB,fledA,fledB,routFight,routIdle,rally,chasedShare,lenMed,lenP90,chaseMed,hitToDeathMed,broken,winHp,open120,nan,mrlOut,sumBad,msPerBattle,digest
+g5|militia20|dagger20|m1/1|dt0.05|cnt,g5,militia20,dagger20,1,1,0.05,0,20,0,100,0,0,,100,97.5,100,0,0,0,0,0,0,0,100,0,0,0,3.65,0,0,100,14.8,15.15,0,0.7,4.6,72.1,0,0,0,0,55.13,259e43e5
+g5|militia20|spear20|m1/1|dt0.05|cnt,g5,militia20,spear20,1,1,0.05,0,20,0,100,0,0,,100,97.5,100,0,0,0,0,0,0,0,100,0,0,0,2.15,0,0,100,19.05,19.25,0,2,3.9,82,0,0,0,0,78.14,2ee917d9
+g5|militia20+champion1|dagger20|m1/1|dt0.05|cnt,g5,militia20+champion1,dagger20,1,1,0.05,0,20,0,100,0,0,,100,93.1,100,0,0,0,20.5,0,0,0,100,20.5,0,0,2.2,1.95,0,100,18.25,20.1,0.6,0.7,4,74.7,0,0,0,0,66.1,550ae5f2
+g5|militia20+champion1|spear20|m1/1|dt0.05|cnt,g5,militia20+champion1,spear20,1,1,0.05,0,20,0,100,0,0,,100,84.3,100,0,0,0,5.5,0,0,0,100,5.5,0,0,3.3,1.8,0.1,99,22.05,23.1,5.7,2.95,2.7,83.7,0,0,0,0,68.46,68b058ea
+g5|militia20+champion3|dagger20|m1/1|dt0.05|cnt,g5,militia20+champion3,dagger20,1,1,0.05,0,20,0,100,0,0,,100,93.7,100,0,0,0,57,0,0,0,100,57,0,0.3,1.15,1.75,0.05,96.6,21,23.1,0.7,0.7,4.5,61.4,0,0,0,0,62.67,0eea61db
+g5|militia20+champion3|spear20|m1/1|dt0.05|cnt,g5,militia20+champion3,spear20,1,1,0.05,0,20,0,100,0,0,,100,86.5,100,0,0,0,27.2,0,0,0,100,27.2,0,0,2.3,2.65,0.25,97.9,24.7,26.05,4.05,2.9,3.9,76.9,0,0,0,0,74.24,2d32ef9c
