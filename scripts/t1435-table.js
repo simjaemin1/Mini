@@ -23,9 +23,15 @@ const argv = process.argv.slice(2);
 const opt = (k) => (argv.includes(k) ? argv[argv.indexOf(k) + 1] : null);
 const SEP = { 'e2e-membership': 'PM 덧붙임 11-22 — 결정적 빨강(⑦ · 이분 첫 빨강 5296e08da) · 표에는 20/20 빨강으로 적고 흔들림과 따로 둔다' };
 
-const rows = fs.readFileSync(path.join(W, 'pool.txt'), 'utf8').split('\n').filter(Boolean)
+// ★MAXR: 판 번호 상한(판 r 바깥 · 종 안으로 돌았으니 MAXR 까지는 모든 종이 같은 수다 — 멈춘 바퀴의 반쪽을 안 섞는다).
+// ★보조 모듈(머리 `// @helper` — `run-regress.sh` 가 건넌다 · T1400)은 하네스가 아니라 표에서 뺀다(뺀 이름은 머리에 적는다).
+const MAXR = +(process.env.MAXR || 1e9);
+const isHelper = (n) => { try { return /^\/\/ @helper(\s|$)/m.test(fs.readFileSync(path.join(ROOT, 'scripts', `${n}.js`), 'utf8').split('\n').slice(0, 40).join('\n')); } catch (e) { return false; } };
+const all = fs.readFileSync(path.join(W, 'pool.txt'), 'utf8').split('\n').filter(Boolean)
   .map((l) => l.trim().split(/\s+/)).filter((a) => a.length >= 5)
-  .map(([name, run, res, rc, sec]) => ({ name, run: +run, res, rc: +rc, sec: +sec }));
+  .map(([name, run, res, rc, sec]) => ({ name, run: +run, res, rc: +rc, sec: +sec })).filter((r) => r.run <= MAXR);
+const helpers = [...new Set(all.map((r) => r.name))].filter(isHelper);
+const rows = all.filter((r) => !helpers.includes(r.name));
 
 // rc 는 러너 판정 줄(`✗ RC=n`)의 값이 먼저다(그 판 하네스의 종료 코드 — 124 = `timeout` 이 끊음) · 없으면 받은 값.
 const rcOf = (text, rc) => { const m = text.match(/✗ RC=(\d+)/); return m ? +m[1] : rc; };
@@ -111,7 +117,8 @@ const totSec = rows.reduce((s, r) => s + r.sec, 0);
 const flaky = out.filter((o) => o.cls === '흔들림').sort((a, b) => (a.green / a.n) - (b.green / b.n));
 const worst = flaky[0];
 const L = [];
-L.push(`# T1435 e2e 한 종마다 스무 판 — ${out.length}종 · ${rows.length}판 · 걸린 시간 ${(totSec / 3600).toFixed(1)}시간(하네스 판 합)`);
+L.push(`# T1435 e2e 한 종마다 스무 판 — ${out.length}종 · ${rows.length}판${MAXR < 1e9 ? `(판 1..${MAXR})` : ''} · 걸린 시간 ${(totSec / 3600).toFixed(1)}시간(하네스 판 합)`);
+if (helpers.length) L.push(`\n뺀 보조 모듈(// @helper · 러너가 건넌다): ${helpers.join(' · ')}`);
 L.push('');
 L.push(`가름: 늘 초록 ${cnt('늘 초록')} · 늘 빨강 ${cnt('늘 빨강')} · 흔들림 ${cnt('흔들림')}${worst ? `(가장 나쁜 ${worst.name} ${worst.green}/${worst.n})` : ''} · 따로 ${cnt('따로')}(${out.filter((o) => o.cls === '따로').map((o) => o.name).join(' · ')}) · 유보 판 합 ${out.reduce((s, o) => s + o.yubo, 0)}`);
 L.push(`나란히(-j 2 한 바퀴): ${pair.size}종 · 빨강 ${[...pair.values()].filter((p) => p.res === 'R').length} · 나란히만 빨강 ${pairOnlyRed.length}${pairOnlyRed.length ? `(${pairOnlyRed.map((o) => o.name).join(' · ')})` : ''}`);
@@ -151,6 +158,6 @@ if (opt('--md')) fs.writeFileSync(opt('--md'), md); else process.stdout.write(md
 if (opt('--json')) {
   fs.writeFileSync(opt('--json'), JSON.stringify({
     species: out, runs: rows.length, totSec, knownE2e, down: down.map((o) => o.name), up: up.map((o) => o.name),
-    pairOnlyRed: pairOnlyRed.map((o) => o.name), counts: Object.fromEntries(order.map((c) => [c, cnt(c)])),
+    pairOnlyRed: pairOnlyRed.map((o) => o.name), helpers, maxr: MAXR < 1e9 ? MAXR : null, counts: Object.fromEntries(order.map((c) => [c, cnt(c)])),
   }, null, 1));
 }
