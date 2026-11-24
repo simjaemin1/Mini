@@ -435,9 +435,10 @@ say('\n⑩ 접점 — econ 무접촉 · kill→곳간 0 · wildlife 는 빈 Map 
   //     그 자리 주석이 "T146 이 장부를 올렸으니…"라고 **설명**한다. 원문으로 재면 그 설명문에 걸린다
   //     (T144 `@regress` · T154 `_hstat` 에 이어 **같은 함정 세 번째**다 — 계약은 코드에게 물어라).
   const econC = codeOnly(econ);
-  ok(!/gameRich|huntTake|T146/.test(econC),
+  //   [land1094 · PM] `T146` 뒤에 숫자가 이어지면 다른 카드(T1468 …)다 — `T146(?!\d)` 로 T146 만 잡는다(T1468 랩 땅 식별자가 접두로 걸렸다)
+  ok(!/gameRich|huntTake|T146(?!\d)/.test(econC),
     '★★⑩ econ 엔진 **코드**에 T146 이름이 하나도 없다(개체 장부는 생활층 소유)',
-    (econC.match(/gameRich|huntTake|T146/g) || []).join(',') || '0개');
+    (econC.match(/gameRich|huntTake|T146(?!\d)/g) || []).join(',') || '0개');
   const vs = codeOnly(VSRC);
   ok(!/storage\.meat/.test(vs.slice(vs.indexOf('function _lifeGameDay'), vs.indexOf('function huntDeforest'))),
     '★★⑩ 하루 틱이 **곳간에 고기를 안 넣는다**(kill→회계는 다음 판 · 랩 규약)');
