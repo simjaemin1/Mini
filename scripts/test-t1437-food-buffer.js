@@ -246,7 +246,7 @@ console.log('\n⑧ 글자 — 부르는 자리가 한 곳씩');
   const L = [
     [V1F, '  if (T1437_SEEN) t1437Day(v, day);', 1, '틱 머리 칸'], [V1F, '  if (T1437_SEEN) t1437Short(v, foodGap);', 1, '끼니 줄 모자람'],
     [V1F, '  const _b = T1437_SEEN ? t1437Buf(v, d0) : 0;', 1, '(가) 몸통 + 여유분'], [V1F, '  const d = Math.max(1, best / C) + _b;', 1, '(가) 몸통 + 여유분'],
-    [V2F, 'if (v1.T1437_SEEN) v1.t1437Drought(WEATHER_KINDS);', 1, 'v2 가뭄 줄'],
+    [V2F, 'if (v1.T1437_SEEN || v1.T1452_LEDGER) v1.t1437Drought(WEATHER_KINDS);', 1, 'v2 가뭄 줄'],   // ★[T1452] 앞날 장부도 같은 가뭄 날을 받는다(한 줄)
   ];
   const bad = L.filter(([f, s, n]) => SRC[f].split(s).length - 1 !== n).map(([f, s, n, t]) => `${t}(${SRC[f].split(s).length - 1}/${n})`);
   ok(bad.length === 0, '★⑧ 틱 머리 · 끼니 줄 · (가) 몸통 · v2 가뭄 줄 — 한 곳씩', bad.join(' · '));

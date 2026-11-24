@@ -3060,6 +3060,7 @@ const CLAY_DAILY_PC = 0.02;        // 1인당 일일 진흙(장독 유지 — �
 const POTTERY_DECAY_SAVE = 0.3;    // 완전 충족 시 부패 −30%(질그릇 밀폐 — 상한)
 const POTTERY_FOODS = { food: 1, cooked_food: 1, fish: 1, meat: 1, fruit: 1, vegetable: 1, mushroom: 1, wheat: 1, rice: 1, barley: 1 };
 function tickDecay(v) {
+  const _t52r = v1.T1452_LEDGER ? v1.totalFoodEquivalent(v) : 0;   // ★[T1452] 썩음 앞 곳간(그날 썩은 식량 = 차 · 끔 = 무동작)
   if(T1188_ORE_SPLIT)v1.migrateOre(v);
   const N = v.npcs.length || 1;
   // 옹기: 진흙 흐름 소비 → 충족률 EMA(~50일 관성 — 독은 한 번 빚으면 오래감)
@@ -3109,6 +3110,7 @@ function tickDecay(v) {
     const rate = Math.min(0.95, baseRate * (1 + excess * 5) * (POTTERY_FOODS[r] ? _potMul : 1));
     v.storage[r] = s * (1 - rate);
   }
+  if (v1.T1452_LEDGER) v1.t1452Rot(v, _t52r - v1.totalFoodEquivalent(v), _t52r);   // ★[T1452] 그날 썩은 식량 · 그때 곳간(앞날 장부의 썩음 율 · 끔 = 무동작)
 }
 
 // === 날씨 단기 이벤트 (매 day 작은 확률) ===
@@ -3119,7 +3121,7 @@ const WEATHER_KINDS = [
   { name: '🌈풍요', mult: { fertility: 1.25, game: 1.2 }, days: [5, 10] },
   { name: '🌫️안개', mult: { game: 0.7, water: 1.1 }, days: [4, 8] },
 ];
-if (v1.T1437_SEEN) v1.t1437Drought(WEATHER_KINDS);   // ★[T1437] 켬('seen') = 새 마을 여유분 = 이 표의 가장 긴 가뭄 날(끔 = 이 줄 무동작)
+if (v1.T1437_SEEN || v1.T1452_LEDGER) v1.t1437Drought(WEATHER_KINDS);   // ★[T1437] 켬('seen') = 새 마을 여유분 = 이 표의 가장 긴 가뭄 날(끔 = 이 줄 무동작) · ★[T1452] 'ahead' 도 같은 수
 function tickWeather(world, day) {
   // v2 r7: 마을마다 독립 phase로 다양화 — 좌표를 seed offset으로 사용해 동조화 방지.
   for (let i = 0; i < world.villages.length; i++) _weatherRollOne(world.villages[i], day);
