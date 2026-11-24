@@ -230,7 +230,7 @@ let pass = 0, fail = 0;
 const ok = (c, name, info) => { if (c) pass++; else fail++; console.log(`${c ? '  ✓' : '  ✗'} ${name}${info ? ' — ' + info : ''}`); };
 const run = (mode, bait, env) => {
   const r = spawnSync(process.execPath, ['--experimental-sqlite', __filename, mode, bait || '-'], { cwd: ROOT, encoding: 'utf8', timeout: 300000, maxBuffer: 64 << 20,
-    env: Object.assign({}, process.env, { T1423_NO_BUILD: '', T1423_BLOCK_REACT: '', T1423_REACT_MEET: '' }, env || {}) });
+    env: Object.assign({}, process.env, { T1423_NO_BUILD: '', T1423_BLOCK_REACT: '', T1423_REACT_MEET: '', T1305_DEEDS: '0' /* [land1093 · PM] deeds-on-bots(T1458)가 사유지 켬 기본으로 바꿨다 — 이 하네스는 종전 기본(한 칸 선포 문)에서 잰다 */ }, env || {}) });
   const line = (r.stdout || '').split('\n').find((l) => l.startsWith('@@'));
   if (!line) return { err: `rc ${r.status} · ${String(r.stderr || '').slice(-600)}` };
   return JSON.parse(line.slice(2));
