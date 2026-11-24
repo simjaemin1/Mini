@@ -12,7 +12,7 @@
 //   ④ 사본 0 — 굽기가 고르는 함수 = 서버 `_terrGrowCore` 가 부르는 바로 그 `_terrPick`(굽기에 제 점수식이 없고 · 서버 넓히기가 그 함수 하나를 부른다) ·
 //      손 지도 위 `_t1468Probe.pick` 한 번 = 같은 자리 `_terrGrowCore` 하루(마을 C — 후보가 하루 몫보다 많아 점수가 고른다 · 목표 끝없음)
 //   ⑤ 끔 = 종전 바이트 — 손잡이 끔 판 = 손잡이 줄을 지운 사본 판(②의 세계 · 300날 · 날마다 마을 땅 · 인구)
-//   미끼 다섯(이 파일 안 — 아이가 글자를 싣는 순간 한 자리를 바꾼다):
+//   미끼 다섯(이 파일 안 — 아이가 글자를 싣는 순간 한 자리를 바꾼다 · 미끼 아이가 끝까지 돌아 값을 낸 때만 빨강으로 센다 — 죽은 아이는 통과 아님):
 //     `over` 끝 검사를 지운 econ → ② 빨강 · `share` 남의 영토 칸 거르기를 지운 서버 고르기 → ③ 빨강 · `stale` 지도 원천 한 글자 바꾼 지문 → ① 빨강 ·
 //     `copy` 굽기가 제 점수식(비옥도 가중 다른 수)으로 고름 → ④ 빨강 · `offdiff` 끔에서도 끝을 보는 econ → ⑤ 빨강
 // 실행: node scripts/test-t1468-lab-land.js   (아이 아홉 · 약 60초)
@@ -132,13 +132,12 @@ if (process.argv[2] === '--sig') {
   const { streamSig } = B.terrain();
   let root = ROOT, tmp = null;
   if (process.env.T1468_BAIT === 'stale') {
-    tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 't1468-stale-'));
+    tmp = require('./lib-tmp').dir('t1468_stale');   // 판 끝에 지운다(lint ㉑)
     for (const f of B.MAP_FILES.concat(['server/villages.js'])) { const src = path.join(ROOT, f), dst = path.join(tmp, f); if (!fs.existsSync(src)) continue; fs.mkdirSync(path.dirname(dst), { recursive: true }); fs.copyFileSync(src, dst); }
     fs.appendFileSync(path.join(tmp, 'server/hanbando-terrain.json'), '\n');
     root = tmp;
   }
   const sig = B.mapSig(streamSig, root);
-  if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
   process.stdout.write('\n' + JSON.stringify({ sig }));
   process.exit(0);
 }
@@ -176,19 +175,19 @@ ok(q5(OFF, CP), '⑤ 끔 = 손잡이 줄을 지운 사본(마을 8 · 300날 · 
 console.log('  — 미끼(이 파일 안)');
 // @bait over
 const bOver = kid('--world', { T1468_LAB_LAND: '1', T1468_BAIT: 'over' });
-ok(!q2(bOver), '미끼 over(끝 검사를 지운 econ) → ② 빨강', bOver && (bOver.err || `넘김 ${bOver.over}`));
+ok(!!(bOver && !bOver.err) && !q2(bOver), '[미끼 over] 바꾼 자리 1곳(끝 검사를 지운 econ) → ② 빨강', bOver && (bOver.err || `넘김 ${bOver.over}`));
 // @bait share
 const bShare = kid('--hand', { T1468_BAIT: 'share' });
-ok(!q3(bShare), '미끼 share(남의 영토 칸 거르기를 지운 고르기) → ③ 빨강', bShare && (bShare.err || JSON.stringify(bShare.three)));
+ok(!!(bShare && bShare.three) && !q3(bShare), '[미끼 share] 바꾼 자리 1곳(남의 영토 칸 거르기를 지운 고르기) → ③ 빨강', bShare && (bShare.err || JSON.stringify(bShare.three)));
 // @bait stale
 const bStale = sigNow('stale');
-ok(!q1(bStale), '미끼 stale(지도 원천이 바뀐 뒤 옛 표) → ① 빨강', bStale);
+ok(/^[0-9a-f]{16}$/.test(String(bStale)) && !q1(bStale), '[미끼 stale] 바꾼 자리 1곳(지도 원천에 한 글자 — 옛 표) → ① 빨강', bStale);
 // @bait copy
 const bCopy = kid('--hand', { T1468_BAIT: 'copy' });
-ok(!q4(bCopy, CORE), '미끼 copy(굽기가 다른 고르기 — 비옥도 가중 3.5 → 0.35) → ④ 빨강', bCopy && (bCopy.err || `pick ${bCopy.pick && bCopy.pick.length}`));
+ok(!!(bCopy && Array.isArray(bCopy.pick)) && !q4(bCopy, CORE), '[미끼 copy] 바꾼 자리 1곳(굽기가 다른 고르기 — 비옥도 가중 3.5 → 0.35) → ④ 빨강', bCopy && (bCopy.err || `pick ${bCopy.pick && bCopy.pick.length}`));
 // @bait offdiff
 const bOff = kid('--world', { T1468_BAIT: 'offdiff' });
-ok(!q5(bOff, CP), '미끼 offdiff(끔에서도 끝을 보는 econ) → ⑤ 빨강', bOff && (bOff.err || ''));
+ok(!!(bOff && !bOff.err && bOff.days) && !q5(bOff, CP), '[미끼 offdiff] 바꾼 자리 1곳(끔에서도 끝을 보는 econ) → ⑤ 빨강', bOff && (bOff.err || ''));
 
 console.log(`\n[T1468] ${pass}/${fail} · ${((Date.now() - t0) / 1000).toFixed(0)}초`);
 process.exit(fail ? 1 : 0);
