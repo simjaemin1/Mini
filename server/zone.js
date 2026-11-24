@@ -7119,6 +7119,8 @@ SimVillages.init({ spawnNpc, players, npcs, broadcast, isTerrainBlockedLocal, is
   // ★★[T590] 줄어드는 몸 — 그 자리에서 죽는 주민이 짐을 떨구는 문(플레이어 죽음 캐논의 낙하 그 함수 · 사본 0) ·
   //   누운 몸이 남는 시간(사람 시신 문법이 없어 짐승 시신의 그 값을 빌린다 — 값은 회부 · 보고/T590).
   deathDrop: (p) => _deathDrop(p), corpseMs: CORPSE_DECAY_MS,
+  // ★[T1459] 버린 짐 더미에서 도적이 못 진 몫 — 그 자리 땅 꾸러미(정본 낙하 `_spawnGroundItems` 그대로 · 누구나 `tryPickupItem` 으로 줍는다 · 10분 청소 그대로) · 있나 · 청소 시한
+  t1459Ground: (x, y, item, n, kg) => _spawnGroundItems({ x, y, floor: 0 }, item, [{ n, kg }], null), t1459GroundHas: (gid) => groundItems.has(gid), t1459GroundLife: GROUND_ITEM_LIFETIME_MS,
   // ★★[T942] 몸 HP 문 — 마을 몸(NPC)의 HP 도 사람 문 그 함수(`setHp` · T109 "HP 를 바꾸는 문 하나" · 사본 0)로 쓴다(생활층 요양 · 전쟁 거울 · 포로 · 풀림 ·
   //   원정 굶음 · 캐러밴 죽음 · 다시 뜬 판 복원). NPC 몸은 소켓이 없고(`ws: null`) 마을 낱말은 방송 낱말(`HP_PEER`)이 아니라 메시지 0 = 종전.
   setHp,

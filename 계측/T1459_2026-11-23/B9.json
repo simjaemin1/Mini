@@ -1,0 +1,51 @@
+[
+ {
+  "tag": "G9_1020",
+  "seed": 1020,
+  "days": 730,
+  "env": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1",
+   "T1431_RAID_BATTLE": "1",
+   "T1459_LOOT_GROUND": "1",
+   "T1459_LIVE": "1"
+  },
+  "kind": "sbc",
+  "root": "/root/wt/b1459"
+ },
+ {
+  "tag": "G9_7",
+  "seed": 7,
+  "days": 730,
+  "env": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1",
+   "T1431_RAID_BATTLE": "1",
+   "T1459_LOOT_GROUND": "1",
+   "T1459_LIVE": "1"
+  },
+  "kind": "sbc",
+  "root": "/root/wt/b1459"
+ },
+ {
+  "tag": "G9_42",
+  "seed": 42,
+  "days": 730,
+  "env": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1",
+   "T1431_RAID_BATTLE": "1",
+   "T1459_LOOT_GROUND": "1",
+   "T1459_LIVE": "1"
+  },
+  "kind": "sbc",
+  "root": "/root/wt/b1459",
+  "heap": 4608
+ }
+]
