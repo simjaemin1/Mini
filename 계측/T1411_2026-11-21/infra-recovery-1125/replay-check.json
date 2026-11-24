@@ -1,0 +1,117 @@
+{
+ "kind": "daily-observation-replay-check",
+ "complete": true,
+ "scope": "All retained daily observation fields except the three named CPU/uptime fields; not a full-state fingerprint or an independent world.",
+ "cases": {
+  "ON-1020/t1274-days": {
+   "expectedDays": [
+    521,
+    522,
+    523,
+    524
+   ],
+   "matchedDays": [
+    521,
+    522,
+    523,
+    524
+   ],
+   "excludedTimingFields": [
+    "cpuSeconds",
+    "processCPUSeconds",
+    "uptimeSeconds"
+   ],
+   "differences": [],
+   "archivedFileSha256": "7fbe99516e4ca06be036705bc87c4aac5216413e89bbb450a5092d6e2bbc6cd2"
+  },
+  "ON-1020/t1302-days": {
+   "expectedDays": [
+    521,
+    522,
+    523,
+    524
+   ],
+   "matchedDays": [
+    521,
+    522,
+    523,
+    524
+   ],
+   "excludedTimingFields": [],
+   "differences": [],
+   "archivedFileSha256": "0599e8c2f1949ba6ddbce08c45def1f43394a7f30617a027a62d10b29a314f97"
+  },
+  "ON-1020/t1411-census": {
+   "expectedDays": [
+    521,
+    522,
+    523,
+    524
+   ],
+   "matchedDays": [
+    521,
+    522,
+    523,
+    524
+   ],
+   "excludedTimingFields": [],
+   "differences": [],
+   "archivedFileSha256": "2df6826512d59daabeaa26b66ee1f36cda1527944022fbc0da02b80937416720"
+  },
+  "OFF-1020/t1274-days": {
+   "expectedDays": [
+    531,
+    532,
+    533,
+    534
+   ],
+   "matchedDays": [
+    531,
+    532,
+    533,
+    534
+   ],
+   "excludedTimingFields": [
+    "cpuSeconds",
+    "processCPUSeconds",
+    "uptimeSeconds"
+   ],
+   "differences": [],
+   "archivedFileSha256": "3677b4b5209b29a240bab90ab405122c73fd464e719e77e380383bdeec97f1de"
+  },
+  "OFF-1020/t1302-days": {
+   "expectedDays": [
+    531,
+    532,
+    533,
+    534
+   ],
+   "matchedDays": [
+    531,
+    532,
+    533,
+    534
+   ],
+   "excludedTimingFields": [],
+   "differences": [],
+   "archivedFileSha256": "d11955bef38bad3671d7c90c40c1614243e362dcc1b462805ac83f4ff79eb218"
+  },
+  "OFF-1020/t1411-census": {
+   "expectedDays": [
+    531,
+    532,
+    533,
+    534
+   ],
+   "matchedDays": [
+    531,
+    532,
+    533,
+    534
+   ],
+   "excludedTimingFields": [],
+   "differences": [],
+   "archivedFileSha256": "4628fc4623e218a801628318a40fd6a70172e97eecbb4eddd90cecdb28930745"
+  }
+ }
+}
