@@ -1,0 +1,50 @@
+{
+  "kind": "T1434 historical CPU samples; not call counts",
+  "source": "계측/T1434_2026-11-22/prof-h6g-42-d1163.cpuprofile.gz",
+  "sha256": "20065d74057c5c744dfbb70e6bdc84850b341647dcc3ea9c46da5c68fd0473be",
+  "sampleCount": 78833,
+  "functions": {
+    "_warTickOne": {
+      "selfSamples": 638,
+      "inclusiveSamples": 64814,
+      "selfPct": 0.8093057475930131,
+      "inclusivePct": 82.21683812616544
+    },
+    "_muStepFollow": {
+      "selfSamples": 2504,
+      "inclusiveSamples": 51535,
+      "selfPct": 3.1763347836565905,
+      "inclusivePct": 65.37236943919424
+    },
+    "_warHoldCtlSides": {
+      "selfSamples": 97,
+      "inclusiveSamples": 43932,
+      "selfPct": 0.12304491773749572,
+      "inclusivePct": 55.72793119632641
+    },
+    "_muDefHold": {
+      "selfSamples": 717,
+      "inclusiveSamples": 43828,
+      "selfPct": 0.9095175878122106,
+      "inclusivePct": 55.59600674844291
+    },
+    "_warStandNear": {
+      "selfSamples": 12702,
+      "inclusiveSamples": 37026,
+      "selfPct": 16.112541702079078,
+      "inclusivePct": 46.967640455139346
+    },
+    "_standCellNear": {
+      "selfSamples": 24100,
+      "inclusiveSamples": 24322,
+      "selfPct": 30.570953788388113,
+      "inclusivePct": 30.852561744447122
+    },
+    "(garbage collector)": {
+      "selfSamples": 9548,
+      "inclusiveSamples": 9548,
+      "selfPct": 12.11167911915061,
+      "inclusivePct": 12.11167911915061
+    }
+  }
+}

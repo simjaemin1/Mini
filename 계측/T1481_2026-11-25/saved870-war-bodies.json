@@ -1,0 +1,1943 @@
+{
+  "savedVillageBodies": {
+    "광산5": {
+      "econPop": 146,
+      "savedBodies": 146,
+      "muster": 146,
+      "simWar": 146,
+      "types": {
+        "archer": 43,
+        "slinger": 43,
+        "dagger": 6,
+        "greataxe": 25,
+        "spear": 23,
+        "pike": 4,
+        "militia": 2
+      }
+    },
+    "임업2": {
+      "econPop": 223,
+      "savedBodies": 223,
+      "muster": 44,
+      "simWar": 44,
+      "types": {
+        "archer": 37,
+        "dagger": 7
+      }
+    }
+  },
+  "minEnemyDistanceByVillageType": {
+    "광산5/archer": 40.732758148334995,
+    "광산5/slinger": 53.18933463042693,
+    "광산5/dagger": 18.7289737644095,
+    "광산5/greataxe": 19.872542491155254,
+    "광산5/spear": 26.59154847456712,
+    "광산5/pike": 35.107617636591854,
+    "광산5/militia": 38.730874073976544,
+    "임업2/archer": 18.7289737644095,
+    "임업2/dagger": 20.295023730971867
+  },
+  "minEnemyDistance": 18.7289737644095,
+  "units": [
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1130.3781414694595,
+      "y": 2962.6741400939172,
+      "muster": true,
+      "side": 1,
+      "cmd": true,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1129.5342153251047,
+      "y": 2963.767746158859,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1128.653447335583,
+      "y": 2964.7092028249076,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1128.142929670322,
+      "y": 2965.7547689034595,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1127.2024890935081,
+      "y": 2966.905733191326,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1126.4892442347157,
+      "y": 2967.4766548130187,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1125.9837138332416,
+      "y": 2968.7841422069077,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1125.3343279405528,
+      "y": 2969.873281866031,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1128.3205237418392,
+      "y": 2961.4407542008425,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1127.0761795840158,
+      "y": 2962.817257383076,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1126.522466358471,
+      "y": 2963.923892390922,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1125.5332402998554,
+      "y": 2964.6447407469436,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1125.178381696096,
+      "y": 2966.0230773855606,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1124.2737353585228,
+      "y": 2966.9436143709577,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1123.4002764038805,
+      "y": 2968.0934397692654,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1122.608369175792,
+      "y": 2969.0205584252294,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1126.798902271812,
+      "y": 2959.5287905266377,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1126.0480724403787,
+      "y": 2960.4693293656387,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1124.8103137155026,
+      "y": 2961.6494700349062,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1124.3111805294775,
+      "y": 2962.7935669192047,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1123.4454438081575,
+      "y": 2963.847509114679,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1122.8280563175886,
+      "y": 2965.204558749094,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1121.795432861387,
+      "y": 2966.064019050571,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1121.0497582643313,
+      "y": 2967.2820527229414,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1124.0432689631652,
+      "y": 2958.7988578141794,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1123.4601570544935,
+      "y": 2959.864581660568,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1122.7292458641307,
+      "y": 2960.8683619380467,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1122.0661796344546,
+      "y": 2962.2252701867365,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1121.2817098283829,
+      "y": 2963.0986195276128,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1120.3358137681048,
+      "y": 2963.8911639729495,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1119.935731214789,
+      "y": 2965.0815979110885,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1118.8653399941052,
+      "y": 2966.042458875632,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1122.8247003403496,
+      "y": 2957.2666199571177,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1121.7486817756164,
+      "y": 2958.188064242521,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1121.2053723530066,
+      "y": 2958.9920753198576,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1120.190931364764,
+      "y": 2960.1571993221696,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1119.8156918025388,
+      "y": 2961.003761596875,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1118.9400446986153,
+      "y": 2962.531981194327,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1118.14328338721,
+      "y": 2963.491158910432,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1117.6642771818063,
+      "y": 2964.305923075951,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1120.260532784439,
+      "y": 2956.0156513689617,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1119.710914601098,
+      "y": 2957.2225003365375,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "archer",
+      "x": 1118.7552568738242,
+      "y": 2958.2019733226352,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1118.0890273312957,
+      "y": 2959.465149514064,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1117.512857572481,
+      "y": 2960.606678591837,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1116.4425391053794,
+      "y": 2961.4916105308776,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1116.0316405634724,
+      "y": 2962.2961449144823,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1115.265181346152,
+      "y": 2963.555022930267,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1118.817910820705,
+      "y": 2954.666201685011,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1118.0280387787723,
+      "y": 2955.2945141491773,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1117.5239397257817,
+      "y": 2956.5435342388832,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1116.4174942690804,
+      "y": 2957.737948703426,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1115.7483840131197,
+      "y": 2958.4986286785083,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1114.7736240932584,
+      "y": 2959.768016755118,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1114.4786756055823,
+      "y": 2960.7841368581167,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1113.5583535360793,
+      "y": 2961.5034932676317,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1116.1954761654665,
+      "y": 2953.735845288766,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1115.5748923592137,
+      "y": 2954.625626017838,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1115.1417691204963,
+      "y": 2955.609163215143,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1114.2954386857198,
+      "y": 2956.901817564152,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1113.7187394866012,
+      "y": 2957.7354822872,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1112.6773066503945,
+      "y": 2959.060347261231,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1111.8430326311757,
+      "y": 2959.9157069367216,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1111.3935273814163,
+      "y": 2961.022447803565,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1114.7921815637294,
+      "y": 2951.965084636625,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1114.0652410452578,
+      "y": 2952.5621709072448,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1113.05845367861,
+      "y": 2953.97577051567,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1112.769801619517,
+      "y": 2954.9585196244193,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1112.0982581001742,
+      "y": 2956.1413553694156,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1110.9374126285575,
+      "y": 2956.8889764509154,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1110.1252936022804,
+      "y": 2957.8304072722717,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1109.5485429298656,
+      "y": 2959.2739705743006,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1112.2180281055698,
+      "y": 2950.7731965351163,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1111.7032252029355,
+      "y": 2952.1930316114217,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1110.8525899401216,
+      "y": 2952.720898762722,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1110.1058621117177,
+      "y": 2953.964885641265,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1109.314677893846,
+      "y": 2954.8447521784506,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1109.0229253008176,
+      "y": 2956.1231782453942,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1108.0907101060004,
+      "y": 2957.3694096430936,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1107.1564805560226,
+      "y": 2958.238600147262,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1110.0428269689194,
+      "y": 2949.9727984461583,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1109.4832807693597,
+      "y": 2951.4067382700205,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1109.7079403445,
+      "y": 2952.307553824361,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1108.2075828312618,
+      "y": 2953.395417668065,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1107.0683261076654,
+      "y": 2954.5274992965155,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "slinger",
+      "x": 1106.5957156517227,
+      "y": 2955.621564261989,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "dagger",
+      "x": 1149.6263044003858,
+      "y": 2971.428213313389,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "dagger",
+      "x": 1149.9977101127781,
+      "y": 2971.988155333982,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "dagger",
+      "x": 1150.3589746097136,
+      "y": 2971.999263091983,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "dagger",
+      "x": 1137.0368771665571,
+      "y": 2974.999743163103,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "dagger",
+      "x": 1137.4917951662153,
+      "y": 2974.9917236738615,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "dagger",
+      "x": 1136.9134485166069,
+      "y": 2974.9129905498635,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "greataxe",
+      "x": 1149.0449510783185,
+      "y": 2971.9993970681826,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "greataxe",
+      "x": 1146.069245461878,
+      "y": 2972.9843263884227,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "greataxe",
+      "x": 1145.303700101688,
+      "y": 2972.996196941254,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "greataxe",
+      "x": 1146.3836694247573,
+      "y": 2972.9947542356695,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "greataxe",
+      "x": 1145.2304622411143,
+      "y": 2972.981347409058,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "greataxe",
+      "x": 1142.3145762261734,
+      "y": 2973.3225637595965,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "greataxe",
+      "x": 1142.1882577045976,
+      "y": 2973.997889258078,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "greataxe",
+      "x": 1140.324181842695,
+      "y": 2973.656642729991,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "greataxe",
+      "x": 1145.863946699561,
+      "y": 2972.0350098813715,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "greataxe",
+      "x": 1146.1626376078514,
+      "y": 2972.215010980917,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "greataxe",
+      "x": 1145.0283139288608,
+      "y": 2972.3499325619136,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "greataxe",
+      "x": 1142.9958739385715,
+      "y": 2973.736377900569,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "greataxe",
+      "x": 1141.266426074583,
+      "y": 2973.6135025691806,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "greataxe",
+      "x": 1141.1422425790768,
+      "y": 2973.9836657312017,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "greataxe",
+      "x": 1142.082232674086,
+      "y": 2973.991917850562,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "greataxe",
+      "x": 1141.3682049969188,
+      "y": 2973.6005288246915,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "greataxe",
+      "x": 1146.9807461002783,
+      "y": 2972.620343665459,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "greataxe",
+      "x": 1144.7127025190232,
+      "y": 2972.9739116953024,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "greataxe",
+      "x": 1144.2988939925233,
+      "y": 2972.840218971005,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "greataxe",
+      "x": 1141.294137852322,
+      "y": 2973.9803969529553,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "greataxe",
+      "x": 1141.1068130448782,
+      "y": 2973.9752771764743,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "greataxe",
+      "x": 1142.2065220660509,
+      "y": 2973.993273627138,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "greataxe",
+      "x": 1139.1156715134591,
+      "y": 2973.8964763757376,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "greataxe",
+      "x": 1137.4787374840985,
+      "y": 2974.1656577075073,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "greataxe",
+      "x": 1139.9329457786323,
+      "y": 2973.9701147641817,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "spear",
+      "x": 1142.076518435846,
+      "y": 2970.9819857079797,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "spear",
+      "x": 1140.9740634481511,
+      "y": 2971.444953323396,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "spear",
+      "x": 1140.5357413266577,
+      "y": 2972.2786890791417,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "spear",
+      "x": 1139.7007612240557,
+      "y": 2973.18657058384,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "spear",
+      "x": 1137.9705911614599,
+      "y": 2974.3505906776277,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "spear",
+      "x": 1137.366027893661,
+      "y": 2974.9974022458355,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "spear",
+      "x": 1135.6031303117923,
+      "y": 2974.9990707885345,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "spear",
+      "x": 1133.716207122784,
+      "y": 2975.9647581034556,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "spear",
+      "x": 1139.9188918809552,
+      "y": 2969.349382721798,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "spear",
+      "x": 1139.2087427105323,
+      "y": 2970.776359822701,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "spear",
+      "x": 1138.548450325156,
+      "y": 2971.5563159215676,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "spear",
+      "x": 1137.5992045576243,
+      "y": 2972.4429288192805,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "spear",
+      "x": 1137.1989021299512,
+      "y": 2973.316767962184,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "spear",
+      "x": 1136.5756323986743,
+      "y": 2974.0300323754514,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "spear",
+      "x": 1135.7942409372606,
+      "y": 2974.444604833508,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "spear",
+      "x": 1132.8612385081965,
+      "y": 2975.9999879565003,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "spear",
+      "x": 1137.3251560208466,
+      "y": 2968.850168157301,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "spear",
+      "x": 1136.710801285749,
+      "y": 2969.901327765861,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "spear",
+      "x": 1136.2710208260414,
+      "y": 2970.7705195700178,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "spear",
+      "x": 1135.10491507392,
+      "y": 2971.5700510423508,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "spear",
+      "x": 1134.7387145153118,
+      "y": 2972.9768662323404,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "spear",
+      "x": 1133.7854612355256,
+      "y": 2973.8619698811576,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "spear",
+      "x": 1132.8221771397596,
+      "y": 2974.6385218077194,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "pike",
+      "x": 1133.9107392042788,
+      "y": 2968.4418427554865,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "pike",
+      "x": 1133.1680080252477,
+      "y": 2969.6927290310678,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "pike",
+      "x": 1132.0940027794577,
+      "y": 2970.3478507900554,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "pike",
+      "x": 1131.873792541745,
+      "y": 2971.50213243584,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "militia",
+      "x": 1130.304588817584,
+      "y": 2967.6832241645243,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "광산5",
+      "type": "militia",
+      "x": 1129.5756678404944,
+      "y": 2968.7522981048733,
+      "muster": true,
+      "side": 1,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1166.5000000000034,
+      "y": 2981.4988292724966,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1168.4970388909787,
+      "y": 2983.5220995554714,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1167.4574488328908,
+      "y": 2983.4574488328913,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1166.4999999999982,
+      "y": 2984.9693580302655,
+      "muster": true,
+      "side": 0,
+      "cmd": true,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1167.4462030886,
+      "y": 2986.499999999997,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1168.1382441666512,
+      "y": 2981.910568138405,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1167.8326069766294,
+      "y": 2984.498910464949,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1169.7343421339044,
+      "y": 2986.237438226131,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1169.2230615175845,
+      "y": 2986.0102502284103,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1168.4056648293993,
+      "y": 2985.4089865614446,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1167.4965639787772,
+      "y": 2989.499999999997,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1169.3115728577957,
+      "y": 2986.529039666774,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1168.4039129840553,
+      "y": 2986.9752148400858,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1169.3094283575326,
+      "y": 2987.422704222993,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1168.6584430042274,
+      "y": 2988.7110339221313,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1170.3762429498663,
+      "y": 2989.091102876871,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1171.7013331945896,
+      "y": 2989.0073918866183,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1169.3775931557684,
+      "y": 2989.3804782212624,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1168.3486031226516,
+      "y": 2990.1162010408843,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1171.4063088992057,
+      "y": 2989.367986790871,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1169.7365130740486,
+      "y": 2989.7678497327975,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1170.349708244667,
+      "y": 2989.5980419059742,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1167.9928162287047,
+      "y": 2987.960269506831,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1171.8084126754302,
+      "y": 2989.83968122094,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1171.454529507984,
+      "y": 2998.4999999999964,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1169.4444948714395,
+      "y": 2998.499999999997,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1170.8783690414637,
+      "y": 2989.5137366619797,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1172.9434672804027,
+      "y": 2991.9274075269436,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1171.2459592058976,
+      "y": 2995.0819864019663,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1171.2603891942463,
+      "y": 2989.8769819342474,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1172.5428327081456,
+      "y": 2998.500000000003,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1172.3192238206625,
+      "y": 2992.0997280668007,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1170.4416514528107,
+      "y": 2991.276660581116,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1171.3426809453485,
+      "y": 2991.788863118197,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1173.6834020081317,
+      "y": 2995.298460712485,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1173.856722564573,
+      "y": 2997.360113380089,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "archer",
+      "x": 1173.347718086937,
+      "y": 2996.2695436173844,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "dagger",
+      "x": 1165.6227333669594,
+      "y": 2990.9671051938235,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "dagger",
+      "x": 1164.3436742536576,
+      "y": 2989.6413751764467,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "dagger",
+      "x": 1163.774105598846,
+      "y": 2988.861370522545,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "dagger",
+      "x": 1162.9174312959406,
+      "y": 2988.575402414198,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "dagger",
+      "x": 1169.9614386195335,
+      "y": 2986.688763377187,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "dagger",
+      "x": 1168.9444119853604,
+      "y": 2982.547143739808,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    },
+    {
+      "village": "임업2",
+      "type": "dagger",
+      "x": 1168.7999464231502,
+      "y": 2980.473845489762,
+      "muster": true,
+      "side": 0,
+      "cmd": false,
+      "pid": null
+    }
+  ]
+}
