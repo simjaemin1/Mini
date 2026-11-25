@@ -1,0 +1,95 @@
+{
+  "kind": "saved 870 body positions and canonical battle-core weapon ranges",
+  "types": {
+    "광산5/archer": {
+      "count": 43,
+      "weaponReach": 1.2,
+      "rangedRange": 40,
+      "nearestEnemy": 40.732758148334995,
+      "withinOwnRange": 0
+    },
+    "광산5/slinger": {
+      "count": 43,
+      "weaponReach": 1.2,
+      "rangedRange": 52,
+      "nearestEnemy": 53.18933463042693,
+      "withinOwnRange": 0
+    },
+    "광산5/dagger": {
+      "count": 6,
+      "weaponReach": 1.35,
+      "rangedRange": 0,
+      "nearestEnemy": 18.7289737644095,
+      "withinOwnRange": 0
+    },
+    "광산5/greataxe": {
+      "count": 25,
+      "weaponReach": 1.6,
+      "rangedRange": 0,
+      "nearestEnemy": 19.872542491155254,
+      "withinOwnRange": 0
+    },
+    "광산5/spear": {
+      "count": 23,
+      "weaponReach": 1.8,
+      "rangedRange": 0,
+      "nearestEnemy": 26.59154847456712,
+      "withinOwnRange": 0
+    },
+    "광산5/pike": {
+      "count": 4,
+      "weaponReach": 2.5,
+      "rangedRange": 0,
+      "nearestEnemy": 35.107617636591854,
+      "withinOwnRange": 0
+    },
+    "광산5/militia": {
+      "count": 2,
+      "weaponReach": 1.4,
+      "rangedRange": 0,
+      "nearestEnemy": 38.730874073976544,
+      "withinOwnRange": 0
+    },
+    "임업2/archer": {
+      "count": 37,
+      "weaponReach": 1.2,
+      "rangedRange": 40,
+      "nearestEnemy": 18.7289737644095,
+      "withinOwnRange": 37
+    },
+    "임업2/dagger": {
+      "count": 7,
+      "weaponReach": 1.35,
+      "rangedRange": 0,
+      "nearestEnemy": 20.295023730971867,
+      "withinOwnRange": 0
+    }
+  },
+  "savedAmmo": {
+    "attackWarArrows": 740,
+    "attackWarStones": 0,
+    "defenseActualLastSynced": {
+      "n": 146,
+      "archer": 43,
+      "slinger": 43,
+      "arrows": 860,
+      "stones": 645
+    },
+    "attackActualBattleContext": "not persisted / not measured"
+  },
+  "formationSnapshot": {
+    "fight": "advance",
+    "advSide": "A",
+    "released": false,
+    "A_ctl": 44,
+    "B_ctl": 146,
+    "A_clearFalse": 37,
+    "advanceGateRootCause": "not measured: formed/group-ready and release clear-line gate not separately instrumented"
+  },
+  "source": {
+    "skipControlled": "sim/battle-core.js:287",
+    "rangedGate": "sim/battle-core.js:338",
+    "advanceRelease": "server/villages.js:12678",
+    "advanceFormationGate": "server/villages.js:12694"
+  }
+}

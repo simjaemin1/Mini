@@ -1,0 +1,40 @@
+{
+  "fixture": "scripts/test-t1060-scram-hold.js",
+  "env": {
+    "T1060_SUB": "war",
+    "T1060_P": {
+      "far": [
+        0,
+        0
+      ]
+    },
+    "T1481_FROM": "0"
+  },
+  "exit": 0,
+  "rows": 6,
+  "totals": {
+    "calls": 1564,
+    "warTicks": 7993,
+    "scans": 7020,
+    "identified": 900,
+    "repeat": 899
+  },
+  "marchFixture": {
+    "command": "WW_PART=march node scripts/test-war-world.js",
+    "pass": 7,
+    "fail": 0
+  },
+  "observerProductJsonSame": false,
+  "observerFullLogByteSame": false,
+  "fixedDate": {
+    "DateNow": 12000001,
+    "fullOutputByteSame": true,
+    "totals": {
+      "calls": 1617,
+      "warTicks": 7993,
+      "scans": 7990,
+      "identified": 900,
+      "repeat": 899
+    }
+  }
+}
