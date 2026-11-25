@@ -20,7 +20,7 @@ if (process.argv[2] === 'child') {
   WL.bindGroupUnit(ga,players.get('p1')); WL.bindGroupUnit(gb,players.get('p2'));
   const ua = WL.enlist(f,'A',ga,players.get('p1')), ub = WL.enlist(f,'B',gb,players.get('p2'));
   ua.ctl=false; ub.ctl=false; ua.mrl=1; ub.mrl=1;
-  ua.cd=Number(process.argv[3]); ub.cd=100;
+  ua.cd=Number(process.argv[3]); ub.cd=0;
   f.state='engaged';f.physical=true;
   f.ctx.sides.A.arrows=20;
   const body={w,phase:'march',pids:['p1'],defPids:['p2'],atkGroup:{units:[ga]},defGroup:{units:[gb]},fight:f};
