@@ -4,7 +4,7 @@
 //   짝 = 같은 시드의 끔(off) ↔ 켬. 끔 판은 시드마다 하나(네 손잡이가 같이 쓴다 — 가상 시계 판은 결정론이라 같은 시드 끔 판은 바이트 같다).
 //   "돈 횟수" = 그 손잡이의 길이 켬 판에서 실제로 닿은 수(손잡이마다 아래 FIRE 에 적은 셈 · 끔 판에서는 0 이어야 한다).
 //   등급(스크립트가 낸다): 안 돎 = 켬 판 열 개 합 돈 횟수 0 · 다) = 인구 끔비 가운데 < 0.98 또는 빈 마을 합 + 2 이상 또는 하루 걸린 초 ×1.3 넘음 또는 굶어 죽음 합 +10% 넘음 ·
-//            나) = 인구 끔비 가운데 > 1.02 이고 빈 마을 · 굶어 죽음이 안 늚 · 가) = 그 밖(돌았고 해 없음).
+//            나) = (인구 끔비 가운데 > 1.02 또는 하루 걸린 초 ×0.7 밑) 이고 빈 마을 · 굶어 죽음이 안 늚 · 가) = 그 밖(돌았고 해 없음).
 const fs = require('fs'), path = require('path');
 const R = process.env.R || process.argv[2]; if (!R) { console.error('R=<폴더>'); process.exit(2); }
 const RUNS = path.join(R, 'runs');
@@ -57,7 +57,7 @@ for (const a of ARMS) {
   const ratio = live.map((p) => p.on.last.pop / p.off.last.pop);
   const dEmpty = live.map((p) => p.on.last.empty - p.off.last.empty);
   const dFd = live.map((p) => p.on.last.fd - p.off.last.fd), fdOff = live.reduce((x, p) => x + p.off.last.fd, 0);
-  const spd = (r) => r.last.wall / Math.max(1, r.last.d);
+  const spd = (r) => { const d0 = r.rec.days.find((x) => x.d >= 1 + (r.rec.day0 | 0)) || r.rec.days[0]; return (r.last.wall - d0.wall) / Math.max(1, r.last.d - d0.d); };   // 부팅을 뺀 날 사이 벽시계 초(봇 손짓 첫 날 다음 날부터 끝까지)
   const sOn = med(live.map((p) => spd(p.on))), sOff = med(live.map((p) => spd(p.off)));
   const g = (r, path) => path.split('.').reduce((o, k) => (o == null ? o : o[k]), r.rec.g);
   const A = {
@@ -85,7 +85,7 @@ for (const a of ARMS) {
   if (!A.pairs) cls = '자료 없음';
   else if (A.fireTot === 0) cls = '안 돎';
   else if ((A.ratioMed != null && A.ratioMed < 0.98) || A.dEmptySum >= 2 || (A.secRatio != null && A.secRatio > 1.3) || (A.fdOff > 0 && A.dFdSum / A.fdOff > 0.10)) cls = '다';
-  else if (A.ratioMed > 1.02 && A.dEmptySum <= 0 && A.dFdSum <= 0) cls = '나';
+  else if ((A.ratioMed > 1.02 || (A.secRatio != null && A.secRatio < 0.7)) && A.dEmptySum <= 0 && A.dFdSum <= 0) cls = '나';
   else cls = '가';
   A.cls = cls; out.arms[a] = A;
 }
