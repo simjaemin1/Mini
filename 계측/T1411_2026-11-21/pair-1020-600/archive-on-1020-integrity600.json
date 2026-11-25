@@ -1,0 +1,9 @@
+{
+ "left": "/tmp/t1411/worlds/ON-1020",
+ "right": "/workspace/Mini/계측/T1411_2026-11-21/pair-1020-600/ON-1020",
+ "days": 600,
+ "econCompared": 600,
+ "villageCompared": 600,
+ "same": true,
+ "differences": []
+}

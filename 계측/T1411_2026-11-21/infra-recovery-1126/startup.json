@@ -1,0 +1,48 @@
+{
+ "kind": "detached-infrastructure-resume",
+ "newSession": true,
+ "stdin": "DEVNULL",
+ "tasks": [
+  {
+   "role": "campaign",
+   "pid": 19714,
+   "command": [
+    "python3",
+    "/workspace/Mini/scripts/t1411-campaign.py",
+    "--root",
+    "/tmp/t1411",
+    "--repo",
+    "/workspace/Mini",
+    "--resume"
+   ],
+   "log": "/tmp/t1411/campaign-recovered-7.log"
+  },
+  {
+   "role": "backup",
+   "pid": 19715,
+   "command": [
+    "python3",
+    "/workspace/Mini/scripts/t1411-watch.py",
+    "--runs",
+    "/tmp/t1411/worlds",
+    "--out",
+    "/workspace/scratch/t1411"
+   ],
+   "log": "/tmp/t1411/backup-recovered-7.log"
+  },
+  {
+   "role": "finisher",
+   "pid": 19716,
+   "command": [
+    "python3",
+    "/workspace/Mini/scripts/t1411-finish.py",
+    "--root",
+    "/tmp/t1411",
+    "--repo",
+    "/workspace/Mini",
+    "--wait"
+   ],
+   "log": "/tmp/t1411/finisher-recovered-7.log"
+  }
+ ]
+}

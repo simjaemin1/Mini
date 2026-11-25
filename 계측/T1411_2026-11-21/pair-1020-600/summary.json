@@ -1,0 +1,5254 @@
+{
+ "ON-1020": {
+  "done": false,
+  "failed": false,
+  "days": 600,
+  "target": 730,
+  "pop": 5211,
+  "points": {
+   "1": {
+    "case": "ON-1020",
+    "day": 1,
+    "segmentStart": 0,
+    "pop": 408,
+    "bodies": 408,
+    "empty": 0,
+    "territory": 76500,
+    "cpuSeconds": 131.236208,
+    "completed": 0,
+    "completedWood": 0,
+    "placedWood": null,
+    "scheduledAwakeAtLedger": 0,
+    "doneDay": 0,
+    "zeroVillages": 51,
+    "zeroNeverCompleted": 51,
+    "zeroWithQueue": 51,
+    "zeroWithWoodOwed": 51,
+    "zeroDryWoodOwed": 0,
+    "emptyQueueWithNeed": 0,
+    "traceAdded": 0,
+    "batchCalls": 0,
+    "bodyStarve": 0,
+    "debtDeaths": 0,
+    "emigrationCumulative": 0,
+    "emigrationDay": 0,
+    "bornDay": 0,
+    "missingResidents": 0,
+    "drawnWood": null,
+    "loadTrips": null,
+    "pendingPlacedWood": null,
+    "materialsResidual": null,
+    "zeroLast10Mean": 51,
+    "zeroWholeLast10": 51,
+    "cpuMeanAll": 131.236208,
+    "cpuMeanSteady": null,
+    "cpuLast100Mean": 131.236208,
+    "emigrated": 0,
+    "offRatio": 1.0,
+    "ratioAtLeast130": false
+   },
+   "10": {
+    "case": "ON-1020",
+    "day": 10,
+    "segmentStart": 0,
+    "pop": 611,
+    "bodies": 611,
+    "empty": 0,
+    "territory": 88120,
+    "cpuSeconds": 81.938917,
+    "completed": 11620,
+    "completedWood": 3548.6741777300736,
+    "placedWood": null,
+    "scheduledAwakeAtLedger": 0,
+    "doneDay": 1419,
+    "zeroVillages": 1,
+    "zeroNeverCompleted": 0,
+    "zeroWithQueue": 1,
+    "zeroWithWoodOwed": 1,
+    "zeroDryWoodOwed": 1,
+    "emptyQueueWithNeed": 0,
+    "traceAdded": 11620,
+    "batchCalls": 0,
+    "bodyStarve": 0,
+    "debtDeaths": 0,
+    "emigrationCumulative": 0,
+    "emigrationDay": 0,
+    "bornDay": 26,
+    "missingResidents": 0,
+    "drawnWood": null,
+    "loadTrips": null,
+    "pendingPlacedWood": null,
+    "materialsResidual": null,
+    "zeroLast10Mean": 9.4,
+    "zeroWholeLast10": 0,
+    "cpuMeanAll": 51.5730737,
+    "cpuMeanSteady": 42.721614333333335,
+    "cpuLast100Mean": 51.5730737,
+    "emigrated": 0,
+    "offRatio": 0.9776,
+    "ratioAtLeast130": false
+   },
+   "20": {
+    "case": "ON-1020",
+    "day": 20,
+    "segmentStart": 10,
+    "pop": 746,
+    "bodies": 746,
+    "empty": 0,
+    "territory": 94546,
+    "cpuSeconds": 84.156674,
+    "completed": 18046,
+    "completedWood": 5063.391104087177,
+    "placedWood": null,
+    "scheduledAwakeAtLedger": 0,
+    "doneDay": 342,
+    "zeroVillages": 32,
+    "zeroNeverCompleted": 0,
+    "zeroWithQueue": 32,
+    "zeroWithWoodOwed": 32,
+    "zeroDryWoodOwed": 31,
+    "emptyQueueWithNeed": 0,
+    "traceAdded": 18046,
+    "batchCalls": 0,
+    "bodyStarve": 0,
+    "debtDeaths": 0,
+    "emigrationCumulative": 0,
+    "emigrationDay": 0,
+    "bornDay": 11,
+    "missingResidents": 0,
+    "drawnWood": null,
+    "loadTrips": null,
+    "pendingPlacedWood": null,
+    "materialsResidual": null,
+    "zeroLast10Mean": 24.6,
+    "zeroWholeLast10": 4,
+    "cpuMeanAll": 61.10698205,
+    "cpuMeanSteady": 55.2175405,
+    "cpuLast100Mean": 61.10698205,
+    "emigrated": 0,
+    "offRatio": 0.7573604060913706,
+    "ratioAtLeast130": false
+   },
+   "30": {
+    "case": "ON-1020",
+    "day": 30,
+    "segmentStart": 20,
+    "pop": 819,
+    "bodies": 819,
+    "empty": 0,
+    "territory": 98836,
+    "cpuSeconds": 79.481947,
+    "completed": 22336,
+    "completedWood": 6320.510294524052,
+    "placedWood": null,
+    "scheduledAwakeAtLedger": 0,
+    "doneDay": 457,
+    "zeroVillages": 33,
+    "zeroNeverCompleted": 0,
+    "zeroWithQueue": 33,
+    "zeroWithWoodOwed": 33,
+    "zeroDryWoodOwed": 29,
+    "emptyQueueWithNeed": 0,
+    "traceAdded": 22336,
+    "batchCalls": 0,
+    "bodyStarve": 0,
+    "debtDeaths": 0,
+    "emigrationCumulative": 0,
+    "emigrationDay": 0,
+    "bornDay": 3,
+    "missingResidents": 0,
+    "drawnWood": null,
+    "loadTrips": null,
+    "pendingPlacedWood": null,
+    "materialsResidual": null,
+    "zeroLast10Mean": 33.4,
+    "zeroWholeLast10": 16,
+    "cpuMeanAll": 66.5078255,
+    "cpuMeanSteady": 61.59837674074074,
+    "cpuLast100Mean": 66.5078255,
+    "emigrated": 0,
+    "offRatio": 0.6982097186700768,
+    "ratioAtLeast130": false
+   },
+   "100": {
+    "case": "ON-1020",
+    "day": 100,
+    "segmentStart": 90,
+    "pop": 1219,
+    "bodies": 1219,
+    "empty": 0,
+    "territory": 135340,
+    "cpuSeconds": 170.773517,
+    "completed": 58840,
+    "completedWood": 15424.464650585573,
+    "placedWood": 15476.633601028814,
+    "scheduledAwakeAtLedger": 0,
+    "doneDay": 574,
+    "zeroVillages": 23,
+    "zeroNeverCompleted": 0,
+    "zeroWithQueue": 20,
+    "zeroWithWoodOwed": 20,
+    "zeroDryWoodOwed": 20,
+    "emptyQueueWithNeed": 0,
+    "traceAdded": 58840,
+    "batchCalls": 0,
+    "bodyStarve": 0,
+    "debtDeaths": 0,
+    "emigrationCumulative": 0,
+    "emigrationDay": 0,
+    "bornDay": 7,
+    "missingResidents": 0,
+    "drawnWood": 17763.21406892479,
+    "loadTrips": 7016,
+    "pendingPlacedWood": 52.16895044324977,
+    "materialsResidual": -1.0032863428932615e-11,
+    "zeroLast10Mean": 26.5,
+    "zeroWholeLast10": 9,
+    "cpuMeanAll": 100.4883079,
+    "cpuMeanSteady": 96.73771511111111,
+    "cpuLast100Mean": 100.4883079,
+    "emigrated": 0,
+    "offRatio": 0.5006160164271047,
+    "ratioAtLeast130": false
+   },
+   "200": {
+    "case": "ON-1020",
+    "day": 200,
+    "segmentStart": 190,
+    "pop": 1921,
+    "bodies": 1921,
+    "empty": 0,
+    "territory": 182261,
+    "cpuSeconds": 195.449827,
+    "completed": 105761,
+    "completedWood": 28719.432954621192,
+    "placedWood": 28808.540786740923,
+    "scheduledAwakeAtLedger": 0,
+    "doneDay": 336,
+    "zeroVillages": 27,
+    "zeroNeverCompleted": 0,
+    "zeroWithQueue": 21,
+    "zeroWithWoodOwed": 21,
+    "zeroDryWoodOwed": 19,
+    "emptyQueueWithNeed": 1,
+    "traceAdded": 105761,
+    "batchCalls": 0,
+    "bodyStarve": 0,
+    "debtDeaths": 0,
+    "emigrationCumulative": 0,
+    "emigrationDay": 0,
+    "bornDay": 11,
+    "missingResidents": 0,
+    "drawnWood": 31709.793946588812,
+    "loadTrips": 13349,
+    "pendingPlacedWood": 89.10783211977757,
+    "materialsResidual": -5.74544856135617e-11,
+    "zeroLast10Mean": 27.7,
+    "zeroWholeLast10": 15,
+    "cpuMeanAll": 135.855245935,
+    "cpuMeanSteady": 132.1040392777778,
+    "cpuLast100Mean": 171.22218397,
+    "emigrated": 0,
+    "offRatio": 0.567336089781453,
+    "ratioAtLeast130": false
+   },
+   "300": {
+    "case": "ON-1020",
+    "day": 300,
+    "segmentStart": 290,
+    "pop": 3205,
+    "bodies": 3205,
+    "empty": 0,
+    "territory": 216596,
+    "cpuSeconds": 335.570088,
+    "completed": 140096,
+    "completedWood": 38504.8054467609,
+    "placedWood": 38661.50110545525,
+    "scheduledAwakeAtLedger": 0,
+    "doneDay": 165,
+    "zeroVillages": 40,
+    "zeroNeverCompleted": 0,
+    "zeroWithQueue": 34,
+    "zeroWithWoodOwed": 33,
+    "zeroDryWoodOwed": 32,
+    "emptyQueueWithNeed": 0,
+    "traceAdded": 140096,
+    "batchCalls": 0,
+    "bodyStarve": 0,
+    "debtDeaths": 0,
+    "emigrationCumulative": 62,
+    "emigrationDay": 0,
+    "bornDay": 0,
+    "missingResidents": 0,
+    "drawnWood": 41878.07609878251,
+    "loadTrips": 17030,
+    "pendingPlacedWood": 156.69565869441738,
+    "materialsResidual": -7.582912076031789e-11,
+    "zeroLast10Mean": 39.1,
+    "zeroWholeLast10": 33,
+    "cpuMeanAll": 189.94829688666667,
+    "cpuMeanSteady": 186.6881436074074,
+    "cpuLast100Mean": 298.13439879,
+    "emigrated": 62,
+    "offRatio": 0.8530742613787596,
+    "ratioAtLeast130": false
+   },
+   "365": {
+    "case": "ON-1020",
+    "day": 365,
+    "segmentStart": 360,
+    "pop": 3305,
+    "bodies": 3305,
+    "empty": 0,
+    "territory": 228306,
+    "cpuSeconds": 357.531794,
+    "completed": 151806,
+    "completedWood": 41337.24570241272,
+    "placedWood": 41546.03101904068,
+    "scheduledAwakeAtLedger": 0,
+    "doneDay": 119,
+    "zeroVillages": 44,
+    "zeroNeverCompleted": 0,
+    "zeroWithQueue": 40,
+    "zeroWithWoodOwed": 39,
+    "zeroDryWoodOwed": 39,
+    "emptyQueueWithNeed": 0,
+    "traceAdded": 151806,
+    "batchCalls": 0,
+    "bodyStarve": 0,
+    "debtDeaths": 0,
+    "emigrationCumulative": 83,
+    "emigrationDay": 0,
+    "bornDay": 0,
+    "missingResidents": 0,
+    "drawnWood": 44850.115823711734,
+    "loadTrips": 18049,
+    "pendingPlacedWood": 208.7853166280343,
+    "materialsResidual": -7.418066161335446e-11,
+    "zeroLast10Mean": 44,
+    "zeroWholeLast10": 41,
+    "cpuMeanAll": 218.08016973424657,
+    "cpuMeanSteady": 214.57048224390243,
+    "cpuLast100Mean": 348.30224958,
+    "emigrated": 83,
+    "offRatio": 0.9459072696050372,
+    "ratioAtLeast130": false
+   },
+   "400": {
+    "case": "ON-1020",
+    "day": 400,
+    "segmentStart": 390,
+    "pop": 3678,
+    "bodies": 3678,
+    "empty": 0,
+    "territory": 231122,
+    "cpuSeconds": 508.115554,
+    "completed": 154622,
+    "completedWood": 42063.40877241273,
+    "placedWood": 42257.951502040676,
+    "scheduledAwakeAtLedger": 0,
+    "doneDay": 51,
+    "zeroVillages": 48,
+    "zeroNeverCompleted": 0,
+    "zeroWithQueue": 44,
+    "zeroWithWoodOwed": 42,
+    "zeroDryWoodOwed": 42,
+    "emptyQueueWithNeed": 0,
+    "traceAdded": 154622,
+    "batchCalls": 0,
+    "bodyStarve": 0,
+    "debtDeaths": 0,
+    "emigrationCumulative": 210,
+    "emigrationDay": 9,
+    "bornDay": 9,
+    "missingResidents": 0,
+    "drawnWood": 45554.02949171173,
+    "loadTrips": 18213,
+    "pendingPlacedWood": 194.5427296280343,
+    "materialsResidual": -8.208189683500677e-11,
+    "zeroLast10Mean": 46.7,
+    "zeroWholeLast10": 46,
+    "cpuMeanAll": 231.1240271125,
+    "cpuMeanSteady": 227.92002812777778,
+    "cpuLast100Mean": 354.65121779,
+    "emigrated": 210,
+    "offRatio": 0.9962080173347779,
+    "ratioAtLeast130": false
+   },
+   "500": {
+    "case": "ON-1020",
+    "day": 500,
+    "segmentStart": 490,
+    "pop": 4502,
+    "bodies": 4502,
+    "empty": 0,
+    "territory": 234676,
+    "cpuSeconds": 450.915285,
+    "completed": 158176,
+    "completedWood": 43073.269503412725,
+    "placedWood": 43267.81223304068,
+    "scheduledAwakeAtLedger": 0,
+    "doneDay": 19,
+    "zeroVillages": 49,
+    "zeroNeverCompleted": 0,
+    "zeroWithQueue": 45,
+    "zeroWithWoodOwed": 43,
+    "zeroDryWoodOwed": 42,
+    "emptyQueueWithNeed": 0,
+    "traceAdded": 158176,
+    "batchCalls": 0,
+    "bodyStarve": 0,
+    "debtDeaths": 0,
+    "emigrationCumulative": 3239,
+    "emigrationDay": 58,
+    "bornDay": 8,
+    "missingResidents": 0,
+    "drawnWood": 47131.89022271173,
+    "loadTrips": 18510,
+    "pendingPlacedWood": 194.5427296280343,
+    "materialsResidual": -8.208189683500677e-11,
+    "zeroLast10Mean": 49,
+    "zeroWholeLast10": 49,
+    "cpuMeanAll": 273.26297731,
+    "cpuMeanSteady": 270.15232146444447,
+    "cpuLast100Mean": 441.8187781,
+    "emigrated": 3239,
+    "offRatio": 1.0351805012646584,
+    "ratioAtLeast130": false
+   },
+   "600": {
+    "case": "ON-1020",
+    "day": 600,
+    "segmentStart": 590,
+    "pop": 5211,
+    "bodies": 5211,
+    "empty": 0,
+    "territory": 237818,
+    "cpuSeconds": 519.579201,
+    "completed": 161318,
+    "completedWood": 43775.034979412725,
+    "placedWood": 43969.57770904068,
+    "scheduledAwakeAtLedger": 0,
+    "doneDay": 19,
+    "zeroVillages": 50,
+    "zeroNeverCompleted": 0,
+    "zeroWithQueue": 47,
+    "zeroWithWoodOwed": 46,
+    "zeroDryWoodOwed": 46,
+    "emptyQueueWithNeed": 0,
+    "traceAdded": 161318,
+    "batchCalls": 0,
+    "bodyStarve": 0,
+    "debtDeaths": 0,
+    "emigrationCumulative": 8233,
+    "emigrationDay": 40,
+    "bornDay": 15,
+    "missingResidents": 0,
+    "drawnWood": 48129.65569871173,
+    "loadTrips": 18702,
+    "pendingPlacedWood": 194.5427296280343,
+    "materialsResidual": -8.208189683500677e-11,
+    "zeroLast10Mean": 49,
+    "zeroWholeLast10": 47,
+    "cpuMeanAll": 308.11083629166666,
+    "cpuMeanSteady": 305.1920925111111,
+    "cpuLast100Mean": 482.3501312,
+    "emigrated": 8233,
+    "offRatio": 1.0392899880335063,
+    "ratioAtLeast130": false
+   }
+  },
+  "cpuMeanAll": 308.11083629166666,
+  "completed": 161318,
+  "completedWood": 43775.034979412725,
+  "minBodyRatio": 1.0,
+  "maxBodyGap": 0,
+  "maxMissingResidents": 8,
+  "batchCalls": 0,
+  "observerErrors": 0,
+  "launch": {
+   "root": "/tmp/t1411/fast",
+   "arm": "ON",
+   "days": 730,
+   "seed": 1020,
+   "every": 10,
+   "profile": false,
+   "census": true,
+   "profileHookSha256": "736bea70a84106d3aa54d7f32c85cb915f47704c4f0af64641f2588c9679055d",
+   "source": {
+    "server/villages.js": "ce4d8c7f1f157d64297e93f3b69df3cc7773a62c16bc0e9139d1ff56a589477e",
+    "server/zone.js": "fb89408587a5d2291e9783b203e4c56bf938a8df31153c4821e186d68c523d81",
+    "server/build-haul.js": "deb39bce3f2f53287810e8a0d71f15691dbd39247063c7863853b1417287f0db",
+    "server/terr-body.js": "9c2482d018eb367fcef1534e608631ef58ca5b71705d94d18996b3acfd709188",
+    "server/terr-cost.js": "a8bc781b27c421950c3737c315bce5306bbcc516f377f6d25d813319d106294e",
+    "scripts/t1308-long-run.js": "6629ff2af5659f8349f8f8a3ba8d29281a784794be1ba77bdb0cc11644662bd4"
+   },
+   "env": {
+    "VILLAGE_DAY_MS": "1440000",
+    "VILLAGE_NPC_CAP": "Infinity",
+    "T400_BUILD_ACT": "0",
+    "VILLAGE_CARAVAN_MAX": "0",
+    "T745_VCLOCK": "1",
+    "T1244_BODY_MS": "10000",
+    "T1221_EVERY": "10",
+    "T1259_WOOD_CAP": "0",
+    "T1243_FARM_ON": "0",
+    "T1308_GUARD_MAX": "0",
+    "T325_WOOD_ACT": "1",
+    "T1207_TERR_REAL": "1",
+    "T1238_TERR_V2": "1",
+    "T1283_WOOD_DEMAND": "1",
+    "T1297_BIRTH_FOOD": "1",
+    "T1306_MIGRATE_FOOD": "1",
+    "T1302_TERR_BODY": "1",
+    "T1329_TERR_CREW": "1",
+    "T1329_OBS": "1",
+    "T1358_STAKE_REQUOTE": "1",
+    "T1411_TERR_FAST": "1",
+    "NODE_OPTIONS": "-r /tmp/t1411/method-v2/t1411-profile-hook.cjs -r /tmp/t1411/fast/scripts/t1274-baseline-hook.js -r /tmp/t1411/fast/scripts/t1302-observe.js -r /tmp/t1411/fast/scripts/t1243-observe.js -r /tmp/t1411/fast/scripts/t1221-observe.js -r /tmp/t1411/fast/scripts/t1230-observe.js -r /tmp/t1411/fast/scripts/t1251-observe.js -r /tmp/t1411/fast/scripts/t1274-observe.js -r /tmp/t1411/fast/scripts/t1329-observe.js -r /tmp/t1411/method-v2/t1411-census.cjs",
+    "T1411_ROOT": "/tmp/t1411/fast",
+    "T1411_CPU_PROF": "0",
+    "T1411_PROFILE_DIR": "/tmp/t1411/worlds/ON-1020-profiles",
+    "T740_DUMP_DAYS": "100,200,300,365,400,500,600,700,730"
+   }
+  },
+  "segments": [
+   {
+    "from": 0,
+    "to": 10,
+    "sec": 494.2,
+    "code": 0,
+    "at": "2026-11-21T03:38:47.325Z"
+   },
+   {
+    "from": 10,
+    "to": 20,
+    "sec": 683.3,
+    "code": 0,
+    "at": "2026-11-21T03:50:11.490Z"
+   },
+   {
+    "from": 20,
+    "to": 30,
+    "sec": 749,
+    "code": 0,
+    "at": "2026-11-21T04:02:41.951Z"
+   },
+   {
+    "from": 30,
+    "to": 40,
+    "sec": 962.4,
+    "code": 0,
+    "at": "2026-11-21T04:18:46.079Z"
+   },
+   {
+    "from": 40,
+    "to": 50,
+    "sec": 1091.1,
+    "code": 0,
+    "at": "2026-11-21T04:36:58.443Z"
+   },
+   {
+    "from": 50,
+    "to": 60,
+    "sec": 961.3,
+    "code": 0,
+    "at": "2026-11-21T04:53:01.099Z"
+   },
+   {
+    "from": 60,
+    "to": 70,
+    "sec": 1091.2,
+    "code": 0,
+    "at": "2026-11-21T05:11:13.919Z"
+   },
+   {
+    "from": 70,
+    "to": 80,
+    "sec": 1170.7,
+    "code": 0,
+    "at": "2026-11-21T05:30:46.379Z"
+   },
+   {
+    "from": 80,
+    "to": 90,
+    "sec": 1102.3,
+    "code": 0,
+    "at": "2026-11-21T05:49:10.062Z"
+   },
+   {
+    "from": 90,
+    "to": 100,
+    "sec": 1431.2,
+    "code": 0,
+    "at": "2026-11-21T06:13:02.791Z"
+   },
+   {
+    "from": 100,
+    "to": 110,
+    "sec": 1458,
+    "code": 0,
+    "at": "2026-11-21T06:37:22.345Z"
+   },
+   {
+    "from": 110,
+    "to": 120,
+    "sec": 1373.6,
+    "code": 0,
+    "at": "2026-11-21T07:00:17.536Z"
+   },
+   {
+    "from": 120,
+    "to": 130,
+    "sec": 1606.8,
+    "code": 0,
+    "at": "2026-11-21T07:27:05.609Z"
+   },
+   {
+    "from": 130,
+    "to": 140,
+    "sec": 1525.5,
+    "code": 0,
+    "at": "2026-11-21T07:52:32.225Z"
+   },
+   {
+    "from": 140,
+    "to": 150,
+    "sec": 1676.6,
+    "code": 0,
+    "at": "2026-11-21T08:20:30.558Z"
+   },
+   {
+    "from": 150,
+    "to": 160,
+    "sec": 1664.8,
+    "code": 0,
+    "at": "2026-11-21T08:48:17.262Z"
+   },
+   {
+    "from": 160,
+    "to": 170,
+    "sec": 1680.6,
+    "code": 0,
+    "at": "2026-11-21T09:16:19.826Z"
+   },
+   {
+    "from": 170,
+    "to": 180,
+    "sec": 1750.4,
+    "code": 0,
+    "at": "2026-11-21T09:45:32.059Z"
+   },
+   {
+    "from": 180,
+    "to": 190,
+    "sec": 1943.5,
+    "code": 0,
+    "at": "2026-11-21T10:17:57.524Z"
+   },
+   {
+    "from": 190,
+    "to": 200,
+    "sec": 1965.6,
+    "code": 0,
+    "at": "2026-11-21T10:50:45.406Z"
+   },
+   {
+    "from": 200,
+    "to": 210,
+    "sec": 2162.5,
+    "code": 0,
+    "at": "2026-11-21T11:26:50.134Z"
+   },
+   {
+    "from": 210,
+    "to": 220,
+    "sec": 2258.6,
+    "code": 0,
+    "at": "2026-11-21T12:04:30.874Z"
+   },
+   {
+    "from": 220,
+    "to": 230,
+    "sec": 2376.8,
+    "code": 0,
+    "at": "2026-11-21T12:44:10.787Z"
+   },
+   {
+    "from": 230,
+    "to": 240,
+    "sec": 2498.4,
+    "code": 0,
+    "at": "2026-11-21T13:25:50.702Z"
+   },
+   {
+    "from": 240,
+    "to": 250,
+    "sec": 2883.4,
+    "code": 0,
+    "at": "2026-11-21T14:13:56.885Z"
+   },
+   {
+    "from": 250,
+    "to": 260,
+    "sec": 2921.1,
+    "code": 0,
+    "at": "2026-11-21T18:13:32.249Z"
+   },
+   {
+    "from": 260,
+    "to": 270,
+    "sec": 3050,
+    "code": 0,
+    "at": "2026-11-21T19:04:24.638Z"
+   },
+   {
+    "from": 270,
+    "to": 280,
+    "sec": 3347,
+    "code": 0,
+    "at": "2026-11-21T20:00:13.715Z"
+   },
+   {
+    "from": 280,
+    "to": 290,
+    "sec": 3198.4,
+    "code": 0,
+    "at": "2026-11-21T20:53:35.143Z"
+   },
+   {
+    "from": 290,
+    "to": 300,
+    "sec": 3178.6,
+    "code": 0,
+    "at": "2026-11-21T21:46:37.020Z"
+   },
+   {
+    "from": 300,
+    "to": 310,
+    "sec": 3171.3,
+    "code": 0,
+    "at": "2026-11-21T22:39:30.525Z"
+   },
+   {
+    "from": 310,
+    "to": 320,
+    "sec": 3444.7,
+    "code": 0,
+    "at": "2026-11-21T23:36:58.272Z"
+   },
+   {
+    "from": 320,
+    "to": 330,
+    "sec": 3168.2,
+    "code": 0,
+    "at": "2026-11-22T00:29:49.956Z"
+   },
+   {
+    "from": 330,
+    "to": 340,
+    "sec": 3249.7,
+    "code": 0,
+    "at": "2026-11-22T01:24:03.052Z"
+   },
+   {
+    "from": 340,
+    "to": 350,
+    "sec": 3351.4,
+    "code": 0,
+    "at": "2026-11-22T02:19:56.729Z"
+   },
+   {
+    "from": 350,
+    "to": 360,
+    "sec": 3138.2,
+    "code": 0,
+    "at": "2026-11-22T03:32:10.177Z"
+   },
+   {
+    "from": 360,
+    "to": 370,
+    "sec": 3175.5,
+    "code": 0,
+    "at": "2026-11-22T04:25:08.236Z"
+   },
+   {
+    "from": 370,
+    "to": 380,
+    "sec": 3335.5,
+    "code": 0,
+    "at": "2026-11-22T05:20:47.488Z"
+   },
+   {
+    "from": 380,
+    "to": 390,
+    "sec": 3204.6,
+    "code": 0,
+    "at": "2026-11-22T06:14:16.873Z"
+   },
+   {
+    "from": 390,
+    "to": 400,
+    "sec": 3593.4,
+    "code": 0,
+    "at": "2026-11-22T07:14:15.640Z"
+   },
+   {
+    "from": 400,
+    "to": 410,
+    "sec": 4801.1,
+    "code": 0,
+    "at": "2026-11-22T08:34:19.585Z"
+   },
+   {
+    "from": 410,
+    "to": 420,
+    "sec": 3738.2,
+    "code": 0,
+    "at": "2026-11-22T09:36:41.420Z"
+   },
+   {
+    "from": 420,
+    "to": 430,
+    "sec": 3798,
+    "code": 0,
+    "at": "2026-11-22T10:40:02.291Z"
+   },
+   {
+    "from": 430,
+    "to": 440,
+    "sec": 3977.4,
+    "code": 0,
+    "at": "2026-11-22T11:46:22.356Z"
+   },
+   {
+    "from": 440,
+    "to": 450,
+    "sec": 3925.4,
+    "code": 0,
+    "at": "2026-11-22T12:51:50.132Z"
+   },
+   {
+    "from": 450,
+    "to": 460,
+    "sec": 4112.2,
+    "code": 0,
+    "at": "2026-11-22T14:00:25.796Z"
+   },
+   {
+    "from": 460,
+    "to": 470,
+    "sec": 4865.1,
+    "code": 0,
+    "at": "2026-11-23T04:03:23.626Z"
+   },
+   {
+    "from": 470,
+    "to": 480,
+    "sec": 4240.2,
+    "code": 0,
+    "at": "2026-11-23T05:14:06.860Z"
+   },
+   {
+    "from": 480,
+    "to": 490,
+    "sec": 4165.1,
+    "code": 0,
+    "at": "2026-11-23T06:23:35.550Z"
+   },
+   {
+    "from": 490,
+    "to": 500,
+    "sec": 4116.5,
+    "code": 0,
+    "at": "2026-11-24T05:06:15.348Z"
+   },
+   {
+    "from": 500,
+    "to": 510,
+    "sec": 4279,
+    "code": 0,
+    "at": "2026-11-24T06:17:36.843Z"
+   },
+   {
+    "from": 510,
+    "to": 520,
+    "sec": 4255.7,
+    "code": 0,
+    "at": "2026-11-24T07:28:36.987Z"
+   },
+   {
+    "from": 520,
+    "to": 530,
+    "sec": 4179.4,
+    "code": 0,
+    "at": "2026-11-24T18:00:07.968Z"
+   },
+   {
+    "from": 530,
+    "to": 540,
+    "sec": 4433.1,
+    "code": 0,
+    "at": "2026-11-24T19:14:03.518Z"
+   },
+   {
+    "from": 540,
+    "to": 550,
+    "sec": 4539.3,
+    "code": 0,
+    "at": "2026-11-24T20:29:46.556Z"
+   },
+   {
+    "from": 550,
+    "to": 560,
+    "sec": 4481.5,
+    "code": 0,
+    "at": "2026-11-25T00:14:26.960Z"
+   },
+   {
+    "from": 560,
+    "to": 570,
+    "sec": 4684.3,
+    "code": 0,
+    "at": "2026-11-25T01:32:33.795Z"
+   },
+   {
+    "from": 570,
+    "to": 580,
+    "sec": 4750.9,
+    "code": 0,
+    "at": "2026-11-25T02:51:48.425Z"
+   },
+   {
+    "from": 580,
+    "to": 590,
+    "sec": 5167.7,
+    "code": 0,
+    "at": "2026-11-25T04:17:58.889Z"
+   },
+   {
+    "from": 590,
+    "to": 600,
+    "sec": 4973,
+    "code": 0,
+    "at": "2026-11-25T05:40:55.557Z"
+   }
+  ],
+  "clockExitMeta": [
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 507597938,
+     "system": 11415459
+    },
+    "uptimeSeconds": 493.859587867,
+    "clock": {
+     "V": 1767239747703.7935,
+     "V0": 1767225600000,
+     "fired": 604262,
+     "timers": 23671,
+     "intervals": 17,
+     "started": true,
+     "startAt": 1767225600000,
+     "paused": false,
+     "yields": 1510,
+     "maxQ": 22,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 696269739,
+     "system": 14638285
+    },
+    "uptimeSeconds": 682.907056896,
+    "clock": {
+     "V": 1767254147735.3037,
+     "V0": 1767239747503.7935,
+     "fired": 599559,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767239747503.7935,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 762793368,
+     "system": 15299779
+    },
+    "uptimeSeconds": 748.541682251,
+    "clock": {
+     "V": 1767268547733.4807,
+     "V0": 1767254147535.3037,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767254147535.3037,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 975268317,
+     "system": 20409800
+    },
+    "uptimeSeconds": 961.846201828,
+    "clock": {
+     "V": 1767282947731.6577,
+     "V0": 1767268547533.4807,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767268547533.4807,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 1119359323,
+     "system": 21819134
+    },
+    "uptimeSeconds": 1090.601346919,
+    "clock": {
+     "V": 1767297347729.8347,
+     "V0": 1767282947531.6577,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767282947531.6577,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 973256170,
+     "system": 18333094
+    },
+    "uptimeSeconds": 960.667103673,
+    "clock": {
+     "V": 1767311747728.0117,
+     "V0": 1767297347529.8347,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767297347529.8347,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 1112936660,
+     "system": 21539750
+    },
+    "uptimeSeconds": 1090.512584578,
+    "clock": {
+     "V": 1767326147726.1887,
+     "V0": 1767311747528.0117,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767311747528.0117,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 1192988518,
+     "system": 23375528
+    },
+    "uptimeSeconds": 1170.094355342,
+    "clock": {
+     "V": 1767340547724.3657,
+     "V0": 1767326147526.1887,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767326147526.1887,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 1126857467,
+     "system": 22143068
+    },
+    "uptimeSeconds": 1101.679047722,
+    "clock": {
+     "V": 1767354947722.5427,
+     "V0": 1767340547524.3657,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767340547524.3657,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 1456116593,
+     "system": 28498903
+    },
+    "uptimeSeconds": 1430.289864865,
+    "clock": {
+     "V": 1767369347720.7197,
+     "V0": 1767354947522.5427,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767354947522.5427,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 1488388958,
+     "system": 23691452
+    },
+    "uptimeSeconds": 1457.34419336,
+    "clock": {
+     "V": 1767383747718.8967,
+     "V0": 1767369347520.7197,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767369347520.7197,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 1413347545,
+     "system": 24619347
+    },
+    "uptimeSeconds": 1372.93028598,
+    "clock": {
+     "V": 1767398147717.0737,
+     "V0": 1767383747518.8967,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767383747518.8967,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 1638337553,
+     "system": 26594668
+    },
+    "uptimeSeconds": 1606.116114402,
+    "clock": {
+     "V": 1767412547715.2507,
+     "V0": 1767398147517.0737,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767398147517.0737,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 1554764081,
+     "system": 24803307
+    },
+    "uptimeSeconds": 1524.853523446,
+    "clock": {
+     "V": 1767426947713.4277,
+     "V0": 1767412547515.2507,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767412547515.2507,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 1703494488,
+     "system": 26742480
+    },
+    "uptimeSeconds": 1675.920721898,
+    "clock": {
+     "V": 1767441347711.6047,
+     "V0": 1767426947513.4277,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767426947513.4277,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 1691545607,
+     "system": 27110884
+    },
+    "uptimeSeconds": 1663.809366203,
+    "clock": {
+     "V": 1767455747709.7817,
+     "V0": 1767441347511.6047,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767441347511.6047,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 1712509123,
+     "system": 27787882
+    },
+    "uptimeSeconds": 1679.654613527,
+    "clock": {
+     "V": 1767470147707.9587,
+     "V0": 1767455747509.7817,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767455747509.7817,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 1781245182,
+     "system": 28075982
+    },
+    "uptimeSeconds": 1749.609625411,
+    "clock": {
+     "V": 1767484547706.1357,
+     "V0": 1767470147507.9587,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767470147507.9587,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 1981283593,
+     "system": 30869752
+    },
+    "uptimeSeconds": 1942.213424879,
+    "clock": {
+     "V": 1767498947704.3127,
+     "V0": 1767484547506.1357,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767484547506.1357,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 2000441413,
+     "system": 30194127
+    },
+    "uptimeSeconds": 1964.770697427,
+    "clock": {
+     "V": 1767513347735.823,
+     "V0": 1767498947504.3127,
+     "fired": 599559,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767498947504.3127,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 2206153927,
+     "system": 31694355
+    },
+    "uptimeSeconds": 2161.750651348,
+    "clock": {
+     "V": 1767527747734,
+     "V0": 1767513347535.823,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767513347535.823,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 2310628880,
+     "system": 31415465
+    },
+    "uptimeSeconds": 2257.839091145,
+    "clock": {
+     "V": 1767542147732.177,
+     "V0": 1767527747534,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767527747534,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 2415975841,
+     "system": 34066734
+    },
+    "uptimeSeconds": 2375.619054688,
+    "clock": {
+     "V": 1767556547730.354,
+     "V0": 1767542147532.177,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767542147532.177,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 2564131851,
+     "system": 38708881
+    },
+    "uptimeSeconds": 2497.079491746,
+    "clock": {
+     "V": 1767570947728.531,
+     "V0": 1767556547530.354,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767556547530.354,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 3116158619,
+     "system": 37677439
+    },
+    "uptimeSeconds": 2882.381241474,
+    "clock": {
+     "V": 1767585347726.708,
+     "V0": 1767570947528.531,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767570947528.531,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 3167994350,
+     "system": 39390374
+    },
+    "uptimeSeconds": 2920.076349356,
+    "clock": {
+     "V": 1767599747724.885,
+     "V0": 1767585347526.708,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767585347526.708,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 3319865056,
+     "system": 39866329
+    },
+    "uptimeSeconds": 3048.865076795,
+    "clock": {
+     "V": 1767614147723.062,
+     "V0": 1767599747524.885,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767599747524.885,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 3628369433,
+     "system": 40522118
+    },
+    "uptimeSeconds": 3346.070739625,
+    "clock": {
+     "V": 1767628547721.239,
+     "V0": 1767614147523.062,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767614147523.062,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 3452688952,
+     "system": 39656941
+    },
+    "uptimeSeconds": 3197.418630191,
+    "clock": {
+     "V": 1767642947719.416,
+     "V0": 1767628547521.239,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767628547521.239,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 3411576929,
+     "system": 40951954
+    },
+    "uptimeSeconds": 3177.502024592,
+    "clock": {
+     "V": 1767657347717.593,
+     "V0": 1767642947519.416,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767642947519.416,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 3417996453,
+     "system": 43124761
+    },
+    "uptimeSeconds": 3170.159249747,
+    "clock": {
+     "V": 1767671747715.77,
+     "V0": 1767657347517.593,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767657347517.593,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 3553146452,
+     "system": 46662247
+    },
+    "uptimeSeconds": 3443.655830483,
+    "clock": {
+     "V": 1767686147713.947,
+     "V0": 1767671747515.77,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767671747515.77,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 3276509408,
+     "system": 40366052
+    },
+    "uptimeSeconds": 3167.262524521,
+    "clock": {
+     "V": 1767700547712.124,
+     "V0": 1767686147513.947,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767686147513.947,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 3503786789,
+     "system": 43561697
+    },
+    "uptimeSeconds": 3248.821377883,
+    "clock": {
+     "V": 1767714947710.301,
+     "V0": 1767700547512.124,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767700547512.124,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 3607792520,
+     "system": 44376405
+    },
+    "uptimeSeconds": 3350.406073844,
+    "clock": {
+     "V": 1767729347708.478,
+     "V0": 1767714947510.301,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767714947510.301,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 3400168142,
+     "system": 36968910
+    },
+    "uptimeSeconds": 3137.260072658,
+    "clock": {
+     "V": 1767743747706.655,
+     "V0": 1767729347508.478,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767729347508.478,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 3461962525,
+     "system": 42809350
+    },
+    "uptimeSeconds": 3174.175741149,
+    "clock": {
+     "V": 1767758147704.832,
+     "V0": 1767743747506.655,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767743747506.655,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 3637447437,
+     "system": 42917375
+    },
+    "uptimeSeconds": 3334.534483831,
+    "clock": {
+     "V": 1767772547703.009,
+     "V0": 1767758147504.832,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767758147504.832,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 3489348224,
+     "system": 43409263
+    },
+    "uptimeSeconds": 3202.341118794,
+    "clock": {
+     "V": 1767786947734.5193,
+     "V0": 1767772547503.009,
+     "fired": 599559,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767772547503.009,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 3861580608,
+     "system": 47982261
+    },
+    "uptimeSeconds": 3592.476605313,
+    "clock": {
+     "V": 1767801347732.6963,
+     "V0": 1767786947534.5193,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767786947534.5193,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 5148966059,
+     "system": 61129965
+    },
+    "uptimeSeconds": 4800.207547237,
+    "clock": {
+     "V": 1767815747730.8733,
+     "V0": 1767801347532.6963,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767801347532.6963,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 4002765314,
+     "system": 47023711
+    },
+    "uptimeSeconds": 3737.295263893,
+    "clock": {
+     "V": 1767830147729.0503,
+     "V0": 1767815747530.8733,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767815747530.8733,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 4135973249,
+     "system": 46798851
+    },
+    "uptimeSeconds": 3796.604379269,
+    "clock": {
+     "V": 1767844547727.2273,
+     "V0": 1767830147529.0503,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767830147529.0503,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 4284685559,
+     "system": 44193294
+    },
+    "uptimeSeconds": 3976.397826393,
+    "clock": {
+     "V": 1767858947725.4043,
+     "V0": 1767844547527.2273,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767844547527.2273,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 4265196272,
+     "system": 45737342
+    },
+    "uptimeSeconds": 3924.386676037,
+    "clock": {
+     "V": 1767873347723.5813,
+     "V0": 1767858947525.4043,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767858947525.4043,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 4310711783,
+     "system": 47575221
+    },
+    "uptimeSeconds": 4111.128547759,
+    "clock": {
+     "V": 1767887747721.7583,
+     "V0": 1767873347523.5813,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767873347523.5813,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 4953053689,
+     "system": 50892983
+    },
+    "uptimeSeconds": 4863.885523321,
+    "clock": {
+     "V": 1767902147719.9353,
+     "V0": 1767887747521.7583,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767887747521.7583,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 4318970083,
+     "system": 49894810
+    },
+    "uptimeSeconds": 4239.130588428,
+    "clock": {
+     "V": 1767916547718.1123,
+     "V0": 1767902147519.9353,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767902147519.9353,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 4243108872,
+     "system": 48827796
+    },
+    "uptimeSeconds": 4164.029271833,
+    "clock": {
+     "V": 1767930947716.2893,
+     "V0": 1767916547518.1123,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767916547518.1123,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 4210918777,
+     "system": 44198352
+    },
+    "uptimeSeconds": 4115.501727578,
+    "clock": {
+     "V": 1767945347714.4663,
+     "V0": 1767930947516.2893,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767930947516.2893,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 4360282461,
+     "system": 49627278
+    },
+    "uptimeSeconds": 4277.960788473,
+    "clock": {
+     "V": 1767959747712.6433,
+     "V0": 1767945347514.4663,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767945347514.4663,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 4334943132,
+     "system": 49136188
+    },
+    "uptimeSeconds": 4254.705700752,
+    "clock": {
+     "V": 1767974147710.8203,
+     "V0": 1767959747512.6433,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767959747512.6433,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 4421005625,
+     "system": 50775540
+    },
+    "uptimeSeconds": 4178.369613469,
+    "clock": {
+     "V": 1767988547708.9973,
+     "V0": 1767974147510.8203,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767974147510.8203,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 4701543559,
+     "system": 51640170
+    },
+    "uptimeSeconds": 4431.654977371,
+    "clock": {
+     "V": 1768002947707.1743,
+     "V0": 1767988547508.9973,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767988547508.9973,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 4877256426,
+     "system": 55392002
+    },
+    "uptimeSeconds": 4538.20147187,
+    "clock": {
+     "V": 1768017347705.3513,
+     "V0": 1768002947507.1743,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1768002947507.1743,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 4878167477,
+     "system": 52759885
+    },
+    "uptimeSeconds": 4480.243778767,
+    "clock": {
+     "V": 1768031747703.5283,
+     "V0": 1768017347505.3513,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1768017347505.3513,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 5074432756,
+     "system": 56823489
+    },
+    "uptimeSeconds": 4683.228373981,
+    "clock": {
+     "V": 1768046147735.0386,
+     "V0": 1768031747503.5283,
+     "fired": 599559,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1768031747503.5283,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 4905886126,
+     "system": 54761151
+    },
+    "uptimeSeconds": 4749.769066065,
+    "clock": {
+     "V": 1768060547733.2156,
+     "V0": 1768046147535.0386,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1768046147535.0386,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 5275049997,
+     "system": 56123288
+    },
+    "uptimeSeconds": 5166.564092713,
+    "clock": {
+     "V": 1768074947731.3926,
+     "V0": 1768060547533.2156,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1768060547533.2156,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 5071615861,
+     "system": 59809821
+    },
+    "uptimeSeconds": 4971.394780408,
+    "clock": {
+     "V": 1768089347729.5696,
+     "V0": 1768074947531.3926,
+     "fired": 599558,
+     "timers": 8595,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1768074947531.3926,
+     "paused": false,
+     "yields": 1498,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   }
+  ],
+  "actualExit": null,
+  "failureEvidence": null,
+  "residentLinkAudit": {
+   "applicable": true,
+   "passed": false,
+   "status": "RED",
+   "affectedDays": [
+    467,
+    490,
+    589
+   ],
+   "maxMissingResidents": 8,
+   "mode": "record-red-gaps",
+   "observations": [
+    {
+     "day": 467,
+     "villages": [
+      {
+       "name": "광산3",
+       "population": 78,
+       "bodies": 77,
+       "missingPeople": [
+        "n437"
+       ]
+      }
+     ]
+    },
+    {
+     "day": 490,
+     "villages": [
+      {
+       "name": "광산3",
+       "population": 61,
+       "bodies": 60,
+       "missingPeople": [
+        "n439"
+       ]
+      }
+     ]
+    },
+    {
+     "day": 589,
+     "villages": [
+      {
+       "name": "광산3",
+       "population": 26,
+       "bodies": 33,
+       "missingPeople": [
+        "n490",
+        "nv62.81",
+        "nv60.492"
+       ]
+      },
+      {
+       "name": "임업6",
+       "population": 108,
+       "bodies": 103,
+       "missingPeople": [
+        "nv62.593",
+        "nv63.29",
+        "nv69.153",
+        "nv57.2",
+        "nv69.163"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "emptyQueuePositiveNeedVillageDays": 167,
+  "villageWorst": [
+   {
+    "village": "임업5",
+    "zeroDays": 555,
+    "maxConsecutiveZero": 496,
+    "completed": 959
+   },
+   {
+    "village": "농촌20",
+    "zeroDays": 518,
+    "maxConsecutiveZero": 442,
+    "completed": 1908
+   },
+   {
+    "village": "농촌10",
+    "zeroDays": 528,
+    "maxConsecutiveZero": 425,
+    "completed": 1800
+   },
+   {
+    "village": "임업6",
+    "zeroDays": 490,
+    "maxConsecutiveZero": 398,
+    "completed": 2399
+   },
+   {
+    "village": "어촌1",
+    "zeroDays": 517,
+    "maxConsecutiveZero": 381,
+    "completed": 1552
+   },
+   {
+    "village": "농촌13",
+    "zeroDays": 460,
+    "maxConsecutiveZero": 374,
+    "completed": 3000
+   },
+   {
+    "village": "어촌14",
+    "zeroDays": 496,
+    "maxConsecutiveZero": 373,
+    "completed": 1979
+   },
+   {
+    "village": "광산3",
+    "zeroDays": 488,
+    "maxConsecutiveZero": 358,
+    "completed": 1975
+   },
+   {
+    "village": "어촌7",
+    "zeroDays": 469,
+    "maxConsecutiveZero": 355,
+    "completed": 2276
+   },
+   {
+    "village": "어촌10",
+    "zeroDays": 473,
+    "maxConsecutiveZero": 349,
+    "completed": 2277
+   },
+   {
+    "village": "어촌4",
+    "zeroDays": 462,
+    "maxConsecutiveZero": 337,
+    "completed": 2159
+   },
+   {
+    "village": "어촌13",
+    "zeroDays": 467,
+    "maxConsecutiveZero": 334,
+    "completed": 2338
+   },
+   {
+    "village": "어촌9",
+    "zeroDays": 518,
+    "maxConsecutiveZero": 332,
+    "completed": 1858
+   },
+   {
+    "village": "어촌16",
+    "zeroDays": 482,
+    "maxConsecutiveZero": 330,
+    "completed": 2579
+   },
+   {
+    "village": "농촌8",
+    "zeroDays": 413,
+    "maxConsecutiveZero": 328,
+    "completed": 3768
+   },
+   {
+    "village": "광산2",
+    "zeroDays": 499,
+    "maxConsecutiveZero": 319,
+    "completed": 2159
+   },
+   {
+    "village": "광산1",
+    "zeroDays": 526,
+    "maxConsecutiveZero": 318,
+    "completed": 1375
+   },
+   {
+    "village": "어촌6",
+    "zeroDays": 542,
+    "maxConsecutiveZero": 315,
+    "completed": 1310
+   },
+   {
+    "village": "농촌17",
+    "zeroDays": 433,
+    "maxConsecutiveZero": 312,
+    "completed": 3659
+   },
+   {
+    "village": "농촌2",
+    "zeroDays": 488,
+    "maxConsecutiveZero": 307,
+    "completed": 2396
+   },
+   {
+    "village": "농촌22",
+    "zeroDays": 494,
+    "maxConsecutiveZero": 304,
+    "completed": 2217
+   },
+   {
+    "village": "농촌18",
+    "zeroDays": 422,
+    "maxConsecutiveZero": 303,
+    "completed": 3600
+   },
+   {
+    "village": "농촌4",
+    "zeroDays": 449,
+    "maxConsecutiveZero": 294,
+    "completed": 3282
+   },
+   {
+    "village": "농촌11",
+    "zeroDays": 419,
+    "maxConsecutiveZero": 292,
+    "completed": 3777
+   },
+   {
+    "village": "어촌11",
+    "zeroDays": 485,
+    "maxConsecutiveZero": 284,
+    "completed": 2039
+   },
+   {
+    "village": "광산4",
+    "zeroDays": 450,
+    "maxConsecutiveZero": 283,
+    "completed": 3239
+   },
+   {
+    "village": "농촌7",
+    "zeroDays": 407,
+    "maxConsecutiveZero": 280,
+    "completed": 4053
+   },
+   {
+    "village": "농촌12",
+    "zeroDays": 338,
+    "maxConsecutiveZero": 275,
+    "completed": 5140
+   },
+   {
+    "village": "농촌3",
+    "zeroDays": 478,
+    "maxConsecutiveZero": 271,
+    "completed": 2258
+   },
+   {
+    "village": "농촌6",
+    "zeroDays": 443,
+    "maxConsecutiveZero": 269,
+    "completed": 3281
+   },
+   {
+    "village": "광산7",
+    "zeroDays": 498,
+    "maxConsecutiveZero": 265,
+    "completed": 2099
+   },
+   {
+    "village": "어촌5",
+    "zeroDays": 500,
+    "maxConsecutiveZero": 261,
+    "completed": 1679
+   },
+   {
+    "village": "어촌8",
+    "zeroDays": 437,
+    "maxConsecutiveZero": 259,
+    "completed": 2696
+   },
+   {
+    "village": "농촌21",
+    "zeroDays": 390,
+    "maxConsecutiveZero": 259,
+    "completed": 4301
+   },
+   {
+    "village": "임업4",
+    "zeroDays": 400,
+    "maxConsecutiveZero": 257,
+    "completed": 4053
+   },
+   {
+    "village": "어촌15",
+    "zeroDays": 449,
+    "maxConsecutiveZero": 253,
+    "completed": 3114
+   },
+   {
+    "village": "광산6",
+    "zeroDays": 416,
+    "maxConsecutiveZero": 253,
+    "completed": 3779
+   },
+   {
+    "village": "농촌5",
+    "zeroDays": 461,
+    "maxConsecutiveZero": 245,
+    "completed": 2699
+   },
+   {
+    "village": "어촌12",
+    "zeroDays": 524,
+    "maxConsecutiveZero": 241,
+    "completed": 1437
+   },
+   {
+    "village": "농촌15",
+    "zeroDays": 502,
+    "maxConsecutiveZero": 238,
+    "completed": 2150
+   },
+   {
+    "village": "농촌19",
+    "zeroDays": 374,
+    "maxConsecutiveZero": 235,
+    "completed": 4592
+   },
+   {
+    "village": "농촌14",
+    "zeroDays": 427,
+    "maxConsecutiveZero": 234,
+    "completed": 3534
+   },
+   {
+    "village": "농촌16",
+    "zeroDays": 391,
+    "maxConsecutiveZero": 232,
+    "completed": 4306
+   },
+   {
+    "village": "광산5",
+    "zeroDays": 389,
+    "maxConsecutiveZero": 227,
+    "completed": 4301
+   },
+   {
+    "village": "임업1",
+    "zeroDays": 374,
+    "maxConsecutiveZero": 224,
+    "completed": 4438
+   },
+   {
+    "village": "어촌3",
+    "zeroDays": 468,
+    "maxConsecutiveZero": 222,
+    "completed": 2755
+   },
+   {
+    "village": "농촌9",
+    "zeroDays": 387,
+    "maxConsecutiveZero": 206,
+    "completed": 4301
+   },
+   {
+    "village": "어촌2",
+    "zeroDays": 261,
+    "maxConsecutiveZero": 173,
+    "completed": 4739
+   },
+   {
+    "village": "임업2",
+    "zeroDays": 272,
+    "maxConsecutiveZero": 171,
+    "completed": 6038
+   },
+   {
+    "village": "농촌1",
+    "zeroDays": 143,
+    "maxConsecutiveZero": 71,
+    "completed": 8336
+   },
+   {
+    "village": "임업3",
+    "zeroDays": 62,
+    "maxConsecutiveZero": 28,
+    "completed": 9359
+   }
+  ]
+ },
+ "OFF-1020": {
+  "done": false,
+  "failed": false,
+  "days": 600,
+  "target": 730,
+  "pop": 5014,
+  "points": {
+   "1": {
+    "case": "OFF-1020",
+    "day": 1,
+    "segmentStart": 0,
+    "pop": 408,
+    "bodies": 408,
+    "empty": 0,
+    "territory": 175950,
+    "cpuSeconds": 160.356725,
+    "completed": 0,
+    "completedWood": 0,
+    "placedWood": null,
+    "scheduledAwakeAtLedger": 0,
+    "doneDay": 0,
+    "zeroVillages": null,
+    "zeroNeverCompleted": null,
+    "zeroWithQueue": null,
+    "zeroWithWoodOwed": null,
+    "zeroDryWoodOwed": null,
+    "emptyQueueWithNeed": null,
+    "traceAdded": 0,
+    "batchCalls": 0,
+    "bodyStarve": 0,
+    "debtDeaths": 0,
+    "emigrationCumulative": 0,
+    "emigrationDay": 0,
+    "bornDay": 0,
+    "missingResidents": null,
+    "drawnWood": null,
+    "loadTrips": null,
+    "pendingPlacedWood": null,
+    "materialsResidual": null,
+    "zeroLast10Mean": null,
+    "zeroWholeLast10": null,
+    "cpuMeanAll": 160.356725,
+    "cpuMeanSteady": null,
+    "cpuLast100Mean": 160.356725,
+    "emigrated": 0,
+    "offRatio": 1.0,
+    "ratioAtLeast130": false
+   },
+   "10": {
+    "case": "OFF-1020",
+    "day": 10,
+    "segmentStart": 0,
+    "pop": 625,
+    "bodies": 625,
+    "empty": 0,
+    "territory": 175950,
+    "cpuSeconds": 33.34208,
+    "completed": 0,
+    "completedWood": 0,
+    "placedWood": null,
+    "scheduledAwakeAtLedger": 0,
+    "doneDay": 0,
+    "zeroVillages": null,
+    "zeroNeverCompleted": null,
+    "zeroWithQueue": null,
+    "zeroWithWoodOwed": null,
+    "zeroDryWoodOwed": null,
+    "emptyQueueWithNeed": null,
+    "traceAdded": 0,
+    "batchCalls": 0,
+    "bodyStarve": 0,
+    "debtDeaths": 0,
+    "emigrationCumulative": 0,
+    "emigrationDay": 0,
+    "bornDay": 36,
+    "missingResidents": null,
+    "drawnWood": null,
+    "loadTrips": null,
+    "pendingPlacedWood": null,
+    "materialsResidual": null,
+    "zeroLast10Mean": null,
+    "zeroWholeLast10": null,
+    "cpuMeanAll": 41.124139400000004,
+    "cpuMeanSteady": 27.876074333333335,
+    "cpuLast100Mean": 41.124139400000004,
+    "emigrated": 0,
+    "offRatio": 1.0,
+    "ratioAtLeast130": false
+   },
+   "20": {
+    "case": "OFF-1020",
+    "day": 20,
+    "segmentStart": 10,
+    "pop": 985,
+    "bodies": 985,
+    "empty": 0,
+    "territory": 180930,
+    "cpuSeconds": 68.158077,
+    "completed": 0,
+    "completedWood": 0,
+    "placedWood": null,
+    "scheduledAwakeAtLedger": 0,
+    "doneDay": 0,
+    "zeroVillages": null,
+    "zeroNeverCompleted": null,
+    "zeroWithQueue": null,
+    "zeroWithWoodOwed": null,
+    "zeroDryWoodOwed": null,
+    "emptyQueueWithNeed": null,
+    "traceAdded": 4980,
+    "batchCalls": 0,
+    "bodyStarve": 0,
+    "debtDeaths": 0,
+    "emigrationCumulative": 0,
+    "emigrationDay": 0,
+    "bornDay": 38,
+    "missingResidents": null,
+    "drawnWood": null,
+    "loadTrips": null,
+    "pendingPlacedWood": null,
+    "materialsResidual": null,
+    "zeroLast10Mean": null,
+    "zeroWholeLast10": null,
+    "cpuMeanAll": 47.24672435,
+    "cpuMeanSteady": 38.78226288888889,
+    "cpuLast100Mean": 47.24672435,
+    "emigrated": 0,
+    "offRatio": 1.0,
+    "ratioAtLeast130": false
+   },
+   "30": {
+    "case": "OFF-1020",
+    "day": 30,
+    "segmentStart": 20,
+    "pop": 1173,
+    "bodies": 1173,
+    "empty": 0,
+    "territory": 201870,
+    "cpuSeconds": 56.350636,
+    "completed": 0,
+    "completedWood": 0,
+    "placedWood": null,
+    "scheduledAwakeAtLedger": 0,
+    "doneDay": 0,
+    "zeroVillages": null,
+    "zeroNeverCompleted": null,
+    "zeroWithQueue": null,
+    "zeroWithWoodOwed": null,
+    "zeroDryWoodOwed": null,
+    "emptyQueueWithNeed": null,
+    "traceAdded": 25920,
+    "batchCalls": 0,
+    "bodyStarve": 0,
+    "debtDeaths": 0,
+    "emigrationCumulative": 0,
+    "emigrationDay": 0,
+    "bornDay": 18,
+    "missingResidents": null,
+    "drawnWood": null,
+    "loadTrips": null,
+    "pendingPlacedWood": null,
+    "materialsResidual": null,
+    "zeroLast10Mean": null,
+    "zeroWholeLast10": null,
+    "cpuMeanAll": 51.23220933333334,
+    "cpuMeanSteady": 44.21974177777778,
+    "cpuLast100Mean": 51.23220933333334,
+    "emigrated": 0,
+    "offRatio": 1.0,
+    "ratioAtLeast130": false
+   },
+   "100": {
+    "case": "OFF-1020",
+    "day": 100,
+    "segmentStart": 90,
+    "pop": 2435,
+    "bodies": 2424,
+    "empty": 0,
+    "territory": 290970,
+    "cpuSeconds": 120.981799,
+    "completed": 0,
+    "completedWood": 0,
+    "placedWood": 0,
+    "scheduledAwakeAtLedger": 0,
+    "doneDay": 0,
+    "zeroVillages": null,
+    "zeroNeverCompleted": null,
+    "zeroWithQueue": null,
+    "zeroWithWoodOwed": null,
+    "zeroDryWoodOwed": null,
+    "emptyQueueWithNeed": null,
+    "traceAdded": 115020,
+    "batchCalls": 0,
+    "bodyStarve": 0,
+    "debtDeaths": 0,
+    "emigrationCumulative": 2,
+    "emigrationDay": 1,
+    "bornDay": 14,
+    "missingResidents": null,
+    "drawnWood": 0,
+    "loadTrips": 0,
+    "pendingPlacedWood": 0,
+    "materialsResidual": 0,
+    "zeroLast10Mean": null,
+    "zeroWholeLast10": null,
+    "cpuMeanAll": 83.89706023,
+    "cpuMeanSteady": 79.59488511111111,
+    "cpuLast100Mean": 83.89706023,
+    "emigrated": 2,
+    "offRatio": 1.0,
+    "ratioAtLeast130": false
+   },
+   "200": {
+    "case": "OFF-1020",
+    "day": 200,
+    "segmentStart": 190,
+    "pop": 3386,
+    "bodies": 3395,
+    "empty": 0,
+    "territory": 398100,
+    "cpuSeconds": 268.158887,
+    "completed": 0,
+    "completedWood": 0,
+    "placedWood": 0,
+    "scheduledAwakeAtLedger": 0,
+    "doneDay": 0,
+    "zeroVillages": null,
+    "zeroNeverCompleted": null,
+    "zeroWithQueue": null,
+    "zeroWithWoodOwed": null,
+    "zeroDryWoodOwed": null,
+    "emptyQueueWithNeed": null,
+    "traceAdded": 222150,
+    "batchCalls": 0,
+    "bodyStarve": 0,
+    "debtDeaths": 0,
+    "emigrationCumulative": 454,
+    "emigrationDay": 2,
+    "bornDay": 7,
+    "missingResidents": null,
+    "drawnWood": 0,
+    "loadTrips": 0,
+    "pendingPlacedWood": 0,
+    "materialsResidual": 0,
+    "zeroLast10Mean": null,
+    "zeroWholeLast10": null,
+    "cpuMeanAll": 126.97788694,
+    "cpuMeanSteady": 123.82327321666666,
+    "cpuLast100Mean": 170.05871365,
+    "emigrated": 454,
+    "offRatio": 1.0,
+    "ratioAtLeast130": false
+   },
+   "300": {
+    "case": "OFF-1020",
+    "day": 300,
+    "segmentStart": 290,
+    "pop": 3757,
+    "bodies": 3757,
+    "empty": 0,
+    "territory": 473070,
+    "cpuSeconds": 297.769664,
+    "completed": 0,
+    "completedWood": 0,
+    "placedWood": 0,
+    "scheduledAwakeAtLedger": 0,
+    "doneDay": 0,
+    "zeroVillages": null,
+    "zeroNeverCompleted": null,
+    "zeroWithQueue": null,
+    "zeroWithWoodOwed": null,
+    "zeroDryWoodOwed": null,
+    "emptyQueueWithNeed": null,
+    "traceAdded": 297120,
+    "batchCalls": 0,
+    "bodyStarve": 13,
+    "debtDeaths": 16,
+    "emigrationCumulative": 519,
+    "emigrationDay": 0,
+    "bornDay": 1,
+    "missingResidents": null,
+    "drawnWood": 0,
+    "loadTrips": 0,
+    "pendingPlacedWood": 0,
+    "materialsResidual": 0,
+    "zeroLast10Mean": null,
+    "zeroWholeLast10": null,
+    "cpuMeanAll": 167.65164988333333,
+    "cpuMeanSteady": 166.33162164444445,
+    "cpuLast100Mean": 248.99917577,
+    "emigrated": 519,
+    "offRatio": 1.0,
+    "ratioAtLeast130": false
+   },
+   "365": {
+    "case": "OFF-1020",
+    "day": 365,
+    "segmentStart": 360,
+    "pop": 3494,
+    "bodies": 3495,
+    "empty": 0,
+    "territory": 488610,
+    "cpuSeconds": 304.996468,
+    "completed": 0,
+    "completedWood": 0,
+    "placedWood": 0,
+    "scheduledAwakeAtLedger": 0,
+    "doneDay": 0,
+    "zeroVillages": null,
+    "zeroNeverCompleted": null,
+    "zeroWithQueue": null,
+    "zeroWithWoodOwed": null,
+    "zeroDryWoodOwed": null,
+    "emptyQueueWithNeed": null,
+    "traceAdded": 312660,
+    "batchCalls": 0,
+    "bodyStarve": 52,
+    "debtDeaths": 77,
+    "emigrationCumulative": 549,
+    "emigrationDay": 2,
+    "bornDay": 4,
+    "missingResidents": null,
+    "drawnWood": 0,
+    "loadTrips": 0,
+    "pendingPlacedWood": 0,
+    "materialsResidual": 0,
+    "zeroLast10Mean": null,
+    "zeroWholeLast10": null,
+    "cpuMeanAll": 178.18273000273973,
+    "cpuMeanSteady": 177.06460971341463,
+    "cpuLast100Mean": 235.1594861,
+    "emigrated": 549,
+    "offRatio": 1.0,
+    "ratioAtLeast130": false
+   },
+   "400": {
+    "case": "OFF-1020",
+    "day": 400,
+    "segmentStart": 390,
+    "pop": 3692,
+    "bodies": 3692,
+    "empty": 1,
+    "territory": 497730,
+    "cpuSeconds": 380.754967,
+    "completed": 0,
+    "completedWood": 0,
+    "placedWood": 0,
+    "scheduledAwakeAtLedger": 0,
+    "doneDay": 0,
+    "zeroVillages": null,
+    "zeroNeverCompleted": null,
+    "zeroWithQueue": null,
+    "zeroWithWoodOwed": null,
+    "zeroDryWoodOwed": null,
+    "emptyQueueWithNeed": null,
+    "traceAdded": 321780,
+    "batchCalls": 0,
+    "bodyStarve": 73,
+    "debtDeaths": 120,
+    "emigrationCumulative": 608,
+    "emigrationDay": 2,
+    "bornDay": 10,
+    "missingResidents": null,
+    "drawnWood": 0,
+    "loadTrips": 0,
+    "pendingPlacedWood": 0,
+    "materialsResidual": 0,
+    "zeroLast10Mean": null,
+    "zeroWholeLast10": null,
+    "cpuMeanAll": 192.540901285,
+    "cpuMeanSteady": 191.6201047638889,
+    "cpuLast100Mean": 267.20865549,
+    "emigrated": 608,
+    "offRatio": 1.0,
+    "ratioAtLeast130": false
+   },
+   "500": {
+    "case": "OFF-1020",
+    "day": 500,
+    "segmentStart": 490,
+    "pop": 4349,
+    "bodies": 4349,
+    "empty": 1,
+    "territory": 540150,
+    "cpuSeconds": 394.177141,
+    "completed": 0,
+    "completedWood": 0,
+    "placedWood": 0,
+    "scheduledAwakeAtLedger": 0,
+    "doneDay": 0,
+    "zeroVillages": null,
+    "zeroNeverCompleted": null,
+    "zeroWithQueue": null,
+    "zeroWithWoodOwed": null,
+    "zeroDryWoodOwed": null,
+    "emptyQueueWithNeed": null,
+    "traceAdded": 364200,
+    "batchCalls": 0,
+    "bodyStarve": 78,
+    "debtDeaths": 128,
+    "emigrationCumulative": 690,
+    "emigrationDay": 0,
+    "bornDay": 7,
+    "missingResidents": null,
+    "drawnWood": 0,
+    "loadTrips": 0,
+    "pendingPlacedWood": 0,
+    "materialsResidual": 0,
+    "zeroLast10Mean": null,
+    "zeroWholeLast10": null,
+    "cpuMeanAll": 238.721591896,
+    "cpuMeanSteady": 237.39320781777778,
+    "cpuLast100Mean": 423.44435434,
+    "emigrated": 690,
+    "offRatio": 1.0,
+    "ratioAtLeast130": false
+   },
+   "600": {
+    "case": "OFF-1020",
+    "day": 600,
+    "segmentStart": 590,
+    "pop": 5014,
+    "bodies": 5005,
+    "empty": 1,
+    "territory": 596100,
+    "cpuSeconds": 598.41496,
+    "completed": 0,
+    "completedWood": 0,
+    "placedWood": 0,
+    "scheduledAwakeAtLedger": 0,
+    "doneDay": 0,
+    "zeroVillages": null,
+    "zeroNeverCompleted": null,
+    "zeroWithQueue": null,
+    "zeroWithWoodOwed": null,
+    "zeroDryWoodOwed": null,
+    "emptyQueueWithNeed": null,
+    "traceAdded": 420150,
+    "batchCalls": 0,
+    "bodyStarve": 78,
+    "debtDeaths": 128,
+    "emigrationCumulative": 696,
+    "emigrationDay": 0,
+    "bornDay": 12,
+    "missingResidents": null,
+    "drawnWood": 0,
+    "loadTrips": 0,
+    "pendingPlacedWood": 0,
+    "materialsResidual": 0,
+    "zeroLast10Mean": null,
+    "zeroWholeLast10": null,
+    "cpuMeanAll": 279.72923698333335,
+    "cpuMeanSteady": 278.29682533333335,
+    "cpuLast100Mean": 484.76746242,
+    "emigrated": 696,
+    "offRatio": 1.0,
+    "ratioAtLeast130": false
+   }
+  },
+  "cpuMeanAll": 279.72923698333335,
+  "completed": 0,
+  "completedWood": 0,
+  "minBodyRatio": 0.993304450571091,
+  "maxBodyGap": 17,
+  "maxMissingResidents": null,
+  "batchCalls": 0,
+  "observerErrors": 0,
+  "launch": {
+   "root": "/tmp/t1411/fast",
+   "arm": "OFF",
+   "days": 730,
+   "seed": 1020,
+   "every": 10,
+   "profile": false,
+   "census": true,
+   "profileHookSha256": "736bea70a84106d3aa54d7f32c85cb915f47704c4f0af64641f2588c9679055d",
+   "source": {
+    "server/villages.js": "ce4d8c7f1f157d64297e93f3b69df3cc7773a62c16bc0e9139d1ff56a589477e",
+    "server/zone.js": "fb89408587a5d2291e9783b203e4c56bf938a8df31153c4821e186d68c523d81",
+    "server/build-haul.js": "deb39bce3f2f53287810e8a0d71f15691dbd39247063c7863853b1417287f0db",
+    "server/terr-body.js": "9c2482d018eb367fcef1534e608631ef58ca5b71705d94d18996b3acfd709188",
+    "server/terr-cost.js": "a8bc781b27c421950c3737c315bce5306bbcc516f377f6d25d813319d106294e",
+    "scripts/t1308-long-run.js": "6629ff2af5659f8349f8f8a3ba8d29281a784794be1ba77bdb0cc11644662bd4"
+   },
+   "env": {
+    "VILLAGE_DAY_MS": "1440000",
+    "VILLAGE_NPC_CAP": "Infinity",
+    "T400_BUILD_ACT": "0",
+    "VILLAGE_CARAVAN_MAX": "0",
+    "T745_VCLOCK": "1",
+    "T1244_BODY_MS": "10000",
+    "T1221_EVERY": "10",
+    "T1259_WOOD_CAP": "0",
+    "T1243_FARM_ON": "0",
+    "T1308_GUARD_MAX": "0",
+    "NODE_OPTIONS": "-r /tmp/t1411/method-v2/t1411-profile-hook.cjs -r /tmp/t1411/fast/scripts/t1274-baseline-hook.js -r /tmp/t1411/fast/scripts/t1302-observe.js -r /tmp/t1411/fast/scripts/t1243-observe.js -r /tmp/t1411/fast/scripts/t1221-observe.js -r /tmp/t1411/fast/scripts/t1230-observe.js -r /tmp/t1411/fast/scripts/t1251-observe.js -r /tmp/t1411/fast/scripts/t1274-observe.js -r /tmp/t1411/fast/scripts/t1329-observe.js -r /tmp/t1411/method-v2/t1411-census.cjs",
+    "T1411_ROOT": "/tmp/t1411/fast",
+    "T1411_CPU_PROF": "0",
+    "T1411_PROFILE_DIR": "/tmp/t1411/worlds/OFF-1020-profiles",
+    "T740_DUMP_DAYS": "100,200,300,365,400,500,600,700,730"
+   }
+  },
+  "segments": [
+   {
+    "from": 0,
+    "to": 10,
+    "sec": 397.9,
+    "code": 0,
+    "at": "2026-11-21T06:20:21.581Z"
+   },
+   {
+    "from": 10,
+    "to": 20,
+    "sec": 519.4,
+    "code": 0,
+    "at": "2026-11-21T06:29:01.827Z"
+   },
+   {
+    "from": 20,
+    "to": 30,
+    "sec": 570.2,
+    "code": 0,
+    "at": "2026-11-21T06:38:33.186Z"
+   },
+   {
+    "from": 30,
+    "to": 40,
+    "sec": 648,
+    "code": 0,
+    "at": "2026-11-21T06:49:22.164Z"
+   },
+   {
+    "from": 40,
+    "to": 50,
+    "sec": 787.7,
+    "code": 0,
+    "at": "2026-11-21T07:02:30.746Z"
+   },
+   {
+    "from": 50,
+    "to": 60,
+    "sec": 972.3,
+    "code": 0,
+    "at": "2026-11-21T07:18:44.047Z"
+   },
+   {
+    "from": 60,
+    "to": 70,
+    "sec": 872,
+    "code": 0,
+    "at": "2026-11-21T07:33:17.606Z"
+   },
+   {
+    "from": 70,
+    "to": 80,
+    "sec": 1006.6,
+    "code": 0,
+    "at": "2026-11-21T07:50:05.464Z"
+   },
+   {
+    "from": 80,
+    "to": 90,
+    "sec": 1213.7,
+    "code": 0,
+    "at": "2026-11-21T08:10:20.902Z"
+   },
+   {
+    "from": 90,
+    "to": 100,
+    "sec": 1179.8,
+    "code": 0,
+    "at": "2026-11-21T08:30:02.981Z"
+   },
+   {
+    "from": 100,
+    "to": 110,
+    "sec": 1228.7,
+    "code": 0,
+    "at": "2026-11-21T08:50:33.189Z"
+   },
+   {
+    "from": 110,
+    "to": 120,
+    "sec": 1340.6,
+    "code": 0,
+    "at": "2026-11-21T09:12:55.676Z"
+   },
+   {
+    "from": 120,
+    "to": 130,
+    "sec": 1282.9,
+    "code": 0,
+    "at": "2026-11-21T09:34:20.814Z"
+   },
+   {
+    "from": 130,
+    "to": 140,
+    "sec": 1456,
+    "code": 0,
+    "at": "2026-11-21T09:58:39.006Z"
+   },
+   {
+    "from": 140,
+    "to": 150,
+    "sec": 1415.4,
+    "code": 0,
+    "at": "2026-11-21T10:22:17.089Z"
+   },
+   {
+    "from": 150,
+    "to": 160,
+    "sec": 1795.1,
+    "code": 0,
+    "at": "2026-11-21T10:52:13.988Z"
+   },
+   {
+    "from": 160,
+    "to": 170,
+    "sec": 1834.6,
+    "code": 0,
+    "at": "2026-11-21T11:22:50.601Z"
+   },
+   {
+    "from": 170,
+    "to": 180,
+    "sec": 1941.6,
+    "code": 0,
+    "at": "2026-11-21T11:55:14.282Z"
+   },
+   {
+    "from": 180,
+    "to": 190,
+    "sec": 1805.4,
+    "code": 0,
+    "at": "2026-11-21T12:25:21.718Z"
+   },
+   {
+    "from": 190,
+    "to": 200,
+    "sec": 2357.9,
+    "code": 0,
+    "at": "2026-11-21T13:04:41.976Z"
+   },
+   {
+    "from": 200,
+    "to": 210,
+    "sec": 2498.8,
+    "code": 0,
+    "at": "2026-11-21T13:46:23.107Z"
+   },
+   {
+    "from": 210,
+    "to": 220,
+    "sec": 2402,
+    "code": 0,
+    "at": "2026-11-21T18:04:53.179Z"
+   },
+   {
+    "from": 220,
+    "to": 230,
+    "sec": 2558,
+    "code": 0,
+    "at": "2026-11-21T18:47:32.668Z"
+   },
+   {
+    "from": 230,
+    "to": 240,
+    "sec": 1997.7,
+    "code": 0,
+    "at": "2026-11-21T19:20:53.244Z"
+   },
+   {
+    "from": 240,
+    "to": 250,
+    "sec": 2217.7,
+    "code": 0,
+    "at": "2026-11-21T19:57:52.705Z"
+   },
+   {
+    "from": 250,
+    "to": 260,
+    "sec": 2315.3,
+    "code": 0,
+    "at": "2026-11-21T20:36:31.639Z"
+   },
+   {
+    "from": 260,
+    "to": 270,
+    "sec": 2295.6,
+    "code": 0,
+    "at": "2026-11-21T21:14:50.525Z"
+   },
+   {
+    "from": 270,
+    "to": 280,
+    "sec": 2196.6,
+    "code": 0,
+    "at": "2026-11-21T21:51:29.808Z"
+   },
+   {
+    "from": 280,
+    "to": 290,
+    "sec": 2220.9,
+    "code": 0,
+    "at": "2026-11-21T22:28:33.458Z"
+   },
+   {
+    "from": 290,
+    "to": 300,
+    "sec": 2220.4,
+    "code": 0,
+    "at": "2026-11-21T23:05:37.657Z"
+   },
+   {
+    "from": 300,
+    "to": 310,
+    "sec": 1997.5,
+    "code": 0,
+    "at": "2026-11-21T23:38:57.299Z"
+   },
+   {
+    "from": 310,
+    "to": 320,
+    "sec": 1960.8,
+    "code": 0,
+    "at": "2026-11-22T00:11:40.841Z"
+   },
+   {
+    "from": 320,
+    "to": 330,
+    "sec": 1865.5,
+    "code": 0,
+    "at": "2026-11-22T00:42:49.059Z"
+   },
+   {
+    "from": 330,
+    "to": 340,
+    "sec": 1747.9,
+    "code": 0,
+    "at": "2026-11-22T01:11:59.582Z"
+   },
+   {
+    "from": 340,
+    "to": 350,
+    "sec": 2019.6,
+    "code": 0,
+    "at": "2026-11-22T01:45:42.020Z"
+   },
+   {
+    "from": 350,
+    "to": 360,
+    "sec": 2541.4,
+    "code": 0,
+    "at": "2026-11-22T03:22:13.170Z"
+   },
+   {
+    "from": 360,
+    "to": 370,
+    "sec": 2505.3,
+    "code": 0,
+    "at": "2026-11-22T04:04:00.848Z"
+   },
+   {
+    "from": 370,
+    "to": 380,
+    "sec": 3089.8,
+    "code": 0,
+    "at": "2026-11-22T04:55:34.079Z"
+   },
+   {
+    "from": 380,
+    "to": 390,
+    "sec": 3338.6,
+    "code": 0,
+    "at": "2026-11-22T05:51:15.281Z"
+   },
+   {
+    "from": 390,
+    "to": 400,
+    "sec": 3354.4,
+    "code": 0,
+    "at": "2026-11-22T06:47:12.988Z"
+   },
+   {
+    "from": 400,
+    "to": 410,
+    "sec": 3872.7,
+    "code": 0,
+    "at": "2026-11-22T07:51:48.457Z"
+   },
+   {
+    "from": 410,
+    "to": 420,
+    "sec": 4040.7,
+    "code": 0,
+    "at": "2026-11-22T08:59:12.297Z"
+   },
+   {
+    "from": 420,
+    "to": 430,
+    "sec": 3446.9,
+    "code": 0,
+    "at": "2026-11-22T09:56:42.113Z"
+   },
+   {
+    "from": 430,
+    "to": 440,
+    "sec": 3471.6,
+    "code": 0,
+    "at": "2026-11-22T10:54:36.162Z"
+   },
+   {
+    "from": 440,
+    "to": 450,
+    "sec": 3663.1,
+    "code": 0,
+    "at": "2026-11-22T11:55:42.731Z"
+   },
+   {
+    "from": 450,
+    "to": 460,
+    "sec": 3670.9,
+    "code": 0,
+    "at": "2026-11-22T12:56:56.835Z"
+   },
+   {
+    "from": 460,
+    "to": 470,
+    "sec": 3913.5,
+    "code": 0,
+    "at": "2026-11-22T14:02:13.143Z"
+   },
+   {
+    "from": 470,
+    "to": 480,
+    "sec": 4560.8,
+    "code": 0,
+    "at": "2026-11-23T03:58:18.919Z"
+   },
+   {
+    "from": 480,
+    "to": 490,
+    "sec": 4366.2,
+    "code": 0,
+    "at": "2026-11-23T05:11:08.321Z"
+   },
+   {
+    "from": 490,
+    "to": 500,
+    "sec": 4232.5,
+    "code": 0,
+    "at": "2026-11-23T06:21:43.565Z"
+   },
+   {
+    "from": 500,
+    "to": 510,
+    "sec": 3974.2,
+    "code": 0,
+    "at": "2026-11-24T05:03:52.629Z"
+   },
+   {
+    "from": 510,
+    "to": 520,
+    "sec": 4125.7,
+    "code": 0,
+    "at": "2026-11-24T06:12:40.620Z"
+   },
+   {
+    "from": 520,
+    "to": 530,
+    "sec": 4377.2,
+    "code": 0,
+    "at": "2026-11-24T07:25:42.034Z"
+   },
+   {
+    "from": 530,
+    "to": 540,
+    "sec": 4321.5,
+    "code": 0,
+    "at": "2026-11-24T18:02:30.325Z"
+   },
+   {
+    "from": 540,
+    "to": 550,
+    "sec": 4579.2,
+    "code": 0,
+    "at": "2026-11-24T19:18:52.667Z"
+   },
+   {
+    "from": 550,
+    "to": 560,
+    "sec": 4533.9,
+    "code": 0,
+    "at": "2026-11-24T20:34:31.434Z"
+   },
+   {
+    "from": 560,
+    "to": 570,
+    "sec": 4312.7,
+    "code": 0,
+    "at": "2026-11-25T00:11:38.491Z"
+   },
+   {
+    "from": 570,
+    "to": 580,
+    "sec": 4545.2,
+    "code": 0,
+    "at": "2026-11-25T01:27:26.363Z"
+   },
+   {
+    "from": 580,
+    "to": 590,
+    "sec": 4782.8,
+    "code": 0,
+    "at": "2026-11-25T02:47:13.662Z"
+   },
+   {
+    "from": 590,
+    "to": 600,
+    "sec": 5199.1,
+    "code": 0,
+    "at": "2026-11-25T04:13:56.510Z"
+   }
+  ],
+  "clockExitMeta": [
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 403010295,
+     "system": 11237048
+    },
+    "uptimeSeconds": 397.631944199,
+    "clock": {
+     "V": 1767239747703.7935,
+     "V0": 1767225600000,
+     "fired": 605874,
+     "timers": 25283,
+     "intervals": 17,
+     "started": true,
+     "startAt": 1767225600000,
+     "paused": false,
+     "yields": 1514,
+     "maxQ": 22,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 523658104,
+     "system": 14075243
+    },
+    "uptimeSeconds": 519.015482637,
+    "clock": {
+     "V": 1767254147735.3037,
+     "V0": 1767239747503.7935,
+     "fired": 601171,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767239747503.7935,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 581611983,
+     "system": 15327423
+    },
+    "uptimeSeconds": 569.681934585,
+    "clock": {
+     "V": 1767268547733.4807,
+     "V0": 1767254147535.3037,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767254147535.3037,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 660816807,
+     "system": 15883307
+    },
+    "uptimeSeconds": 647.438579164,
+    "clock": {
+     "V": 1767282947731.6577,
+     "V0": 1767268547533.4807,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767268547533.4807,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 793737099,
+     "system": 19870205
+    },
+    "uptimeSeconds": 786.906659287,
+    "clock": {
+     "V": 1767297347729.8347,
+     "V0": 1767282947531.6577,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767282947531.6577,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 981118309,
+     "system": 20976216
+    },
+    "uptimeSeconds": 971.721249189,
+    "clock": {
+     "V": 1767311747728.0117,
+     "V0": 1767297347529.8347,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767297347529.8347,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 882106417,
+     "system": 18094764
+    },
+    "uptimeSeconds": 871.301630419,
+    "clock": {
+     "V": 1767326147726.1887,
+     "V0": 1767311747528.0117,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767311747528.0117,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 1018999818,
+     "system": 22684996
+    },
+    "uptimeSeconds": 1005.958019655,
+    "clock": {
+     "V": 1767340547724.3657,
+     "V0": 1767326147526.1887,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767326147526.1887,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 1235511128,
+     "system": 28027598
+    },
+    "uptimeSeconds": 1212.537277458,
+    "clock": {
+     "V": 1767354947722.5427,
+     "V0": 1767340547524.3657,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767340547524.3657,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 1200692501,
+     "system": 27149334
+    },
+    "uptimeSeconds": 1179.185553647,
+    "clock": {
+     "V": 1767369347720.7197,
+     "V0": 1767354947522.5427,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767354947522.5427,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 1259150485,
+     "system": 27122035
+    },
+    "uptimeSeconds": 1228.035467905,
+    "clock": {
+     "V": 1767383747718.8967,
+     "V0": 1767369347520.7197,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767369347520.7197,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 1365821030,
+     "system": 29127473
+    },
+    "uptimeSeconds": 1339.919188971,
+    "clock": {
+     "V": 1767398147717.0737,
+     "V0": 1767383747518.8967,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767383747518.8967,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 1312543779,
+     "system": 29830970
+    },
+    "uptimeSeconds": 1282.167674061,
+    "clock": {
+     "V": 1767412547715.2507,
+     "V0": 1767398147517.0737,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767398147517.0737,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 1487849426,
+     "system": 29767069
+    },
+    "uptimeSeconds": 1455.210856601,
+    "clock": {
+     "V": 1767426947713.4277,
+     "V0": 1767412547515.2507,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767412547515.2507,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 1450790494,
+     "system": 31868027
+    },
+    "uptimeSeconds": 1414.662748771,
+    "clock": {
+     "V": 1767441347711.6047,
+     "V0": 1767426947513.4277,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767426947513.4277,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 1835505679,
+     "system": 33368481
+    },
+    "uptimeSeconds": 1794.293643207,
+    "clock": {
+     "V": 1767455747709.7817,
+     "V0": 1767441347511.6047,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767441347511.6047,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 1878378106,
+     "system": 34067388
+    },
+    "uptimeSeconds": 1833.831286977,
+    "clock": {
+     "V": 1767470147707.9587,
+     "V0": 1767455747509.7817,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767455747509.7817,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 1981903043,
+     "system": 34770813
+    },
+    "uptimeSeconds": 1940.75020485,
+    "clock": {
+     "V": 1767484547706.1357,
+     "V0": 1767470147507.9587,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767470147507.9587,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 1841899287,
+     "system": 37424065
+    },
+    "uptimeSeconds": 1804.080042593,
+    "clock": {
+     "V": 1767498947704.3127,
+     "V0": 1767484547506.1357,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767484547506.1357,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 2396988629,
+     "system": 38619424
+    },
+    "uptimeSeconds": 2357.113712347,
+    "clock": {
+     "V": 1767513347735.823,
+     "V0": 1767498947504.3127,
+     "fired": 601171,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767498947504.3127,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 2541883161,
+     "system": 38992565
+    },
+    "uptimeSeconds": 2497.884029889,
+    "clock": {
+     "V": 1767527747734,
+     "V0": 1767513347535.823,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767513347535.823,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 2457569552,
+     "system": 36535197
+    },
+    "uptimeSeconds": 2401.237926469,
+    "clock": {
+     "V": 1767542147732.177,
+     "V0": 1767527747534,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767527747534,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 2608714681,
+     "system": 39338848
+    },
+    "uptimeSeconds": 2556.951637601,
+    "clock": {
+     "V": 1767556547730.354,
+     "V0": 1767542147532.177,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767542147532.177,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 2034564423,
+     "system": 40732273
+    },
+    "uptimeSeconds": 1996.200161901,
+    "clock": {
+     "V": 1767570947728.531,
+     "V0": 1767556547530.354,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767556547530.354,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 2502638362,
+     "system": 45614148
+    },
+    "uptimeSeconds": 2216.602644163,
+    "clock": {
+     "V": 1767585347726.708,
+     "V0": 1767570947528.531,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767570947528.531,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 2613201047,
+     "system": 42932367
+    },
+    "uptimeSeconds": 2314.282054471,
+    "clock": {
+     "V": 1767599747724.885,
+     "V0": 1767585347526.708,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767585347526.708,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 2543038870,
+     "system": 42630871
+    },
+    "uptimeSeconds": 2294.326924879,
+    "clock": {
+     "V": 1767614147723.062,
+     "V0": 1767599747524.885,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767599747524.885,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 2428394726,
+     "system": 44752297
+    },
+    "uptimeSeconds": 2195.165918773,
+    "clock": {
+     "V": 1767628547721.239,
+     "V0": 1767614147523.062,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767614147523.062,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 2471740739,
+     "system": 41908633
+    },
+    "uptimeSeconds": 2219.82668202,
+    "clock": {
+     "V": 1767642947719.416,
+     "V0": 1767628547521.239,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767628547521.239,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 2439927012,
+     "system": 43846303
+    },
+    "uptimeSeconds": 2219.243532102,
+    "clock": {
+     "V": 1767657347717.593,
+     "V0": 1767642947519.416,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767642947519.416,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 2247597654,
+     "system": 43737087
+    },
+    "uptimeSeconds": 1996.517406945,
+    "clock": {
+     "V": 1767671747715.77,
+     "V0": 1767657347517.593,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767657347517.593,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 2023788750,
+     "system": 40168779
+    },
+    "uptimeSeconds": 1959.692994942,
+    "clock": {
+     "V": 1767686147713.947,
+     "V0": 1767671747515.77,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767671747515.77,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 2043236372,
+     "system": 41205102
+    },
+    "uptimeSeconds": 1864.38619974,
+    "clock": {
+     "V": 1767700547712.124,
+     "V0": 1767686147513.947,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767686147513.947,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 2014772724,
+     "system": 41432522
+    },
+    "uptimeSeconds": 1746.823625625,
+    "clock": {
+     "V": 1767714947710.301,
+     "V0": 1767700547512.124,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767700547512.124,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 2172947945,
+     "system": 40276483
+    },
+    "uptimeSeconds": 2018.485822104,
+    "clock": {
+     "V": 1767729347708.478,
+     "V0": 1767714947510.301,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767714947510.301,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 2787064544,
+     "system": 41543113
+    },
+    "uptimeSeconds": 2540.371490668,
+    "clock": {
+     "V": 1767743747706.655,
+     "V0": 1767729347508.478,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767729347508.478,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 2795077396,
+     "system": 39318044
+    },
+    "uptimeSeconds": 2504.289076755,
+    "clock": {
+     "V": 1767758147704.832,
+     "V0": 1767743747506.655,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767743747506.655,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 3186968884,
+     "system": 45458643
+    },
+    "uptimeSeconds": 3088.82345376,
+    "clock": {
+     "V": 1767772547703.009,
+     "V0": 1767758147504.832,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767758147504.832,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 3624773550,
+     "system": 49025018
+    },
+    "uptimeSeconds": 3337.585899329,
+    "clock": {
+     "V": 1767786947734.5193,
+     "V0": 1767772547503.009,
+     "fired": 601171,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767772547503.009,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 3553552687,
+     "system": 46776209
+    },
+    "uptimeSeconds": 3353.327695985,
+    "clock": {
+     "V": 1767801347732.6963,
+     "V0": 1767786947534.5193,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767786947534.5193,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 4194922198,
+     "system": 54530633
+    },
+    "uptimeSeconds": 3871.181796576,
+    "clock": {
+     "V": 1767815747730.8733,
+     "V0": 1767801347532.6963,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767801347532.6963,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 4319410645,
+     "system": 58851393
+    },
+    "uptimeSeconds": 4039.686065128,
+    "clock": {
+     "V": 1767830147729.0503,
+     "V0": 1767815747530.8733,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767815747530.8733,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 3726909812,
+     "system": 46888159
+    },
+    "uptimeSeconds": 3445.792042708,
+    "clock": {
+     "V": 1767844547727.2273,
+     "V0": 1767830147529.0503,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767830147529.0503,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 3763731706,
+     "system": 46964281
+    },
+    "uptimeSeconds": 3469.67805546,
+    "clock": {
+     "V": 1767858947725.4043,
+     "V0": 1767844547527.2273,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767844547527.2273,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 4008441292,
+     "system": 47935732
+    },
+    "uptimeSeconds": 3661.949275901,
+    "clock": {
+     "V": 1767873347723.5813,
+     "V0": 1767858947525.4043,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767858947525.4043,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 3986441834,
+     "system": 49591559
+    },
+    "uptimeSeconds": 3669.206030891,
+    "clock": {
+     "V": 1767887747721.7583,
+     "V0": 1767873347523.5813,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767873347523.5813,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 3986306208,
+     "system": 48892877
+    },
+    "uptimeSeconds": 3912.356783155,
+    "clock": {
+     "V": 1767902147719.9353,
+     "V0": 1767887747521.7583,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767887747521.7583,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 4912418917,
+     "system": 54201006
+    },
+    "uptimeSeconds": 4559.678461584,
+    "clock": {
+     "V": 1767916547718.1123,
+     "V0": 1767902147519.9353,
+     "fired": 601170,
+     "timers": 10207,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767902147519.9353,
+     "paused": false,
+     "yields": 1502,
+     "maxQ": 23,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 4738944772,
+     "system": 65651798
+    },
+    "uptimeSeconds": 4364.944398668,
+    "clock": {
+     "V": 1767930947716.2893,
+     "V0": 1767916547518.1123,
+     "fired": 701896,
+     "timers": 110933,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767916547518.1123,
+     "paused": false,
+     "yields": 1754,
+     "maxQ": 109,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 4345241419,
+     "system": 72050208
+    },
+    "uptimeSeconds": 4231.156738917,
+    "clock": {
+     "V": 1767945347714.4663,
+     "V0": 1767930947516.2893,
+     "fired": 744654,
+     "timers": 153691,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767930947516.2893,
+     "paused": false,
+     "yields": 1861,
+     "maxQ": 107,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 4335649109,
+     "system": 70681637
+    },
+    "uptimeSeconds": 3973.034223375,
+    "clock": {
+     "V": 1767959747712.6433,
+     "V0": 1767945347514.4663,
+     "fired": 744755,
+     "timers": 153792,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767945347514.4663,
+     "paused": false,
+     "yields": 1861,
+     "maxQ": 108,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 4216136407,
+     "system": 67769116
+    },
+    "uptimeSeconds": 4124.573700514,
+    "clock": {
+     "V": 1767974147710.8203,
+     "V0": 1767959747512.6433,
+     "fired": 744495,
+     "timers": 153532,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767959747512.6433,
+     "paused": false,
+     "yields": 1861,
+     "maxQ": 107,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 4626626863,
+     "system": 71062927
+    },
+    "uptimeSeconds": 4376.08071348,
+    "clock": {
+     "V": 1767988547708.9973,
+     "V0": 1767974147510.8203,
+     "fired": 744336,
+     "timers": 153373,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767974147510.8203,
+     "paused": false,
+     "yields": 1860,
+     "maxQ": 107,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 4402846324,
+     "system": 68051803
+    },
+    "uptimeSeconds": 4320.218566564,
+    "clock": {
+     "V": 1768002947707.1743,
+     "V0": 1767988547508.9973,
+     "fired": 744561,
+     "timers": 153598,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1767988547508.9973,
+     "paused": false,
+     "yields": 1861,
+     "maxQ": 107,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 4983950287,
+     "system": 75186813
+    },
+    "uptimeSeconds": 4577.419520476,
+    "clock": {
+     "V": 1768017347705.3513,
+     "V0": 1768002947507.1743,
+     "fired": 744630,
+     "timers": 153667,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1768002947507.1743,
+     "paused": false,
+     "yields": 1861,
+     "maxQ": 107,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 4846441868,
+     "system": 72742331
+    },
+    "uptimeSeconds": 4532.489002819,
+    "clock": {
+     "V": 1768031747703.5283,
+     "V0": 1768017347505.3513,
+     "fired": 744625,
+     "timers": 153662,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1768017347505.3513,
+     "paused": false,
+     "yields": 1861,
+     "maxQ": 107,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 4645776774,
+     "system": 70952997
+    },
+    "uptimeSeconds": 4311.45481085,
+    "clock": {
+     "V": 1768046147735.0386,
+     "V0": 1768031747503.5283,
+     "fired": 744959,
+     "timers": 153995,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1768031747503.5283,
+     "paused": false,
+     "yields": 1862,
+     "maxQ": 107,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 4978274824,
+     "system": 75933661
+    },
+    "uptimeSeconds": 4543.907374617,
+    "clock": {
+     "V": 1768060547733.2156,
+     "V0": 1768046147535.0386,
+     "fired": 744808,
+     "timers": 153845,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1768046147535.0386,
+     "paused": false,
+     "yields": 1861,
+     "maxQ": 107,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 5213276063,
+     "system": 77927723
+    },
+    "uptimeSeconds": 4781.549022059,
+    "clock": {
+     "V": 1768074947731.3926,
+     "V0": 1768060547533.2156,
+     "fired": 744409,
+     "timers": 153446,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1768060547533.2156,
+     "paused": false,
+     "yields": 1860,
+     "maxQ": 107,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   },
+   {
+    "exitEventCode": 0,
+    "cpu": {
+     "user": 5708367464,
+     "system": 78721828
+    },
+    "uptimeSeconds": 5195.796902226,
+    "clock": {
+     "V": 1768089347729.5696,
+     "V0": 1768074947531.3926,
+     "fired": 744537,
+     "timers": 153574,
+     "intervals": 18,
+     "started": true,
+     "startAt": 1768074947531.3926,
+     "paused": false,
+     "yields": 1861,
+     "maxQ": 107,
+     "errs": 0,
+     "q": 16
+    },
+    "requestedDays": "730",
+    "seed": "1020",
+    "npcCapEnvironment": null
+   }
+  ],
+  "actualExit": null,
+  "failureEvidence": null,
+  "residentLinkAudit": {
+   "applicable": false,
+   "passed": null,
+   "status": "not-applicable"
+  },
+  "emptyQueuePositiveNeedVillageDays": 0,
+  "villageWorst": []
+ }
+}

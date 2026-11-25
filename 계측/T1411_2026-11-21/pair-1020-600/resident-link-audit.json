@@ -1,0 +1,67 @@
+{
+ "applicable": true,
+ "passed": false,
+ "status": "RED",
+ "affectedDays": [
+  467,
+  490,
+  589
+ ],
+ "maxMissingResidents": 8,
+ "mode": "record-red-gaps",
+ "observations": [
+  {
+   "day": 467,
+   "villages": [
+    {
+     "name": "광산3",
+     "population": 78,
+     "bodies": 77,
+     "missingPeople": [
+      "n437"
+     ]
+    }
+   ]
+  },
+  {
+   "day": 490,
+   "villages": [
+    {
+     "name": "광산3",
+     "population": 61,
+     "bodies": 60,
+     "missingPeople": [
+      "n439"
+     ]
+    }
+   ]
+  },
+  {
+   "day": 589,
+   "villages": [
+    {
+     "name": "광산3",
+     "population": 26,
+     "bodies": 33,
+     "missingPeople": [
+      "n490",
+      "nv62.81",
+      "nv60.492"
+     ]
+    },
+    {
+     "name": "임업6",
+     "population": 108,
+     "bodies": 103,
+     "missingPeople": [
+      "nv62.593",
+      "nv63.29",
+      "nv69.153",
+      "nv57.2",
+      "nv69.163"
+     ]
+    }
+   ]
+  }
+ ]
+}
