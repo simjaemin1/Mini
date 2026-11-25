@@ -1,0 +1,816 @@
+{
+ "harness": {
+  "e2e-membership": {
+   "threshold": 2,
+   "cardThreshold": 4,
+   "testedCommits": 19,
+   "lastGreen": {
+    "sha": "b051b4b97",
+    "idx": 169,
+    "red": "0/5",
+    "info": {
+     "sha": "b051b4b97",
+     "date": "2026-11-18 18:01",
+     "subject": "Merge remote-tracking branch 'origin/batch/body-ladder-1117' into land1084",
+     "card": "land1084",
+     "nFiles": 18,
+     "files": [
+      {
+       "f": "scripts/mac-long-run/README.md",
+       "title": "맥 본체 긴 판 러너(정본 · T1335)"
+      },
+      {
+       "f": "scripts/mac-long-run/판.sh",
+       "title": "러너 밖 · T1335 맥 긴 판 러너 정본 · 제품 무변)"
+      },
+      {
+       "f": "scripts/server-baseline-check.js",
+       "title": "러너 밖 · T691 서버 판 기준선 게이트 · 제품 무변 · 판정 0)"
+      },
+      {
+       "f": "scripts/t1345-ladder.js",
+       "title": "러너 밖 · T1345 사다리 표 자 · 읽기만)"
+      },
+      {
+       "f": "scripts/test-t1345-body-day.js",
+       "title": "서버 판 자 `--body-day`(운영 하루 24분 + 집 켬 · T1345 사다리 ③ 계단)"
+      },
+      {
+       "f": "계측/T1345_2026-11-17/README.md",
+       "title": "몸 세계에서 묶음이 0.73 에 머무는 까닭 · 조건 사다리(서버 자 → 몸 세계)"
+      },
+      {
+       "f": "계측/T1345_2026-11-17/t1345hook.js",
+       "title": "T1345: 조건 사다리(서버 자 → 몸 세계)의 마을-날 줄 + 이주 문마다 \"물었다 · 닫혔다 · 까닭\""
+      },
+      {
+       "f": "계측/T1345_2026-11-17/사다리.json",
+       "title": ""
+      },
+      {
+       "f": "계측/T1345_2026-11-17/사다리.md",
+       "title": "끔 · 묶음 (창 30날)"
+      },
+      {
+       "f": "계측/T1345_2026-11-17/옛코드빨강.txt",
+       "title": ""
+      },
+      {
+       "f": "계측/T1345_2026-11-17/지키기.txt",
+       "title": ""
+      },
+      {
+       "f": "계측/T1345_2026-11-17/판목록.txt",
+       "title": ""
+      }
+     ],
+     "merged": 9,
+     "mergedTop": [
+      "8f709f977 [승인 대기 · T1345] 끝 — 꺾이는 계단 ③ 집 켬(해 끝 끔비 ① 1.099 · ② 1.474 · ③ 0.879 · 날 150 0.638 · 0.632 · 0.706 · ",
+      "98dbf5b2f [승인 대기 · T1345] 중간 — 사다리 ② 끝(해 끝 끔비 1.474 — 하루 24분만이면 묶음이 오른다) · 꺾이는 계단 ③ 집 켬(1.474 → 0.879) · 판 자 고",
+      "e8bb9dc5b [승인 대기 · T1345] 판 자 고침 — server-baseline-check `--body-day`(운영 하루 24분 + 집 켬 · cond · clock · how 에 적",
+      "78514688e [승인 대기 · T1345] 중간 — 사다리 ①②③(+①h): 꺾이는 계단 ③(집 켬 × 하루 24분 — 둘이 함께일 때만 · 해 끝 끔비 1.099 → 0.879 · 집 켬만 1",
+      "479989224 [승인 대기 · T1345] 중간 — 진단 훅에 영토 실물 칸(T1207 넓힌 칸 · 통나무 · 몸 멈춤 · 말뚝 모자람)",
+      "f81f64502 [승인 대기 · T1345] 중간 — 진단 훅에 집터 찾기 누계(10날마다 · tickPerf().probe)"
+     ]
+    }
+   },
+   "firstRed": {
+    "sha": "5296e08da",
+    "idx": 170,
+    "red": "2/5",
+    "line": {
+     "line": "  ✗ ⑦ 곳간은 촌장만 — `/인출` 이 거절된다(NPC 마을 = 사람 촌장 없음)  [\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\"]",
+     "n": 2,
+     "of": 2
+    },
+    "info": {
+     "sha": "5296e08da",
+     "date": "2026-11-18 18:04",
+     "subject": "[PM land1084] T1327_ROUTE_FIX 켬 기본(재민 11-18) · 검사 하네스 Q5 도토리(T1368 회부 2) · nightly-known",
+     "card": "T1327·T1368·land1084",
+     "nFiles": 4,
+     "files": [
+      {
+       "f": "scripts/nightly-known.txt",
+       "title": ""
+      },
+      {
+       "f": "scripts/t1327-route-audit.js",
+       "title": "러너 밖 · T1327 자 · 제품 무변)"
+      },
+      {
+       "f": "scripts/test-onb-blackbox.js",
+       "title": "★검사 카드 T1354: 온보딩을 **구현을 안 보고** 재민 말만으로 재는 결과 하네스"
+      },
+      {
+       "f": "server/villages.js",
+       "title": "§4-4 Stage 2·3: NPC 마을 시뮬 본체 이식 (마을실험실 → 존 서버)"
+      }
+     ],
+     "merged": 0,
+     "mergedTop": []
+    }
+   },
+   "commitsBetween": 0,
+   "monotone": false,
+   "greenAfterFirstRed": [
+    "b481b8066",
+    "0131d3057"
+   ],
+   "skipped": [
+    "1fd4844bf",
+    "9bd684b8b",
+    "1b45ec5a2",
+    "7e46151e7",
+    "53cc1e6ed"
+   ],
+   "skippedN": 5,
+   "perCommit": [
+    {
+     "idx": 1,
+     "sha": "12dde872d",
+     "red": "0/5",
+     "all": null,
+     "X": 0,
+     "v": "G",
+     "medSec": 72
+    },
+    {
+     "idx": 103,
+     "sha": "1fd4844bf",
+     "red": "0/5",
+     "all": null,
+     "X": 5,
+     "v": "X",
+     "medSec": 0
+    },
+    {
+     "idx": 104,
+     "sha": "9bd684b8b",
+     "red": "0/5",
+     "all": null,
+     "X": 5,
+     "v": "X",
+     "medSec": 0
+    },
+    {
+     "idx": 106,
+     "sha": "1b45ec5a2",
+     "red": "0/5",
+     "all": null,
+     "X": 5,
+     "v": "X",
+     "medSec": 0
+    },
+    {
+     "idx": 109,
+     "sha": "7e46151e7",
+     "red": "0/5",
+     "all": null,
+     "X": 5,
+     "v": "X",
+     "medSec": 0
+    },
+    {
+     "idx": 113,
+     "sha": "53cc1e6ed",
+     "red": "0/5",
+     "all": null,
+     "X": 5,
+     "v": "X",
+     "medSec": 0
+    },
+    {
+     "idx": 118,
+     "sha": "353ca72e0",
+     "red": "0/5",
+     "all": null,
+     "X": 0,
+     "v": "G",
+     "medSec": 75
+    },
+    {
+     "idx": 161,
+     "sha": "691f7199c",
+     "red": "0/5",
+     "all": null,
+     "X": 0,
+     "v": "G",
+     "medSec": 73
+    },
+    {
+     "idx": 166,
+     "sha": "2f8695a74",
+     "red": "0/5",
+     "all": null,
+     "X": 0,
+     "v": "G",
+     "medSec": 66
+    },
+    {
+     "idx": 169,
+     "sha": "b051b4b97",
+     "red": "0/5",
+     "all": "0/10",
+     "X": 0,
+     "v": "G",
+     "medSec": 68
+    },
+    {
+     "idx": 170,
+     "sha": "5296e08da",
+     "red": "2/5",
+     "all": "2/10",
+     "X": 0,
+     "v": "R",
+     "medSec": 69
+    },
+    {
+     "idx": 172,
+     "sha": "c2a1dc20c",
+     "red": "3/5",
+     "all": null,
+     "X": 0,
+     "v": "R",
+     "medSec": 70
+    },
+    {
+     "idx": 183,
+     "sha": "f5bde7a8e",
+     "red": "4/5",
+     "all": null,
+     "X": 0,
+     "v": "R",
+     "medSec": 88
+    },
+    {
+     "idx": 205,
+     "sha": "0c2b30de1",
+     "red": "5/5",
+     "all": null,
+     "X": 0,
+     "v": "R",
+     "medSec": 78
+    },
+    {
+     "idx": 250,
+     "sha": "b481b8066",
+     "red": "1/5",
+     "all": null,
+     "X": 0,
+     "v": "G",
+     "medSec": 68
+    },
+    {
+     "idx": 300,
+     "sha": "b241f9d9e",
+     "red": "2/5",
+     "all": null,
+     "X": 0,
+     "v": "R",
+     "medSec": 82
+    },
+    {
+     "idx": 344,
+     "sha": "0131d3057",
+     "red": "0/5",
+     "all": "2/10",
+     "X": 0,
+     "v": "G",
+     "medSec": 85
+    },
+    {
+     "idx": 380,
+     "sha": "5ac57c743",
+     "red": "2/5",
+     "all": null,
+     "X": 0,
+     "v": "R",
+     "medSec": 83
+    },
+    {
+     "idx": 410,
+     "sha": "53a54a4f8",
+     "red": "3/5",
+     "all": null,
+     "X": 0,
+     "v": "R",
+     "medSec": 85
+    }
+   ]
+  },
+  "e2e-blizzard": {
+   "threshold": 1,
+   "cardThreshold": 1,
+   "testedCommits": 2,
+   "lastGreen": null,
+   "firstRed": {
+    "sha": "12dde872d",
+    "idx": 1,
+    "red": "3/10",
+    "line": {
+     "line": "  ✗ ★★유보 — 프레임 계기가 층을 못 본다(층 0.47ms 인데 프레임엔 -0.10ms) · 이 절의 값은 못 믿는다",
+     "n": 1,
+     "of": 3
+    },
+    "info": {
+     "sha": "12dde872d",
+     "date": "2026-11-10 00:03",
+     "subject": "[PM] 배포 스크립트 central 기본 주소 → 서울 iwinv(옛 Vultr 지우기 앞)",
+     "card": null,
+     "nFiles": 4,
+     "files": [
+      {
+       "f": "scripts/redeploy-all.sh",
+       "title": ""
+      },
+      {
+       "f": "scripts/redeploy-hanbando-5.sh",
+       "title": "26 zone 오픈월드 구조 유지."
+      },
+      {
+       "f": "scripts/redeploy-light.sh",
+       "title": "존 직렬 재생성 (부팅 폭주 방지)"
+      },
+      {
+       "f": "scripts/redeploy-zones.sh",
+       "title": ""
+      }
+     ],
+     "merged": 0,
+     "mergedTop": []
+    }
+   },
+   "commitsBetween": null,
+   "monotone": true,
+   "greenAfterFirstRed": [],
+   "skipped": [],
+   "skippedN": 0,
+   "perCommit": [
+    {
+     "idx": 1,
+     "sha": "12dde872d",
+     "red": "3/10",
+     "all": null,
+     "X": 0,
+     "v": "R",
+     "medSec": 68.5
+    },
+    {
+     "idx": 410,
+     "sha": "53a54a4f8",
+     "red": "1/10",
+     "all": null,
+     "X": 0,
+     "v": "R",
+     "medSec": 63
+    }
+   ]
+  },
+  "e2e-rtt": {
+   "threshold": 1,
+   "cardThreshold": 1,
+   "testedCommits": 2,
+   "lastGreen": null,
+   "firstRed": {
+    "sha": "12dde872d",
+    "idx": 1,
+    "red": "2/10",
+    "line": {
+     "line": "  ✗ ②a 전제 — 자가 믿을 만하다(같은 조건 두 번이 3배 안)  잡음비 3.797",
+     "n": 1,
+     "of": 2
+    },
+    "info": {
+     "sha": "12dde872d",
+     "date": "2026-11-10 00:03",
+     "subject": "[PM] 배포 스크립트 central 기본 주소 → 서울 iwinv(옛 Vultr 지우기 앞)",
+     "card": null,
+     "nFiles": 4,
+     "files": [
+      {
+       "f": "scripts/redeploy-all.sh",
+       "title": ""
+      },
+      {
+       "f": "scripts/redeploy-hanbando-5.sh",
+       "title": "26 zone 오픈월드 구조 유지."
+      },
+      {
+       "f": "scripts/redeploy-light.sh",
+       "title": "존 직렬 재생성 (부팅 폭주 방지)"
+      },
+      {
+       "f": "scripts/redeploy-zones.sh",
+       "title": ""
+      }
+     ],
+     "merged": 0,
+     "mergedTop": []
+    }
+   },
+   "commitsBetween": null,
+   "monotone": true,
+   "greenAfterFirstRed": [],
+   "skipped": [],
+   "skippedN": 0,
+   "perCommit": [
+    {
+     "idx": 1,
+     "sha": "12dde872d",
+     "red": "2/10",
+     "all": null,
+     "X": 0,
+     "v": "R",
+     "medSec": 269.5
+    },
+    {
+     "idx": 410,
+     "sha": "53a54a4f8",
+     "red": "1/10",
+     "all": null,
+     "X": 0,
+     "v": "R",
+     "medSec": 333.5
+    }
+   ]
+  },
+  "e2e-first30": {
+   "threshold": 1,
+   "cardThreshold": 1,
+   "testedCommits": 2,
+   "lastGreen": null,
+   "firstRed": {
+    "sha": "12dde872d",
+    "idx": 1,
+    "red": "1/3",
+    "line": {
+     "line": "  ◆ 11.82분  도끼(손 제작)   ◆ 12.18분  움집 ② 단계 ",
+     "n": 1,
+     "of": 1
+    },
+    "info": {
+     "sha": "12dde872d",
+     "date": "2026-11-10 00:03",
+     "subject": "[PM] 배포 스크립트 central 기본 주소 → 서울 iwinv(옛 Vultr 지우기 앞)",
+     "card": null,
+     "nFiles": 4,
+     "files": [
+      {
+       "f": "scripts/redeploy-all.sh",
+       "title": ""
+      },
+      {
+       "f": "scripts/redeploy-hanbando-5.sh",
+       "title": "26 zone 오픈월드 구조 유지."
+      },
+      {
+       "f": "scripts/redeploy-light.sh",
+       "title": "존 직렬 재생성 (부팅 폭주 방지)"
+      },
+      {
+       "f": "scripts/redeploy-zones.sh",
+       "title": ""
+      }
+     ],
+     "merged": 0,
+     "mergedTop": []
+    }
+   },
+   "commitsBetween": null,
+   "monotone": true,
+   "greenAfterFirstRed": [],
+   "skipped": [],
+   "skippedN": 0,
+   "perCommit": [
+    {
+     "idx": 1,
+     "sha": "12dde872d",
+     "red": "1/3",
+     "all": null,
+     "X": 0,
+     "v": "R",
+     "medSec": 2158
+    },
+    {
+     "idx": 410,
+     "sha": "53a54a4f8",
+     "red": "2/3",
+     "all": null,
+     "X": 0,
+     "v": "R",
+     "medSec": 2401
+    }
+   ]
+  }
+ },
+ "head20": {
+  "runs": 20,
+  "red": 10,
+  "green": 10,
+  "other": 0,
+  "lines": [
+   {
+    "line": "  ✗ ⑦ 곳간은 촌장만 — `/인출` 이 거절된다(NPC 마을 = 사람 촌장 없음)  [\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\"]",
+    "n": 10
+   }
+  ],
+  "modal": {
+   "line": "  ✗ ⑦ 곳간은 촌장만 — `/인출` 이 거절된다(NPC 마을 = 사람 촌장 없음)  [\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\"]",
+   "n": 10
+  },
+  "distinctLines": 1,
+  "pos": [
+   {
+    "run": 1,
+    "res": "R",
+    "nearVid": null,
+    "x": 14032,
+    "y": 78032,
+    "nearest": {
+     "vid": 1,
+     "ax": 14032,
+     "ay": 78032,
+     "d": 0,
+     "name": "농촌1"
+    }
+   },
+   {
+    "run": 10,
+    "res": "G",
+    "nearVid": 1,
+    "x": 14032,
+    "y": 78032,
+    "nearest": {
+     "vid": 1,
+     "ax": 14032,
+     "ay": 78032,
+     "d": 0,
+     "name": "농촌1"
+    }
+   },
+   {
+    "run": 11,
+    "res": "G",
+    "nearVid": 1,
+    "x": 14032,
+    "y": 78032,
+    "nearest": {
+     "vid": 1,
+     "ax": 14032,
+     "ay": 78032,
+     "d": 0,
+     "name": "농촌1"
+    }
+   },
+   {
+    "run": 12,
+    "res": "G",
+    "nearVid": 1,
+    "x": 14032,
+    "y": 78032,
+    "nearest": {
+     "vid": 1,
+     "ax": 14032,
+     "ay": 78032,
+     "d": 0,
+     "name": "농촌1"
+    }
+   },
+   {
+    "run": 13,
+    "res": "R",
+    "nearVid": null,
+    "x": 14032,
+    "y": 78032,
+    "nearest": {
+     "vid": 1,
+     "ax": 14032,
+     "ay": 78032,
+     "d": 0,
+     "name": "농촌1"
+    }
+   },
+   {
+    "run": 14,
+    "res": "R",
+    "nearVid": null,
+    "x": 14032,
+    "y": 78032,
+    "nearest": {
+     "vid": 1,
+     "ax": 14032,
+     "ay": 78032,
+     "d": 0,
+     "name": "농촌1"
+    }
+   },
+   {
+    "run": 15,
+    "res": "G",
+    "nearVid": 1,
+    "x": 14032,
+    "y": 78032,
+    "nearest": {
+     "vid": 1,
+     "ax": 14032,
+     "ay": 78032,
+     "d": 0,
+     "name": "농촌1"
+    }
+   },
+   {
+    "run": 16,
+    "res": "G",
+    "nearVid": 1,
+    "x": 14032,
+    "y": 78032,
+    "nearest": {
+     "vid": 1,
+     "ax": 14032,
+     "ay": 78032,
+     "d": 0,
+     "name": "농촌1"
+    }
+   },
+   {
+    "run": 17,
+    "res": "R",
+    "nearVid": null,
+    "x": 14032,
+    "y": 78032,
+    "nearest": {
+     "vid": 1,
+     "ax": 14032,
+     "ay": 78032,
+     "d": 0,
+     "name": "농촌1"
+    }
+   },
+   {
+    "run": 18,
+    "res": "R",
+    "nearVid": null,
+    "x": 14032,
+    "y": 78032,
+    "nearest": {
+     "vid": 1,
+     "ax": 14032,
+     "ay": 78032,
+     "d": 0,
+     "name": "농촌1"
+    }
+   },
+   {
+    "run": 19,
+    "res": "G",
+    "nearVid": 1,
+    "x": 14032,
+    "y": 78032,
+    "nearest": {
+     "vid": 1,
+     "ax": 14032,
+     "ay": 78032,
+     "d": 0,
+     "name": "농촌1"
+    }
+   },
+   {
+    "run": 2,
+    "res": "R",
+    "nearVid": null,
+    "x": 14032,
+    "y": 78032,
+    "nearest": {
+     "vid": 1,
+     "ax": 14032,
+     "ay": 78032,
+     "d": 0,
+     "name": "농촌1"
+    }
+   },
+   {
+    "run": 20,
+    "res": "R",
+    "nearVid": null,
+    "x": 14032,
+    "y": 78032,
+    "nearest": {
+     "vid": 1,
+     "ax": 14032,
+     "ay": 78032,
+     "d": 0,
+     "name": "농촌1"
+    }
+   },
+   {
+    "run": 3,
+    "res": "R",
+    "nearVid": null,
+    "x": 14032,
+    "y": 78032,
+    "nearest": {
+     "vid": 1,
+     "ax": 14032,
+     "ay": 78032,
+     "d": 0,
+     "name": "농촌1"
+    }
+   },
+   {
+    "run": 4,
+    "res": "G",
+    "nearVid": 1,
+    "x": 14032,
+    "y": 78032,
+    "nearest": {
+     "vid": 1,
+     "ax": 14032,
+     "ay": 78032,
+     "d": 0,
+     "name": "농촌1"
+    }
+   },
+   {
+    "run": 5,
+    "res": "R",
+    "nearVid": null,
+    "x": 14032,
+    "y": 78032,
+    "nearest": {
+     "vid": 1,
+     "ax": 14032,
+     "ay": 78032,
+     "d": 0,
+     "name": "농촌1"
+    }
+   },
+   {
+    "run": 6,
+    "res": "R",
+    "nearVid": null,
+    "x": 14032,
+    "y": 78032,
+    "nearest": {
+     "vid": 1,
+     "ax": 14032,
+     "ay": 78032,
+     "d": 0,
+     "name": "농촌1"
+    }
+   },
+   {
+    "run": 7,
+    "res": "G",
+    "nearVid": 1,
+    "x": 14032,
+    "y": 78032,
+    "nearest": {
+     "vid": 1,
+     "ax": 14032,
+     "ay": 78032,
+     "d": 0,
+     "name": "농촌1"
+    }
+   },
+   {
+    "run": 8,
+    "res": "G",
+    "nearVid": 1,
+    "x": 14032,
+    "y": 78032,
+    "nearest": {
+     "vid": 1,
+     "ax": 14032,
+     "ay": 78032,
+     "d": 0,
+     "name": "농촌1"
+    }
+   },
+   {
+    "run": 9,
+    "res": "G",
+    "nearVid": 1,
+    "x": 14032,
+    "y": 78032,
+    "nearest": {
+     "vid": 1,
+     "ax": 14032,
+     "ay": 78032,
+     "d": 0,
+     "name": "농촌1"
+    }
+   }
+  ],
+  "posRedNullNearVid": 10,
+  "posRedN": 20,
+  "distMin": 0,
+  "distMed": 0,
+  "distMax": 0
+ },
+ "filled": [
+  "lib-onb-guide",
+  "lib-port"
+ ]
+}
