@@ -153,16 +153,22 @@ function bridgeTry(st, H, SV, d) {
   const [x, y] = land[Math.floor(rnd(d, 1) * land.length)], P = BOTS[d % NB]; g.tries++;
   const r = fenceAt(H, P, x, y); if (r.ok) g.ok++; else g.refused++;
 }
-let RC = null;
-function landTry(st, H, SV, d) {
-  const g = rec.g.land; if (!RC || d % 30 === 0) RC = [...routeCells(st).values()].filter((o) => o.n >= 1);
-  if (!RC.length) { g.claimFail++; return; }
-  const o = RC[Math.floor(rnd(d, 2) * RC.length)], A = BOTS[(d / 5 | 0) % NB], B = BOTS[((d / 5 | 0) + 1) % NB];
-  putAt(H, A, o.x + 6, o.y + 6); const c0 = H.claims.size;
+function landTry(st, H, SV, d) {   // 마을 둘레에 봇 하나가 임시 사유지를 잡고, 다른 봇이 그 안에 울타리를 놓아 본다
+  const g = rec.g.land, vs = (st.villages || []).filter((v) => v.ccx != null);
+  if (!vs.length) { g.claimFail++; return; }
+  const v = vs[Math.floor(rnd(d, 2) * vs.length)], A = BOTS[(d / 5 | 0) % NB], B = BOTS[((d / 5 | 0) + 1) % NB];
+  let cx = null, cy = null;
+  for (let k = 0; k < 40 && cx == null; k++) {   // 마을 한가운데에서 8 ~ 20칸 떨어진 걸을 수 있는 칸
+    const r = 8 + Math.floor(rnd(d, 10 + k) * 13), a = rnd(d, 60 + k) * 2 * Math.PI, x = Math.round(v.ccx + r * Math.cos(a)), y = Math.round(v.ccy + r * Math.sin(a));
+    if (!H.isTerrainBlockedLocal(x * SZ + SZ / 2, y * SZ + SZ / 2) && !H.isWaterTileLocal(x * SZ + SZ / 2, y * SZ + SZ / 2)) { cx = x; cy = y; }
+  }
+  if (cx == null) { g.claimFail++; rec.landDbg = { d, why: 'no cell', v: v.name }; return; }
+  putAt(H, A, cx, cy); const c0 = H.claims.size, n0 = A._n;
   try { H.tryClaim(A, 'temporary'); } catch (e) { rec.actErr = rec.actErr || String(e && e.stack).slice(0, 300); }
-  if (H.claims.size <= c0) { g.claimFail++; rec.landDbg = { d, notice: A._last, n0: c0, n1: H.claims.size, at: [o.x + 6, o.y + 6] }; return; }
+  if (H.claims.size <= c0) { g.claimFail++; rec.landDbg = { d, notice: A._last, v: v.name, at: [cx, cy] }; return; }
   g.claims++;
-  g.tries++; const r = fenceAt(H, B, o.x + 6, o.y + 6); if (r.ok) g.ok++; else g.refused++;
+  g.tries++; const r = fenceAt(H, B, cx, cy); if (r.ok) g.ok++; else g.refused++;
+  rec.landLast = { d, v: v.name, at: [cx, cy], ok: r.ok, note: r.note || null };
 }
 function hitNpc(st, H, SV, d) {
   const g = rec.g.hit, vs = (st.villages || []).filter((v) => v.npcPids && v.npcPids.length >= 2 && v.econ && v.econ.npcs && v.econ.npcs.length >= 2);
@@ -176,7 +182,7 @@ function hitNpc(st, H, SV, d) {
   rec.hitLast = { d, v: v.dbId, econ: [e0, v.econ.npcs.length], bodies: [n0, v.npcPids.length], exit: p._bxExit || null };
 }
 function recon(st, H, d) {
-  const g = rec.g.recon, P = BOTS[(d / 10 | 0) % NB]; g.tries++;
+  const g = rec.g.recon, owed = BOTS.filter((b) => H._t1423Owe.has(b.playerId)), P = owed.length ? owed[0] : BOTS[(d / 10 | 0) % NB]; g.tries++;   // 쌓인 몫이 있는 봇이 있으면 그 봇이 다시 붙는다
   if (H._t1423Owe.has(P.playerId)) g.owed++;
   try { H._t1423Collect(P); } catch (e) { rec.actErr = rec.actErr || String(e && e.stack).slice(0, 300); }
 }
