@@ -80,6 +80,7 @@ const T1211_STOCK_FE = process.env.T1211_STOCK_FE !== '0';
 //      어느 마을이든 · 드는 문 전부(`/가입` · `/소속` · `/수락` · 첫 의뢰 권함 · 길드원 앉히기)가 같은 술어(`coolLeft`)를 묻는다 · 세운 사람(창설)은 문이 아니라 행위라 안 묻는다.
 //   ⓒ **인정 구성원** = 그 마을 사람이고 + 기여(온보딩 계량기 하나 · `contribOf`) ≥ `N_MEMBER`(12 그대로) — 또는 그 마을 촌장. 탈퇴해도 기여는 남는다(다시 들면 곧 인정).
 //      쓰이는 자리 둘: 영토 안 개인 사유지(존 `tryClaim` — 새로 · 넓히기) · 거래소 수수료 할인(`feeRateOf`).
+const T1490_NEAR_NOW = process.env.T1490_NEAR_NOW === '1';
 const T1137 = process.env.T1137_MEMBER_OPEN !== '0';
 let H = null;
 function init(host) { H = host || {}; return true; }
@@ -481,7 +482,9 @@ function handleChat(player, text) {
   const t = String(text || '').trim();
   if (!t.startsWith('/')) return false;
   const [cmd, ...rest] = t.split(/\s+/);
-  const near = (player._memberNearVid != null) ? player._memberNearVid : null;
+  // T1490: 표시 사본 대신 요청 순간 몸을 기존 근접 정본에 묻는다. 끔은 종전 읽기 그대로.
+  const ng = T1490_NEAR_NOW ? _nearVil(player, null) : null;
+  const near = T1490_NEAR_NOW ? (ng.err ? null : ng.vil.dbId | 0) : ((player._memberNearVid != null) ? player._memberNearVid : null);
   //   ★[T1137] `/가입` — 그 마을 가까이에서 · 문턱 없이(켬에서만 명령 · 끔 = 종전처럼 말로 흘러간다)
   if (cmd === '/가입' && T1137) { _joinSay(player, near); return true; }
   if (cmd === '/소속') {
