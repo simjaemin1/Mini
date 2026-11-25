@@ -1,0 +1,5 @@
+test-claim-v2.js
+test-deeds-blackbox.js
+test-t1389-deeds-on.js
+test-t1423-block-react.js
+test-t1441-village-rules.js
