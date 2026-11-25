@@ -18,6 +18,6 @@
 
 **마을 ID 연결 RED**: 전체 몸/인구 최솟비1·최대 전역 몸 부족0이나,467·490·589날 마을별 사람 ID 누락이 있다. 최대 누락8명(589날 광산3의 n490·nv62.81·nv60.492, 임업6의 nv62.593·nv63.29·nv69.153·nv57.2·nv69.163). 상세는 resident-link-audit.json이다.467/490날의 포로 귀향 소속 순서 근거는 captive-return-link-audit에 있다.589날의 원인은 아직 확인하지 못했고 같은 원인으로 단정하지 않는다. 고침 전 비교는100날까지이므로 T1411의 발생 기여도 판정하지 않는다.
 
-기본 엄격 ID 검사는 유지했다. 이번 보존은 scripts/t1411-archive-prefix.py의 명시적 --report-link-gaps로 RED·passed=false를 함께 내보냈다. 몸 수·시계·물자·마디 검사와 미완료 판정은 유지한다. 이전500날 엄격 실패 로그를 덮지 않았다. archive-prefix.py는 실제 사용한 코드 사본, archive.log는 출력이다.
+기본 엄격 ID 검사는 유지했다. 이번 보존은 scripts/t1411-archive-prefix.py의 명시적 --report-link-gaps로 RED·passed=false를 함께 내보냈다. 몸 수·시계·물자·마디 검사와 미완료 판정은 유지한다. 이전500날 엄격 실패 로그를 덮지 않았다. archive-prefix.py는 실제 사용한 코드 사본, archive-output.txt는 출력이다.
 
 archive-*-integrity600.json은 같은 실행 자료와 압축 보존 사본의 경제/마을 각600/600 일치다. 최적화 전/후 의미 보존600날 주장이 아니다. prefix500-unchanged.json은 이전에 푸시한500날 daily.csv의1000행/모든 열이 이번 접두부와 같음을 확인한다. raw bodyStarve와 debtDeaths를 서로 다른 사람의 사망 수로 더하지 않는다.
