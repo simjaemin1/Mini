@@ -1,0 +1,42 @@
+{
+  "stop-870.json": {
+    "expected": "28fb3f2a306b30822d361825228978dc37b68c3b463c77279823f8cbba45e7c3",
+    "actual": "28fb3f2a306b30822d361825228978dc37b68c3b463c77279823f8cbba45e7c3",
+    "same": true
+  },
+  "day": {
+    "expected": "8a9a02d73aeefd97306a08c30969a9e8d5ef03960978a1c5db4447558d40f689",
+    "actual": "8a9a02d73aeefd97306a08c30969a9e8d5ef03960978a1c5db4447558d40f689",
+    "same": true
+  },
+  "w.db": {
+    "expected": "d8e126efb7645a607e78954e93f3d220952e677411a77aff0a5ef23ef67840fe",
+    "actual": "d8e126efb7645a607e78954e93f3d220952e677411a77aff0a5ef23ef67840fe",
+    "same": true
+  },
+  "w.db-shm": {
+    "expected": "9baa0cc528b1bb16f7ab2c234abe4a57a4f43498dde6e6068925bc8be49f1935",
+    "actual": "c58ab26b0e0edc05a237eb89f70679a824361192eba82b1dbbabc3e089b3ff7e",
+    "same": false
+  },
+  "phase-870.json": {
+    "expected": "c72d7caa6a6c847e075bf93110a412512816cb1553c6931208b2f7b42fef513f",
+    "actual": "c72d7caa6a6c847e075bf93110a412512816cb1553c6931208b2f7b42fef513f",
+    "same": true
+  },
+  "keep-870.json": {
+    "expected": "9da906611a90908e0ada4c32c1e091fc5b926ffd145558b57ca599b8a89c6221",
+    "actual": "9da906611a90908e0ada4c32c1e091fc5b926ffd145558b57ca599b8a89c6221",
+    "same": true
+  },
+  "state.json": {
+    "expected": "55970810451b8032747c130399152b4d510d4f251f04de746e1bf9878b7f0e5c",
+    "actual": "55970810451b8032747c130399152b4d510d4f251f04de746e1bf9878b7f0e5c",
+    "same": true
+  },
+  "w.db-wal": {
+    "expected": "acf282bb3ddbeac1babb25bfd8e73e22521a782ebf32c8a8e35f4491316cdadf",
+    "actual": "acf282bb3ddbeac1babb25bfd8e73e22521a782ebf32c8a8e35f4491316cdadf",
+    "same": true
+  }
+}
