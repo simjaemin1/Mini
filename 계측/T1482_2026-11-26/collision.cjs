@@ -20,9 +20,17 @@ if (process.argv[2] === 'child') {
   WL.bindGroupUnit(ga,players.get('p1')); WL.bindGroupUnit(gb,players.get('p2'));
   const ua = WL.enlist(f,'A',ga,players.get('p1')), ub = WL.enlist(f,'B',gb,players.get('p2'));
   ua.ctl=false; ub.ctl=false; ua.mrl=1; ub.mrl=1;
-  ua.cd=Number(process.argv[3]); ub.cd=0;
-  f.state='engaged';f.physical=true;
+  ua.cd=0; f.physical=true;
   f.ctx.sides.A.arrows=20;
+  // Build a coherent engaged fight through the canonical transition, then let its
+  // first projectile finish. Both arms run this identical prefix before varying cd.
+  WL.stepFight(f);
+  assert.equal(f.ctx.arrows.length,1); assert(f.engagedOnce);
+  let warmupSteps=1;
+  while(f.ctx.arrows.length && warmupSteps<200) { WL.stepFight(f); warmupSteps++; }
+  assert.equal(f.ctx.arrows.length,0); assert.equal(f.state,'engaged');
+  assert.equal(f.ctx.sides.A.arrows,19); assert(ua.hp>0 && ub.hp>0);
+  ua.cd=Number(process.argv[3]);
   const body={w,phase:'march',pids:['p1'],defPids:['p2'],atkGroup:{units:[ga]},defGroup:{units:[gb]},fight:f};
   const H=V.__p3Bind({deps:{players,npcs:new Set()},villages,world:{day:870,villages:villages.map(v=>v.econ)},
     war:{WARS:[w]},warBodies:new Map([[44,body]]),warLive:WL});
@@ -32,7 +40,7 @@ if (process.argv[2] === 'child') {
   const saved=JSON.stringify({war:H._t1167Pack(),bodies:bodyRows});
   const before=ua.cd;
   const ev=WL.stepFight(f);
-  process.stdout.write(JSON.stringify({saved,sha256:createHash('sha256').update(saved).digest('hex'),bytes:Buffer.byteLength(saved),beforeCd:before,
+  process.stdout.write(JSON.stringify({saved,sha256:createHash('sha256').update(saved).digest('hex'),bytes:Buffer.byteLength(saved),beforeCd:before,warmupSteps,
     after:{state:ua.st,cd:ua.cd,arrows:f.ctx.arrows.length,ammo:f.ctx.sides.A.arrows,x:players.get('p1').x,event:ev}})+'\n');
   process.exit(0);
 }

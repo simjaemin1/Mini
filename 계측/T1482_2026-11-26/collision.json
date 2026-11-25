@@ -2,14 +2,15 @@
   "kind": "synthetic information-loss witness; actual T1167 + T747/T1340 product serializers and war-live step",
   "cases": [
     {
-      "sha256": "29b8530002300c91d267a9793b83acea034a4c8b6156d61b4e83100f23117326",
-      "bytes": 564,
+      "sha256": "8db8bf9041466a7e387c88ee0214319a2285382295effff24527bbeec20422ed",
+      "bytes": 578,
       "beforeCd": -1,
+      "warmupSteps": 35,
       "after": {
         "state": "shoot",
         "cd": 8,
         "arrows": 1,
-        "ammo": 19,
+        "ammo": 18,
         "x": 0,
         "event": {
           "contact": true,
@@ -19,17 +20,18 @@
       }
     },
     {
-      "sha256": "29b8530002300c91d267a9793b83acea034a4c8b6156d61b4e83100f23117326",
-      "bytes": 564,
+      "sha256": "8db8bf9041466a7e387c88ee0214319a2285382295effff24527bbeec20422ed",
+      "bytes": 578,
       "beforeCd": 4,
+      "warmupSteps": 35,
       "after": {
-        "state": "adv",
+        "state": "shoot",
         "cd": 3.966666666666667,
         "arrows": 0,
-        "ammo": 20,
+        "ammo": 19,
         "x": 0,
         "event": {
-          "contact": false,
+          "contact": true,
           "standoff": false,
           "rout": null
         }
