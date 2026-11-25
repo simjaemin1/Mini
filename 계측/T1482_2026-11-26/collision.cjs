@@ -37,7 +37,7 @@ if (process.argv[2] === 'child') {
   process.exit(0);
 }
 const run = cd => JSON.parse(execFileSync(process.execPath,[__filename,'child',String(cd)],{cwd:ROOT,env:process.env,stdio:'pipe'}).toString());
-const a=run(-1), b=run(100);
+const a=run(-1), b=run(4); // 4 seconds is inside the canonical archer cooldown (8s).
 assert.equal(a.saved,b.saved,'actual stored text must be byte-identical');
 delete a.saved; delete b.saved;
 assert.equal(a.sha256,b.sha256,'real product save must collide');
