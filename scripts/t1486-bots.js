@@ -5,7 +5,7 @@
 //   봇 = 가짜 플레이어(`p_t1486_<i>` · 소켓 대신 알림을 세는 귀 · players 표 밖 = 보는 사람 0 · T1440 · T1423 판 계측기와 같은 꼴)
 //   봇 손짓(제품 문 그대로 · 모두 DAY0 날부터):
 //     길막기   — DAY0 한 번: 교역로 길목(다리 머리 · 고개 · 마을 문 · 길 한가운데 · 들)에 울타리를 봇이 나눠 놓는다(`_tryBuildAt`)           [T1423 ⓑ BLOCK_REACT 길]
-//     다리짓기 — 날마다 봇 하나가 다리 머리 칸에 울타리를 놓아 본다(끔이면 서고 켬이면 거절)                                              [T1423 ⓐ NO_BUILD 길]
+//     다리짓기 — 열흘마다 봇 둘이 다리 머리 칸에 울타리를 놓아 본다(끔이면 서고 켬이면 거절 · 선 것은 사흘 뒤 그 봇이 허문다)                                              [T1423 ⓐ NO_BUILD 길]
 //     남의 땅  — 닷새마다 봇 하나가 임시 사유지를 잡고 다른 봇이 그 안에 울타리를 놓아 본다                                              [사유지 · 원한 길]
 //     NPC 치기 — 날마다 마을 몸 하나를 `damagePlayer(…, 'player:봇')` 로 쓰러뜨린다(켬이면 진짜 죽음 · 끔이면 30초 되살림)               [T1432 길]
 //     접속 끊고 다시 붙기 — 열흘마다 봇 하나가 `_t1423Collect`(들어오는 순간 쌓인 적대감을 받는 그 문)를 부른다                              [T1423 ⓑ 접속 안 한 몫]
@@ -20,7 +20,7 @@ const ZF = path.join(ROOT, 'server', 'zone.js'), VF = path.join(ROOT, 'server', 
 const OUT = process.env.T1486_OUT, SZ = 32, NB = Math.max(1, +(process.env.T1486_BOTS || 8)), DAY0 = +(process.env.T1486_DAY0 || 6);
 const KINDS = ['head', 'pass', 'gate', 'road', 'field'];
 const rec = { bots: NB, day0: DAY0, knobs: { NO_BUILD: process.env.T1423_NO_BUILD || '', REACT: process.env.T1423_BLOCK_REACT || '', NPC_DEATH: process.env.T1432_NPC_DEATH || '', TERR_SEQ: process.env.T1433_TERR_SEQ || '' },
-  groups: {}, g: { block: { want: 0, placed: 0, refused: 0 }, bridge: { tries: 0, ok: 0, refused: 0, none: 0 }, land: { claims: 0, claimFail: 0, tries: 0, ok: 0, refused: 0 }, hit: { tries: 0, down: 0, died: 0, revive: 0, skip: 0 }, recon: { tries: 0, owed: 0 } },
+  groups: {}, g: { block: { want: 0, placed: 0, refused: 0 }, bridge: { tries: 0, ok: 0, refused: 0, none: 0, removed: 0 }, land: { claims: 0, claimFail: 0, tries: 0, ok: 0, refused: 0 }, hit: { tries: 0, down: 0, died: 0, revive: 0, skip: 0 }, recon: { tries: 0, owed: 0 } },
   notices: {}, days: [], db: [], terrCalls: { insertTerrSeq: 0, rows: 0, terrCompact: 0 }, wall0: process.uptime(), end: null, err: null };
 const save = () => { try { fs.writeFileSync(OUT, JSON.stringify(rec)); } catch (e) {} };
 const _p = Module._extensions['.js'];
@@ -146,12 +146,23 @@ function blockPlace(st, H, SV, d) {
     rec.g.block.want += G.cells.length; rec.g.block.placed += placed.length; rec.g.block.refused += refused.length;
   }
 }
+const BRIDGE_UP = [];   // 서 있는 다리 머리 울타리 [봇 · 칸 · 놓은 날] — 사흘 뒤 그 봇이 직접 허문다(다리가 영영 막히면 캐러밴 길 찾기가 판을 먹는다 · 첫 판 50분)
 function bridgeTry(st, H, SV, d) {
+  const g = rec.g.bridge;
+  //   치우기(제품 문 그대로 · `doDismantleBuilding`) — 놓은 지 3날 된 것
+  for (let i = BRIDGE_UP.length - 1; i >= 0; i--) {
+    const u = BRIDGE_UP[i]; if (d - u.d < 3) continue; BRIDGE_UP.splice(i, 1);
+    let id = null; for (const bb of H.buildings.values()) if (bb.ownerId === u.P.playerId && bb.type === 'fence' && Math.floor(bb.x / SZ) === u.x && Math.floor(bb.y / SZ) === u.y) { id = bb.id; break; }
+    if (id) { try { H.doDismantleBuilding(u.P, id); g.removed = (g.removed | 0) + 1; } catch (e) { rec.actErr = rec.actErr || String(e && e.stack).slice(0, 300); } }
+  }
+  if ((d - DAY0) % 10 !== 0) return;   // 열흘에 한 번 · 봇 둘이 다른 칸에
   const L = SV.t1406BridgeCells(), cells = []; for (let i = 0; i + 1 < L.length; i += 2) cells.push([L[i], L[i + 1]]);
   const land = cells.filter(([x, y]) => !H.isWaterTileLocal(x * SZ + SZ / 2, y * SZ + SZ / 2));
-  const g = rec.g.bridge; if (!land.length) { g.none++; return; }
-  const [x, y] = land[Math.floor(rnd(d, 1) * land.length)], P = BOTS[d % NB]; g.tries++;
-  const r = fenceAt(H, P, x, y); if (r.ok) g.ok++; else g.refused++;
+  if (!land.length) { g.none++; return; }
+  for (let k = 0; k < 2; k++) {
+    const [x, y] = land[Math.floor(rnd(d, 1 + k) * land.length)], P = BOTS[(d + k) % NB]; g.tries++;
+    const r = fenceAt(H, P, x, y); if (r.ok) { g.ok++; BRIDGE_UP.push({ P, x, y, d }); } else g.refused++;
+  }
 }
 function landTry(st, H, SV, d) {   // 마을 둘레에 봇 하나가 임시 사유지를 잡고, 다른 봇이 그 안에 울타리를 놓아 본다
   const g = rec.g.land, vs = (st.villages || []).filter((v) => v.ccx != null);
