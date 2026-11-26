@@ -16,6 +16,7 @@ for (const [arm] of ARMS) for (const s of SEEDS) { const tag = `${arm}-${s}`; ru
 const L = [], J = {};
 const FIx = (o) => { const I = {}; o.F.forEach((k, i) => { I[k] = i; }); return I; };
 const KINDS = ['농촌', '어촌', '광산', '임업'];
+const BINW = 10;   // 관찰기 vb 칸 = 10날
 const kindOf = (o, v) => (o.kind && o.kind[v]) || '?';
 // 한 판 · 조건(마을 · 구간) 맞는 vb 합
 function vsum(o, vf, bf) { const I = FIx(o), T = new Array(o.F.length).fill(0); for (const v in o.vb) { if (vf && !vf(v)) continue; for (const b in o.vb[v]) { if (bf && !bf(+b)) continue; const x = o.vb[v][b]; for (let i = 0; i < x.length; i++) T[i] += x[i]; } } return { I, T }; }
@@ -71,6 +72,7 @@ L.push('| 꼴 | 사건 | ⓐ 영토 안 허용 % | ⓑ 이웃 영토(≤R) 허�
 J.cf = {};
 for (const K of [...KINDS, null]) { const T = {}; for (const r of wr) add(T, pkSum(r.o, K ? (v) => kindOf(r.o, v) === K : null, 'cf')); const e = T.ev || 0; if (!e && K) { L.push(`| ${K} | 0 | — | — | — | — | — | — | — |`); continue; }
   L.push(`| ${K || '전체'} | ${f0(e)} | ${f1(pc(T.own || 0, e))} | ${f1(pc(T.nb || 0, e))} | ${f1(pc(T.far || 0, e))} | ${f1(pc(T.terr || 0, e))} | ${f1(pc(T.any || 0, e))} | ${f1(pc(T.noTreeAll || 0, e))} | ${f1(pc(T.ringHas || 0, e))} |`); J.cf[K || '전체'] = T; }
+L.push(''); L.push('⚠ 사건이 0 이다 — 730날 판에서 none(서 있는 셀 없음) · 빈 목록이 한 번도 안 났다(`_t561Standing` 호출 자체가 7번). 이 자의 반사실은 설 자리가 없다 ⇒ 반사실은 ⓪ · ⑪ 의 "몫 문을 풀면" 으로 다시 정했다.');
 // ⑥ 끈 세계(off) 와 비교
 L.push(''); L.push('## ⑥ 끈 세계 — 나섬 47.8 % 의 자와 닿음');
 const stO = {}; for (const job of ['lumberjack', 'miner', 'forager', 'fisher', 'hunter']) { const T = {}; for (const r of [...orr]) add(T, pkSum(r.o, null, 'st') && (() => { const o = r.o.st[job] || {}; const t = {}; for (const b in o) add(t, o[b]); return t; })()); stO[job] = T; }
@@ -86,6 +88,7 @@ for (const [arm, nm] of ARMS) { let r = 0, cut = 0, del = 0, tr = 0, dtr = 0, b 
   for (const x of armRuns(arm)) { const { I, T } = vsum(x.o); r += T[I.rL]; cut += T[I.cutLR]; del += T[I.delLR]; tr += T[I.tripLR]; dtr += T[I.dtripLR]; b += T[I.bL]; cutAll += T[I.cutL]; cons += T[I.consWood]; pop += T[I.n]; }
   if (!b) continue; const need = pop ? cons / pop : null, avgPop = pop && x0(armRuns(arm)) ? pop / x0(armRuns(arm)) : null;
   L.push(`| ${nm} | ${f0(r)} | ${f2(r ? cut / r : null)} | ${f2(r ? tr / r : null)} | ${f2(r ? dtr / r : null)} | ${f2(r ? del / r : null)} | ${f2(b ? cutAll / b : null)} | ${f3(need)} | ${f1(r && cut ? (need * 50) / (cut / r) : null)} |`); J.reach[arm] = { r, cut, del, tr, dtr, b, cutAll, need }; }
+L.push(''); L.push('⚠ 730날 판의 손 늘어남(벤 양)은 닿은 몸 포함 모두 0 으로 읽혔다 — 닿음 = "현장 44px 안" 이었을 뿐 손 통나무가 는 틱이 없었다(730날 판 자료로는 까닭을 못 가린다). 벤 양은 ⑪ 덧 관찰기로 다시 잰다.');
 function x0(rs) { let vd = 0; for (const r of rs) { const { I, T } = vsum(r.o); vd += T[I.vd]; } return vd; }
 // ⑧ 나무꾼이 준 까닭 — 직업 바뀜
 L.push(''); L.push('## ⑧ 나무꾼 수의 흐름과 직업 바뀜(바뀌기 직전 값 · 나무꾼 팔 · 두 시드 합)');
@@ -129,5 +132,74 @@ L.push(''); L.push('물이 가장 먼 18 마을(land.water 하위 18) vs 나머�
 L.push(''); L.push('마을 단위 숲(나무꾼 팔 · 100날 표본 중 비율 · 마을별):'); L.push('| 마을 | 꼴 | 영토 안 그루 평균 | 고리 그루 평균 | 먼 고리 그루 평균 | 숲 전무 % | 영토 밖에만 % | 나무꾼 하루 평균 | 나무꾼 0 날 % |'); L.push('|---|---|---|---|---|---|---|---|---|');
 { const r0 = wr[0]; if (r0) { const rows = []; for (const v in r0.o.univ) { let n = 0, a = 0, b = 0, c = 0, z = 0, oo = 0; for (const r of wr) for (const d in (r.o.univ[v] || {})) { const u = r.o.univ[v][d]; n++; a += u.own.t; b += u.ring.t; c += u.far.t; const out = u.nbR.t + u.ring.t + u.far.t; if (u.own.t === 0 && out === 0) z++; else if (u.own.t === 0) oo++; } let lj = 0, vd = 0, nl = 0; for (const r of wr) { const { I, T } = vsum(r.o, (x) => x === v); lj += T[I.lj]; vd += T[I.vd]; nl += T[I.noLJ]; } rows.push({ v, k: kindOf(r0.o, v), a: a / n, b: b / n, c: c / n, z: pc(z, n), oo: pc(oo, n), lj: vd ? lj / vd : null, nl: pc(nl, vd) }); }
   rows.sort((x, y) => x.b - y.b); J.village = rows; for (const x of rows) L.push(`| ${x.v} | ${x.k} | ${f0(x.a)} | ${f0(x.b)} | ${f0(x.c)} | ${f1(x.z)} | ${f1(x.oo)} | ${f1(x.lj)} | ${f1(x.nl)} |`); } }
+// ⑪ 덧 관찰기(t1487-why.js · 나무꾼 팔 150날 · 두 시드) — '휴식' 까닭 · 몫 문 순간 값 · 일괄
+const WD = process.env.WHY || path.join(R, 'why'), WDAYS = process.env.WHY_DAYS || '150';
+const why = SEEDS.map((s) => ({ s, o: rd(path.join(WD, `why-wood${WDAYS}-${s}.json`)), d: (() => { try { const l = fs.readFileSync(path.join(WD, 'done.txt'), 'utf8').split('\n').find((x) => x.startsWith(s + ' ' + WDAYS + ' ')); return l || null; } catch (e) { return null; } })() })).filter((x) => x.o);
+J.why = { runs: why.map((x) => ({ seed: x.s, done: x.d, lastDay: x.o.lastDay, err: x.o.err, hooked: x.o.hooked, flags: x.o.flags, gates: x.o.gates, standN: x.o.standN, standNull: x.o.standNull })) };
+L.push(''); L.push(`## ⑪ 덧 관찰기 — 나무꾼 몸이 '휴식'으로 돌아간 까닭(t1487-why.js · 나무꾼 팔 ${WDAYS}날 · 시드 ${why.map((x) => x.s).join(' · ')} · 읽기만)`);
+L.push('판: ' + why.map((x) => `시드 ${x.s} 끝(${x.d || '—'}) · 마지막 날 ${x.o.lastDay} · err ${x.o.err || '없음'} · 걸개 ${x.o.hooked} · 손잡이 ${JSON.stringify(x.o.flags)} · 서 있는 셀 고르기 호출 ${x.o.standN}(null ${x.o.standNull})`).join(' / '));
+L.push('까닭(몸-날 하나에 첫째 하나 · 차례 = 벰 > 나섬 > 몫 참 > 반일 > 목록 빔 > 선 그루 없음 > 밤만 > 그밖): 몫 참 = `_t374Done` 참 뒤 휴식(22011) · 반일 = 반일 오후 휴식(21914) · 목록 빔 = `_t325Site.none`(22034) · 선 그루 없음 = `_t561Standing` null(22043) · 밤만 = 그날 낮 틱 0(취침 · 귀가 라벨만).');
+const WC = ['cut', 'out', 'quota', 'half', 'none', 'stand0', 'night', 'other'], WK = { cut: '벰', out: '나섬', quota: '몫 참', half: '반일', none: '목록 빔', stand0: '선 그루 없음', night: '밤만', other: '그밖' };
+const wagg = (rows, f) => { const A = { bd: 0, dayTick: 0, cutU: 0 }; WC.forEach((k) => { A[k] = 0; }); for (const r of rows) { if (f && !f(r)) continue; A.bd += r.bd; A.dayTick += r.dayTick; A.cutU += r.cutU || 0; WC.forEach((k) => { A[k] += r[k]; }); } return A; };
+const wrows = []; for (const x of why) { const C = x.o.cols; for (const a of x.o.rows) { const r = { seed: x.s }; C.forEach((c, i) => { r[c] = a[i]; }); wrows.push(r); } }
+const kindW = (v) => { for (const r of wr) if (r.o.kind && r.o.kind[v]) return r.o.kind[v]; return '?'; };
+L.push('| 꼴 | 몸-날 | ' + WC.map((k) => WK[k] + ' %').join(' | ') + ' | 낮 틱 있음 % | 자리없음 계(몫+반일+빔+없음) % |'); L.push('|---|---|' + WC.map(() => '---').join('|') + '|---|---|');
+J.why.cls = {};
+for (const K of [...KINDS, null]) { const A = wagg(wrows, K ? (r) => kindW(r.v) === K : null); if (!A.bd) continue; const ns = A.quota + A.half + A.none + A.stand0;
+  L.push(`| ${K || '전체'} | ${f0(A.bd)} | ${WC.map((k) => f1(pc(A[k], A.bd))).join(' | ')} | ${f1(pc(A.dayTick, A.bd))} | ${f1(pc(ns, A.bd))} |`); J.why.cls[K || '전체'] = A; }
+// 몫 문 순간 값 · 일괄
+const qv = wrows.filter((r) => r.quota > 0 && r.D != null), av = (a, f) => a.length ? sum(a.map(f)) / a.length : null;
+const qInfl = qv.filter((r) => r.inflow != null && r.D > 0 && r.inflow >= r.D - 1e-9).length, qHeld = qv.filter((r) => r.held != null && r.D > 0 && r.held >= r.D - 1e-9).length, qD0 = qv.filter((r) => !(r.D > 0)).length;
+const vdQ = wrows.filter((r) => r.quota > 0), vdQb = vdQ.filter((r) => (r.bcut || 0) > 0), vdQw0 = vdQ.filter((r) => (r.walked || 0) === 0);
+const vdAll = wrows.length, vdB = wrows.filter((r) => (r.bcut || 0) > 0).length, vdStop = wrows.filter((r) => r.stop).length;
+L.push(''); L.push('몫 문(`_t374Done`)이 그날 처음 참이 된 순간(마을-날 · 몫 참 몸-날이 있는 날):');
+L.push('| 마을-날 | 수요 D(`woodShareD` = `_woodOutLast`) 평균 | D = 0 % | 그 순간 오늘 든 양(`_t325InflowToday`) 평균 | 든 양 ≥ D % | 손(`_t374Held`) 평균 | 손 ≥ D % | 그날 일괄이 벤 그루 > 0 % | 그날 걸은 몸 0 % | 일괄 머리 남은 수요(dem) 평균 |'); L.push('|---|---|---|---|---|---|---|---|---|---|');
+L.push(`| ${f0(qv.length)} | ${f2(av(qv, (r) => r.D))} | ${f1(pc(qD0, qv.length))} | ${f2(av(qv, (r) => r.inflow || 0))} | ${f1(pc(qInfl, qv.length))} | ${f2(av(qv, (r) => r.held || 0))} | ${f1(pc(qHeld, qv.length))} | ${f1(pc(vdQb.length, vdQ.length))} | ${f1(pc(vdQw0.length, vdQ.length))} | ${f2(av(qv.filter((r) => r.dem != null && r.dem >= 0), (r) => r.dem))} |`);
+L.push(''); L.push(`일괄(헤드리스 \`_lifeDaily\` 21511): 나무꾼 몸이 있는 마을-날 ${f0(vdAll)} 중 일괄이 그루를 벤 날 ${f1(pc(vdB, vdAll))} % · 수요 문으로 멈춘 날(stop) ${f1(pc(vdStop, vdAll))} % · 일괄 하루 벤 그루 평균(벤 날) ${f2(av(wrows.filter((r) => r.bcut > 0), (r) => r.bcut))}.`);
+J.why.quota = { n: qv.length, D: av(qv, (r) => r.D), D0pct: pc(qD0, qv.length), inflow: av(qv, (r) => r.inflow || 0), inflGeD: pc(qInfl, qv.length), held: av(qv, (r) => r.held || 0), heldGeD: pc(qHeld, qv.length), batchCutPct: pc(vdQb.length, vdQ.length), walked0Pct: pc(vdQw0.length, vdQ.length), vdAll, vdB, vdStop };
+// 벤 몸의 하루
+const cutRows = wrows.filter((r) => r.cut > 0), cutBd = sum(cutRows.map((r) => r.cut)), cutU = sum(cutRows.map((r) => r.cutU || 0));
+let needPP = null; { let c = 0, n = 0; for (const x of wr) { const { I, T } = vsum(x.o, null, (b) => b * BINW < +WDAYS); c += T[I.consWood]; n += T[I.n]; } needPP = n ? c / n : null; }
+L.push(''); L.push(`벤 몸(그날 '벌목' 라벨 · 덧 관찰기): 몸-날 ${f0(cutBd)} · 손 통나무 늘어남 합 ${f2(cutU)} · 벤 몸 하루 평균 ${f2(cutBd ? cutU / cutBd : null)} (손 늘어남을 벤 몸-날로 나눔 — 같은 마을 다른 몸 몫 섞임 없음 · 벤 몸 수가 적어 마을-날 합으로 셈) · 사람당 하루 땔감 필요(730날 판 · 같은 ${WDAYS}날) ${f3(needPP)}.`);
+J.why.cut = { bd: cutBd, units: cutU, perBd: cutBd ? cutU / cutBd : null, needPP };
+// ⑫ 파일 : 줄 : 조건(제품 코드 · 읽기만)
+const FL = [
+  ['나무 우주', 'server/villages.js', 16639, '`if (!d[i] || g[i]) continue` — 고리 밖 · **내 영토 셀은 후보에서 뺀다**', '영토 안 나무 0'],
+  ['나무 우주', 'server/villages.js', 16641, '남의 영토 셀(nb) 뺀다', '이웃 영토 0'],
+  ['나무 우주', 'server/villages.js', 16682, '`econ._t325Cells = trees.length` — 게이트 입력', 'woodActOn 의 셀 수'],
+  ['몫 문', 'sim/economy-sim.js', 3408, '`woodActOn = T325_WOOD_ACT && _t325Cells > 0`', '몫 문은 후보 셀 > 0 일 때만 선다'],
+  ['몫 문', 'sim/economy-sim.js', 2510, '`T374_DEMAND_STOP` 기본 켬', '몫 문 켬'],
+  ['몫 문', 'server/villages.js', 17020, '나무꾼 · woodActOn → `!(woodDemandLeft(econ, held) > 0)`', '남은 수요 ≤ 0 이면 참'],
+  ['몫 문', 'sim/economy-sim.js', 3305, '`actDemandLeft` — D ≤ 0 이면 0(끝) · 남음 = D − 오늘 든 양 − 손', 'D = 0 이면 늘 참'],
+  ['몫 문', 'sim/economy-sim.js', 3331, '`woodShareD = _woodOutLast(T1135 끔) + _t1207Need`', '수요 D'],
+  ['몫 문', 'sim/economy-sim.js', 5785, '`_t325InflowToday = 0` — 경제 틱 하루 초기화', '오늘 든 양'],
+  ['몸 하루', 'server/villages.js', 21914, '반일 오후(`_half && dayFrac ≥ SCH_HALF_R`) → 휴식', '반일'],
+  ['몸 하루', 'server/villages.js', 22011, '`if (_t374Done(vil, job)) { _lifeGoHome(npc, \'휴식\') }` — **현장 고르기 앞**', '몫 참 = 자리 없이 휴식'],
+  ['몸 하루', 'server/villages.js', 22034, '`_t325Site.none` 이면 휴식', '목록 빔'],
+  ['몸 하루', 'server/villages.js', 22043, '`_t561Standing` null 이면 `{none:1}` · 휴식', '선 그루 없음'],
+  ['몸 하루', 'server/villages.js', '22036–22043', '가장 가까운 셀 — 맡음 · 걸음 한계 · 물 · 산 조건 없음', '안 맡음 · 걸음 안 거름 0'],
+  ['일괄', 'server/villages.js', 21511, '`_on && (_t1202W ? true : _walked === 0) && _ln > 0 && _tr.length`', '헤드리스 일괄 벌목'],
+  ['일괄', 'server/villages.js', 21541, '`woodDemandLeft ≤ 0` 이면 stop = 1 · 멈춤', '일괄이 수요를 먼저 채운다'],
+  ['직업', 'sim/economy-sim.js', 7456, '`foodEquiv < N * 30`(기근) → 농부 · 어부 · 사냥꾼 · 채집꾼 중 최고', '나무꾼 253 → 138'],
+  ['끈 세계', 'server/zone.js', 5719, '`T1365_WORK = T1322_PF && SS.WORK2_ON`(기본 끔)', '끈 팔은 레거시 `_workSite` 길'],
+];
+L.push(''); L.push('## ⑫ 파일 : 줄 : 조건(제품 코드 · 읽기만 · 손 0)');
+L.push('| 고리 | 파일 | 줄 | 조건 | 이 카드에서 뜻 |'); L.push('|---|---|---|---|---|');
+for (const r of FL) L.push(`| ${r[0]} | ${r[1]} | ${r[2]} | ${r[3]} | ${r[4]} |`);
+J.fileLine = FL.map((r) => ({ part: r[0], file: r[1], line: r[2], cond: r[3], mean: r[4] }));
+// ⓪ 실제 깔때기(첫 줄 칸)
+L.push(''); L.push('## ⓪ 깔때기 요약(나무꾼 팔 · 첫 줄 칸)');
+const U = J.univ['전체'] || {}, B = J.body['wood|전체'] || { b: 0, rs: {} }, WA = J.why.cls['전체'] || {};
+const nsW = (WA.quota || 0) + (WA.half || 0) + (WA.none || 0) + (WA.stand0 || 0);
+const top = ['quota', 'half', 'none', 'stand0'].map((k) => [k, WA[k] || 0]).sort((a, b) => b[1] - a[1])[0];
+J.funnel = { ownT: U.ownT, ringHasPct: U.ring0pct != null ? 100 - U.ring0pct : null, claimFilter: '코드에 없음', walkFilter: '코드에 없음', nositePct730: pc(B.rs.nosite || 0, B.b), nositeWhy: pc(nsW, WA.bd), top: top[0], topPctOfNosite: pc(top[1], nsW), topPctOfAll: pc(top[1], WA.bd), unlockPctOfNosite: pc(WA.quota || 0, nsW), unlockPctOfAll: pc(WA.quota || 0, WA.bd) };
+L.push(`- 영토 안 나무(후보) ${f0(U.ownT)} 그루 — 제품이 영토 셀을 후보에서 뺀다(16639) · 잰 값도 0.`);
+L.push(`- 설 칸 있음(고리 후보 셀 > 0) ${f1(J.funnel.ringHasPct)} % 마을-표본.`);
+L.push('- 안 맡음(남이 맡은 셀 거름) — 몸 고르기(22036~22043)에 그 조건이 없다(거름 0).');
+L.push('- 걸음 안(걸음 한계 거름) — 몸 고르기에 그 조건이 없다(거름 0 · `_t1259WoodRadius` 는 T1259 켬 때만).');
+L.push(`- 자리없음 ${f1(J.funnel.nositePct730)} % (730날 판) · 덧 관찰기 ${WDAYS}날 ${f1(J.funnel.nositeWhy)} %.`);
+L.push(`- 가장 많이 거른 조건 = ${WK[top[0]]}(자리없음 몸-날의 ${f1(J.funnel.topPctOfNosite)} % · 모든 몸-날의 ${f1(J.funnel.topPctOfAll)} %).`);
+L.push(`- 풀면 얻는 자리(몫 문을 풀면 — 몫 문은 woodActOn 참 = 후보 셀 > 0 일 때만 서므로 그날 후보 셀이 반드시 있다) = 자리없음 몸-날의 ${f1(J.funnel.unlockPctOfNosite)} % · 모든 몸-날의 ${f1(J.funnel.unlockPctOfAll)} %.`);
+{ const i = L.indexOf('## ⓪ 깔때기 요약(나무꾼 팔 · 첫 줄 칸)'); if (i > 0) { const seg = L.splice(i - 1); L.splice(2, 0, ...seg.slice(1), ''); } }
 fs.mkdirSync(OUTDIR, { recursive: true }); fs.writeFileSync(path.join(OUTDIR, 'table.txt'), L.join('\n') + '\n'); fs.writeFileSync(path.join(OUTDIR, 'table.json'), JSON.stringify(J));
 console.log('wrote', path.join(OUTDIR, 'table.txt'), L.length, 'lines');
