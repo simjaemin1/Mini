@@ -14,8 +14,8 @@ try:
  for kind,arm,k in plan:
   tag=f'{kind}-{arm}-{k:02d}'
   done=RAW/'done'/f'{tag}.done'
-  if done.exists(): continue
-  env=os.environ.copy(); env.update(T1490_NEAR_NOW='1' if arm=='on' else '0',TIDE_FREEZE_MS='372603',LAB_SEED='1020',T1485_LOG=str(RAW/'raw'/f'{tag}.obs.jsonl'),NODE_OPTIONS=f'--require {ROOT}/scripts/t1490-observer.js')
+  if done.exists() or list((RAW/'done').glob(tag+'r*.done')): continue
+  env=os.environ.copy(); env.update(T1490_NEAR_NOW='1' if arm=='on' else '0',TIDE_FREEZE_MS='372603',LAB_SEED='1020',T1485_LOG=str(RAW/'raw'/f'{tag}.obs.jsonl'),NODE_OPTIONS=f'--require {ROOT}/scripts/t1485-observer.js')
   if kind=='re': env['T1485_RECONN']='2'
   script='scripts/e2e-membership.js' if kind=='mem' else 'scripts/t1485-walkbot.js'
   t=time.time(); rc=None

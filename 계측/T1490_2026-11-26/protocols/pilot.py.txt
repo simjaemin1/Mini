@@ -1,0 +1,19 @@
+import os,subprocess,pathlib,json,time
+root='/workspace/Mini-T1490';raw=pathlib.Path('/var/tmp/t1490')
+try:
+ for kind,arm in [('walk','on'),('re','off'),('re','on')]:
+  tag=f'{kind}-{arm}-01'; done=raw/'done'/f'{tag}.done'
+  if done.exists():continue
+  env={**os.environ,'T1490_NEAR_NOW':'1' if arm=='on' else '0','TIDE_FREEZE_MS':'372603','LAB_SEED':'1020','T1485_LOG':str(raw/'raw'/f'{tag}.obs.jsonl'),'NODE_OPTIONS':f'--require {root}/scripts/t1490-observer.js'}
+  if kind=='re':env['T1485_RECONN']='2'
+  t=time.time()
+  try:
+   with open(raw/'raw'/f'{tag}.log','w') as f:
+    p=subprocess.Popen(['node','scripts/t1485-walkbot.js'],cwd=root,env=env,stdout=f,stderr=subprocess.STDOUT,start_new_session=True)
+    (raw/'pilot-active.json').write_text(json.dumps({'tag':tag,'pid':p.pid,'started':t}))
+    rc=p.wait(timeout=2400)
+   walk=pathlib.Path('/tmp/t1485-walk.json')
+   if walk.exists(): (raw/'raw'/f'{tag}.walk.json').write_bytes(walk.read_bytes());walk.unlink()
+  except BaseException as e:rc=str(e)
+  finally:done.write_text(json.dumps({'rc':rc,'seconds':round(time.time()-t,3)}))
+finally:(raw/'PILOT.done').write_text('done')

@@ -1,0 +1,7 @@
+import os,subprocess,json,time
+root='/workspace/Mini-T1490'; tag='mem-off-01'; env=os.environ.copy();env.update(T1490_NEAR_NOW='0',TIDE_FREEZE_MS='372603',LAB_SEED='1020',T1485_LOG='/var/tmp/t1490/raw/'+tag+'.obs.jsonl',NODE_OPTIONS='--require '+root+'/scripts/t1485-observer.js')
+try:
+ with open('/var/tmp/t1490/raw/'+tag+'.log','w') as f: r=subprocess.run(['node','scripts/e2e-membership.js'],cwd=root,env=env,stdout=f,stderr=subprocess.STDOUT,timeout=1500)
+ rc=r.returncode
+except BaseException as e: rc=str(e)
+finally: open('/var/tmp/t1490/done/'+tag+'.done','w').write(str(rc))

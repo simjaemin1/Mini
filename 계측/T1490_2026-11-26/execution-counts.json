@@ -1,0 +1,14 @@
+{
+  "base": "6896843a",
+  "source_ci": "e87ce83b",
+  "qualifying": 160,
+  "original_protocol_attempts": 164,
+  "protocol_excluded": 3,
+  "invalid_movement": 4,
+  "total_executions": 167,
+  "re_attempts": {
+    "off": 32,
+    "on": 32
+  },
+  "criteria": "arrived + actual withdrawal handler request; no outcome-dependent exclusion"
+}
