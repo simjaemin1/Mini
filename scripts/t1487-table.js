@@ -182,7 +182,7 @@ const FL = [
   ['일괄', 'server/villages.js', 21511, '`_on && (_t1202W ? true : _walked === 0) && _ln > 0 && _tr.length`', '헤드리스 일괄 벌목'],
   ['일괄', 'server/villages.js', 21541, '`woodDemandLeft ≤ 0` 이면 stop = 1 · 멈춤', '일괄이 수요를 먼저 채운다'],
   ['직업', 'sim/economy-sim.js', 7456, '`foodEquiv < N * 30`(기근) → 농부 · 어부 · 사냥꾼 · 채집꾼 중 최고', '나무꾼 253 → 138'],
-  ['끈 세계', 'server/zone.js', 5719, '`T1365_WORK = T1322_PF && SS.WORK2_ON`(기본 끔)', '끈 팔은 레거시 `_workSite` 길'],
+  ['끈 세계', 'server/zone(존 본체 · .js)', 5719, '`T1365_WORK = T1322_PF && SS.WORK2_ON`(기본 끔)', '끈 팔은 레거시 `_workSite` 길'],
 ];
 L.push(''); L.push('## ⑫ 파일 : 줄 : 조건(제품 코드 · 읽기만 · 손 0)');
 L.push('| 고리 | 파일 | 줄 | 조건 | 이 카드에서 뜻 |'); L.push('|---|---|---|---|---|');
