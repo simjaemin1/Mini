@@ -1,0 +1,6036 @@
+{
+ "runs": 51,
+ "tables": {
+  "live": [
+   {
+    "set": "rl20",
+    "arm": "on",
+    "runs": 1,
+    "tails": 62,
+    "tailWallMed": 1497,
+    "tailWallP95": 2744,
+    "tailWallMax": 20111,
+    "warmWallMed": 1462,
+    "warmWallMax": 5041,
+    "queuedN": 499,
+    "queuedShare": 1,
+    "qMed": 1228,
+    "qP95": 2732,
+    "qMax": 13283,
+    "reqN": 499,
+    "latMed": 1227,
+    "latP90": 1977,
+    "latP99": 4633,
+    "latMax": 4854,
+    "over500": 0.979296066252588,
+    "over1000": 0.6563146997929606
+   },
+   {
+    "set": "rl20",
+    "arm": "off",
+    "runs": 1,
+    "tails": 59,
+    "tailWallMed": 1531,
+    "tailWallP95": 6452,
+    "tailWallMax": 8665,
+    "warmWallMed": 1494,
+    "warmWallMax": 4053,
+    "queuedN": 480,
+    "queuedShare": 1,
+    "qMed": 1230,
+    "qP95": 3627,
+    "qMax": 8370,
+    "reqN": 480,
+    "latMed": 1234,
+    "latP90": 2162,
+    "latP99": 3782,
+    "latMax": 3890,
+    "over500": 0.9892241379310345,
+    "over1000": 0.7521551724137931
+   },
+   {
+    "set": "rl3",
+    "arm": "on",
+    "runs": 3,
+    "tails": 522,
+    "tailWallMed": 254,
+    "tailWallP95": 1302,
+    "tailWallMax": 11351,
+    "warmWallMed": 253,
+    "warmWallMax": 2775,
+    "queuedN": 2012,
+    "queuedShare": 0.45967557687914096,
+    "qMed": 235,
+    "qP95": 1287,
+    "qMax": 4049,
+    "reqN": 4377,
+    "latMed": 36,
+    "latP90": 546,
+    "latP99": 2002,
+    "latMax": 4061,
+    "over500": 0.11149188942197852,
+    "over1000": 0.04386566141192598
+   },
+   {
+    "set": "rl3",
+    "arm": "off",
+    "runs": 3,
+    "tails": 564,
+    "tailWallMed": 233,
+    "tailWallP95": 1163,
+    "tailWallMax": 4365,
+    "warmWallMed": 235,
+    "warmWallMax": 3966,
+    "queuedN": 2023,
+    "queuedShare": 0.4366501187135765,
+    "qMed": 212,
+    "qP95": 1094,
+    "qMax": 3904,
+    "reqN": 4633,
+    "latMed": 27,
+    "latP90": 502,
+    "latP99": 1435,
+    "latMax": 3912,
+    "over500": 0.10015109000647529,
+    "over1000": 0.03129721562702353
+   },
+   {
+    "set": "rl51",
+    "arm": "on",
+    "runs": 2,
+    "tails": 50,
+    "tailWallMed": 3270,
+    "tailWallP95": 5763,
+    "tailWallMax": 39748,
+    "warmWallMed": 3186,
+    "warmWallMax": 4246,
+    "queuedN": 464,
+    "queuedShare": 0.9666666666666667,
+    "qMed": 3012,
+    "qP95": 24657,
+    "qMax": 31323,
+    "reqN": 480,
+    "latMed": 2955,
+    "latP90": 4132,
+    "latP99": 5510,
+    "latMax": 5613,
+    "over500": 1,
+    "over1000": 1
+   },
+   {
+    "set": "rl51",
+    "arm": "off",
+    "runs": 2,
+    "tails": 53,
+    "tailWallMed": 3844,
+    "tailWallP95": 9950,
+    "tailWallMax": 11185,
+    "warmWallMed": 3765,
+    "warmWallMax": 9899,
+    "queuedN": 470,
+    "queuedShare": 1,
+    "qMed": 3399,
+    "qP95": 9417,
+    "qMax": 9719,
+    "reqN": 470,
+    "latMed": 3346,
+    "latP90": 5194,
+    "latP99": 5768,
+    "latMax": 5866,
+    "over500": 1,
+    "over1000": 0.9691943127962085
+   }
+  ],
+  "queueTypes": [
+   [
+    "village_board",
+    "끔",
+    723,
+    "391",
+    "4319",
+    "9705"
+   ],
+   [
+    "village_board",
+    "끔+이웃잇기",
+    208,
+    "470",
+    "1467",
+    "2418"
+   ],
+   [
+    "village_board",
+    "켬",
+    749,
+    "435",
+    "3988",
+    "31322"
+   ],
+   [
+    "village_brief",
+    "끔",
+    743,
+    "409",
+    "4191",
+    "9719"
+   ],
+   [
+    "village_brief",
+    "끔+이웃잇기",
+    213,
+    "443",
+    "1593",
+    "2549"
+   ],
+   [
+    "village_brief",
+    "켬",
+    748,
+    "404",
+    "3942",
+    "31323"
+   ],
+   [
+    "village_view",
+    "끔",
+    1507,
+    "421",
+    "4184",
+    "9713"
+   ],
+   [
+    "village_view",
+    "끔+이웃잇기",
+    418,
+    "436",
+    "1680",
+    "2490"
+   ],
+   [
+    "village_view",
+    "켬",
+    1478,
+    "448",
+    "3957",
+    "31323"
+   ]
+  ],
+  "prof": {
+   "cb-base": {
+    "fresh": {
+     "runsOn": 2,
+     "runsOff": 1,
+     "closeOn": 4682.2,
+     "closeOff": 2069.9,
+     "extra": 2612.2999999999997,
+     "self": [
+      {
+       "fn": "_terrBlocked0|zone.js:2563",
+       "on": 1544.5,
+       "off": 72,
+       "d": 1472.5,
+       "shareOfExtra": 0.5636795161352066,
+       "shareOfOn": 0.32986630216564866
+      },
+      {
+       "fn": "_t598EdgeOk|villages.js:4172",
+       "on": 1054.5,
+       "off": 0,
+       "d": 1054.5,
+       "shareOfExtra": 0.40366726639359957,
+       "shareOfOn": 0.22521464268933408
+      },
+      {
+       "fn": "isTerrainBlockedLocal|zone.js:2570",
+       "on": 910,
+       "off": 32,
+       "d": 878,
+       "shareOfExtra": 0.3361022853424186,
+       "shareOfOn": 0.19435308188458417
+      },
+      {
+       "fn": "_distMatrixGen|villages.js:4396",
+       "on": 279.5,
+       "off": 0,
+       "d": 279.5,
+       "shareOfExtra": 0.10699383684875398,
+       "shareOfOn": 0.05969416086455086
+      },
+      {
+       "fn": "isBlocked|villages.js:888",
+       "on": 47,
+       "off": 0,
+       "d": 47,
+       "shareOfExtra": 0.017991807985300312,
+       "shareOfOn": 0.010038016317115886
+      },
+      {
+       "fn": "_t598Anchor|villages.js:4164",
+       "on": 40.5,
+       "off": 0,
+       "d": 40.5,
+       "shareOfExtra": 0.015503579221375801,
+       "shareOfOn": 0.008649780017940286
+      },
+      {
+       "fn": "isDitchTileLocal|zone.js:2344",
+       "on": 26.5,
+       "off": 0,
+       "d": 26.5,
+       "shareOfExtra": 0.010144317268307623,
+       "shareOfOn": 0.0056597326043312975
+      },
+      {
+       "fn": "_t957DistStage|villages.js:13552",
+       "on": 22,
+       "off": 0,
+       "d": 22,
+       "shareOfExtra": 0.008421697354821423,
+       "shareOfOn": 0.004698645935671266
+      },
+      {
+       "fn": "(anon)|villages.js:4680",
+       "on": 15.5,
+       "off": 0,
+       "d": 15.5,
+       "shareOfExtra": 0.005933468590896911,
+       "shareOfOn": 0.0033104096364956646
+      },
+      {
+       "fn": "npcReachStep|zone.js:4907",
+       "on": 10.5,
+       "off": 0,
+       "d": 10.5,
+       "shareOfExtra": 0.004019446464801134,
+       "shareOfOn": 0.0022425355602067403
+      },
+      {
+       "fn": "_huntBandBuild|villages.js:20281",
+       "on": 14,
+       "off": 7,
+       "d": 7,
+       "shareOfExtra": 0.002679630976534089,
+       "shareOfOn": 0.0029900474136089874
+      },
+      {
+       "fn": "collGenAround|zone.js:4872",
+       "on": 12,
+       "off": 5,
+       "d": 7,
+       "shareOfExtra": 0.002679630976534089,
+       "shareOfOn": 0.0025628977830934175
+      }
+     ],
+     "incl": [
+      {
+       "fn": "_t598EdgeOk|villages.js:4172",
+       "on": 3530.5,
+       "off": 0,
+       "d": 3530.5,
+       "shareOfExtra": 1.3514910232362287,
+       "shareOfOn": 0.7540258852676093
+      },
+      {
+       "fn": "(anon)|villages.js:13234",
+       "on": 3502,
+       "off": 0,
+       "d": 3502,
+       "shareOfExtra": 1.3405810971174827,
+       "shareOfOn": 0.7479390030327624
+      },
+      {
+       "fn": "_t957DistStage|villages.js:13552",
+       "on": 3498,
+       "off": 0,
+       "d": 3498,
+       "shareOfExtra": 1.3390498794166061,
+       "shareOfOn": 0.7470847037717313
+      },
+      {
+       "fn": "_distMatrixGen|villages.js:4396",
+       "on": 3467.5,
+       "off": 0,
+       "d": 3467.5,
+       "shareOfExtra": 1.327374344447422,
+       "shareOfOn": 0.7405706719063688
+      },
+      {
+       "fn": "isBlocked|villages.js:888",
+       "on": 2697,
+       "off": 1456,
+       "d": 1241,
+       "shareOfExtra": 0.47506029169697206,
+       "shareOfOn": 0.5760112767502457
+      },
+      {
+       "fn": "isTerrainBlockedLocal|zone.js:2570",
+       "on": 2669,
+       "off": 1485,
+       "d": 1184,
+       "shareOfExtra": 0.4532404394594802,
+       "shareOfOn": 0.5700311819230277
+      },
+      {
+       "fn": "_t598Anchor|villages.js:4164",
+       "on": 420,
+       "off": 0,
+       "d": 420,
+       "shareOfExtra": 0.16077785859204535,
+       "shareOfOn": 0.08970142240826962
+      },
+      {
+       "fn": "PathCore.routePathBegin.plain.stepBlocked|villages.js:4714",
+       "on": 387.5,
+       "off": 0,
+       "d": 387.5,
+       "shareOfExtra": 0.14833671477242277,
+       "shareOfOn": 0.08276024091239162
+      }
+     ],
+     "jobs": [
+      {
+       "k": "(anon)|villages.js:13234|dist",
+       "on": 3502,
+       "off": 0,
+       "d": 3502
+      },
+      {
+       "k": "(anon)|villages.js:13193|econ",
+       "on": 32.5,
+       "off": 25,
+       "d": 7.5
+      },
+      {
+       "k": "(anon)|villages.js:13199|ore",
+       "on": 34.5,
+       "off": 27,
+       "d": 7.5
+      },
+      {
+       "k": "g|villages.js:13153|",
+       "on": 3.5,
+       "off": 1,
+       "d": 2.5
+      },
+      {
+       "k": "_t731Mark|villages.js:13141|",
+       "on": 1,
+       "off": 0,
+       "d": 1
+      },
+      {
+       "k": "(anon)|villages.js:13185|pop",
+       "on": 1.5,
+       "off": 1,
+       "d": 0.5
+      }
+     ]
+    },
+    "warm": {
+     "runsOn": 2,
+     "runsOff": 1,
+     "closeOn": 18168.25,
+     "closeOff": 18584,
+     "extra": -415.75,
+     "self": [
+      {
+       "fn": "chooseSpecies|region-profiles.js:338",
+       "on": 107,
+       "off": 0,
+       "d": 107,
+       "shareOfExtra": null,
+       "shareOfOn": 0.005889394960989639
+      },
+      {
+       "fn": "grownDays|crops.js:343",
+       "on": 63.5,
+       "off": 0,
+       "d": 63.5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.0034951082245125425
+      },
+      {
+       "fn": "_huntHuntersSteps|villages.js:20409",
+       "on": 442,
+       "off": 393,
+       "d": 49,
+       "shareOfExtra": null,
+       "shareOfOn": 0.024328154885583368
+      },
+      {
+       "fn": "_lifeGameDaySteps|villages.js:20519",
+       "on": 79.5,
+       "off": 34,
+       "d": 45.5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.0043757654149408996
+      },
+      {
+       "fn": "_isPointInLake|terrain.js:275",
+       "on": 99,
+       "off": 61,
+       "d": 38,
+       "shareOfExtra": null,
+       "shareOfOn": 0.00544906636577546
+      },
+      {
+       "fn": "_terrAdd|villages.js:9368",
+       "on": 115,
+       "off": 80,
+       "d": 35,
+       "shareOfExtra": null,
+       "shareOfOn": 0.006329723556203817
+      },
+      {
+       "fn": "mixAt|region-profiles.js:266",
+       "on": 298,
+       "off": 268,
+       "d": 30,
+       "shareOfExtra": null,
+       "shareOfOn": 0.01640224017172815
+      },
+      {
+       "fn": "_targetV2|economy-sim-v2.js:879",
+       "on": 581,
+       "off": 554,
+       "d": 27,
+       "shareOfExtra": null,
+       "shareOfOn": 0.03197886422742972
+      },
+      {
+       "fn": "_searchStep|path-core.js:351",
+       "on": 21.5,
+       "off": 0,
+       "d": 21.5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.001183383099638105
+      },
+      {
+       "fn": "pop|path-core.js:72",
+       "on": 19.5,
+       "off": 0,
+       "d": 19.5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.0010733009508345603
+      },
+      {
+       "fn": "_t1063Bnd|villages.js:3630",
+       "on": 130,
+       "off": 113,
+       "d": 17,
+       "shareOfExtra": null,
+       "shareOfOn": 0.007155339672230402
+      },
+      {
+       "fn": "_edgeScan|zone.js:19283",
+       "on": 382,
+       "off": 369,
+       "d": 13,
+       "shareOfExtra": null,
+       "shareOfOn": 0.021025690421477027
+      }
+     ],
+     "incl": [
+      {
+       "fn": "regrowStageOf|chunk.js:278",
+       "on": 345,
+       "off": 0,
+       "d": 345,
+       "shareOfExtra": null,
+       "shareOfOn": 0.01898917066861145
+      },
+      {
+       "fn": "(anon)|villages.js:13231",
+       "on": 343,
+       "off": 171,
+       "d": 172,
+       "shareOfExtra": null,
+       "shareOfOn": 0.018879088519807907
+      },
+      {
+       "fn": "_scanEventsDaily|villages.js:22802",
+       "on": 343,
+       "off": 171,
+       "d": 172,
+       "shareOfExtra": null,
+       "shareOfOn": 0.018879088519807907
+      },
+      {
+       "fn": "_lifeFrontier|villages.js:17585",
+       "on": 131.5,
+       "off": 0,
+       "d": 131.5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.00723790128383306
+      },
+      {
+       "fn": "_caravanSyncOne|villages.js:6659",
+       "on": 125,
+       "off": 0,
+       "d": 125,
+       "shareOfExtra": null,
+       "shareOfOn": 0.00688013430022154
+      },
+      {
+       "fn": "(anon)|villages.js:13225",
+       "on": 113,
+       "off": 0,
+       "d": 113,
+       "shareOfExtra": null,
+       "shareOfOn": 0.006219641407400272
+      },
+      {
+       "fn": "_t851Sync|villages.js:6743",
+       "on": 113,
+       "off": 0,
+       "d": 113,
+       "shareOfExtra": null,
+       "shareOfOn": 0.006219641407400272
+      },
+      {
+       "fn": "_t661ReturnPts|villages.js:6080",
+       "on": 72.5,
+       "off": 0,
+       "d": 72.5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.0039904778941284936
+      }
+     ],
+     "jobs": [
+      {
+       "k": "(anon)|villages.js:13225|caravan",
+       "on": 166.5,
+       "off": 42,
+       "d": 124.5
+      },
+      {
+       "k": "(anon)|villages.js:13185|pop",
+       "on": 94.5,
+       "off": 63,
+       "d": 31.5
+      },
+      {
+       "k": "(anon)|villages.js:13203|wx",
+       "on": 677.5,
+       "off": 647,
+       "d": 30.5
+      },
+      {
+       "k": "(anon)|villages.js:13231|events",
+       "on": 505.5,
+       "off": 486,
+       "d": 19.5
+      },
+      {
+       "k": "(anon)|villages.js:13174|econ",
+       "on": 1329,
+       "off": 1310,
+       "d": 19
+      },
+      {
+       "k": "(anon)|villages.js:819|",
+       "on": 75.5,
+       "off": 57,
+       "d": 18.5
+      }
+     ]
+    }
+   },
+   "hv10": {
+    "fresh": {
+     "runsOn": 1,
+     "runsOff": 1,
+     "closeOn": 1015.9,
+     "closeOff": 1085.4,
+     "extra": -69.50000000000011,
+     "self": [
+      {
+       "fn": "warTreeCellBlocked|zone.js:6567",
+       "on": 36,
+       "off": 18,
+       "d": 18,
+       "shareOfExtra": null,
+       "shareOfOn": 0.0354365587164091
+      },
+      {
+       "fn": "_bandFloorFill|villages.js:20332",
+       "on": 10,
+       "off": 0,
+       "d": 10,
+       "shareOfExtra": null,
+       "shareOfOn": 0.00984348853233586
+      },
+      {
+       "fn": "_t146Band|villages.js:20239",
+       "on": 28,
+       "off": 19,
+       "d": 9,
+       "shareOfExtra": null,
+       "shareOfOn": 0.02756176789054041
+      },
+      {
+       "fn": "isOre|villages.js:961",
+       "on": 16,
+       "off": 7,
+       "d": 9,
+       "shareOfExtra": null,
+       "shareOfOn": 0.015749581651737374
+      },
+      {
+       "fn": "storageFoodPer|economy-sim.js:939",
+       "on": 9,
+       "off": 0,
+       "d": 9,
+       "shareOfExtra": null,
+       "shareOfOn": 0.008859139679102275
+      },
+      {
+       "fn": "_t620WfBox|villages.js:17690",
+       "on": 8,
+       "off": 0,
+       "d": 8,
+       "shareOfExtra": null,
+       "shareOfOn": 0.007874790825868687
+      },
+      {
+       "fn": "findStairBuildingForCell|zone.js:19433",
+       "on": 8,
+       "off": 0,
+       "d": 8,
+       "shareOfExtra": null,
+       "shareOfOn": 0.007874790825868687
+      },
+      {
+       "fn": "isTerrainBlockedLocal|zone.js:2570",
+       "on": 32,
+       "off": 25,
+       "d": 7,
+       "shareOfExtra": null,
+       "shareOfOn": 0.03149916330347475
+      },
+      {
+       "fn": "oreStockAt|zone.js:7110",
+       "on": 7,
+       "off": 0,
+       "d": 7,
+       "shareOfExtra": null,
+       "shareOfOn": 0.006890441972635102
+      },
+      {
+       "fn": "getForestMultiplier|terrain.js:433",
+       "on": 58,
+       "off": 52,
+       "d": 6,
+       "shareOfExtra": null,
+       "shareOfOn": 0.05709223348754799
+      },
+      {
+       "fn": "_huntBandBuild|villages.js:20281",
+       "on": 25,
+       "off": 20,
+       "d": 5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.02460872133083965
+      },
+      {
+       "fn": "_walkCellBlocked|villages.js:5425",
+       "on": 17,
+       "off": 12,
+       "d": 5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.016733930504970962
+      }
+     ],
+     "incl": [
+      {
+       "fn": "_villageBody|economy-sim-v2.js:3214",
+       "on": 42,
+       "off": 0,
+       "d": 42,
+       "shareOfExtra": null,
+       "shareOfOn": 0.04134265183581061
+      },
+      {
+       "fn": "village|economy-sim-v2.js:3207",
+       "on": 42,
+       "off": 0,
+       "d": 42,
+       "shareOfExtra": null,
+       "shareOfOn": 0.04134265183581061
+      },
+      {
+       "fn": "storageFoodPer|economy-sim.js:939",
+       "on": 41,
+       "off": 0,
+       "d": 41,
+       "shareOfExtra": null,
+       "shareOfOn": 0.040358302982577025
+      },
+      {
+       "fn": "_huntBandBuild|villages.js:20281",
+       "on": 120,
+       "off": 91,
+       "d": 29,
+       "shareOfExtra": null,
+       "shareOfOn": 0.11812186238803032
+      },
+      {
+       "fn": "storageFoodEquivalent|economy-sim.js:951",
+       "on": 59,
+       "off": 46,
+       "d": 13,
+       "shareOfExtra": null,
+       "shareOfOn": 0.05807658234078157
+      },
+      {
+       "fn": "totalFoodEquivalent|economy-sim.js:920",
+       "on": 60,
+       "off": 51,
+       "d": 9,
+       "shareOfExtra": null,
+       "shareOfOn": 0.05906093119401516
+      },
+      {
+       "fn": "getForestMultiplier|terrain.js:433",
+       "on": 59,
+       "off": 53,
+       "d": 6,
+       "shareOfExtra": null,
+       "shareOfOn": 0.05807658234078157
+      },
+      {
+       "fn": "(anon)|villages.js:13174",
+       "on": 45,
+       "off": 42,
+       "d": 3,
+       "shareOfExtra": null,
+       "shareOfOn": 0.04429569839551137
+      }
+     ],
+     "jobs": [
+      {
+       "k": "(anon)|villages.js:13174|econ",
+       "on": 45,
+       "off": 42,
+       "d": 3
+      },
+      {
+       "k": "(anon)|villages.js:13231|events",
+       "on": 35,
+       "off": 32,
+       "d": 3
+      },
+      {
+       "k": "(anon)|villages.js:13193|econ",
+       "on": 57,
+       "off": 55,
+       "d": 2
+      },
+      {
+       "k": "set|t1489-probe.js:113|",
+       "on": 15,
+       "off": 13,
+       "d": 2
+      },
+      {
+       "k": "(anon)|villages.js:13226|caravan",
+       "on": 1,
+       "off": 0,
+       "d": 1
+      },
+      {
+       "k": "(anon)|villages.js:13234|dist",
+       "on": 1,
+       "off": 0,
+       "d": 1
+      }
+     ]
+    },
+    "warm": {
+     "runsOn": 1,
+     "runsOff": 1,
+     "closeOn": 4502.8,
+     "closeOff": 5123.4,
+     "extra": -620.5999999999995,
+     "self": [
+      {
+       "fn": "_preservedKcal|kcal.js:156",
+       "on": 765,
+       "off": 699,
+       "d": 66,
+       "shareOfExtra": null,
+       "shareOfOn": 0.16989428799857867
+      },
+      {
+       "fn": "storageFoodEquivalent|economy-sim.js:951",
+       "on": 420,
+       "off": 386,
+       "d": 34,
+       "shareOfExtra": null,
+       "shareOfOn": 0.09327529537176868
+      },
+      {
+       "fn": "_huntScan|villages.js:20439",
+       "on": 26,
+       "off": 0,
+       "d": 26,
+       "shareOfExtra": null,
+       "shareOfOn": 0.00577418495158568
+      },
+      {
+       "fn": "_worldStockOf|economy-sim-v2.js:590",
+       "on": 25,
+       "off": 0,
+       "d": 25,
+       "shareOfExtra": null,
+       "shareOfOn": 0.005552100914986231
+      },
+      {
+       "fn": "kgOf|weights.js:164",
+       "on": 25,
+       "off": 0,
+       "d": 25,
+       "shareOfExtra": null,
+       "shareOfOn": 0.005552100914986231
+      },
+      {
+       "fn": "npcReachStep|zone.js:4907",
+       "on": 25,
+       "off": 0,
+       "d": 25,
+       "shareOfExtra": null,
+       "shareOfOn": 0.005552100914986231
+      },
+      {
+       "fn": "totalFoodEquivalent|economy-sim.js:920",
+       "on": 25,
+       "off": 0,
+       "d": 25,
+       "shareOfExtra": null,
+       "shareOfOn": 0.005552100914986231
+      },
+      {
+       "fn": "_villageBody|economy-sim-v2.js:3214",
+       "on": 24,
+       "off": 0,
+       "d": 24,
+       "shareOfExtra": null,
+       "shareOfOn": 0.005330016878386782
+      },
+      {
+       "fn": "kcalOf|kcal.js:168",
+       "on": 24,
+       "off": 0,
+       "d": 24,
+       "shareOfExtra": null,
+       "shareOfOn": 0.005330016878386782
+      },
+      {
+       "fn": "_rgNum|chunk.js:186",
+       "on": 23,
+       "off": 0,
+       "d": 23,
+       "shareOfExtra": null,
+       "shareOfOn": 0.0051079328417873325
+      },
+      {
+       "fn": "currentEra|era.js:106",
+       "on": 23,
+       "off": 0,
+       "d": 23,
+       "shareOfExtra": null,
+       "shareOfOn": 0.0051079328417873325
+      },
+      {
+       "fn": "_flushStepLazy|roads.js:506",
+       "on": 21,
+       "off": 0,
+       "d": 21,
+       "shareOfExtra": null,
+       "shareOfOn": 0.004663764768588433
+      }
+     ],
+     "incl": [
+      {
+       "fn": "(anon)|villages.js:13160",
+       "on": 258,
+       "off": 0,
+       "d": 258,
+       "shareOfExtra": null,
+       "shareOfOn": 0.0572976814426579
+      },
+      {
+       "fn": "head|economy-sim-v2.js:3189",
+       "on": 258,
+       "off": 0,
+       "d": 258,
+       "shareOfExtra": null,
+       "shareOfOn": 0.0572976814426579
+      },
+      {
+       "fn": "_t859Stock|economy-sim-v2.js:79",
+       "on": 249,
+       "off": 0,
+       "d": 249,
+       "shareOfExtra": null,
+       "shareOfOn": 0.055298925113262856
+      },
+      {
+       "fn": "mute|villages.js:13155",
+       "on": 2035,
+       "off": 1889,
+       "d": 146,
+       "shareOfExtra": null,
+       "shareOfOn": 0.45194101447987917
+      },
+      {
+       "fn": "totalFoodEquivalent|economy-sim.js:920",
+       "on": 1397,
+       "off": 1256,
+       "d": 141,
+       "shareOfExtra": null,
+       "shareOfOn": 0.31025139912943056
+      },
+      {
+       "fn": "storageFoodEquivalent|economy-sim.js:951",
+       "on": 1387,
+       "off": 1256,
+       "d": 131,
+       "shareOfExtra": null,
+       "shareOfOn": 0.30803055876343605
+      },
+      {
+       "fn": "econUnitsOf|kcal.js:198",
+       "on": 915,
+       "off": 812,
+       "d": 103,
+       "shareOfExtra": null,
+       "shareOfOn": 0.20320689348849605
+      },
+      {
+       "fn": "storageFoodPer|economy-sim.js:939",
+       "on": 959,
+       "off": 862,
+       "d": 97,
+       "shareOfExtra": null,
+       "shareOfOn": 0.2129785910988718
+      }
+     ],
+     "jobs": [
+      {
+       "k": "(anon)|villages.js:13174|econ",
+       "on": 1166,
+       "off": 1113,
+       "d": 53
+      },
+      {
+       "k": "(anon)|villages.js:13193|econ",
+       "on": 381,
+       "off": 344,
+       "d": 37
+      },
+      {
+       "k": "(anon)|villages.js:13160|econ",
+       "on": 258,
+       "off": 222,
+       "d": 36
+      },
+      {
+       "k": "(anon)|villages.js:13198|terr",
+       "on": 184,
+       "off": 156,
+       "d": 28
+      },
+      {
+       "k": "(anon)|villages.js:13203|wx",
+       "on": 52,
+       "off": 35,
+       "d": 17
+      },
+      {
+       "k": "(anon)|villages.js:13194|econ",
+       "on": 245,
+       "off": 234,
+       "d": 11
+      }
+     ]
+    }
+   },
+   "hv20": {
+    "fresh": {
+     "runsOn": 1,
+     "runsOff": 1,
+     "closeOn": 1583.7,
+     "closeOff": 1858.2,
+     "extra": -274.5,
+     "self": [
+      {
+       "fn": "_mkHeap|path-core.js:56",
+       "on": 74,
+       "off": 44,
+       "d": 30,
+       "shareOfExtra": null,
+       "shareOfOn": 0.04672602134242596
+      },
+      {
+       "fn": "_search|path-core.js:406",
+       "on": 18,
+       "off": 0,
+       "d": 18,
+       "shareOfExtra": null,
+       "shareOfOn": 0.011365788975184693
+      },
+      {
+       "fn": "findCellFence|zone.js:19394",
+       "on": 17,
+       "off": 0,
+       "d": 17,
+       "shareOfExtra": null,
+       "shareOfOn": 0.010734356254341099
+      },
+      {
+       "fn": "levelOf|roads.js:111",
+       "on": 13,
+       "off": 0,
+       "d": 13,
+       "shareOfExtra": null,
+       "shareOfOn": 0.008208625370966723
+      },
+      {
+       "fn": "_edgeScan|zone.js:19283",
+       "on": 26,
+       "off": 14,
+       "d": 12,
+       "shareOfExtra": null,
+       "shareOfOn": 0.016417250741933447
+      },
+      {
+       "fn": "_lifeGameDaySteps|villages.js:20519",
+       "on": 39,
+       "off": 27,
+       "d": 12,
+       "shareOfExtra": null,
+       "shareOfOn": 0.02462587611290017
+      },
+      {
+       "fn": "isRockCellLocal|terrain.js:376",
+       "on": 12,
+       "off": 0,
+       "d": 12,
+       "shareOfExtra": null,
+       "shareOfOn": 0.007577192650123129
+      },
+      {
+       "fn": "_t427Reach|villages.js:17486",
+       "on": 11,
+       "off": 0,
+       "d": 11,
+       "shareOfExtra": null,
+       "shareOfOn": 0.006945759929279535
+      },
+      {
+       "fn": "_huntBandBuild|villages.js:20281",
+       "on": 23,
+       "off": 15,
+       "d": 8,
+       "shareOfExtra": null,
+       "shareOfOn": 0.014522952579402663
+      },
+      {
+       "fn": "regionMix|region-profiles.js:235",
+       "on": 8,
+       "off": 0,
+       "d": 8,
+       "shareOfExtra": null,
+       "shareOfOn": 0.005051461766748753
+      },
+      {
+       "fn": "_bandFloorFill|villages.js:20332",
+       "on": 28,
+       "off": 22,
+       "d": 6,
+       "shareOfExtra": null,
+       "shareOfOn": 0.017680116183620635
+      },
+      {
+       "fn": "isOre|villages.js:961",
+       "on": 22,
+       "off": 16,
+       "d": 6,
+       "shareOfExtra": null,
+       "shareOfOn": 0.01389151985855907
+      }
+     ],
+     "incl": [
+      {
+       "fn": "isBlockedByWall|zone.js:19831",
+       "on": 88,
+       "off": 0,
+       "d": 88,
+       "shareOfExtra": null,
+       "shareOfOn": 0.05556607943423628
+      },
+      {
+       "fn": "_searchBegin|path-core.js:168",
+       "on": 80,
+       "off": 0,
+       "d": 80,
+       "shareOfExtra": null,
+       "shareOfOn": 0.05051461766748753
+      },
+      {
+       "fn": "_mkHeap|path-core.js:56",
+       "on": 74,
+       "off": 0,
+       "d": 74,
+       "shareOfExtra": null,
+       "shareOfOn": 0.04672602134242596
+      },
+      {
+       "fn": "_t146Band|villages.js:20239",
+       "on": 66,
+       "off": 0,
+       "d": 66,
+       "shareOfExtra": null,
+       "shareOfOn": 0.04167455957567721
+      },
+      {
+       "fn": "npcReachHas|zone.js:4928",
+       "on": 117,
+       "off": 102,
+       "d": 15,
+       "shareOfExtra": null,
+       "shareOfOn": 0.07387762833870051
+      },
+      {
+       "fn": "straightPathClear|zone.js:4798",
+       "on": 114,
+       "off": 99,
+       "d": 15,
+       "shareOfExtra": null,
+       "shareOfOn": 0.07198333017616973
+      },
+      {
+       "fn": "_search|path-core.js:406",
+       "on": 170,
+       "off": 157,
+       "d": 13,
+       "shareOfExtra": null,
+       "shareOfOn": 0.107343562543411
+      },
+      {
+       "fn": "_spAt|chunk.js:693",
+       "on": 97,
+       "off": 86,
+       "d": 11,
+       "shareOfExtra": null,
+       "shareOfOn": 0.061248973921828626
+      }
+     ],
+     "jobs": [
+      {
+       "k": "set|t1489-probe.js:113|",
+       "on": 15,
+       "off": 13,
+       "d": 2
+      },
+      {
+       "k": "(anon)|villages.js:13185|pop",
+       "on": 1,
+       "off": 0,
+       "d": 1
+      },
+      {
+       "k": "(anon)|villages.js:13203|wx",
+       "on": 1,
+       "off": 0,
+       "d": 1
+      },
+      {
+       "k": "(anon)|villages.js:13234|dist",
+       "on": 1,
+       "off": 0,
+       "d": 1
+      },
+      {
+       "k": "sync|granary-lots.js:330|",
+       "on": 2,
+       "off": 1,
+       "d": 1
+      },
+      {
+       "k": "(anon)|villages.js:13162|bandit",
+       "on": 2,
+       "off": 2,
+       "d": 0
+      }
+     ]
+    },
+    "warm": {
+     "runsOn": 1,
+     "runsOff": 1,
+     "closeOn": 9417,
+     "closeOff": 10465.3,
+     "extra": -1048.2999999999993,
+     "self": [
+      {
+       "fn": "storageFoodPer|economy-sim.js:939",
+       "on": 77,
+       "off": 0,
+       "d": 77,
+       "shareOfExtra": null,
+       "shareOfOn": 0.008176701709673995
+      },
+      {
+       "fn": "_villageBody|economy-sim-v2.js:3214",
+       "on": 48,
+       "off": 0,
+       "d": 48,
+       "shareOfExtra": null,
+       "shareOfOn": 0.005097164702134438
+      },
+      {
+       "fn": "_huntScan|villages.js:20439",
+       "on": 46,
+       "off": 0,
+       "d": 46,
+       "shareOfExtra": null,
+       "shareOfOn": 0.004884782839545502
+      },
+      {
+       "fn": "tickDecay|economy-sim-v2.js:3062",
+       "on": 43,
+       "off": 0,
+       "d": 43,
+       "shareOfExtra": null,
+       "shareOfOn": 0.0045662100456621
+      },
+      {
+       "fn": "_isPointInLake|terrain.js:275",
+       "on": 41,
+       "off": 0,
+       "d": 41,
+       "shareOfExtra": null,
+       "shareOfOn": 0.004353828183073166
+      },
+      {
+       "fn": "_lifeDailySteps|villages.js:21427",
+       "on": 40,
+       "off": 0,
+       "d": 40,
+       "shareOfExtra": null,
+       "shareOfOn": 0.004247637251778698
+      },
+      {
+       "fn": "tickTradeV2Steps|economy-sim-v2.js:1989",
+       "on": 40,
+       "off": 0,
+       "d": 40,
+       "shareOfExtra": null,
+       "shareOfOn": 0.004247637251778698
+      },
+      {
+       "fn": "run|:0",
+       "on": 830,
+       "off": 797,
+       "d": 33,
+       "shareOfExtra": null,
+       "shareOfOn": 0.08813847297440798
+      },
+      {
+       "fn": "exec|:0",
+       "on": 210,
+       "off": 180,
+       "d": 30,
+       "shareOfExtra": null,
+       "shareOfOn": 0.022300095571838166
+      },
+      {
+       "fn": "_preservedKcal|kcal.js:156",
+       "on": 1329,
+       "off": 1308,
+       "d": 21,
+       "shareOfExtra": null,
+       "shareOfOn": 0.14112774769034725
+      },
+      {
+       "fn": "_num|trees.js:20",
+       "on": 116,
+       "off": 99,
+       "d": 17,
+       "shareOfExtra": null,
+       "shareOfOn": 0.012318148030158224
+      },
+      {
+       "fn": "tickVillage|economy-sim.js:5104",
+       "on": 109,
+       "off": 101,
+       "d": 8,
+       "shareOfExtra": null,
+       "shareOfOn": 0.011574811511096952
+      }
+     ],
+     "incl": [
+      {
+       "fn": "_caravanArrive|economy-sim-v2.js:2504",
+       "on": 555,
+       "off": 0,
+       "d": 555,
+       "shareOfExtra": null,
+       "shareOfOn": 0.05893596686842944
+      },
+      {
+       "fn": "upsertRoadCell|zone-local-db.js:596",
+       "on": 548,
+       "off": 0,
+       "d": 548,
+       "shareOfExtra": null,
+       "shareOfOn": 0.05819263034936816
+      },
+      {
+       "fn": "scanDay|events.js:730",
+       "on": 536,
+       "off": 0,
+       "d": 536,
+       "shareOfExtra": null,
+       "shareOfOn": 0.056918339173834556
+      },
+      {
+       "fn": "_flushStepLazy|roads.js:506",
+       "on": 810,
+       "off": 745,
+       "d": 65,
+       "shareOfExtra": null,
+       "shareOfOn": 0.08601465434851864
+      },
+      {
+       "fn": "(anon)|villages.js:13161",
+       "on": 868,
+       "off": 820,
+       "d": 48,
+       "shareOfExtra": null,
+       "shareOfOn": 0.09217372836359775
+      },
+      {
+       "fn": "SimVillages.init.dayRoads|zone.js:7088",
+       "on": 868,
+       "off": 820,
+       "d": 48,
+       "shareOfExtra": null,
+       "shareOfOn": 0.09217372836359775
+      },
+      {
+       "fn": "_dayRoll|roads.js:696",
+       "on": 868,
+       "off": 820,
+       "d": 48,
+       "shareOfExtra": null,
+       "shareOfOn": 0.09217372836359775
+      },
+      {
+       "fn": "dayTick|roads.js:707",
+       "on": 868,
+       "off": 820,
+       "d": 48,
+       "shareOfExtra": null,
+       "shareOfOn": 0.09217372836359775
+      }
+     ],
+     "jobs": [
+      {
+       "k": "(anon)|villages.js:13161|roads",
+       "on": 868,
+       "off": 820,
+       "d": 48
+      },
+      {
+       "k": "(anon)|villages.js:13198|terr",
+       "on": 267,
+       "off": 240,
+       "d": 27
+      },
+      {
+       "k": "(anon)|villages.js:13160|econ",
+       "on": 434,
+       "off": 419,
+       "d": 15
+      },
+      {
+       "k": "(anon)|villages.js:13216|bcast",
+       "on": 12,
+       "off": 0,
+       "d": 12
+      },
+      {
+       "k": "sync|granary-lots.js:330|",
+       "on": 55,
+       "off": 48,
+       "d": 7
+      },
+      {
+       "k": "(anon)|villages.js:13193|econ",
+       "on": 663,
+       "off": 658,
+       "d": 5
+      }
+     ]
+    }
+   },
+   "hv3": {
+    "fresh": {
+     "runsOn": 1,
+     "runsOff": 1,
+     "closeOn": 279.9,
+     "closeOff": 301.7,
+     "extra": -21.80000000000001,
+     "self": [
+      {
+       "fn": "_t368FoodPer|economy-sim.js:2545",
+       "on": 10,
+       "off": 0,
+       "d": 10,
+       "shareOfExtra": null,
+       "shareOfOn": 0.03572704537334763
+      },
+      {
+       "fn": "(anon)|village-layout.js:127",
+       "on": 7,
+       "off": 0,
+       "d": 7,
+       "shareOfExtra": null,
+       "shareOfOn": 0.02500893176134334
+      },
+      {
+       "fn": "_oreCellsOfInner|villages.js:7322",
+       "on": 7,
+       "off": 0,
+       "d": 7,
+       "shareOfExtra": null,
+       "shareOfOn": 0.02500893176134334
+      },
+      {
+       "fn": "_huntHuntersSteps|villages.js:20409",
+       "on": 13,
+       "off": 7,
+       "d": 6,
+       "shareOfExtra": null,
+       "shareOfOn": 0.04644515898535192
+      },
+      {
+       "fn": "findCellFence|zone.js:19394",
+       "on": 6,
+       "off": 0,
+       "d": 6,
+       "shareOfExtra": null,
+       "shareOfOn": 0.021436227224008578
+      },
+      {
+       "fn": "_huntScan|villages.js:20439",
+       "on": 14,
+       "off": 9,
+       "d": 5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.05001786352268668
+      },
+      {
+       "fn": "_terrBlocked0|zone.js:2563",
+       "on": 12,
+       "off": 7,
+       "d": 5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.042872454448017155
+      },
+      {
+       "fn": "edgeBlockedStep|zone.js:19819",
+       "on": 4,
+       "off": 0,
+       "d": 4,
+       "shareOfExtra": null,
+       "shareOfOn": 0.01429081814933905
+      },
+      {
+       "fn": "flushProf|t1489-probe.js:39",
+       "on": 3,
+       "off": 0,
+       "d": 3,
+       "shareOfExtra": null,
+       "shareOfOn": 0.010718113612004289
+      },
+      {
+       "fn": "maskEDT|village-layout.js:119",
+       "on": 3,
+       "off": 0,
+       "d": 3,
+       "shareOfExtra": null,
+       "shareOfOn": 0.010718113612004289
+      },
+      {
+       "fn": "M.bind|villages.js:17779",
+       "on": 2,
+       "off": 0,
+       "d": 2,
+       "shareOfExtra": null,
+       "shareOfOn": 0.007145409074669525
+      },
+      {
+       "fn": "_lifeSiteFilters|villages.js:17708",
+       "on": 2,
+       "off": 0,
+       "d": 2,
+       "shareOfExtra": null,
+       "shareOfOn": 0.007145409074669525
+      }
+     ],
+     "incl": [
+      {
+       "fn": "_huntScan|villages.js:20439",
+       "on": 14,
+       "off": 0,
+       "d": 14,
+       "shareOfExtra": null,
+       "shareOfOn": 0.05001786352268668
+      },
+      {
+       "fn": "_t859Stock|economy-sim-v2.js:79",
+       "on": 13,
+       "off": 0,
+       "d": 13,
+       "shareOfExtra": null,
+       "shareOfOn": 0.04644515898535192
+      },
+      {
+       "fn": "_terrBlocked0|zone.js:2563",
+       "on": 12,
+       "off": 0,
+       "d": 12,
+       "shareOfExtra": null,
+       "shareOfOn": 0.042872454448017155
+      },
+      {
+       "fn": "note|t1489-probe.js:91",
+       "on": 11,
+       "off": 0,
+       "d": 11,
+       "shareOfExtra": null,
+       "shareOfOn": 0.03929974991068239
+      },
+      {
+       "fn": "npcReachHas|zone.js:4928",
+       "on": 40,
+       "off": 31,
+       "d": 9,
+       "shareOfExtra": null,
+       "shareOfOn": 0.14290818149339052
+      },
+      {
+       "fn": "_huntHuntersSteps|villages.js:20409",
+       "on": 91,
+       "off": 83,
+       "d": 8,
+       "shareOfExtra": null,
+       "shareOfOn": 0.3251161128974634
+      },
+      {
+       "fn": "isBlockedByWall|zone.js:19831",
+       "on": 19,
+       "off": 11,
+       "d": 8,
+       "shareOfExtra": null,
+       "shareOfOn": 0.06788138620936049
+      },
+      {
+       "fn": "straightPathClear|zone.js:4798",
+       "on": 38,
+       "off": 30,
+       "d": 8,
+       "shareOfExtra": null,
+       "shareOfOn": 0.13576277241872098
+      }
+     ],
+     "jobs": [
+      {
+       "k": "(anon)|villages.js:13199|ore",
+       "on": 27,
+       "off": 23,
+       "d": 4
+      },
+      {
+       "k": "(anon)|villages.js:13195|econ",
+       "on": 2,
+       "off": 1,
+       "d": 1
+      },
+      {
+       "k": "(anon)|villages.js:13223|caravan",
+       "on": 1,
+       "off": 0,
+       "d": 1
+      },
+      {
+       "k": "(anon)|villages.js:13234|dist",
+       "on": 1,
+       "off": 0,
+       "d": 1
+      },
+      {
+       "k": "set|t1489-probe.js:113|",
+       "on": 11,
+       "off": 11,
+       "d": 0
+      },
+      {
+       "k": "sync|granary-lots.js:330|",
+       "on": 1,
+       "off": 1,
+       "d": 0
+      }
+     ]
+    },
+    "warm": {
+     "runsOn": 1,
+     "runsOff": 1,
+     "closeOn": 1063.7,
+     "closeOff": 1203.9,
+     "extra": -140.20000000000005,
+     "self": [
+      {
+       "fn": "_targetV2|economy-sim-v2.js:879",
+       "on": 89,
+       "off": 75,
+       "d": 14,
+       "shareOfExtra": null,
+       "shareOfOn": 0.08367020776534737
+      },
+      {
+       "fn": "_t1206Key|economy-sim.js:1882",
+       "on": 10,
+       "off": 0,
+       "d": 10,
+       "shareOfExtra": null,
+       "shareOfOn": 0.00940114693992667
+      },
+      {
+       "fn": "kgOf|weights.js:164",
+       "on": 10,
+       "off": 0,
+       "d": 10,
+       "shareOfExtra": null,
+       "shareOfOn": 0.00940114693992667
+      },
+      {
+       "fn": "_huntScan|villages.js:20439",
+       "on": 7,
+       "off": 0,
+       "d": 7,
+       "shareOfExtra": null,
+       "shareOfOn": 0.00658080285794867
+      },
+      {
+       "fn": "findCellFence|zone.js:19394",
+       "on": 7,
+       "off": 0,
+       "d": 7,
+       "shareOfExtra": null,
+       "shareOfOn": 0.00658080285794867
+      },
+      {
+       "fn": "sync|granary-lots.js:330",
+       "on": 7,
+       "off": 0,
+       "d": 7,
+       "shareOfExtra": null,
+       "shareOfOn": 0.00658080285794867
+      },
+      {
+       "fn": "_computeVillageStats|economy-sim.js:68",
+       "on": 6,
+       "off": 0,
+       "d": 6,
+       "shareOfExtra": null,
+       "shareOfOn": 0.005640688163956002
+      },
+      {
+       "fn": "_lifeHunterEconLink|villages.js:20208",
+       "on": 6,
+       "off": 0,
+       "d": 6,
+       "shareOfExtra": null,
+       "shareOfOn": 0.005640688163956002
+      },
+      {
+       "fn": "_t1196Back|economy-sim.js:3488",
+       "on": 6,
+       "off": 0,
+       "d": 6,
+       "shareOfExtra": null,
+       "shareOfOn": 0.005640688163956002
+      },
+      {
+       "fn": "_villageBody|economy-sim-v2.js:3214",
+       "on": 6,
+       "off": 0,
+       "d": 6,
+       "shareOfExtra": null,
+       "shareOfOn": 0.005640688163956002
+      },
+      {
+       "fn": "addProduce|economy-sim.js:5327",
+       "on": 6,
+       "off": 0,
+       "d": 6,
+       "shareOfExtra": null,
+       "shareOfOn": 0.005640688163956002
+      },
+      {
+       "fn": "allocRealCandidates|economy-sim.js:7238",
+       "on": 6,
+       "off": 0,
+       "d": 6,
+       "shareOfExtra": null,
+       "shareOfOn": 0.005640688163956002
+      }
+     ],
+     "incl": [
+      {
+       "fn": "_dayRoll|roads.js:696",
+       "on": 46,
+       "off": 0,
+       "d": 46,
+       "shareOfExtra": null,
+       "shareOfOn": 0.04324527592366269
+      },
+      {
+       "fn": "dayTick|roads.js:707",
+       "on": 46,
+       "off": 0,
+       "d": 46,
+       "shareOfExtra": null,
+       "shareOfOn": 0.04324527592366269
+      },
+      {
+       "fn": "flushDaily|roads.js:451",
+       "on": 45,
+       "off": 0,
+       "d": 45,
+       "shareOfExtra": null,
+       "shareOfOn": 0.04230516122967002
+      },
+      {
+       "fn": "(anon)|villages.js:13161",
+       "on": 46,
+       "off": 46,
+       "d": 0,
+       "shareOfExtra": null,
+       "shareOfOn": 0.04324527592366269
+      },
+      {
+       "fn": "SimVillages.init.dayRoads|zone.js:7088",
+       "on": 46,
+       "off": 46,
+       "d": 0,
+       "shareOfExtra": null,
+       "shareOfOn": 0.04324527592366269
+      },
+      {
+       "fn": "pickDeficitJob_rational|economy-sim.js:7407",
+       "on": 74,
+       "off": 75,
+       "d": -1,
+       "shareOfExtra": null,
+       "shareOfOn": 0.06956848735545736
+      },
+      {
+       "fn": "_t427Reach|villages.js:17486",
+       "on": 48,
+       "off": 50,
+       "d": -2,
+       "shareOfExtra": null,
+       "shareOfOn": 0.045125505311648016
+      },
+      {
+       "fn": "priceView|events.js:486",
+       "on": 82,
+       "off": 85,
+       "d": -3,
+       "shareOfExtra": null,
+       "shareOfOn": 0.0770894049073987
+      }
+     ],
+     "jobs": [
+      {
+       "k": "sync|granary-lots.js:330|",
+       "on": 11,
+       "off": 4,
+       "d": 7
+      },
+      {
+       "k": "(anon)|villages.js:13185|pop",
+       "on": 10,
+       "off": 9,
+       "d": 1
+      },
+      {
+       "k": "(anon)|villages.js:13216|bcast",
+       "on": 6,
+       "off": 5,
+       "d": 1
+      },
+      {
+       "k": "(anon)|villages.js:13225|caravan",
+       "on": 6,
+       "off": 5,
+       "d": 1
+      },
+      {
+       "k": "(anon)|villages.js:13226|caravan",
+       "on": 1,
+       "off": 0,
+       "d": 1
+      },
+      {
+       "k": "(anon)|villages.js:13232|events",
+       "on": 1,
+       "off": 0,
+       "d": 1
+      }
+     ]
+    }
+   },
+   "hv51": {
+    "fresh": {
+     "runsOn": 1,
+     "runsOff": 1,
+     "closeOn": 2970.4,
+     "closeOff": 2784.3,
+     "extra": 186.0999999999999,
+     "self": [
+      {
+       "fn": "_t146Band|villages.js:20239",
+       "on": 194,
+       "off": 114,
+       "d": 80,
+       "shareOfExtra": 0.4298764105319723,
+       "shareOfOn": 0.06531106921626717
+      },
+      {
+       "fn": "_terrBlocked0|zone.js:2563",
+       "on": 80,
+       "off": 0,
+       "d": 80,
+       "shareOfExtra": 0.4298764105319723,
+       "shareOfOn": 0.026932399676811204
+      },
+      {
+       "fn": "_mkHeap|path-core.js:56",
+       "on": 191,
+       "off": 142,
+       "d": 49,
+       "shareOfExtra": 0.263299301450833,
+       "shareOfOn": 0.06430110422838675
+      },
+      {
+       "fn": "_huntScan|villages.js:20439",
+       "on": 46,
+       "off": 22,
+       "d": 24,
+       "shareOfExtra": 0.12896292315959168,
+       "shareOfOn": 0.015486129814166442
+      },
+      {
+       "fn": "_getZoneTerrain|terrain.js:172",
+       "on": 21,
+       "off": 0,
+       "d": 21,
+       "shareOfExtra": 0.11284255776464272,
+       "shareOfOn": 0.007069754915162941
+      },
+      {
+       "fn": "_oreIndex|terrain.js:465",
+       "on": 19,
+       "off": 0,
+       "d": 19,
+       "shareOfExtra": 0.10209564750134341,
+       "shareOfOn": 0.0063964449232426605
+      },
+      {
+       "fn": "levelOf|roads.js:111",
+       "on": 19,
+       "off": 0,
+       "d": 19,
+       "shareOfExtra": 0.10209564750134341,
+       "shareOfOn": 0.0063964449232426605
+      },
+      {
+       "fn": "L|region-profiles.js:149",
+       "on": 45,
+       "off": 27,
+       "d": 18,
+       "shareOfExtra": 0.09672219236969376,
+       "shareOfOn": 0.015149474818206301
+      },
+      {
+       "fn": "_lifeAddHouseSiteInner|villages.js:18507",
+       "on": 36,
+       "off": 19,
+       "d": 17,
+       "shareOfExtra": 0.09134873723804411,
+       "shareOfOn": 0.012119579854565042
+      },
+      {
+       "fn": "computeShadowPrices|economy-sim-v2.js:995",
+       "on": 42,
+       "off": 25,
+       "d": 17,
+       "shareOfExtra": 0.09134873723804411,
+       "shareOfOn": 0.014139509830325882
+      },
+      {
+       "fn": "tickVillage|economy-sim.js:5104",
+       "on": 17,
+       "off": 0,
+       "d": 17,
+       "shareOfExtra": 0.09134873723804411,
+       "shareOfOn": 0.005723134931322381
+      },
+      {
+       "fn": "maskEDT|village-layout.js:119",
+       "on": 48,
+       "off": 33,
+       "d": 15,
+       "shareOfExtra": 0.0806018269747448,
+       "shareOfOn": 0.016159439806086723
+      }
+     ],
+     "incl": [
+      {
+       "fn": "_t731Tick|villages.js:13122",
+       "on": 2970,
+       "off": 2784,
+       "d": 186,
+       "shareOfExtra": 0.9994626544868356,
+       "shareOfOn": 0.9998653380016159
+      },
+      {
+       "fn": "onGameTick|villages.js:12944",
+       "on": 2970,
+       "off": 2784,
+       "d": 186,
+       "shareOfExtra": 0.9994626544868356,
+       "shareOfOn": 0.9998653380016159
+      },
+      {
+       "fn": "processImmediate|timers:436",
+       "on": 2970,
+       "off": 2784,
+       "d": 186,
+       "shareOfExtra": 0.9994626544868356,
+       "shareOfOn": 0.9998653380016159
+      },
+      {
+       "fn": "pump|t745-vclock.js:100",
+       "on": 2970,
+       "off": 2784,
+       "d": 186,
+       "shareOfExtra": 0.9994626544868356,
+       "shareOfOn": 0.9998653380016159
+      },
+      {
+       "fn": "isTerrainBlockedLocal|zone.js:2570",
+       "on": 134,
+       "off": 0,
+       "d": 134,
+       "shareOfExtra": 0.7200429876410536,
+       "shareOfOn": 0.04511176945865877
+      },
+      {
+       "fn": "_oreNear|terrain.js:483",
+       "on": 117,
+       "off": 0,
+       "d": 117,
+       "shareOfExtra": 0.6286942504030094,
+       "shareOfOn": 0.03938863452733638
+      },
+      {
+       "fn": "_walkResume|villages.js:5455",
+       "on": 861,
+       "off": 776,
+       "d": 85,
+       "shareOfExtra": 0.45674368619022054,
+       "shareOfOn": 0.2898599515216806
+      },
+      {
+       "fn": "(anon)|villages.js:819",
+       "on": 891,
+       "off": 808,
+       "d": 83,
+       "shareOfExtra": 0.4459967759269212,
+       "shareOfOn": 0.2999596014004848
+      }
+     ],
+     "jobs": [
+      {
+       "k": "(anon)|villages.js:819|",
+       "on": 891,
+       "off": 808,
+       "d": 83
+      },
+      {
+       "k": "(anon)|villages.js:13199|ore",
+       "on": 436,
+       "off": 375,
+       "d": 61
+      },
+      {
+       "k": "(anon)|villages.js:13381|life",
+       "on": 1139,
+       "off": 1119,
+       "d": 20
+      },
+      {
+       "k": "(anon)|villages.js:13193|econ",
+       "on": 178,
+       "off": 159,
+       "d": 19
+      },
+      {
+       "k": "set|t1489-probe.js:113|",
+       "on": 25,
+       "off": 19,
+       "d": 6
+      },
+      {
+       "k": "(anon)|villages.js:13174|econ",
+       "on": 116,
+       "off": 114,
+       "d": 2
+      }
+     ]
+    },
+    "warm": {
+     "runsOn": 1,
+     "runsOff": 1,
+     "closeOn": 27982.5,
+     "closeOff": 28059.4,
+     "extra": -76.90000000000146,
+     "self": [
+      {
+       "fn": "_terrBlocked0|zone.js:2563",
+       "on": 601,
+       "off": 0,
+       "d": 601,
+       "shareOfExtra": null,
+       "shareOfOn": 0.021477709282587333
+      },
+      {
+       "fn": "_preservedKcal|kcal.js:156",
+       "on": 3705,
+       "off": 3376,
+       "d": 329,
+       "shareOfExtra": null,
+       "shareOfOn": 0.13240418118466898
+      },
+      {
+       "fn": "_searchStep|path-core.js:351",
+       "on": 487,
+       "off": 300,
+       "d": 187,
+       "shareOfExtra": null,
+       "shareOfOn": 0.01740373447690521
+      },
+      {
+       "fn": "storageFoodEquivalent|economy-sim.js:951",
+       "on": 2343,
+       "off": 2192,
+       "d": 151,
+       "shareOfExtra": null,
+       "shareOfOn": 0.08373090324309837
+      },
+      {
+       "fn": "_terrPick|villages.js:9323",
+       "on": 124,
+       "off": 0,
+       "d": 124,
+       "shareOfExtra": null,
+       "shareOfOn": 0.00443134101670687
+      },
+      {
+       "fn": "_flushStepLazy|roads.js:506",
+       "on": 120,
+       "off": 0,
+       "d": 120,
+       "shareOfExtra": null,
+       "shareOfOn": 0.004288394532296971
+      },
+      {
+       "fn": "upsertRoadCell|zone-local-db.js:596",
+       "on": 120,
+       "off": 0,
+       "d": 120,
+       "shareOfExtra": null,
+       "shareOfOn": 0.004288394532296971
+      },
+      {
+       "fn": "_villageBody|economy-sim-v2.js:3214",
+       "on": 115,
+       "off": 0,
+       "d": 115,
+       "shareOfExtra": null,
+       "shareOfOn": 0.0041097114267845975
+      },
+      {
+       "fn": "_worldStockOf|economy-sim-v2.js:590",
+       "on": 111,
+       "off": 0,
+       "d": 111,
+       "shareOfExtra": null,
+       "shareOfOn": 0.0039667649423746985
+      },
+      {
+       "fn": "run|:0",
+       "on": 2194,
+       "off": 2086,
+       "d": 108,
+       "shareOfExtra": null,
+       "shareOfOn": 0.07840614669882963
+      },
+      {
+       "fn": "villageOfCell|villages.js:18312",
+       "on": 197,
+       "off": 146,
+       "d": 51,
+       "shareOfExtra": null,
+       "shareOfOn": 0.007040114357187528
+      },
+      {
+       "fn": "exec|:0",
+       "on": 495,
+       "off": 454,
+       "d": 41,
+       "shareOfExtra": null,
+       "shareOfOn": 0.01768962744572501
+      }
+     ],
+     "incl": [
+      {
+       "fn": "_t851Sync|villages.js:6743",
+       "on": 2530,
+       "off": 0,
+       "d": 2530,
+       "shareOfExtra": null,
+       "shareOfOn": 0.09041365138926115
+      },
+      {
+       "fn": "_t929RetWait|villages.js:5806",
+       "on": 2346,
+       "off": 0,
+       "d": 2346,
+       "shareOfExtra": null,
+       "shareOfOn": 0.08383811310640579
+      },
+      {
+       "fn": "(anon)|villages.js:13225",
+       "on": 2530,
+       "off": 1649,
+       "d": 881,
+       "shareOfExtra": null,
+       "shareOfOn": 0.09041365138926115
+      },
+      {
+       "fn": "storageFoodEquivalent|economy-sim.js:951",
+       "on": 6745,
+       "off": 6267,
+       "d": 478,
+       "shareOfExtra": null,
+       "shareOfOn": 0.24104350933619226
+      },
+      {
+       "fn": "totalFoodEquivalent|economy-sim.js:920",
+       "on": 6761,
+       "off": 6288,
+       "d": 473,
+       "shareOfExtra": null,
+       "shareOfOn": 0.24161529527383185
+      },
+      {
+       "fn": "kcalOf|kcal.js:168",
+       "on": 3907,
+       "off": 3535,
+       "d": 372,
+       "shareOfExtra": null,
+       "shareOfOn": 0.1396229786473689
+      },
+      {
+       "fn": "econUnitsOf|kcal.js:198",
+       "on": 4178,
+       "off": 3839,
+       "d": 339,
+       "shareOfExtra": null,
+       "shareOfOn": 0.14930760296613954
+      },
+      {
+       "fn": "storageFoodPer|economy-sim.js:939",
+       "on": 4362,
+       "off": 4030,
+       "d": 332,
+       "shareOfExtra": null,
+       "shareOfOn": 0.1558831412489949
+      }
+     ],
+     "jobs": [
+      {
+       "k": "(anon)|villages.js:13225|caravan",
+       "on": 2530,
+       "off": 1649,
+       "d": 881
+      },
+      {
+       "k": "(anon)|villages.js:13194|econ",
+       "on": 2915,
+       "off": 2655,
+       "d": 260
+      },
+      {
+       "k": "(anon)|villages.js:13381|life",
+       "on": 2341,
+       "off": 2157,
+       "d": 184
+      },
+      {
+       "k": "(anon)|villages.js:13161|roads",
+       "on": 2165,
+       "off": 2073,
+       "d": 92
+      },
+      {
+       "k": "(anon)|villages.js:13160|econ",
+       "on": 997,
+       "off": 950,
+       "d": 47
+      },
+      {
+       "k": "(anon)|villages.js:13199|ore",
+       "on": 66,
+       "off": 34,
+       "d": 32
+      }
+     ]
+    }
+   },
+   "hvnip": {
+    "fresh": {
+     "runsOn": 1,
+     "runsOff": 1,
+     "closeOn": 2321.8,
+     "closeOff": 2497.3,
+     "extra": -175.5,
+     "self": [
+      {
+       "fn": "gSet|path-core.js:197",
+       "on": 27,
+       "off": 0,
+       "d": 27,
+       "shareOfExtra": null,
+       "shareOfOn": 0.011628908605392367
+      },
+      {
+       "fn": "_terrBlocked0|zone.js:2563",
+       "on": 84,
+       "off": 58,
+       "d": 26,
+       "shareOfExtra": null,
+       "shareOfOn": 0.03617882677233181
+      },
+      {
+       "fn": "_isPointInRiver|terrain.js:305",
+       "on": 88,
+       "off": 66,
+       "d": 22,
+       "shareOfExtra": null,
+       "shareOfOn": 0.037901628047204754
+      },
+      {
+       "fn": "_lifeAddHouseSiteInner|villages.js:18507",
+       "on": 33,
+       "off": 16,
+       "d": 17,
+       "shareOfExtra": null,
+       "shareOfOn": 0.014213110517701782
+      },
+      {
+       "fn": "generateChunkResources|chunk.js:659",
+       "on": 16,
+       "off": 0,
+       "d": 16,
+       "shareOfExtra": null,
+       "shareOfOn": 0.006891205099491773
+      },
+      {
+       "fn": "_huntScan|villages.js:20439",
+       "on": 15,
+       "off": 0,
+       "d": 15,
+       "shareOfExtra": null,
+       "shareOfOn": 0.0064605047807735376
+      },
+      {
+       "fn": "cameSet|path-core.js:199",
+       "on": 15,
+       "off": 0,
+       "d": 15,
+       "shareOfExtra": null,
+       "shareOfOn": 0.0064605047807735376
+      },
+      {
+       "fn": "tickTradeV2Steps|economy-sim-v2.js:1989",
+       "on": 15,
+       "off": 0,
+       "d": 15,
+       "shareOfExtra": null,
+       "shareOfOn": 0.0064605047807735376
+      },
+      {
+       "fn": "gameDayNow|zone.js:11330",
+       "on": 14,
+       "off": 0,
+       "d": 14,
+       "shareOfExtra": null,
+       "shareOfOn": 0.006029804462055302
+      },
+      {
+       "fn": "(anon)|villages.js:18538",
+       "on": 13,
+       "off": 0,
+       "d": 13,
+       "shareOfExtra": null,
+       "shareOfOn": 0.005599104143337066
+      },
+      {
+       "fn": "_t146Band|villages.js:20239",
+       "on": 110,
+       "off": 97,
+       "d": 13,
+       "shareOfExtra": null,
+       "shareOfOn": 0.04737703505900594
+      },
+      {
+       "fn": "get|terrain.js:219",
+       "on": 13,
+       "off": 0,
+       "d": 13,
+       "shareOfExtra": null,
+       "shareOfOn": 0.005599104143337066
+      }
+     ],
+     "incl": [
+      {
+       "fn": "_isPointInRiver|terrain.js:305",
+       "on": 90,
+       "off": 0,
+       "d": 90,
+       "shareOfExtra": null,
+       "shareOfOn": 0.038763028684641224
+      },
+      {
+       "fn": "_terrBlocked0|zone.js:2563",
+       "on": 89,
+       "off": 0,
+       "d": 89,
+       "shareOfExtra": null,
+       "shareOfOn": 0.038332328365922985
+      },
+      {
+       "fn": "isWaterCellLocal|terrain.js:353",
+       "on": 130,
+       "off": 102,
+       "d": 28,
+       "shareOfExtra": null,
+       "shareOfOn": 0.05599104143337066
+      },
+      {
+       "fn": "totalFoodEquivalent|economy-sim.js:920",
+       "on": 173,
+       "off": 148,
+       "d": 25,
+       "shareOfExtra": null,
+       "shareOfOn": 0.07451115513825479
+      },
+      {
+       "fn": "_walkNodeCell|villages.js:5433",
+       "on": 191,
+       "off": 167,
+       "d": 24,
+       "shareOfExtra": null,
+       "shareOfOn": 0.08226376087518304
+      },
+      {
+       "fn": "storageFoodEquivalent|economy-sim.js:951",
+       "on": 170,
+       "off": 150,
+       "d": 20,
+       "shareOfExtra": null,
+       "shareOfOn": 0.07321905418210009
+      },
+      {
+       "fn": "warTreeCellBlocked|zone.js:6567",
+       "on": 281,
+       "off": 263,
+       "d": 18,
+       "shareOfExtra": null,
+       "shareOfOn": 0.12102678955982427
+      },
+      {
+       "fn": "_t146Band|villages.js:20239",
+       "on": 115,
+       "off": 98,
+       "d": 17,
+       "shareOfExtra": null,
+       "shareOfOn": 0.04953053665259712
+      }
+     ],
+     "jobs": [
+      {
+       "k": "set|t1489-probe.js:113|",
+       "on": 24,
+       "off": 17,
+       "d": 7
+      },
+      {
+       "k": "(anon)|villages.js:13231|events",
+       "on": 84,
+       "off": 78,
+       "d": 6
+      },
+      {
+       "k": "(anon)|villages.js:13160|econ",
+       "on": 46,
+       "off": 43,
+       "d": 3
+      },
+      {
+       "k": "sync|granary-lots.js:330|",
+       "on": 6,
+       "off": 3,
+       "d": 3
+      },
+      {
+       "k": "(anon)|villages.js:13185|pop",
+       "on": 3,
+       "off": 1,
+       "d": 2
+      },
+      {
+       "k": "(anon)|villages.js:13223|caravan",
+       "on": 2,
+       "off": 0,
+       "d": 2
+      }
+     ]
+    },
+    "warm": {
+     "runsOn": 1,
+     "runsOff": 1,
+     "closeOn": 15375.7,
+     "closeOff": 15466.2,
+     "extra": -90.5,
+     "self": [
+      {
+       "fn": "_num|trees.js:20",
+       "on": 75,
+       "off": 0,
+       "d": 75,
+       "shareOfExtra": null,
+       "shareOfOn": 0.004877826700572982
+      },
+      {
+       "fn": "cameSet|path-core.js:199",
+       "on": 75,
+       "off": 0,
+       "d": 75,
+       "shareOfExtra": null,
+       "shareOfOn": 0.004877826700572982
+      },
+      {
+       "fn": "_terrBlocked0|zone.js:2563",
+       "on": 398,
+       "off": 331,
+       "d": 67,
+       "shareOfExtra": null,
+       "shareOfOn": 0.02588500035770729
+      },
+      {
+       "fn": "key|path-core.js:195",
+       "on": 66,
+       "off": 0,
+       "d": 66,
+       "shareOfExtra": null,
+       "shareOfOn": 0.004292487496504224
+      },
+      {
+       "fn": "_get|roads.js:100",
+       "on": 65,
+       "off": 0,
+       "d": 65,
+       "shareOfExtra": null,
+       "shareOfOn": 0.004227449807163251
+      },
+      {
+       "fn": "_mkHeap|path-core.js:56",
+       "on": 966,
+       "off": 903,
+       "d": 63,
+       "shareOfExtra": null,
+       "shareOfOn": 0.06282640790338001
+      },
+      {
+       "fn": "isBlockedByWall|zone.js:19831",
+       "on": 63,
+       "off": 0,
+       "d": 63,
+       "shareOfExtra": null,
+       "shareOfOn": 0.004097374428481305
+      },
+      {
+       "fn": "storageFoodEquivalent|economy-sim.js:951",
+       "on": 1389,
+       "off": 1350,
+       "d": 39,
+       "shareOfExtra": null,
+       "shareOfOn": 0.09033735049461163
+      },
+      {
+       "fn": "_isPointInRiver|terrain.js:305",
+       "on": 214,
+       "off": 180,
+       "d": 34,
+       "shareOfExtra": null,
+       "shareOfOn": 0.013918065518968242
+      },
+      {
+       "fn": "gSet|path-core.js:197",
+       "on": 79,
+       "off": 53,
+       "d": 26,
+       "shareOfExtra": null,
+       "shareOfOn": 0.005137977457936874
+      },
+      {
+       "fn": "writeUtf8String|:0",
+       "on": 73,
+       "off": 53,
+       "d": 20,
+       "shareOfExtra": null,
+       "shareOfOn": 0.004747751321891035
+      },
+      {
+       "fn": "gGet|path-core.js:196",
+       "on": 83,
+       "off": 67,
+       "d": 16,
+       "shareOfExtra": null,
+       "shareOfOn": 0.005398128215300766
+      }
+     ],
+     "incl": [
+      {
+       "fn": "_searchStep|path-core.js:351",
+       "on": 1075,
+       "off": 0,
+       "d": 1075,
+       "shareOfExtra": null,
+       "shareOfOn": 0.06991551604154607
+      },
+      {
+       "fn": "_search|path-core.js:406",
+       "on": 2142,
+       "off": 1986,
+       "d": 156,
+       "shareOfExtra": null,
+       "shareOfOn": 0.13931073056836435
+      },
+      {
+       "fn": "localPath|path-core.js:425",
+       "on": 2143,
+       "off": 1993,
+       "d": 150,
+       "shareOfExtra": null,
+       "shareOfOn": 0.13937576825770534
+      },
+      {
+       "fn": "(anon)|villages.js:13225",
+       "on": 1185,
+       "off": 1067,
+       "d": 118,
+       "shareOfExtra": null,
+       "shareOfOn": 0.07706966186905312
+      },
+      {
+       "fn": "_t851Sync|villages.js:6743",
+       "on": 1185,
+       "off": 1067,
+       "d": 118,
+       "shareOfExtra": null,
+       "shareOfOn": 0.07706966186905312
+      },
+      {
+       "fn": "_walkFor|villages.js:5537",
+       "on": 4592,
+       "off": 4498,
+       "d": 94,
+       "shareOfExtra": null,
+       "shareOfOn": 0.2986530694537484
+      },
+      {
+       "fn": "_walkResume|villages.js:5455",
+       "on": 4558,
+       "off": 4471,
+       "d": 87,
+       "shareOfExtra": null,
+       "shareOfOn": 0.29644178801615534
+      },
+      {
+       "fn": "tickTradeV2Steps|economy-sim-v2.js:1989",
+       "on": 1102,
+       "off": 1032,
+       "d": 70,
+       "shareOfExtra": null,
+       "shareOfOn": 0.07167153365375234
+      }
+     ],
+     "jobs": [
+      {
+       "k": "(anon)|villages.js:13225|caravan",
+       "on": 1185,
+       "off": 1067,
+       "d": 118
+      },
+      {
+       "k": "(anon)|villages.js:13193|econ",
+       "on": 1147,
+       "off": 1091,
+       "d": 56
+      },
+      {
+       "k": "(anon)|villages.js:13203|wx",
+       "on": 76,
+       "off": 62,
+       "d": 14
+      },
+      {
+       "k": "(anon)|villages.js:13199|ore",
+       "on": 29,
+       "off": 17,
+       "d": 12
+      },
+      {
+       "k": "g|villages.js:13153|",
+       "on": 9,
+       "off": 0,
+       "d": 9
+      },
+      {
+       "k": "(anon)|villages.js:13185|pop",
+       "on": 108,
+       "off": 102,
+       "d": 6
+      }
+     ]
+    }
+   },
+   "lr730": {
+    "fresh": {
+     "runsOn": 1,
+     "runsOff": 1,
+     "closeOn": 1168699.7,
+     "closeOff": 1159779.1,
+     "extra": 8920.59999999986,
+     "self": [
+      {
+       "fn": "_terrBlocked0|zone.js:2563",
+       "on": 4368,
+       "off": 0,
+       "d": 4368,
+       "shareOfExtra": 0.4896531623433478,
+       "shareOfOn": 0.003737487055057856
+      },
+      {
+       "fn": "updateMorale|battle-core.js:426",
+       "on": 3485,
+       "off": 0,
+       "d": 3485,
+       "shareOfExtra": 0.39066878909491004,
+       "shareOfOn": 0.0029819465171420853
+      },
+      {
+       "fn": "_muSeparate|war-live.js:217",
+       "on": 3308,
+       "off": 0,
+       "d": 3308,
+       "shareOfExtra": 0.3708270744120409,
+       "shareOfOn": 0.0028304961488396035
+      },
+      {
+       "fn": "_warSyncMeta|villages.js:11139",
+       "on": 3098,
+       "off": 0,
+       "d": 3098,
+       "shareOfExtra": 0.34728605699168763,
+       "shareOfOn": 0.0026508092711925915
+      },
+      {
+       "fn": "_muStepFollow|war-live.js:252",
+       "on": 2753,
+       "off": 0,
+       "d": 2753,
+       "shareOfExtra": 0.3086115283725358,
+       "shareOfOn": 0.0023556094007724997
+      },
+      {
+       "fn": "getForestMultiplier|terrain.js:433",
+       "on": 2580,
+       "off": 0,
+       "d": 2580,
+       "shareOfExtra": 0.2892182140214829,
+       "shareOfOn": 0.0022075816396632942
+      },
+      {
+       "fn": "exec|:0",
+       "on": 31160,
+       "off": 28655,
+       "d": 2505,
+       "shareOfExtra": 0.28081070779992817,
+       "shareOfOn": 0.02666211003562335
+      },
+      {
+       "fn": "pop|path-core.js:72",
+       "on": 2415,
+       "off": 0,
+       "d": 2415,
+       "shareOfExtra": 0.2707217003340625,
+       "shareOfOn": 0.0020663990929406417
+      },
+      {
+       "fn": "mixAt|region-profiles.js:266",
+       "on": 2011,
+       "off": 0,
+       "d": 2011,
+       "shareOfExtra": 0.22543326682062098,
+       "shareOfOn": 0.0017207157664197229
+      },
+      {
+       "fn": "territoryBoundary|villages.js:3610",
+       "on": 5480,
+       "off": 3952,
+       "d": 1528,
+       "shareOfExtra": 0.17128892675380847,
+       "shareOfOn": 0.004688971854788703
+      },
+      {
+       "fn": "_num|trees.js:20",
+       "on": 4298,
+       "off": 3203,
+       "d": 1095,
+       "shareOfExtra": 0.12274959083469913,
+       "shareOfOn": 0.003677591429175519
+      },
+      {
+       "fn": "_mkHeap|path-core.js:56",
+       "on": 6596,
+       "off": 5715,
+       "d": 881,
+       "shareOfExtra": 0.09876017308252963,
+       "shareOfOn": 0.005643879261712825
+      }
+     ],
+     "incl": [
+      {
+       "fn": "_caravanStepV2|economy-sim-v2.js:2844",
+       "on": 41470,
+       "off": 0,
+       "d": 41470,
+       "shareOfExtra": 4.648790440104999,
+       "shareOfOn": 0.035483880076293335
+      },
+      {
+       "fn": "onGameTick|villages.js:12944",
+       "on": 1168700,
+       "off": 1159779,
+       "d": 8921,
+       "shareOfExtra": 1.0000448400331974,
+       "shareOfOn": 1.0000002566955395
+      },
+      {
+       "fn": "processImmediate|timers:436",
+       "on": 1168700,
+       "off": 1159779,
+       "d": 8921,
+       "shareOfExtra": 1.0000448400331974,
+       "shareOfOn": 1.0000002566955395
+      },
+      {
+       "fn": "pump|t745-vclock.js:100",
+       "on": 1168700,
+       "off": 1159779,
+       "d": 8921,
+       "shareOfExtra": 1.0000448400331974,
+       "shareOfOn": 1.0000002566955395
+      },
+      {
+       "fn": "_t731Tick|villages.js:13122",
+       "on": 1168699,
+       "off": 1159779,
+       "d": 8920,
+       "shareOfExtra": 0.9999327399502432,
+       "shareOfOn": 0.9999994010437412
+      },
+      {
+       "fn": "upsertRoadCell|zone-local-db.js:596",
+       "on": 66363,
+       "off": 57461,
+       "d": 8902,
+       "shareOfExtra": 0.9979149384570701,
+       "shareOfOn": 0.05678362029185085
+      },
+      {
+       "fn": "flushDaily|roads.js:451",
+       "on": 105771,
+       "off": 102770,
+       "d": 3001,
+       "shareOfExtra": 0.3364123489451435,
+       "shareOfOn": 0.0905031463600102
+      },
+      {
+       "fn": "_flushStep|roads.js:468",
+       "on": 105758,
+       "off": 102758,
+       "d": 3000,
+       "shareOfExtra": 0.3363002488621894,
+       "shareOfOn": 0.09049202288663205
+      }
+     ],
+     "jobs": [
+      {
+       "k": "(anon)|villages.js:13158|econ",
+       "on": 32569,
+       "off": 1186,
+       "d": 31383
+      },
+      {
+       "k": "(anon)|villages.js:13198|terr",
+       "on": 43362,
+       "off": 34344,
+       "d": 9018
+      },
+      {
+       "k": "(anon)|villages.js:13194|econ",
+       "on": 61311,
+       "off": 55712,
+       "d": 5599
+      },
+      {
+       "k": "(anon)|villages.js:13225|caravan",
+       "on": 20787,
+       "off": 17732,
+       "d": 3055
+      },
+      {
+       "k": "(anon)|villages.js:13161|roads",
+       "on": 113154,
+       "off": 110420,
+       "d": 2734
+      },
+      {
+       "k": "(anon)|villages.js:13203|wx",
+       "on": 7330,
+       "off": 6219,
+       "d": 1111
+      }
+     ]
+    },
+    "warm": {
+     "runsOn": 1,
+     "runsOff": 1,
+     "closeOn": 274798.1,
+     "closeOff": 371457.6,
+     "extra": -96659.5,
+     "self": [
+      {
+       "fn": "storageFoodPer|economy-sim.js:939",
+       "on": 1027,
+       "off": 34,
+       "d": 993,
+       "shareOfExtra": null,
+       "shareOfOn": 0.003737289304402032
+      },
+      {
+       "fn": "_terrBlocked0|zone.js:2563",
+       "on": 743,
+       "off": 0,
+       "d": 743,
+       "shareOfExtra": null,
+       "shareOfOn": 0.002703803265015297
+      },
+      {
+       "fn": "_worldStockOf|economy-sim-v2.js:590",
+       "on": 789,
+       "off": 50,
+       "d": 739,
+       "shareOfExtra": null,
+       "shareOfOn": 0.0028711988911131483
+      },
+      {
+       "fn": "(anon)|t740-side-hook.js:110",
+       "on": 671,
+       "off": 22,
+       "d": 649,
+       "shareOfExtra": null,
+       "shareOfOn": 0.00244179271981866
+      },
+      {
+       "fn": "_lifeDailySteps|villages.js:21427",
+       "on": 654,
+       "off": 33,
+       "d": 621,
+       "shareOfExtra": null,
+       "shareOfOn": 0.002379929118869454
+      },
+      {
+       "fn": "currentEra|era.js:106",
+       "on": 591,
+       "off": 14,
+       "d": 577,
+       "shareOfExtra": null,
+       "shareOfOn": 0.0021506698918223963
+      },
+      {
+       "fn": "kcalPerKg|kcal.js:134",
+       "on": 580,
+       "off": 17,
+       "d": 563,
+       "shareOfExtra": null,
+       "shareOfOn": 0.0021106405029729103
+      },
+      {
+       "fn": "sync|granary-lots.js:330",
+       "on": 562,
+       "off": 0,
+       "d": 562,
+       "shareOfExtra": null,
+       "shareOfOn": 0.002045137866673751
+      },
+      {
+       "fn": "tickDecay|economy-sim-v2.js:3062",
+       "on": 563,
+       "off": 12,
+       "d": 551,
+       "shareOfExtra": null,
+       "shareOfOn": 0.002048776902023704
+      },
+      {
+       "fn": "_t1196End|economy-sim.js:3489",
+       "on": 447,
+       "off": 0,
+       "d": 447,
+       "shareOfExtra": null,
+       "shareOfOn": 0.0016266488014291221
+      },
+      {
+       "fn": "econUnitsOf|kcal.js:198",
+       "on": 188,
+       "off": 21,
+       "d": 167,
+       "shareOfExtra": null,
+       "shareOfOn": 0.0006841386457912192
+      },
+      {
+       "fn": "anyViewerNear|zone.js:2781",
+       "on": 177,
+       "off": 11,
+       "d": 166,
+       "shareOfExtra": null,
+       "shareOfOn": 0.0006441092569417329
+      }
+     ],
+     "incl": [
+      {
+       "fn": "priceView|events.js:486",
+       "on": 11552,
+       "off": 467,
+       "d": 11085,
+       "shareOfExtra": null,
+       "shareOfOn": 0.04203813636266045
+      },
+      {
+       "fn": "_t859Stock|economy-sim-v2.js:79",
+       "on": 8671,
+       "off": 180,
+       "d": 8491,
+       "shareOfExtra": null,
+       "shareOfOn": 0.03155407551944501
+      },
+      {
+       "fn": "pricesFresh|events.js:382",
+       "on": 18635,
+       "off": 15236,
+       "d": 3399,
+       "shareOfExtra": null,
+       "shareOfOn": 0.06781342374637962
+      },
+      {
+       "fn": "exec|:0",
+       "on": 3344,
+       "off": 0,
+       "d": 3344,
+       "shareOfExtra": null,
+       "shareOfOn": 0.012168934210243813
+      },
+      {
+       "fn": "scanDay|events.js:730",
+       "on": 12780,
+       "off": 10482,
+       "d": 2298,
+       "shareOfExtra": null,
+       "shareOfOn": 0.04650687177240309
+      },
+      {
+       "fn": "_scanSteps|events.js:736",
+       "on": 12681,
+       "off": 10401,
+       "d": 2280,
+       "shareOfExtra": null,
+       "shareOfOn": 0.04614660727275771
+      },
+      {
+       "fn": "(anon)|villages.js:13193",
+       "on": 2288,
+       "off": 410,
+       "d": 1878,
+       "shareOfExtra": null,
+       "shareOfOn": 0.008326112880693135
+      },
+      {
+       "fn": "trade|economy-sim-v2.js:3233",
+       "on": 2286,
+       "off": 409,
+       "d": 1877,
+       "shareOfExtra": null,
+       "shareOfOn": 0.008318834809993228
+      }
+     ],
+     "jobs": [
+      {
+       "k": "set|t1489-probe.js:113|",
+       "on": 1728,
+       "off": 1391,
+       "d": 337
+      },
+      {
+       "k": "(anon)|villages.js:13232|events",
+       "on": 148,
+       "off": 27,
+       "d": 121
+      },
+      {
+       "k": "g|villages.js:13153|",
+       "on": 27,
+       "off": 8,
+       "d": 19
+      },
+      {
+       "k": "sync|granary-lots.js:330|",
+       "on": 757,
+       "off": 748,
+       "d": 9
+      },
+      {
+       "k": "Date.now|t740-side-hook.js:58|",
+       "on": 6,
+       "off": 0,
+       "d": 6
+      },
+      {
+       "k": "(anon)|villages.js:13223|caravan",
+       "on": 4,
+       "off": 2,
+       "d": 2
+      }
+     ]
+    }
+   },
+   "rl20": {
+    "fresh": {
+     "runsOn": 1,
+     "runsOff": 1,
+     "closeOn": 7843,
+     "closeOff": 16751,
+     "extra": -8908,
+     "self": [
+      {
+       "fn": "_distMatrixGen|villages.js:4396",
+       "on": 2088,
+       "off": 0,
+       "d": 2088,
+       "shareOfExtra": null,
+       "shareOfOn": 0.2662246589315313
+      },
+      {
+       "fn": "_t598EdgeOk|villages.js:4172",
+       "on": 1394,
+       "off": 0,
+       "d": 1394,
+       "shareOfExtra": null,
+       "shareOfOn": 0.1777381104169323
+      },
+      {
+       "fn": "_terrBlocked0|zone.js:2563",
+       "on": 1740,
+       "off": 438,
+       "d": 1302,
+       "shareOfExtra": null,
+       "shareOfOn": 0.22185388244294274
+      },
+      {
+       "fn": "isTerrainBlockedLocal|zone.js:2570",
+       "on": 1106,
+       "off": 311,
+       "d": 795,
+       "shareOfExtra": null,
+       "shareOfOn": 0.1410174678056866
+      },
+      {
+       "fn": "_t957DistStage|villages.js:13552",
+       "on": 115,
+       "off": 0,
+       "d": 115,
+       "shareOfExtra": null,
+       "shareOfOn": 0.01466275659824047
+      },
+      {
+       "fn": "_t598Anchor|villages.js:4164",
+       "on": 78,
+       "off": 0,
+       "d": 78,
+       "shareOfExtra": null,
+       "shareOfOn": 0.00994517404054571
+      },
+      {
+       "fn": "_oreNear|terrain.js:483",
+       "on": 33,
+       "off": 0,
+       "d": 33,
+       "shareOfExtra": null,
+       "shareOfOn": 0.004207573632538569
+      },
+      {
+       "fn": "_oreScanRow|villages.js:7327",
+       "on": 29,
+       "off": 0,
+       "d": 29,
+       "shareOfExtra": null,
+       "shareOfOn": 0.003697564707382379
+      },
+      {
+       "fn": "isOre|villages.js:961",
+       "on": 29,
+       "off": 0,
+       "d": 29,
+       "shareOfExtra": null,
+       "shareOfOn": 0.003697564707382379
+      },
+      {
+       "fn": "isBlockedByWall|zone.js:19831",
+       "on": 27,
+       "off": 0,
+       "d": 27,
+       "shareOfExtra": null,
+       "shareOfOn": 0.003442560244804284
+      },
+      {
+       "fn": "maskEDT|village-layout.js:119",
+       "on": 25,
+       "off": 0,
+       "d": 25,
+       "shareOfExtra": null,
+       "shareOfOn": 0.003187555782226189
+      },
+      {
+       "fn": "isDitchTileLocal|zone.js:2344",
+       "on": 24,
+       "off": 0,
+       "d": 24,
+       "shareOfExtra": null,
+       "shareOfOn": 0.0030600535509371415
+      }
+     ],
+     "incl": [
+      {
+       "fn": "(anon)|villages.js:13234",
+       "on": 6139,
+       "off": 0,
+       "d": 6139,
+       "shareOfExtra": null,
+       "shareOfOn": 0.7827361978834629
+      },
+      {
+       "fn": "_t957DistStage|villages.js:13552",
+       "on": 6133,
+       "off": 0,
+       "d": 6133,
+       "shareOfExtra": null,
+       "shareOfOn": 0.7819711844957287
+      },
+      {
+       "fn": "_distMatrixGen|villages.js:4396",
+       "on": 5972,
+       "off": 0,
+       "d": 5972,
+       "shareOfExtra": null,
+       "shareOfOn": 0.761443325258192
+      },
+      {
+       "fn": "_t598EdgeOk|villages.js:4172",
+       "on": 4191,
+       "off": 0,
+       "d": 4191,
+       "shareOfExtra": null,
+       "shareOfOn": 0.5343618513323983
+      },
+      {
+       "fn": "_t598Anchor|villages.js:4164",
+       "on": 456,
+       "off": 0,
+       "d": 456,
+       "shareOfExtra": null,
+       "shareOfOn": 0.058141017467805686
+      },
+      {
+       "fn": "onGameTick|villages.js:12944",
+       "on": 389,
+       "off": 0,
+       "d": 389,
+       "shareOfExtra": null,
+       "shareOfOn": 0.0495983679714395
+      },
+      {
+       "fn": "PathCore.routePathBegin.plain.stepBlocked|villages.js:4714",
+       "on": 309,
+       "off": 0,
+       "d": 309,
+       "shareOfExtra": null,
+       "shareOfOn": 0.0393981894683157
+      },
+      {
+       "fn": "_huntBandBuild|villages.js:20281",
+       "on": 224,
+       "off": 0,
+       "d": 224,
+       "shareOfExtra": null,
+       "shareOfOn": 0.028560499808746653
+      }
+     ],
+     "jobs": [
+      {
+       "k": "(anon)|villages.js:13234|dist",
+       "on": 6139,
+       "off": 0,
+       "d": 6139
+      },
+      {
+       "k": "(anon)|villages.js:13216|bcast",
+       "on": 1,
+       "off": 0,
+       "d": 1
+      },
+      {
+       "k": "(anon)|villages.js:13223|caravan",
+       "on": 1,
+       "off": 0,
+       "d": 1
+      },
+      {
+       "k": "(anon)|villages.js:13163|life",
+       "on": 0,
+       "off": 1,
+       "d": -1
+      },
+      {
+       "k": "_closeDay|villages.js:13615|",
+       "on": 0,
+       "off": 2,
+       "d": -2
+      },
+      {
+       "k": "_t731Mark|villages.js:13141|",
+       "on": 0,
+       "off": 2,
+       "d": -2
+      }
+     ]
+    },
+    "warm": {
+     "runsOn": 1,
+     "runsOff": 1,
+     "closeOn": 33756.1,
+     "closeOff": 22623.7,
+     "extra": 11132.399999999998,
+     "self": [
+      {
+       "fn": "pop|path-core.js:72",
+       "on": 1403,
+       "off": 0,
+       "d": 1403,
+       "shareOfExtra": 0.12602852933778882,
+       "shareOfOn": 0.041562858268579604
+      },
+      {
+       "fn": "_searchStep|path-core.js:351",
+       "on": 2119,
+       "off": 1272,
+       "d": 847,
+       "shareOfExtra": 0.076084222629442,
+       "shareOfOn": 0.0627738393949538
+      },
+      {
+       "fn": "_targetV2|economy-sim-v2.js:879",
+       "on": 1517,
+       "off": 1086,
+       "d": 431,
+       "shareOfExtra": 0.038715820487945106,
+       "shareOfOn": 0.04494002565462243
+      },
+      {
+       "fn": "_huntHuntersSteps|villages.js:20409",
+       "on": 2201,
+       "off": 1778,
+       "d": 423,
+       "shareOfExtra": 0.0379971973698394,
+       "shareOfOn": 0.06520302997087934
+      },
+      {
+       "fn": "_mkHeap|path-core.js:56",
+       "on": 486,
+       "off": 143,
+       "d": 343,
+       "shareOfExtra": 0.030810966188782297,
+       "shareOfOn": 0.01439739780365623
+      },
+      {
+       "fn": "(anon)|villages.js:4680",
+       "on": 682,
+       "off": 351,
+       "d": 331,
+       "shareOfExtra": 0.029733031511623736,
+       "shareOfOn": 0.020203755765624585
+      },
+      {
+       "fn": "isWaterCellLocal|terrain.js:353",
+       "on": 819,
+       "off": 491,
+       "d": 328,
+       "shareOfExtra": 0.029463547842334094,
+       "shareOfOn": 0.0242622814839392
+      },
+      {
+       "fn": "_isPointInRiver|terrain.js:305",
+       "on": 903,
+       "off": 579,
+       "d": 324,
+       "shareOfExtra": 0.029104236283281237,
+       "shareOfOn": 0.026750720610497068
+      },
+      {
+       "fn": "PathCore.routePathBegin.plain.stepBlocked|villages.js:4714",
+       "on": 314,
+       "off": 0,
+       "d": 314,
+       "shareOfExtra": 0.028205957385649103,
+       "shareOfOn": 0.009302022449275835
+      },
+      {
+       "fn": "_t598EdgeOk|villages.js:4172",
+       "on": 298,
+       "off": 0,
+       "d": 298,
+       "shareOfExtra": 0.02676871114943768,
+       "shareOfOn": 0.008828034044217194
+      },
+      {
+       "fn": "_huntScan|villages.js:20439",
+       "on": 800,
+       "off": 506,
+       "d": 294,
+       "shareOfExtra": 0.026409399590384828,
+       "shareOfOn": 0.023699420252932063
+      },
+      {
+       "fn": "run|:0",
+       "on": 580,
+       "off": 326,
+       "d": 254,
+       "shareOfExtra": 0.02281628399985628,
+       "shareOfOn": 0.017182079683375748
+      }
+     ],
+     "incl": [
+      {
+       "fn": "_caravanSyncOne|villages.js:6659",
+       "on": 10882,
+       "off": 5002,
+       "d": 5880,
+       "shareOfExtra": 0.5281879918076966,
+       "shareOfOn": 0.3223713639905084
+      },
+      {
+       "fn": "(anon)|villages.js:13225",
+       "on": 7074,
+       "off": 3507,
+       "d": 3567,
+       "shareOfExtra": 0.32041608278538325,
+       "shareOfOn": 0.20956212358655177
+      },
+      {
+       "fn": "_t851Sync|villages.js:6743",
+       "on": 7074,
+       "off": 3507,
+       "d": 3567,
+       "shareOfExtra": 0.32041608278538325,
+       "shareOfOn": 0.20956212358655177
+      },
+      {
+       "fn": "_searchStep|path-core.js:351",
+       "on": 6639,
+       "off": 3092,
+       "d": 3547,
+       "shareOfExtra": 0.318619524990119,
+       "shareOfOn": 0.19667556382401996
+      },
+      {
+       "fn": "pathStep|path-core.js:474",
+       "on": 6546,
+       "off": 3128,
+       "d": 3418,
+       "shareOfExtra": 0.3070317272106644,
+       "shareOfOn": 0.19392050621961662
+      },
+      {
+       "fn": "getRouteResumable|villages.js:5345",
+       "on": 5224,
+       "off": 2085,
+       "d": 3139,
+       "shareOfExtra": 0.2819697459667278,
+       "shareOfOn": 0.15475721425164637
+      },
+      {
+       "fn": "_routeResume|villages.js:4865",
+       "on": 5211,
+       "off": 2083,
+       "d": 3128,
+       "shareOfExtra": 0.28098163917933244,
+       "shareOfOn": 0.15437209867253623
+      },
+      {
+       "fn": "_t661ReturnPts|villages.js:6080",
+       "on": 5065,
+       "off": 2671,
+       "d": 2394,
+       "shareOfExtra": 0.2150479680931336,
+       "shareOfOn": 0.15004695447637612
+      }
+     ],
+     "jobs": [
+      {
+       "k": "(anon)|villages.js:13225|caravan",
+       "on": 7074,
+       "off": 3507,
+       "d": 3567
+      },
+      {
+       "k": "(anon)|villages.js:819|",
+       "on": 3813,
+       "off": 1502,
+       "d": 2311
+      },
+      {
+       "k": "(anon)|villages.js:13381|life",
+       "on": 10216,
+       "off": 8055,
+       "d": 2161
+      },
+      {
+       "k": "(anon)|villages.js:13174|econ",
+       "on": 2704,
+       "off": 1942,
+       "d": 762
+      },
+      {
+       "k": "(anon)|villages.js:13198|terr",
+       "on": 3920,
+       "off": 3247,
+       "d": 673
+      },
+      {
+       "k": "_drainVillageWaitQ|villages.js:13698|",
+       "on": 1927,
+       "off": 1338,
+       "d": 589
+      }
+     ]
+    }
+   },
+   "rl3": {
+    "fresh": {
+     "runsOn": 3,
+     "runsOff": 3,
+     "closeOn": 4608.833333333333,
+     "closeOff": 1926.3333333333333,
+     "extra": 2682.5,
+     "self": [
+      {
+       "fn": "_terrBlocked0|zone.js:2563",
+       "on": 1423,
+       "off": 73.66666666666667,
+       "d": 1349.3333333333333,
+       "shareOfExtra": 0.503013358185772,
+       "shareOfOn": 0.30875492713268005
+      },
+      {
+       "fn": "_t598EdgeOk|villages.js:4172",
+       "on": 1147,
+       "off": 0,
+       "d": 1147,
+       "shareOfExtra": 0.42758620689655175,
+       "shareOfOn": 0.24886992369724806
+      },
+      {
+       "fn": "isTerrainBlockedLocal|zone.js:2570",
+       "on": 745.3333333333334,
+       "off": 31.666666666666668,
+       "d": 713.6666666666667,
+       "shareOfExtra": 0.2660453557005281,
+       "shareOfOn": 0.16171843922901677
+      },
+      {
+       "fn": "_distMatrixGen|villages.js:4396",
+       "on": 428,
+       "off": 0,
+       "d": 428,
+       "shareOfExtra": 0.15955265610438024,
+       "shareOfOn": 0.09286515025494523
+      },
+      {
+       "fn": "isWaterTileLocal|zone.js:2134",
+       "on": 88,
+       "off": 0,
+       "d": 88,
+       "shareOfExtra": 0.03280521901211556,
+       "shareOfOn": 0.019093769211297146
+      },
+      {
+       "fn": "isBlocked|villages.js:888",
+       "on": 56,
+       "off": 0,
+       "d": 56,
+       "shareOfExtra": 0.02087604846225536,
+       "shareOfOn": 0.012150580407189094
+      },
+      {
+       "fn": "_t598Anchor|villages.js:4164",
+       "on": 35.666666666666664,
+       "off": 0,
+       "d": 35.666666666666664,
+       "shareOfExtra": 0.013296054675365019,
+       "shareOfOn": 0.0077387625212454346
+      },
+      {
+       "fn": "isDitchTileLocal|zone.js:2344",
+       "on": 24,
+       "off": 0,
+       "d": 24,
+       "shareOfExtra": 0.008946877912395153,
+       "shareOfOn": 0.00520739160308104
+      },
+      {
+       "fn": "_t957DistStage|villages.js:13552",
+       "on": 21.666666666666668,
+       "off": 0,
+       "d": 21.666666666666668,
+       "shareOfExtra": 0.00807704255980118,
+       "shareOfOn": 0.004701117419448161
+      },
+      {
+       "fn": "_t427Set|villages.js:17469",
+       "on": 8.666666666666666,
+       "off": 2.6666666666666665,
+       "d": 6,
+       "shareOfExtra": 0.0022367194780987883,
+       "shareOfOn": 0.0018804469677792645
+      },
+      {
+       "fn": "isMajorOreAt|terrain.js:659",
+       "on": 9.666666666666666,
+       "off": 5,
+       "d": 4.666666666666666,
+       "shareOfExtra": 0.0017396707051879463,
+       "shareOfOn": 0.002097421617907641
+      },
+      {
+       "fn": "PathCore.routePathBegin.plain.stepBlocked|villages.js:4714",
+       "on": 3.6666666666666665,
+       "off": 0,
+       "d": 3.6666666666666665,
+       "shareOfExtra": 0.0013668841255048152,
+       "shareOfOn": 0.0007955737171373811
+      }
+     ],
+     "incl": [
+      {
+       "fn": "(anon)|villages.js:13234",
+       "on": 3558,
+       "off": 0,
+       "d": 3558,
+       "shareOfExtra": 1.3263746505125815,
+       "shareOfOn": 0.7719958051567642
+      },
+      {
+       "fn": "_t957DistStage|villages.js:13552",
+       "on": 3555,
+       "off": 0,
+       "d": 3555,
+       "shareOfExtra": 1.3252562907735321,
+       "shareOfOn": 0.7713448812063791
+      },
+      {
+       "fn": "_distMatrixGen|villages.js:4396",
+       "on": 3522.6666666666665,
+       "off": 0,
+       "d": 3522.6666666666665,
+       "shareOfExtra": 1.3132028580304442,
+       "shareOfOn": 0.7643293675188949
+      },
+      {
+       "fn": "_t598EdgeOk|villages.js:4172",
+       "on": 3436.3333333333335,
+       "off": 0,
+       "d": 3436.3333333333335,
+       "shareOfExtra": 1.2810189499844673,
+       "shareOfOn": 0.7455972227244785
+      },
+      {
+       "fn": "isBlocked|villages.js:888",
+       "on": 2519.3333333333335,
+       "off": 1448.3333333333333,
+       "d": 1071.0000000000002,
+       "shareOfExtra": 0.39925442684063384,
+       "shareOfOn": 0.546631468556757
+      },
+      {
+       "fn": "isTerrainBlockedLocal|zone.js:2570",
+       "on": 2477.3333333333335,
+       "off": 1465,
+       "d": 1012.3333333333335,
+       "shareOfExtra": 0.37738428083255676,
+       "shareOfOn": 0.5375185332513652
+      },
+      {
+       "fn": "_t598Anchor|villages.js:4164",
+       "on": 429,
+       "off": 0,
+       "d": 429,
+       "shareOfExtra": 0.15992544268406336,
+       "shareOfOn": 0.0930821249050736
+      },
+      {
+       "fn": "PathCore.routePathBegin.plain.stepBlocked|villages.js:4714",
+       "on": 386.6666666666667,
+       "off": 0,
+       "d": 386.6666666666667,
+       "shareOfExtra": 0.14414414414414414,
+       "shareOfOn": 0.08389686471630566
+      }
+     ],
+     "jobs": [
+      {
+       "k": "(anon)|villages.js:13234|dist",
+       "on": 3558,
+       "off": 0.3333333333333333,
+       "d": 3557.6666666666665
+      },
+      {
+       "k": "(anon)|villages.js:13193|econ",
+       "on": 32.333333333333336,
+       "off": 29,
+       "d": 3.3333333333333357
+      },
+      {
+       "k": "(anon)|villages.js:13199|ore",
+       "on": 36.333333333333336,
+       "off": 34.333333333333336,
+       "d": 2
+      },
+      {
+       "k": "set|t1489-probe.js:113|",
+       "on": 11.333333333333334,
+       "off": 10,
+       "d": 1.333333333333334
+      },
+      {
+       "k": "(anon)|villages.js:13195|econ",
+       "on": 3,
+       "off": 2,
+       "d": 1
+      },
+      {
+       "k": "g|villages.js:13153|",
+       "on": 1.3333333333333333,
+       "off": 0.6666666666666666,
+       "d": 0.6666666666666666
+      }
+     ]
+    },
+    "warm": {
+     "runsOn": 3,
+     "runsOff": 3,
+     "closeOn": 26112,
+     "closeOff": 29623.8,
+     "extra": -3511.7999999999993,
+     "self": [
+      {
+       "fn": "queryRect|quadtree.js:67",
+       "on": 5467.666666666667,
+       "off": 5155.666666666667,
+       "d": 312,
+       "shareOfExtra": null,
+       "shareOfOn": 0.20939287173202614
+      },
+      {
+       "fn": "_huntHuntersSteps|villages.js:20409",
+       "on": 3166.3333333333335,
+       "off": 2861.6666666666665,
+       "d": 304.66666666666697,
+       "shareOfExtra": null,
+       "shareOfOn": 0.12125970179738563
+      },
+      {
+       "fn": "collGenAround|zone.js:4872",
+       "on": 1914.6666666666667,
+       "off": 1656.6666666666667,
+       "d": 258,
+       "shareOfExtra": null,
+       "shareOfOn": 0.07332516339869281
+      },
+      {
+       "fn": "_t427Reach|villages.js:17486",
+       "on": 786.6666666666666,
+       "off": 695.6666666666666,
+       "d": 91,
+       "shareOfExtra": null,
+       "shareOfOn": 0.0301266339869281
+      },
+      {
+       "fn": "_t427Set|villages.js:17469",
+       "on": 430.3333333333333,
+       "off": 343.6666666666667,
+       "d": 86.66666666666663,
+       "shareOfExtra": null,
+       "shareOfOn": 0.01648029003267974
+      },
+      {
+       "fn": "_huntScan|villages.js:20439",
+       "on": 877,
+       "off": 813.3333333333334,
+       "d": 63.66666666666663,
+       "shareOfExtra": null,
+       "shareOfOn": 0.03358609068627451
+      },
+      {
+       "fn": "_searchStep|path-core.js:351",
+       "on": 87.33333333333333,
+       "off": 31,
+       "d": 56.33333333333333,
+       "shareOfExtra": null,
+       "shareOfOn": 0.003344566993464052
+      },
+      {
+       "fn": "_villageBody|economy-sim-v2.js:3214",
+       "on": 65,
+       "off": 12,
+       "d": 53,
+       "shareOfExtra": null,
+       "shareOfOn": 0.0024892769607843136
+      },
+      {
+       "fn": "_xy|villages.js:20485",
+       "on": 180,
+       "off": 131,
+       "d": 49,
+       "shareOfExtra": null,
+       "shareOfOn": 0.006893382352941176
+      },
+      {
+       "fn": "left|tick-budget.js:30",
+       "on": 97,
+       "off": 52,
+       "d": 45,
+       "shareOfExtra": null,
+       "shareOfOn": 0.003714767156862745
+      },
+      {
+       "fn": "_t562SliceStop|villages.js:17370",
+       "on": 138.66666666666666,
+       "off": 98.66666666666667,
+       "d": 39.999999999999986,
+       "shareOfExtra": null,
+       "shareOfOn": 0.005310457516339869
+      },
+      {
+       "fn": "_edgeScan|zone.js:19283",
+       "on": 310.6666666666667,
+       "off": 275,
+       "d": 35.666666666666686,
+       "shareOfExtra": null,
+       "shareOfOn": 0.011897467320261439
+      }
+     ],
+     "incl": [
+      {
+       "fn": "_huntHuntersSteps|villages.js:20409",
+       "on": 14323.333333333334,
+       "off": 13058,
+       "d": 1265.333333333334,
+       "shareOfExtra": null,
+       "shareOfOn": 0.5485345179738562
+      },
+      {
+       "fn": "_lifeGameDaySteps|villages.js:20519",
+       "on": 14780.666666666666,
+       "off": 13524.333333333334,
+       "d": 1256.3333333333321,
+       "shareOfExtra": null,
+       "shareOfOn": 0.5660488153594772
+      },
+      {
+       "fn": "_t427Reach|villages.js:17486",
+       "on": 9616.666666666666,
+       "off": 8787,
+       "d": 829.6666666666661,
+       "shareOfExtra": null,
+       "shareOfOn": 0.36828533496732024
+      },
+      {
+       "fn": "_lifeDailySteps|villages.js:21427",
+       "on": 16081.333333333334,
+       "off": 15364.333333333334,
+       "d": 717,
+       "shareOfExtra": null,
+       "shareOfOn": 0.6158598856209151
+      },
+      {
+       "fn": "(anon)|villages.js:13381",
+       "on": 16105.666666666666,
+       "off": 15402.666666666666,
+       "d": 703,
+       "shareOfExtra": null,
+       "shareOfOn": 0.6167917687908496
+      },
+      {
+       "fn": "straightPathClear|zone.js:4798",
+       "on": 5054,
+       "off": 4565.666666666667,
+       "d": 488.33333333333303,
+       "shareOfExtra": null,
+       "shareOfOn": 0.19355085784313725
+      },
+      {
+       "fn": "npcReachHas|zone.js:4928",
+       "on": 5080.333333333333,
+       "off": 4596.666666666667,
+       "d": 483.66666666666606,
+       "shareOfExtra": null,
+       "shareOfOn": 0.19455933415032678
+      },
+      {
+       "fn": "findCellFence|zone.js:19394",
+       "on": 1747.3333333333333,
+       "off": 1334,
+       "d": 413.33333333333326,
+       "shareOfExtra": null,
+       "shareOfOn": 0.06691687091503268
+      }
+     ],
+     "jobs": [
+      {
+       "k": "(anon)|villages.js:13381|life",
+       "on": 16105.666666666666,
+       "off": 15402.666666666666,
+       "d": 703
+      },
+      {
+       "k": "(anon)|villages.js:819|",
+       "on": 156,
+       "off": 82,
+       "d": 74
+      },
+      {
+       "k": "(anon)|villages.js:13225|caravan",
+       "on": 253,
+       "off": 199.66666666666666,
+       "d": 53.33333333333334
+      },
+      {
+       "k": "(anon)|villages.js:13232|events",
+       "on": 17.666666666666668,
+       "off": 13,
+       "d": 4.666666666666668
+      },
+      {
+       "k": "_closeDay|villages.js:13615|",
+       "on": 16,
+       "off": 12.333333333333334,
+       "d": 3.666666666666666
+      },
+      {
+       "k": "(anon)|villages.js:13242|t731",
+       "on": 11.333333333333334,
+       "off": 10,
+       "d": 1.333333333333334
+      }
+     ]
+    }
+   },
+   "rl51": {
+    "fresh": {
+     "runsOn": 2,
+     "runsOff": 2,
+     "closeOn": 15391.650000000001,
+     "closeOff": 18586.1,
+     "extra": -3194.449999999997,
+     "self": [
+      {
+       "fn": "_distMatrixGen|villages.js:4396",
+       "on": 5988.5,
+       "off": 0,
+       "d": 5988.5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.38907459564114305
+      },
+      {
+       "fn": "_t598EdgeOk|villages.js:4172",
+       "on": 2372.5,
+       "off": 0,
+       "d": 2372.5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.1541420185620125
+      },
+      {
+       "fn": "isTerrainBlockedLocal|zone.js:2570",
+       "on": 1818.5,
+       "off": 577.5,
+       "d": 1241,
+       "shareOfExtra": null,
+       "shareOfOn": 0.11814847660907049
+      },
+      {
+       "fn": "isBlocked|villages.js:888",
+       "on": 1017.5,
+       "off": 308,
+       "d": 709.5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.06610727244967238
+      },
+      {
+       "fn": "_t957DistStage|villages.js:13552",
+       "on": 355,
+       "off": 0,
+       "d": 355,
+       "shareOfExtra": null,
+       "shareOfOn": 0.023064453778509773
+      },
+      {
+       "fn": "isOre|villages.js:961",
+       "on": 64.5,
+       "off": 0,
+       "d": 64.5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.004190583855532058
+      },
+      {
+       "fn": "_oreScanRow|villages.js:7327",
+       "on": 53,
+       "off": 0,
+       "d": 53,
+       "shareOfExtra": null,
+       "shareOfOn": 0.0034434254936930087
+      },
+      {
+       "fn": "_t598Anchor|villages.js:4164",
+       "on": 52,
+       "off": 0,
+       "d": 52,
+       "shareOfExtra": null,
+       "shareOfOn": 0.0033784552013591783
+      },
+      {
+       "fn": "PathCore.routePathBegin.plain.stepBlocked|villages.js:4714",
+       "on": 50.5,
+       "off": 0,
+       "d": 50.5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.003280999762858433
+      },
+      {
+       "fn": "maskEDT|village-layout.js:119",
+       "on": 49,
+       "off": 0,
+       "d": 49,
+       "shareOfExtra": null,
+       "shareOfOn": 0.003183544324357687
+      },
+      {
+       "fn": "_huntScan|villages.js:20439",
+       "on": 36.5,
+       "off": 0,
+       "d": 36.5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.002371415670184808
+      },
+      {
+       "fn": "_lifeGameDaySteps|villages.js:20519",
+       "on": 34,
+       "off": 0,
+       "d": 34,
+       "shareOfExtra": null,
+       "shareOfOn": 0.002208989939350232
+      }
+     ],
+     "incl": [
+      {
+       "fn": "(anon)|villages.js:13234",
+       "on": 11020,
+       "off": 0,
+       "d": 11020,
+       "shareOfExtra": null,
+       "shareOfOn": 0.7159726215188105
+      },
+      {
+       "fn": "_t957DistStage|villages.js:13552",
+       "on": 11010,
+       "off": 0,
+       "d": 11010,
+       "shareOfExtra": null,
+       "shareOfOn": 0.7153229185954721
+      },
+      {
+       "fn": "_distMatrixGen|villages.js:4396",
+       "on": 10488.5,
+       "off": 0,
+       "d": 10488.5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.6814409111433797
+      },
+      {
+       "fn": "_t598EdgeOk|villages.js:4172",
+       "on": 5085,
+       "off": 0,
+       "d": 5085,
+       "shareOfExtra": null,
+       "shareOfOn": 0.33037393651752733
+      },
+      {
+       "fn": "PathCore.routePathBegin.plain.stepBlocked|villages.js:4714",
+       "on": 500,
+       "off": 0,
+       "d": 500,
+       "shareOfExtra": null,
+       "shareOfOn": 0.032485146166915176
+      },
+      {
+       "fn": "(anon)|villages.js:13199",
+       "on": 492,
+       "off": 0,
+       "d": 492,
+       "shareOfExtra": null,
+       "shareOfOn": 0.031965383828244535
+      },
+      {
+       "fn": "_oreMineDaily|villages.js:7406",
+       "on": 490.5,
+       "off": 0,
+       "d": 490.5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.03186792838974379
+      },
+      {
+       "fn": "_oreCellsOf|villages.js:7317",
+       "on": 485.5,
+       "off": 0,
+       "d": 485.5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.031543076928074634
+      }
+     ],
+     "jobs": [
+      {
+       "k": "(anon)|villages.js:13234|dist",
+       "on": 11020,
+       "off": 0.5,
+       "d": 11019.5
+      },
+      {
+       "k": "(anon)|villages.js:13223|caravan",
+       "on": 4,
+       "off": 1.5,
+       "d": 2.5
+      },
+      {
+       "k": "_t731Mark|villages.js:13141|",
+       "on": 2.5,
+       "off": 0,
+       "d": 2.5
+      },
+      {
+       "k": "(anon)|villages.js:13242|t731",
+       "on": 2,
+       "off": 0.5,
+       "d": 1.5
+      },
+      {
+       "k": "(anon)|villages.js:13158|econ",
+       "on": 0.5,
+       "off": 0,
+       "d": 0.5
+      },
+      {
+       "k": "(anon)|villages.js:13199|ore",
+       "on": 492,
+       "off": 491.5,
+       "d": 0.5
+      }
+     ]
+    },
+    "warm": {
+     "runsOn": 2,
+     "runsOff": 2,
+     "closeOn": 28442.15,
+     "closeOff": 29040.199999999997,
+     "extra": -598.0499999999956,
+     "self": [
+      {
+       "fn": "PathCore.routePathBegin.plain.stepBlocked|villages.js:4714",
+       "on": 486,
+       "off": 0,
+       "d": 486,
+       "shareOfExtra": null,
+       "shareOfOn": 0.017087315832312253
+      },
+      {
+       "fn": "_t598EdgeOk|villages.js:4172",
+       "on": 436,
+       "off": 0,
+       "d": 436,
+       "shareOfExtra": null,
+       "shareOfOn": 0.015329361528576425
+      },
+      {
+       "fn": "_searchStep|path-core.js:351",
+       "on": 4491.5,
+       "off": 4190,
+       "d": 301.5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.1579170351045895
+      },
+      {
+       "fn": "pop|path-core.js:72",
+       "on": 306.5,
+       "off": 76,
+       "d": 230.5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.010776259881900629
+      },
+      {
+       "fn": "queryRect|quadtree.js:67",
+       "on": 612,
+       "off": 454.5,
+       "d": 157.5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.02151736067772654
+      },
+      {
+       "fn": "isTerrainBlockedLocal|zone.js:2570",
+       "on": 833,
+       "off": 687.5,
+       "d": 145.5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.029287518700238904
+      },
+      {
+       "fn": "_preservedKcal|kcal.js:156",
+       "on": 129.5,
+       "off": 0,
+       "d": 129.5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.004553101646675796
+      },
+      {
+       "fn": "isBlocked|villages.js:888",
+       "on": 388.5,
+       "off": 278,
+       "d": 110.5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.013659304940027388
+      },
+      {
+       "fn": "warTreeCellBlocked|zone.js:6567",
+       "on": 785,
+       "off": 700,
+       "d": 85,
+       "shareOfExtra": null,
+       "shareOfOn": 0.02759988256865251
+      },
+      {
+       "fn": "(anon)|path-core.js:183",
+       "on": 79,
+       "off": 0,
+       "d": 79,
+       "shareOfExtra": null,
+       "shareOfOn": 0.0027775677999026093
+      },
+      {
+       "fn": "gGet|path-core.js:196",
+       "on": 446,
+       "off": 372.5,
+       "d": 73.5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.015680952389323592
+      },
+      {
+       "fn": "_walkCellBlocked|villages.js:5425",
+       "on": 798,
+       "off": 735.5,
+       "d": 62.5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.028056950687623823
+      }
+     ],
+     "incl": [
+      {
+       "fn": "_t851Sync|villages.js:6743",
+       "on": 14081.5,
+       "off": 12463,
+       "d": 1618.5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.4950926705611214
+      },
+      {
+       "fn": "(anon)|villages.js:13225",
+       "on": 14081,
+       "off": 12463,
+       "d": 1618,
+       "shareOfExtra": null,
+       "shareOfOn": 0.49507509101808406
+      },
+      {
+       "fn": "_t427Reach|villages.js:17486",
+       "on": 1418.5,
+       "off": 0,
+       "d": 1418.5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.04987316359698546
+      },
+      {
+       "fn": "_t661ReturnPts|villages.js:6080",
+       "on": 11005.5,
+       "off": 9863,
+       "d": 1142.5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.3869433217952932
+      },
+      {
+       "fn": "chooseSpecies|region-profiles.js:338",
+       "on": 1077.5,
+       "off": 0,
+       "d": 1077.5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.037883915245507105
+      },
+      {
+       "fn": "_caravanSyncOne|villages.js:6659",
+       "on": 18280.5,
+       "off": 17280,
+       "d": 1000.5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.6427256729888563
+      },
+      {
+       "fn": "_walkFor|villages.js:5537",
+       "on": 8609,
+       "off": 7671.5,
+       "d": 937.5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.302684572017235
+      },
+      {
+       "fn": "_lifeClearDay|villages.js:15508",
+       "on": 918.5,
+       "off": 0,
+       "d": 918.5,
+       "shareOfExtra": null,
+       "shareOfOn": 0.03229362055962717
+      }
+     ],
+     "jobs": [
+      {
+       "k": "(anon)|villages.js:13225|caravan",
+       "on": 14081,
+       "off": 12463,
+       "d": 1618
+      },
+      {
+       "k": "(anon)|villages.js:13381|life",
+       "on": 3463.5,
+       "off": 3402,
+       "d": 61.5
+      },
+      {
+       "k": "(anon)|villages.js:13193|econ",
+       "on": 675,
+       "off": 632,
+       "d": 43
+      },
+      {
+       "k": "_drainVillageWaitQ|villages.js:13698|",
+       "on": 741.5,
+       "off": 709.5,
+       "d": 32
+      },
+      {
+       "k": "(anon)|villages.js:13194|econ",
+       "on": 435,
+       "off": 408.5,
+       "d": 26.5
+      },
+      {
+       "k": "(anon)|villages.js:13160|econ",
+       "on": 334,
+       "off": 317,
+       "d": 17
+      }
+     ]
+    }
+   }
+  },
+  "scale": [
+   {
+    "set": "hv3",
+    "arm": "on",
+    "villages": 3,
+    "routes": 3,
+    "tailCpuMed": 66,
+    "tailCpuMax": 331,
+    "dayCpuMed": 85,
+    "dayCpuMax": 365
+   },
+   {
+    "set": "hv3",
+    "arm": "off",
+    "villages": 3,
+    "routes": 3,
+    "tailCpuMed": 75,
+    "tailCpuMax": 359,
+    "dayCpuMed": 88,
+    "dayCpuMax": 413
+   },
+   {
+    "set": "hv10",
+    "arm": "on",
+    "villages": 10,
+    "routes": 45,
+    "tailCpuMed": 235,
+    "tailCpuMax": 401,
+    "dayCpuMed": 294,
+    "dayCpuMax": 497
+   },
+   {
+    "set": "hv10",
+    "arm": "off",
+    "villages": 10,
+    "routes": 45,
+    "tailCpuMed": 243,
+    "tailCpuMax": 765,
+    "dayCpuMed": 295,
+    "dayCpuMax": 992
+   },
+   {
+    "set": "hv20",
+    "arm": "on",
+    "villages": 20,
+    "routes": 190,
+    "tailCpuMed": 418,
+    "tailCpuMax": 1177,
+    "dayCpuMed": 614,
+    "dayCpuMax": 1301
+   },
+   {
+    "set": "hv20",
+    "arm": "off",
+    "villages": 20,
+    "routes": 190,
+    "tailCpuMed": 480,
+    "tailCpuMax": 1794,
+    "dayCpuMed": 577,
+    "dayCpuMax": 1931
+   },
+   {
+    "set": "hv51",
+    "arm": "on",
+    "villages": 51,
+    "routes": 1275,
+    "tailCpuMed": 1341,
+    "tailCpuMax": 2829,
+    "dayCpuMed": 1507,
+    "dayCpuMax": 3177
+   },
+   {
+    "set": "hv51",
+    "arm": "off",
+    "villages": 51,
+    "routes": 1275,
+    "tailCpuMed": 1219,
+    "tailCpuMax": 3364,
+    "dayCpuMed": 1343,
+    "dayCpuMax": 3783
+   },
+   {
+    "set": "hvnip",
+    "arm": "on",
+    "villages": 36,
+    "routes": 630,
+    "tailCpuMed": 905,
+    "tailCpuMax": 1526,
+    "dayCpuMed": 1200,
+    "dayCpuMax": 1877
+   },
+   {
+    "set": "hvnip",
+    "arm": "off",
+    "villages": 36,
+    "routes": 630,
+    "tailCpuMed": 848,
+    "tailCpuMax": 1497,
+    "dayCpuMed": 1052,
+    "dayCpuMax": 1851
+   }
+  ],
+  "long": [
+   {
+    "set": "hcar",
+    "arm": "on",
+    "band": "1~10날",
+    "tails": 10,
+    "villages": 51,
+    "routes": 1275,
+    "tailCpuMed": 1424,
+    "tailCpuP95": 3722,
+    "tailCpuMax": 3722,
+    "dayCpuMed": 1548,
+    "dayCpuMax": 5215
+   },
+   {
+    "set": "hcar",
+    "arm": "on",
+    "band": "11~100날",
+    "tails": 89,
+    "villages": 51,
+    "routes": 1275,
+    "tailCpuMed": 2039,
+    "tailCpuP95": 3052,
+    "tailCpuMax": 3813,
+    "dayCpuMed": 2404,
+    "dayCpuMax": 4413
+   },
+   {
+    "set": "hcar",
+    "arm": "on",
+    "band": "전체(1~100날)",
+    "tails": 99,
+    "villages": 51,
+    "routes": 1275,
+    "tailCpuMed": 2039,
+    "tailCpuP95": 3505,
+    "tailCpuMax": 3813,
+    "dayCpuMed": 2404,
+    "dayCpuMax": 5215
+   },
+   {
+    "set": "hcar",
+    "arm": "off",
+    "band": "1~10날",
+    "tails": 10,
+    "villages": 51,
+    "routes": 1275,
+    "tailCpuMed": 1318,
+    "tailCpuP95": 3967,
+    "tailCpuMax": 3967,
+    "dayCpuMed": 1479,
+    "dayCpuMax": 5416
+   },
+   {
+    "set": "hcar",
+    "arm": "off",
+    "band": "11~100날",
+    "tails": 89,
+    "villages": 51,
+    "routes": 1275,
+    "tailCpuMed": 1900,
+    "tailCpuP95": 2900,
+    "tailCpuMax": 3566,
+    "dayCpuMed": 2296,
+    "dayCpuMax": 4104
+   },
+   {
+    "set": "hcar",
+    "arm": "off",
+    "band": "전체(1~100날)",
+    "tails": 99,
+    "villages": 51,
+    "routes": 1275,
+    "tailCpuMed": 1900,
+    "tailCpuP95": 3283,
+    "tailCpuMax": 3967,
+    "dayCpuMed": 2296,
+    "dayCpuMax": 5416
+   },
+   {
+    "set": "hnip",
+    "arm": "on",
+    "band": "1~10날",
+    "tails": 10,
+    "villages": 36,
+    "routes": 630,
+    "tailCpuMed": 1062,
+    "tailCpuP95": 3317,
+    "tailCpuMax": 3317,
+    "dayCpuMed": 1062,
+    "dayCpuMax": 4239
+   },
+   {
+    "set": "hnip",
+    "arm": "on",
+    "band": "11~100날",
+    "tails": 90,
+    "villages": 36,
+    "routes": 630,
+    "tailCpuMed": 1336,
+    "tailCpuP95": 2046,
+    "tailCpuMax": 2209,
+    "dayCpuMed": 1572,
+    "dayCpuMax": 2215
+   },
+   {
+    "set": "hnip",
+    "arm": "on",
+    "band": "101~199날",
+    "tails": 99,
+    "villages": 36,
+    "routes": 630,
+    "tailCpuMed": 1421,
+    "tailCpuP95": 2936,
+    "tailCpuMax": 8778,
+    "dayCpuMed": 1512,
+    "dayCpuMax": 8778
+   },
+   {
+    "set": "hnip",
+    "arm": "on",
+    "band": "전체(1~199날)",
+    "tails": 199,
+    "villages": 36,
+    "routes": 630,
+    "tailCpuMed": 1395,
+    "tailCpuP95": 2064,
+    "tailCpuMax": 8778,
+    "dayCpuMed": 1524,
+    "dayCpuMax": 8778
+   },
+   {
+    "set": "hnip",
+    "arm": "off",
+    "band": "1~10날",
+    "tails": 10,
+    "villages": 36,
+    "routes": 630,
+    "tailCpuMed": 1204,
+    "tailCpuP95": 3191,
+    "tailCpuMax": 3191,
+    "dayCpuMed": 1204,
+    "dayCpuMax": 4324
+   },
+   {
+    "set": "hnip",
+    "arm": "off",
+    "band": "11~100날",
+    "tails": 90,
+    "villages": 36,
+    "routes": 630,
+    "tailCpuMed": 1389,
+    "tailCpuP95": 1957,
+    "tailCpuMax": 2246,
+    "dayCpuMed": 1548,
+    "dayCpuMax": 2246
+   },
+   {
+    "set": "hnip",
+    "arm": "off",
+    "band": "101~199날",
+    "tails": 99,
+    "villages": 36,
+    "routes": 630,
+    "tailCpuMed": 1406,
+    "tailCpuP95": 2247,
+    "tailCpuMax": 14182,
+    "dayCpuMed": 1504,
+    "dayCpuMax": 14182
+   },
+   {
+    "set": "hnip",
+    "arm": "off",
+    "band": "전체(1~199날)",
+    "tails": 199,
+    "villages": 36,
+    "routes": 630,
+    "tailCpuMed": 1389,
+    "tailCpuP95": 2092,
+    "tailCpuMax": 14182,
+    "dayCpuMed": 1527,
+    "dayCpuMax": 14182
+   },
+   {
+    "set": "hwar",
+    "arm": "on",
+    "band": "1~10날",
+    "tails": 10,
+    "villages": 51,
+    "routes": 1275,
+    "tailCpuMed": 1664,
+    "tailCpuP95": 4515,
+    "tailCpuMax": 4515,
+    "dayCpuMed": 2379,
+    "dayCpuMax": 5303
+   },
+   {
+    "set": "hwar",
+    "arm": "on",
+    "band": "11~100날",
+    "tails": 89,
+    "villages": 51,
+    "routes": 1275,
+    "tailCpuMed": 2216,
+    "tailCpuP95": 3281,
+    "tailCpuMax": 3593,
+    "dayCpuMed": 5490,
+    "dayCpuMax": 25520
+   },
+   {
+    "set": "hwar",
+    "arm": "on",
+    "band": "전체(1~100날)",
+    "tails": 99,
+    "villages": 51,
+    "routes": 1275,
+    "tailCpuMed": 2216,
+    "tailCpuP95": 3565,
+    "tailCpuMax": 4515,
+    "dayCpuMed": 5269,
+    "dayCpuMax": 25520
+   },
+   {
+    "set": "hwar",
+    "arm": "off",
+    "band": "1~10날",
+    "tails": 10,
+    "villages": 51,
+    "routes": 1275,
+    "tailCpuMed": 1374,
+    "tailCpuP95": 4349,
+    "tailCpuMax": 4349,
+    "dayCpuMed": 2161,
+    "dayCpuMax": 5347
+   },
+   {
+    "set": "hwar",
+    "arm": "off",
+    "band": "11~100날",
+    "tails": 89,
+    "villages": 51,
+    "routes": 1275,
+    "tailCpuMed": 2158,
+    "tailCpuP95": 3134,
+    "tailCpuMax": 4518,
+    "dayCpuMed": 12656,
+    "dayCpuMax": 23483
+   },
+   {
+    "set": "hwar",
+    "arm": "off",
+    "band": "전체(1~100날)",
+    "tails": 99,
+    "villages": 51,
+    "routes": 1275,
+    "tailCpuMed": 2158,
+    "tailCpuP95": 3425,
+    "tailCpuMax": 4518,
+    "dayCpuMed": 12388,
+    "dayCpuMax": 23483
+   },
+   {
+    "set": "lr730",
+    "arm": "on",
+    "band": "1~10날",
+    "tails": 10,
+    "villages": 51,
+    "routes": 1275,
+    "tailCpuMed": 1547,
+    "tailCpuP95": 4150,
+    "tailCpuMax": 4150,
+    "dayCpuMed": 1680,
+    "dayCpuMax": 5782
+   },
+   {
+    "set": "lr730",
+    "arm": "on",
+    "band": "11~100날",
+    "tails": 90,
+    "villages": 51,
+    "routes": 1275,
+    "tailCpuMed": 2056,
+    "tailCpuP95": 3280,
+    "tailCpuMax": 4106,
+    "dayCpuMed": 2369,
+    "dayCpuMax": 4601
+   },
+   {
+    "set": "lr730",
+    "arm": "on",
+    "band": "101~400날",
+    "tails": 300,
+    "villages": 51,
+    "routes": 1275,
+    "tailCpuMed": 2003,
+    "tailCpuP95": 3108,
+    "tailCpuMax": 11935,
+    "dayCpuMed": 2398,
+    "dayCpuMax": 12277
+   },
+   {
+    "set": "lr730",
+    "arm": "on",
+    "band": "401~730날",
+    "tails": 329,
+    "villages": 51,
+    "routes": 1275,
+    "tailCpuMed": 1960,
+    "tailCpuP95": 2934,
+    "tailCpuMax": 6919,
+    "dayCpuMed": 2351,
+    "dayCpuMax": 8482
+   },
+   {
+    "set": "lr730",
+    "arm": "on",
+    "band": "≤400날 전체",
+    "tails": 400,
+    "villages": 51,
+    "routes": 1275,
+    "tailCpuMed": 2020,
+    "tailCpuP95": 3260,
+    "tailCpuMax": 11935,
+    "dayCpuMed": 2389,
+    "dayCpuMax": 12277
+   },
+   {
+    "set": "lr730",
+    "arm": "on",
+    "band": "전체(1~730날)",
+    "tails": 729,
+    "villages": 51,
+    "routes": 1275,
+    "tailCpuMed": 1998,
+    "tailCpuP95": 3090,
+    "tailCpuMax": 11935,
+    "dayCpuMed": 2373,
+    "dayCpuMax": 12277
+   },
+   {
+    "set": "lr730",
+    "arm": "off",
+    "band": "1~10날",
+    "tails": 10,
+    "villages": 51,
+    "routes": 1275,
+    "tailCpuMed": 1594,
+    "tailCpuP95": 3948,
+    "tailCpuMax": 3948,
+    "dayCpuMed": 1692,
+    "dayCpuMax": 5694
+   },
+   {
+    "set": "lr730",
+    "arm": "off",
+    "band": "11~100날",
+    "tails": 90,
+    "villages": 51,
+    "routes": 1275,
+    "tailCpuMed": 1970,
+    "tailCpuP95": 2998,
+    "tailCpuMax": 4219,
+    "dayCpuMed": 2289,
+    "dayCpuMax": 5104
+   },
+   {
+    "set": "lr730",
+    "arm": "off",
+    "band": "101~400날",
+    "tails": 300,
+    "villages": 51,
+    "routes": 1275,
+    "tailCpuMed": 2113,
+    "tailCpuP95": 3075,
+    "tailCpuMax": 3912,
+    "dayCpuMed": 2519,
+    "dayCpuMax": 14210
+   },
+   {
+    "set": "lr730",
+    "arm": "off",
+    "band": "401~730날",
+    "tails": 329,
+    "villages": 51,
+    "routes": 1275,
+    "tailCpuMed": 2257,
+    "tailCpuP95": 3582,
+    "tailCpuMax": 17819,
+    "dayCpuMed": 2721,
+    "dayCpuMax": 43363
+   },
+   {
+    "set": "lr730",
+    "arm": "off",
+    "band": "≤400날 전체",
+    "tails": 400,
+    "villages": 51,
+    "routes": 1275,
+    "tailCpuMed": 2079,
+    "tailCpuP95": 3095,
+    "tailCpuMax": 4219,
+    "dayCpuMed": 2468,
+    "dayCpuMax": 14210
+   },
+   {
+    "set": "lr730",
+    "arm": "off",
+    "band": "전체(1~730날)",
+    "tails": 729,
+    "villages": 51,
+    "routes": 1275,
+    "tailCpuMed": 2129,
+    "tailCpuP95": 3294,
+    "tailCpuMax": 17819,
+    "dayCpuMed": 2520,
+    "dayCpuMax": 43363
+   }
+  ],
+  "corner": [
+   {
+    "set": "cb-adj",
+    "arm": "on",
+    "sub": "adj-direct",
+    "n": 10,
+    "red": 3,
+    "stale": 0,
+    "chief": 7,
+    "other": 0
+   },
+   {
+    "set": "cb-adj",
+    "arm": "on",
+    "sub": "adj-viaB",
+    "n": 10,
+    "red": 1,
+    "stale": 3,
+    "chief": 6,
+    "other": 0
+   },
+   {
+    "set": "cb-adj",
+    "arm": "off",
+    "sub": "adj-direct",
+    "n": 10,
+    "red": 1,
+    "stale": 0,
+    "chief": 9,
+    "other": 0
+   },
+   {
+    "set": "cb-adj",
+    "arm": "off",
+    "sub": "adj-viaB",
+    "n": 10,
+    "red": 1,
+    "stale": 2,
+    "chief": 7,
+    "other": 0
+   },
+   {
+    "set": "cb-adj50",
+    "arm": "on",
+    "sub": "adj-direct",
+    "n": 10,
+    "red": 8,
+    "stale": 0,
+    "chief": 2,
+    "other": 0
+   },
+   {
+    "set": "cb-adj50",
+    "arm": "on",
+    "sub": "adj-viaB",
+    "n": 10,
+    "red": 7,
+    "stale": 1,
+    "chief": 2,
+    "other": 0
+   },
+   {
+    "set": "cb-adj50",
+    "arm": "off",
+    "sub": "adj-direct",
+    "n": 10,
+    "red": 8,
+    "stale": 0,
+    "chief": 2,
+    "other": 0
+   },
+   {
+    "set": "cb-adj50",
+    "arm": "off",
+    "sub": "adj-viaB",
+    "n": 10,
+    "red": 1,
+    "stale": 4,
+    "chief": 5,
+    "other": 0
+   },
+   {
+    "set": "cb-base",
+    "arm": "on",
+    "sub": "base",
+    "n": 40,
+    "red": 2,
+    "stale": 0,
+    "chief": 38,
+    "other": 0
+   },
+   {
+    "set": "cb-base",
+    "arm": "off",
+    "sub": "base",
+    "n": 20,
+    "red": 0,
+    "stale": 0,
+    "chief": 20,
+    "other": 0
+   },
+   {
+    "set": "cb-cross",
+    "arm": "on",
+    "sub": "newday",
+    "n": 10,
+    "red": 0,
+    "stale": 0,
+    "chief": 10,
+    "other": 0
+   },
+   {
+    "set": "cb-cross",
+    "arm": "on",
+    "sub": "sameday",
+    "n": 10,
+    "red": 10,
+    "stale": 0,
+    "chief": 0,
+    "other": 0
+   },
+   {
+    "set": "cb-cross",
+    "arm": "off",
+    "sub": "newday",
+    "n": 10,
+    "red": 1,
+    "stale": 0,
+    "chief": 9,
+    "other": 0
+   },
+   {
+    "set": "cb-cross",
+    "arm": "off",
+    "sub": "sameday",
+    "n": 10,
+    "red": 10,
+    "stale": 0,
+    "chief": 0,
+    "other": 0
+   },
+   {
+    "set": "cb-private",
+    "arm": "on",
+    "sub": "denied-fallback-door",
+    "n": 20,
+    "red": 0,
+    "stale": 0,
+    "chief": 20,
+    "other": 0
+   },
+   {
+    "set": "cb-private",
+    "arm": "off",
+    "sub": "denied-fallback-door",
+    "n": 20,
+    "red": 0,
+    "stale": 0,
+    "chief": 20,
+    "other": 0
+   },
+   {
+    "set": "cbn-base",
+    "arm": "on",
+    "sub": "base",
+    "n": 40,
+    "red": 2,
+    "stale": 0,
+    "chief": 38,
+    "other": 0
+   },
+   {
+    "set": "cbr-adj",
+    "arm": "on",
+    "sub": "adj-direct",
+    "n": 10,
+    "red": 0,
+    "stale": 0,
+    "chief": 10,
+    "other": 0
+   },
+   {
+    "set": "cbr-adj",
+    "arm": "on",
+    "sub": "adj-viaB",
+    "n": 10,
+    "red": 0,
+    "stale": 0,
+    "chief": 10,
+    "other": 0
+   },
+   {
+    "set": "cbr-adj",
+    "arm": "off",
+    "sub": "adj-direct",
+    "n": 10,
+    "red": 0,
+    "stale": 0,
+    "chief": 10,
+    "other": 0
+   },
+   {
+    "set": "cbr-adj",
+    "arm": "off",
+    "sub": "adj-viaB",
+    "n": 10,
+    "red": 0,
+    "stale": 0,
+    "chief": 10,
+    "other": 0
+   },
+   {
+    "set": "cbr-base",
+    "arm": "on",
+    "sub": "base",
+    "n": 20,
+    "red": 0,
+    "stale": 0,
+    "chief": 20,
+    "other": 0
+   },
+   {
+    "set": "cbr-cross",
+    "arm": "on",
+    "sub": "newday",
+    "n": 10,
+    "red": 0,
+    "stale": 0,
+    "chief": 10,
+    "other": 0
+   },
+   {
+    "set": "cbr-cross",
+    "arm": "on",
+    "sub": "sameday",
+    "n": 10,
+    "red": 10,
+    "stale": 0,
+    "chief": 0,
+    "other": 0
+   }
+  ],
+  "realclock": [
+   [
+    "rr51-on",
+    "켬",
+    "1845",
+    2,
+    2,
+    "1날 599 · 2날 1130",
+    15,
+    "593",
+    "1011",
+    31269,
+    "3",
+    "17",
+    "1025",
+    "15",
+    "486"
+   ],
+   [
+    "rr51-off",
+    "끔",
+    "1829",
+    2,
+    2,
+    "1날 618 · 2날 1258",
+    15,
+    "759",
+    "1138",
+    31202,
+    "3",
+    "17",
+    "1246",
+    "15",
+    "519"
+   ]
+  ],
+  "cycles": [
+   {
+    "tag": "hv10-off",
+    "days": 18,
+    "miniMed": 1,
+    "tailMed": 1,
+    "tailMax": 1
+   },
+   {
+    "tag": "hv10-on",
+    "days": 18,
+    "miniMed": 1,
+    "tailMed": 1,
+    "tailMax": 1
+   },
+   {
+    "tag": "hv20-off",
+    "days": 18,
+    "miniMed": 1,
+    "tailMed": 1,
+    "tailMax": 1
+   },
+   {
+    "tag": "hv20-on",
+    "days": 18,
+    "miniMed": 1,
+    "tailMed": 1,
+    "tailMax": 1
+   },
+   {
+    "tag": "hv3-off",
+    "days": 17,
+    "miniMed": 1,
+    "tailMed": 1,
+    "tailMax": 1
+   },
+   {
+    "tag": "hv3-on",
+    "days": 17,
+    "miniMed": 1,
+    "tailMed": 1,
+    "tailMax": 1
+   },
+   {
+    "tag": "hv51-off",
+    "days": 18,
+    "miniMed": 1,
+    "tailMed": 1,
+    "tailMax": 1
+   },
+   {
+    "tag": "hv51-on",
+    "days": 18,
+    "miniMed": 1,
+    "tailMed": 1,
+    "tailMax": 1
+   },
+   {
+    "tag": "hvnip-off",
+    "days": 17,
+    "miniMed": 1,
+    "tailMed": 1,
+    "tailMax": 1
+   },
+   {
+    "tag": "hvnip-on",
+    "days": 17,
+    "miniMed": 1,
+    "tailMed": 1,
+    "tailMax": 1
+   },
+   {
+    "tag": "lr730-off",
+    "days": 728,
+    "miniMed": 1,
+    "tailMed": 1,
+    "tailMax": 1
+   },
+   {
+    "tag": "lr730-on",
+    "days": 728,
+    "miniMed": 1,
+    "tailMed": 1,
+    "tailMax": 1
+   }
+  ],
+  "early": [
+   {
+    "set": "cb-base",
+    "arm": "on",
+    "runs": 2,
+    "day": [
+     10128,
+     410,
+     106,
+     42,
+     13,
+     13
+    ],
+    "distStgDay1": 3574,
+    "framesDay1": 292
+   },
+   {
+    "set": "cb-base",
+    "arm": "off",
+    "runs": 1,
+    "day": [
+     4341,
+     300,
+     208,
+     96,
+     35,
+     68
+    ],
+    "distStgDay1": 0,
+    "framesDay1": 118
+   },
+   {
+    "set": "cbn-base",
+    "arm": "on",
+    "runs": 2,
+    "day": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "distStgDay1": null,
+    "framesDay1": null
+   },
+   {
+    "set": "rl20",
+    "arm": "on",
+    "runs": 1,
+    "day": [
+     20111,
+     2622,
+     3032,
+     2352,
+     2744,
+     2406
+    ],
+    "distStgDay1": 6899,
+    "framesDay1": 580
+   },
+   {
+    "set": "rl20",
+    "arm": "off",
+    "runs": 1,
+    "day": [
+     6452,
+     3244,
+     7951,
+     2666,
+     8665,
+     4036
+    ],
+    "distStgDay1": 0,
+    "framesDay1": 143
+   },
+   {
+    "set": "rl3",
+    "arm": "on",
+    "runs": 3,
+    "day": [
+     11245,
+     1038,
+     1068,
+     681,
+     130,
+     76
+    ],
+    "distStgDay1": 3768,
+    "framesDay1": 321
+   },
+   {
+    "set": "rl3",
+    "arm": "off",
+    "runs": 3,
+    "day": [
+     4266,
+     434,
+     113,
+     111,
+     112,
+     204
+    ],
+    "distStgDay1": 0,
+    "framesDay1": 115
+   },
+   {
+    "set": "rl3",
+    "arm": "edge",
+    "runs": 1,
+    "day": [
+     1180,
+     319,
+     106,
+     39,
+     46,
+     12
+    ],
+    "distStgDay1": 0,
+    "framesDay1": 37
+   },
+   {
+    "set": "rl51",
+    "arm": "on",
+    "runs": 2,
+    "day": [
+     38857,
+     5306,
+     3413,
+     5745,
+     2711,
+     3165
+    ],
+    "distStgDay1": 12604,
+    "framesDay1": 1090
+   },
+   {
+    "set": "rl51",
+    "arm": "off",
+    "runs": 2,
+    "day": [
+     10525,
+     5438,
+     9670,
+     5682,
+     7650,
+     4717
+    ],
+    "distStgDay1": 0,
+    "framesDay1": 233
+   },
+   {
+    "set": "rr51",
+    "arm": "on",
+    "runs": 1,
+    "day": [
+     599,
+     1130,
+     null,
+     null,
+     null,
+     null
+    ],
+    "distStgDay1": 0,
+    "framesDay1": 117
+   },
+   {
+    "set": "rr51",
+    "arm": "off",
+    "runs": 1,
+    "day": [
+     618,
+     1258,
+     null,
+     null,
+     null,
+     null
+    ],
+    "distStgDay1": 0,
+    "framesDay1": 114
+   }
+  ],
+  "runs": [
+   {
+    "tag": "cb-adj-off",
+    "rc": 0,
+    "sec": 156,
+    "closes": 108,
+    "queue": 30
+   },
+   {
+    "tag": "cb-adj-on",
+    "rc": 0,
+    "sec": 171,
+    "closes": 114,
+    "queue": 29
+   },
+   {
+    "tag": "cb-adj50-off",
+    "rc": 0,
+    "sec": 164,
+    "closes": 39,
+    "queue": 30
+   },
+   {
+    "tag": "cb-adj50-on",
+    "rc": 0,
+    "sec": 174,
+    "closes": 33,
+    "queue": 30
+   },
+   {
+    "tag": "cb-base-off",
+    "rc": 0,
+    "sec": 133,
+    "closes": 396,
+    "queue": 7
+   },
+   {
+    "tag": "cb-base-on",
+    "rc": 0,
+    "sec": 150,
+    "closes": 388,
+    "queue": 3
+   },
+   {
+    "tag": "cb-base-on-b",
+    "rc": 0,
+    "sec": 142,
+    "closes": 363,
+    "queue": 4
+   },
+   {
+    "tag": "cb-cross-off",
+    "rc": 0,
+    "sec": 151,
+    "closes": 422,
+    "queue": 10
+   },
+   {
+    "tag": "cb-cross-on",
+    "rc": 0,
+    "sec": 162,
+    "closes": 399,
+    "queue": 13
+   },
+   {
+    "tag": "cb-private-off",
+    "rc": 0,
+    "sec": 822,
+    "closes": 2466,
+    "queue": 3
+   },
+   {
+    "tag": "cb-private-on",
+    "rc": 0,
+    "sec": 834,
+    "closes": 2477,
+    "queue": 4
+   },
+   {
+    "tag": "cbn-base-on",
+    "rc": 0,
+    "sec": 140,
+    "closes": 0,
+    "queue": 0
+   },
+   {
+    "tag": "cbn-base-on-b",
+    "rc": 0,
+    "sec": 146,
+    "closes": 0,
+    "queue": 0
+   },
+   {
+    "tag": "cbr-adj-off",
+    "rc": 0,
+    "sec": 159,
+    "closes": 0,
+    "queue": 0
+   },
+   {
+    "tag": "cbr-adj-on",
+    "rc": 0,
+    "sec": 177,
+    "closes": 0,
+    "queue": 0
+   },
+   {
+    "tag": "cbr-base-on",
+    "rc": 0,
+    "sec": 150,
+    "closes": 0,
+    "queue": 0
+   },
+   {
+    "tag": "cbr-cross-on",
+    "rc": 0,
+    "sec": 175,
+    "closes": 0,
+    "queue": 0
+   },
+   {
+    "tag": "hcar-off",
+    "rc": 0,
+    "sec": 396,
+    "closes": 199,
+    "queue": 0
+   },
+   {
+    "tag": "hcar-on",
+    "rc": 0,
+    "sec": 436,
+    "closes": 199,
+    "queue": 0
+   },
+   {
+    "tag": "hnip-off",
+    "rc": 0,
+    "sec": 597,
+    "closes": 299,
+    "queue": 0
+   },
+   {
+    "tag": "hnip-on",
+    "rc": 0,
+    "sec": 632,
+    "closes": 299,
+    "queue": 0
+   },
+   {
+    "tag": "hv10-off",
+    "rc": 0,
+    "sec": 35,
+    "closes": 39,
+    "queue": 0
+   },
+   {
+    "tag": "hv10-on",
+    "rc": 0,
+    "sec": 46,
+    "closes": 39,
+    "queue": 0
+   },
+   {
+    "tag": "hv20-off",
+    "rc": 0,
+    "sec": 55,
+    "closes": 39,
+    "queue": 0
+   },
+   {
+    "tag": "hv20-on",
+    "rc": 0,
+    "sec": 66,
+    "closes": 39,
+    "queue": 0
+   },
+   {
+    "tag": "hv3-off",
+    "rc": 0,
+    "sec": 18,
+    "closes": 29,
+    "queue": 0
+   },
+   {
+    "tag": "hv3-on",
+    "rc": 0,
+    "sec": 29,
+    "closes": 29,
+    "queue": 0
+   },
+   {
+    "tag": "hv51-off",
+    "rc": 0,
+    "sec": 129,
+    "closes": 39,
+    "queue": 0
+   },
+   {
+    "tag": "hv51-on",
+    "rc": 0,
+    "sec": 162,
+    "closes": 39,
+    "queue": 0
+   },
+   {
+    "tag": "hvnip-off",
+    "rc": 0,
+    "sec": 111,
+    "closes": 29,
+    "queue": 0
+   },
+   {
+    "tag": "hvnip-on",
+    "rc": 0,
+    "sec": 133,
+    "closes": 29,
+    "queue": 0
+   },
+   {
+    "tag": "hwar-off",
+    "rc": 0,
+    "sec": 1131,
+    "closes": 199,
+    "queue": 0
+   },
+   {
+    "tag": "hwar-on",
+    "rc": 0,
+    "sec": 773,
+    "closes": 199,
+    "queue": 0
+   },
+   {
+    "tag": "lr730-off",
+    "rc": 0,
+    "sec": 689,
+    "closes": 1459,
+    "queue": 0
+   },
+   {
+    "tag": "lr730-on",
+    "rc": 0,
+    "sec": 568,
+    "closes": 1459,
+    "queue": 0
+   },
+   {
+    "tag": "rigtest",
+    "rc": 0,
+    "sec": 61,
+    "closes": 54,
+    "queue": 177
+   },
+   {
+    "tag": "rl20-off-1",
+    "rc": 0,
+    "sec": 144,
+    "closes": 59,
+    "queue": 480
+   },
+   {
+    "tag": "rl20-on-1",
+    "rc": 0,
+    "sec": 157,
+    "closes": 63,
+    "queue": 499
+   },
+   {
+    "tag": "rl3-edge-1",
+    "rc": 0,
+    "sec": 150,
+    "closes": 176,
+    "queue": 839
+   },
+   {
+    "tag": "rl3-off-1",
+    "rc": 0,
+    "sec": 138,
+    "closes": 184,
+    "queue": 872
+   },
+   {
+    "tag": "rl3-off-2",
+    "rc": 0,
+    "sec": 138,
+    "closes": 382,
+    "queue": 777
+   },
+   {
+    "tag": "rl3-off-3",
+    "rc": 0,
+    "sec": 138,
+    "closes": 416,
+    "queue": 374
+   },
+   {
+    "tag": "rl3-on-1",
+    "rc": 0,
+    "sec": 151,
+    "closes": 170,
+    "queue": 834
+   },
+   {
+    "tag": "rl3-on-2",
+    "rc": 0,
+    "sec": 150,
+    "closes": 343,
+    "queue": 794
+   },
+   {
+    "tag": "rl3-on-3",
+    "rc": 0,
+    "sec": 151,
+    "closes": 399,
+    "queue": 384
+   },
+   {
+    "tag": "rl51-off-1",
+    "rc": 0,
+    "sec": 154,
+    "closes": 27,
+    "queue": 238
+   },
+   {
+    "tag": "rl51-off-2",
+    "rc": 0,
+    "sec": 151,
+    "closes": 26,
+    "queue": 232
+   },
+   {
+    "tag": "rl51-on-1",
+    "rc": 0,
+    "sec": 165,
+    "closes": 25,
+    "queue": 232
+   },
+   {
+    "tag": "rl51-on-2",
+    "rc": 0,
+    "sec": 170,
+    "closes": 25,
+    "queue": 232
+   },
+   {
+    "tag": "rr51-off",
+    "rc": 0,
+    "sec": 1829,
+    "closes": 84,
+    "queue": 15
+   },
+   {
+    "tag": "rr51-on",
+    "rc": 0,
+    "sec": 1845,
+    "closes": 84,
+    "queue": 15
+   }
+  ]
+ },
+ "headline": {
+  "closeMedOff": 83,
+  "closeMedOn": 87,
+  "firstOff": 4266,
+  "firstOn": 11121,
+  "queueMedOff": 64,
+  "queueMedOn": 1041,
+  "queueMaxOn": 5665,
+  "queueNOn": 7,
+  "queueNOff": 7,
+  "owner": {
+   "fn": "_t598EdgeOk|villages.js:4172",
+   "on": 3436.3333333333335,
+   "shareOfOn": 0.7455972227244785,
+   "extra": 2682.5,
+   "closeOn": 4608.833333333333,
+   "closeOff": 1926.3333333333333
+  },
+  "ownerJob": {
+   "k": "(anon)|villages.js:13234|dist",
+   "on": 3558,
+   "off": 0.3333333333333333
+  },
+  "book": 22,
+  "bookLine": 9171,
+  "queuedSeen": [
+   "village_board",
+   "village_brief",
+   "village_view"
+  ],
+  "lat_rl51": {
+   "n": 400,
+   "med": 2955,
+   "max": 5613,
+   "p99": 5510
+  },
+  "lat_rr51": {
+   "n": 31269,
+   "med": 3,
+   "max": 1025,
+   "p99": 17
+  },
+  "lat_rl3": {
+   "n": 4377,
+   "med": 36,
+   "max": 4061,
+   "p99": 2002
+  },
+  "rr_on": {
+   "tails": 2,
+   "blockedSec": 1.729,
+   "runSec": 1845,
+   "perHour": 3.373658536585366,
+   "tailsWarm": [
+    1130
+   ]
+  },
+  "rr_off": {
+   "tails": 2,
+   "blockedSec": 1.876,
+   "runSec": 1829,
+   "perHour": 3.6925095680699833,
+   "tailsWarm": [
+    1258
+   ]
+  },
+  "lr_on": 1998,
+  "lr_off": 2129,
+  "rl51_on": {
+   "firstClose": 38857,
+   "warmMed": 3186,
+   "warmMax": 4246,
+   "villages": 51
+  },
+  "rl51_off": {
+   "firstClose": 10525,
+   "warmMed": 3765,
+   "warmMax": 9899,
+   "villages": 51
+  },
+  "hv51_on": {
+   "villages": 51,
+   "tailCpuMed": 1341,
+   "tailCpuMax": 2829
+  },
+  "hv51_off": {
+   "villages": 51,
+   "tailCpuMed": 1219,
+   "tailCpuMax": 3364
+  },
+  "hvnip_on": {
+   "villages": 36,
+   "tailCpuMed": 905,
+   "tailCpuMax": 1526
+  },
+  "hvnip_off": {
+   "villages": 36,
+   "tailCpuMed": 848,
+   "tailCpuMax": 1497
+  },
+  "adjSet": "cb-adj50",
+  "corner": {
+   "cb-cross-on": {
+    "red": 10,
+    "far": 10,
+    "n": 20
+   },
+   "cb-cross-off": {
+    "red": 11,
+    "far": 11,
+    "n": 20
+   },
+   "cb-adj-on": {
+    "red": 7,
+    "far": 4,
+    "n": 20
+   },
+   "cb-adj-off": {
+    "red": 4,
+    "far": 2,
+    "n": 20
+   },
+   "cb-adj50-on": {
+    "red": 16,
+    "far": 15,
+    "n": 20
+   },
+   "cb-adj50-off": {
+    "red": 13,
+    "far": 9,
+    "n": 20
+   },
+   "cb-private-on": {
+    "red": 0,
+    "far": 0,
+    "n": 20
+   },
+   "cb-private-off": {
+    "red": 0,
+    "far": 0,
+    "n": 20
+   },
+   "cb-base-on": {
+    "red": 2,
+    "far": 2,
+    "n": 40
+   },
+   "cb-base-off": {
+    "red": 0,
+    "far": 0,
+    "n": 20
+   },
+   "cbn-base-on": {
+    "red": 2,
+    "far": 2,
+    "n": 40
+   },
+   "cbr-adj-on": {
+    "red": 0,
+    "far": 0,
+    "n": 20
+   },
+   "cbr-adj-off": {
+    "red": 0,
+    "far": 0,
+    "n": 20
+   },
+   "cbr-cross-on": {
+    "red": 10,
+    "far": 10,
+    "n": 20
+   },
+   "cbr-base-on": {
+    "red": 0,
+    "far": 0,
+    "n": 20
+   }
+  },
+  "cornerSub": {
+   "cb-cross-on": "newday 0/10 · sameday 10/10",
+   "cb-cross-off": "newday 1/10 · sameday 10/10",
+   "cb-adj50-on": "adj-direct 8/10 · adj-viaB 8/10",
+   "cb-adj50-off": "adj-direct 8/10 · adj-viaB 5/10",
+   "cb-private-on": "denied-fallback-door 0/20",
+   "cb-private-off": "denied-fallback-door 0/20",
+   "cbr-cross-on": "newday 0/10 · sameday 10/10",
+   "cbr-adj-on": "adj-direct 0/10 · adj-viaB 0/10",
+   "cbr-adj-off": "adj-direct 0/10 · adj-viaB 0/10"
+  }
+ }
+}
