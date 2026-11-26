@@ -24,8 +24,8 @@ const CBR = 'function caravanBlockedResponse(body, p, now) {';
 const COUNT = String(process.env.T1492_COUNT || '').split(/[,+]/).map((x) => x.trim()).filter(Boolean);
 const CNT = {}; globalThis.__t1492c = CNT; rec.countPatch = {};
 function countPatch(src, file) {
-  for (const nm of COUNT) {
-    const needle = 'function ' + nm + '('; let at = 0, k = 0;
+  for (const nm of COUNT) { let k = 0;
+    for (const needle of ['function ' + nm + '(', 'function* ' + nm + '(']) { let at = 0;
     while ((at = src.indexOf(needle, at)) >= 0) {
       const pre = src[at - 1]; if (pre && /[\w$]/.test(pre)) { at += needle.length; continue; }
       let i = at + needle.length, depth = 1; while (i < src.length && depth) { const c = src[i]; if (c === '(') depth++; else if (c === ')') depth--; i++; }
@@ -33,7 +33,7 @@ function countPatch(src, file) {
       if (src[i] !== '{') { at = i; continue; }
       const ins = `globalThis.__t1492c[${JSON.stringify(nm)}]=(globalThis.__t1492c[${JSON.stringify(nm)}]|0)+1;`;
       src = src.slice(0, i + 1) + ins + src.slice(i + 1); at = i + 1 + ins.length; k++;
-    }
+    } }
     if (k) rec.countPatch[nm + ' @' + path.relative(ROOT, file)] = k;
   }
   return src;

@@ -11,6 +11,10 @@ ROOT="${ROOT:?}"; OUT="${OUT:?}"; JOBS="${JOBS:-3}"; BOTS="${BOTS:-8}"; JOBFILE=
 HERE="$(cd "$(dirname "$0")" && pwd)"
 mkdir -p "$OUT/runs" "$OUT/tmp" "$OUT/route-cache"; touch "$OUT/done.txt" "$OUT/dead.txt"
 echo "start $(date -u +%FT%TZ) $(git -C "$ROOT" rev-parse --short HEAD) jobs=$JOBS bots=$BOTS" >> "$OUT/meta.txt"
+alive() {   # 이 판을 돌리는 프로세스가 있나 — 긴 판 = 명령 줄의 판 폴더 · 짧은 판 = node 의 TMPDIR(러너를 갈아 끼울 때 앞 러너가 돌리던 판을 두 번 띄우지 않게)
+  pgrep -f -- "$1( |\$)" > /dev/null && return 0
+  local p; for p in $(pgrep -x node); do grep -qz "^TMPDIR=$2\$" "/proc/$p/environ" 2>/dev/null && return 0; done; return 1
+}
 one() {   # 한 줄(탭 갈림)
   local name kind days seed acts zone probe envs
   IFS=$'\t' read -r name kind days seed acts zone probe envs <<< "$1"
@@ -18,7 +22,9 @@ one() {   # 한 줄(탭 갈림)
   grep -q "^$name " "$OUT/done.txt" && return 0
   [ -f "$OUT/STOP" ] && return 0
   local R="$OUT/runs/$name"; mkdir -p "$R"
-  local T="$OUT/tmp/$name"; mkdir -p "$T"
+  local T="$OUT/tmp/$name"
+  if alive "$R" "$T"; then echo "$(date -u +%FT%TZ) $name 앞 러너가 돌리는 중 — 끝날 때까지 이 자리에서 기다림" >> "$OUT/meta.txt"; while alive "$R" "$T"; do sleep 60; done; sleep 5; grep -q "^$name " "$OUT/done.txt" && return 0; fi
+  mkdir -p "$T"
   local E=(T745_VCLOCK=1 VILLAGE_DAY_MS=1440000 T699_ROUTE_CACHE="$OUT/route-cache" T1486_BOTS="$BOTS" TMPDIR="$T")
   [ "$acts" != "all" ] && E+=(T1492_ACTS="$acts")
   [ "$zone" != "-" ] && E+=(T577_ZONE="$zone")
@@ -60,7 +66,7 @@ one() {   # 한 줄(탭 갈림)
   touch "$OUT/runs/$name.done"; rm -f "$R/running"
   rm -rf "$T"
 }
-export -f one; export OUT ROOT HERE BOTS
+export -f one alive; export OUT ROOT HERE BOTS
 grep -v '^\s*$' "$JOBFILE" | xargs -P "$JOBS" -d '\n' -I{} bash -c 'one "$1"' _ {}
 echo "done $(date -u +%FT%TZ)" >> "$OUT/meta.txt"
 [ -f "$OUT/STOP" ] || [ "$JOBFILE" != "$OUT/jobs.tsv" ] || echo "ALL DONE $(date -u +%FT%TZ)" > "$OUT/ALL_DONE"

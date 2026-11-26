@@ -17,7 +17,7 @@ const L = []; const W = (s = '') => L.push(s);
 const OUTJ = { runs: {}, item1: {}, item2: {}, item3: {}, item4: {}, item5: {}, fp: {} };
 const done = {}; try { for (const l of fs.readFileSync(path.join(R, 'done.txt'), 'utf8').split('\n')) { const [n, rc, dt] = l.trim().split(/\s+/); if (n) done[n] = { rc: +rc, sec: +dt }; } } catch (e) {}
 const deadLines = (() => { try { return fs.readFileSync(path.join(R, 'dead.txt'), 'utf8').split('\n').filter(Boolean); } catch (e) { return []; } })();
-const jobs = (() => { try { return fs.readFileSync(path.join(R, 'jobs.tsv'), 'utf8').split('\n').filter((l) => l && !l.startsWith('#')).map((l) => { const [name, kind, days, seed, acts, zone, probe, envs] = l.split('\t'); return { name, kind, days: +days, seed: +seed, acts, zone, probe, envs }; }); } catch (e) { return []; } })();
+const jobs = (() => { try { return fs.readdirSync(R).filter((x) => /^jobs.*\.tsv$/.test(x)).sort((a, b) => (a === 'jobs.tsv' ? -1 : b === 'jobs.tsv' ? 1 : a < b ? -1 : 1)).map((x) => fs.readFileSync(path.join(R, x), 'utf8')).join('\n').split('\n').filter((l) => l && !l.startsWith('#')).map((l) => { const [name, kind, days, seed, acts, zone, probe, envs] = l.split('\t'); return { name, kind, days: +days, seed: +seed, acts, zone, probe, envs }; }); } catch (e) { return []; } })();
 
 // ── 판 하나 읽기(긴 판 = 마디 이음 · 짧은 판 = 하나) ──
 function load(name) {
@@ -35,7 +35,7 @@ function load(name) {
       days.set(r.d, Object.assign({}, r, { seg: s.from }));
       if (i > 0 && rows[i - 1].d === r.d - 1 && r.d > s.from + 1) spd.set(r.d, r.wall - rows[i - 1].wall);   // 마디 첫 날(부팅 · 되살림)은 뺀다
     }
-    for (const o of s.rec.db || []) if (o && o.d != null) db.set(o.d, o);
+    for (const o of s.rec.db || []) if (o && o.d != null && !db.has(o.d)) db.set(o.d, o);   // 그 날 첫 줄(날 중 20날 셈) — 마디 끝 줄(멈춤 경계 저장 뒤 · WAL 이 큼)은 안 쓴다
   }
   const ds = [...days.keys()].sort((a, b) => a - b), last = ds.length ? days.get(ds[ds.length - 1]) : null;
   const prog = J(path.join(dir, 'progress.json')), lastRec = segs[segs.length - 1].rec;
@@ -57,7 +57,7 @@ const allNames = [...new Set(jobs.map((j) => j.name).concat(Object.keys(RUN)))];
 let deadRuns = 0, cutRuns = 0;
 for (const n of allNames) {
   const r = RUN[n], j = jobs.find((x) => x.name === n) || {}, dl = deadOf(n), d = done[n];
-  const st = d ? (d.rc === 0 ? '끝' : `코드 ${d.rc}`) : (r ? '덜 돎(끊음)' : '안 띄움(끊음)');
+  const st = d ? (d.rc === 0 ? '끝' : `코드 ${d.rc}`) : (r ? '덜 돎' : '안 띄움');
   if (!d || d.rc !== 0) cutRuns++;
   if (dl.length) deadRuns++;
   const segN = r && r.prog ? r.prog.segs.length : (r ? 1 : 0);
@@ -66,26 +66,35 @@ for (const n of allNames) {
 }
 W(''); W(`죽은 판(끊겨 체크포인트에서 이은 판 포함) ${deadRuns} · 다 못 돈 판 ${cutRuns}`); W('');
 
-// ── 지문: 끈 판 날 1 ~ 60 = T1486 끈 판 ──
-W('## 지문 — 끈 판(main 기본 · 봇 T1486 그대로) 날 1 ~ 60 = T1486 끈 판'); W('');
-W('| 판 | T1486 판 | 견준 날 | 인구 · 빈 마을 · 굶음 · 죽음 · 떠남 같은 날 | village_buildings 행(날 20 · 40 · 60) | stopSleep(날 60) | 같음 |'); W('|---|---|---|---|---|---|---|');
+// ── 지문: 끈 판 날 1 ~ 60 = main 기본 판(이 main · T1486 판 자 그대로 · 마디 없음 `main-off-<시드>`) · 곁에 T1486 판(옛 main) ──
+W('## 지문 — 끈 판 날 1 ~ 60 = main 기본 판'); W('');
+W('견줌 둘: ⓐ 이 main(6896843ae)에서 T1486 판 자 그대로(`t577-server-run` · 마디 없음) 돈 `main-off-<시드>` · ⓑ T1486 판(옛 main 9d5c764c0 · git 에서 읽음). 잣대 = 날마다 인구 · 빈 마을 · 굶음 · 죽음 · 떠남 + 날 20 · 40 · 60 `village_buildings` 행.'); W('');
+W('| 판 | 견준 판 | 견준 날 | 인구 · 빈 마을 · 굶음 · 죽음 · 떠남 같은 날 | village_buildings 행(날 20 · 40 · 60 · 견준 판/이 판) | stopSleep(날 60 · 견준 판/이 판) | 같음 |'); W('|---|---|---|---|---|---|---|');
 const refCache = {};
-function ref(tag) { if (tag in refCache) return refCache[tag]; let o = null; try { o = JSON.parse(execFileSync('git', ['-C', path.join(__dirname, '..'), 'show', `${REF}:계측/T1486_2026-11-25/runs/${tag}.json`], { maxBuffer: 1 << 28 }).toString()); } catch (e) { o = null; } return (refCache[tag] = o); }
-let fpSame = 0, fpN = 0;
-for (const n of Object.keys(RUN)) {
-  const m = n.match(/^(off|react|nobuild|npcdeath|terrseq)-(\d+)$/) || n.match(/^(?:ss|prof)-(off|react|nobuild)-(\d+)$/); if (!m) continue;
-  const r = RUN[n], o = ref(`${m[1]}-${m[2]}`); if (!o) continue;
+function ref(tag) { if (tag in refCache) return refCache[tag]; let o = null; try { o = JSON.parse(execFileSync('git', ['-C', path.join(__dirname, '..'), 'show', `${REF}:계측/T1486_2026-11-25/runs/${tag}.json`], { maxBuffer: 1 << 28, stdio: ['ignore', 'pipe', 'ignore'] }).toString()); } catch (e) { o = null; } return (refCache[tag] = o); }
+let fpSame = 0, fpN = 0, fpMainSame = 0, fpMainN = 0;
+function fpCmp(n, r, oName, oDays, oDb, oSS) {
   const K = ['pop', 'empty', 'fd', 'dead', 'emig'];
   let same = 0, tot = 0, firstDiff = null;
-  for (const x of o.days) { if (x.d > 60) break; const y = row(r, x.d); if (!y) continue; tot++; if (K.every((k) => x[k] === y[k])) same++; else if (firstDiff == null) firstDiff = x.d; }
-  const vb = [20, 40, 60].map((d) => { const a = (o.db || []).find((q) => q.d === d), b = r.db.get(d); return a && b ? `${a.vb}/${b.vb}` : '—'; }).join(' · ');
-  const vbSame = [20, 40, 60].every((d) => { const a = (o.db || []).find((q) => q.d === d), b = r.db.get(d); return !a || !b || a.vb === b.vb; });
-  const ss = (() => { const y = row(r, 60); return `${(o.t1423 && o.t1423.stopSleep) != null ? o.t1423.stopSleep : '—'}/${y && y.beast ? y.beast.stopSleep : '—'}`; })();
-  const ok = tot > 0 && same === tot && vbSame; fpN++; if (ok) fpSame++;
-  W(`| ${n} | ${m[1]}-${m[2]} | ${tot} | ${same}/${tot}${firstDiff != null ? ' (첫 갈림 날 ' + firstDiff + ')' : ''} | ${vb} | ${ss} | ${ok ? '같음' : '다름'} |`);
-  OUTJ.fp[n] = { tot, same, firstDiff, vbSame, ok };
+  for (const x of oDays) { if (x.d > 60) break; const y = row(r, x.d); if (!y) continue; tot++; if (K.every((k) => x[k] === y[k])) same++; else if (firstDiff == null) firstDiff = x.d; }
+  const vbOf = (d) => { const a = oDb(d), b = r.db.get(d); return [a ? a.vb : null, b ? b.vb : null]; };
+  const vb = [20, 40, 60].map((d) => { const [a, b] = vbOf(d); return a != null && b != null ? `${a}/${b}` : '—'; }).join(' · ');
+  const vbSame = [20, 40, 60].every((d) => { const [a, b] = vbOf(d); return a == null || b == null || a === b; });
+  const y = row(r, 60), ss = `${oSS != null ? oSS : '—'}/${y && y.beast ? y.beast.stopSleep : '—'}`;
+  const ok = tot > 0 && same === tot && vbSame;
+  W(`| ${n} | ${oName} | ${tot} | ${same}/${tot}${firstDiff != null ? ' (첫 갈림 날 ' + firstDiff + ')' : ''} | ${vb} | ${ss} | ${ok ? '같음' : (same === tot ? '날 줄 같음 · 행 다름' : '다름')} |`);
+  return { tot, same, firstDiff, vbSame, ok };
 }
-W(''); W(`지문 같음 ${fpSame}/${fpN}(T1486 판 / 이 판 — 행 수 · stopSleep 칸은 T1486 / 이 판)`); W('');
+for (const n of Object.keys(RUN)) {
+  const m = n.match(/^(off|react|nobuild|npcdeath|terrseq)-(\d+)$/) || n.match(/^(?:ss|prof|cnt|main)-(off|react|nobuild)-(\d+)$/); if (!m) continue;
+  const r = RUN[n];
+  const mn = RUN['main-' + m[1] + '-' + m[2]];
+  if (mn && mn !== r) { const o = fpCmp(n, r, mn.name + '(이 main)', mn.ds.map((d) => mn.days.get(d)), (d) => mn.db.get(d), (() => { const z = row(mn, 60); return z && z.beast ? z.beast.stopSleep : null; })()); fpMainN++; if (o.ok) fpMainSame++; OUTJ.fp[n + ' ~ main'] = o; }
+  const o = ref(`${m[1]}-${m[2]}`); if (!o) continue;
+  const c = fpCmp(n, r, `T1486 ${m[1]}-${m[2]}(옛 main)`, o.days, (d) => (o.db || []).find((q) => q.d === d), o.t1423 && o.t1423.stopSleep);
+  fpN++; if (c.ok) fpSame++; OUTJ.fp[n + ' ~ T1486'] = c;
+}
+W(''); W(`지문 같음 — 이 main 기본 판과 ${fpMainSame}/${fpMainN} · T1486 판(옛 main)과 ${fpSame}/${fpN}`); W('');
 
 // ── ① TERR_SEQ 800날 ──
 const SEEDS1 = [...new Set(Object.keys(RUN).map((n) => (n.match(/^(?:off|terrseq)-(\d+)$/) || [])[1]).filter(Boolean))].map(Number).sort((a, b) => a - b);
@@ -134,25 +143,44 @@ if (pd.length) {
   const agg = (D) => { const t = new Map(); for (const x of D) for (const [k, ms] of x.prof.top) t.set(k, (t.get(k) || 0) + ms); for (const [k, v] of t) t.set(k, v / Math.max(1, D.length)); return t; };
   const A = agg(spike), B = agg(calm);
   const diff = [...new Set([...A.keys(), ...B.keys()])].map((k) => [k, (A.get(k) || 0) - (B.get(k) || 0), A.get(k) || 0, B.get(k) || 0]).sort((a, b) => b[1] - a[1]).slice(0, 12);
-  const cnt = (D, fn) => { const v = D.map((x) => { const c = x.cov && (x.cov.forProf || []).concat(x.cov.top || []).find(([k]) => k.split(' @')[0] === fn.split(' @')[0] && k.split(' @')[1].split('#')[0] === fn.split(' @')[1].replace(/:\d+$/, '')); return c ? c[1] : 0; }); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+  //   호출 수 = 셈 판 cnt-off-1020(같은 시드 · 같은 손짓 · 함수 선언 몸 첫머리 셈 · 프로파일 없음) — 그 판의 튄 날 · 고른 날(같은 문턱)로 가른다
+  const C = RUN['cnt-off-1020'] && RUN['cnt-off-1020'].probe ? RUN['cnt-off-1020'].probe.days.filter((x) => x.d >= 2 && x.calls) : [];
+  const cm = med(C.map((x) => x.wall)), cSpike = C.filter((x) => x.wall > cm * 1.8), cCalm = C.filter((x) => x.wall <= cm * 1.3);
+  const cnt = (D, fn) => { const nm = fn.split(' @')[0], src = D === spike ? cSpike : cCalm; if (!src.length) return null; return src.reduce((a, x) => a + (x.calls[nm] | 0), 0) / src.length; };
+  if (C.length) { const names = [...new Set(C.flatMap((x) => Object.keys(x.calls)))]; W(`셈 판 cnt-off-1020: 튄 날 ${cSpike.map((x) => x.d).join(' · ')} · 함수 호출 수/날(튄 날 평균 ↔ 고른 날 평균) — ` + names.map((n) => `\`${n}\` ${f(cSpike.reduce((a, x) => a + (x.calls[n] | 0), 0) / Math.max(1, cSpike.length), 0)} ↔ ${f(cCalm.reduce((a, x) => a + (x.calls[n] | 0), 0) / Math.max(1, cCalm.length), 0)}`).join(' · ')); W(''); }
   W('| 함수(자기 시간) | 튄 날 − 고른 날 ms/날 | 튄 날 ms/날 | 고른 날 ms/날 | 호출 수/날 튄 날 · 고른 날 |'); W('|---|---|---|---|---|');
   for (const [k, dd, a, b] of diff) W(`| \`${k}\` | ${f(dd, 0)} | ${f(a, 0)} | ${f(b, 0)} | ${f(cnt(spike, k), 0)} · ${f(cnt(calm, k), 0)} |`);
-  owner = diff.length ? { fn: diff[0][0], extraMs: diff[0][1], calls: [cnt(spike, diff[0][0]), cnt(calm, diff[0][0])], spikeDays: spike.map((x) => x.d), med: m } : null;
+  //   주인 = 튄 날에만 도는 함수(셈 판에서 튄 날 ≥ 1번 · 고른 날 0번) 가운데 자기 시간 차가 가장 큰 것 · 없으면 자기 시간 차 1위. 그 안에서 시간을 먹은 것(자기 시간 차 1위)도 적는다.
+  const only = diff.filter(([k]) => { const a = cnt(spike, k), b = cnt(calm, k); return a != null && a >= 1 && b === 0; });
+  const ownK = (only[0] || diff[0] || [null])[0], extra = med(spike.map((x) => x.wall)) - med(calm.map((x) => x.wall));
+  owner = ownK ? { fn: ownK, inner: diff[0][0], innerMs: diff[0][1], innerCalls: [cnt(spike, diff[0][0]), cnt(calm, diff[0][0])], calls: [cnt(spike, ownK), cnt(calm, ownK)], extraSec: extra, spikeDays: spike.map((x) => x.d), med: m,
+    edge: [cnt(spike, '_t598EdgeOk'), cnt(calm, '_t598EdgeOk')] } : null;
+  if (owner) W(''), W(`주인: \`${owner.fn.split(' @')[0]}\`(튄 날에만 돈다 · ${f(owner.calls[0], 0)}번/튄 날) — 튄 날 하루가 고른 날보다 ${f(extra, 1)} 초 길다 · 그 안에서 시간을 먹은 것 \`${owner.inner.split(' @')[0]}\`(+${f(owner.innerMs / 1000, 1)} 초 · ${f(owner.innerCalls[0], 0)} ↔ ${f(owner.innerCalls[1], 0)}번/날)`);
   W('');
   // 튄 날의 날 묶음 — 봇 다리 손짓 날(6 · 16 · 26 …에 놓고 사흘 뒤 허묾)과 견줌
-  const bridgeDays = new Set(); for (let d = 6; d <= 800; d += 10) { bridgeDays.add(d + 1); bridgeDays.add(d + 4); }
-  W(`튄 날 가운데 다리 머리 울타리를 놓은 다음 날 · 허문 다음 날(봇 손짓 6 · 16 · 26 …날 놓고 9 · 19 · 29 …날 허묾): ${spike.filter((x) => bridgeDays.has(x.d)).length}/${spike.length}`);
+  const bridgeDays = new Set(); for (let d = 6; d <= 800; d += 10) { bridgeDays.add(d); bridgeDays.add(d + 3); }
+  W(`튄 날 가운데 다리 머리 울타리를 놓은 날 · 허문 날(봇 손짓 6 · 16 · 26 …날 놓고 9 · 19 · 29 …날 허묾 — 날 6 은 길막기 울타리 47 도 같은 날): ${spike.filter((x) => bridgeDays.has(x.d)).length}/${spike.length}`);
   if (pdn.length) { const wn = pdn.filter((x) => x.d >= 2).map((x) => x.wall), mn = med(wn); W(`견줌 prof-nobuild-1020: 하루 벽시계 가운데 ${f(mn, 1)} 초 · 튄 날 ${pdn.filter((x) => x.d >= 2 && x.wall > mn * 1.8).map((x) => x.d + '(' + f(x.wall, 0) + ')').join(' · ') || '없음'}`); }
   W('');
 }
-// 손잡이 하나씩 — 하루 걸린 초(날 7 ~ 100 · 같은 시드 1020 · 봇 손짓 T1486 그대로)
-W('| 판(시드 1020) | 하루 걸린 초 날 7 ~ 100 | 날 101 ~ 800 | 끔 대비(7 ~ 100) |'); W('|---|---|---|---|');
+// 손잡이 하나씩 — 하루 걸린 초 · 튄 날 수(하루가 그 판 가운데 ×1.8 넘음) · T1486 판(시드 1020 · 7 · 42 · 날 7 ~ 60)과 이 판(날 7 ~ 100 · 101 ~ 800)
+const spikes = (walls) => { const m = med(walls.map((x) => x[1])); return walls.filter((x) => x[1] > m * 1.8).map((x) => x[0]); };
+W('| 팔 | T1486 하루 걸린 초(시드 1020 · 7 · 42 · 날 7 ~ 60) | T1486 튄 날 수(세 시드 합 · 54날씩) | 튄 날이 다리 손짓 날 | 끔 대비 |'); W('|---|---|---|---|---|');
+const refSpd = {};
+for (const a of ['off', 'nobuild', 'react', 'npcdeath', 'terrseq']) {
+  const per = [], sp = []; let onBridge = 0;
+  for (const sd of [1020, 7, 42]) { const o = ref(`${a}-${sd}`); if (!o) continue; const w = []; for (let i = 1; i < o.days.length; i++) if (o.days[i].d >= 7 && o.days[i - 1].d === o.days[i].d - 1) w.push([o.days[i].d - 1, o.days[i].wall - o.days[i - 1].wall]); per.push(w.reduce((x, y) => x + y[1], 0) / Math.max(1, w.length)); const s2 = spikes(w); sp.push(...s2); onBridge += s2.filter((d) => (d - 6) % 10 === 0 || (d - 9) % 10 === 0).length; }
+  refSpd[a] = { spd: med(per), spikes: sp.length, onBridge };
+}
+for (const a of Object.keys(refSpd)) W(`| ${a} | ${f(refSpd[a].spd, 1)} | ${refSpd[a].spikes} | ${refSpd[a].onBridge}/${refSpd[a].spikes} | ${pct(refSpd[a].spd, refSpd.off && refSpd.off.spd)} |`);
+W('');
+W('| 판(이 카드 · 시드 1020) | 하루 걸린 초 날 7 ~ 100 | 날 101 ~ 800 | 끔 대비(7 ~ 100) |'); W('|---|---|---|---|');
 const base2 = RUN['off-1020'] ? winSpd(RUN['off-1020'], 6, 100) : null;
 const knobSpd = {};
 for (const a of ['off', 'nobuild', 'react', 'npcdeath', 'terrseq', 'all4']) { const r = RUN[a + '-1020']; if (!r) continue; const s1 = winSpd(r, 6, 100), s2 = winSpd(r, 100, 800); knobSpd[a] = [s1, s2]; W(`| ${a}-1020 | ${f(s1, 1)} | ${f(s2, 1)} | ${pct(s1, base2)} |`); }
 for (const a of ['jp-off', 'jp-nobuild']) { const r = RUN[a + '-1020']; if (!r) continue; const s1 = winSpd(r, 6, 100); knobSpd[a] = [s1, null]; W(`| ${a}-1020(닛폰) | ${f(s1, 1)} | — | ${pct(s1, RUN['jp-off-1020'] ? winSpd(RUN['jp-off-1020'], 6, 100) : null)}(닛폰 끔 대비) |`); }
 W('');
-OUTJ.item2 = { owner, knobSpd };
+OUTJ.item2 = { owner, knobSpd, refSpd };
 
 // ── ③ stopSleep ──
 W('## ③ BLOCK_REACT 의 stopSleep — 부른 자리 · 헛깨움 · 하루 CPU 몫'); W('');
@@ -221,9 +249,9 @@ const rows800 = Object.values(I1).map((P) => P.filter((x) => x.vbOff != null && 
 const lastDay1 = rows800.length ? Math.min(...rows800.map((x) => x.d)) : null;
 const vbOff = med(rows800.map((x) => x.vbOff)), vbOn = med(rows800.map((x) => x.vbOn)), dbOff = med(rows800.map((x) => x.dbOff)), dbOn = med(rows800.map((x) => x.dbOn));
 const rgTxt = regrow.length ? regrow.map((x) => `${x.s} ${x.rg ? '날 ' + x.rg.d : '없음'}`).join(' · ') : '—';
-const ownTxt = owner ? `\`${owner.fn.split(' @')[0]}\`(${f(owner.extraMs / 1000, 1)} 초/날 튄 날 · 호출 ${f(owner.calls[0], 0)} ↔ ${f(owner.calls[1], 0)}/날` : '○(';
-const spdGap = knobSpd.off && knobSpd.nobuild ? `끔 ${f(knobSpd.off[0], 1)} ↔ NO_BUILD ${f(knobSpd.nobuild[0], 1)} 초/날` : '';
-const knobTxt = (() => { if (!knobSpd.off) return '○'; const ks = ['nobuild', 'react', 'npcdeath', 'terrseq'].filter((a) => knobSpd[a] && knobSpd[a][0] != null); if (!ks.length) return '○'; const best = ks.reduce((m, a) => (knobSpd[a][0] < knobSpd[m][0] ? a : m), ks[0]); return `${best} 켬일 때만 사라짐`; })();
+const ownTxt = owner ? `\`${owner.fn.split(' @')[0]}\`(울타리가 서거나 헐린 날 +${f(owner.extraSec, 1)} 초 · 그 날 1번 · 안의 A* \`${owner.inner.split(' @')[0]}\` ${f(owner.innerCalls[0], 0)}번 · 칸 검사 \`_t598EdgeOk\` ${f(owner.edge[0], 0)}번` : '○(';
+const spdGap = refSpd.off && refSpd.nobuild ? `평균 끔 ${f(refSpd.off.spd, 1)} ↔ NO_BUILD ${f(refSpd.nobuild.spd, 1)} 초/날` : '';
+const knobTxt = (() => { const ks = Object.keys(refSpd).filter((a) => a !== 'off'); if (!ks.length || !refSpd.off) return '○'; const gone = ks.filter((a) => refSpd[a].spikes <= refSpd.off.spikes / 3); return gone.length ? gone.map((a) => ({ nobuild: 'NO_BUILD', react: 'BLOCK_REACT', npcdeath: 'NPC_DEATH', terrseq: 'TERR_SEQ' })[a]).join(' · ') + ' 켬에서만 사라짐' : '없음'; })();
 const ovTxt = (() => { const L5 = I5.filter((x) => x.full && x.k === 'pop'); if (!L5.length) { const p = I5.filter((x) => x.k === 'pop').slice(-1)[0]; return p ? `하나씩 판 덜 돎(넷 − 끔 인구 ${f(p.all - p.off, 0)} · 날 ${p.d})` : '○'; } const z = L5[L5.length - 1]; const v = I5.filter((x) => x.full && x.d === z.d); return `날 ${z.d} ` + v.filter((x) => ['pop', 'vb', 'spd'].includes(x.k)).map((x) => `${x.k} ${f(x.overlap, x.k === 'spd' ? 1 : 0)}`).join(' · '); })();
 const fl = `영토 차례 800날 — 건물 행 ${vbOff != null ? Math.round(vbOff) : '○'} → ${vbOn != null ? Math.round(vbOn) : '○'}${lastDay1 && lastDay1 < 800 ? `(날 ${lastDay1})` : ''} · DB ${f(dbOff, 1)} → ${f(dbOn, 1)} MB · 다시 불어남 ${rgTxt} · 다리 머리 느려짐의 주인 ${ownTxt} · ${spdGap} · 손잡이 ${knobTxt}) · 잠 깨움 부른 자리 1위 ${top3 ? '`' + top3.site.split(' · ').slice(0, 3).join(' · ') + '`' : '○'}(헛깨움 ${top3 ? f(100 * top3.totRep, 1) : '○'} %) · 짐승이 스스로 친 건 ${beastHits}(0 이면 까닭 ${why4 || '—'}) · 넷 다 켬 겹침 ${ovTxt} · 죽은 판 ${deadRuns} · 회부 ${REFER}`;
 fs.writeFileSync(path.join(R, 'table.txt'), L.join('\n') + '\n');

@@ -1,0 +1,369 @@
+{
+ "runs": {
+  "off-1020": {
+   "kind": "long",
+   "target": 800,
+   "reached": 100,
+   "status": "덜 돎",
+   "sec": null,
+   "dead": []
+  },
+  "terrseq-1020": {
+   "kind": "long",
+   "target": 800,
+   "reached": 100,
+   "status": "덜 돎",
+   "sec": null,
+   "dead": []
+  },
+  "ss-react-1020": {
+   "kind": "short",
+   "target": 60,
+   "reached": 60,
+   "status": "끝",
+   "sec": 1696,
+   "dead": []
+  },
+  "jp-off-1020": {
+   "kind": "short",
+   "target": 60,
+   "reached": 0,
+   "status": "안 띄움",
+   "sec": null,
+   "dead": []
+  },
+  "jp-nobuild-1020": {
+   "kind": "short",
+   "target": 60,
+   "reached": 0,
+   "status": "안 띄움",
+   "sec": null,
+   "dead": []
+  },
+  "all4-1020": {
+   "kind": "long",
+   "target": 800,
+   "reached": 0,
+   "status": "안 띄움",
+   "sec": null,
+   "dead": []
+  },
+  "off-7": {
+   "kind": "long",
+   "target": 800,
+   "reached": 0,
+   "status": "안 띄움",
+   "sec": null,
+   "dead": []
+  },
+  "terrseq-7": {
+   "kind": "long",
+   "target": 800,
+   "reached": 0,
+   "status": "안 띄움",
+   "sec": null,
+   "dead": []
+  },
+  "off-42": {
+   "kind": "long",
+   "target": 800,
+   "reached": 0,
+   "status": "안 띄움",
+   "sec": null,
+   "dead": []
+  },
+  "terrseq-42": {
+   "kind": "long",
+   "target": 800,
+   "reached": 0,
+   "status": "안 띄움",
+   "sec": null,
+   "dead": []
+  },
+  "nd-u0-1020": {
+   "kind": "long",
+   "target": 200,
+   "reached": 0,
+   "status": "안 띄움",
+   "sec": null,
+   "dead": []
+  },
+  "nd-u1-1020": {
+   "kind": "long",
+   "target": 200,
+   "reached": 0,
+   "status": "안 띄움",
+   "sec": null,
+   "dead": []
+  },
+  "nd-u0-7": {
+   "kind": "long",
+   "target": 200,
+   "reached": 0,
+   "status": "안 띄움",
+   "sec": null,
+   "dead": []
+  },
+  "nd-u1-7": {
+   "kind": "long",
+   "target": 200,
+   "reached": 0,
+   "status": "안 띄움",
+   "sec": null,
+   "dead": []
+  },
+  "nd-u0-42": {
+   "kind": "long",
+   "target": 200,
+   "reached": 0,
+   "status": "안 띄움",
+   "sec": null,
+   "dead": []
+  },
+  "nd-u1-42": {
+   "kind": "long",
+   "target": 200,
+   "reached": 0,
+   "status": "안 띄움",
+   "sec": null,
+   "dead": []
+  },
+  "npcdeath-1020": {
+   "kind": "long",
+   "target": 400,
+   "reached": 0,
+   "status": "안 띄움",
+   "sec": null,
+   "dead": []
+  },
+  "react-1020": {
+   "kind": "long",
+   "target": 400,
+   "reached": 0,
+   "status": "안 띄움",
+   "sec": null,
+   "dead": []
+  },
+  "nobuild-1020": {
+   "kind": "long",
+   "target": 400,
+   "reached": 0,
+   "status": "안 띄움",
+   "sec": null,
+   "dead": []
+  },
+  "cnt-off-1020": {
+   "kind": "short",
+   "target": 22,
+   "reached": 22,
+   "status": "끝",
+   "sec": 492,
+   "dead": []
+  },
+  "main-off-1020": {
+   "kind": "short",
+   "target": 60,
+   "reached": 40,
+   "status": "덜 돎",
+   "sec": null,
+   "dead": []
+  },
+  "prof-off-1020": {
+   "kind": "short",
+   "target": 22,
+   "reached": 22,
+   "status": "끝",
+   "sec": 520,
+   "dead": []
+  },
+  "prof-nobuild-1020": {
+   "kind": "short",
+   "target": 22,
+   "reached": 22,
+   "status": "끝",
+   "sec": 572,
+   "dead": []
+  }
+ },
+ "item1": {
+  "rows": {
+   "1020": [
+    {
+     "d": 100,
+     "vbOff": 313011,
+     "vbOn": 69050,
+     "dbOff": 84.02935791015625,
+     "dbOn": 69.50592041015625,
+     "terrOff": 245430,
+     "terrOn": 245430,
+     "spdOff": 25.465656565656566,
+     "spdOn": 25.429292929292934,
+     "popOff": 1743,
+     "popOn": 1743,
+     "ratio": 0.22059927606378052
+    }
+   ]
+  },
+  "regrow": [
+   {
+    "s": "1020",
+    "rg": null,
+    "minD": 100,
+    "below": null,
+    "lastD": 100
+   }
+  ]
+ },
+ "item2": {
+  "owner": {
+   "fn": "_distMatrixGen @server/villages.js:4396",
+   "inner": "_searchStep @sim/path-core.js:351",
+   "innerMs": 12696.808823529413,
+   "innerCalls": [
+    839314.25,
+    37871.76470588235
+   ],
+   "calls": [
+    1,
+    0
+   ],
+   "extraSec": 31.025,
+   "spikeDays": [
+    6,
+    9,
+    16,
+    19
+   ],
+   "med": 16.09,
+   "edge": [
+    300254404.75,
+    7178483.176470588
+   ]
+  },
+  "knobSpd": {
+   "off": [
+    26.044680851063827,
+    null
+   ],
+   "terrseq": [
+    26.02659574468085,
+    null
+   ]
+  },
+  "refSpd": {
+   "off": {
+    "spd": 28.446296296296296,
+    "spikes": 39,
+    "onBridge": 36
+   },
+   "nobuild": {
+    "spd": 19.505555555555556,
+    "spikes": 6,
+    "onBridge": 3
+   },
+   "react": {
+    "spd": 30.75,
+    "spikes": 40,
+    "onBridge": 36
+   },
+   "npcdeath": {
+    "spd": 28.15925925925926,
+    "spikes": 39,
+    "onBridge": 36
+   },
+   "terrseq": {
+    "spd": 29.25185185185185,
+    "spikes": 39,
+    "onBridge": 36
+   }
+  }
+ },
+ "item3": {
+  "site": "walk · merchant · _t1182Walk ← _t1182Move ← tickCaravanBodies ← onGameTick",
+  "n": 441516,
+  "share": 1,
+  "rep": 0.9993612915500231,
+  "still": 0.9993726161679305,
+  "totRep": 0.9993612915500231,
+  "cpuPct": 0.9975200358684083,
+  "total": 441516
+ },
+ "item4": {
+  "runs": [],
+  "beastHits": 0,
+  "why4": "야생 층이 한 틱도 안 돎(활성 청크 0 = 보는 사람 0 · 사냥판 T1331·T1393 끔 기본 → BEAST_UNSEEN 이 붙는 판이 없음)"
+ },
+ "item5": [],
+ "fp": {
+  "cnt-off-1020 ~ main": {
+   "tot": 23,
+   "same": 23,
+   "firstDiff": null,
+   "vbSame": true,
+   "ok": true
+  },
+  "cnt-off-1020 ~ T1486": {
+   "tot": 23,
+   "same": 23,
+   "firstDiff": null,
+   "vbSame": true,
+   "ok": true
+  },
+  "main-off-1020 ~ T1486": {
+   "tot": 41,
+   "same": 41,
+   "firstDiff": null,
+   "vbSame": true,
+   "ok": true
+  },
+  "off-1020 ~ main": {
+   "tot": 41,
+   "same": 41,
+   "firstDiff": null,
+   "vbSame": true,
+   "ok": true
+  },
+  "off-1020 ~ T1486": {
+   "tot": 61,
+   "same": 61,
+   "firstDiff": null,
+   "vbSame": true,
+   "ok": true
+  },
+  "prof-nobuild-1020 ~ T1486": {
+   "tot": 23,
+   "same": 23,
+   "firstDiff": null,
+   "vbSame": true,
+   "ok": true
+  },
+  "prof-off-1020 ~ main": {
+   "tot": 23,
+   "same": 23,
+   "firstDiff": null,
+   "vbSame": true,
+   "ok": true
+  },
+  "prof-off-1020 ~ T1486": {
+   "tot": 23,
+   "same": 23,
+   "firstDiff": null,
+   "vbSame": true,
+   "ok": true
+  },
+  "ss-react-1020 ~ T1486": {
+   "tot": 61,
+   "same": 61,
+   "firstDiff": null,
+   "vbSame": true,
+   "ok": true
+  },
+  "terrseq-1020 ~ T1486": {
+   "tot": 61,
+   "same": 61,
+   "firstDiff": null,
+   "vbSame": true,
+   "ok": true
+  }
+ }
+}
