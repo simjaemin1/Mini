@@ -29,3 +29,137 @@
 2026-11-25T16:44:30 J4 c1·c2 끝, c3 중단(덧붙임 11-27: 보고 우선) · c4 안 돌림
 2026-11-25T16:44:33 J4c3 찌꺼기 · TMPDIR 15개 78MB · /tmp 새 0개 0MB → 지움
 2026-11-25T16:44:54 S1 시작(solo) · e78290d2c · 남은 디스크 9.8G
+2026-11-26T01:35:29 컨테이너 재시작(up 0) · S1 15종 중 11종 끝(살림) · 이제부터 혼자 판은 하네스 한 종 단위로 끝 표시(solo/S<판>-<하네스>.done)
+2026-11-26T01:35:30 drive4 시작 · 7efed4dff · 남은 디스크 9.8G
+2026-11-26T03:06:38 컨테이너 재시작(up 0 · 01:35:39 뒤 · S1 route-persist 도중) · drive4 다시 띄움
+2026-11-26T03:06:38 drive4 시작 · 7efed4dff · 남은 디스크 9.8G
+2026-11-26T03:15:27 S1-test-route-persist.js 끝 · rc=1 · 벽 529초
+2026-11-26T03:15:30 S1-test-route-persist.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T03:18:06 S1-test-save-race.js 끝 · rc=0 · 벽 156초
+2026-11-26T03:18:09 S1-test-save-race.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T03:20:38 S1-test-slot-keep.js 끝 · rc=1 · 벽 149초
+2026-11-26T03:20:41 S1-test-slot-keep.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T03:47:17 S1-test-t1034-caravan-keep.js 끝 · rc=1 · 벽 1596초
+2026-11-26T03:47:20 S1-test-t1034-caravan-keep.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T03:49:06 S2-e2e-membership.js 끝 · rc=0 · 벽 106초
+2026-11-26T03:49:09 S2-e2e-membership.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T03:50:53 S2-e2e-npc-walk.js 끝 · rc=0 · 벽 104초
+2026-11-26T03:50:55 S2-e2e-npc-walk.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T03:55:25 S2-e2e-rtt.js 끝 · rc=0 · 벽 270초
+2026-11-26T03:55:27 S2-e2e-rtt.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T03:56:14 S2-e2e-streams.js 끝 · rc=0 · 벽 47초
+2026-11-26T03:56:16 S2-e2e-streams.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T04:07:10 S2-test-bundle-blackbox.js 끝 · rc=1 · 벽 654초
+2026-11-26T04:07:13 S2-test-bundle-blackbox.js 찌꺼기 · TMPDIR 64개 421MB · /tmp 새 0개 0MB → 지움
+2026-11-26T04:10:22 S2-test-car-fast.js 끝 · rc=1 · 벽 189초
+2026-11-26T04:10:25 S2-test-car-fast.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T04:21:22 S2-test-deeds-blackbox.js 끝 · rc=1 · 벽 657초
+2026-11-26T04:21:24 S2-test-deeds-blackbox.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T04:27:10 컨테이너 재시작(up 0 · S2 lab-diverge-ctl 도중) · drive4 다시 띄움 · 혼자 끝 22/76
+2026-11-26T04:27:10 drive4 시작 · 7efed4dff · 남은 디스크 9.8G
+2026-11-26T04:48:40 S2-test-lab-diverge-ctl.js 끝 · rc=0 · 벽 1290초
+2026-11-26T04:48:44 S2-test-lab-diverge-ctl.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T05:14:29 S2-test-lab-mining.js 끝 · rc=1 · 벽 1545초
+2026-11-26T05:14:33 S2-test-lab-mining.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T05:18:55 S2-test-resume-one.js 끝 · rc=1 · 벽 262초
+2026-11-26T05:18:58 S2-test-resume-one.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T05:21:52 S2-test-return-resume.js 끝 · rc=1 · 벽 174초
+2026-11-26T05:21:55 S2-test-return-resume.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T05:31:52 S2-test-route-persist.js 끝 · rc=1 · 벽 597초
+2026-11-26T05:31:55 S2-test-route-persist.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T05:34:32 S2-test-save-race.js 끝 · rc=0 · 벽 157초
+2026-11-26T05:34:35 S2-test-save-race.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T05:37:27 S2-test-slot-keep.js 끝 · rc=1 · 벽 172초
+2026-11-26T05:37:29 S2-test-slot-keep.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T06:05:20 S2-test-t1034-caravan-keep.js 끝 · rc=1 · 벽 1671초
+2026-11-26T06:05:23 S2-test-t1034-caravan-keep.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T06:06:56 S3-e2e-membership.js 끝 · rc=1 · 벽 93초
+2026-11-26T06:06:59 S3-e2e-membership.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T06:08:48 S3-e2e-npc-walk.js 끝 · rc=0 · 벽 109초
+2026-11-26T06:08:52 S3-e2e-npc-walk.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T06:14:01 S3-e2e-rtt.js 끝 · rc=0 · 벽 309초
+2026-11-26T06:14:05 S3-e2e-rtt.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T06:14:52 S3-e2e-streams.js 끝 · rc=0 · 벽 47초
+2026-11-26T06:14:55 S3-e2e-streams.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T06:27:59 S3-test-bundle-blackbox.js 끝 · rc=1 · 벽 784초
+2026-11-26T06:28:03 S3-test-bundle-blackbox.js 찌꺼기 · TMPDIR 64개 421MB · /tmp 새 0개 0MB → 지움
+2026-11-26T06:32:01 S3-test-car-fast.js 끝 · rc=1 · 벽 238초
+2026-11-26T06:32:04 S3-test-car-fast.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T06:43:39 S3-test-deeds-blackbox.js 끝 · rc=1 · 벽 695초
+2026-11-26T06:43:42 S3-test-deeds-blackbox.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T07:07:01 S3-test-lab-diverge-ctl.js 끝 · rc=0 · 벽 1399초
+2026-11-26T07:07:04 S3-test-lab-diverge-ctl.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T07:36:02 S3-test-lab-mining.js 끝 · rc=1 · 벽 1738초
+2026-11-26T07:36:05 S3-test-lab-mining.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T07:40:55 S3-test-resume-one.js 끝 · rc=1 · 벽 290초
+2026-11-26T07:40:58 S3-test-resume-one.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T07:43:47 S3-test-return-resume.js 끝 · rc=1 · 벽 169초
+2026-11-26T07:43:50 S3-test-return-resume.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T07:54:34 S3-test-route-persist.js 끝 · rc=1 · 벽 644초
+2026-11-26T07:54:38 S3-test-route-persist.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T07:57:16 S3-test-save-race.js 끝 · rc=0 · 벽 158초
+2026-11-26T07:57:19 S3-test-save-race.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T08:00:22 S3-test-slot-keep.js 끝 · rc=1 · 벽 183초
+2026-11-26T08:00:26 S3-test-slot-keep.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T08:29:49 S3-test-t1034-caravan-keep.js 끝 · rc=1 · 벽 1763초
+2026-11-26T08:29:52 S3-test-t1034-caravan-keep.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T08:32:11 S4-e2e-membership.js 끝 · rc=1 · 벽 138초
+2026-11-26T08:32:14 S4-e2e-membership.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T08:34:30 S4-e2e-npc-walk.js 끝 · rc=0 · 벽 136초
+2026-11-26T08:34:33 S4-e2e-npc-walk.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T08:40:09 S4-e2e-rtt.js 끝 · rc=1 · 벽 336초
+2026-11-26T08:40:13 S4-e2e-rtt.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T08:41:03 S4-e2e-streams.js 끝 · rc=1 · 벽 50초
+2026-11-26T08:41:06 S4-e2e-streams.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T08:56:01 S4-test-bundle-blackbox.js 끝 · rc=1 · 벽 895초
+2026-11-26T08:56:05 S4-test-bundle-blackbox.js 찌꺼기 · TMPDIR 64개 421MB · /tmp 새 0개 0MB → 지움
+2026-11-26T09:00:14 S4-test-car-fast.js 끝 · rc=1 · 벽 249초
+2026-11-26T09:00:17 S4-test-car-fast.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T09:11:46 S4-test-deeds-blackbox.js 끝 · rc=1 · 벽 689초
+2026-11-26T09:11:50 S4-test-deeds-blackbox.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T09:35:10 S4-test-lab-diverge-ctl.js 끝 · rc=0 · 벽 1400초
+2026-11-26T09:35:14 S4-test-lab-diverge-ctl.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T10:04:51 S4-test-lab-mining.js 끝 · rc=1 · 벽 1777초
+2026-11-26T10:04:54 S4-test-lab-mining.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T10:10:14 S4-test-resume-one.js 끝 · rc=1 · 벽 320초
+2026-11-26T10:10:17 S4-test-resume-one.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T10:13:15 S4-test-return-resume.js 끝 · rc=1 · 벽 178초
+2026-11-26T10:13:19 S4-test-return-resume.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T10:23:24 S4-test-route-persist.js 끝 · rc=1 · 벽 605초
+2026-11-26T10:23:27 S4-test-route-persist.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T10:26:06 S4-test-save-race.js 끝 · rc=0 · 벽 159초
+2026-11-26T10:26:09 S4-test-save-race.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T10:29:30 S4-test-slot-keep.js 끝 · rc=1 · 벽 201초
+2026-11-26T10:29:33 S4-test-slot-keep.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T10:59:49 S4-test-t1034-caravan-keep.js 끝 · rc=1 · 벽 1816초
+2026-11-26T10:59:52 S4-test-t1034-caravan-keep.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T11:01:25 S5-e2e-membership.js 끝 · rc=1 · 벽 92초
+2026-11-26T11:01:29 S5-e2e-membership.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T11:03:18 S5-e2e-npc-walk.js 끝 · rc=0 · 벽 109초
+2026-11-26T11:03:21 S5-e2e-npc-walk.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T11:08:32 S5-e2e-rtt.js 끝 · rc=0 · 벽 311초
+2026-11-26T11:08:35 S5-e2e-rtt.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T11:09:23 S5-e2e-streams.js 끝 · rc=1 · 벽 48초
+2026-11-26T11:09:26 S5-e2e-streams.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T11:22:34 S5-test-bundle-blackbox.js 끝 · rc=1 · 벽 788초
+2026-11-26T11:22:37 S5-test-bundle-blackbox.js 찌꺼기 · TMPDIR 64개 421MB · /tmp 새 0개 0MB → 지움
+2026-11-26T11:26:25 S5-test-car-fast.js 끝 · rc=1 · 벽 228초
+2026-11-26T11:26:28 S5-test-car-fast.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T11:37:49 S5-test-deeds-blackbox.js 끝 · rc=1 · 벽 681초
+2026-11-26T11:37:53 S5-test-deeds-blackbox.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T11:59:44 S5-test-lab-diverge-ctl.js 끝 · rc=0 · 벽 1311초
+2026-11-26T11:59:48 S5-test-lab-diverge-ctl.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T12:29:05 S5-test-lab-mining.js 끝 · rc=1 · 벽 1757초
+2026-11-26T12:29:08 S5-test-lab-mining.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T12:34:09 S5-test-resume-one.js 끝 · rc=1 · 벽 301초
+2026-11-26T12:34:12 S5-test-resume-one.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T12:37:16 S5-test-return-resume.js 끝 · rc=1 · 벽 184초
+2026-11-26T12:37:20 S5-test-return-resume.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T12:48:31 S5-test-route-persist.js 끝 · rc=1 · 벽 671초
+2026-11-26T12:48:34 S5-test-route-persist.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T12:51:12 S5-test-save-race.js 끝 · rc=0 · 벽 158초
+2026-11-26T12:51:15 S5-test-save-race.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T12:54:38 S5-test-slot-keep.js 끝 · rc=1 · 벽 203초
+2026-11-26T12:54:41 S5-test-slot-keep.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T13:23:49 S5-test-t1034-caravan-keep.js 끝 · rc=1 · 벽 1748초
+2026-11-26T13:23:53 S5-test-t1034-caravan-keep.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
