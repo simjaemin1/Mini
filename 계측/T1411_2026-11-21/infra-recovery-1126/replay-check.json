@@ -1,0 +1,135 @@
+{
+ "kind": "daily-observation-replay-check",
+ "complete": true,
+ "scope": "All retained daily observation fields except the three named CPU/uptime fields; not a full-state fingerprint or an independent world.",
+ "cases": {
+  "ON-1020/t1274-days": {
+   "expectedDays": [
+    621,
+    622,
+    623,
+    624,
+    625,
+    626
+   ],
+   "matchedDays": [
+    621,
+    622,
+    623,
+    624,
+    625,
+    626
+   ],
+   "excludedTimingFields": [
+    "cpuSeconds",
+    "processCPUSeconds",
+    "uptimeSeconds"
+   ],
+   "differences": [],
+   "archivedFileSha256": "afb00be25032eeed926875705516974a17584a9b66c3f65716c8bd4db70acde9"
+  },
+  "ON-1020/t1302-days": {
+   "expectedDays": [
+    621,
+    622,
+    623,
+    624,
+    625,
+    626
+   ],
+   "matchedDays": [
+    621,
+    622,
+    623,
+    624,
+    625,
+    626
+   ],
+   "excludedTimingFields": [],
+   "differences": [],
+   "archivedFileSha256": "f9b311f895ccbd0272b533ceb1eca2ac746d048323e8613a5b24b7dacbf46fad"
+  },
+  "ON-1020/t1411-census": {
+   "expectedDays": [
+    621,
+    622,
+    623,
+    624,
+    625,
+    626
+   ],
+   "matchedDays": [
+    621,
+    622,
+    623,
+    624,
+    625,
+    626
+   ],
+   "excludedTimingFields": [],
+   "differences": [],
+   "archivedFileSha256": "74df0597d0675ad6d2ca9820ba5bafe1e197c917796f0cf510854ac94378e41a"
+  },
+  "OFF-1020/t1274-days": {
+   "expectedDays": [
+    631,
+    632,
+    633,
+    634,
+    635
+   ],
+   "matchedDays": [
+    631,
+    632,
+    633,
+    634,
+    635
+   ],
+   "excludedTimingFields": [
+    "cpuSeconds",
+    "processCPUSeconds",
+    "uptimeSeconds"
+   ],
+   "differences": [],
+   "archivedFileSha256": "6461af03fa7fcad36ea893859e92d59643f1474a20b8e125e79c581bff0b9690"
+  },
+  "OFF-1020/t1302-days": {
+   "expectedDays": [
+    631,
+    632,
+    633,
+    634,
+    635
+   ],
+   "matchedDays": [
+    631,
+    632,
+    633,
+    634,
+    635
+   ],
+   "excludedTimingFields": [],
+   "differences": [],
+   "archivedFileSha256": "ad58dcb980f643d131c1c0936a99c9d751ecc6d6bb615d635a85d3723629d912"
+  },
+  "OFF-1020/t1411-census": {
+   "expectedDays": [
+    631,
+    632,
+    633,
+    634,
+    635
+   ],
+   "matchedDays": [
+    631,
+    632,
+    633,
+    634,
+    635
+   ],
+   "excludedTimingFields": [],
+   "differences": [],
+   "archivedFileSha256": "1c755c82d58dd2fc463e1dac930772d7677f98b733a835b23dcb499fce02b66a"
+  }
+ }
+}
