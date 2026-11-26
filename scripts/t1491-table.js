@@ -18,8 +18,8 @@ const dv = (a, b) => (b > 0 ? a / b : null);
 const add = (A, B) => { if (B) for (const k in B) if (typeof B[k] === 'number') A[k] = (A[k] || 0) + B[k]; return A; };
 const L = [], J = {};
 const done = readDone(R), dinv = readDone(INV);
-const PLAN = [['U-1020', 'U', 1020], ['U-2024', 'U', 2024], ['W0-1020', 'W0', 1020], ['W0-2024', 'W0', 2024], ['S-1020', 'S', 1020], ['S-2024', 'S', 2024], ['F-1020', 'F', 1020], ['F-2024', 'F', 2024]];
-const ARMNAME = { U: '나무꾼 · 몫 문+일괄 풂', W0: '나무꾼 · 건너뜀 0', S: '끈 세계(끔)', F: '어부' };
+const PLAN = [['U-1020', 'U', 1020], ['U-2024', 'U', 2024], ['W0-1020', 'W0', 1020], ['W0-2024', 'W0', 2024], ['S-1020', 'S', 1020], ['S-2024', 'S', 2024], ['F-1020', 'F', 1020], ['F-2024', 'F', 2024], ['Sc-1020', 'Sc', 1020]];   // Sc = S-1020 과 같은 판 + 몸 셈(⑨ · ② 에만 쓴다)
+const ARMNAME = { U: '나무꾼 · 몫 문+일괄 풂', W0: '나무꾼 · 건너뜀 0', S: '끈 세계(끔)', F: '어부', Sc: '끈 세계(끔) · 몸 셈' };
 const T87TAG = { W0: 'wood', S: 'off', F: 'fish' };
 const runs = {};
 for (const [tag, arm, s] of PLAN) { const o = rd(path.join(R, 'runs', `obs-${tag}-${s}.json`)); if (!o && !done.has(tag)) continue; runs[tag] = { tag, arm, s, o, d: done.get(tag) || null, fp: rd(path.join(R, 'runs', `${tag}.json`)) }; }
@@ -45,7 +45,7 @@ L.push('| 판(관찰기) | 견준 기본 판 | 날 | 같다 | runHash |'); L.pus
 J.inv = [];
 const same = (a, b) => a && b && JSON.stringify(a.byseed) === JSON.stringify(b.byseed);
 const rh = (x) => x ? Object.values(x.byseed).map((y) => y.runHash).join(',') : '—';
-for (const [it, pl, note] of [['i-off30', 'inv/off-plain', ''], ['i-wood30', 'inv/wood-plain', ''], ['i-f70', 'inv/f70-plain', ''], ['i-w150', 'inv/w150-plain', ''], ['i-u150', 'inv/w150-plain', '(건너뜀 all — 달라야 한다)']]) {
+for (const [it, pl, note] of [['i-off30', 'inv/off-plain', ''], ['i-wood30', 'inv/wood-plain', ''], ['i-f70', 'inv/f70-plain', ''], ['i-w150', 'inv/w150-plain', ''], ['i-u150', 'inv/w150-plain', '(건너뜀 all — 달라야 한다)'], ['i-off30c', 'inv/off-plain', '(몸 셈 넣은 관찰기)'], ['i-wood30c', 'inv/wood-plain', '(몸 셈 넣은 관찰기)']]) {
   const a = rd(path.join(INV, 'runs', `${it}.json`)), b = rd(path.join(T87, `${pl}.json`)), s = same(a, b);
   J.inv.push({ it, pl, same: !!s, days: a && a.days, rh: rh(a), rc: dinv.get(it) ? dinv.get(it).rc : null });
   L.push(`| ${it} ${note} | T1487 ${pl} | ${a ? a.days : '—'} | ${a && b ? (s ? '같다' : '다르다') : '자료 없음'} | ${rh(a)} |`);
@@ -55,6 +55,8 @@ for (const t in runs) {
   const s = same(r.fp, b); J.inv.push({ it: t, pl: `runs/${T87TAG[r.arm]}-${r.s}`, same: !!s, days: r.fp && r.fp.days, rh: rh(r.fp) });
   L.push(`| ${t} (730날 · 건너뜀 0) | T1487 runs/${T87TAG[r.arm]}-${r.s}(T1487 관찰기 판) | ${r.fp ? r.fp.days : '—'} | ${r.fp ? (s ? '같다' : '다르다') : '자료 없음'} | ${rh(r.fp)} |`);
 }
+if (runs['Sc-1020'] && runs['S-1020']) { const a1 = runs['Sc-1020'].fp, b1 = runs['S-1020'].fp, s1 = same(a1, b1); J.inv.push({ it: 'Sc-1020', pl: 'S-1020', same: !!s1, days: a1 && a1.days, rh: rh(a1) });
+  L.push(`| Sc-1020 (730날 · 몸 셈 넣은 관찰기) | 이 카드 S-1020(몸 셈 전 관찰기) | ${a1 ? a1.days : '—'} | ${a1 && b1 ? (s1 ? '같다' : '다르다') : '자료 없음'} | ${rh(a1)} |`); }
 // ③ 깔때기
 const FUN = (A) => ({ bd: A.bd || 0, out: A.outA || 0, site: A.siteA || 0, reach: A.reachA || 0, cut: A.cut || 0, carry: A.carry || 0, gran: A.granAny || 0,
   cutU: A.cutU || 0, dG: A.dG || 0, dBG: A.dBG || 0, arr: A.arrS || 0, dlvN: A.dlvN || 0, st: A.st || 0, stD: A.stD || 0, mv: A.mv || 0, sd0: A.sd0 || 0, sd0n: A.sd0n || 0, sdmin: A.sdmin || 0, reach87: A.reach || 0, gH: A.gHit || 0, gL: A.gL || 0 });
@@ -79,7 +81,7 @@ L.push('|---|---|---|---|---|---|---|---|---|---|---|');
 J.need = {};
 const needW0 = {}; for (const r of ofArm('W0')) { const G = glob([r], 1, 730); needW0[r.s] = dv(G.cons, G.pop); }
 for (const t in runs) {
-  const r = runs[t]; if (!r.o) continue;
+  const r = runs[t]; if (!r.o || r.arm === 'Sc') continue;
   for (const [a, b] of [[1, 730], [1, 380], [381, 730]]) {
     const G = glob([r], a, b), F = FUN(aggOf([r], 'L|*|*')), need = dv(G.cons, G.pop), cut = dv(F.cutU, F.bd);
     const gr = Object.entries(G.gran).filter(([k]) => k.endsWith('G')).map(([k, v]) => `${k.replace(/G$/, '')} ${f0(v)}`).join(' · ');
@@ -183,12 +185,19 @@ for (const t of ['W0-1020', 'U-1020']) { const r = runs[t]; if (!r || !r.o) cont
 L.push(''); L.push('## ⑧ 코너 케이스');
 J.corner = {};
 for (const t in runs) {
-  const r = runs[t], o = r.o; if (!o) continue;
+  const r = runs[t], o = r.o; if (!o || r.arm === 'Sc') continue;
   const A = aggOf([r], 'L|*|*'), dup = Object.entries(o.dup || {}), gd = o.gran.deliver || {};
   const over = Object.entries(o.gran).filter(([k, v]) => v && v.u !== undefined && v.u - v.g > 1e-6).map(([k, v]) => `${k} ${f1(v.u - v.g)}/${f1(v.u)}`);
   J.corner[t] = { noTerrBD: A.noTerr || 0, tr0: A.tr0 || 0, trSeen: A.trSeen || 0, dup: o.dup, rep: o.rep, deliverOver: { n: gd.overN || 0, u: gd.overU || 0 }, over, cut: o.cut, gateTrueOther: o.skips.gateTrueOther };
   L.push(`- ${t}: 영토 없는 몸-날 ${f0(A.noTerr || 0)} · 숲 후보 0 몸-날 ${f0(A.tr0 || 0)}/${f0(A.trSeen || 0)} · 같은 날 같은 그루 두 번 벰 ${dup.length ? dup.map(([k, v]) => `${k} ${f0(v)}`).join(' · ') : '0'} · 다른 날 같은 그루 다시 벰(다시 자람) ${f0(o.rep.n)}번(평균 간격 ${f1(dv(o.rep.gapSum, o.rep.n))}날) · 곳간 못 든 양(넘침 · 맥락별 못 듦/낸 양) ${over.join(' · ') || '0'} · 벰 맥락 ${Object.entries(o.cut).map(([k, v]) => `${k} ${f0(v.n)}번 ${f0(v.u)}`).join(' · ') || '0'}`);
 }
+// ⑨ 몸 셈(census · 하루 첫머리 한 번 · 살아 있는 나무꾼 · 어부 몸)
+L.push(''); L.push('## ⑨ 몸 셈 — 하루 첫머리에 나무꾼 · 어부 몸이 활성 칸에 있나 · 늘 걷기(T316)인가 · 결정 · 걸음 건너뜀(얼음) 조건인가');
+L.push('| 판 | 일 | 몸-날(셈) | 활성 칸 % | 늘 걷기 % | 얼음(활성 아님 · 늘 걷기 아님 · 캐나다 아님) % | 그날 틱 본 몸-날 % | 얼음인데 틱 본 % | 캐나다 마을 % |'); L.push('|---|---|---|---|---|---|---|---|---|');
+J.census = {};
+for (const t in runs) { const o = runs[t].o; if (!o || !o.cen) continue; for (const j of ['L', 'F']) { const c = o.cen[j + '|*']; if (!c || !c.nd) continue; J.census[`${t}|${j}`] = { all: c, bins: Object.fromEntries(Object.entries(o.cen).filter(([k]) => k.startsWith(j + '|') && k !== j + '|*')) };
+  L.push(`| ${t} | ${j === 'L' ? '나무꾼' : '어부'} | ${f0(c.nd)} | ${P(c.act, c.nd)} | ${P(c.wa, c.nd)} | ${P(c.frozen, c.nd)} | ${P(c.seen, c.nd)} | ${P(c.seenFrozen, c.frozen)} | ${P(c.cv, c.nd)} |`); } }
+if (!Object.keys(J.census).length) L.push('| — | — | 계측 없음(이 판들은 몸 셈 넣기 전 관찰기) | | | | | | |');
 fs.mkdirSync(OUTDIR, { recursive: true });
 fs.writeFileSync(path.join(OUTDIR, 'table.txt'), L.join('\n') + '\n');
 fs.writeFileSync(path.join(OUTDIR, 'table.json'), JSON.stringify(J, null, 1));
