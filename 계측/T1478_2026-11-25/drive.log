@@ -163,3 +163,6 @@
 2026-11-26T12:54:41 S5-test-slot-keep.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
 2026-11-26T13:23:49 S5-test-t1034-caravan-keep.js 끝 · rc=1 · 벽 1748초
 2026-11-26T13:23:53 S5-test-t1034-caravan-keep.js 찌꺼기 · TMPDIR 0개 0MB · /tmp 새 0개 0MB → 지움
+2026-11-26T14:24:09 V1-test-t1322-verify-night.js 끝 · rc=1 · 벽 3616초
+2026-11-26T14:24:12 V1-test-t1322-verify-night.js 찌꺼기 · TMPDIR 12개 99MB · /tmp 새 0개 0MB → 지움
+2026-11-26T14:24:12 혼자 다 끝남
