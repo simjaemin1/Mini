@@ -73,16 +73,19 @@ for (const arm of ['U', 'W0', 'S', 'F']) for (const s of [1020, 2024, 0]) {
 // 필요 · 버팀
 L.push(''); L.push('### 한 몸-날 벤 양 ↔ 사람당 하루 땔감 필요');
 L.push('필요 = 곳간 일일 땔감 소비(`_consDay.wood`) ÷ 사람(T1487 과 같은 자) — 소비는 곳간 통나무에 묶이므로 **아래 끝(하한)** 이다 · 몫 D = `woodShareD`(몫 문 분자) ÷ 사람 · 버팀 = 한 몸-날 벤 양 ÷ 필요.');
-L.push('| 판 | 날 | 사람-날 | 필요(소비/사람) | 몫 D/사람 | 나무꾼 몸-날 | 한 몸-날 벤 양 | 버팀 | 곳간 통나무 마을 평균 | 땔감 모자란 마을-날 % | 곳간 든 양(맥락별 · 판 합) |');
+L.push('U 판은 곳간 통나무가 0 이라 소비도 0 으로 떨어진다(필요가 아니라 못 쓴 것) ⇒ U 의 버팀은 **같은 시드 W0 판 730날 필요**로 나눈다(괄호 = 제 판 소비로 나눈 값 · 참고만).');
+L.push('| 판 | 날 | 사람-날 | 필요(소비/사람) | 몫 D/사람 | 나무꾼 몸-날 | 한 몸-날 벤 양 | 버팀(W0 필요) | 곳간 통나무 마을 평균 | 땔감 모자란 마을-날 % | 곳간 든 양(맥락별 · 판 합) |');
 L.push('|---|---|---|---|---|---|---|---|---|---|---|');
 J.need = {};
+const needW0 = {}; for (const r of ofArm('W0')) { const G = glob([r], 1, 730); needW0[r.s] = dv(G.cons, G.pop); }
 for (const t in runs) {
   const r = runs[t]; if (!r.o) continue;
   for (const [a, b] of [[1, 730], [1, 380], [381, 730]]) {
     const G = glob([r], a, b), F = FUN(aggOf([r], 'L|*|*')), need = dv(G.cons, G.pop), cut = dv(F.cutU, F.bd);
     const gr = Object.entries(G.gran).filter(([k]) => k.endsWith('G')).map(([k, v]) => `${k.replace(/G$/, '')} ${f0(v)}`).join(' · ');
-    J.need[`${t}|${a}-${b}`] = { need, Dpp: dv(G.D, G.pop), cut, hold: need ? (cut || 0) / need : null, woodSt: dv(G.woodSt, G.vd), short: pc(G.fuelShort, G.vd), gran: G.gran };
-    L.push(`| ${t} | ${a}–${b} | ${f0(G.pop)} | ${f3(need)} | ${f3(dv(G.D, G.pop))} | ${a === 1 && b === 730 ? f0(F.bd) : '(판 전체)'} | ${a === 1 && b === 730 ? f3(cut) : ''} | ${a === 1 && b === 730 ? f2(need ? (cut || 0) / need : null) : ''} | ${f1(dv(G.woodSt, G.vd))} | ${P(G.fuelShort, G.vd)} | ${gr || '0'} |`);
+    const nW = needW0[r.s], holdW = nW ? (cut || 0) / nW : null;
+    J.need[`${t}|${a}-${b}`] = { need, needW0: nW, Dpp: dv(G.D, G.pop), cut, hold: need ? (cut || 0) / need : null, holdW0: holdW, woodSt: dv(G.woodSt, G.vd), short: pc(G.fuelShort, G.vd), gran: G.gran };
+    L.push(`| ${t} | ${a}–${b} | ${f0(G.pop)} | ${f3(need)} | ${f3(dv(G.D, G.pop))} | ${a === 1 && b === 730 ? f0(F.bd) : '(판 전체)'} | ${a === 1 && b === 730 ? f3(cut) : ''} | ${a === 1 && b === 730 ? `${f2(holdW)} (${f2(need ? (cut || 0) / need : null)})` : ''} | ${f1(dv(G.woodSt, G.vd))} | ${P(G.fuelShort, G.vd)} | ${gr || '0'} |`);
   }
 }
 // 판 경과(100날) — U ↔ W0
