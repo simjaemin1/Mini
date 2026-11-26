@@ -46,7 +46,8 @@ const SNIP_Z = `
   var c4 = npcStep; npcStep = function(npc, dt, now){ var r = c4.apply(this, arguments); try { if (npc && npc.simVillageId && (npc.simJob === 'lumberjack' || npc.simJob === 'fisher')) H.step(npc, dt, now); } catch (e) { H.err(e); } return r; };
   var c3 = _npcGatherResource; _npcGatherResource = function(npc, r){ var w = (npc && npc.inventory && npc.inventory.wood) || 0; var x = c3.apply(this, arguments); try { H.gather(npc, r, w); } catch (e) { H.err(e); } return x; };
   H.zint = { rock: isRockTileLocal, water: isWaterTileLocal, bridge: isBridgeTileLocal, ditch: isDitchTileLocal, terr: isTerrainBlockedLocal, wall: isBlockedByWall,
-    walk: _walk, W: ZONE.zoneWidth, Hh: ZONE.zoneHeight, SZ: BUILDING_SIZE, R: _pfRadius(true) };
+    walk: _walk, W: ZONE.zoneWidth, Hh: ZONE.zoneHeight, SZ: BUILDING_SIZE, R: _pfRadius(true),
+    players: players, act: function(x, y){ return isPositionActive(x, y); }, wa: function(n){ return _t316WalkAlways(n); } };
 } catch (e) { H.err(e); } })();
 `;
 const _compile = Module.prototype._compile;
@@ -448,8 +449,20 @@ function flushBodies(day) {
   }
 }
 const dbgSeen = new WeakSet();
+// ── 존 몸 셈(읽기만 · 그날 끝) — 존에 선 나무꾼 · 어부 몸 수 · 활성 칸 위 · 늘 걷기(_t316WalkAlways) · 그날 생활 틱 또는 걸음 틱을 받은 몸
+function census(day) {
+  const Z = H.zint; if (!Z || !Z.players) return; const C = rec.cen || (rec.cen = {}), bin = Math.floor((day - 1) / 50);
+  for (const npc of Z.players.values()) {
+    if (!npc || !npc.simVillageId || npc.hp <= 0) continue; const j = npc.simJob === 'lumberjack' ? 'L' : npc.simJob === 'fisher' ? 'F' : null; if (!j) continue;
+    let act = 0, wa = 0; try { act = Z.act(npc.x, npc.y) ? 1 : 0; } catch (e) {} try { wa = Z.wa(npc) ? 1 : 0; } catch (e) {}
+    const b = bodies.get(npc.pid), seen = b && (b.tk > 0 || b.st > 0) ? 1 : 0;
+    for (const k of [j + '|*', j + '|' + bin]) { const c = C[k] || (C[k] = { nd: 0, act: 0, wa: 0, frozen: 0, seen: 0, seenFrozen: 0, cv: 0 });
+      c.nd++; c.act += act; c.wa += wa; if (!act && !wa && !npc.canadiaVillage) { c.frozen++; c.seenFrozen += seen; } c.seen += seen; if (npc.canadiaVillage) c.cv++; }
+  }
+}
 function daily(day) {
   let win = false; try { win = CAL.seasonOf(day) === 'winter'; } catch (e) {} winNow = win;
+  try { census(day); } catch (e) { H.err(e); }
   flushBodies(day);
   const G = { day, win: win ? 1 : 0, pop: 0, consWood: 0, D: 0, lj: 0, fi: 0, woodSt: 0, fuelShort: 0, vd: 0, gran: {}, dbgCut: 0, dbgStop: 0, dbgNoloot: 0, dbgOn: 0 };
   for (const vil of vils()) {
