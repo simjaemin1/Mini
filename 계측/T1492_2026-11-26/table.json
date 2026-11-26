@@ -3,54 +3,59 @@
   "off-1020": {
    "kind": "long",
    "target": 800,
-   "reached": 100,
+   "reached": 400,
    "status": "덜 돎",
    "sec": null,
-   "dead": []
+   "dead": [
+    "off-1020 마디 죽음(코드 3 · ck=0) 2026-11-26T20:16:22Z — 다시",
+    "off-1020 마디 죽음(코드 3 · ck=400) 2026-11-26T20:19:09Z — 다시",
+    "off-1020 마디 죽음(코드 3 · ck=400) 2026-11-26T20:22:01Z — 다시",
+    "off-1020 마디 죽음(코드 3 · ck=400) 2026-11-26T20:24:51Z — 다시",
+    "off-1020 같은 마디(ck=400) 세 번 죽음 — 멈춤 2026-11-26T20:24:51Z",
+    "off-1020 · terrseq-1020 마디 400→500 SIGBUS(봇 관찰기 DB 읽기가 better-sqlite3 — 존 node:sqlite 와 다른 SQLite 사본 · -shm 다시 세움 · gdb walIndexAppend) — 관찰기를 node:sqlite 로 고치고 ck=400 에서 다시 2026-11-26T20:36:44Z"
+   ]
   },
   "terrseq-1020": {
    "kind": "long",
    "target": 800,
-   "reached": 100,
+   "reached": 400,
    "status": "덜 돎",
    "sec": null,
-   "dead": []
-  },
-  "ss-react-1020": {
-   "kind": "short",
-   "target": 60,
-   "reached": 60,
-   "status": "끝",
-   "sec": 1696,
-   "dead": []
-  },
-  "jp-off-1020": {
-   "kind": "short",
-   "target": 60,
-   "reached": 0,
-   "status": "안 띄움",
-   "sec": null,
-   "dead": []
-  },
-  "jp-nobuild-1020": {
-   "kind": "short",
-   "target": 60,
-   "reached": 0,
-   "status": "안 띄움",
-   "sec": null,
-   "dead": []
+   "dead": [
+    "terrseq-1020 마디 죽음(코드 3 · ck=0) 2026-11-26T20:16:33Z — 다시",
+    "terrseq-1020 마디 죽음(코드 3 · ck=400) 2026-11-26T20:19:20Z — 다시",
+    "terrseq-1020 마디 죽음(코드 3 · ck=400) 2026-11-26T20:22:10Z — 다시",
+    "terrseq-1020 마디 죽음(코드 3 · ck=400) 2026-11-26T20:25:00Z — 다시",
+    "terrseq-1020 같은 마디(ck=400) 세 번 죽음 — 멈춤 2026-11-26T20:25:00Z"
+   ]
   },
   "all4-1020": {
    "kind": "long",
    "target": 800,
-   "reached": 0,
-   "status": "안 띄움",
+   "reached": 430,
+   "status": "덜 돎",
+   "sec": null,
+   "dead": []
+  },
+  "nd-u0-1020": {
+   "kind": "long",
+   "target": 100,
+   "reached": 60,
+   "status": "덜 돎",
+   "sec": null,
+   "dead": []
+  },
+  "nd-u1-1020": {
+   "kind": "long",
+   "target": 100,
+   "reached": 60,
+   "status": "덜 돎",
    "sec": null,
    "dead": []
   },
   "off-7": {
    "kind": "long",
-   "target": 800,
+   "target": 300,
    "reached": 0,
    "status": "안 띄움",
    "sec": null,
@@ -58,71 +63,7 @@
   },
   "terrseq-7": {
    "kind": "long",
-   "target": 800,
-   "reached": 0,
-   "status": "안 띄움",
-   "sec": null,
-   "dead": []
-  },
-  "off-42": {
-   "kind": "long",
-   "target": 800,
-   "reached": 0,
-   "status": "안 띄움",
-   "sec": null,
-   "dead": []
-  },
-  "terrseq-42": {
-   "kind": "long",
-   "target": 800,
-   "reached": 0,
-   "status": "안 띄움",
-   "sec": null,
-   "dead": []
-  },
-  "nd-u0-1020": {
-   "kind": "long",
-   "target": 200,
-   "reached": 0,
-   "status": "안 띄움",
-   "sec": null,
-   "dead": []
-  },
-  "nd-u1-1020": {
-   "kind": "long",
-   "target": 200,
-   "reached": 0,
-   "status": "안 띄움",
-   "sec": null,
-   "dead": []
-  },
-  "nd-u0-7": {
-   "kind": "long",
-   "target": 200,
-   "reached": 0,
-   "status": "안 띄움",
-   "sec": null,
-   "dead": []
-  },
-  "nd-u1-7": {
-   "kind": "long",
-   "target": 200,
-   "reached": 0,
-   "status": "안 띄움",
-   "sec": null,
-   "dead": []
-  },
-  "nd-u0-42": {
-   "kind": "long",
-   "target": 200,
-   "reached": 0,
-   "status": "안 띄움",
-   "sec": null,
-   "dead": []
-  },
-  "nd-u1-42": {
-   "kind": "long",
-   "target": 200,
+   "target": 300,
    "reached": 0,
    "status": "안 띄움",
    "sec": null,
@@ -130,7 +71,7 @@
   },
   "npcdeath-1020": {
    "kind": "long",
-   "target": 400,
+   "target": 200,
    "reached": 0,
    "status": "안 띄움",
    "sec": null,
@@ -138,7 +79,7 @@
   },
   "react-1020": {
    "kind": "long",
-   "target": 400,
+   "target": 200,
    "reached": 0,
    "status": "안 띄움",
    "sec": null,
@@ -146,7 +87,55 @@
   },
   "nobuild-1020": {
    "kind": "long",
-   "target": 400,
+   "target": 200,
+   "reached": 0,
+   "status": "안 띄움",
+   "sec": null,
+   "dead": []
+  },
+  "off-42": {
+   "kind": "long",
+   "target": 300,
+   "reached": 0,
+   "status": "안 띄움",
+   "sec": null,
+   "dead": []
+  },
+  "terrseq-42": {
+   "kind": "long",
+   "target": 300,
+   "reached": 0,
+   "status": "안 띄움",
+   "sec": null,
+   "dead": []
+  },
+  "nd-u0-7": {
+   "kind": "long",
+   "target": 100,
+   "reached": 0,
+   "status": "안 띄움",
+   "sec": null,
+   "dead": []
+  },
+  "nd-u1-7": {
+   "kind": "long",
+   "target": 100,
+   "reached": 0,
+   "status": "안 띄움",
+   "sec": null,
+   "dead": []
+  },
+  "nd-u0-42": {
+   "kind": "long",
+   "target": 100,
+   "reached": 0,
+   "status": "안 띄움",
+   "sec": null,
+   "dead": []
+  },
+  "nd-u1-42": {
+   "kind": "long",
+   "target": 100,
    "reached": 0,
    "status": "안 띄움",
    "sec": null,
@@ -163,9 +152,9 @@
   "main-off-1020": {
    "kind": "short",
    "target": 60,
-   "reached": 40,
-   "status": "덜 돎",
-   "sec": null,
+   "reached": 60,
+   "status": "끝",
+   "sec": 1437,
    "dead": []
   },
   "prof-off-1020": {
@@ -182,6 +171,30 @@
    "reached": 22,
    "status": "끝",
    "sec": 572,
+   "dead": []
+  },
+  "ss-react-1020": {
+   "kind": "short",
+   "target": 60,
+   "reached": 60,
+   "status": "끝",
+   "sec": 1696,
+   "dead": []
+  },
+  "jp-off-1020": {
+   "kind": "short",
+   "target": 60,
+   "reached": 60,
+   "status": "끝(판 자 검사 코드 1 — 마을 40곳 넘음 검사 · 닛폰 36곳)",
+   "sec": 2081,
+   "dead": []
+  },
+  "jp-nobuild-1020": {
+   "kind": "short",
+   "target": 60,
+   "reached": 60,
+   "status": "끝(판 자 검사 코드 1 — 마을 40곳 넘음 검사 · 닛폰 36곳)",
+   "sec": 1430,
    "dead": []
   }
  },
@@ -201,6 +214,48 @@
      "popOff": 1743,
      "popOn": 1743,
      "ratio": 0.22059927606378052
+    },
+    {
+     "d": 200,
+     "vbOff": 393188,
+     "vbOn": 87098,
+     "dbOff": 176.07154846191406,
+     "dbOn": 159.93868255615234,
+     "terrOff": 307950,
+     "terrOn": 307950,
+     "spdOff": 26.91717171717172,
+     "spdOn": 27.195959595959597,
+     "popOff": 2579,
+     "popOn": 2579,
+     "ratio": 0.22151744203790552
+    },
+    {
+     "d": 300,
+     "vbOff": 524640,
+     "vbOn": 114022,
+     "dbOff": 211.76934814453125,
+     "dbOn": 190.17411041259766,
+     "terrOff": 413490,
+     "terrOn": 413490,
+     "spdOff": 26.134343434343435,
+     "spdOn": 25.949494949494948,
+     "popOff": 3475,
+     "popOn": 3475,
+     "ratio": 0.21733379078987497
+    },
+    {
+     "d": 400,
+     "vbOff": 623917,
+     "vbOn": 134309,
+     "dbOff": 235.12860870361328,
+     "dbOn": 210.20073699951172,
+     "terrOff": 491790,
+     "terrOn": 491790,
+     "spdOff": 52.56565656565657,
+     "spdOn": 52.64949494949495,
+     "popOff": 4165,
+     "popOn": 4165,
+     "ratio": 0.2152674153773659
     }
    ]
   },
@@ -208,9 +263,9 @@
    {
     "s": "1020",
     "rg": null,
-    "minD": 100,
+    "minD": 400,
     "below": null,
-    "lastD": 100
+    "lastD": 400
    }
   ]
  },
@@ -243,10 +298,22 @@
   "knobSpd": {
    "off": [
     26.044680851063827,
-    null
+    35.20572390572391
    ],
    "terrseq": [
     26.02659574468085,
+    35.26498316498318
+   ],
+   "all4": [
+    16.376595744680852,
+    21.808895705521476
+   ],
+   "jp-off": [
+    34.803703703703704,
+    null
+   ],
+   "jp-nobuild": [
+    23.820370370370373,
     null
    ]
   },
@@ -289,11 +356,375 @@
   "total": 441516
  },
  "item4": {
-  "runs": [],
+  "runs": [
+   {
+    "n": "nd-u0-1020",
+    "d": 60,
+    "pop": 1590,
+    "died": 0,
+    "wild": 0,
+    "other": 0,
+    "ticks": 0,
+    "hits": 0,
+    "maxLab": 0,
+    "maxZone": 449,
+    "maxAg": 0
+   },
+   {
+    "n": "nd-u1-1020",
+    "d": 60,
+    "pop": 1590,
+    "died": 0,
+    "wild": 0,
+    "other": 0,
+    "ticks": 0,
+    "hits": 0,
+    "maxLab": 0,
+    "maxZone": 449,
+    "maxAg": 0
+   }
+  ],
   "beastHits": 0,
   "why4": "야생 층이 한 틱도 안 돎(활성 청크 0 = 보는 사람 0 · 사냥판 T1331·T1393 끔 기본 → BEAST_UNSEEN 이 붙는 판이 없음)"
  },
- "item5": [],
+ "item5": [
+  {
+   "d": 100,
+   "k": "pop",
+   "off": 1743,
+   "all": 1805,
+   "eff": [
+    0
+   ],
+   "sum": 0,
+   "overlap": 62,
+   "full": true
+  },
+  {
+   "d": 100,
+   "k": "dead",
+   "off": 3,
+   "all": 3,
+   "eff": [
+    0
+   ],
+   "sum": 0,
+   "overlap": 0,
+   "full": true
+  },
+  {
+   "d": 100,
+   "k": "fd",
+   "off": 0,
+   "all": 0,
+   "eff": [
+    0
+   ],
+   "sum": 0,
+   "overlap": 0,
+   "full": true
+  },
+  {
+   "d": 100,
+   "k": "empty",
+   "off": 0,
+   "all": 0,
+   "eff": [
+    0
+   ],
+   "sum": 0,
+   "overlap": 0,
+   "full": true
+  },
+  {
+   "d": 100,
+   "k": "vb",
+   "off": 313011,
+   "all": 70682,
+   "eff": [
+    -243961
+   ],
+   "sum": -243961,
+   "overlap": 1632,
+   "full": true
+  },
+  {
+   "d": 100,
+   "k": "dbmb",
+   "off": 84.02935791015625,
+   "all": 72.79498291015625,
+   "eff": [
+    -14.5234375
+   ],
+   "sum": -14.5234375,
+   "overlap": 3.2890625,
+   "full": true
+  },
+  {
+   "d": 100,
+   "k": "spd",
+   "off": 26.044680851063827,
+   "all": 16.376595744680852,
+   "eff": [
+    -0.018085106382976335
+   ],
+   "sum": -0.018085106382976335,
+   "overlap": -9.649999999999999,
+   "full": true
+  },
+  {
+   "d": 200,
+   "k": "pop",
+   "off": 2579,
+   "all": 2818,
+   "eff": [
+    0
+   ],
+   "sum": 0,
+   "overlap": 239,
+   "full": true
+  },
+  {
+   "d": 200,
+   "k": "dead",
+   "off": 15,
+   "all": 15,
+   "eff": [
+    0
+   ],
+   "sum": 0,
+   "overlap": 0,
+   "full": true
+  },
+  {
+   "d": 200,
+   "k": "fd",
+   "off": 0,
+   "all": 0,
+   "eff": [
+    0
+   ],
+   "sum": 0,
+   "overlap": 0,
+   "full": true
+  },
+  {
+   "d": 200,
+   "k": "empty",
+   "off": 0,
+   "all": 0,
+   "eff": [
+    0
+   ],
+   "sum": 0,
+   "overlap": 0,
+   "full": true
+  },
+  {
+   "d": 200,
+   "k": "vb",
+   "off": 393188,
+   "all": 92863,
+   "eff": [
+    -306090
+   ],
+   "sum": -306090,
+   "overlap": 5765,
+   "full": true
+  },
+  {
+   "d": 200,
+   "k": "dbmb",
+   "off": 176.07154846191406,
+   "all": 178.81338500976562,
+   "eff": [
+    -16.13286590576172
+   ],
+   "sum": -16.13286590576172,
+   "overlap": 18.87470245361328,
+   "full": true
+  },
+  {
+   "d": 200,
+   "k": "spd",
+   "off": 26.91717171717172,
+   "all": 16.009090909090908,
+   "eff": [
+    0.2787878787878775
+   ],
+   "sum": 0.2787878787878775,
+   "overlap": -11.186868686868689,
+   "full": true
+  },
+  {
+   "d": 300,
+   "k": "pop",
+   "off": 3475,
+   "all": 3433,
+   "eff": [
+    0
+   ],
+   "sum": 0,
+   "overlap": -42,
+   "full": true
+  },
+  {
+   "d": 300,
+   "k": "dead",
+   "off": 146,
+   "all": 138,
+   "eff": [
+    0
+   ],
+   "sum": 0,
+   "overlap": -8,
+   "full": true
+  },
+  {
+   "d": 300,
+   "k": "fd",
+   "off": 0,
+   "all": 0,
+   "eff": [
+    0
+   ],
+   "sum": 0,
+   "overlap": 0,
+   "full": true
+  },
+  {
+   "d": 300,
+   "k": "empty",
+   "off": 0,
+   "all": 0,
+   "eff": [
+    0
+   ],
+   "sum": 0,
+   "overlap": 0,
+   "full": true
+  },
+  {
+   "d": 300,
+   "k": "vb",
+   "off": 524640,
+   "all": 114651,
+   "eff": [
+    -410618
+   ],
+   "sum": -410618,
+   "overlap": 629,
+   "full": true
+  },
+  {
+   "d": 300,
+   "k": "dbmb",
+   "off": 211.76934814453125,
+   "all": 205.94739532470703,
+   "eff": [
+    -21.595237731933594
+   ],
+   "sum": -21.595237731933594,
+   "overlap": 15.773284912109375,
+   "full": true
+  },
+  {
+   "d": 300,
+   "k": "spd",
+   "off": 26.134343434343435,
+   "all": 16.374747474747473,
+   "eff": [
+    -0.18484848484848726
+   ],
+   "sum": -0.18484848484848726,
+   "overlap": -9.574747474747475,
+   "full": true
+  },
+  {
+   "d": 400,
+   "k": "pop",
+   "off": 4165,
+   "all": 3820,
+   "eff": [
+    0
+   ],
+   "sum": 0,
+   "overlap": -345,
+   "full": true
+  },
+  {
+   "d": 400,
+   "k": "dead",
+   "off": 342,
+   "all": 316,
+   "eff": [
+    0
+   ],
+   "sum": 0,
+   "overlap": -26,
+   "full": true
+  },
+  {
+   "d": 400,
+   "k": "fd",
+   "off": 0,
+   "all": 0,
+   "eff": [
+    0
+   ],
+   "sum": 0,
+   "overlap": 0,
+   "full": true
+  },
+  {
+   "d": 400,
+   "k": "empty",
+   "off": 0,
+   "all": 0,
+   "eff": [
+    0
+   ],
+   "sum": 0,
+   "overlap": 0,
+   "full": true
+  },
+  {
+   "d": 400,
+   "k": "vb",
+   "off": 623917,
+   "all": 127351,
+   "eff": [
+    -489608
+   ],
+   "sum": -489608,
+   "overlap": -6958,
+   "full": true
+  },
+  {
+   "d": 400,
+   "k": "dbmb",
+   "off": 235.12860870361328,
+   "all": 230.55618286132812,
+   "eff": [
+    -24.927871704101562
+   ],
+   "sum": -24.927871704101562,
+   "overlap": 20.355445861816406,
+   "full": true
+  },
+  {
+   "d": 400,
+   "k": "spd",
+   "off": 52.56565656565657,
+   "all": 27.591919191919192,
+   "eff": [
+    0.08383838383838338
+   ],
+   "sum": 0.08383838383838338,
+   "overlap": -25.05757575757576,
+   "full": true
+  }
+ ],
  "fp": {
   "cnt-off-1020 ~ main": {
    "tot": 23,
@@ -310,15 +741,15 @@
    "ok": true
   },
   "main-off-1020 ~ T1486": {
-   "tot": 41,
-   "same": 41,
+   "tot": 61,
+   "same": 61,
    "firstDiff": null,
    "vbSame": true,
    "ok": true
   },
   "off-1020 ~ main": {
-   "tot": 41,
-   "same": 41,
+   "tot": 61,
+   "same": 61,
    "firstDiff": null,
    "vbSame": true,
    "ok": true

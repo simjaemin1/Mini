@@ -208,7 +208,9 @@ function recon(st, H, d) {
 let DBR = null;
 function dbStat(d) {
   try {
-    if (!DBR) { const Db = require(require.resolve('better-sqlite3', { paths: [ROOT] })); DBR = new Db(process.env.DB_PATH, { readonly: true }); }
+    //   ★[T1492] 존과 **같은 SQLite 사본**(`node:sqlite`)으로 읽는다 — T1486 처럼 `better-sqlite3`(다른 사본)로 열면 한 프로세스에 SQLite 가 둘이라
+    //     WAL 공유 메모리(-shm)를 서로 모른 채 다시 세운다 → 존 쪽 매핑이 잘린 파일을 밟아 SIGBUS(긴 판 날 400 이은 마디에서 재현 · gdb `walIndexAppend` · 보고 T1492 어긋난 것).
+    if (!DBR) { const { DatabaseSync } = require('node:sqlite'); DBR = new DatabaseSync(process.env.DB_PATH, { readOnly: true }); }
     const n = (q) => DBR.prepare(q).get().n;
     const f = (p) => { try { return fs.statSync(p).size; } catch (e) { return 0; } };
     const o = { d, vb: n('SELECT COUNT(*) n FROM village_buildings'), terr: n("SELECT COUNT(*) n FROM village_buildings WHERE type='terr'"), seq: n("SELECT COUNT(*) n FROM village_buildings WHERE type='terrseq'"), bld: n('SELECT COUNT(*) n FROM buildings'), claims: n('SELECT COUNT(*) n FROM claims'),

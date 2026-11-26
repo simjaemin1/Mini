@@ -57,8 +57,9 @@ const allNames = [...new Set(jobs.map((j) => j.name).concat(Object.keys(RUN)))];
 let deadRuns = 0, cutRuns = 0;
 for (const n of allNames) {
   const r = RUN[n], j = jobs.find((x) => x.name === n) || {}, dl = deadOf(n), d = done[n];
-  const st = d ? (d.rc === 0 ? '끝' : `코드 ${d.rc}`) : (r ? '덜 돎' : '안 띄움');
-  if (!d || d.rc !== 0) cutRuns++;
+  const full = r && j.days && r.lastD >= j.days;
+  const st = d ? (d.rc === 0 ? '끝' : full ? `끝(판 자 검사 코드 ${d.rc}${j.zone === 'nippon' ? ' — 마을 40곳 넘음 검사 · 닛폰 36곳' : ''})` : `코드 ${d.rc}`) : (r ? '덜 돎' : '안 띄움');
+  if (!d || (d.rc !== 0 && !full)) cutRuns++;
   if (dl.length) deadRuns++;
   const segN = r && r.prog ? r.prog.segs.length : (r ? 1 : 0);
   W(`| ${n} | ${j.kind || '—'} | ${j.days || '—'} → ${r ? r.lastD : 0} | ${j.acts || '—'} | ${j.zone && j.zone !== '-' ? j.zone : '한반도'} | ${j.envs && j.envs !== '-' ? j.envs.replace(/,/g, ' ') : '(없음)'} | ${st} | ${d ? f(d.sec / 3600, 1) + ' h' : '—'} | ${segN} | ${dl.length ? dl.length + ': ' + dl.map((l) => l.split(' ').slice(1).join(' ')).join(' / ') : '0'} |`);
