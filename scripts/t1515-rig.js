@@ -1,26 +1,26 @@
 #!/usr/bin/env node
 'use strict';
-// (@regress 없음 — 러너 밖 · 판 도구 · T1495 · 제품 코드 · 있던 스크립트 손 0)
+// (@regress 없음 — 러너 밖 · 판 도구 · T1515 · 제품 코드 · 있던 스크립트 손 0)
 // =============================================================================
-// scripts/t1495-rig.js — 실제 하루(24분) 실시계 판: 중앙 + 존(하나 또는 둘) + ws 봇(브라우저 없는 손님) [T1495 · S14]
+// scripts/t1515-rig.js — 실제 하루(24분) 실시계 판: 중앙 + 존(하나 또는 둘) + ws 봇(브라우저 없는 손님) [T1515 · S14]
 //   `t1489-rig.js` 를 본떠 새로 썼다(그 파일은 그대로). 클라(`41-h-bubble.js` · `30-n-net.js`)가 하는 말만 흉내 낸다.
-//   모드(env T1495_MODE):
-//     boot  — 부팅을 날 경계(그 존의 **꼬리 마감** = 가장 서쪽 마을의 현지 자정 · `_t731Due0`) X초 앞에 맞춘다(T1495_OFF 초).
-//             "부팅" = 존이 마을 시뮬을 세운 순간(로그 `마을 시뮬 준비`). 맞추는 법: 벽시계 원점 밀기(`t1495-shift.js` · K = T1495_SHIFT_MS) —
+//   모드(env T1515_MODE):
+//     boot  — 부팅을 날 경계(그 존의 **꼬리 마감** = 가장 서쪽 마을의 현지 자정 · `_t731Due0`) X초 앞에 맞춘다(T1515_OFF 초).
+//             "부팅" = 존이 마을 시뮬을 세운 순간(로그 `마을 시뮬 준비`). 맞추는 법: 벽시계 원점 밀기(`t1515-shift.js` · K = T1515_SHIFT_MS) —
 //             K = (고른 경계 − X) − (지금 + 예상 부팅 길이). 예상 부팅 길이는 같은 세계 · 같은 팔의 앞 판(없으면 정찰 판)의 가운데.
-//             T1495_NOSHIFT=1 이면 밀지 않고 실제 경계를 기다려 띄운다(밀기 무변 대조).
+//             T1515_NOSHIFT=1 이면 밀지 않고 실제 경계를 기다려 띄운다(밀기 무변 대조).
 //             봇 여덟: 걷기 셋(깨끗한 가로 길을 오간다 · 틱마다 자리 · ackSeq) + 요청 다섯(`/인출` · 기부 · 거래 · 채팅 · 마을 화면 번갈아) · 모두 250ms 핑.
-//             첫 꼬리 마감이 끝나고 T1495_AFTER(20)초 뒤 끝. 세계가 정찰 기록이 없으면 정찰 판(밀기 0 · 봇 0 · 마을 · 경계 · 부팅 길이만 적고 끝).
-//     cross — 중앙 + 한반도 + 닛폰. 손님 한 명씩 T1495_TRIALS 판: 한반도 마을 H 앞(클라 규칙대로 brief) → 경계 길 서쪽 → 동쪽으로 걸어 `handoff` →
+//             첫 꼬리 마감이 끝나고 T1515_AFTER(20)초 뒤 끝. 세계가 정찰 기록이 없으면 정찰 판(밀기 0 · 봇 0 · 마을 · 경계 · 부팅 길이만 적고 끝).
+//     cross — 중앙 + 한반도 + 닛폰. 손님 한 명씩 T1515_TRIALS 판: 한반도 마을 H 앞(클라 규칙대로 brief) → 경계 길 서쪽 → 동쪽으로 걸어 `handoff` →
 //             닛폰에 handoff_token 으로 붙음 → 곧바로 닛폰 마을 N 곳간 앞 → 클라 규칙(700ms 근접 틱 · `evBriefedDay` vid 열쇠 · 비움 없음) → `/인출`.
 //             짝수 판 N = H 와 같은 번호(vid)의 닛폰 마을(클라 몫이 설 수 있는 꼴) · 홀수 판 = 오늘 brief 한 번호가 아닌 마을(대조).
-//             T1495_TAIL_S = 존이 선 뒤 한반도 꼬리 마감이 오는 초(음수 = 이미 지남 → 판 동안 마감 없음).
-//     adj   — 한반도 51마을 · 가장 가까운 두 마을 A · B. 봇 T1495_PAR(4)이 T1495_TRIALS 판을 나눠: B 곳간 앞(brief) → A 문에서 400px 떨어진 깨끗한 자리 →
-//             A 문까지 **걸어서**(근접 틱이 A brief 를 보낸다) → 닿고 0.3 ~ 0.9초 뒤 `/인출`. T1495_TAIL_S 로 첫 꼬리 마감이 판 가운데 오게 맞출 수 있다.
-//   서버 쪽 귀: `t1489-probe.js`(그대로 · T1489_PROF=0 — 실시계 판에 1ms 샘플러는 안 건다) · T1495_PROBE=0 이면 안 건다(귀 무변 대조).
+//             T1515_TAIL_S = 존이 선 뒤 한반도 꼬리 마감이 오는 초(음수 = 이미 지남 → 판 동안 마감 없음).
+//     adj   — 한반도 51마을 · 가장 가까운 두 마을 A · B. 봇 T1515_PAR(4)이 T1515_TRIALS 판을 나눠: B 곳간 앞(brief) → A 문에서 400px 떨어진 깨끗한 자리 →
+//             A 문까지 **걸어서**(근접 틱이 A brief 를 보낸다) → 닿고 0.3 ~ 0.9초 뒤 `/인출`. T1515_TAIL_S 로 첫 꼬리 마감이 판 가운데 오게 맞출 수 있다.
+//   서버 쪽 귀: `t1489-probe.js`(그대로 · T1489_PROF=0 — 실시계 판에 1ms 샘플러는 안 건다) · T1515_PROBE=0 이면 안 건다(귀 무변 대조).
 //   `/perf`(제품 안 문)를 1초마다 읽어 배경 거리 셈(T968 `t968.ready` 등)과 꼬리 마감 기록(`econTick.last`)이 바뀐 때를 적는다(귀와 무관 · 모든 판 같다).
-//   env: T1495_RIGOUT · T1495_SRV(서버를 띄울 일터 · T1490 가지면 그 일터) · T1495_ARM · T1495_TAG · T1495_WORLD(정찰 이름) · T1495_ZONE · T1495_CK(체크포인트 폴더) ·
-//        T1495_PRESET=lr(긴 판 세계 env) · T1495_BOTS · T1495_TRIALS · T1495_PAR · RAW(정찰 · 앞 판 기록을 찾는 곳)
+//   env: T1515_RIGOUT · T1515_SRV(서버를 띄울 일터 · T1490 가지면 그 일터) · T1515_ARM · T1515_TAG · T1515_WORLD(정찰 이름) · T1515_ZONE · T1515_CK(체크포인트 폴더) ·
+//        T1515_PRESET=lr(긴 판 세계 env) · T1515_BOTS · T1515_TRIALS · T1515_PAR · RAW(정찰 · 앞 판 기록을 찾는 곳)
 // =============================================================================
 if (require.main === module) require('./lib-port').hold(3010, 3020, 3021);   // [T1288] 제품 고정 포트(central 기본 · 한반도 · 닛폰) — 판은 이름공간 안이지만 린트 ⑯a 대로 쥔다
 const path = require('path');
@@ -29,14 +29,14 @@ const { spawn } = require('child_process');
 const WebSocket = require('ws');
 const ROOT = path.join(__dirname, '..');
 const E = process.env;
-const SRV = E.T1495_SRV || ROOT;
-const RAW = E.RAW || '/var/tmp/t1495w';
-const OUT = E.T1495_RIGOUT || '/tmp/t1495rig'; fs.mkdirSync(OUT, { recursive: true });
-const MODE = E.T1495_MODE || 'boot', ARM = E.T1495_ARM || 'on', TAG = E.T1495_TAG || 'run';
+const SRV = E.T1515_SRV || ROOT;
+const RAW = E.RAW || '/var/tmp/t1515w';
+const OUT = E.T1515_RIGOUT || '/tmp/t1515rig'; fs.mkdirSync(OUT, { recursive: true });
+const MODE = E.T1515_MODE || 'boot', ARM = E.T1515_ARM || 'on', TAG = E.T1515_TAG || 'run';
 const DAYMS = 1440000;   // 정본 하루(24분) — `VILLAGE_DAY_MS` 를 안 준다(제품 기본값 그대로)
 const Z = require(path.join(SRV, 'server', 'zone-config'));
 const ZONES = Z.ZONES;
-const PROBE = E.T1495_PROBE !== '0';
+const PROBE = E.T1515_PROBE !== '0';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const rnd = (a, b) => a + Math.random() * (b - a);
 const now = () => Date.now();
@@ -71,25 +71,25 @@ function boot(name, file, env) {
 const waitLine = (p, re, ms) => new Promise((res) => { const w = { re, res }; p._waiters.push(w); setTimeout(() => { const i = p._waiters.indexOf(w); if (i >= 0) { p._waiters.splice(i, 1); res(null); } }, ms); });
 const preload = (K, zone) => {
   const a = [];
-  if (K) a.push(`--require ${path.join(ROOT, 'scripts', 't1495-shift.js')}`);
+  if (K) a.push(`--require ${path.join(ROOT, 'scripts', 't1515-shift.js')}`);
   if (zone && PROBE) a.push(`--require ${path.join(ROOT, 'scripts', 't1489-probe.js')}`);
   return a.join(' ');
 };
 const PRESET_LR = { T1243_FARM_ON: '1', T1316_BODY_CLOCK: '1', T1316_SUBSTEP: '1', T1326_HUNT_CLOCK: '1', T1351_MINE_CLOCK: '1', VILLAGE_NPC_CAP: 'Infinity', T1195_HUNT_REAL: '1', VILLAGE_CARAVAN_MAX: '0' };
 async function bootWorld(zids, K) {
-  const cenv = { PORT: '3010', DB_PATH: `/tmp/t1495-c-${process.pid}.db`, PUBLIC_HOST: 'localhost', ENABLED_ZONES: zids.join(',') };
-  if (K) { cenv.NODE_OPTIONS = preload(K, false); cenv.T1495_SHIFT_MS = String(K); }
+  const cenv = { PORT: '3010', DB_PATH: `/tmp/t1515-c-${process.pid}.db`, PUBLIC_HOST: 'localhost', ENABLED_ZONES: zids.join(',') };
+  if (K) { cenv.NODE_OPTIONS = preload(K, false); cenv.T1515_SHIFT_MS = String(K); }
   const central = boot('central', 'central.js', cenv);
   const cu = await waitLine(central, /central server up on/, 60000);
   if (!cu) return null;
   const R = { central, zones: {} };
   for (const z of zids) {
-    const db = `/tmp/t1495-z-${z}-${process.pid}.db`;
-    if (E.T1495_CK && z === 'hanbando') for (const sfx of ['', '-wal', '-shm']) { const s = path.join(E.T1495_CK, 'w.db' + sfx); if (fs.existsSync(s)) fs.copyFileSync(s, db + sfx); }
+    const db = `/tmp/t1515-z-${z}-${process.pid}.db`;
+    if (E.T1515_CK && z === 'hanbando') for (const sfx of ['', '-wal', '-shm']) { const s = path.join(E.T1515_CK, 'w.db' + sfx); if (fs.existsSync(s)) fs.copyFileSync(s, db + sfx); }
     const zenv = Object.assign({ PORT: String(ZONES[z].port), ZONE_ID: z, DB_PATH: db, CENTRAL_URL: 'http://localhost:3010', PUBLIC_HOST: 'localhost',
-      ENABLE_BANDITS: '0', ENABLE_ROADS: '0', E2E_GIVE: '1', ONB_ENABLE: '1', MEMBER_N: '3' }, E.T1495_PRESET === 'lr' ? PRESET_LR : {});
+      ENABLE_BANDITS: '0', ENABLE_ROADS: '0', E2E_GIVE: '1', ONB_ENABLE: '1', MEMBER_N: '3' }, E.T1515_PRESET === 'lr' ? PRESET_LR : {});
     zenv.NODE_OPTIONS = preload(K, true);
-    if (K) zenv.T1495_SHIFT_MS = String(K);
+    if (K) zenv.T1515_SHIFT_MS = String(K);
     if (PROBE) { zenv.T1489_OUT = path.join(OUT, `p-${z}`); zenv.T1489_PROF = '0'; }
     R.zones[z] = { p: null, spawn: now() };
     const p = boot(z, 'zone.js', zenv); R.zones[z].p = p;
@@ -254,10 +254,10 @@ function prevBootMs(world, arm) {
   return out;
 }
 async function modeBoot() {
-  const z = E.T1495_ZONE || 'hanbando', world = E.T1495_WORLD || `fresh-${z}`, OFF = +(E.T1495_OFF || 10);
-  Object.assign(META, { world, zone: z, off: OFF, ck: E.T1495_CK || null, preset: E.T1495_PRESET || null });
+  const z = E.T1515_ZONE || 'hanbando', world = E.T1515_WORLD || `fresh-${z}`, OFF = +(E.T1515_OFF || 10);
+  Object.assign(META, { world, zone: z, off: OFF, ck: E.T1515_CK || null, preset: E.T1515_PRESET || null });
   let scout = null; try { scout = JSON.parse(fs.readFileSync(path.join(RAW, 'scout', `${world}.json`), 'utf8')); } catch (e) { scout = null; }
-  const isScout = !scout || E.T1495_SCOUT === '1';
+  const isScout = !scout || E.T1515_SCOUT === '1';
   let K = 0, D = null, Tt = null, spawnPlan = null;
   const bms = prevBootMs(world, ARM), bootEst = bms.length ? med(bms) : 30000;
   if (!isScout) {
@@ -265,7 +265,7 @@ async function modeBoot() {
     const t = now();
     D = Math.ceil((t + bootEst + OFF * 1000 + 5000) / DAYMS + lonW);
     Tt = tailAt(D, lonW);
-    if (E.T1495_NOSHIFT === '1') {
+    if (E.T1515_NOSHIFT === '1') {
       K = 0; spawnPlan = Tt - OFF * 1000 - bootEst;   // 실제 경계를 기다린다
       log(`실제 경계를 기다림 ${(spawnPlan - now()) / 1000 | 0}초`);
       while (now() < spawnPlan) await sleep(Math.min(5000, Math.max(5, spawnPlan - now())));
@@ -304,7 +304,7 @@ async function modeBoot() {
   }
   const perf = perfPoller([z], K, stopRef);
   // 봇 여덟
-  const NB = +(E.T1495_BOTS || 8), NW = Math.min(3, NB);
+  const NB = +(E.T1515_BOTS || 8), NW = Math.min(3, NB);
   const bots = [];
   for (let i = 0; i < NB; i++) { bots.push(await bot(`tb${i}`, ZONES[z].port, null, { samples: i < NW })); await sleep(120); }
   META.botsIn = bots.filter((b) => b.welcome).length; META.botsAt = now(); saveMeta();
@@ -373,7 +373,7 @@ async function modeBoot() {
     put('pings.jsonl', { bot: i, s: S });
   };
   // 끝 감시: 첫 꼬리 마감(/perf econTick.last 가 처음 선 때)이 끝나면 AFTER 초 뒤 멈춘다
-  const AFTER = +(E.T1495_AFTER || 20) * 1000;
+  const AFTER = +(E.T1515_AFTER || 20) * 1000;
   const watch = (async () => {
     while (!stopAt) {
       const tl = perf.tails[z];
@@ -412,8 +412,8 @@ function seamCorridor() {
 }
 async function scoutLonW(world) { try { return JSON.parse(fs.readFileSync(path.join(RAW, 'scout', `${world}.json`), 'utf8')).lonWest; } catch (e) { return null; } }
 async function modeCross() {
-  const TRIALS = +(E.T1495_TRIALS || 30), TAILS = E.T1495_TAIL_S != null && E.T1495_TAIL_S !== '' ? +E.T1495_TAIL_S : -30;
-  const TZ = E.T1495_TAILZONE || 'hanbando';   // 어느 존의 꼬리 마감을 판 가운데로 맞추나(닛폰 = 넘어온 손님이 닿는 쪽이 마감 중)
+  const TRIALS = +(E.T1515_TRIALS || 30), TAILS = E.T1515_TAIL_S != null && E.T1515_TAIL_S !== '' ? +E.T1515_TAIL_S : -30;
+  const TZ = E.T1515_TAILZONE || 'hanbando';   // 어느 존의 꼬리 마감을 판 가운데로 맞추나(닛폰 = 넘어온 손님이 닿는 쪽이 마감 중)
   const lonW = await scoutLonW(`fresh-${TZ}`);
   const bms = prevBootMs(`fresh-${TZ}`, ARM.replace(/^(main|near)$/, 'on')), bootEst = (bms.length ? med(bms) : 30000) + 8000;   // 두 존이 함께 뜬다(부팅이 조금 길다)
   let K = 0, D = null;
@@ -490,7 +490,7 @@ async function modeCross() {
 
 // ── 모드: adj (맞닿은 두 마을 사이를 걷는 손님) ───────────────────────────────
 async function modeAdj() {
-  const z = 'hanbando', TRIALS = +(E.T1495_TRIALS || 40), PAR = +(E.T1495_PAR || 4), TAILS = E.T1495_TAIL_S != null && E.T1495_TAIL_S !== '' ? +E.T1495_TAIL_S : -30;
+  const z = 'hanbando', TRIALS = +(E.T1515_TRIALS || 40), PAR = +(E.T1515_PAR || 4), TAILS = E.T1515_TAIL_S != null && E.T1515_TAIL_S !== '' ? +E.T1515_TAIL_S : -30;
   const lonW = await scoutLonW('fresh-hanbando');
   const bms = prevBootMs('fresh-hanbando', ARM.replace(/^(main|near)$/, 'on')), bootEst = bms.length ? med(bms) : 30000;
   let K = 0, D = null;

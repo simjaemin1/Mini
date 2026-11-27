@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# === scripts/t1495-run.sh — T1495 판 하나(끝 표시 · /tmp 따로 · 40분 끊김 · 이어 돌기) [S14] ============================
+# === scripts/t1515-run.sh — T1515 판 하나(끝 표시 · /tmp 따로 · 40분 끊김 · 이어 돌기) [S14] ============================
 # (@regress 없음 — 러너 밖 · 판 도구 · 제품 코드 · 있던 스크립트 손 0 · `t1489-run.sh` 를 본떠 새로 씀)
-#   쓰는 법: [RAW=/var/tmp/t1495w] bash scripts/t1495-run.sh <tag> <kind> <arm> [k=v …]
+#   쓰는 법: [RAW=/var/tmp/t1515w] bash scripts/t1515-run.sh <tag> <kind> <arm> [k=v …]
 #     kind  lrx  = 긴 판 늘이기(T1489 의 끝난 긴 판 체크포인트를 복사해 `t1308-long-run.js --resume` 으로 더 돈다 · 가상 시계) · k=v: src=<T1489 판 폴더> days=1201
 #                  (마지막 마디는 체크포인트를 안 남기니 1,200날 체크포인트를 얻으려고 1,201날까지 돈다)
-#           rig  = 실시계 판(`t1495-rig.js` · 중앙 + 존 + 봇 · 이름공간) · k=v 는 rig 에 env 로 간다(T1495_* · VILLAGE_* …)
+#           rig  = 실시계 판(`t1515-rig.js` · 중앙 + 존 + 봇 · 이름공간) · k=v 는 rig 에 env 로 간다(T1515_* · VILLAGE_* …)
 #     arm   on   = 기본(T1327_ROUTE_FIX 켬) · off = T1327_ROUTE_FIX=0
 #           main = 기본 그대로(켬 · 이 가지의 서버 = main 제품) · near = T1490 가지 일터(`$NEAR`) 서버 + T1490_NEAR_NOW=1
 #   끝 표시: $RAW/done/<tag>.done = "<종료코드> <초>" — 이미 있으면 건너뛴다(이어 돌기).  작업 자료 $RAW/raw/<tag>/ (레포 밖)
 set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"; cd "$ROOT" || exit 2
-RAW="${RAW:-/var/tmp/t1495w}"; NEAR="${NEAR:-$RAW/wt-near}"; tag="$1"; kind="$2"; arm="$3"; shift 3
+RAW="${RAW:-/var/tmp/t1515w}"; NEAR="${NEAR:-$RAW/wt-near}"; tag="$1"; kind="$2"; arm="$3"; shift 3
 [ -e "$RAW/done/$tag.done" ] && { echo "skip $tag"; exit 0; }
 D="$RAW/raw/$tag"
 if [ "$kind" = lrx ] && [ -s "$D/run/progress.json" ] && [ -d "$D/run/ck" ]; then echo "resume $tag"; else rm -rf "$D"; fi
@@ -42,11 +42,11 @@ case "$kind" in
     done
     rm -f "$D/run/"*.db "$D/run/"*.db-wal "$D/run/"*.db-shm "$D/run/"seg-*.json.t740.json 2>/dev/null;;
   rig)
-    env T1495_RIGOUT="$D" T1495_SRV="$SRV" T1495_ARM="$arm" T1495_TAG="$tag" $ARMENV $extra \
+    env T1515_RIGOUT="$D" T1515_SRV="$SRV" T1515_ARM="$arm" T1515_TAG="$tag" $ARMENV $extra \
       timeout --kill-after=60 40m unshare -n -p -m -f --kill-child --mount-proc bash -c "
         mount --bind $PT /tmp || exit 96
         python3 $ROOT/scripts/t853/uplo.py || exit 97
-        cd $ROOT && TMPDIR=/tmp node scripts/t1495-rig.js" > "$D/run.log" 2>&1; rc=$?;;
+        cd $ROOT && TMPDIR=/tmp node scripts/t1515-rig.js" > "$D/run.log" 2>&1; rc=$?;;
   *) echo "kind?" >&2; exit 2;;
 esac
 rm -rf "$PT" "$D/run/ck.old" 2>/dev/null

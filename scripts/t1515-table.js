@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 'use strict';
-// (@regress 없음 — 러너 밖 · 표 입 · T1495 · 제품 코드 · 있던 스크립트 손 0)
+// (@regress 없음 — 러너 밖 · 표 입 · T1515 · 제품 코드 · 있던 스크립트 손 0)
 // =============================================================================
-// scripts/t1495-table.js — T1495 표를 파일로(손 셈 0)
-//   묶기:  node scripts/t1495-table.js --pack /var/tmp/t1495w 계측/T1495_<날짜>
+// scripts/t1515-table.js — T1515 표를 파일로(손 셈 0)
+//   묶기:  node scripts/t1515-table.js --pack /var/tmp/t1515w 계측/T1515_<날짜>
 //          = RAW/raw/<판>/ 의 판 자료(meta.json · perf.jsonl · bots.jsonl · pings.jsonl · walk.jsonl · 귀 p-<존>.closes/queue.jsonl)를 판마다 한 줄로 줄여
 //            DIR/packed.jsonl.gz 에(원자료는 레포 밖 — 이 묶음이 증거 정본). 러버밴드 · 마감 창 겹침 같은 셈은 여기서 한다(원자료가 있어야 하니).
-//   표:    node scripts/t1495-table.js --md 계측/T1495_<날짜>/table.md --json 계측/T1495_<날짜>/table.json
+//   표:    node scripts/t1515-table.js --md 계측/T1515_<날짜>/table.md --json 계측/T1515_<날짜>/table.json
 //          = 같은 폴더의 packed.jsonl.gz 만 읽는다(다시 내면 바이트 같음).
 // 판 이름: b-<세계>-<경계 앞 초>-<on|off>-<번호>[-noear|-real] (부팅 표 · 세계 = han · nip · ck700 · ck1200) · x-<main|near> · xc-<main|near>(넘는 도중 마감) ·
 //          a-<main|near>(맞닿은 두 마을 걷기) · scout-<세계> · lrx1200-<on|off>(1,200날 체크포인트 만들기)
@@ -197,7 +197,7 @@ function table(MDF, JSF) {
   const discN = boot.filter((r) => plain(r)).reduce((a, r) => a + (r.disc ? r.disc.length : 0), 0);
   J.head = { firstMaxOn: fOn ? fOn.close.wall : null, firstMaxOnOff: fOn ? fOn.offReal : null, firstMaxOnWorld: fOn ? fOn.world : null, firstMaxOff: fOff ? fOff.close.wall : null, firstMaxOffOff: fOff ? fOff.offReal : null,
     agedMaxOn: aOn ? aOn.close.wall : null, agedMaxOnOff: aOn ? aOn.offReal : null, agedMaxOff: aOff ? aOff.close.wall : null, thrTook, thrNot, qMaxN, discN, tookOn: tookOn.length, freshOn: fresh.filter((r) => r.arm === 'on').length };
-  L.push('# T1495 표 — 날 경계 앞 부팅 · 진짜 두 존 넘김 `/인출` · 맞닿은 두 마을(스크립트가 만든 표 · 손 셈 0)\n');
+  L.push('# T1515 표 — 날 경계 앞 부팅 · 진짜 두 존 넘김 `/인출` · 맞닿은 두 마을(스크립트가 만든 표 · 손 셈 0)\n');
   L.push(`판 ${runs.length}개(묶음 \`packed.jsonl.gz\`). 하루 = 정본 24분(\`VILLAGE_DAY_MS\` 안 줌). "경계" = 그 존의 **꼬리 마감**(가장 서쪽 마을의 현지 자정 · 사람 요청이 줄 서는 마감). "부팅" = 존 로그 \`마을 시뮬 준비\` 순간.\n`);
   L.push('## §0 머리 수\n');
   L.push(md(['항목', '값'], [
@@ -213,7 +213,7 @@ function table(MDF, JSF) {
   L.push('## §1 날 경계 앞 부팅 — 갓 뜬 세계(한반도 51 · 닛폰 36 · env 비움)\n');
   L.push('"떠안음" = 첫 꼬리 마감에 `dist` 단계(제품 `tickCtx.stg`)가 선 판(배경 셈 T968 이 경계 전에 못 끝나 나머지를 마감 ⑪ 이 민 판). "그동안 선 요청" = 귀 `p-<존>.queue.jsonl` 중 그 마감 창에 든 줄 수(봇 요청 다섯이 보낸 줄 서는 종류). 배경 셈 끝 = `/perf` `t968.ready` 가 1 이 된 때(초) · "마감" = 배경 셈이 경계 전에 못 끝나 꼬리 마감 ⑪ 이 나머지를 셈 · "없음" = 거리 다시 셈 일이 안 섰다(끔).\n');
   L.push(md(head1, B1.rows)); L.push('');
-  L.push('## §2 살아 있는 저장에서 다시 뜬 세계(한반도 · 긴 판 env `T1495_PRESET=lr`)\n');
+  L.push('## §2 살아 있는 저장에서 다시 뜬 세계(한반도 · 긴 판 env `T1515_PRESET=lr`)\n');
   L.push('700날 = T1489 `lr730-<팔>` 의 마지막 체크포인트(600날 체크포인트 DB 는 남지 않았다 — 판 자는 마지막 하나만 쥔다) · 1,200날 = 그 체크포인트에서 이 카드가 더 돌린 `lrx1200-<팔>`. 팔마다 제 세계(켬 판 = 켬으로 자란 세계).\n');
   L.push(md(head1, B2.rows)); L.push('');
   // §3 손님이 겪는 것
@@ -270,7 +270,7 @@ function table(MDF, JSF) {
   L.push(md(['판', '서버', '첫 꼬리 마감(부팅 뒤 초)', '두 마을 거리 px', '유효/판', '거절', '빔 · 옛 마을', '통과(NPC 거절)', '마감 창에 걸친 판(거절)', '창 밖 거절', '못 닿음 · 문까지 최대 px'], r5)); L.push('');
   // §6 귀 무변 · §7 밀기 무변
   L.push('## §6 귀(`t1489-probe.js`) 있음 ↔ 없음 — 같은 목표 자리(한반도 갓 뜬 · 켬)\n');
-  L.push('귀 없는 판은 존에 `--require` 자체가 없다(`T1495_PROBE=0`). 견주는 값은 귀와 무관한 자: `/perf`(제품 안 문) 꼬리 기록 · 배경 셈 · 봇 쪽 늦음.\n');
+  L.push('귀 없는 판은 존에 `--require` 자체가 없다(`T1515_PROBE=0`). 견주는 값은 귀와 무관한 자: `/perf`(제품 안 문) 꼬리 기록 · 배경 셈 · 봇 쪽 늦음.\n');
   const earKey = (r) => `${r.world}|${r.off}|${r.arm}`;
   const noear = boot.filter((r) => !r.probe);
   const r6 = [], j6 = [];
