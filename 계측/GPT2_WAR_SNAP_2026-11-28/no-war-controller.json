@@ -1,0 +1,19 @@
+{
+  "controller": 18353,
+  "waitingFor": "/workspace/scratch/war-snap-mature/done",
+  "started": 1795798421.5697799,
+  "runs": [
+    {
+      "tag": "off",
+      "rc": 0,
+      "seconds": 86.05187034606934
+    },
+    {
+      "tag": "on",
+      "rc": 0,
+      "seconds": 84.53282928466797
+    }
+  ],
+  "rc": 0,
+  "finished": 1795801147.3332193
+}

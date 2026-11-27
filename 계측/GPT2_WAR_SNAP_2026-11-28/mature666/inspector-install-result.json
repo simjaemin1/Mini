@@ -1,0 +1,14 @@
+{
+  "id": 1,
+  "result": {
+    "result": {
+      "type": "object",
+      "value": {
+        "installed": true,
+        "day": 663,
+        "wars": 0,
+        "bodies": 0
+      }
+    }
+  }
+}

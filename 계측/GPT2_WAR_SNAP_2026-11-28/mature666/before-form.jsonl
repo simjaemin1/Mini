@@ -1,0 +1,2 @@
+{"day":665,"id":25,"t":0,"miss":{"pid":"p29426","distance":114.35058865168564,"cap":0.35,"unit":[170.81673729409667,1664.6290178010936],"target":[73.05400017644834,1723.9459998235516],"rect":false,"terrain":0,"tree":0,"search":false,"path":false}}
+{"day":665,"id":25,"t":30.00000000000065,"miss":{"pid":"p29426","distance":73.55470562277463,"cap":0.35,"unit":[135.95288242238732,1685.8143157345353],"target":[73.05400017644834,1723.9459998235516],"rect":false,"terrain":0,"tree":0,"search":false,"path":true,"failedTarget":null}}

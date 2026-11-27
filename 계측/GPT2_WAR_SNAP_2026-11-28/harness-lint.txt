@@ -150,4 +150,3 @@
   ✓ ★㉑ 자명 통과 금지 — 안 지우는 셋은 물고 · 지우는 넷은 보낸다  mk=hit,anon=hit,pidJson=hit,rm=none,lib=none,pidDb=none,own=none
 
 === 102건 중 PASS 102 · FAIL 0 ===
-

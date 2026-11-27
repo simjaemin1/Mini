@@ -1,0 +1,12 @@
+{
+  "normalization": "external refs/pid tokens/time offsets and sorted object keys; no field exclusions, retains at/nextPid/bodyIds/_stepMs",
+  "topLevelDifferences": [
+    "npcOrder",
+    "playerOrder"
+  ],
+  "remainingOrderEqual": {
+    "playerOrder": true,
+    "npcOrder": true
+  },
+  "allOtherFieldsStrictEqual": true
+}

@@ -1,0 +1,31 @@
+{
+  "snapshotDay": 666,
+  "resumeTarget": 667,
+  "snapshotProduct": "703ad08a",
+  "resumeProduct": "7ccaa48e",
+  "originalRunnerExit": 3,
+  "originalExitMeaning": "Intentional early stop, no 870 completion claim",
+  "fullGraphEqual": false,
+  "warVillageRecordsEqual": true,
+  "preservedRecords": 2043,
+  "villageSlots": 676,
+  "detachedRecords": 1367,
+  "missingOutsideNpcPids": [
+    "p37155",
+    "p37156",
+    "p37157",
+    "p37158",
+    "p43044",
+    "p43045",
+    "p43046",
+    "p43047"
+  ],
+  "missingTypes": "Not retained; unidentified. Separate legacy bandit-restore TDZ log is a hypothesis link, not proof of all eight types.",
+  "addedActors": 0,
+  "nextPidEqual": 44901,
+  "globalRngEqual": true,
+  "postResumeBattleSteps": 10908,
+  "postResumeBattleSeconds": 363.60000000007363,
+  "nonterminationReproduced": false,
+  "continuousFutureControlAt666": false
+}

@@ -1,0 +1,33 @@
+{
+  "controller": 18329,
+  "started": 1795798421.3496869,
+  "root": "/workspace/Mini-WarSnap-Immutable870",
+  "runs": [],
+  "commit": "703ad08a01ebe3d1ab4693f874bf02637c30570c",
+  "flags": {
+    "T1497_WAR_SNAP": "1",
+    "T1445_BOOT_BOUND": "1",
+    "T400_BUILD_ACT": "0",
+    "VILLAGE_CARAVAN_MAX": "0",
+    "T745_VCLOCK": "1",
+    "VILLAGE_WAR_LOG": "1",
+    "WAR_SNAP_MATURE_OUT": "/workspace/scratch/war-snap-mature/observed",
+    "WAR_SNAP_MATURE_FROM": "866",
+    "WAR_SNAP_MATURE_TO": "872"
+  },
+  "cmd": [
+    "node",
+    "scripts/t1308-long-run.js",
+    "872",
+    "42",
+    "--cuts",
+    "870",
+    "--dir",
+    "/workspace/scratch/war-snap-mature/run",
+    "--tag",
+    "new-war-snapshot-870"
+  ],
+  "sourceUnchanged": true,
+  "rc": 3,
+  "finished": 1795800518.9984217
+}

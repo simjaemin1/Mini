@@ -1,0 +1,77 @@
+{
+  "fullGraphEqual": false,
+  "topLevelDifferences": [
+    "npcOrder",
+    "playerOrder"
+  ],
+  "topLevelSame": [
+    "bodies",
+    "day",
+    "econPids",
+    "memory",
+    "pidTokens",
+    "polySeq",
+    "pref",
+    "profile",
+    "records",
+    "route",
+    "runtime",
+    "stand",
+    "village",
+    "wars",
+    "world"
+  ],
+  "order": {
+    "playerOrder": {
+      "saved": 2332,
+      "ready": 2324,
+      "villageWarRelativeEqual": true,
+      "missing": [
+        "other:p37155",
+        "other:p37156",
+        "other:p37157",
+        "other:p37158",
+        "other:p43044",
+        "other:p43045",
+        "other:p43046",
+        "other:p43047"
+      ],
+      "added": [],
+      "otherSaved": 289,
+      "otherReady": 281
+    },
+    "npcOrder": {
+      "saved": 564,
+      "ready": 556,
+      "villageWarRelativeEqual": true,
+      "missing": [
+        "other:p37155",
+        "other:p37156",
+        "other:p37157",
+        "other:p37158",
+        "other:p43044",
+        "other:p43045",
+        "other:p43046",
+        "other:p43047"
+      ],
+      "added": [],
+      "otherSaved": 8,
+      "otherReady": 0
+    }
+  },
+  "nextPid": {
+    "saved": 44901,
+    "ready": 44901
+  },
+  "bodyIdsEqual": true,
+  "savedBodies": [
+    {
+      "id": 25,
+      "phase": "march",
+      "stage": "battle",
+      "fstate": "advance",
+      "t": 227.233333333323,
+      "units": 120
+    }
+  ]
+}

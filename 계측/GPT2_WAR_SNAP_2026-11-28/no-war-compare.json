@@ -1,0 +1,48 @@
+{
+  "snapshotAbsent": true,
+  "metaBytesEqual": true,
+  "metaTopLevelDifferences": [],
+  "villageRowBytesEqual": true,
+  "finalMetricsEqual": true,
+  "offRows": 51,
+  "onRows": 51,
+  "eightOff": {
+    "pop": 613,
+    "dead": 0,
+    "ever": 51,
+    "weapQ": 41,
+    "expand": 0,
+    "board": 44,
+    "toolQ": 3519.6,
+    "preserve": 0,
+    "grain": 1054.8
+  },
+  "eightOn": {
+    "pop": 613,
+    "dead": 0,
+    "ever": 51,
+    "weapQ": 41,
+    "expand": 0,
+    "board": 44,
+    "toolQ": 3519.6,
+    "preserve": 0,
+    "grain": 1054.8
+  },
+  "fullVillageRowsEqual": true,
+  "villageColumns": [
+    "id",
+    "zone",
+    "name",
+    "cx",
+    "cy",
+    "population",
+    "econ_state",
+    "day",
+    "created_at"
+  ],
+  "metaSHA256": "9a1e7362383d6c30881b363e3eef238e701264e05a9251c04964598c60c37fff",
+  "fullVillageRowsSHA256": [
+    "472fe17e5afec844107ac8e56a5de87bcfff33a6f6727aaa403d37c3acaf607a",
+    "472fe17e5afec844107ac8e56a5de87bcfff33a6f6727aaa403d37c3acaf607a"
+  ]
+}

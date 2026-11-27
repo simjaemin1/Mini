@@ -1,17 +1,18 @@
-새 저장 전쟁 snapshot 구현(기본 OFF) · native 24/24 즉시·10일 동등 · 실서버 재부팅 직후 동등 · 실제 화살2/사상1/포로1 · 전투규칙 변경0 · 성숙870 재구성·지역/CI 검증 진행 중.
+마을·전쟁 몸2043/ctx120 즉시보존 통과 · 전역세계동등/NPC소멸0 실패(명부밖NPC8·유형미확정) · 기본OFF · 비종결 미재현.
 사용자 GPT2 작업표 기준 · 정본 번호 확인 중. S16 `지시_T1497.md`·지도 작업과 별개이며 그 파일은 수행/수정하지 않았다.
-제품 기준 `2502f282`(최신 main `c976f40e`까지 server/sim 변경0) · 고정 실행 `703ad08a` · 가지 `batch/war-snap-1128` · 손잡이 `T1497_WAR_SNAP=1`만 켬(없음/0/true = 끔).
+제품 기준 `2502f282`(main `c976f40e`까지 server/sim 변경0) · 최종제품 `7ccaa48e` · 성숙저장 `703ad08a` · 가지 `batch/war-snap-1128`.
 
 | §0 항목 | 결과 |
 |---|---|
-| 새 저장/복원 | 몸·명부·대형·통제·사기·전쟁단계·ctx·탄·투사체·cd·RNG현재값·탐색heap/공유세대/alias/순환·콜백 재결합 |
-| 저장 경계 | 완료된 JS 호스트/전투 step 경계 · 전쟁 rows+meta 원자저장 · 무전쟁은 종전 저장 경로(묵은 snapshot 제거 1회만 원자저장) |
-| 무결성/옛 저장 | version1/complete/SHA256/참조·필수칸 검증 실패는 명시 실패 · snapshot 없는 옛 저장은 legacy 그대로(정확동등 주장0) |
-| native 6단계×2seed×T1445 두 팔 | 24/24 즉시·10일 일별 지문 같음 · 조건마다 host tick 9,000회 + 정본 daily/몫 flush |
-| 탐색/코너 | Map·typed pending 2/2(초기16,385pops·이어민1,012호출) · ghost 세대 재결합 · 상처/죽은지휘관/한마을두전쟁/분리시체 4/4 |
-| 실서버 | 51마을·초기1,224몸·seed42·2일 저장→새 process 직후 snapshot 동일 · 4일 연속/재개 결과 동일(수비승·사상1·포로1·화살2) |
-| OFF·미끼·기존검증 | OFF native 저장 main과 바이트동일 · 핵심미끼6 assert-red/비assert크래시0 · 번들16/16·배선 실패0 · 지역/CI 마감 중 |
-| 회부/범위 | 인간 비마을 전투원·소굴·존경계 전쟁은 명시 미지원(새 저장 거부) · 현재 fixture 교전은 종결, 옛 W44의 누락 ctx는 만들지 않음 |
+| 손잡이 | `T1497_WAR_SNAP=1`만 켬 · 없음/0/true는 끔 · 배포/전투규칙 변경0 |
+| 새 저장 | 몸·명부·대형·통제·사기·ctx·탄·cd·RNG·탐색/alias/콜백 · 안전경계 rows+meta 원자저장 |
+| 성숙 실제 경계 | 666일 W25 정상종료 51행·ctx120 → 새 process 2043기록/원래pid·HP·좌표·ctx·RNG 보존 |
+| 전역 한계 | 전체 graph 실패 · 명부밖NPC8 누락(2332→2324, 추가0) · 유형미확정 · 다른영역 후속 회부 |
+| native 하한 | 6단계×2seed×T1445 양팔 24/24 · 즉시/후속10일(9000host tick) 같음 · pending Map/typed 노출 |
+| 실제 해제문 | 재개 BC10908/363.6초 · form5600/clear막힘5070 뒤 정상해제·종결 · 비종결 미재현 |
+| OFF/무전쟁 | 기준과 native저장 byte같음 · seed1020 실제10일 OFF/ON meta·51개마을행 byte같음 |
+| CI/미끼 | 제품7cc CI13개잡 success · native미끼7 assert-red · old-red3 API전제 단언/크래시0 |
+| 남은 마감 | CI밖 원래7종/route 단독 확인 중 · 870완주 주장0(666유효경계 조기종료·원래runner rc3) |
 
 ## 상태와 재결합 계약
 
@@ -57,7 +58,7 @@ NPC 마을 전쟁의 위 계약이 대상이다. 비마을 인간 전투원, 소
 
 기존 T1481/T1482 원본 DB/WAL/SHM은 열지 않았다. 실제 새 checkpoint도 DB 세 파일을 scratch에 복사한 뒤에만 재부팅에 사용했고 원본 hash를 보존했다. T1482의 과거 SHM 변경 메모를 덮거나 원복했다고 하지 않는다. 배포·SSH·force push·main push는 0이다.
 
-성숙870 재구성 및 지역/CI 검증 중 — 완료 전입니다.
+성숙세계는 666일 정상 저장 후 새 process로 667일까지 관측했다. 870일은 완주하지 않았다. 로컬 지역/단독 route 마감 중이다.
 
 쓰기문 추가 감사: `updateVillageState`는 초기 빈 행, 일일 큐, `_vilRowSave` 세 경로다. 거래·기부·집터 자재·제작/납품·구제·낚시/사냥은 `_vilRowSave`로 모인다. 새 snapshot이 활성일 때 이 경로도 현재 몸/전쟁과 전체 마을 행을 함께 원자저장한다. 진행 중인 경제/전투 호출은 완료 경계로 미루며 옛 snapshot+새 단일 econ 행을 쓰지 않는다. zone의 낡음/길 메모 등 독립 world_meta 키 셋은 전쟁 zone meta 키와 별개다. CAP=1 cold boot는 저장된 village몸99/전체actors130을 그대로 복원했다. village/전쟁몸 spawn 0, T1372 기존 캐러밴/호위 재구성31, 추가 배우0이며 원래pid·좌표·HP·ctx·RNG까지 즉시 동일했다.
 
@@ -68,3 +69,15 @@ NPC 마을 전쟁의 위 계약이 대상이다. 비마을 인간 전투원, 소
 공식 old-code-red의 3종 빨강은 모두 `complete snapshot product API absent` 전제 단언이다. 이것을 3종 각각의 행동 차이 증명으로 확대하지 않는다. 실제 상태 보존/누락 감지는 native 연속-재개 비교와 별도 단일원인 미끼7개가 담당한다.
 
 CI 1bd4 제품 검증 중 기존 정적 하네스의 문자열 연동3개가 실패했다. T1167은 주석까지 포함해 찾던 rebuildFromEcon 위치를 실제 호출 문자열로 찾도록 고쳤고, war-nosnap은 원래 return 조건을 그대로 유지하면서 단일 관측gate 블록 및 tickWarBodies→_tickWarBodies wrapper의 OFF direct call-through/ON finally를 함께 검사한다. 제품 수정0. 이후 war-nosnap62/62·T1167 14/14, 두 하네스 각5회 green이다.
+
+## 성숙666 경계와 정확한 실패 범위
+
+seed42·Node24.22.1·집/캐러밴 raw flags `T400_BUILD_ACT=0`, `VILLAGE_CARAVAN_MAX=0`, `T745_VCLOCK=1`, `T1445_BOOT_BOUND=1`·6GB의 현재 새 세계다. 불변703 작업트리에서 870을 목표로 시작했지만 후반 지연으로 검증 계획을 조정했다. 633일 읽기 inspector 조회는 전쟁0이므로 snapshot 통과로 세지 않았다. 657일 교전은 기존866 관측창 밖이라 기록하지 못했다. 동일 observer 파일을663일 재적재하고 전역 WeakMap 관측기를 attach했다. 원문·SHA256·CDP 설치문·결과를 `계측/.../mature666/`에 보존했다. 물리 flag/원래 ctx/RNG/phase 변경0이며 inspector는 관측 설치에만 썼다.
+
+다음 자연 W25 농촌8→어촌8의666일에 실제 ctx120과 완료된 host/econ 경계를 잡았다. 정상 SIGTERM→정본 t728Shutdown이51개행+version1 complete snapshot을 저장했다. 원래 T1308 runner의 rc3은870 checkpoint가 아닌 곳에서 의도적으로 내린 결과이며, 완주 성공도 제품 저장 실패도 아니다. 별도로 정상종료 저장·checksum/명부·파일사본 무결성을 확인했다. 원본 DB/WAL/SHM은 새 SQLite 연결로 열지 않고 hash→사본→hash 보존 후 사본으로만 재개했다. 위상/keep 파일의 실제 날은666이다.
+
+저장703→최종제품7cc 새 process의 엄격 그래프 비교는 **전역 실패**다. 마을676몸+분리1367몸=2043 기록·원래pid·좌표·HP·대형·통제·ctx120·투사체·탄·cd·RNG·heap/Map/alias·nextPid44901은 일치한다. `at/nextPid/bodyIds/_stepMs`도 제외하지 않은 비교에서 차이는 `playerOrder`와 `npcOrder`뿐이다. 명부밖NPC8(p37155~p37158, p43044~p43047)이 없으며 추가 몸은0이다. 해당8토큰만 뺀 잔존2324몸의 전체 상대순서도 같다. 이 제외 비교를 전체 graph 성공으로 세지 않는다. 저장 그래프는 이 NPC의 몸 데이터를 records에 담지 않았으므로 유형은 미확정이다. T1372 캐러밴91/91·281몸 복원 로그와 별도 Bandits `T1438_DECAY before initialization` 복원 오류가 있으나, 이를8몸의 유형 증명으로 쓰지 않는다. 전역 NPC 소멸0/전체세계동등은 충족하지 못했고 다음 카드로 회부한다. 이 판은666 이후 연속 대조 process가 없으므로 성숙세계 후속 경로/결과 동등성 주장도0이다.
+
+W25 저장 전 실제 BC6817step/227.233초에 화살20·돌315를 썼다. 저장 뒤 실제667일까지 BC10908step/363.6초 동안 form-wait5600→form-ready1, 반경 안 clear 막힘5070+실제 전진5070→clear1/advance-release1을 봤다. 처음 blocked 거리는45.124m, 해제 전투시각582.9초다. 저장 뒤 탄0으로 제어 사수 탄없음202737 unit-step·발사0이었으나 이후 근접전과 정본 종결이 있었다(귀환4명). 제어 궁수 한 장면만으로 무발사 원인을 판정하지 않았고 이 새 W25에서 비종결은 재현되지 않았다. 옛 W44의 ctx를 추정하지 않는다.
+
+seed1020 별도 무전쟁10일 OFF/ON 양팔은 각각86초/85초에 종료했다. 선포/교전/snapshot payload0이며 zone meta 문자열과 villages의9개컬럼51행이 바이트 동일, pop613·dead0·51마을 및 결과지표가 같다. 이것은 SQLite 파일/WAL의 물리 바이트나 모든 별도 표의 동일성 주장이 아니다.

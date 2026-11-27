@@ -1,0 +1,12 @@
+{
+  "server/villages.js": "18cc78ed679d33c00b8e35c1b452fafb08d9f35a9f65d4894bd86e539b8197e6",
+  "server/war-snapshot-host.js": "33e34cf470a236678b185b1de5da3fa9483a409fe912b204c668ab5a4f582941",
+  "server/war-snapshot.js": "699c97f60d15c809665e29b864419a28ac1e8c1902c84acaa515a8cce5051cf4",
+  "server/war-live.js": "677899eaced5225af1d69e0b2bc668cebace27b75ef503ec40ebfe4ef35166cf",
+  "sim/path-core.js": "c098bbf92ead03838fe4818359210c105887c66a469b25636513f45de2b07975",
+  "scripts/war-snapshot-mature-hook.js": "611281a7711cfa2e2145a3259dee023daa141979d9aad71fa369e3c8ea78ef68",
+  "scripts/t577-server-run.js": "48e9a6085821bae39a3fe0ea0c6c05d355b79e1d69a87691f98a1fd7e310f328",
+  "scripts/t577-server-hook.js": "bed1faa299da65917b81e1b9c2619c14501a679177ef4bc60d20987f45ef3bec",
+  "runner.js": "8e91495d7cde253774a03bf76de45086794daf2877a966db9313c38ca145e63c",
+  "controller.py": "0e715a66087136b7c6d1fd26f2731e109811f2ba28f078eb984cd86c5876eddb"
+}
