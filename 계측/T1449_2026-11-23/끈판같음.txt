@@ -9,3 +9,9 @@
 - probe.json 903f330c9250 · 903f330c9250
 - world.json 30338abe28cc · 30338abe28cc
 - farm.json 88314bfb22e0 · 88314bfb22e0
+## 11-27 — main 2ce164b94 받은 뒤(ecf754671) · 랩 800날 · 시드 1020 — 이 가지 끔 ↔ land1092 + main(T1449 없음) 끔(관찰기 판 다섯 md5)
+- t1407.json 3c023d0064e8 · 3c023d0064e8
+- band.json 4d488c01f0c2 · 4d488c01f0c2
+- probe.json 903f330c9250 · 903f330c9250
+- world.json 30338abe28cc · 30338abe28cc
+- farm.json 88314bfb22e0 · 88314bfb22e0
