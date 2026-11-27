@@ -43,6 +43,7 @@ if (process.argv.includes('--worker')) {
     zoneId: 't1496', tickCtx: { now } });
   const world = E2.createWorldV2({ seed: 42, villageCount: 1 });
   E.bindProductionActs(world);
+  P._t400Probe.setup({ world });
   const econ = world.villages[0];
   econ.storage = { wood: 0 }; econ.treasury = {}; econ.counts = { lumberjack: scenario === 'noWorkers' ? 0 : 3 };
   econ._woodOutLast = scenario === 'noDemand' ? 0 : scenario === 'fractional' ? 7 : 12;
