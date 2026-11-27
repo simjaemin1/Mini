@@ -1,10 +1,10 @@
-// (@regress 없음 — 러너 밖 · T1492 판 계측기 · 제품 무변 · 프리로드로만 실린다)
-// === scripts/t1492-bots.js — `t1486-bots.js` 를 베낀 것(봇 손짓 글자 그대로) + 긴 판(마디) · 손짓 고르기 · 관찰 칸 더함 ==========
+// (@regress 없음 — 러너 밖 · T1512 판 계측기 · 제품 무변 · 프리로드로만 실린다)
+// === scripts/t1512-bots.js — `t1486-bots.js` 를 베낀 것(봇 손짓 글자 그대로) + 긴 판(마디) · 손짓 고르기 · 관찰 칸 더함 ==========
 //   T1486 과 다른 것(손짓 글자 · 봇 이름은 같다 — 같은 시드면 T1486 판과 같은 세계):
-//     · 마디 판(`t1308-long-run.js` · `T1492_SEG=1`): 기록 파일 = 판 자 JSON(`T577_OUT` = seg-<날>.json) 옆 `seg-<날>.bots.json`. 이은 마디(`T577_RESUMED=1`)는 첫 날 손짓을 건너뛴다(앞 마디가 그 날 손짓을 이미 했다 — 멈춤 날 두 번 0).
-//     · `T1492_ACTS` — 손짓 고르기(쉼표 · 기본 block,bridge,land,hit,recon = T1486 그대로 · 빈 글자 'none' = 손짓 0 · 봇은 있되 가만히).
+//     · 마디 판(`t1308-long-run.js` · `T1512_SEG=1`): 기록 파일 = 판 자 JSON(`T577_OUT` = seg-<날>.json) 옆 `seg-<날>.bots.json`. 이은 마디(`T577_RESUMED=1`)는 첫 날 손짓을 건너뛴다(앞 마디가 그 날 손짓을 이미 했다 — 멈춤 날 두 번 0).
+//     · `T1512_ACTS` — 손짓 고르기(쉼표 · 기본 block,bridge,land,hit,recon = T1486 그대로 · 빈 글자 'none' = 손짓 0 · 봇은 있되 가만히).
 //     · 관찰 더함(읽기만): 영토 칸(마을 `_terrSet` 크기 합) · 산 마을 · CPU 초 · 힙 · 짐승 깔때기(야생 층 `_debug` — 블록 몹 · 존 몹 · 야생 틱 · 맞힘 · T1432 짐승 죽음 · T1461 셈) · stopSleep.
-//   쓰는 법: NODE_OPTIONS="--require <t745-vclock> --require $PWD/scripts/t1492-bots.js" T1492_OUT=<파일.json> [T1486_BOTS=8] [T1486_DAY0=6] [T1492_ACTS=…]
+//   쓰는 법: NODE_OPTIONS="--require <t745-vclock> --require $PWD/scripts/t1512-bots.js" T1512_OUT=<파일.json> [T1486_BOTS=8] [T1486_DAY0=6] [T1512_ACTS=…]
 //             node scripts/t577-server-run.js <날> <시드>     (판 자가 아이 존에 env 를 그대로 준다 · 제품 코드 손 0 · 읽기 + 제품 문 호출뿐)
 //   ── 아래는 T1486 머리글 그대로 ──
 //   봇 = 가짜 플레이어(`p_t1486_<i>` · 소켓 대신 알림을 세는 귀 · players 표 밖 = 보는 사람 0 · T1440 · T1423 판 계측기와 같은 꼴)
@@ -18,13 +18,13 @@
 //     20날마다와 끝에 DB 의 `village_buildings` 행 수 · DB 파일 크기(별도 읽기 연결)
 'use strict';
 const path = require('path'), fs = require('fs'), Module = require('module');
-if (!(process.env.T1492_OUT || process.env.T1492_SEG === '1') || !/server[\\/]zone\.js$/.test(process.argv[1] || '')) return;
+if (!(process.env.T1512_OUT || process.env.T1512_SEG === '1') || !/server[\\/]zone\.js$/.test(process.argv[1] || '')) return;
 require('./lib-port').noCentral();
 const ROOT = path.dirname(path.dirname(path.resolve(process.argv[1])));
 const ZF = path.join(ROOT, 'server', 'zone.js'), VF = path.join(ROOT, 'server', 'villages.js');
-const OUT = process.env.T1492_SEG === '1' ? String(process.env.T577_OUT).replace(/\.json$/, '') + '.bots.json' : process.env.T1492_OUT, SZ = 32, NB = Math.max(1, +(process.env.T1486_BOTS || 8)), DAY0 = +(process.env.T1486_DAY0 || 6);
+const OUT = process.env.T1512_SEG === '1' ? String(process.env.T577_OUT).replace(/\.json$/, '') + '.bots.json' : process.env.T1512_OUT, SZ = 32, NB = Math.max(1, +(process.env.T1486_BOTS || 8)), DAY0 = +(process.env.T1486_DAY0 || 6);
 const KINDS = ['head', 'pass', 'gate', 'road', 'field'];
-const ACTS = new Set(String(process.env.T1492_ACTS == null ? 'block,bridge,land,hit,recon' : process.env.T1492_ACTS).split(',').map((x) => x.trim()).filter((x) => x && x !== 'none'));
+const ACTS = new Set(String(process.env.T1512_ACTS == null ? 'block,bridge,land,hit,recon' : process.env.T1512_ACTS).split(',').map((x) => x.trim()).filter((x) => x && x !== 'none'));
 const RESUMED = process.env.T577_RESUMED === '1'; let firstDay = true;
 const rec = { v: 1492, acts: [...ACTS], resumed: RESUMED, zoneId: process.env.ZONE_ID || null, bots: NB, day0: DAY0, knobs: { NO_BUILD: process.env.T1423_NO_BUILD || '', REACT: process.env.T1423_BLOCK_REACT || '', NPC_DEATH: process.env.T1432_NPC_DEATH || '', TERR_SEQ: process.env.T1433_TERR_SEQ || '', BEAST_UNSEEN: process.env.T1461_BEAST_UNSEEN || '' },
   groups: {}, g: { block: { want: 0, placed: 0, refused: 0 }, bridge: { tries: 0, ok: 0, refused: 0, none: 0, removed: 0 }, land: { claims: 0, claimFail: 0, tries: 0, ok: 0, refused: 0 }, hit: { tries: 0, down: 0, died: 0, revive: 0, skip: 0 }, recon: { tries: 0, owed: 0 } },
@@ -34,14 +34,14 @@ const _p = Module._extensions['.js'];
 Module._extensions['.js'] = function (m, filename) {
   if (filename === VF) {
     const _c = m._compile;
-    m._compile = function (src, fn) { if (src.indexOf('__t1492v') < 0) src += '\n;module.exports.__t1492v = function () { return state; };\n'; return _c.call(this, src, fn); };
+    m._compile = function (src, fn) { if (src.indexOf('__t1512v') < 0) src += '\n;module.exports.__t1512v = function () { return state; };\n'; return _c.call(this, src, fn); };
   }
   const r = _p(m, filename);
   if (filename === VF) {
     const g = m.exports.onGameTick; let lastDay = -1;
     m.exports.onGameTick = function () {
       const out = g.apply(this, arguments);
-      try { const st = m.exports.__t1492v(), d = (st.world && st.world.day) | 0; if (d !== lastDay) { lastDay = d; day(st, m.exports, d); } }
+      try { const st = m.exports.__t1512v(), d = (st.world && st.world.day) | 0; if (d !== lastDay) { lastDay = d; day(st, m.exports, d); } }
       catch (e) { rec.err = rec.err || String(e && e.stack).slice(0, 800); save(); }
       return out;
     };
@@ -208,8 +208,8 @@ function recon(st, H, d) {
 let DBR = null;
 function dbStat(d) {
   try {
-    //   ★[T1492] 존과 **같은 SQLite 사본**(`node:sqlite`)으로 읽는다 — T1486 처럼 `better-sqlite3`(다른 사본)로 열면 한 프로세스에 SQLite 가 둘이라
-    //     WAL 공유 메모리(-shm)를 서로 모른 채 다시 세운다 → 존 쪽 매핑이 잘린 파일을 밟아 SIGBUS(긴 판 날 400 이은 마디에서 재현 · gdb `walIndexAppend` · 보고 T1492 어긋난 것).
+    //   ★[T1512] 존과 **같은 SQLite 사본**(`node:sqlite`)으로 읽는다 — T1486 처럼 `better-sqlite3`(다른 사본)로 열면 한 프로세스에 SQLite 가 둘이라
+    //     WAL 공유 메모리(-shm)를 서로 모른 채 다시 세운다 → 존 쪽 매핑이 잘린 파일을 밟아 SIGBUS(긴 판 날 400 이은 마디에서 재현 · gdb `walIndexAppend` · 보고 T1512 어긋난 것).
     if (!DBR) { const { DatabaseSync } = require('node:sqlite'); DBR = new DatabaseSync(process.env.DB_PATH, { readOnly: true }); }
     const n = (q) => DBR.prepare(q).get().n;
     const f = (p) => { try { return fs.statSync(p).size; } catch (e) { return 0; } };

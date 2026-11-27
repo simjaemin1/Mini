@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// === scripts/t1492-table.js — T1492 표(손 셈 0): 판 자료에서 낸다 → <R>/table.txt · table.json · first-line.txt ===
-//   쓰는 법: R=<자료 폴더> [REF=origin/batch/on-table-bots-1126] [REFER=<회부 수>] node scripts/t1492-table.js
+// === scripts/t1512-table.js — T1512 표(손 셈 0): 판 자료에서 낸다 → <R>/table.txt · table.json · first-line.txt ===
+//   쓰는 법: R=<자료 폴더> [REF=origin/batch/on-table-bots-1126] [REFER=<회부 수>] node scripts/t1512-table.js
 //   자료 폴더: runs/<이름>/ — 긴 판(progress.json · seg-<날>.bots.json · sbc-<시드>.json) · 짧은 판(bots.json · sbc.json · probe.json) · done.txt · dead.txt · jobs.tsv
 //   판 이름: <팔>-<시드>[-<날>] — 팔 = off · terrseq · nobuild · react · npcdeath · all4 · nd-u0 · nd-u1(봇 손짓 0 · NPC_DEATH 켬 · BEAST_UNSEEN 끔/켬) · prof-<팔> · ss-<팔> · jp-<팔>(닛폰)
 //   T1486 견줌(지문): REF 가지의 계측/T1486_2026-11-25/runs/<팔>-<시드>.json 을 git 으로 읽는다(날 1 ~ 60 날 줄 · 20날마다 DB 행).

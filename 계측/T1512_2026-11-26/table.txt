@@ -18,7 +18,7 @@
 | npcdeath-1020 | long | 300 → 300 | all | 한반도 | T1432_NPC_DEATH=1 | 끝 | 2.7 h | 6 | 0 |
 | react-1020 | long | 300 → 300 | all | 한반도 | T1423_BLOCK_REACT=1 | 끝 | 2.8 h | 6 | 0 |
 | nobuild-1020 | long | 300 → 226 | all | 한반도 | T1423_NO_BUILD=1 | 끊음(날 226 · 시간) | 1.4 h | 4 | 0 |
-| cnt-off-1020 | short | 22 → 22 | all | 한반도 | T1492_COUNT=invalidateTradeDistances+_t957Take+_distMatrixGen+_searchBegin+_searchBeginL+_searchStep+_t598EdgeOk | 끝 | 0.1 h | 1 | 0 |
+| cnt-off-1020 | short | 22 → 22 | all | 한반도 | T1512_COUNT=invalidateTradeDistances+_t957Take+_distMatrixGen+_searchBegin+_searchBeginL+_searchStep+_t598EdgeOk | 끝 | 0.1 h | 1 | 0 |
 | main-off-1020 | short | 60 → 60 | all | 한반도 | (없음) | 끝 | 0.4 h | 1 | 0 |
 | prof-off-1020 | short | 22 → 22 | all | 한반도 | (없음) | 끝 | 0.1 h | 1 | 0 |
 | prof-nobuild-1020 | short | 22 → 22 | all | 한반도 | T1423_NO_BUILD=1 | 끝 | 0.2 h | 1 | 0 |

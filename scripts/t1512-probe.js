@@ -1,18 +1,18 @@
-// (@regress 없음 — 러너 밖 · T1492 판 계측기 · 제품 무변 · 프리로드로만 실린다 · 제품 파일 글자 0 — 읽어 들인 글자에만 셈 줄을 끼운다)
-// === scripts/t1492-probe.js — T1492 ② 다리 머리 느려짐의 주인 · ③ stopSleep 부른 자리 ==========
-//   쓰는 법: NODE_OPTIONS="… --require $PWD/scripts/t1492-bots.js --require $PWD/scripts/t1492-probe.js" T1492_PROBE_OUT=<파일.json> [T1492_PROF=1] [T1492_SS=1]
-//   ② `T1492_PROF=1` — 날마다 V8 CPU 프로파일(inspector `Profiler` · `--cpu-prof` 와 같은 표본기 · 1 ms) + 정밀 커버리지 호출 수(`startPreciseCoverage{callCount}`)를
+// (@regress 없음 — 러너 밖 · T1512 판 계측기 · 제품 무변 · 프리로드로만 실린다 · 제품 파일 글자 0 — 읽어 들인 글자에만 셈 줄을 끼운다)
+// === scripts/t1512-probe.js — T1512 ② 다리 머리 느려짐의 주인 · ③ stopSleep 부른 자리 ==========
+//   쓰는 법: NODE_OPTIONS="… --require $PWD/scripts/t1512-bots.js --require $PWD/scripts/t1512-probe.js" T1512_PROBE_OUT=<파일.json> [T1512_PROF=1] [T1512_SS=1]
+//   ② `T1512_PROF=1` — 날마다 V8 CPU 프로파일(inspector `Profiler` · `--cpu-prof` 와 같은 표본기 · 1 ms) + 정밀 커버리지 호출 수(`startPreciseCoverage{callCount}`)를
 //      날 경계에서 끊어 함수별 자기 시간(ms) · 호출 수를 날 줄로 남긴다(날마다 자기 시간 상위 60 · 호출 수 상위 200 + 자기 시간 상위의 호출 수).
-//   ③ `T1492_SS=1` — villages.js 글자를 읽어 들일 때(메모리에서만) `_t1423S.stopSleep++` 두 자리 뒤에 셈 문 하나를 끼운다:
+//   ③ `T1512_SS=1` — villages.js 글자를 읽어 들일 때(메모리에서만) `_t1423S.stopSleep++` 두 자리 뒤에 셈 문 하나를 끼운다:
 //      부른 자리(스택 함수 이름 4 칸) · 몸(pid) · 그 칸 → 다음 틱에 그 몸이 움직였나(일 함) · 같은 몸이 바로 앞 틱에 같은 칸에서 또 셌나(선 채 다시 셈 = 헛깨움).
 //      `caravanBlockedResponse` 는 이름을 바꿔 감싼 겉 함수로 시간을 잰다(값 무변) · `deps.t1423StepHit` 은 감싸 호출 수 · 시간(잠든 청크 걸음 검사 값).
 //   값을 바꾸는 줄은 없다(셈 · 시각 읽기뿐). 시간은 `process.uptime()`(실제 시계 — 가상 시계 판은 `hrtime` · `performance.now` 를 V 에 묶는다 · t745).
 'use strict';
 const path = require('path'), fs = require('fs'), Module = require('module');
-if (!process.env.T1492_PROBE_OUT || !/server[\\/]zone\.js$/.test(process.argv[1] || '')) return;
+if (!process.env.T1512_PROBE_OUT || !/server[\\/]zone\.js$/.test(process.argv[1] || '')) return;
 const ROOT = path.dirname(path.dirname(path.resolve(process.argv[1])));
 const VF = path.join(ROOT, 'server', 'villages.js');
-const OUT = process.env.T1492_PROBE_OUT, PROF = process.env.T1492_PROF === '1', SS = process.env.T1492_SS === '1';
+const OUT = process.env.T1512_PROBE_OUT, PROF = process.env.T1512_PROF === '1', SS = process.env.T1512_SS === '1';
 const rec = { prof: PROF, ss: SS, days: [], ss_sites: {}, ss_tot: { n: 0, rep: 0, moved: 0, still: 0, gone: 0 }, errs: [] };
 const save = () => { try { fs.writeFileSync(OUT, JSON.stringify(rec)); } catch (e) {} };
 const err = (e) => { if (rec.errs.length < 20) rec.errs.push(String(e && e.stack || e).slice(0, 400)); };
@@ -20,9 +20,9 @@ const err = (e) => { if (rec.errs.length < 20) rec.errs.push(String(e && e.stack
 const SS_DAY = 'blockedAt = prev; _t1423S.stopSleep++; break;';
 const SS_WALK = 'blocked=true;_t1423S.stopSleep++;break;';
 const CBR = 'function caravanBlockedResponse(body, p, now) {';
-// ── ② 호출 수(`T1492_COUNT=이름,이름` — 그 이름의 함수 선언 `function 이름(` 몸 첫머리에 셈 한 줄 · server/ · sim/ 파일만 · 날마다 끊는다) ──
-const COUNT = String(process.env.T1492_COUNT || '').split(/[,+]/).map((x) => x.trim()).filter(Boolean);
-const CNT = {}; globalThis.__t1492c = CNT; rec.countPatch = {};
+// ── ② 호출 수(`T1512_COUNT=이름,이름` — 그 이름의 함수 선언 `function 이름(` 몸 첫머리에 셈 한 줄 · server/ · sim/ 파일만 · 날마다 끊는다) ──
+const COUNT = String(process.env.T1512_COUNT || '').split(/[,+]/).map((x) => x.trim()).filter(Boolean);
+const CNT = {}; globalThis.__t1512c = CNT; rec.countPatch = {};
 function countPatch(src, file) {
   for (const nm of COUNT) { let k = 0;
     for (const needle of ['function ' + nm + '(', 'function* ' + nm + '(']) { let at = 0;
@@ -31,7 +31,7 @@ function countPatch(src, file) {
       let i = at + needle.length, depth = 1; while (i < src.length && depth) { const c = src[i]; if (c === '(') depth++; else if (c === ')') depth--; i++; }
       while (i < src.length && /\s/.test(src[i])) i++;
       if (src[i] !== '{') { at = i; continue; }
-      const ins = `globalThis.__t1492c[${JSON.stringify(nm)}]=(globalThis.__t1492c[${JSON.stringify(nm)}]|0)+1;`;
+      const ins = `globalThis.__t1512c[${JSON.stringify(nm)}]=(globalThis.__t1512c[${JSON.stringify(nm)}]|0)+1;`;
       src = src.slice(0, i + 1) + ins + src.slice(i + 1); at = i + 1 + ins.length; k++;
     } }
     if (k) rec.countPatch[nm + ' @' + path.relative(ROOT, file)] = k;
@@ -47,9 +47,9 @@ Module._extensions['.js'] = function (m, filename) {
       const n1 = src.split(SS_DAY).length - 1, n2 = src.split(SS_WALK).length - 1, n3 = src.split(CBR).length - 1;
       rec.patch = { day: n1, walk: n2, cbr: n3 };
       if (n1 === 1 && n2 === 1 && n3 === 1) {
-        src = src.replace(SS_DAY, "blockedAt = prev; _t1423S.stopSleep++; if (globalThis.__t1492ss) globalThis.__t1492ss('day', state.deps.players && state.deps.players.get(body.pid), prev, body); break;");
-        src = src.replace(SS_WALK, "blocked=true;_t1423S.stopSleep++;if(globalThis.__t1492ss)globalThis.__t1492ss('walk',p,prev,path);break;");
-        src = src.replace(CBR, 'function caravanBlockedResponse(body, p, now) { const _t0 = process.uptime(); try { return caravanBlockedResponse__t1492(body, p, now); } finally { if (globalThis.__t1492cbr) globalThis.__t1492cbr(process.uptime() - _t0, body); } }\nfunction caravanBlockedResponse__t1492(body, p, now) {');
+        src = src.replace(SS_DAY, "blockedAt = prev; _t1423S.stopSleep++; if (globalThis.__t1512ss) globalThis.__t1512ss('day', state.deps.players && state.deps.players.get(body.pid), prev, body); break;");
+        src = src.replace(SS_WALK, "blocked=true;_t1423S.stopSleep++;if(globalThis.__t1512ss)globalThis.__t1512ss('walk',p,prev,path);break;");
+        src = src.replace(CBR, 'function caravanBlockedResponse(body, p, now) { const _t0 = process.uptime(); try { return caravanBlockedResponse__t1512(body, p, now); } finally { if (globalThis.__t1512cbr) globalThis.__t1512cbr(process.uptime() - _t0, body); } }\nfunction caravanBlockedResponse__t1512(body, p, now) {');
       } else err('patch miss ' + JSON.stringify(rec.patch));
       return _c.call(this, src, fn);
     };
@@ -60,7 +60,7 @@ Module._extensions['.js'] = function (m, filename) {
     m.exports.onGameTick = function () {
       tickStart();
       const out = g.apply(this, arguments);
-      try { const getSt = m.exports.__t1492v; const st = getSt ? getSt() : null; tickEnd(st, m.exports); } catch (e) { err(e); }
+      try { const getSt = m.exports.__t1512v; const st = getSt ? getSt() : null; tickEnd(st, m.exports); } catch (e) { err(e); }
       return out;
     };
   }
@@ -73,11 +73,11 @@ const lastAt = new Map();   // pid → { t: 틱, k: 칸 }
 let pend = [];               // 이번 틱 셈 — 다음 틱 끝에 몸이 움직였나
 let ssThisTick = 0;
 function siteOf() {
-  const L = Error.stackTraceLimit; Error.stackTraceLimit = 7; const o = {}; Error.captureStackTrace(o, globalThis.__t1492ss); Error.stackTraceLimit = L;
+  const L = Error.stackTraceLimit; Error.stackTraceLimit = 7; const o = {}; Error.captureStackTrace(o, globalThis.__t1512ss); Error.stackTraceLimit = L;
   const names = String(o.stack).split('\n').slice(1).map((l) => { const m = /at (?:Object\.)?([\w$.<>]+) \(/.exec(l) || /at ([\w$.<>]+)/.exec(l); return m ? m[1].replace(/^Object\./, '') : '?'; });
   return names.slice(0, 4).join(' ← ');
 }
-globalThis.__t1492ss = function (where, p, prev, pathOrBody) {
+globalThis.__t1512ss = function (where, p, prev, pathOrBody) {
   if (!cur) return;
   const role = where === 'day' ? 'ledger' : (pathOrBody && pathOrBody.c ? 'merchant' : 'other');
   const key = where + ' · ' + role + ' · ' + siteOf();
@@ -89,7 +89,7 @@ globalThis.__t1492ss = function (where, p, prev, pathOrBody) {
   if (pid != null) lastAt.set(pid, { t: TICK, k });
   pend.push({ p, x: p ? p.x : 0, y: p ? p.y : 0, s });
 };
-globalThis.__t1492cbr = function (sec) { if (!cur) return; cur.cbr.n++; cur.cbr.sec += sec; if (ssThisTick) cur.cbr.afterSS++; };
+globalThis.__t1512cbr = function (sec) { if (!cur) return; cur.cbr.n++; cur.cbr.sec += sec; if (ssThisTick) cur.cbr.afterSS++; };
 let pendPrev = [];
 function tickStart() { TICK++; ssThisTick = 0; }
 let stepWrapped = false;
@@ -135,7 +135,7 @@ function covSummary(cov, profTop) {
   return { top: all.slice(0, 200).map((x) => [x[0], x[1]]), forProf: named.slice(0, 200).map((x) => [x[0], x[1]]) };
 }
 if (PROF) {
-  try { const inspector = require('inspector'); SESSION = new inspector.Session(); SESSION.connect(); postSync('Profiler.enable'); postSync('Profiler.setSamplingInterval', { interval: 1000 }); if (process.env.T1492_COV === '1') rec.covStart = postSync('Profiler.startPreciseCoverage', { callCount: true, detailed: false }); }   // ★정밀 커버리지는 판을 몇 배 느리게 한다(T1492 연기 판: 날 0 이 310 초 · 날 1 이 3분 넘게 안 옴) — 기본 끔 · 호출 수는 `T1492_COUNT` 로
+  try { const inspector = require('inspector'); SESSION = new inspector.Session(); SESSION.connect(); postSync('Profiler.enable'); postSync('Profiler.setSamplingInterval', { interval: 1000 }); if (process.env.T1512_COV === '1') rec.covStart = postSync('Profiler.startPreciseCoverage', { callCount: true, detailed: false }); }   // ★정밀 커버리지는 판을 몇 배 느리게 한다(T1512 연기 판: 날 0 이 310 초 · 날 1 이 3분 넘게 안 옴) — 기본 끔 · 호출 수는 `T1512_COUNT` 로
   catch (e) { err(e); SESSION = null; }
 }
 function dayTurn(d) {
