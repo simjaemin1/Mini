@@ -1,0 +1,38 @@
+[
+  {
+    "name": "defender",
+    "assertRed": true,
+    "crash": false,
+    "status": 1
+  },
+  {
+    "name": "formations-only",
+    "assertRed": true,
+    "crash": false,
+    "status": 1
+  },
+  {
+    "name": "teleport",
+    "assertRed": true,
+    "crash": false,
+    "status": 1
+  },
+  {
+    "name": "cd",
+    "assertRed": true,
+    "crash": false,
+    "status": 1
+  },
+  {
+    "name": "rng",
+    "assertRed": true,
+    "crash": false,
+    "status": 1
+  },
+  {
+    "name": "ignore-corruption",
+    "assertRed": true,
+    "crash": false,
+    "status": 1
+  }
+]

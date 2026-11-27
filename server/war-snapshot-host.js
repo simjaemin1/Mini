@@ -25,6 +25,14 @@ function index(state) {
   }
   return { external, objects, tokens, people };
 }
+function validateBodyManifest(root) {
+  if (!Array.isArray(root.bodyIds) || !Array.isArray(root.records) || root.bodyIds.length !== root.records.length) Graph.fail('missing body identity manifest');
+  const keys = new Set(root.records.map((r) => r && r[0])), seen = new Set(), ids = new Set();
+  for (const pair of root.bodyIds) {
+    if (!Array.isArray(pair) || pair.length !== 2 || typeof pair[0] !== 'string' || typeof pair[1] !== 'string' || !pair[1] || !keys.has(pair[0]) || seen.has(pair[0]) || ids.has(pair[1])) Graph.fail('invalid body identity manifest');
+    seen.add(pair[0]); ids.add(pair[1]);
+  }
+}
 function pack(state, bindings, now) {
   if (!state.war || (!state.war.WARS.length && !(state.warBodies && state.warBodies.size))) return null;
   if (bindings.busy()) Graph.fail('save inside unfinished war host step');
@@ -85,15 +93,10 @@ function prepareBodies(snapshot, state) {
   const list = (ref) => { const n = ref && ns[ref.r]; if (!n || n.t !== 'array') Graph.fail('missing body identity manifest'); return n.v.map(([, v]) => v); };
   const ids = new Map();
   const manifest = field(snapshot.graph.root, 'bodyIds');
-  if (manifest) for (const ref of list(manifest)) {
+  for (const ref of list(manifest)) {
     const pair = list(ref), key = pair[0], value = pair[1];
     if (typeof key !== 'string' || typeof value !== 'string' || ids.has(key)) Graph.fail('invalid body identity manifest');
     ids.set(key, value);
-  }
-  // Compatibility with initial v1 checkpoints whose canonical body rows already carry pid.
-  if (!manifest) for (const v of state.villages) {
-    const B = v.econ && v.econ._t747Body;
-    for (let i = 0; B && i < (B.rows || []).length; i++) if (B.rows[i] && typeof B.rows[i].$p === 'string') ids.set('p:' + v.dbId + ':' + i, B.rows[i].$p);
   }
   const idx = index(state), placeholders = new Map(), oldIds = new Set(), playerMap = state.deps.players;
   const pid = (key) => { const value = ids.get(key); if (value !== undefined) return value; if (key.startsWith('gone:') || key.startsWith('d:')) return key.slice(key.indexOf(':') + 1); Graph.fail('missing body identity ' + key); };
@@ -103,6 +106,7 @@ function prepareBodies(snapshot, state) {
   };
   const root = Graph.unpack(snapshot, { resolve, pid, time: (dt) => Date.now() + dt, types: ['path', 'fight', 'context', 'detour'] });
   if (root.day !== state.world.day || !Array.isArray(root.records) || !state.deps.t1372Pid) Graph.fail('unsupported boot body/allocator boundary');
+  validateBodyManifest(root);
   const byVillage = new Map(), bodies = [];
   for (const [key, data, npc] of root.records) {
     if (!/^p:/.test(key)) continue;
@@ -141,6 +145,7 @@ function restore(snapshot, state, bindings, now) {
   if (root.day !== state.world.day || !Array.isArray(root.wars) || !(root.bodies instanceof Map) || !Array.isArray(root.records) || !root.runtime || (!Number.isSafeInteger(root.runtime.arrowSeq) || root.runtime.arrowSeq < 0)) Graph.fail('inconsistent world boundary');
   if (!(root.stand && root.stand.m instanceof Map) || !(root.route instanceof Map) || !(root.pref instanceof Map) || !Array.isArray(root.pidTokens) || !root.world || !Array.isArray(root.econPids)) Graph.fail('missing shared state');
   for (const w of root.wars) if (!w || !idx.external.has(w.atk) || !idx.external.has(w.def) || !w.atk.econ || !w.def.econ) Graph.fail('missing attacker/defender');
+  validateBodyManifest(root);
   const recordKeys = new Set(root.records.map((r) => r && r[0]));
   if (recordKeys.size !== root.records.length || !Array.isArray(root.playerOrder) || !Array.isArray(root.npcOrder)) Graph.fail('incomplete body/order manifest');
   for (const token of root.pidTokens) {

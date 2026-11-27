@@ -1,6 +1,6 @@
 새 저장 전쟁 snapshot 구현(기본 OFF) · native 24/24 즉시·10일 동등 · 실서버 재부팅 직후 동등 · 실제 화살2/사상1/포로1 · 전투규칙 변경0 · 성숙870 재구성·지역/CI 검증 진행 중.
 사용자 GPT2 작업표 기준 · 정본 번호 확인 중. S16 `지시_T1497.md`·지도 작업과 별개이며 그 파일은 수행/수정하지 않았다.
-기준 `2502f282` · 가지 `batch/war-snap-1128` · 손잡이 `T1497_WAR_SNAP=1`만 켬(없음/0/true = 끔).
+제품 기준 `2502f282`(최신 main `c976f40e`까지 server/sim 변경0) · 고정 실행 `703ad08a` · 가지 `batch/war-snap-1128` · 손잡이 `T1497_WAR_SNAP=1`만 켬(없음/0/true = 끔).
 
 | §0 항목 | 결과 |
 |---|---|
@@ -29,7 +29,7 @@
 
 `_t728Meta`의 `t1497WarSnap`은 checksum을 가진 versioned complete graph다. 활성 전쟁/귀환 몸이 있으면 그 순간의 모든 마을 행과 함께 기존 `saveVillagesAndMeta` 한 트랜잭션으로 쓴다. 무전쟁 새 세계는 payload도 저장 큐도 원래 경로다. 전쟁이 끝나 이전 snapshot을 제거할 때만 마지막으로 원자저장한다.
 
-JS 실행 도중 임시 ctl을 푼 상태나 아직 끝나지 않은 호스트 step에 저장이 재진입하면 SQL 쓰기 전에 명시적으로 거절한다. 정상 일일/종료 저장은 그 호출 스택 밖에서 이루어진다. `saveVillagesAndMeta`의 SQL 원자성과 런타임 안전 경계를 별도로 검사한다.
+JS 실행 도중 임시 ctl을 푼 상태나 아직 끝나지 않은 호스트/경제 step의 정상 저장 요청은 module-global pending으로 모아 완료 경계로 미룬다. 낮은 직접 원자저장 API의 위험한 재진입은 SQL 전에 명시 거절한다. 정상 일일/종료 저장은 그 호출 스택 밖에서 이루어진다. `saveVillagesAndMeta`의 SQL 원자성과 런타임 안전 경계를 별도로 검사한다.
 
 새 snapshot을 읽을 때는 legacy 재징발/재개전과 무기 거울 환급을 실행하지 않는다. 기존 부팅이 마을·몸·로트·시계 기반을 세운 뒤 전체 그래프를 검증하고 직접 붙인다. 따라서 저장 위치를 집 앞으로 바꾸거나 `_muster`만 지워 수비를 다시 뽑지 않는다. 잘못된 새 snapshot은 `WAR_SNAP_INVALID`로 부팅을 실패시킨다. snapshot 없는 유효 옛 저장과 옛 메타 오류는 원래 legacy 처리이며, 옛 저장이 새 exact snapshot으로 승격됐다고 쓰지 않는다.
 
@@ -39,7 +39,7 @@ native matrix는 seed 7/42와 T1445 ON/OFF 각각에서 소집·행군·포위·
 
 checkpoint 뒤 각 조건에서 30Hz host tick 900회/일 × 10일 = 9,000회를 호출한다. 하루 길이 30,000ms이며 `_t681Flush → world.day++ → war.daily → _warAfterDaily → _t681Day` 순서다. 실제 battle step 수·dt 합·발사·문 분포는 조건별 protocol에 별도로 남는다. 전투가 끝나면 이후 날에 억지로 전투 step을 만들지 않는다. 이 판은 전쟁 호스트 fixture이며 경제 전체를 10일 똑같이 실행한 판이라고 확대하지 않는다.
 
-pid를 p1…에서 p300…으로 다르게 부팅한 native 판은 동일 몸 슬롯의 전단사 매핑으로 모든 역참조를 비교한다. process allocator `nextPid`, 순수 성능 누계 `_stepMs`, 저장 경계 `at`는 의미 지문에서 제외한다. Map/Set 순서·typed buffer alias·실제 좌표·HP·cd·RNG·명부·통제·탄·전쟁 결과는 제외하지 않는다.
+pid를 p1…에서 p300…으로 다르게 부팅한 native 판은 동일 몸 슬롯의 전단사 매핑으로 모든 역참조를 비교한다. process allocator `nextPid`, 순수 성능 누계 `_stepMs`, 저장 경계 `at`, 원래 process PID namespace를 담은 `bodyIds`는 의미 지문에서 제외한다. `bodyIds` 원본값은 별도 cold boot/실서버 직후 검사에서 원래 PID까지 대조했다. Map/Set 순서·typed buffer alias·실제 좌표·HP·cd·RNG·명부·통제·탄·전쟁 결과는 제외하지 않는다.
 
 실서버는 실제 zone/new DB/실지도/생활층/집 켬으로 만든 별도 새 세계다. 운영 하루를 30초로 가속한 시험이며 `T941_BATTLE_DAY=0`, `T627_TRIP_DAY=0`, seed42, 초기24명×51마을, `VILLAGE_CARAVAN_MAX=0`, 도적 끔이다. 현재 T1182에서는 이 cap 값만으로 캐러밴 실몸이 없어지지 않으므로 실제 몸 수와 별도로 기록했다. 가장 가까운 실제 마을 두 곳의 직업/무장/정책 입력을 준비하고 정본 mobilize로 선포했다. 원본870/W44 복구라고 부르지 않는다.
 
@@ -60,3 +60,7 @@ NPC 마을 전쟁의 위 계약이 대상이다. 비마을 인간 전투원, 소
 성숙870 재구성 및 지역/CI 검증 중 — 완료 전입니다.
 
 쓰기문 추가 감사: `updateVillageState`는 초기 빈 행, 일일 큐, `_vilRowSave` 세 경로다. 거래·기부·집터 자재·제작/납품·구제·낚시/사냥은 `_vilRowSave`로 모인다. 새 snapshot이 활성일 때 이 경로도 현재 몸/전쟁과 전체 마을 행을 함께 원자저장한다. 진행 중인 경제/전투 호출은 완료 경계로 미루며 옛 snapshot+새 단일 econ 행을 쓰지 않는다. zone의 낡음/길 메모 등 독립 world_meta 키 셋은 전쟁 zone meta 키와 별개다. CAP=1 cold boot는 저장된 village몸99/전체actors130을 그대로 복원했다. village/전쟁몸 spawn 0, T1372 기존 캐러밴/호위 재구성31, 추가 배우0이며 원래pid·좌표·HP·ctx·RNG까지 즉시 동일했다.
+
+검증 마감 중간 근거: 데이터 계약14/14, 기본OFF를 켬으로 바꾼 단일원인 미끼는 `unset must preserve explicit OFF canonical bytes` 단언 빨강(크래시0), 기존 6상태 미끼까지 합7개다. 공식 old-code-red 3/3 단언 빨강·크래시0, 하네스 규약102/102. 800일 경제3seed(1020/7/42)는 기준2502 대비 JSON 전체 바이트가 같다. 관련회귀 route-persist 첫판은55통과/4실패이며 당시 경제장판 CPU경합이 있었으므로 단독 재검증 대상으로 남겼다.
+
+최종 무결성 보완: 개발초기 v1 명부 fallback은 제거했다. bodyIds 누락·중복·records와 대응하지 않는 manifest는 재계산 checksum이 있어도 prepareBodies/restore 모두 `WAR_SNAP_INVALID`다. 최종 제품의 추가 차이는 이 거부 검증이며, 성숙870 판은 불변703 소스로 계속 측정한다. 유효703 snapshot에는 manifest가 있어 그 분기는 사용되지 않는다. 보완 후14/14와24/24를 다시 통과했다. `native-protocols-final.json`은24조건 모두9000 host tick과 실제 단계/body/group/ctx·후속BC step/dt 합을 공개한다.

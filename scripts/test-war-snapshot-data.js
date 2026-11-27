@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @regress unit
-// @bait 2
+// @bait 3
 'use strict';
 process.env.T1497_WAR_SNAP='1';
 const assert=require('assert'),cp=require('child_process');
@@ -31,6 +31,17 @@ if(process.argv[2]==='--pending'){
  }
  console.log(JSON.stringify({pending:true,typed,ghost,heapNodes:heap.open.n,initialPops:heap.pops,continuationCalls:loops}));process.exit(0);
 }
+check('미끼 · 바꾼 자리: default OFF and nonliteral flags preserve canonical saved bytes',()=>{
+ const fs=require('fs'),path=require('path'),dir=require('./lib-tmp').dir('war_snapshot_off');
+ try {
+  const bytes=[];for(const flag of [undefined,'0','true','1']){
+   const env={...process.env};if(flag===undefined)delete env.T1497_WAR_SNAP;else env.T1497_WAR_SNAP=flag;
+   const file=path.join(dir,String(bytes.length)+'.json'),r=cp.spawnSync(process.execPath,[path.join(__dirname,'war-snapshot-off-child.js'),file],{env,encoding:'utf8',timeout:30000});
+   assert.strictEqual(r.status,0,r.stderr);bytes.push(fs.readFileSync(file));
+  }
+  assert(bytes[0].equals(bytes[1]),'unset must preserve explicit OFF canonical bytes');assert(bytes[2].equals(bytes[1]),'true is not literal 1');assert(!bytes[3].equals(bytes[1]),'active native war must expose an ON checkpoint');
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
 check('cycles, external refs, Map/Set order, sparse arrays and all numeric atoms',()=>{
  const ext={},buf=new ArrayBuffer(40),a=new Float64Array(buf,8,3),b=new Uint8Array(buf,4,20);a[0]=Infinity;a[1]=NaN;a[2]=-0;
  const x={buf,a,b,ext,u:undefined,big:123n,map:new Map(),set:new Set([3,1,2]),sparse:new Array(5),nullObject:Object.create(null)};x.self=x;x.map.set(x,b);x.map.set('second',a);x.sparse[3]=x;
@@ -78,8 +89,10 @@ check('normal donation row-save advances the same complete war checkpoint',()=>{
 check('cold boot reconstructs every saved body above the visibility cap without spawn/RNG draws',()=>{
  const F=require('./lib-war-snap-fixture'),f=F.create(42);f.mobilize();f.day();for(let i=0;i<100;i++)f.tick();
  const snapshot=f.at(()=>f.H._warSnapPack()),saved={day:f.world.day,now:f.now(),econs:f.villages.map(v=>f.H.serializeEcon(v.econ))},ids=[...f.deps.players.keys()];
+ const partial=JSON.parse(JSON.stringify(snapshot)),node=partial.graph.nodes[partial.graph.root.r];node.v=node.v.filter(([k])=>k!=='bodyIds');partial.sha256=require('crypto').createHash('sha256').update(JSON.stringify(partial.graph)).digest('hex');
+ assert.throws(()=>f.at(()=>require('../server/war-snapshot-host').prepareBodies(partial,f.H.state)),e=>e.code==='WAR_SNAP_INVALID');assert.throws(()=>f.at(()=>f.H._warSnapRestore(partial)),e=>e.code==='WAR_SNAP_INVALID');
  const r=F.create(42,{saved});r.deps.players.clear();r.deps.npcs.clear();for(const v of r.villages)v.npcPids=[];let calls=0;r.deps.spawnNpc=()=>{calls++;assert.fail('gameplay spawn during saved-body reconstruction');};
  const E=require('../sim/economy-sim'),before=E.rngState();r.at(()=>require('../server/war-snapshot-host').prepareBodies(snapshot,r.H.state));assert.deepStrictEqual(E.rngState(),before);assert.strictEqual(calls,0);assert.deepStrictEqual([...r.deps.players.keys()],ids);r.at(()=>r.H._warSnapRestore(snapshot));
  const semantic=require('./test-war-snapshot').semantic;assert(require('util').isDeepStrictEqual(semantic(snapshot),semantic(r.at(()=>r.H._warSnapPack()))));
 });
-console.log(`WAR_SNAP data contracts ${pass}/13`);
+console.log(`WAR_SNAP data contracts ${pass}/14`);

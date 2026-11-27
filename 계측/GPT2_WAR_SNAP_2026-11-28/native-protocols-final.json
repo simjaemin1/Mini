@@ -1,0 +1,1594 @@
+[
+  {
+    "condition": "0-42-capture",
+    "continuous": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 0,
+      "dtSum": 0,
+      "shots": 0,
+      "temporaryRanged": 0,
+      "gates": {},
+      "exposure": {
+        "nativeWarPhase": "return",
+        "nativeOp": "withdraw",
+        "bodies": 1,
+        "groups": [
+          [
+            0,
+            0,
+            3
+          ]
+        ],
+        "contexts": [
+          null
+        ]
+      }
+    },
+    "resume": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 0,
+      "dtSum": 0,
+      "shots": 0,
+      "temporaryRanged": 0,
+      "gates": {},
+      "exposure": {
+        "nativeWarPhase": "return",
+        "nativeOp": "withdraw",
+        "bodies": 1,
+        "groups": [
+          [
+            0,
+            0,
+            3
+          ]
+        ],
+        "contexts": [
+          null
+        ]
+      }
+    },
+    "dailyFingerprintsEqual": true,
+    "dailyFingerprintsSHA256": "889e5cd094d743f81d1fc209b8305047a1b46426733f9f3d2201870f9b6c75ae"
+  },
+  {
+    "condition": "0-42-fight",
+    "continuous": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 1059,
+      "dtSum": 35.30000000000056,
+      "shots": 6,
+      "temporaryRanged": 1644,
+      "gates": {
+        "form-ready": 1,
+        "advance-far": 511,
+        "advance-move": 511,
+        "advance-clear": 1,
+        "advance-released": 1
+      },
+      "exposure": {
+        "nativeWarPhase": "battle",
+        "nativeOp": "camp",
+        "bodies": 1,
+        "groups": [
+          [
+            3,
+            17,
+            0
+          ]
+        ],
+        "contexts": [
+          {
+            "units": 20,
+            "arrows": 1,
+            "state": "engaged",
+            "physical": true
+          }
+        ]
+      }
+    },
+    "resume": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 466,
+      "dtSum": 15.533333333333289,
+      "shots": 5,
+      "temporaryRanged": 1398,
+      "gates": {},
+      "exposure": {
+        "nativeWarPhase": "battle",
+        "nativeOp": "camp",
+        "bodies": 1,
+        "groups": [
+          [
+            3,
+            17,
+            0
+          ]
+        ],
+        "contexts": [
+          {
+            "units": 20,
+            "arrows": 1,
+            "state": "engaged",
+            "physical": true
+          }
+        ]
+      }
+    },
+    "dailyFingerprintsEqual": true,
+    "dailyFingerprintsSHA256": "80df3c151e1f36c368708d303ac7bf560882bb0a74c2a761dc4419a8f8d52510"
+  },
+  {
+    "condition": "0-42-march",
+    "continuous": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 1059,
+      "dtSum": 35.30000000000056,
+      "shots": 6,
+      "temporaryRanged": 1644,
+      "gates": {
+        "form-ready": 1,
+        "advance-far": 511,
+        "advance-move": 511,
+        "advance-clear": 1,
+        "advance-released": 1
+      },
+      "exposure": {
+        "nativeWarPhase": "march",
+        "nativeOp": "march",
+        "bodies": 1,
+        "groups": [
+          [
+            3,
+            17,
+            0
+          ]
+        ],
+        "contexts": [
+          {
+            "units": 20,
+            "arrows": 0,
+            "state": "form",
+            "physical": true
+          }
+        ]
+      }
+    },
+    "resume": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 1059,
+      "dtSum": 35.30000000000056,
+      "shots": 6,
+      "temporaryRanged": 1644,
+      "gates": {
+        "form-ready": 1,
+        "advance-far": 511,
+        "advance-move": 511,
+        "advance-clear": 1,
+        "advance-released": 1
+      },
+      "exposure": {
+        "nativeWarPhase": "march",
+        "nativeOp": "march",
+        "bodies": 1,
+        "groups": [
+          [
+            3,
+            17,
+            0
+          ]
+        ],
+        "contexts": [
+          {
+            "units": 20,
+            "arrows": 0,
+            "state": "form",
+            "physical": true
+          }
+        ]
+      }
+    },
+    "dailyFingerprintsEqual": true,
+    "dailyFingerprintsSHA256": "222db2b03e249f23f66dfc75a7dbe8c1491d752264fa04fe55bd9bbc28b8301e"
+  },
+  {
+    "condition": "0-42-muster",
+    "continuous": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 1059,
+      "dtSum": 35.30000000000056,
+      "shots": 6,
+      "temporaryRanged": 1644,
+      "gates": {
+        "form-ready": 1,
+        "advance-far": 511,
+        "advance-move": 511,
+        "advance-clear": 1,
+        "advance-released": 1
+      },
+      "exposure": {
+        "nativeWarPhase": "march",
+        "nativeOp": "march",
+        "bodies": 0,
+        "groups": [],
+        "contexts": []
+      }
+    },
+    "resume": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 1059,
+      "dtSum": 35.30000000000056,
+      "shots": 6,
+      "temporaryRanged": 1644,
+      "gates": {
+        "form-ready": 1,
+        "advance-far": 511,
+        "advance-move": 511,
+        "advance-clear": 1,
+        "advance-released": 1
+      },
+      "exposure": {
+        "nativeWarPhase": "march",
+        "nativeOp": "march",
+        "bodies": 0,
+        "groups": [],
+        "contexts": []
+      }
+    },
+    "dailyFingerprintsEqual": true,
+    "dailyFingerprintsSHA256": "476e37feb3234e1c8bd61b47cdb91bb4712fae4f74cb0b6715b58dfe6bf68e96"
+  },
+  {
+    "condition": "0-42-return",
+    "continuous": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 0,
+      "dtSum": 0,
+      "shots": 0,
+      "temporaryRanged": 0,
+      "gates": {},
+      "exposure": {
+        "nativeWarPhase": "return",
+        "nativeOp": "withdraw",
+        "bodies": 1,
+        "groups": [
+          [
+            0,
+            0,
+            3
+          ]
+        ],
+        "contexts": [
+          null
+        ]
+      }
+    },
+    "resume": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 0,
+      "dtSum": 0,
+      "shots": 0,
+      "temporaryRanged": 0,
+      "gates": {},
+      "exposure": {
+        "nativeWarPhase": "return",
+        "nativeOp": "withdraw",
+        "bodies": 1,
+        "groups": [
+          [
+            0,
+            0,
+            3
+          ]
+        ],
+        "contexts": [
+          null
+        ]
+      }
+    },
+    "dailyFingerprintsEqual": true,
+    "dailyFingerprintsSHA256": "106d68dbd302c7ab5c1cc29cfc4e0be9d787ff4444d56f1a387b1e734fa68839"
+  },
+  {
+    "condition": "0-42-siege",
+    "continuous": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 0,
+      "dtSum": 0,
+      "shots": 0,
+      "temporaryRanged": 0,
+      "gates": {},
+      "exposure": {
+        "nativeWarPhase": "march",
+        "nativeOp": "siege",
+        "bodies": 1,
+        "groups": [
+          [
+            3,
+            17,
+            0
+          ]
+        ],
+        "contexts": [
+          {
+            "units": 20,
+            "arrows": 0,
+            "state": "form",
+            "physical": true
+          }
+        ]
+      }
+    },
+    "resume": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 0,
+      "dtSum": 0,
+      "shots": 0,
+      "temporaryRanged": 0,
+      "gates": {},
+      "exposure": {
+        "nativeWarPhase": "march",
+        "nativeOp": "siege",
+        "bodies": 1,
+        "groups": [
+          [
+            3,
+            17,
+            0
+          ]
+        ],
+        "contexts": [
+          {
+            "units": 20,
+            "arrows": 0,
+            "state": "form",
+            "physical": true
+          }
+        ]
+      }
+    },
+    "dailyFingerprintsEqual": true,
+    "dailyFingerprintsSHA256": "53f62c6384d4cc6277233eea0c992765c1337054eba545e8d8c43c2562d1ce47"
+  },
+  {
+    "condition": "0-7-capture",
+    "continuous": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 0,
+      "dtSum": 0,
+      "shots": 0,
+      "temporaryRanged": 0,
+      "gates": {},
+      "exposure": {
+        "nativeWarPhase": "return",
+        "nativeOp": "withdraw",
+        "bodies": 1,
+        "groups": [
+          [
+            0,
+            0,
+            3
+          ]
+        ],
+        "contexts": [
+          null
+        ]
+      }
+    },
+    "resume": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 0,
+      "dtSum": 0,
+      "shots": 0,
+      "temporaryRanged": 0,
+      "gates": {},
+      "exposure": {
+        "nativeWarPhase": "return",
+        "nativeOp": "withdraw",
+        "bodies": 1,
+        "groups": [
+          [
+            0,
+            0,
+            3
+          ]
+        ],
+        "contexts": [
+          null
+        ]
+      }
+    },
+    "dailyFingerprintsEqual": true,
+    "dailyFingerprintsSHA256": "889e5cd094d743f81d1fc209b8305047a1b46426733f9f3d2201870f9b6c75ae"
+  },
+  {
+    "condition": "0-7-fight",
+    "continuous": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 1059,
+      "dtSum": 35.30000000000056,
+      "shots": 6,
+      "temporaryRanged": 1644,
+      "gates": {
+        "form-ready": 1,
+        "advance-far": 511,
+        "advance-move": 511,
+        "advance-clear": 1,
+        "advance-released": 1
+      },
+      "exposure": {
+        "nativeWarPhase": "battle",
+        "nativeOp": "camp",
+        "bodies": 1,
+        "groups": [
+          [
+            3,
+            17,
+            0
+          ]
+        ],
+        "contexts": [
+          {
+            "units": 20,
+            "arrows": 1,
+            "state": "engaged",
+            "physical": true
+          }
+        ]
+      }
+    },
+    "resume": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 466,
+      "dtSum": 15.533333333333289,
+      "shots": 5,
+      "temporaryRanged": 1398,
+      "gates": {},
+      "exposure": {
+        "nativeWarPhase": "battle",
+        "nativeOp": "camp",
+        "bodies": 1,
+        "groups": [
+          [
+            3,
+            17,
+            0
+          ]
+        ],
+        "contexts": [
+          {
+            "units": 20,
+            "arrows": 1,
+            "state": "engaged",
+            "physical": true
+          }
+        ]
+      }
+    },
+    "dailyFingerprintsEqual": true,
+    "dailyFingerprintsSHA256": "7e631dc6932e75e5dcf1502720c61798af785164254889a28bdf22a415c673bb"
+  },
+  {
+    "condition": "0-7-march",
+    "continuous": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 1059,
+      "dtSum": 35.30000000000056,
+      "shots": 6,
+      "temporaryRanged": 1644,
+      "gates": {
+        "form-ready": 1,
+        "advance-far": 511,
+        "advance-move": 511,
+        "advance-clear": 1,
+        "advance-released": 1
+      },
+      "exposure": {
+        "nativeWarPhase": "march",
+        "nativeOp": "march",
+        "bodies": 1,
+        "groups": [
+          [
+            3,
+            17,
+            0
+          ]
+        ],
+        "contexts": [
+          {
+            "units": 20,
+            "arrows": 0,
+            "state": "form",
+            "physical": true
+          }
+        ]
+      }
+    },
+    "resume": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 1059,
+      "dtSum": 35.30000000000056,
+      "shots": 6,
+      "temporaryRanged": 1644,
+      "gates": {
+        "form-ready": 1,
+        "advance-far": 511,
+        "advance-move": 511,
+        "advance-clear": 1,
+        "advance-released": 1
+      },
+      "exposure": {
+        "nativeWarPhase": "march",
+        "nativeOp": "march",
+        "bodies": 1,
+        "groups": [
+          [
+            3,
+            17,
+            0
+          ]
+        ],
+        "contexts": [
+          {
+            "units": 20,
+            "arrows": 0,
+            "state": "form",
+            "physical": true
+          }
+        ]
+      }
+    },
+    "dailyFingerprintsEqual": true,
+    "dailyFingerprintsSHA256": "dd8876fe9e2f9041d8a8b1db07ce813c58a26fc6fb166d3394c5f3a231289cde"
+  },
+  {
+    "condition": "0-7-muster",
+    "continuous": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 1059,
+      "dtSum": 35.30000000000056,
+      "shots": 6,
+      "temporaryRanged": 1644,
+      "gates": {
+        "form-ready": 1,
+        "advance-far": 511,
+        "advance-move": 511,
+        "advance-clear": 1,
+        "advance-released": 1
+      },
+      "exposure": {
+        "nativeWarPhase": "march",
+        "nativeOp": "march",
+        "bodies": 0,
+        "groups": [],
+        "contexts": []
+      }
+    },
+    "resume": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 1059,
+      "dtSum": 35.30000000000056,
+      "shots": 6,
+      "temporaryRanged": 1644,
+      "gates": {
+        "form-ready": 1,
+        "advance-far": 511,
+        "advance-move": 511,
+        "advance-clear": 1,
+        "advance-released": 1
+      },
+      "exposure": {
+        "nativeWarPhase": "march",
+        "nativeOp": "march",
+        "bodies": 0,
+        "groups": [],
+        "contexts": []
+      }
+    },
+    "dailyFingerprintsEqual": true,
+    "dailyFingerprintsSHA256": "aa1e26c9ff3e5e4eece60b719f03f918f62393d4030f27084be82884cf01db63"
+  },
+  {
+    "condition": "0-7-return",
+    "continuous": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 0,
+      "dtSum": 0,
+      "shots": 0,
+      "temporaryRanged": 0,
+      "gates": {},
+      "exposure": {
+        "nativeWarPhase": "return",
+        "nativeOp": "withdraw",
+        "bodies": 1,
+        "groups": [
+          [
+            0,
+            0,
+            3
+          ]
+        ],
+        "contexts": [
+          null
+        ]
+      }
+    },
+    "resume": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 0,
+      "dtSum": 0,
+      "shots": 0,
+      "temporaryRanged": 0,
+      "gates": {},
+      "exposure": {
+        "nativeWarPhase": "return",
+        "nativeOp": "withdraw",
+        "bodies": 1,
+        "groups": [
+          [
+            0,
+            0,
+            3
+          ]
+        ],
+        "contexts": [
+          null
+        ]
+      }
+    },
+    "dailyFingerprintsEqual": true,
+    "dailyFingerprintsSHA256": "106d68dbd302c7ab5c1cc29cfc4e0be9d787ff4444d56f1a387b1e734fa68839"
+  },
+  {
+    "condition": "0-7-siege",
+    "continuous": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 0,
+      "dtSum": 0,
+      "shots": 0,
+      "temporaryRanged": 0,
+      "gates": {},
+      "exposure": {
+        "nativeWarPhase": "march",
+        "nativeOp": "siege",
+        "bodies": 1,
+        "groups": [
+          [
+            3,
+            17,
+            0
+          ]
+        ],
+        "contexts": [
+          {
+            "units": 20,
+            "arrows": 0,
+            "state": "form",
+            "physical": true
+          }
+        ]
+      }
+    },
+    "resume": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 0,
+      "dtSum": 0,
+      "shots": 0,
+      "temporaryRanged": 0,
+      "gates": {},
+      "exposure": {
+        "nativeWarPhase": "march",
+        "nativeOp": "siege",
+        "bodies": 1,
+        "groups": [
+          [
+            3,
+            17,
+            0
+          ]
+        ],
+        "contexts": [
+          {
+            "units": 20,
+            "arrows": 0,
+            "state": "form",
+            "physical": true
+          }
+        ]
+      }
+    },
+    "dailyFingerprintsEqual": true,
+    "dailyFingerprintsSHA256": "53f62c6384d4cc6277233eea0c992765c1337054eba545e8d8c43c2562d1ce47"
+  },
+  {
+    "condition": "1-42-capture",
+    "continuous": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 0,
+      "dtSum": 0,
+      "shots": 0,
+      "temporaryRanged": 0,
+      "gates": {},
+      "exposure": {
+        "nativeWarPhase": "return",
+        "nativeOp": "withdraw",
+        "bodies": 1,
+        "groups": [
+          [
+            0,
+            0,
+            3
+          ]
+        ],
+        "contexts": [
+          null
+        ]
+      }
+    },
+    "resume": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 0,
+      "dtSum": 0,
+      "shots": 0,
+      "temporaryRanged": 0,
+      "gates": {},
+      "exposure": {
+        "nativeWarPhase": "return",
+        "nativeOp": "withdraw",
+        "bodies": 1,
+        "groups": [
+          [
+            0,
+            0,
+            3
+          ]
+        ],
+        "contexts": [
+          null
+        ]
+      }
+    },
+    "dailyFingerprintsEqual": true,
+    "dailyFingerprintsSHA256": "889e5cd094d743f81d1fc209b8305047a1b46426733f9f3d2201870f9b6c75ae"
+  },
+  {
+    "condition": "1-42-fight",
+    "continuous": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 1059,
+      "dtSum": 35.30000000000056,
+      "shots": 6,
+      "temporaryRanged": 1644,
+      "gates": {
+        "form-ready": 1,
+        "advance-far": 511,
+        "advance-move": 511,
+        "advance-clear": 1,
+        "advance-released": 1
+      },
+      "exposure": {
+        "nativeWarPhase": "battle",
+        "nativeOp": "camp",
+        "bodies": 1,
+        "groups": [
+          [
+            3,
+            17,
+            0
+          ]
+        ],
+        "contexts": [
+          {
+            "units": 20,
+            "arrows": 1,
+            "state": "engaged",
+            "physical": true
+          }
+        ]
+      }
+    },
+    "resume": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 466,
+      "dtSum": 15.533333333333289,
+      "shots": 5,
+      "temporaryRanged": 1398,
+      "gates": {},
+      "exposure": {
+        "nativeWarPhase": "battle",
+        "nativeOp": "camp",
+        "bodies": 1,
+        "groups": [
+          [
+            3,
+            17,
+            0
+          ]
+        ],
+        "contexts": [
+          {
+            "units": 20,
+            "arrows": 1,
+            "state": "engaged",
+            "physical": true
+          }
+        ]
+      }
+    },
+    "dailyFingerprintsEqual": true,
+    "dailyFingerprintsSHA256": "80df3c151e1f36c368708d303ac7bf560882bb0a74c2a761dc4419a8f8d52510"
+  },
+  {
+    "condition": "1-42-march",
+    "continuous": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 1059,
+      "dtSum": 35.30000000000056,
+      "shots": 6,
+      "temporaryRanged": 1644,
+      "gates": {
+        "form-ready": 1,
+        "advance-far": 511,
+        "advance-move": 511,
+        "advance-clear": 1,
+        "advance-released": 1
+      },
+      "exposure": {
+        "nativeWarPhase": "march",
+        "nativeOp": "march",
+        "bodies": 1,
+        "groups": [
+          [
+            3,
+            17,
+            0
+          ]
+        ],
+        "contexts": [
+          {
+            "units": 20,
+            "arrows": 0,
+            "state": "form",
+            "physical": true
+          }
+        ]
+      }
+    },
+    "resume": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 1059,
+      "dtSum": 35.30000000000056,
+      "shots": 6,
+      "temporaryRanged": 1644,
+      "gates": {
+        "form-ready": 1,
+        "advance-far": 511,
+        "advance-move": 511,
+        "advance-clear": 1,
+        "advance-released": 1
+      },
+      "exposure": {
+        "nativeWarPhase": "march",
+        "nativeOp": "march",
+        "bodies": 1,
+        "groups": [
+          [
+            3,
+            17,
+            0
+          ]
+        ],
+        "contexts": [
+          {
+            "units": 20,
+            "arrows": 0,
+            "state": "form",
+            "physical": true
+          }
+        ]
+      }
+    },
+    "dailyFingerprintsEqual": true,
+    "dailyFingerprintsSHA256": "f2fe674a5f7fe1667b417fbb78722294528bafa6430f0f30ed06d563bf12b25a"
+  },
+  {
+    "condition": "1-42-muster",
+    "continuous": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 1059,
+      "dtSum": 35.30000000000056,
+      "shots": 6,
+      "temporaryRanged": 1644,
+      "gates": {
+        "form-ready": 1,
+        "advance-far": 511,
+        "advance-move": 511,
+        "advance-clear": 1,
+        "advance-released": 1
+      },
+      "exposure": {
+        "nativeWarPhase": "march",
+        "nativeOp": "march",
+        "bodies": 0,
+        "groups": [],
+        "contexts": []
+      }
+    },
+    "resume": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 1059,
+      "dtSum": 35.30000000000056,
+      "shots": 6,
+      "temporaryRanged": 1644,
+      "gates": {
+        "form-ready": 1,
+        "advance-far": 511,
+        "advance-move": 511,
+        "advance-clear": 1,
+        "advance-released": 1
+      },
+      "exposure": {
+        "nativeWarPhase": "march",
+        "nativeOp": "march",
+        "bodies": 0,
+        "groups": [],
+        "contexts": []
+      }
+    },
+    "dailyFingerprintsEqual": true,
+    "dailyFingerprintsSHA256": "c3e2d1371d9204b836d4a7c1f9e3ebe1d99f6856c1f3008de083f839a6da252c"
+  },
+  {
+    "condition": "1-42-return",
+    "continuous": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 0,
+      "dtSum": 0,
+      "shots": 0,
+      "temporaryRanged": 0,
+      "gates": {},
+      "exposure": {
+        "nativeWarPhase": "return",
+        "nativeOp": "withdraw",
+        "bodies": 1,
+        "groups": [
+          [
+            0,
+            0,
+            3
+          ]
+        ],
+        "contexts": [
+          null
+        ]
+      }
+    },
+    "resume": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 0,
+      "dtSum": 0,
+      "shots": 0,
+      "temporaryRanged": 0,
+      "gates": {},
+      "exposure": {
+        "nativeWarPhase": "return",
+        "nativeOp": "withdraw",
+        "bodies": 1,
+        "groups": [
+          [
+            0,
+            0,
+            3
+          ]
+        ],
+        "contexts": [
+          null
+        ]
+      }
+    },
+    "dailyFingerprintsEqual": true,
+    "dailyFingerprintsSHA256": "106d68dbd302c7ab5c1cc29cfc4e0be9d787ff4444d56f1a387b1e734fa68839"
+  },
+  {
+    "condition": "1-42-siege",
+    "continuous": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 0,
+      "dtSum": 0,
+      "shots": 0,
+      "temporaryRanged": 0,
+      "gates": {},
+      "exposure": {
+        "nativeWarPhase": "march",
+        "nativeOp": "siege",
+        "bodies": 1,
+        "groups": [
+          [
+            3,
+            17,
+            0
+          ]
+        ],
+        "contexts": [
+          {
+            "units": 20,
+            "arrows": 0,
+            "state": "form",
+            "physical": true
+          }
+        ]
+      }
+    },
+    "resume": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 0,
+      "dtSum": 0,
+      "shots": 0,
+      "temporaryRanged": 0,
+      "gates": {},
+      "exposure": {
+        "nativeWarPhase": "march",
+        "nativeOp": "siege",
+        "bodies": 1,
+        "groups": [
+          [
+            3,
+            17,
+            0
+          ]
+        ],
+        "contexts": [
+          {
+            "units": 20,
+            "arrows": 0,
+            "state": "form",
+            "physical": true
+          }
+        ]
+      }
+    },
+    "dailyFingerprintsEqual": true,
+    "dailyFingerprintsSHA256": "ace799be8a54c188a52c7e3b1f81c44872ec8399fa17e92d0467cb93e8949122"
+  },
+  {
+    "condition": "1-7-capture",
+    "continuous": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 0,
+      "dtSum": 0,
+      "shots": 0,
+      "temporaryRanged": 0,
+      "gates": {},
+      "exposure": {
+        "nativeWarPhase": "return",
+        "nativeOp": "withdraw",
+        "bodies": 1,
+        "groups": [
+          [
+            0,
+            0,
+            3
+          ]
+        ],
+        "contexts": [
+          null
+        ]
+      }
+    },
+    "resume": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 0,
+      "dtSum": 0,
+      "shots": 0,
+      "temporaryRanged": 0,
+      "gates": {},
+      "exposure": {
+        "nativeWarPhase": "return",
+        "nativeOp": "withdraw",
+        "bodies": 1,
+        "groups": [
+          [
+            0,
+            0,
+            3
+          ]
+        ],
+        "contexts": [
+          null
+        ]
+      }
+    },
+    "dailyFingerprintsEqual": true,
+    "dailyFingerprintsSHA256": "889e5cd094d743f81d1fc209b8305047a1b46426733f9f3d2201870f9b6c75ae"
+  },
+  {
+    "condition": "1-7-fight",
+    "continuous": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 1059,
+      "dtSum": 35.30000000000056,
+      "shots": 6,
+      "temporaryRanged": 1644,
+      "gates": {
+        "form-ready": 1,
+        "advance-far": 511,
+        "advance-move": 511,
+        "advance-clear": 1,
+        "advance-released": 1
+      },
+      "exposure": {
+        "nativeWarPhase": "battle",
+        "nativeOp": "camp",
+        "bodies": 1,
+        "groups": [
+          [
+            3,
+            17,
+            0
+          ]
+        ],
+        "contexts": [
+          {
+            "units": 20,
+            "arrows": 1,
+            "state": "engaged",
+            "physical": true
+          }
+        ]
+      }
+    },
+    "resume": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 466,
+      "dtSum": 15.533333333333289,
+      "shots": 5,
+      "temporaryRanged": 1398,
+      "gates": {},
+      "exposure": {
+        "nativeWarPhase": "battle",
+        "nativeOp": "camp",
+        "bodies": 1,
+        "groups": [
+          [
+            3,
+            17,
+            0
+          ]
+        ],
+        "contexts": [
+          {
+            "units": 20,
+            "arrows": 1,
+            "state": "engaged",
+            "physical": true
+          }
+        ]
+      }
+    },
+    "dailyFingerprintsEqual": true,
+    "dailyFingerprintsSHA256": "7e631dc6932e75e5dcf1502720c61798af785164254889a28bdf22a415c673bb"
+  },
+  {
+    "condition": "1-7-march",
+    "continuous": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 1059,
+      "dtSum": 35.30000000000056,
+      "shots": 6,
+      "temporaryRanged": 1644,
+      "gates": {
+        "form-ready": 1,
+        "advance-far": 511,
+        "advance-move": 511,
+        "advance-clear": 1,
+        "advance-released": 1
+      },
+      "exposure": {
+        "nativeWarPhase": "march",
+        "nativeOp": "march",
+        "bodies": 1,
+        "groups": [
+          [
+            3,
+            17,
+            0
+          ]
+        ],
+        "contexts": [
+          {
+            "units": 20,
+            "arrows": 0,
+            "state": "form",
+            "physical": true
+          }
+        ]
+      }
+    },
+    "resume": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 1059,
+      "dtSum": 35.30000000000056,
+      "shots": 6,
+      "temporaryRanged": 1644,
+      "gates": {
+        "form-ready": 1,
+        "advance-far": 511,
+        "advance-move": 511,
+        "advance-clear": 1,
+        "advance-released": 1
+      },
+      "exposure": {
+        "nativeWarPhase": "march",
+        "nativeOp": "march",
+        "bodies": 1,
+        "groups": [
+          [
+            3,
+            17,
+            0
+          ]
+        ],
+        "contexts": [
+          {
+            "units": 20,
+            "arrows": 0,
+            "state": "form",
+            "physical": true
+          }
+        ]
+      }
+    },
+    "dailyFingerprintsEqual": true,
+    "dailyFingerprintsSHA256": "c7ff5c6888da4db3ad90c5c46cb72075a4bffac8561208e6819c5562c41accbd"
+  },
+  {
+    "condition": "1-7-muster",
+    "continuous": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 1059,
+      "dtSum": 35.30000000000056,
+      "shots": 6,
+      "temporaryRanged": 1644,
+      "gates": {
+        "form-ready": 1,
+        "advance-far": 511,
+        "advance-move": 511,
+        "advance-clear": 1,
+        "advance-released": 1
+      },
+      "exposure": {
+        "nativeWarPhase": "march",
+        "nativeOp": "march",
+        "bodies": 0,
+        "groups": [],
+        "contexts": []
+      }
+    },
+    "resume": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 1059,
+      "dtSum": 35.30000000000056,
+      "shots": 6,
+      "temporaryRanged": 1644,
+      "gates": {
+        "form-ready": 1,
+        "advance-far": 511,
+        "advance-move": 511,
+        "advance-clear": 1,
+        "advance-released": 1
+      },
+      "exposure": {
+        "nativeWarPhase": "march",
+        "nativeOp": "march",
+        "bodies": 0,
+        "groups": [],
+        "contexts": []
+      }
+    },
+    "dailyFingerprintsEqual": true,
+    "dailyFingerprintsSHA256": "ae338f54d479824974ae1d0c703d34c3746ddbd6b33f6cc21aae7279e5e20b7d"
+  },
+  {
+    "condition": "1-7-return",
+    "continuous": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 0,
+      "dtSum": 0,
+      "shots": 0,
+      "temporaryRanged": 0,
+      "gates": {},
+      "exposure": {
+        "nativeWarPhase": "return",
+        "nativeOp": "withdraw",
+        "bodies": 1,
+        "groups": [
+          [
+            0,
+            0,
+            3
+          ]
+        ],
+        "contexts": [
+          null
+        ]
+      }
+    },
+    "resume": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 0,
+      "dtSum": 0,
+      "shots": 0,
+      "temporaryRanged": 0,
+      "gates": {},
+      "exposure": {
+        "nativeWarPhase": "return",
+        "nativeOp": "withdraw",
+        "bodies": 1,
+        "groups": [
+          [
+            0,
+            0,
+            3
+          ]
+        ],
+        "contexts": [
+          null
+        ]
+      }
+    },
+    "dailyFingerprintsEqual": true,
+    "dailyFingerprintsSHA256": "106d68dbd302c7ab5c1cc29cfc4e0be9d787ff4444d56f1a387b1e734fa68839"
+  },
+  {
+    "condition": "1-7-siege",
+    "continuous": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 0,
+      "dtSum": 0,
+      "shots": 0,
+      "temporaryRanged": 0,
+      "gates": {},
+      "exposure": {
+        "nativeWarPhase": "march",
+        "nativeOp": "siege",
+        "bodies": 1,
+        "groups": [
+          [
+            3,
+            17,
+            0
+          ]
+        ],
+        "contexts": [
+          {
+            "units": 20,
+            "arrows": 0,
+            "state": "form",
+            "physical": true
+          }
+        ]
+      }
+    },
+    "resume": {
+      "hostTicksAfterCheckpoint": 9000,
+      "hostDtMs": 33.333333333333336,
+      "gameDays": 10,
+      "dayMs": 30000,
+      "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+      "battleSteps": 0,
+      "dtSum": 0,
+      "shots": 0,
+      "temporaryRanged": 0,
+      "gates": {},
+      "exposure": {
+        "nativeWarPhase": "march",
+        "nativeOp": "siege",
+        "bodies": 1,
+        "groups": [
+          [
+            3,
+            17,
+            0
+          ]
+        ],
+        "contexts": [
+          {
+            "units": 20,
+            "arrows": 0,
+            "state": "form",
+            "physical": true
+          }
+        ]
+      }
+    },
+    "dailyFingerprintsEqual": true,
+    "dailyFingerprintsSHA256": "ace799be8a54c188a52c7e3b1f81c44872ec8399fa17e92d0467cb93e8949122"
+  }
+]
