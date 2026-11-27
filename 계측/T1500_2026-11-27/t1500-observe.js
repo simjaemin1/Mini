@@ -42,7 +42,8 @@ const CEN = parseInt(process.env.T1500_CENSUS || '0', 10);
 function census(day) {
   const o = { day };
   try {
-    const Z = require.main && require.main.exports && require.main.exports.__testBind ? require.main.exports.__testBind() : null;
+    const zm = require.cache[path.join(ROOT, 'server', 'zone.js')] || require.main; const zx = zm && zm.exports;
+    const Z = zx && zx.__testBind ? zx.__testBind() : null; if (!Z) o.noZ = Object.keys(require.cache).filter((k) => /zone\.js$/.test(k)).length;
     if (Z) {
       let st = 0, cells = 0; for (const h of Z._ringCache.values()) { if (h.day !== day + 1 && h.day !== day) st++; cells += h.cells.size; }
       o.ring = Z._ringCache.size; o.ringStale = st; o.ringCells = cells;

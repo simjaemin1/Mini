@@ -123,6 +123,17 @@ for (let k = 0; k < REACH; k++) ret[k] += self(post[k]);
 for (let k = 0; k < R; k++) if (dom[k] >= 0) ret[dom[k]] += ret[k];
 log(`붙든 크기 뿌리 ${(ret[R] / 1048576).toFixed(0)} MB`);
 
+// ── --ctor <이름> — 그 생성자 노드의 수 · 붙든 합 · 붙든 큰 셋의 나가는 변(붙든 크기) 을 찍고 끝낸다 ─────────────
+if (opt('ctor', null)) {
+  const want = opt('ctor'); let cnt = 0, sum = 0; const top = [];
+  for (let k = 0; k < REACH; k++) { const n = post[k]; if (nName(n) !== want) continue; cnt++; sum += ret[k]; top.push(k); }
+  top.sort((a, b) => ret[b] - ret[a]);
+  console.log(`${want}: ${cnt}개 · 붙든 합 ${(sum / 1048576).toFixed(1)} MB`);
+  for (const k of top.slice(0, +(opt('n', '3')))) { const n = post[k]; const o = [];
+    for (let e = first[n]; e < first[n + 1]; e++) { const c = edges[e * EF + eTo] / NF; const kc = order[c]; o.push(`${eLabel(e)}:${nName(c)} ${kc >= 0 && dom[kc] === k ? (ret[kc] / 1024).toFixed(0) + 'K' : '-'}`); }
+    console.log(`  #${nodes[n * NF + F('id')]} 붙든 ${(ret[k] / 1024).toFixed(0)} KB · ` + o.slice(0, 20).join(' · ')); }
+  process.exit(0);
+}
 // ── 길 · 나무 ────────────────────────────────────────────────────────────────────────
 function edgeTo(pn, cn) { for (let e = first[pn]; e < first[pn + 1]; e++) if (edges[e * EF + eTo] / NF === cn && edges[e * EF + eType] !== WEAK) return e; return -1; }
 function anyRet(cn) {   // 지배자가 곧은 부모가 아닐 때 — 붙든 이 하나(이름 붙은 변 먼저)
