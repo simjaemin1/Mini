@@ -12,7 +12,7 @@
 | 실제 해제문 | 재개 BC10908/363.6초 · form5600/clear막힘5070 뒤 정상해제·종결 · 비종결 미재현 |
 | OFF/무전쟁 | 기준과 native저장 byte같음 · seed1020 실제10일 OFF/ON meta·51개마을행 byte같음 |
 | CI/미끼 | 제품7cc CI13개잡 success · native미끼7 assert-red · old-red3 API전제 단언/크래시0 |
-| 남은 마감 | CI밖 원래7종/route 단독 확인 중 · 870완주 주장0(666유효경계 조기종료·원래runner rc3) |
+| 지역/기준선 | CI밖7종 RC0 · route 신규55/4·main55/4 동일4항목 재현 · 870완주 주장0(rc3 조기종료) |
 
 ## 상태와 재결합 계약
 
@@ -40,11 +40,11 @@ native matrix는 seed 7/42와 T1445 ON/OFF 각각에서 소집·행군·포위·
 
 checkpoint 뒤 각 조건에서 30Hz host tick 900회/일 × 10일 = 9,000회를 호출한다. 하루 길이 30,000ms이며 `_t681Flush → world.day++ → war.daily → _warAfterDaily → _t681Day` 순서다. 실제 battle step 수·dt 합·발사·문 분포는 조건별 protocol에 별도로 남는다. 전투가 끝나면 이후 날에 억지로 전투 step을 만들지 않는다. 이 판은 전쟁 호스트 fixture이며 경제 전체를 10일 똑같이 실행한 판이라고 확대하지 않는다.
 
-pid를 p1…에서 p300…으로 다르게 부팅한 native 판은 동일 몸 슬롯의 전단사 매핑으로 모든 역참조를 비교한다. process allocator `nextPid`, 순수 성능 누계 `_stepMs`, 저장 경계 `at`, 원래 process PID namespace를 담은 `bodyIds`는 의미 지문에서 제외한다. `bodyIds` 원본값은 별도 cold boot/실서버 직후 검사에서 원래 PID까지 대조했다. Map/Set 순서·typed buffer alias·실제 좌표·HP·cd·RNG·명부·통제·탄·전쟁 결과는 제외하지 않는다.
+pid를 p1…에서 p300…으로 다르게 부팅한 native 판은 동일 몸 슬롯의 전단사 매핑으로 모든 역참조를 비교한다. native 지문 함수는 모든 깊이에서 key 이름이 `nextPid`, `_stepMs`, `at`, `bodyIds`인 칸을 제외한다. 원래 process PID namespace를 바꾼 fixture의 비교 규칙이며 의미 있는 시각까지 일반적으로 검증했다는 주장으로 확대하지 않는다. 성숙666의 별도 엄격 비교는 이 네 key도 제외하지 않았다. `bodyIds` 원본값은 별도 cold boot/실서버 직후 검사에서 원래 PID까지 대조했다. Map/Set 순서·typed buffer alias·실제 좌표·HP·cd·RNG·명부·통제·탄·전쟁 결과는 제외하지 않는다.
 
 실서버는 실제 zone/new DB/실지도/생활층/집 켬으로 만든 별도 새 세계다. 운영 하루를 30초로 가속한 시험이며 `T941_BATTLE_DAY=0`, `T627_TRIP_DAY=0`, seed42, 초기24명×51마을, `VILLAGE_CARAVAN_MAX=0`, 도적 끔이다. 현재 T1182에서는 이 cap 값만으로 캐러밴 실몸이 없어지지 않으므로 실제 몸 수와 별도로 기록했다. 가장 가까운 실제 마을 두 곳의 직업/무장/정책 입력을 준비하고 정본 mobilize로 선포했다. 원본870/W44 복구라고 부르지 않는다.
 
-2일 checkpoint→새 process 직후 비교는 원래 playerId까지 보존됐다. 독립 새 세계 연속판 및 이후 새로 태어난 몸의 비교에서만 무작위 `records[*][1].playerId` 꼬리를 제외한다. 레코드 열쇠 집합·pid의 슬롯 대응·`_econId`는 유지하며 서로 다른 몸을 합치지 않는다. 전쟁 snapshot 그래프와 4일 전쟁 통계/사상/병력 결과를 비교한 것이며 51마을의 모든 비전쟁 상태가 byte 동일하다는 주장이 아니다.
+2일 checkpoint→새 process 직후 비교는 원래 playerId까지 보존됐다. 독립 새 세계 연속판 및 이후 새로 태어난 몸의 비교에서만 `records[*][1].playerId` 값을 통째로 제외했다(무작위 꼬리만 문자열 치환한 것이 아니다). 레코드 열쇠 집합·pid의 슬롯 대응·`_econId`는 유지하며 서로 다른 몸을 합치지 않는다. 전쟁 snapshot 그래프와 4일 전쟁 통계/사상/병력 결과를 비교한 것이며 51마을의 모든 비전쟁 상태가 byte 동일하다는 주장이 아니다.
 
 ## 안 끝나는 교전의 문
 
@@ -58,13 +58,13 @@ NPC 마을 전쟁의 위 계약이 대상이다. 비마을 인간 전투원, 소
 
 기존 T1481/T1482 원본 DB/WAL/SHM은 열지 않았다. 실제 새 checkpoint도 DB 세 파일을 scratch에 복사한 뒤에만 재부팅에 사용했고 원본 hash를 보존했다. T1482의 과거 SHM 변경 메모를 덮거나 원복했다고 하지 않는다. 배포·SSH·force push·main push는 0이다.
 
-성숙세계는 666일 정상 저장 후 새 process로 667일까지 관측했다. 870일은 완주하지 않았다. 로컬 지역/단독 route 마감 중이다.
+성숙세계는 666일 정상 저장 후 새 process로 667일까지 관측했다. 870일은 완주하지 않았다. 로컬 지역7종과 단독 route/동일 main 대조를 마쳤다.
 
 쓰기문 추가 감사: `updateVillageState`는 초기 빈 행, 일일 큐, `_vilRowSave` 세 경로다. 거래·기부·집터 자재·제작/납품·구제·낚시/사냥은 `_vilRowSave`로 모인다. 새 snapshot이 활성일 때 이 경로도 현재 몸/전쟁과 전체 마을 행을 함께 원자저장한다. 진행 중인 경제/전투 호출은 완료 경계로 미루며 옛 snapshot+새 단일 econ 행을 쓰지 않는다. zone의 낡음/길 메모 등 독립 world_meta 키 셋은 전쟁 zone meta 키와 별개다. CAP=1 cold boot는 저장된 village몸99/전체actors130을 그대로 복원했다. village/전쟁몸 spawn 0, T1372 기존 캐러밴/호위 재구성31, 추가 배우0이며 원래pid·좌표·HP·ctx·RNG까지 즉시 동일했다.
 
-검증 마감 중간 근거: 데이터 계약14/14, 기본OFF를 켬으로 바꾼 단일원인 미끼는 `unset must preserve explicit OFF canonical bytes` 단언 빨강(크래시0), 기존 6상태 미끼까지 합7개다. 공식 old-code-red 3/3 단언 빨강·크래시0, 하네스 규약102/102. 800일 경제3seed(1020/7/42)는 기준2502 대비 JSON 전체 바이트가 같다. 관련회귀 route-persist 첫판은55통과/4실패이며 당시 경제장판 CPU경합이 있었으므로 단독 재검증 대상으로 남겼다.
+검증 마감 중간 근거: 데이터 계약14/14, 기본OFF를 켬으로 바꾼 단일원인 미끼는 `unset must preserve explicit OFF canonical bytes` 단언 빨강(크래시0), 기존 6상태 미끼까지 합7개다. 공식 old-code-red 3/3 단언 빨강·크래시0, 하네스 규약102/102. 800일 경제3seed(1020/7/42)는 기준2502 대비 JSON 전체 바이트가 같다. 관련회귀 route-persist 첫판은55통과/4실패이며 당시 경제장판 CPU경합이 있었으므로 원인 단정 없이 아래 단독/원래main 대조로 분리했다.
 
-최종 무결성 보완: 개발초기 v1 명부 fallback은 제거했다. bodyIds 누락·중복·records와 대응하지 않는 manifest 및 필수 host memory 누락은 재계산 checksum이 있어도 prepareBodies/restore 모두 `WAR_SNAP_INVALID`다. 최종 제품의 추가 차이는 이 거부 검증이며, 성숙870 판은 불변703 소스로 계속 측정한다. 유효703 snapshot에는 manifest가 있어 그 분기는 사용되지 않는다. 보완 후14/14와24/24를 다시 통과했다. `native-protocols-final.json`은24조건 모두9000 host tick과 실제 단계/body/group/ctx·후속BC step/dt 합을 공개한다.
+최종 무결성 보완: 개발초기 v1 명부 fallback은 제거했다. bodyIds 누락·중복·records와 대응하지 않는 manifest 및 필수 host memory 누락은 재계산 checksum이 있어도 prepareBodies/restore 모두 `WAR_SNAP_INVALID`다. 최종 제품의 추가 차이는 이 거부 검증이며, 성숙 판은 불변703 소스로666일까지 측정하고 정상 저장 뒤 내렸다. 유효703 snapshot에는 manifest가 있어 그 분기는 사용되지 않는다. 보완 후14/14와24/24를 다시 통과했다. `native-protocols-final.json`은24조건 모두9000 host tick과 실제 단계/body/group/ctx·후속BC step/dt 합을 공개한다.
 
 공식 old-code-red의 3종 빨강은 모두 `complete snapshot product API absent` 전제 단언이다. 이것을 3종 각각의 행동 차이 증명으로 확대하지 않는다. 실제 상태 보존/누락 감지는 native 연속-재개 비교와 별도 단일원인 미끼7개가 담당한다.
 
@@ -81,3 +81,11 @@ seed42·Node24.22.1·집/캐러밴 raw flags `T400_BUILD_ACT=0`, `VILLAGE_CARAVA
 W25 저장 전 실제 BC6817step/227.233초에 화살20·돌315를 썼다. 저장 뒤 실제667일까지 BC10908step/363.6초 동안 form-wait5600→form-ready1, 반경 안 clear 막힘5070+실제 전진5070→clear1/advance-release1을 봤다. 처음 blocked 거리는45.124m, 해제 전투시각582.9초다. 저장 뒤 탄0으로 제어 사수 탄없음202737 unit-step·발사0이었으나 이후 근접전과 정본 종결이 있었다(귀환4명). 제어 궁수 한 장면만으로 무발사 원인을 판정하지 않았고 이 새 W25에서 비종결은 재현되지 않았다. 옛 W44의 ctx를 추정하지 않는다.
 
 seed1020 별도 무전쟁10일 OFF/ON 양팔은 각각86초/85초에 종료했다. 선포/교전/snapshot payload0이며 zone meta 문자열과 villages의9개컬럼51행이 바이트 동일, pop613·dead0·51마을 및 결과지표가 같다. 이것은 SQLite 파일/WAL의 물리 바이트나 모든 별도 표의 동일성 주장이 아니다.
+
+## 최종 지역 검사와 CI
+
+CI 밖 기존7종(T1338 war-tick, T1349 war-stall, T1381 walk-heap, T1431 raid-battle, T1429 hunt-body3, T1459 raid-ground, war-world)은 모두 RC0이다. `WAR_WORLD_NO_SERVER=1` 조건이며 별도 실서버7판으로 세지 않는다. 나머지 core 중복은 제품7cc CI 통과 결과를 재사용했다. 중간에 중단한 혼합 로컬 러너의 미실행 부분을 통과로 세지 않았다.
+
+`test-route-persist.js`는 첫판55통과/4실패였고 당시 다른 경제판 CPU 경합이 있었다(원인 미확정). 다른 CPU 검증을 끝낸 뒤 신규 소스 단독도55/4·476.6초, 동일 Node/flags 원래main c976 단독도55/4·461.6초였다. 두 단독판에서 같은4항목이 재현됐다: 캐시 신규221/main243(<594), 후속콜드18/14, 캐러밴최대94>60ms/125>81ms, 전쌍재탐색245/594·263/594. '새 회귀가 아니다'라고 단정하지 않는다. 동일 환경 main에서도 같은4검사가 실패한 기준선 한계로 회부하며 기대값/문턱/제품 변경0, 추가 실행0이다. raw 로그·source SHA는 `/workspace/scratch/war-snap-route-solo/`에 있다.
+
+최종 제품/하네스 소스7ccaa48e는 CI46039640008의13개 잡 모두 success다. 근거는 `계측/.../ci-green-7ccaa48e.json`이다. 이후 성숙/무전쟁 증거와 보고만 추가했으며 `.github/scripts/server/sim/public/lab` 소스는7cc와 같다. 자료 커밋653의 중복 fullCI 및 최종 보고 전용 커밋 CI의 실제 현재 상태는 최종 인계에 따로 기록하며, 제품CI13개green과 혼동하지 않는다. 배포·SSH·force/main push는0이다.
