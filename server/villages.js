@@ -19112,6 +19112,9 @@ function _t720Step(vil, npc, now, fv, dayR, day, fullFish = false) {
 //     닿으면 **일괄과 같은 따기 문**(`t495PickAt` · 끄면 `t347PickAt` · 같은 수요 문 `forageDemandLeft`)으로 **손에** 딴다 ·
 //     한 짐(`_t347PerLoad(w̄)` — 일괄 한도식의 그 수)이 차면 곳간으로 가서 **닿는 순간 넣는다**(`_t347Deliver` · 걸은 몸 도장은 `_t720Settle` 의 그 줄).
 //     페이싱은 종전 채집 갈래의 그 수(`6000 + (h % 5) · 1000` ÷ `t1295S`) · 다 딴 셀은 그날 건너뛴다.
+//   일의 차례 · 때(디버그 판 1020 · 140날로 확정): 채집꾼 몸은 돌 캐기(`_physicalStoneWork` — 채집꾼이 겸하는 채석)가 **먼저** 잡아 이 걸음에 한 번도 안 닿았다(현장 0 ·
+//     '채석' 라벨) — 호출을 돌 캐기 **앞**으로 옮긴다(그날 채집 수요가 남은 동안만 · 차면 종전 차례). 또 현장에 닿은 몸이 공용 `_jobT`(돌 캐기가 쓴 것)에 걸려
+//     서 있기만 했다 — 따기 페이스는 제 칸(`F.t`)에 둔다(같은 수 · 새 수 0).
 //   몸 XOR 일괄: 걸은 몸 도장(`_t347PreWalked`)이 일괄 명부(`_t1202Roster`)에서 그 몸을 뺀다 — 종전 계약 그대로(두 번 0).
 //   끄면 `T1502_ACT_FIX` 가 거짓이라 두 호출부(채집꾼 갈래 · 곳간 도착)가 한 줄도 안 돈다(바이트 같음 — `scripts/test-t1502-funnel.js`).
 const T1502_ACT_FIX = process.env.T1502_ACT_FIX === '1';
@@ -19120,7 +19123,7 @@ function _t1502ForageStep(vil, npc, now, day) {
   if (!cells.length) return false;                                   // 오늘 색인이 빈 마을 — 종전 갈래
   const h = _pidHash(npc.pid);
   if (!(_lifeEcon().forageDemandLeft(vil.econ) > 0)) return !!(npc._t1502F && npc._t1502F.n > 0 && _granGo(vil, npc, false));   // 그날 채집 수요가 찼다 — 손에 든 게 있으면 곳간으로, 없으면 종전 차례(돌 캐기 · 퇴근)
-  const F = npc._t1502F || (npc._t1502F = { site: null, skip: null, sd: -1, n: 0 });
+  const F = npc._t1502F || (npc._t1502F = { site: null, skip: null, sd: -1, n: 0, t: 0 });
   if (F.sd !== day) { F.sd = day; F.skip = null; F.site = null; }
   if (!F.site) {
     let best = null, bd = Infinity;
@@ -19136,8 +19139,8 @@ function _t1502ForageStep(vil, npc, now, day) {
   const s = F.site;
   const skip = () => { (F.skip || (F.skip = new Set())).add(s.cx + ',' + s.cy); F.site = null; return true; };
   if (Math.hypot(npc.x - s.x, npc.y - s.y) > 44) { npc.behavior = 'wander'; npc.targetX = s.x; npc.targetY = s.y; npc.gatherTarget = null; _lifeAct(npc, '출근'); return true; }
-  if (npc._jobT && now < npc._jobT) return true;
-  npc._jobT = now + (6000 + (h % 5) * 1000) / t1295S(npc);
+  if (F.t && now < F.t) return true;                                // 제 손 페이스(공용 `_jobT` 는 돌 캐기 · 다른 갈래가 쓴다 — 거기 걸려 현장에 서서만 있던 몸)
+  F.t = now + (6000 + (h % 5) * 1000) / t1295S(npc);
   let peek = null; try { peek = state.deps.t347GrovesAtCell ? state.deps.t347GrovesAtCell(s.cx, s.cy) : null; } catch (e) { peek = null; }
   if (!peek || !peek.length) return skip();
   const keep = _t347KeepOf(vil) || [];
@@ -19169,7 +19172,7 @@ function _t1502ForageStep(vil, npc, now, day) {
   }
   F.n++;
   _lifeAct(npc, '채집');
-  if (F.n >= _t347PerLoad((G.wBar > 0) ? G.wBar : 1) && _granGo(vil, npc, false)) npc._jobT = 0;   // 한 짐 — 곳간으로(닿는 순간 `_t1502ForageIn`)
+  if (F.n >= _t347PerLoad((G.wBar > 0) ? G.wBar : 1) && _granGo(vil, npc, false)) F.t = 0;   // 한 짐 — 곳간으로(닿는 순간 `_t1502ForageIn`)
   return true;
 }
 //   곳간 사다리에 닿은 채집꾼 몸의 손 → 곳간(그 입구 그대로 · 걸은 몸 도장은 `_t720Settle` 의 T347 줄과 같은 글자 · 같은 칸 `npc._t720.fw`)

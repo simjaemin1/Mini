@@ -68,7 +68,7 @@ console.log('\n② 몸은 실제로 걸어가 실제로 딴다(순간 이동 0 �
   ok(!/npc\.(x|y)\s*=[^=]/.test(S + I), '② 몸 좌표를 쓰지 않는다(걸음은 `targetX/Y` + `wander` — 순간 이동 0)');
   ok(!/_granStockAdd|addProduce|forageToGranary/.test(S), '② 따는 자리는 곳간 · 장부를 안 만진다(손에만 든다)');
   ok(/_t347Deliver\(vil, npc\)/.test(I) && !/_granStockAdd|addProduce/.test(I), '② 곳간 듦은 일괄 · 해질녘과 같은 문 `_t347Deliver` 하나(새 입구 0)');
-  ok(/_t347PreWalked\+\+/.test(I) && /S\.fw = d|S\.fw=d/.test(I.replace(/\s+/g, ' ').replace(/S\.fw = d/g, 'S.fw=d')),
+  ok(/vil\._t347PreWalked = \(vil\._t347PreWalked \| 0\) \+ 1/.test(I) && /S\.fw = d|S\.fw=d/.test(I.replace(/\s+/g, ' ').replace(/S\.fw = d/g, 'S.fw=d')),
     '② 걸은 몸 도장(`_t347PreWalked` · `S.fw`) — 일괄 명부가 그 몸을 뺀다(몸 XOR 일괄 · 두 번 0)');
   ok(/_t347PerLoad\(/.test(S) && /forageDemandLeft\(/.test(S) && !/\b(0\.\d+|[2-9]\d{2,})\s*\*/.test(S.replace(/6000 \+ \(h % 5\) \* 1000/, '')),
     '② 한 짐 · 수요 문은 일괄의 그 식(`_t347PerLoad` · `forageDemandLeft`) — 새 곱수 0');
