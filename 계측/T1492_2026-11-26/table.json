@@ -92,57 +92,57 @@
   "off-7": {
    "kind": "long",
    "target": 300,
-   "reached": 160,
-   "status": "덜 돎",
-   "sec": null,
+   "reached": 300,
+   "status": "끝",
+   "sec": 9882,
    "dead": []
   },
   "terrseq-7": {
    "kind": "long",
    "target": 300,
-   "reached": 0,
-   "status": "덜 돎",
-   "sec": null,
+   "reached": 300,
+   "status": "끝",
+   "sec": 10405,
    "dead": []
   },
   "off-42": {
    "kind": "long",
    "target": 300,
-   "reached": 0,
-   "status": "덜 돎",
-   "sec": null,
+   "reached": 300,
+   "status": "끝",
+   "sec": 9634,
    "dead": []
   },
   "terrseq-42": {
    "kind": "long",
    "target": 300,
-   "reached": 0,
-   "status": "안 띄움",
-   "sec": null,
+   "reached": 300,
+   "status": "끝",
+   "sec": 10047,
    "dead": []
   },
   "npcdeath-1020": {
    "kind": "long",
    "target": 300,
-   "reached": 0,
-   "status": "안 띄움",
-   "sec": null,
+   "reached": 300,
+   "status": "끝",
+   "sec": 9673,
    "dead": []
   },
   "react-1020": {
    "kind": "long",
    "target": 300,
-   "reached": 0,
-   "status": "안 띄움",
-   "sec": null,
+   "reached": 300,
+   "status": "끝",
+   "sec": 10074,
    "dead": []
   },
   "nobuild-1020": {
    "kind": "long",
    "target": 300,
-   "reached": 0,
-   "status": "안 띄움",
-   "sec": null,
+   "reached": 226,
+   "status": "끊음(날 226 · 시간)",
+   "sec": 4980,
    "dead": []
   },
   "cnt-off-1020": {
@@ -208,19 +208,90 @@
     {
      "d": 100,
      "vbOff": 318307,
-     "vbOn": null,
+     "vbOn": 70331,
      "dbOff": 160.87296295166016,
-     "dbOn": null,
-     "terrOff": 248790,
-     "terrOn": null,
+     "dbOn": 149.69337463378906,
+     "terrOff": 248490,
+     "terrOn": 248490,
      "spdOff": 26.985714285714284,
-     "spdOn": null,
-     "popOff": 1836,
-     "popOn": null,
-     "ratio": null
+     "spdOn": 27.21836734693878,
+     "popOff": 1829,
+     "popOn": 1829,
+     "ratio": 0.2209533563509442
+    },
+    {
+     "d": 200,
+     "vbOff": 399900,
+     "vbOn": 87734,
+     "dbOff": 205.4765625,
+     "dbOn": 190.14786529541016,
+     "terrOff": 312870,
+     "terrOn": 312870,
+     "spdOff": 29.863265306122454,
+     "spdOn": 32.73265306122448,
+     "popOff": 2560,
+     "popOn": 2560,
+     "ratio": 0.21938984746186546
+    },
+    {
+     "d": 300,
+     "vbOff": 542830,
+     "vbOn": 116528,
+     "dbOff": 234.58565521240234,
+     "dbOn": 211.88903045654297,
+     "terrOff": 427170,
+     "terrOn": 427170,
+     "spdOff": 40.245918367346924,
+     "spdOn": 42.37448979591836,
+     "popOff": 3605,
+     "popOn": 3605,
+     "ratio": 0.21466757548403737
     }
    ],
-   "42": [],
+   "42": [
+    {
+     "d": 100,
+     "vbOff": 323062,
+     "vbOn": 71570,
+     "dbOff": 159.77880859375,
+     "dbOn": 144.03445434570312,
+     "terrOff": 252030,
+     "terrOn": 252030,
+     "spdOff": 27.398979591836728,
+     "spdOn": 30.83979591836734,
+     "popOff": 1887,
+     "popOn": 1887,
+     "ratio": 0.2215364233490785
+    },
+    {
+     "d": 200,
+     "vbOff": 424265,
+     "vbOn": 93555,
+     "dbOff": 204.85140991210938,
+     "dbOn": 186.75592041015625,
+     "terrOff": 331590,
+     "terrOn": 331590,
+     "spdOff": 32.774489795918385,
+     "spdOn": 34.55714285714286,
+     "popOff": 2827,
+     "popOn": 2827,
+     "ratio": 0.22051076567711217
+    },
+    {
+     "d": 300,
+     "vbOff": 550379,
+     "vbOn": 116313,
+     "dbOff": 236.11687469482422,
+     "dbOn": 211.66481018066406,
+     "terrOff": 434670,
+     "terrOn": 434670,
+     "spdOff": 34.3,
+     "spdOn": 33.183673469387756,
+     "popOff": 3628,
+     "popOn": 3628,
+     "ratio": 0.2113325544760974
+    }
+   ],
    "1020": [
     {
      "d": 100,
@@ -228,12 +299,12 @@
      "vbOn": 69050,
      "dbOff": 84.02935791015625,
      "dbOn": 69.50592041015625,
-     "terrOff": 245430,
-     "terrOn": 245430,
+     "terrOff": 245190,
+     "terrOn": 245190,
      "spdOff": 25.465656565656566,
      "spdOn": 25.429292929292934,
-     "popOff": 1743,
-     "popOn": 1743,
+     "popOff": 1736,
+     "popOn": 1736,
      "ratio": 0.22059927606378052
     },
     {
@@ -242,12 +313,12 @@
      "vbOn": 87098,
      "dbOff": 176.07154846191406,
      "dbOn": 159.93868255615234,
-     "terrOff": 307950,
-     "terrOn": 307950,
+     "terrOff": 307170,
+     "terrOn": 307170,
      "spdOff": 26.91717171717172,
      "spdOn": 27.195959595959597,
-     "popOff": 2579,
-     "popOn": 2579,
+     "popOff": 2573,
+     "popOn": 2573,
      "ratio": 0.22151744203790552
     },
     {
@@ -256,12 +327,12 @@
      "vbOn": 114022,
      "dbOff": 211.76934814453125,
      "dbOn": 190.17411041259766,
-     "terrOff": 413490,
-     "terrOn": 413490,
+     "terrOff": 412410,
+     "terrOn": 412410,
      "spdOff": 26.134343434343435,
      "spdOn": 25.949494949494948,
-     "popOff": 3475,
-     "popOn": 3475,
+     "popOff": 3473,
+     "popOn": 3473,
      "ratio": 0.21733379078987497
     },
     {
@@ -270,12 +341,12 @@
      "vbOn": 134309,
      "dbOff": 235.12860870361328,
      "dbOn": 210.20073699951172,
-     "terrOff": 491790,
-     "terrOn": 491790,
+     "terrOff": 490950,
+     "terrOn": 490950,
      "spdOff": 52.56565656565657,
      "spdOn": 52.64949494949495,
-     "popOff": 4165,
-     "popOn": 4165,
+     "popOff": 4148,
+     "popOn": 4148,
      "ratio": 0.2152674153773659
     },
     {
@@ -284,12 +355,12 @@
      "vbOn": 160991,
      "dbOff": 367.18273162841797,
      "dbOn": 337.44398498535156,
-     "terrOff": 591810,
-     "terrOn": 591810,
+     "terrOff": 590910,
+     "terrOn": 590910,
      "spdOff": 62.16161616161617,
      "spdOn": 62.47979797979798,
-     "popOff": 5171,
-     "popOn": 5171,
+     "popOff": 5168,
+     "popOn": 5168,
      "ratio": 0.21459801279128976
     },
     {
@@ -298,12 +369,12 @@
      "vbOn": 175899,
      "dbOff": 480.6199188232422,
      "dbOn": 442.65476989746094,
-     "terrOff": 648390,
-     "terrOn": 648390,
+     "terrOff": 648090,
+     "terrOn": 648090,
      "spdOff": 79.7,
      "spdOn": 79.96020408163265,
-     "popOff": 5492,
-     "popOn": 5492,
+     "popOff": 5486,
+     "popOn": 5486,
      "ratio": 0.2135839690902534
     },
     {
@@ -323,6 +394,20 @@
    ]
   },
   "regrow": [
+   {
+    "s": "7",
+    "rg": null,
+    "minD": 300,
+    "below": null,
+    "lastD": 300
+   },
+   {
+    "s": "42",
+    "rg": null,
+    "minD": 300,
+    "below": null,
+    "lastD": 300
+   },
    {
     "s": "1020",
     "rg": null,
@@ -362,6 +447,18 @@
    "off": [
     26.044680851063827,
     61.33756906077345
+   ],
+   "nobuild": [
+    21.579569892473117,
+    21.409756097560972
+   ],
+   "react": [
+    33.42258064516128,
+    33.17551020408164
+   ],
+   "npcdeath": [
+    31.809677419354852,
+    31.92346938775508
    ],
    "terrseq": [
     26.02659574468085,
@@ -448,7 +545,7 @@
     "maxZone": 449,
     "maxAg": 0,
     "maxAct": 0,
-    "enc": 322
+    "enc": 326
    },
    {
     "n": "nd-u0-7",
@@ -493,7 +590,7 @@
     "maxZone": 449,
     "maxAg": 0,
     "maxAct": 0,
-    "enc": 322
+    "enc": 326
    },
    {
     "n": "nd-u1-7",
@@ -512,28 +609,28 @@
    }
   ],
   "beastHits": 0,
-  "why4": "짐승 449 · 활성 청크에 선 짐승 0 · 만날 짝 1960(날 표본) · 맞힘 0 — 보는 사람 0 이라 활성 청크 0 · 야생 층 · 존 몹 걸음이 안 돎 · T1461 은 사냥판(T1331 · T1393 끔 기본) 안에서만",
+  "why4": "짐승 449 · 활성 청크에 선 짐승 0 · 만날 짝 1968(날 표본) · 맞힘 0 — 보는 사람 0 이라 활성 청크 0 · 야생 층 · 존 몹 걸음이 안 돎 · T1461 은 사냥판(T1331 · T1393 끔 기본) 안에서만",
   "funnel": {
    "zone": 2694,
    "act": 0,
-   "enc": 1960
+   "enc": 1968
   }
  },
  "item5": [
   {
    "d": 100,
    "k": "pop",
-   "off": 1743,
-   "all": 1805,
+   "off": 1736,
+   "all": 1799,
    "eff": [
-    null,
-    null,
-    null,
+    5,
+    105,
+    142,
     0
    ],
-   "sum": 0,
-   "overlap": null,
-   "full": false
+   "sum": 252,
+   "overlap": -189,
+   "full": true
   },
   {
    "d": 100,
@@ -541,14 +638,14 @@
    "off": 3,
    "all": 3,
    "eff": [
-    null,
-    null,
-    null,
+    0,
+    0,
+    0,
     0
    ],
    "sum": 0,
-   "overlap": null,
-   "full": false
+   "overlap": 0,
+   "full": true
   },
   {
    "d": 100,
@@ -556,14 +653,14 @@
    "off": 0,
    "all": 0,
    "eff": [
-    null,
-    null,
-    null,
+    0,
+    0,
+    0,
     0
    ],
    "sum": 0,
-   "overlap": null,
-   "full": false
+   "overlap": 0,
+   "full": true
   },
   {
    "d": 100,
@@ -571,14 +668,14 @@
    "off": 0,
    "all": 0,
    "eff": [
-    null,
-    null,
-    null,
+    0,
+    0,
+    0,
     0
    ],
    "sum": 0,
-   "overlap": null,
-   "full": false
+   "overlap": 0,
+   "full": true
   },
   {
    "d": 100,
@@ -586,14 +683,14 @@
    "off": 313011,
    "all": 70682,
    "eff": [
-    null,
-    null,
-    null,
+    346,
+    9324,
+    12125,
     -243961
    ],
-   "sum": -243961,
-   "overlap": null,
-   "full": false
+   "sum": -222166,
+   "overlap": -20163,
+   "full": true
   },
   {
    "d": 100,
@@ -616,29 +713,29 @@
    "off": 26.044680851063827,
    "all": 16.376595744680852,
    "eff": [
-    null,
-    null,
-    null,
+    -4.46511095859071,
+    7.3778997940974556,
+    5.764996568291025,
     -0.018085106382976335
    ],
-   "sum": -0.018085106382976335,
-   "overlap": null,
-   "full": false
+   "sum": 8.659700297414794,
+   "overlap": -18.32778540379777,
+   "full": true
   },
   {
    "d": 200,
    "k": "pop",
-   "off": 2579,
-   "all": 2818,
+   "off": 2573,
+   "all": 2805,
    "eff": [
-    null,
-    null,
-    null,
+    132,
+    151,
+    211,
     0
    ],
-   "sum": 0,
-   "overlap": null,
-   "full": false
+   "sum": 494,
+   "overlap": -262,
+   "full": true
   },
   {
    "d": 200,
@@ -646,14 +743,14 @@
    "off": 15,
    "all": 15,
    "eff": [
-    null,
-    null,
-    null,
+    2,
+    2,
+    4,
     0
    ],
-   "sum": 0,
-   "overlap": null,
-   "full": false
+   "sum": 8,
+   "overlap": -8,
+   "full": true
   },
   {
    "d": 200,
@@ -661,14 +758,14 @@
    "off": 0,
    "all": 0,
    "eff": [
-    null,
-    null,
-    null,
+    0,
+    0,
+    0,
     0
    ],
    "sum": 0,
-   "overlap": null,
-   "full": false
+   "overlap": 0,
+   "full": true
   },
   {
    "d": 200,
@@ -676,14 +773,14 @@
    "off": 0,
    "all": 0,
    "eff": [
-    null,
-    null,
-    null,
+    0,
+    0,
+    0,
     0
    ],
    "sum": 0,
-   "overlap": null,
-   "full": false
+   "overlap": 0,
+   "full": true
   },
   {
    "d": 200,
@@ -691,14 +788,14 @@
    "off": 393188,
    "all": 92863,
    "eff": [
-    null,
-    null,
-    null,
+    10666,
+    24831,
+    30003,
     -306090
    ],
-   "sum": -306090,
-   "overlap": null,
-   "full": false
+   "sum": -240590,
+   "overlap": -59735,
+   "full": true
   },
   {
    "d": 200,
@@ -721,42 +818,42 @@
    "off": 26.91717171717172,
    "all": 16.009090909090908,
    "eff": [
-    null,
-    null,
-    null,
+    -5.307988043702334,
+    6.004256854256852,
+    3.9501752216037715,
     0.2787878787878775
    ],
-   "sum": 0.2787878787878775,
-   "overlap": null,
-   "full": false
+   "sum": 4.925231910946167,
+   "overlap": -15.833312719026978,
+   "full": true
   },
   {
    "d": 300,
    "k": "pop",
-   "off": 3475,
-   "all": 3433,
+   "off": 3473,
+   "all": 3427,
    "eff": [
     null,
-    null,
-    null,
+    282,
+    437,
     0
    ],
-   "sum": 0,
+   "sum": 719,
    "overlap": null,
    "full": false
   },
   {
    "d": 300,
    "k": "dead",
-   "off": 146,
-   "all": 138,
+   "off": 142,
+   "all": 135,
    "eff": [
     null,
-    null,
-    null,
+    59,
+    35,
     0
    ],
-   "sum": 0,
+   "sum": 94,
    "overlap": null,
    "full": false
   },
@@ -767,8 +864,8 @@
    "all": 0,
    "eff": [
     null,
-    null,
-    null,
+    0,
+    0,
     0
    ],
    "sum": 0,
@@ -782,8 +879,8 @@
    "all": 0,
    "eff": [
     null,
-    null,
-    null,
+    0,
+    0,
     0
    ],
    "sum": 0,
@@ -797,11 +894,11 @@
    "all": 114651,
    "eff": [
     null,
-    null,
-    null,
+    38979,
+    55863,
     -410618
    ],
-   "sum": -410618,
+   "sum": -315776,
    "overlap": null,
    "full": false
   },
@@ -826,20 +923,20 @@
    "off": 26.134343434343435,
    "all": 16.374747474747473,
    "eff": [
-    null,
-    null,
-    null,
+    -5.506343434343435,
+    7.295248402391259,
+    6.845248402391249,
     -0.18484848484848726
    ],
-   "sum": -0.18484848484848726,
-   "overlap": null,
-   "full": false
+   "sum": 8.449304885590585,
+   "overlap": -18.208900845186548,
+   "full": true
   },
   {
    "d": 400,
    "k": "pop",
-   "off": 4165,
-   "all": 3820,
+   "off": 4148,
+   "all": 3808,
    "eff": [
     null,
     null,
@@ -943,8 +1040,8 @@
   {
    "d": 500,
    "k": "pop",
-   "off": 5171,
-   "all": 5451,
+   "off": 5168,
+   "all": 5440,
    "eff": [
     null,
     null,
@@ -958,7 +1055,7 @@
   {
    "d": 500,
    "k": "dead",
-   "off": 441,
+   "off": 440,
    "all": 370,
    "eff": [
     null,
@@ -1048,8 +1145,8 @@
   {
    "d": 600,
    "k": "pop",
-   "off": 5492,
-   "all": 5568,
+   "off": 5486,
+   "all": 5557,
    "eff": [
     null,
     null,
@@ -1063,8 +1160,8 @@
   {
    "d": 600,
    "k": "dead",
-   "off": 647,
-   "all": 591,
+   "off": 645,
+   "all": 589,
    "eff": [
     null,
     null,
@@ -1278,6 +1375,20 @@
    "vbSame": true,
    "ok": true
   },
+  "nobuild-1020 ~ T1486": {
+   "tot": 61,
+   "same": 61,
+   "firstDiff": null,
+   "vbSame": true,
+   "ok": true
+  },
+  "npcdeath-1020 ~ T1486": {
+   "tot": 61,
+   "same": 61,
+   "firstDiff": null,
+   "vbSame": true,
+   "ok": true
+  },
   "off-1020 ~ main": {
    "tot": 61,
    "same": 61,
@@ -1293,16 +1404,16 @@
    "ok": true
   },
   "off-42 ~ T1486": {
-   "tot": 1,
-   "same": 1,
+   "tot": 61,
+   "same": 61,
    "firstDiff": null,
    "vbSame": true,
    "ok": true
   },
   "off-7 ~ T1486": {
    "tot": 61,
-   "same": 54,
-   "firstDiff": 50,
+   "same": 55,
+   "firstDiff": 55,
    "vbSame": true,
    "ok": false
   },
@@ -1327,6 +1438,13 @@
    "vbSame": true,
    "ok": true
   },
+  "react-1020 ~ T1486": {
+   "tot": 61,
+   "same": 61,
+   "firstDiff": null,
+   "vbSame": true,
+   "ok": true
+  },
   "ss-react-1020 ~ T1486": {
    "tot": 61,
    "same": 61,
@@ -1341,12 +1459,19 @@
    "vbSame": true,
    "ok": true
   },
-  "terrseq-7 ~ T1486": {
-   "tot": 1,
-   "same": 1,
+  "terrseq-42 ~ T1486": {
+   "tot": 61,
+   "same": 61,
    "firstDiff": null,
-   "vbSame": true,
-   "ok": true
+   "vbSame": false,
+   "ok": false
+  },
+  "terrseq-7 ~ T1486": {
+   "tot": 61,
+   "same": 55,
+   "firstDiff": 55,
+   "vbSame": false,
+   "ok": false
   }
  }
 }

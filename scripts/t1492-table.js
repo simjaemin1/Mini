@@ -32,7 +32,7 @@ function load(name) {
     const rows = s.rec.days || [];
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i]; if (r.d < s.from) continue;
-      days.set(r.d, Object.assign({}, r, { seg: s.from }));
+      if (!days.has(r.d)) days.set(r.d, Object.assign({}, r, { seg: s.from }));   // 같은 날 두 줄(멈춤 날 · 이은 마디 첫 날)이면 앞 마디 줄(되살림 뒤 첫 틱 줄은 메모리 누계가 다를 수 있다)
       if (i > 0 && rows[i - 1].d === r.d - 1 && r.d > s.from + 1) spd.set(r.d, r.wall - rows[i - 1].wall);   // 마디 첫 날(부팅 · 되살림)은 뺀다
     }
     for (const o of s.rec.db || []) if (o && o.d != null && !db.has(o.d)) db.set(o.d, o);   // 그 날 첫 줄(날 중 20날 셈) — 마디 끝 줄(멈춤 경계 저장 뒤 · WAL 이 큼)은 안 쓴다
@@ -106,7 +106,7 @@ const I1 = {};
 for (const s of SEEDS1) {
   const off = RUN['off-' + s], on = RUN['terrseq-' + s]; if (!off && !on) continue;
   I1[s] = [];
-  const endD = Math.min(off ? off.lastD : 0, on ? on.lastD : 0), pts = [100, 200, 300, 400, 500, 600, 700, 800].filter((d) => d <= Math.max(off ? off.lastD : 0, on ? on.lastD : 0)); if (endD % 100 && !pts.includes(endD)) pts.push(endD);
+  const endD = Math.min(off ? off.lastD : 0, on ? on.lastD : 0), pts = [100, 200, 300, 400, 500, 600, 700, 800].filter((d) => d <= Math.max(off ? off.lastD : 0, on ? on.lastD : 0)); if (endD % 100 && !pts.includes(endD)) pts.push(endD); pts.sort((a, b) => a - b);
   for (const d of pts) {
     const a = off && dbAt(off, d), b = on && dbAt(on, d), ra = off && row(off, d), rb = on && row(on, d);
     if (!a && !b && !ra && !rb) continue;
@@ -237,7 +237,7 @@ if (O5 && A5) {
     if (!row(O5, d) || !row(A5, d)) continue;
     for (const [k, nm, g] of MET) {
       const o = g(O5, d), a = g(A5, d); if (o == null || a == null) continue;
-      const eff = singles.map(([s, r]) => { const v = r ? g(r, d) : null; return v == null ? null : v - o; });
+      const eff = singles.map(([s, r]) => { if (k === 'dbmb' && r && r.prog && r.prog.segs && r.prog.segs[0] && r.prog.segs[0].to !== 100) return null; const v = r ? g(r, d) : null; return v == null ? null : v - o; });   // DB 크기는 마디 길이가 같은 판끼리만(마디 경계 저장이 DB 를 키운다 — 50날 마디 판은 뺀다)
       const have = eff.every((x) => x != null), nHave = eff.filter((x) => x != null).length, S = nHave ? eff.reduce((x, y) => x + (y || 0), 0) : null, ov = have ? (a - o) - S : null;
       I5.push({ d, k, off: o, all: a, eff, sum: S, overlap: ov, full: have });
       const nd = k === 'dbmb' || k === 'spd' ? 1 : 0;
@@ -249,15 +249,18 @@ if (O5 && A5) {
 OUTJ.item5 = I5;
 
 // ── 첫 줄 ──
-const rows800 = Object.values(I1).map((P) => P.filter((x) => x.vbOff != null && x.vbOn != null).slice(-1)[0]).filter(Boolean);
-const lastDay1 = rows800.length ? Math.min(...rows800.map((x) => x.d)) : null;
-const vbOff = med(rows800.map((x) => x.vbOff)), vbOn = med(rows800.map((x) => x.vbOn)), dbOff = med(rows800.map((x) => x.dbOff)), dbOn = med(rows800.map((x) => x.dbOn));
-const rgTxt = regrow.length ? regrow.map((x) => `${x.s} ${x.rg ? '날 ' + x.rg.d : '없음'}`).join(' · ') : '—';
-const ownTxt = owner ? `\`${owner.fn.split(' @')[0]}\`(울타리가 서거나 헐린 날 +${f(owner.extraSec, 1)} 초 · 그 날 1번 · 안의 A* \`${owner.inner.split(' @')[0]}\` ${f(owner.innerCalls[0], 0)}번 · 칸 검사 \`_t598EdgeOk\` ${f(owner.edge[0], 0)}번` : '○(';
-const spdGap = refSpd.off && refSpd.nobuild ? `평균 끔 ${f(refSpd.off.spd, 1)} ↔ NO_BUILD ${f(refSpd.nobuild.spd, 1)} 초/날` : '';
+//   첫 줄 — 건물 행 · DB 는 가장 멀리 간 시드(마지막 견준 날)의 끔 → 켬 · 곁에 다른 시드의 행 비
+const ends = Object.entries(I1).map(([sd, P]) => [sd, P.filter((x) => x.vbOff != null && x.vbOn != null).slice(-1)[0]]).filter(([, x]) => x).sort((a, b) => b[1].d - a[1].d);
+const far = ends[0] ? ends[0][1] : null, farS = ends[0] ? ends[0][0] : null;
+const rgAll = regrow.filter((x) => x.rg);
+const rgTxt = regrow.length ? (rgAll.length ? rgAll.map((x) => `${x.s} 날 ${x.rg.d}`).join(' · ') : `없음(행 켬/끔 비 ${regrow.map((x) => `${x.s} ${f(Math.min(...I1[x.s].filter((q) => q.ratio != null).map((q) => q.ratio)), 3)} ~ ${f(Math.max(...I1[x.s].filter((q) => q.ratio != null).map((q) => q.ratio)), 3)}(날 ${x.lastD})`).join(' · ')})`) : '○';
+const ownTxt = owner ? `\`${owner.fn.split(' @')[0]}\`(거리행렬 다시 세움 · 울타리가 서거나 헐린 날에만 1번 · 그 날 +${f(owner.extraSec, 1)} 초 · A* \`${owner.inner.split(' @')[0]}\` ${f(owner.innerCalls[0], 0)}번 · \`_t598EdgeOk\` ${f(owner.edge[0], 0)}번` : '○(';
+const spdGap = refSpd.off && refSpd.nobuild ? `평균 ${f(refSpd.off.spd - refSpd.nobuild.spd, 1)} 초/날(${f(refSpd.off.spd, 1)} ↔ ${f(refSpd.nobuild.spd, 1)})` : '';
 const knobTxt = (() => { const ks = Object.keys(refSpd).filter((a) => a !== 'off'); if (!ks.length || !refSpd.off) return '○'; const gone = ks.filter((a) => refSpd[a].spikes <= refSpd.off.spikes / 3); return gone.length ? gone.map((a) => ({ nobuild: 'NO_BUILD', react: 'BLOCK_REACT', npcdeath: 'NPC_DEATH', terrseq: 'TERR_SEQ' })[a]).join(' · ') + ' 켬에서만 사라짐' : '없음'; })();
-const ovTxt = (() => { const L5 = I5.filter((x) => x.full && x.k === 'pop'); if (!L5.length) { const p = I5.filter((x) => x.k === 'pop').slice(-1)[0]; return p ? `하나씩 판 덜 돎(넷 − 끔 인구 ${f(p.all - p.off, 0)} · 날 ${p.d})` : '○'; } const z = L5[L5.length - 1]; const v = I5.filter((x) => x.full && x.d === z.d); return `날 ${z.d} ` + v.filter((x) => ['pop', 'vb', 'spd'].includes(x.k)).map((x) => `${x.k} ${f(x.overlap, x.k === 'spd' ? 1 : 0)}`).join(' · '); })();
-const fl = `영토 차례 800날 — 건물 행 ${vbOff != null ? Math.round(vbOff) : '○'} → ${vbOn != null ? Math.round(vbOn) : '○'}${lastDay1 && lastDay1 < 800 ? `(날 ${lastDay1})` : ''} · DB ${f(dbOff, 1)} → ${f(dbOn, 1)} MB · 다시 불어남 ${rgTxt} · 다리 머리 느려짐의 주인 ${ownTxt} · ${spdGap} · 손잡이 ${knobTxt}) · 잠 깨움 부른 자리 1위 ${top3 ? '`' + top3.site.split(' · ').slice(0, 3).join(' · ') + '`' : '○'}(헛깨움 ${top3 ? f(100 * top3.totRep, 1) : '○'} %) · 짐승이 스스로 친 건 ${beastHits}(0 이면 까닭 ${why4 || '—'}) · 넷 다 켬 겹침 ${ovTxt} · 죽은 판 ${deadRuns} · 회부 ${REFER}`;
+const cutSame = (() => { const r0 = RUN['off-1020']; if (!r0 || !r0.prog) return null; const a = (r) => (r && r.prog && r.prog.segs && r.prog.segs[0] ? r.prog.segs[0].to : null); return singles.every(([, r]) => !r || a(r) === a(r0)); })();
+const ovTxt = (() => { const L5 = I5.filter((x) => x.full && x.k === 'pop'); const allD = I5.filter((x) => x.k === 'pop').slice(-1)[0]; if (!L5.length) return allD ? `하나씩 판 덜 돎(넷 − 끔 인구 ${f(allD.all - allD.off, 0)} · 날 ${allD.d})` : '○'; const z = L5[L5.length - 1]; const v = I5.filter((x) => x.full && x.d === z.d); const t = v.filter((x) => ['pop', 'vb', 'spd'].includes(x.k)).map((x) => `${({ pop: '인구', vb: '행', spd: '초/날' })[x.k]} ${f(x.overlap, x.k === 'spd' ? 1 : 0)}`).join(' · '); return cutSame === false ? `못 잼(날 ${z.d} 겹침 ${t} 이나 하나씩 판 마디가 50날 · 끔 · 넷 다 켬은 100날 — 마디 끊음이 세계를 가른다 · 넷 − 끔 날 ${allD.d} 인구 ${f(allD.all - allD.off, 0)} · 행 ${f((I5.find((x) => x.k === 'vb' && x.d === allD.d) || {}).all - (I5.find((x) => x.k === 'vb' && x.d === allD.d) || {}).off, 0)})` : `날 ${z.d} ${t}`; })();
+const site1 = top3 ? `상인 몸 걸음 \`${top3.site.split(' · ')[2].split(' ← ').slice(0, 2).join(' ← ')}\` ${f(100 * top3.share, 0)} %` : '○';
+const fl = `영토 차례 800날 — 건물 행 ${far ? far.vbOff : '○'} → ${far ? far.vbOn : '○'}(시드 ${farS} 날 ${far ? far.d : '○'}${far && far.d < 800 ? ' · 800날 못 닿음' : ''}) · DB ${f(far && far.dbOff, 1)} → ${f(far && far.dbOn, 1)} MB · 다시 불어남 ${rgTxt} · 다리 머리 느려짐의 주인 ${ownTxt} · ${spdGap} · 손잡이 ${knobTxt}) · 잠 깨움 부른 자리 1위 ${site1}(헛깨움 ${top3 ? f(100 * top3.totRep, 1) : '○'} %) · 짐승이 스스로 친 건 ${beastHits}(0 이면 까닭 ${why4 || '—'}) · 넷 다 켬 겹침 ${ovTxt} · 죽은 판 ${deadRuns} · 회부 ${REFER}`;
 fs.writeFileSync(path.join(R, 'table.txt'), L.join('\n') + '\n');
 fs.writeFileSync(path.join(R, 'table.json'), JSON.stringify(OUTJ, null, 1));
 fs.writeFileSync(path.join(R, 'first-line.txt'), fl + '\n');

@@ -14,3 +14,10 @@ nd-u0-42 0 1793
 nd-u1-42 0 1776
 terrseq-1020 9 17009
 off-1020 9 17159
+off-7 0 9882
+off-42 0 9634
+terrseq-7 0 10405
+terrseq-42 0 10047
+npcdeath-1020 0 9673
+react-1020 0 10074
+nobuild-1020 9 4980
