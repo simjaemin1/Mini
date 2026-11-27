@@ -22,6 +22,7 @@ if (process.argv.includes('--worker')) {
         : 'return _lifeEcon().woodDemandLeft(vil.econ, _t374Held(vil, _T374_WOOD));';
       assert.strictEqual(src.split(needle).length - 1, 1, 'exactly one bait site');
       src = src.replace(needle, bait === 'early' ? 'if (false) {' : 'return _lifeEcon().woodDemandLeft(vil.econ);');
+      process.stderr.write('T1496_BAIT_SITES=1\n');
       m._compile(src, file);
     };
   }
@@ -131,7 +132,10 @@ check('ON with legacy hand delivery', () => {
 });
 function assertBait(bait, scenario) {
   const r = run('1', scenario, bait);
-  assert.notStrictEqual(r.status, 0); assert(r.stderr.includes('AssertionError'), r.stderr);
+  assert.notStrictEqual(r.status, 0);
+  assert(r.stderr.includes('T1496_BAIT_SITES=1'), 'bait really changed one production site');
+  assert(r.stderr.includes('AssertionError'), r.stderr);
+  assert(r.stderr.includes(bait === 'early' ? 'body gets the first turn before batch cuts' : 'batch leaves the carried body share available'), 'intended outcome assertion bites');
 }
 check('미끼 early — 바꾼 자리 1곳: 일괄을 앞당기면 몸 차례 단언 빨강', () => assertBait('early', 'flow'));
 check('미끼 held — 바꾼 자리 1곳: 운반 중인 몫을 빼면 보존 단언 빨강', () => assertBait('held', 'held'));
