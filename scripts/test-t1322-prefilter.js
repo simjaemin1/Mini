@@ -164,11 +164,12 @@ console.log('\n⑤ 존 배선 글자');
   { const V = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8'), ev = V.slice(V.indexOf('function _warEvacVillage(vil, now) {'), V.indexOf('\n}\n', V.indexOf('function _warEvacVillage(vil, now) {')));
     ok(/t1322Touch: T1322_PF \? _t1322Touch : null,/.test(Z) && ev.indexOf('if (_t22) _t22(p);') > 0 && ev.indexOf('if (_t22) _t22(p);') < ev.indexOf('p.simEvacUntil = now + 5000;'), '대피(생활층 `_warEvacVillage`) — 대피 칸을 쓰기 전에(존이 deps 로 준 문 · `verify` 30날 · 400날 판이 센 유일한 걸음 문 밖 쓰기)'); }
   { const V = fs.readFileSync(path.join(ROOT, 'server', 'villages.js'), 'utf8'); ok(/if \(state\.deps\.t1322Touch\) state\.deps\.t1322Touch\(p\);[^\n]*\n    p\.simJob = q\.currentJob;/.test(V), '직업 바꿈(생활층 하루 econ 맞춤) — 직업 칸을 쓰기 전에'); }
-  ok(/const T1322_PF = SS\.ON && !T738_SOA_XY && T670_SKIP_IDLE && !T791_VERIFY && !T1140_STUCK_INLINE && !T1145_XY_COLS && !T370_PATH_REUSE && !T1294_ARRIVED_PATH && T791_PATH_MIR && !T1241_DES && process\.env\.T1316_SUBSTEP !== '1';/.test(Z),
+  ok(/const T1322_PF = SS\.ON && !T738_SOA_XY && T670_SKIP_IDLE && !T791_VERIFY && !T1140_STUCK_INLINE && !T1145_XY_COLS && !T370_PATH_REUSE && !T1294_ARRIVED_PATH && T791_PATH_MIR && !T1241_DES && process\.env\.T1316_SUBSTEP !== '1' && process\.env\.T1499_VCLOCK_WALK !== '1';/.test(Z),
     '켜지는 조건 — 걸음 문 글자를 바꾸는 손잡이가 다 끔일 때만');
   const S0 = loadSS('0'), S1 = loadSS('1'), S2 = loadSS('verify'), S3 = loadSS('');
   ok(!S0.ON && S1.ON && !S1.VERIFY && S2.ON && S2.VERIFY && S3.ON && !S3.VERIFY, "`T1322_PREFILTER` — ★[T1323] 켬 기본(빈 값 · `'1'` 켬) · `'0'` 만 끔 · `'verify'` 켬 + 견줌");
-  ok(/!T1241_DES && process\.env\.T1316_SUBSTEP !== '1';/.test(Z), '★[T1323] T1316 토막 걸음 켬 판엔 첫 거름 무동작(한 틱 여러 걸음)');
+  ok(/!T1241_DES && process\.env\.T1316_SUBSTEP !== '1' && /.test(Z), '★[T1323] T1316 토막 걸음 켬 판엔 첫 거름 무동작(한 틱 여러 걸음)');
+  ok(/process\.env\.T1316_SUBSTEP !== '1' && process\.env\.T1499_VCLOCK_WALK !== '1';/.test(Z), '★[T1499] 판 자 걸음 켬 판엔 첫 거름 무동작(한 틱에 실제 하루만큼 · 칸마다 걸음)');
 }
 console.log(`\n=== T1322 첫 거름 ${pass} 통과 · ${fail} 실패 ===`);
 process.exit(fail ? 1 : 0);
