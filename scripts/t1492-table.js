@@ -45,7 +45,7 @@ function load(name) {
 const names = fs.existsSync(RUNS) ? fs.readdirSync(RUNS).filter((x) => fs.statSync(path.join(RUNS, x)).isDirectory()).sort() : [];
 const RUN = {}; for (const n of names) { const r = load(n); if (r) RUN[n] = r; }
 const winSpd = (r, a, b) => { const v = []; for (const [d, s] of r.spd) if (d > a && d <= b) v.push(s); return v.length ? v.reduce((x, y) => x + y, 0) / v.length : null; };
-const dbAt = (r, d) => { let best = null; for (const [k, o] of r.db) if (k <= d && k > d - 20 && (!best || k > best.d)) best = o; return best; };   // 그 날(또는 앞 20날 안 마지막) DB 줄
+const dbAt = (r, d) => { let best = null; for (const [k, o] of r.db) if (k % 20 === 0 && k <= d && k > d - 20 && (!best || k > best.d)) best = o; return best; };   // 날 중 20날 셈만(마디 끝 줄 = 경계 저장 뒤는 안 쓴다)   // 그 날(또는 앞 20날 안 마지막) DB 줄
 const row = (r, d) => r.days.get(d) || null;
 const deadOf = (n) => deadLines.filter((l) => l.startsWith(n + ' '));
 
@@ -58,7 +58,7 @@ let deadRuns = 0, cutRuns = 0;
 for (const n of allNames) {
   const r = RUN[n], j = jobs.find((x) => x.name === n) || {}, dl = deadOf(n), d = done[n];
   const full = r && j.days && r.lastD >= j.days;
-  const st = d ? (d.rc === 0 ? '끝' : full ? `끝(판 자 검사 코드 ${d.rc}${j.zone === 'nippon' ? ' — 마을 40곳 넘음 검사 · 닛폰 36곳' : ''})` : `코드 ${d.rc}`) : (r ? '덜 돎' : '안 띄움');
+  const st = d ? (d.rc === 0 ? '끝' : d.rc === 9 ? `끊음(날 ${r ? r.lastD : 0} · 시간)` : full ? `끝(판 자 검사 코드 ${d.rc}${j.zone === 'nippon' ? ' — 마을 40곳 넘음 검사 · 닛폰 36곳' : ''})` : `코드 ${d.rc}`) : (r ? '덜 돎' : '안 띄움');
   if (!d || (d.rc !== 0 && !full)) cutRuns++;
   if (dl.length) deadRuns++;
   const segN = r && r.prog ? r.prog.segs.length : (r ? 1 : 0);
@@ -106,7 +106,8 @@ const I1 = {};
 for (const s of SEEDS1) {
   const off = RUN['off-' + s], on = RUN['terrseq-' + s]; if (!off && !on) continue;
   I1[s] = [];
-  for (let d = 100; d <= 800; d += 100) {
+  const endD = Math.min(off ? off.lastD : 0, on ? on.lastD : 0), pts = [100, 200, 300, 400, 500, 600, 700, 800].filter((d) => d <= Math.max(off ? off.lastD : 0, on ? on.lastD : 0)); if (endD % 100 && !pts.includes(endD)) pts.push(endD);
+  for (const d of pts) {
     const a = off && dbAt(off, d), b = on && dbAt(on, d), ra = off && row(off, d), rb = on && row(on, d);
     if (!a && !b && !ra && !rb) continue;
     const pr = (x, y, fn, n = 0) => `${x ? f(fn(x), n) : '—'} → ${y ? f(fn(y), n) : '—'}`;
@@ -231,7 +232,8 @@ const MET = [['pop', '인구', (r, d) => row(r, d) && row(r, d).pop], ['dead', '
 const I5 = [];
 if (O5 && A5) {
   W('| 날 | 잣대 | 끔 | 넷 다 켬 | 켬 − 끔 | 하나씩 효과(' + singles.map(([a]) => a).join(' · ') + ') | 하나씩 합 | 겹침(넷 효과 − 하나씩 합) | 겹침 / 끔 |'); W('|---|---|---|---|---|---|---|---|---|');
-  for (let d = 100; d <= 800; d += 100) {
+  const pts5 = [100, 200, 300, 400, 500, 600, 700, 800]; { const e = Math.min(O5.lastD, A5.lastD); if (e % 100) pts5.push(e); } pts5.sort((a, b) => a - b);
+  for (const d of pts5) {
     if (!row(O5, d) || !row(A5, d)) continue;
     for (const [k, nm, g] of MET) {
       const o = g(O5, d), a = g(A5, d); if (o == null || a == null) continue;

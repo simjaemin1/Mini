@@ -3,9 +3,9 @@
   "off-1020": {
    "kind": "long",
    "target": 800,
-   "reached": 500,
-   "status": "덜 돎",
-   "sec": null,
+   "reached": 650,
+   "status": "끊음(날 650 · 시간)",
+   "sec": 17159,
    "dead": [
     "off-1020 마디 죽음(코드 3 · ck=0) 2026-11-26T20:16:22Z — 다시",
     "off-1020 마디 죽음(코드 3 · ck=400) 2026-11-26T20:19:09Z — 다시",
@@ -19,9 +19,9 @@
   "terrseq-1020": {
    "kind": "long",
    "target": 800,
-   "reached": 500,
-   "status": "덜 돎",
-   "sec": null,
+   "reached": 650,
+   "status": "끊음(날 650 · 시간)",
+   "sec": 17009,
    "dead": [
     "terrseq-1020 마디 죽음(코드 3 · ck=0) 2026-11-26T20:16:33Z — 다시",
     "terrseq-1020 마디 죽음(코드 3 · ck=400) 2026-11-26T20:19:20Z — 다시",
@@ -34,9 +34,9 @@
   "all4-1020": {
    "kind": "long",
    "target": 800,
-   "reached": 600,
-   "status": "덜 돎",
-   "sec": null,
+   "reached": 650,
+   "status": "끊음(날 650 · 시간)",
+   "sec": 5501,
    "dead": [
     "all4-1020 2026-11-26T18:11:19Z 끊김 → 다시 2026-11-27T00:26:06Z ck=600"
    ]
@@ -60,40 +60,40 @@
   "nd-u0-7": {
    "kind": "long",
    "target": 100,
-   "reached": 0,
-   "status": "안 띄움",
-   "sec": null,
+   "reached": 100,
+   "status": "끝",
+   "sec": 1694,
    "dead": []
   },
   "nd-u1-7": {
    "kind": "long",
    "target": 100,
-   "reached": 0,
-   "status": "안 띄움",
-   "sec": null,
+   "reached": 100,
+   "status": "끝",
+   "sec": 1790,
    "dead": []
   },
   "nd-u0-42": {
    "kind": "long",
    "target": 100,
-   "reached": 0,
-   "status": "안 띄움",
-   "sec": null,
+   "reached": 100,
+   "status": "끝",
+   "sec": 1793,
    "dead": []
   },
   "nd-u1-42": {
    "kind": "long",
    "target": 100,
-   "reached": 0,
-   "status": "안 띄움",
-   "sec": null,
+   "reached": 100,
+   "status": "끝",
+   "sec": 1776,
    "dead": []
   },
   "off-7": {
    "kind": "long",
    "target": 300,
-   "reached": 0,
-   "status": "안 띄움",
+   "reached": 160,
+   "status": "덜 돎",
    "sec": null,
    "dead": []
   },
@@ -101,7 +101,7 @@
    "kind": "long",
    "target": 300,
    "reached": 0,
-   "status": "안 띄움",
+   "status": "덜 돎",
    "sec": null,
    "dead": []
   },
@@ -109,7 +109,7 @@
    "kind": "long",
    "target": 300,
    "reached": 0,
-   "status": "안 띄움",
+   "status": "덜 돎",
    "sec": null,
    "dead": []
   },
@@ -204,6 +204,23 @@
  },
  "item1": {
   "rows": {
+   "7": [
+    {
+     "d": 100,
+     "vbOff": 318307,
+     "vbOn": null,
+     "dbOff": 160.87296295166016,
+     "dbOn": null,
+     "terrOff": 248790,
+     "terrOn": null,
+     "spdOff": 26.985714285714284,
+     "spdOn": null,
+     "popOff": 1836,
+     "popOn": null,
+     "ratio": null
+    }
+   ],
+   "42": [],
    "1020": [
     {
      "d": 100,
@@ -274,6 +291,34 @@
      "popOff": 5171,
      "popOn": 5171,
      "ratio": 0.21459801279128976
+    },
+    {
+     "d": 600,
+     "vbOff": 823559,
+     "vbOn": 175899,
+     "dbOff": 480.6199188232422,
+     "dbOn": 442.65476989746094,
+     "terrOff": 648390,
+     "terrOn": 648390,
+     "spdOff": 79.7,
+     "spdOn": 79.96020408163265,
+     "popOff": 5492,
+     "popOn": 5492,
+     "ratio": 0.2135839690902534
+    },
+    {
+     "d": 650,
+     "vbOff": 849474,
+     "vbOn": 182845,
+     "dbOff": 526.8183898925781,
+     "dbOn": 485.576904296875,
+     "terrOff": 671010,
+     "terrOn": 671010,
+     "spdOff": 138.21530612244902,
+     "spdOn": 136.4632653061225,
+     "popOff": 5595,
+     "popOn": 5595,
+     "ratio": 0.21524496335379306
     }
    ]
   },
@@ -281,9 +326,9 @@
    {
     "s": "1020",
     "rg": null,
-    "minD": 500,
+    "minD": 600,
     "below": true,
-    "lastD": 500
+    "lastD": 650
    }
   ]
  },
@@ -316,15 +361,15 @@
   "knobSpd": {
    "off": [
     26.044680851063827,
-    41.94469696969695
+    61.33756906077345
    ],
    "terrseq": [
     26.02659574468085,
-    42.068686868686896
+    61.168876611418085
    ],
    "all4": [
     16.376595744680852,
-    33.77595959595961
+    40.62279411764707
    ],
    "jp-off": [
     34.803703703703704,
@@ -391,6 +436,36 @@
     "enc": 356
    },
    {
+    "n": "nd-u0-42",
+    "d": 100,
+    "pop": 1657,
+    "died": 0,
+    "wild": 0,
+    "other": 0,
+    "ticks": 0,
+    "hits": 0,
+    "maxLab": 0,
+    "maxZone": 449,
+    "maxAg": 0,
+    "maxAct": 0,
+    "enc": 322
+   },
+   {
+    "n": "nd-u0-7",
+    "d": 100,
+    "pop": 1959,
+    "died": 0,
+    "wild": 0,
+    "other": 0,
+    "ticks": 0,
+    "hits": 0,
+    "maxLab": 0,
+    "maxZone": 449,
+    "maxAg": 0,
+    "maxAct": 0,
+    "enc": 302
+   },
+   {
     "n": "nd-u1-1020",
     "d": 100,
     "pop": 1806,
@@ -404,14 +479,44 @@
     "maxAg": 0,
     "maxAct": 0,
     "enc": 356
+   },
+   {
+    "n": "nd-u1-42",
+    "d": 100,
+    "pop": 1657,
+    "died": 0,
+    "wild": 0,
+    "other": 0,
+    "ticks": 0,
+    "hits": 0,
+    "maxLab": 0,
+    "maxZone": 449,
+    "maxAg": 0,
+    "maxAct": 0,
+    "enc": 322
+   },
+   {
+    "n": "nd-u1-7",
+    "d": 100,
+    "pop": 1959,
+    "died": 0,
+    "wild": 0,
+    "other": 0,
+    "ticks": 0,
+    "hits": 0,
+    "maxLab": 0,
+    "maxZone": 449,
+    "maxAg": 0,
+    "maxAct": 0,
+    "enc": 302
    }
   ],
   "beastHits": 0,
-  "why4": "짐승 449 · 활성 청크에 선 짐승 0 · 만날 짝 712(날 표본) · 맞힘 0 — 보는 사람 0 이라 활성 청크 0 · 야생 층 · 존 몹 걸음이 안 돎 · T1461 은 사냥판(T1331 · T1393 끔 기본) 안에서만",
+  "why4": "짐승 449 · 활성 청크에 선 짐승 0 · 만날 짝 1960(날 표본) · 맞힘 0 — 보는 사람 0 이라 활성 청크 0 · 야생 층 · 존 몹 걸음이 안 돎 · T1461 은 사냥판(T1331 · T1393 끔 기본) 안에서만",
   "funnel": {
-   "zone": 898,
+   "zone": 2694,
    "act": 0,
-   "enc": 712
+   "enc": 1960
   }
  },
  "item5": [
@@ -939,6 +1044,216 @@
    "sum": 0.3181818181818059,
    "overlap": null,
    "full": false
+  },
+  {
+   "d": 600,
+   "k": "pop",
+   "off": 5492,
+   "all": 5568,
+   "eff": [
+    null,
+    null,
+    null,
+    0
+   ],
+   "sum": 0,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 600,
+   "k": "dead",
+   "off": 647,
+   "all": 591,
+   "eff": [
+    null,
+    null,
+    null,
+    0
+   ],
+   "sum": 0,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 600,
+   "k": "fd",
+   "off": 0,
+   "all": 0,
+   "eff": [
+    null,
+    null,
+    null,
+    0
+   ],
+   "sum": 0,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 600,
+   "k": "empty",
+   "off": 0,
+   "all": 0,
+   "eff": [
+    null,
+    null,
+    null,
+    0
+   ],
+   "sum": 0,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 600,
+   "k": "vb",
+   "off": 823559,
+   "all": 185980,
+   "eff": [
+    null,
+    null,
+    null,
+    -647660
+   ],
+   "sum": -647660,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 600,
+   "k": "dbmb",
+   "off": 480.6199188232422,
+   "all": 351.9030227661133,
+   "eff": [
+    null,
+    null,
+    null,
+    -37.96514892578125
+   ],
+   "sum": -37.96514892578125,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 600,
+   "k": "spd",
+   "off": 79.7,
+   "all": 60.12222222222223,
+   "eff": [
+    null,
+    null,
+    null,
+    0.26020408163265074
+   ],
+   "sum": 0.26020408163265074,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 650,
+   "k": "pop",
+   "off": 5595,
+   "all": 5572,
+   "eff": [
+    null,
+    null,
+    null,
+    0
+   ],
+   "sum": 0,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 650,
+   "k": "dead",
+   "off": 871,
+   "all": 817,
+   "eff": [
+    null,
+    null,
+    null,
+    0
+   ],
+   "sum": 0,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 650,
+   "k": "fd",
+   "off": 0,
+   "all": 0,
+   "eff": [
+    null,
+    null,
+    null,
+    0
+   ],
+   "sum": 0,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 650,
+   "k": "empty",
+   "off": 0,
+   "all": 0,
+   "eff": [
+    null,
+    null,
+    null,
+    0
+   ],
+   "sum": 0,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 650,
+   "k": "vb",
+   "off": 849474,
+   "all": 187812,
+   "eff": [
+    null,
+    null,
+    null,
+    -666629
+   ],
+   "sum": -666629,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 650,
+   "k": "dbmb",
+   "off": 526.8183898925781,
+   "all": 446.19632720947266,
+   "eff": [
+    null,
+    null,
+    null,
+    -41.241485595703125
+   ],
+   "sum": -41.241485595703125,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 650,
+   "k": "spd",
+   "off": 138.21530612244902,
+   "all": 89.44949494949492,
+   "eff": [
+    null,
+    null,
+    null,
+    -1.752040816326513
+   ],
+   "sum": -1.752040816326513,
+   "overlap": null,
+   "full": false
   }
  ],
  "fp": {
@@ -977,6 +1292,20 @@
    "vbSame": true,
    "ok": true
   },
+  "off-42 ~ T1486": {
+   "tot": 1,
+   "same": 1,
+   "firstDiff": null,
+   "vbSame": true,
+   "ok": true
+  },
+  "off-7 ~ T1486": {
+   "tot": 61,
+   "same": 54,
+   "firstDiff": 50,
+   "vbSame": true,
+   "ok": false
+  },
   "prof-nobuild-1020 ~ T1486": {
    "tot": 23,
    "same": 23,
@@ -1008,6 +1337,13 @@
   "terrseq-1020 ~ T1486": {
    "tot": 61,
    "same": 61,
+   "firstDiff": null,
+   "vbSame": true,
+   "ok": true
+  },
+  "terrseq-7 ~ T1486": {
+   "tot": 1,
+   "same": 1,
    "firstDiff": null,
    "vbSame": true,
    "ok": true

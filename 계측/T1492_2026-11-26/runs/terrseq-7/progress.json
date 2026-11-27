@@ -1,0 +1,23 @@
+{
+ "v": 1,
+ "tag": "sbc",
+ "seed": 7,
+ "days": 300,
+ "every": 50,
+ "dir": "/home/user/t1492-out/runs/terrseq-7",
+ "ck": 0,
+ "segs": [],
+ "done": false,
+ "env": {
+  "NODE_OPTIONS": "--max-old-space-size=4608 --require /home/user/t1492/scripts/t1492-bots.js",
+  "T745_VCLOCK": "1",
+  "VILLAGE_DAY_MS": "1440000",
+  "T699_ROUTE_CACHE": "/home/user/t1492-out/route-cache",
+  "T1486_BOTS": "8",
+  "T1433_TERR_SEQ": "1",
+  "T577_TAG": "sbc",
+  "T1492_SEG": "1"
+ },
+ "started": "2026-11-27T05:11:03.310Z",
+ "tries": 1
+}
