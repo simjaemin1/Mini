@@ -1,5 +1,5 @@
-// T1494 · 같은 판을 400날 · 730날에 잘라 켬 ÷ 끔 (시드 셋 합). 쓰기: node scripts/t1494-cut400.js off on only-famine …
-const fs=require('fs'),zlib=require('zlib'),R='계측/T1494_2026-11-26/runs/';
+// T1514 · 같은 판을 400날 · 730날에 잘라 켬 ÷ 끔 (시드 셋 합). 쓰기: node scripts/t1514-cut400.js off on only-famine …
+const fs=require('fs'),zlib=require('zlib'),R='계측/T1514_2026-11-26/runs/';
 const sum=a=>a.reduce((x,y)=>x+y,0);
 for (const cut of [400,730]) { const T={}; const ARMS=process.argv.slice(2);
  for (const arm of ARMS) { let pop=0,pd=0,b=0,fd=0;

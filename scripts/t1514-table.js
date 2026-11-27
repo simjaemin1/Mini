@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 'use strict';
-// === scripts/t1494-table.js — T1494 표 만들기(커밋된 판 자료만 읽는다 · 제품 무변 · /dev/shm 안 읽는다 · @regress 없음) ===
-// 읽는 것: $R/runs/<팔>-<시드>.done · .json.gz(판 JSON · runHash) · obs-<팔>-<시드>.json.gz(scripts/t1494-observe.js)
+// === scripts/t1514-table.js — T1514 표 만들기(커밋된 판 자료만 읽는다 · 제품 무변 · /dev/shm 안 읽는다 · @regress 없음) ===
+// 읽는 것: $R/runs/<팔>-<시드>.done · .json.gz(판 JSON · runHash) · obs-<팔>-<시드>.json.gz(scripts/t1514-observe.js)
 //   팔: off · on · only-<갈래>(그 갈래만 켬) · but-<갈래>(그 갈래만 끔) · noobs-off · noobs-on(관찰기 없음 — 시드 1020 · 7)
 // 내는 것: $R/표.md · $R/요약.json · $R/빈마을_60날.csv · $R/장부_품목월.csv  (보고의 모든 수는 여기서 복사한다 · 손 셈 0)
-// 쓰는 법: R=<자료 폴더> node scripts/t1494-table.js
+// 쓰는 법: R=<자료 폴더> node scripts/t1514-table.js
 // 말뜻: 출생 ‰ · 굶어 죽음 ‰ = 사람-날(날 1 이후 마을 사람 수 합) 당 ×1000 · 거둠/사람 = 사람-날 당 거둔 식량(날치) · 곳간 날수 = 마을 곳간 환산 ÷ 사람(사람 있는 마을-날 · 중앙)
 //   빈 마을 = 마지막 날 사람 0 · 마을 최고 인구 날 = 그 마을 사람 수 최대 첫 날 · 곳간 0 까지 = 최고 날부터 "곳간 ÷ 사람 < 1날치"(또는 사람 0) 첫 날까지(T1488 과 같은 자)
 //   유보 선(날수) = 'ref' 갈래가 켜진 판은 관찰기가 읽은 `_t1419N.d`(그날 물었을 때 · 없으면 건너뜀) · 그 밖(ref 꺼짐 · 끔) = 종전 30날(knobs.reservePCfood)
 //   장부 틈 = 곳간 변화 − (거둠 − 먹음 + 들여옴 − 내보냄 − 썩음) · 합계 % = 틈 합 ÷ 흐름(|거둠|+먹음+들여옴+내보냄+|썩음|) 합(T1488 과 같다)
 //   짝 Δ 자(T252): 시드 셋 짝 Δ 부호 3/3 일치 · |평균| > 폭(최대−최소) → 가름 · 부호 일치 · |평균| ≤ 폭 → 방향만 · 부호 갈림 → 못 가름
 const fs = require('fs'), path = require('path'), zlib = require('zlib');
-const R = process.env.R || path.join(__dirname, '..', '계측', 'T1494_2026-11-26');
+const R = process.env.R || path.join(__dirname, '..', '계측', 'T1514_2026-11-26');
 const SEEDS = [1020, 7, 42];
 const G = ['ref', 'famine', 'birth', 'mig', 'keep', 'switch', 'depart'];
 const TAGS = { ref: ['ref'], famine: ['famine', 'mason', 'rescue', 'foodsec'], birth: ['birth'], mig: ['mig'], keep: ['keep'], switch: ['switch', 'pace'], depart: ['depart'] };
@@ -68,7 +68,7 @@ function analyze(arm, s, o) {
   const qq = (o.q[o.q.length - 1] || [0, null])[1];
   MET[tag] = { arm, seed: s, days: D, popEnd, empty, pd, births, bPm: 1000 * births / pd, fd, fdPm: 1000 * fd / pd, em, emPm: 1000 * em / pd, dd, ddPm: 1000 * dd / pd, harvPer: harv / pd, eatPer: eat / pd, granMed: med(gran), granN: gran.length,
     gap: flow ? 100 * res / flow : null, worldPeak: wp, worldPeakDay: o.day[wpd], granAtWorldPeak: sum(o.fe[wpd]) / wp, granAtVillPk: med(atPk), toZero: med(toZero), toZeroN: toZero.length, toZeroW: med(toZeroW), toZeroWN: toZeroW.length, imm,
-    lineMed: med(lines), lineN: lines.length, calls, q: qq, knobs: { on: o.knobs.T1494_ON, reservePCfood: o.knobs.reservePCfood, tags: o.knobs.T1494_info && o.knobs.T1494_info.tags } };
+    lineMed: med(lines), lineN: lines.length, calls, q: qq, knobs: { on: o.knobs.T1514_ON, reservePCfood: o.knobs.reservePCfood, tags: o.knobs.T1514_info && o.knobs.T1514_info.tags } };
   PROF[tag] = phase.map((p) => ({ line: med(p.line), gr: med(p.gr), n: p.gr.length }));
   GRANV[tag] = gran;
   // 품목 · 달 장부
@@ -98,12 +98,12 @@ function verdict(d) {   // 짝 Δ 자
 const callsOf = (arm, g) => { const t = TAGS[g]; return sum(have(arm).map((s) => sum(t.map((x) => (MET[`${arm}-${s}`].calls || {})[x] || 0)))); };
 const L = [], KEYS = [['popEnd', '끝 인구', 0], ['bPm', '출생 ‰', 3], ['fdPm', '굶어 죽음 ‰', 3], ['empty', '빈 마을', 2], ['harvPer', '거둠/사람', 3], ['granMed', '곳간 날수 중앙', 2]];
 
-L.push('# T1494 표 (scripts/t1494-table.js 출력)');
+L.push('# T1514 표 (scripts/t1514-table.js 출력)');
 L.push('');
 const kn = MET['on-1020'] && MET['on-1020'].knobs;
 L.push(`읽은 판: ${Object.keys(MET).length}/48 관찰 판 · ${Object.keys(HASH).length}/52 판 · 날 ${MET['off-1020'] ? MET['off-1020'].days : '?'}(관찰 칸) · 시드 ${SEEDS.join(' · ')} · 유보 식량 종전 선 \`RESERVE_PC.food\` = ${MET['off-1020'] ? MET['off-1020'].knobs.reservePCfood : '?'}날.`);
 L.push('');
-L.push('코드가 정본인 갈래 → 태그(읽힌 `T1419_SITE` 열쇠 · 스위치 표 `scripts/t1494-site.js`): ' + G.map((g) => `${g}=${TAGS[g].join('·')}`).join(' · '));
+L.push('코드가 정본인 갈래 → 태그(읽힌 `T1419_SITE` 열쇠 · 스위치 표 `scripts/t1514-site.js`): ' + G.map((g) => `${g}=${TAGS[g].join('·')}`).join(' · '));
 const allTags = {}; for (const t of Object.keys(MET)) for (const k in (MET[t].calls || {})) allTags[k] = (allTags[k] || 0) + MET[t].calls[k];
 L.push('');
 L.push('실제로 읽힌 태그(전 판 호출 합): ' + Object.keys(allTags).sort().map((k) => `${k} ${ff(allTags[k])}`).join(' · ') + ' — 이 밖의 태그(' + G.flatMap((g) => TAGS[g]).filter((k) => !allTags[k]).join(' · ') + ')는 어느 판에서도 한 번도 안 읽혔다.');

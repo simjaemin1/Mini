@@ -1,9 +1,9 @@
 'use strict';
-// === scripts/t1494-observe.js — T1494 서버 판 곁 관찰기: 마을마다 · 날마다 사람 · 식량 장부 + 품목 · 달별 장부 틈 + 자리 갈래 읽은 수 (읽기만 · 세계 무변 · @regress 없음) ===
-//   T1488 관찰기에 더한 것(T1494): ⓐ knobs 에 T1494_ON · 갈래 · 유보 식량 ⓑ `rec.led` = 달력 달(1~12) × 식량 품목 × [거둠 · 먹음 · 썩음 · 들여옴 · 내보냄 · 곳간 변화](환산 · 마을 합) + 달마다 `__fe`(곳간 전체 변화) · `__n`(마을-날 수)
-//   ⓒ `rec.q` = 10날마다 `globalThis.__t1494Q`(스위치 선행 적재가 센 자리 태그별 [켠 쪽 · 끈 쪽] 물음 수 — 없으면 null) · 장부 틈 품목별 = 곳간 변화 − (거둠 − 먹음 + 들여옴 − 내보냄 − 썩음) (표 스크립트가 센다)
+// === scripts/t1514-observe.js — T1514 서버 판 곁 관찰기: 마을마다 · 날마다 사람 · 식량 장부 + 품목 · 달별 장부 틈 + 자리 갈래 읽은 수 (읽기만 · 세계 무변 · @regress 없음) ===
+//   T1488 관찰기에 더한 것(T1514): ⓐ knobs 에 T1514_ON · 갈래 · 유보 식량 ⓑ `rec.led` = 달력 달(1~12) × 식량 품목 × [거둠 · 먹음 · 썩음 · 들여옴 · 내보냄 · 곳간 변화](환산 · 마을 합) + 달마다 `__fe`(곳간 전체 변화) · `__n`(마을-날 수)
+//   ⓒ `rec.q` = 10날마다 `globalThis.__t1514Q`(스위치 선행 적재가 센 자리 태그별 [켠 쪽 · 끈 쪽] 물음 수 — 없으면 null) · 장부 틈 품목별 = 곳간 변화 − (거둠 − 먹음 + 들여옴 − 내보냄 − 썩음) (표 스크립트가 센다)
 //   이 파일의 읽기는 계산 없는 복사 · 세계 객체에 쓰지 않는다(T1488 과 같다).
-//   쓰는 법: T1494_OBS=<폴더> T1494_ARM=<팔> NODE_OPTIONS="--require <이 파일>" node scripts/server-baseline-check.js --make … --vclock
+//   쓰는 법: T1514_OBS=<폴더> T1514_ARM=<팔> NODE_OPTIONS="--require <이 파일>" node scripts/server-baseline-check.js --make … --vclock
 //   T1484 관찰기 위에 얹었다. 같은 두 문(econ `tickVillage` 감쌈 · 날이 바뀔 때 앞 날 끝 기록) + 마을 하루 몸통(`tickWorldV2Parts().village`)을 감싸 곳간을 세 곳에서 읽는다.
 //   세계 객체에는 쓰지 않는다(읽기 · 제 칸만 · 감싼 함수는 인자 · 돌려주는 값 그대로). 계산 없는 복사만 한다 — 새 주사위 0 · econ 함수 호출 0(캐시 칸만 읽는다).
 //   마을마다 날마다(장부):
@@ -18,9 +18,9 @@
 const path = require('path'), fs = require('fs');
 const A1 = process.argv[1] || '';
 if (!(process.env.T577_SEED && /server[\/\\]zone\.js$/.test(A1))) return;
-const DIR = process.env.T1494_OBS; if (!DIR) return;
+const DIR = process.env.T1514_OBS; if (!DIR) return;
 const ROOT = path.resolve(path.dirname(A1), '..');
-const OUT = path.join(DIR, `obs-${process.env.T1494_ARM || 'x'}-${process.env.T577_SEED}.json`);
+const OUT = path.join(DIR, `obs-${process.env.T1514_ARM || 'x'}-${process.env.T577_SEED}.json`);
 const V1 = require(path.join(ROOT, 'sim', 'economy-sim'));
 const V2 = require(path.join(ROOT, 'sim', 'economy-sim-v2'));
 let CAL = null; try { CAL = require(path.join(ROOT, 'server', 'calendar')); } catch (e) {}
@@ -29,8 +29,8 @@ const FORAGE = V1.FORAGE_FOOD_FACTOR || {};
 const PRES = new Set(V1.PRESERVED_FOODS || []);
 const RAWG = new Set(V1.RAW_GRAINS || []);
 const FIELDS = ['n', 'fe', 'fd', 'dd', 'em', 'nat', 'war', 'cap', 'wild', 'kill', 'iso', 'b', 'im', 'vn', 'S0', 'S1', 'S3', 'hf', 'hs', 'hm', 'hg', 'hc', 'ho', 'eat', 'fin', 'fout', 'g1297', 'g1374', 'g1149', 'nd'];
-const rec = { seed: +process.env.T577_SEED, arm: process.env.T1494_ARM || '?', names: null, stat: null, day: [], car: [], rows: [], mon: [], sea: [], rt: [], cn: [], infoRange: null, err: null,
-  knobs: { T1419: V1.T1419_FOOD_NEED || '', T1297_BIRTH_FOOD: !!V1.T1297_BIRTH_FOOD, T1374_BIRTH_HARV: !!V1.T1374_BIRTH_HARV, T1306_MIGRATE_FOOD: process.env.T1306_MIGRATE_FOOD || '', T1312_HERD: process.env.T1312_HERD || '', T1243_FARM_ON: !!V1.T1243_FARM_ON, DAILY_FOOD_CONSUMPTION: V1.DAILY_FOOD_CONSUMPTION, T1494_ON: process.env.T1494_ON || '', T1494_info: globalThis.__t1494Info || null, T1419_SITE: V1.T1419_SITE || null, reservePCfood: (V1.RESERVE_PC && V1.RESERVE_PC.food) || null, T1437_BUF_AT: process.env.T1437_BUF_AT || '' },
+const rec = { seed: +process.env.T577_SEED, arm: process.env.T1514_ARM || '?', names: null, stat: null, day: [], car: [], rows: [], mon: [], sea: [], rt: [], cn: [], infoRange: null, err: null,
+  knobs: { T1419: V1.T1419_FOOD_NEED || '', T1297_BIRTH_FOOD: !!V1.T1297_BIRTH_FOOD, T1374_BIRTH_HARV: !!V1.T1374_BIRTH_HARV, T1306_MIGRATE_FOOD: process.env.T1306_MIGRATE_FOOD || '', T1312_HERD: process.env.T1312_HERD || '', T1243_FARM_ON: !!V1.T1243_FARM_ON, DAILY_FOOD_CONSUMPTION: V1.DAILY_FOOD_CONSUMPTION, T1514_ON: process.env.T1514_ON || '', T1514_info: globalThis.__t1514Info || null, T1419_SITE: V1.T1419_SITE || null, reservePCfood: (V1.RESERVE_PC && V1.RESERVE_PC.food) || null, T1437_BUF_AT: process.env.T1437_BUF_AT || '' },
   legacyNeed: [], tags: [], q: [], led: {} };
 for (const f of FIELDS) rec[f] = [];
 let last = -1, world = null, vills = null, idx = null, lastWrite = 0;
@@ -123,7 +123,7 @@ function snap(day) {   // day = 끝난 날
       if (c && c.nd != null) F.nd[i] = c.nd;
       F.fin[i] = +bk.fin[i].toFixed(2); F.fout[i] = +bk.fout[i].toFixed(2);
     }
-    // 품목 · 달별 장부(T1494 ④): 곳간 변화 − (거둠 − 먹음 + 들여옴 − 내보냄 − 썩음) — 마을 · 품목마다 틈을 내 부호 합 · 절댓값 합을 달에 쌓는다
+    // 품목 · 달별 장부(T1514 ④): 곳간 변화 − (거둠 − 먹음 + 들여옴 − 내보냄 − 썩음) — 마을 · 품목마다 틈을 내 부호 합 · 절댓값 합을 달에 쌓는다
     { const nowI = new Array(N), m0 = monOf(day), mt = bk.ti || new Map(); let dFE = 0;
       for (let i = 0; i < N; i++) {
         const c = cu[i] || {}, I1 = c.I1 || {}, I3 = c.I3 || {}, IH = c.IH || {}, IE = c.IE || {}, cur = itemStock(vills[i]); nowI[i] = cur;
@@ -148,7 +148,7 @@ function snap(day) {   // day = 끝난 날
     for (const r of bk.rt) rec.rt.push(r);
     if (day % 10 === 0) {   // 켬이 읽는 자리 호출수(읽기만) · 끔 대조용 종전 날 수
       try { rec.tags.push([day, V1.t1419Stat ? V1.t1419Stat() : null]); } catch (e) {}
-      try { rec.q.push([day, globalThis.__t1494Q ? JSON.parse(JSON.stringify(globalThis.__t1494Q)) : null]); } catch (e) {}
+      try { rec.q.push([day, globalThis.__t1514Q ? JSON.parse(JSON.stringify(globalThis.__t1514Q)) : null]); } catch (e) {}
       try { rec.legacyNeed.push([day, V1.t1297NeedDays ? +V1.t1297NeedDays(day, null) : null, V1.t1319MigNeedDays ? +V1.t1319MigNeedDays(day, null) : null]); } catch (e) {}
     }
     for (const d of Array.from(acc.keys())) if (d <= day) acc.delete(d);
@@ -197,7 +197,7 @@ const _P = V2.tickWorldV2Parts;
 V2.tickWorldV2Parts = function () {
   const P = _P.apply(this, arguments);
   try {
-    if (P && typeof P.village === 'function' && !P.village.__t1494) {
+    if (P && typeof P.village === 'function' && !P.village.__t1514) {
       const pv = P.village;
       P.village = function (v) {
         const day = (v && v._world && v._world.day) | 0; dayCheck(day);
@@ -210,7 +210,7 @@ V2.tickWorldV2Parts = function () {
           try { if (i >= 0) { const o = curOf(day)[i] || (curOf(day)[i] = {}); o.S0 = S0; o.S3 = +V1.totalFoodEquivalent(v).toFixed(3); o.I3 = itemStock(v); } } catch (e) {}
         }
       };
-      P.village.__t1494 = true;
+      P.village.__t1514 = true;
     }
   } catch (e) { rec.err = rec.err || String(e && e.stack || e).slice(0, 500); }
   return P;
