@@ -1,0 +1,89 @@
+[
+  {
+    "file": "e2e-membership.js.txt",
+    "kind": "historical_git_reconstruction_not_runtime_snapshot",
+    "origin": "6896843a:scripts/e2e-membership.js",
+    "applied_changes": [],
+    "sha256": "ece6a2d34a04baada2f5caf7e53d5f878551e7e164aa981a06baa9859ac0d90a"
+  },
+  {
+    "file": "t1485-walkbot.js.txt",
+    "kind": "historical_git_reconstruction_not_runtime_snapshot",
+    "origin": "6896843a:scripts/t1485-walkbot.js",
+    "applied_changes": [],
+    "sha256": "627efeba65d22720754bde9ec6a78294352b1e805b11bc09177b8f4f58398cb5"
+  },
+  {
+    "file": "t1485-observer.js.txt",
+    "kind": "historical_git_reconstruction_not_runtime_snapshot",
+    "origin": "6896843a:scripts/t1485-observer.js",
+    "applied_changes": [],
+    "sha256": "11dde139828b3b18301b2f67cb02a5a2fec6bb0143cb1981293e839f5b056be5"
+  },
+  {
+    "file": "excluded-E-preload.js.txt",
+    "kind": "historical_git_reconstruction_not_runtime_snapshot",
+    "origin": "e87ce83b:scripts/t1490-observer.js",
+    "applied_changes": [],
+    "sha256": "44b621d3a41ee531558e65841a3531f02aea62da6d227021bd36c2e4d1d4825b"
+  },
+  {
+    "file": "controller-reconstructed.py.txt",
+    "kind": "historical_git_reconstruction_not_runtime_snapshot",
+    "origin": "ee7ea5ab:scripts/t1490-measure.py",
+    "applied_changes": [
+      "preload path t1490-observer -> t1485-observer",
+      "restore T1485_START_DIR=0 env entry present in running controller (original bot ignores this env key)"
+    ],
+    "sha256": "fbae4d9ab1a747fc483a36444dca73650f4949c342456111e18fdcff07409dd6"
+  },
+  {
+    "file": "probe.py.txt",
+    "kind": "filesystem_source_copy_observed_after_launch_not_runtime_memory_dump",
+    "origin": "/var/tmp/t1490/probe.py",
+    "applied_changes": [],
+    "sha256": "740e501fc4bb3c9fa27079a645dfdbe473268010c44f566b4a7156a6ed4c3228"
+  },
+  {
+    "file": "start.py.txt",
+    "kind": "filesystem_source_copy_observed_after_launch_not_runtime_memory_dump",
+    "origin": "/var/tmp/t1490/start.py",
+    "applied_changes": [],
+    "sha256": "81992963bef7f5b1ddb5911471b821c8dab36dd3b66ca13d2fbc361b247eaf5d"
+  },
+  {
+    "file": "pilot.py.txt",
+    "kind": "filesystem_source_copy_observed_after_launch_not_runtime_memory_dump",
+    "origin": "/var/tmp/t1490/pilot.py",
+    "applied_changes": [],
+    "sha256": "6c742786075aa71dd99c3ae58f143f5786b76b16c1aa3f7fc8df91306de9e680"
+  },
+  {
+    "file": "replacement.py.txt",
+    "kind": "filesystem_source_copy_observed_after_launch_not_runtime_memory_dump",
+    "origin": "/var/tmp/t1490/replacement.py",
+    "applied_changes": [],
+    "sha256": "5175c59963e150711afc8bab99a3072f6c15707fd6a259560845db975210d2cd"
+  },
+  {
+    "file": "rename-replacements.py.txt",
+    "kind": "filesystem_source_copy_observed_after_launch_not_runtime_memory_dump",
+    "origin": "/var/tmp/t1490/rename-replacements.py",
+    "applied_changes": [],
+    "sha256": "85b41661da59b88a2ae36e389da9e6e232b5d0f951e408ed07696db151b2fffa"
+  },
+  {
+    "file": "supplement.py.txt",
+    "kind": "filesystem_source_copy_observed_after_launch_not_runtime_memory_dump",
+    "origin": "/var/tmp/t1490/supplement.py",
+    "applied_changes": [],
+    "sha256": "2ecab3663afeee37f73372cbb60fc904dd81d3e19fd7a3c88932970db15e0473"
+  },
+  {
+    "file": "supplement-off.py.txt",
+    "kind": "filesystem_source_copy_observed_after_launch_not_runtime_memory_dump",
+    "origin": "/var/tmp/t1490/supplement-off.py",
+    "applied_changes": [],
+    "sha256": "1a95d34dcac8680fab7ae5f8af3bf079701008fc5c31c54dd41956fe09866742"
+  }
+]
