@@ -1,0 +1,4 @@
+start 2026-11-24T23:06:40Z 53a54a4f8 days=730 jobs=2
+restart-after-container-restart 2026-11-25T00:18:37Z (fish-7 · fish-42 partial dropped)
+start 2026-11-25T00:18:37Z 8d3432ac3 days=730 jobs=2
+done 2026-11-25T03:41:53Z

@@ -1,0 +1,4 @@
+boff||--bodies all
+bnobuild|T1423_NO_BUILD=1|--bodies all
+breact|T1423_BLOCK_REACT=1|--bodies all
+bnpcdeath|T1432_NPC_DEATH=1|--bodies all

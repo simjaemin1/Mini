@@ -1,0 +1,93 @@
+[㉮ 셈 — grudge.js]
+  ✗ ①a 셈 — server/grudge.js 없음
+  ✗ ①b 셈 — server/grudge.js 없음
+  ✗ ①c 셈 — server/grudge.js 없음
+  ✗ ①d 셈 — server/grudge.js 없음
+  ✗ ①e 셈 — server/grudge.js 없음
+  ✗ ①f 셈 — server/grudge.js 없음
+  ✗ ①g 셈 — server/grudge.js 없음
+
+[㉯ 마을 — 넓힘 · 막힌 칸 · 권유 · 토벌]
+  ✗ ②a ~ ②c 마을 아이 — Error: Cannot find module '/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1447/ocr_w/server/grudge.js'
+Require stack:
+- /tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1447/ocr_w/scripts/test-t1447-grudge.js
+    at Function._resolveFilename (node:internal/modules/cjs/loader:1430:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1040:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1045:22)
+    at Function._load (node:internal/modules/cjs/loader:1216:25)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at Module.require (node:internal/modules/cjs/loader:1527:12)
+    at require (node:internal/modules/helpers:147:16)
+    at vilChild (/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1447/ocr_w/scripts/test-t1447-grudge.js:79:34)
+    at Object.<anonymous> (/t
+  ✗ ②d ~ ②g 마을 아이 둘 — Error: Cannot find module '/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1447/ocr_w/server/grudge.js'
+Require stack:
+- /tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1447/ocr_w/scripts/test-t1447-grudge.js
+    at Function._resolveFilename (node:internal/modules/cjs/loader:1430:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1040:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1045:22)
+    at Function._load (node:internal/modules/cjs/loader:1216:25)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at Module.require (node:internal/modules/cjs/loader:1527:12)
+    at require (node:internal/modules/helpers:147:16)
+    at vilChild2 (/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1447/ocr_w/scripts/test-t1447-grudge.js:143:34)
+    at Object.<anonymous> (
+
+[㉰ 존 — 쌓는 자리 · 문 · 추방 · 권유 · 토벌 손]
+  ✗ ③ 존 아이 — TypeError: Cannot read properties of undefined (reading 'setup')
+    at zoneChild (/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1447/ocr_w/scripts/test-t1447-grudge.js:218:14)
+    at Object.<anonymous> (/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1447/ocr_w/scripts/test-t1447-grudge.js:316:40)
+    at Module._compile (node:internal/modules/cjs/loader:1781:14)
+    at Object..js (node:internal/modules/cjs/loader:1913:10)
+    at Module.load (node:internal/modules/cjs/loader:1505:32)
+    at Function._load (node:internal/modules/cjs/loader:1309:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49
+
+[㉱ 끔]
+  ✗ ④ 손잡이 끔 — 사유지 칸 표 0 · 마을 작물 벌점 3(종전) · 넓힘은 사유지를 덮는다(종전) · 장부 0 — TypeError: Cannot read properties of undefined (reading 'setup')
+    at zoneChild (/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1447/ocr_w/scripts/test-t1447-grudge.js:218:14)
+    at Object.<anonymous> (/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1447/ocr_w/scripts/test-t1447-grudge.js:316:40)
+    at Module._compile (node:internal/modules/cjs/loader:1781:14)
+    at Object..js (node:internal/modules/cjs/loader:1913:10)
+    at Module.load (node:internal/modules/cjs/loader:1505:32)
+    at Function._load (node:internal/modules/cjs/loader:1309:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49
+
+[미끼 스물둘 — 사본마다 자리 꼭 한 번 · 빨강 줄]
+  ✗ 미끼 소식이 안 닿은 마을도 아는 사본 → ③a 빨강 — 바꾼 자리 0 · 미끼 자리 0번
+  ✗ 미끼 벌점과 원한에 둘 다 쌓이는 사본 → ③a 빨강 — 바꾼 자리 0 · 미끼 자리 0번
+  ✗ 미끼 장부가 몸 쪽(존을 넘으면 · 다시 뜨면 사라지는) 사본 → ③a 빨강(마을 장부 0) — 바꾼 자리 0 · TypeError: Cannot read properties of undefined (reading 'setup')
+    at zoneChild (/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1447/ocr_w/scripts/test-t1447-grudge.js:2
+  ✗ 미끼 제 마을 사람 사유지에 막힌 칸이 쌓이는 사본 → ②b 빨강 — 바꾼 자리 0 · 미끼 자리 0번
+  ✗ 미끼 토벌대가 그날 닿는(순간이동) 사본 → ②c 빨강 — 바꾼 자리 0 · 미끼 자리 0번
+  ✗ 미끼 비용을 안 따지고 가는 사본 → ②d 빨강 — 바꾼 자리 0 · 미끼 자리 0번
+  ✗ 미끼 땅 원한이 가입을 막는 사본 → ③e 빨강 — 바꾼 자리 0 · 미끼 자리 0번
+  ✗ 미끼 들어온 뒤에도 땅 원한이 남는 사본 → ③e 빨강 — 바꾼 자리 0 · 미끼 자리 0번
+  ✗ 미끼 해코지 원한이 가입으로 지워지는 사본 → ③e 빨강 — 바꾼 자리 0 · 미끼 자리 0번
+  ✗ 미끼 권유 없이 바로 쌓이는 사본 → ②a 빨강 — 바꾼 자리 0 · 미끼 자리 0번
+  ✗ 미끼 건물을 일부만 부수는 사본 → ③h 빨강 — 바꾼 자리 0 · 미끼 자리 0번
+  ✗ 미끼 먼 쪽 칸을 푸는 사본 → ②c 빨강(가까운 열 209 가 아니다) — 바꾼 자리 0 · Error: Cannot find module '/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1447/ocr_w/server/grudge.js'
+Require stack:
+- /tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-
+  ✗ 미끼 땅 원한만인데 짐을 가져가는 사본 → ②e 빨강 — 바꾼 자리 0 · 미끼 자리 0번
+  ✗ 미끼 토벌대가 질 수 있는 양보다 많이 가져가는 사본 → ③h 빨강 — 바꾼 자리 0 · 미끼 자리 0번
+  ✗ 미끼 가져간 짐이 곳간에 순간이동하는 사본 → ②c 빨강 — 바꾼 자리 0 · 미끼 자리 0번
+  ✗ 미끼 토벌 뒤에도 땅 원한이 남는 사본 → ②c 빨강 — 바꾼 자리 0 · 미끼 자리 0번
+  ✗ 미끼 명분 없는 상대에게 토벌이 나가는 사본(서버가 받는다) → ②g 빨강 — 바꾼 자리 0 · 미끼 자리 0번
+  ✗ 미끼 플레이어 마을 주민이 촌장 없이 스스로 가는 사본 → ②g 빨강 — 바꾼 자리 0 · 미끼 자리 0번
+  ✗ 미끼 해코지 원한만으로 토벌이 나가는 사본 → ②e 빨강 — 바꾼 자리 0 · Error: Cannot find module '/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1447/ocr_w/server/grudge.js'
+Require stack:
+- /tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-
+  ✗ 미끼 둘레 상한이 없는 사본 → ①g 빨강(7×7 을 다 에워싸도 명분이 안 선다) — 바꾼 자리 0 · 아이 출력 없음(rc 1) uire (node:internal/modules/helpers:147:16)
+    at pureChild (/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1447/ocr_w/scripts/test-t1447-grudge.js:310:54)
+  ✗ 미끼 촌장이 없는 동안 알림이 사라지는 사본 → ③i 빨강 — 바꾼 자리 0 · 미끼 자리 0번
+  ✗ 미끼 주인 없는 땅의 것에 사유지 위 것과 같은 크기로 쌓이는 사본 → ③a 빨강 — 바꾼 자리 0 · TypeError: Cannot read properties of undefined (reading 'setup')
+    at zoneChild (/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1447/ocr_w/scripts/test-t1447-grudge.js:2
+  ✗ 미끼 세운 사람을 못 찾아 원한이 0 인 사본 → ③a 빨강 — 바꾼 자리 0 · 미끼 자리 0번
+
+결과: 0 통과 · 34 실패
+RC=1

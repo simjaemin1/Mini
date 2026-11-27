@@ -264,7 +264,7 @@ function deleteMob(id) { stmtDeleteMob.run(id); }
   // ★[T1305 → T1332 → ★T1343] 돌봄 = **청크 계량기 줄**(주인 · 청크 좌표 → 관리도 `m` · 마지막 셈 시각 `t` ms) · 다른 존 칸 기억(`deed_owners`).
   //   **켬 판에서만** 만든다(끔 = 스키마 그대로 · 바이트 같음). T1305 의 칸마다 두 열(`care_n` · `care_w`)은 안 쓴다(켬 판 DB 없음 — 라이브 끔).
   //   줄이 없는 내 칸(켜기 앞의 옛 칸)은 첫 셈이 가득으로 잡는다(`deeds.init` · 켜는 순간 줄지 않는다).
-  if (process.env.T1305_DEEDS === '1') {
+  if (process.env.T1305_DEEDS !== '0') {   // ★[T1428 -on 후보] 켬 기본
     db.exec('CREATE TABLE IF NOT EXISTS deed_chunks (owner_id TEXT NOT NULL, cx INTEGER NOT NULL, cy INTEGER NOT NULL, m REAL, t INTEGER, PRIMARY KEY (owner_id, cx, cy))');
     // ★[T1343] 계량기 꼴(관리도 `m` · 마지막 셈 시각 `t` ms) — T1332 꼴(`w` · `n0`)로 선 표는 두 열을 붙인다(옛 줄은 NULL → 첫 셈이 가득으로 잡는다)
     const _dc = db.prepare('PRAGMA table_info(deed_chunks)').all().map((c) => c.name);
@@ -595,6 +595,41 @@ const stmtDeleteRoadCell = db.prepare('DELETE FROM roads WHERE zone = ? AND cell
 function getRoadCells(zone) { return stmtGetRoadCells.all(zone); }
 function upsertRoadCell(zone, key, v, d) { stmtUpsertRoadCell.run(zone, key | 0, v, d | 0); }
 function deleteRoadCell(zone, key) { stmtDeleteRoadCell.run(zone, key | 0); }
+// ★★[T1448 2026-11-23] 길 구역 묶음 행 — 구역(32칸)마다 한 줄(칸 자리 · 값 · 날 덩이 — `server/road-grid.js` encodeChunk) ·
+//   손잡이 `T1448_ROAD_GRID` 켬일 때만 부른다 — 표는 처음 부를 때 선다(끔 = 표도 행도 0 · 종전 DB 꼴 그대로).
+let _rcStmt = null;
+function _rc() {
+  if (_rcStmt) return _rcStmt;
+  db.exec(`CREATE TABLE IF NOT EXISTS road_chunks (
+    zone  TEXT    NOT NULL,
+    ck    INTEGER NOT NULL,
+    n     INTEGER NOT NULL,
+    data  BLOB    NOT NULL,
+    PRIMARY KEY (zone, ck)
+  );`);
+  _rcStmt = {
+    get: db.prepare('SELECT ck, n, data FROM road_chunks WHERE zone = ? ORDER BY ck'),
+    up: db.prepare('INSERT INTO road_chunks (zone, ck, n, data) VALUES (?, ?, ?, ?) ON CONFLICT(zone, ck) DO UPDATE SET n = excluded.n, data = excluded.data'),
+    del: db.prepare('DELETE FROM road_chunks WHERE zone = ? AND ck = ?'),
+    cnt: db.prepare('SELECT COUNT(*) AS n FROM road_chunks WHERE zone = ?'),
+    cellCnt: db.prepare('SELECT COUNT(*) AS n FROM roads WHERE zone = ?'),
+    cellDelAll: db.prepare('DELETE FROM roads WHERE zone = ?'),
+    delAll: db.prepare('DELETE FROM road_chunks WHERE zone = ?'),
+  };
+  return _rcStmt;
+}
+function getRoadChunks(zone) { return _rc().get.all(zone); }
+function upsertRoadChunk(zone, ck, n, data) { _rc().up.run(zone, ck | 0, n | 0, data); }
+function deleteRoadChunk(zone, ck) { _rc().del.run(zone, ck | 0); }
+function countRoadChunks(zone) { return _rc().cnt.get(zone).n; }
+function countRoadCells(zone) { return _rc().cellCnt.get(zone).n; }
+function deleteRoadCellsAll(zone) { return _rc().cellDelAll.run(zone).changes; }
+function deleteRoadChunksAll(zone) { return _rc().delAll.run(zone).changes; }
+//   끔 부팅이 부른다 — 표가 없으면 만들지 않고 0(켠 적 없는 DB = 종전 DB 꼴 그대로)
+function hasRoadChunks(zone) {
+  if (!_rcStmt && !db.prepare("SELECT 1 AS x FROM sqlite_master WHERE type = 'table' AND name = 'road_chunks'").get()) return 0;
+  return countRoadChunks(zone);
+}
 
 // === [T42 2026-09-01] 교역로 캐시 영속 — 마을 쌍 A* 결과 =========================
 //   왜: 콜드 A* 한 번이 **1.3~1.7초**다(실측). 캐시는 프로세스 메모리라 **재기동마다 다시 덥힌다**,
@@ -618,10 +653,12 @@ db.exec(`
 const stmtGetRoutes = db.prepare('SELECT pair, pts FROM trade_routes WHERE zone = ? AND sig = ?');
 const stmtUpsertRoute = db.prepare('INSERT INTO trade_routes (zone, pair, sig, pts) VALUES (?, ?, ?, ?) ON CONFLICT(zone, pair) DO UPDATE SET sig = excluded.sig, pts = excluded.pts');
 const stmtClearRoutes = db.prepare('DELETE FROM trade_routes WHERE zone = ?');
+const stmtDelRoute = db.prepare('DELETE FROM trade_routes WHERE zone = ? AND pair = ?');   // ★[T1455] 다리 몫만 — 끊긴 다리를 지나던 쌍 하나
 const stmtCountRoutes = db.prepare('SELECT COUNT(*) AS n FROM trade_routes WHERE zone = ?');
 function getTradeRoutes(zone, sig) { return stmtGetRoutes.all(zone, String(sig)); }
 function upsertTradeRoute(zone, pair, sig, ptsJson) { stmtUpsertRoute.run(zone, String(pair), String(sig), ptsJson === null ? null : String(ptsJson)); }
 function clearTradeRoutes(zone) { return stmtClearRoutes.run(zone).changes | 0; }
+// [land1093 · PM] deleteTradeRoute 는 T1440 쪽(아래)이 같은 SQL 로 이미 정의 — T1455 쪽 같은 이름 함수는 뺐다(stmtDelRoute 는 남김)
 function countTradeRoutes(zone) { return (stmtCountRoutes.get(zone) || {}).n | 0; }
 // ★★[T1440] 처음 길(쌍마다 길이 · 줄 — 3배의 기준) · 쌍 하나 지우기 · 사유지 칸 "길이 지나는 칸" — 손잡이 `T1440_ROAD_RULE` 켬에서만 부른다
 //   (표 · 열은 처음 부를 때 — CREATE TABLE IF NOT EXISTS · 열은 T45 규약대로 PRAGMA 로 보고 붙인다 · 구DB 안전 · 끔 = 표 0 · 열 0 · 행 0)
@@ -1021,6 +1058,7 @@ module.exports = {
   getBanditState, upsertBanditState,
   // §16 답압 길 (roads.js)
   getRoadCells, upsertRoadCell, deleteRoadCell,
+  getRoadChunks, upsertRoadChunk, deleteRoadChunk, countRoadChunks, countRoadCells, deleteRoadCellsAll, deleteRoadChunksAll, hasRoadChunks,   // ★[T1448] 길 구역 묶음 행
   // [배치 20 B] 동적 토양치 · 지질 (soil.js)
   getSoilCells, upsertSoilCell, deleteSoilCell,
   // [T42] 교역로 캐시 영속 (villages.js getRoute)

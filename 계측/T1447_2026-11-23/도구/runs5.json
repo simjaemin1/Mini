@@ -1,0 +1,6 @@
+[
+ {"tag":"F30","seed":1020,"days":600,"env":{"T1447_PERSON_GRUDGE":"1"},"cfg":{"d0":200,"sizes":[3,6,12],"per":8,"frac":0.3,"snapPct":[],"snapN":[]}},
+ {"tag":"F10","seed":1020,"days":600,"env":{"T1447_PERSON_GRUDGE":"1"},"cfg":{"d0":200,"sizes":[3,6,12],"per":8,"frac":0.1,"snapPct":[],"snapN":[]}},
+ {"tag":"F50","seed":1020,"days":600,"env":{"T1447_PERSON_GRUDGE":"1"},"cfg":{"d0":200,"sizes":[3,6,12],"per":8,"frac":0.5,"snapPct":[],"snapN":[]}},
+ {"tag":"F100","seed":1020,"days":600,"env":{"T1447_PERSON_GRUDGE":"1"},"cfg":{"d0":200,"sizes":[3,6,12],"per":8,"frac":1.0,"snapPct":[],"snapN":[]}}
+]

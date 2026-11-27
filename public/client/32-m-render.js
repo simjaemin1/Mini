@@ -16,6 +16,23 @@
     if (key !== _t1440P.key && now - _t1440P.at >= 150) { _t1440P.key = key; _t1440P.at = now; sendPrimary(Object.assign({ type: 't1440_peek', key }, L)); }
     return _t1440P.stKey === key ? _t1440P.st : null;
   }
+  // ★[T1441 ①] 고스트가 덮는 칸이 남의 마을 땅인가 — 서버에 묻는다(같은 술어 · 존 로컬로 접어 보낸다 · 열쇠가 바뀌면 150ms 마다 한 번) · 답 = 마을 이름 · '' · 아직 모름 null
+  function _t1441Ask(q) {
+    if (!_t1441P.on) return null;
+    const c = conns.get(primaryZoneId), ox = Math.round(((c && c.meta && c.meta.worldOffsetX) || 0) / 32), oy = Math.round(((c && c.meta && c.meta.worldOffsetY) || 0) / 32);
+    const L = Object.assign({}, q);
+    for (const k of ['cx', 'x0', 'x1']) if (typeof L[k] === 'number') L[k] -= ox;
+    for (const k of ['cy', 'y0', 'y1']) if (typeof L[k] === 'number') L[k] -= oy;
+    const key = [L.cx, L.cy, L.side, L.x0, L.y0, L.x1, L.y1].join(':'), now = Date.now();   // [T1310 클라 시계] 보내는 간격만
+    if (key !== _t1441P.key && now - _t1441P.at >= 150) { _t1441P.key = key; _t1441P.at = now; sendPrimary(Object.assign({ type: 't1441_peek', key }, L)); }
+    return _t1441P.vKey === key ? _t1441P.vil : null;
+  }
+  function _t1441Say(v, x, y) {
+    if (!v) return;
+    ctx.save(); ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#ff8a7a';
+    ctx.fillText(`${v} 땅입니다 — 그 마을 사람만 지을 수 있습니다`, x, y);
+    ctx.restore();
+  }
   //   그 답을 고스트 위에 한 줄로 — 'road' 주인 없는 땅의 길 위(누구든 치운다 · 노란 글) · 'closing' 길이 지나는 칸(닫는 조각 · 붉은 글) ·
   //   'others' 마을 건물이 남의 사유지로 길을 낸다(주황 글) · 'refuse' NPC 마을이 안 짓는 자리(붉은 글) · 'checking' 확인 중(흰 글)
   const _T1440_SAY = {
@@ -164,7 +181,8 @@
       ctx.save();
       ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.lineTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y); ctx.closePath();
       const _t1440S = (!furn) ? _t1440Ask({ what: 'rect', x0: fx0, y0: fy0, x1: fx1, y1: fy1, kind: hut ? 'hut' : (psite ? 'psite' : 'granary'), npc: psite ? 1 : 0 }) : null;   // ★[T1440] 움집(플레이어 — 판정 없음) · 의뢰 집(NPC 마을이 짓는다 — 걸음 2) · 곳간(마을 건물 — 걸음 5) 발자국(노 · 숯가마 2×2 는 걸음을 안 막는다 — 판정 밖)
-      let _t1423B = _t1440S === 'closing' || _t1440S === 'refuse'; if (_t1423NoAbs.on) for (let y = fy0; y <= fy1 && !_t1423B; y++) for (let x = fx0; x <= fx1; x++) if (_t1423NoAt(x, y)) { _t1423B = true; break; }   // ★[T1423 ⓐ] 발자국에 물 · 다리 · 다리 머리 — 붉게(서버가 거절하는 그 칸)
+      const _t1441V = _t1441Ask({ x0: fx0, y0: fy0, x1: fx1, y1: fy1 });   // ★[T1441 ①] 발자국 — 남의 마을 땅
+      let _t1423B = _t1440S === 'closing' || _t1440S === 'refuse' || !!_t1441V; if (_t1423NoAbs.on) for (let y = fy0; y <= fy1 && !_t1423B; y++) for (let x = fx0; x <= fx1; x++) if (_t1423NoAt(x, y)) { _t1423B = true; break; }   // ★[T1423 ⓐ] 발자국에 물 · 다리 · 다리 머리 — 붉게(서버가 거절하는 그 칸)
       ctx.fillStyle = _t1423B ? 'rgba(220,80,80,0.35)' : (hut ? 'rgba(154,122,74,0.25)' : 'rgba(165,129,63,0.25)'); ctx.fill();
       ctx.setLineDash([5, 4]); ctx.strokeStyle = hut ? '#c9b28a' : '#e0b060'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]);
       ctx.font = 'bold 11px sans-serif'; ctx.fillStyle = '#ffe9b0'; ctx.textAlign = 'center';
@@ -172,6 +190,7 @@
       ctx.textAlign = 'left';
       ctx.restore();
       _t1440Say(_t1440S, (p1.x + p3.x) / 2, Math.min(p1.y, p2.y) - 14);   // ★[T1440]
+      _t1441Say(_t1441V, (p1.x + p3.x) / 2, Math.min(p1.y, p2.y) - 28);   // ★[T1441 ①]
       return;
     }
     if (!placementMode.itemType) return;
@@ -196,7 +215,8 @@
     const o2s = (dx, dy, dz = 0) => ({ x: sx + (dx - dy), y: sy + (dx + dy) * 0.5 - dz });
     // 14.54-d: 충돌/사유지 사전 체크. 안 되면 빨간색 ghost.
     const _t1440S = (myFloor || 0) === 0 ? ((it === 'item_wall' || it === 'item_door') ? _t1440Ask({ what: 'edge', cx: cellCx, cy: cellCy, side }) : (it === 'item_fence' ? _t1440Ask({ what: 'cell', cx, cy }) : null)) : null;   // ★[T1440] 땅 층 벽 · 문 · 울타리만(걸음을 막는 것)
-    const blocked = isPlacementBlocked(it, cx, cy, dir) || _t1440S === 'closing';
+    const _t1441V = (it === 'item_wall' || it === 'item_door') ? _t1441Ask({ cx: cellCx, cy: cellCy, side }) : _t1441Ask({ cx, cy });   // ★[T1441 ①] 그 칸 · 변을 낀 두 칸 — 남의 마을 땅
+    const blocked = isPlacementBlocked(it, cx, cy, dir) || _t1440S === 'closing' || !!_t1441V;
     ctx.save();
     const t = (Date.now() % 1000) / 1000;  // [T1310 클라 시계] 그림 깜빡임 주기
     const a = 0.35 + 0.25 * Math.abs(Math.sin(t * Math.PI));
@@ -291,6 +311,7 @@
     ctx.fillText(`${itemKo(it)} (${dir}) · 휠=회전 · 좌클릭=배치`, sx, sy - 60);   // ★[T55]
     ctx.restore();
     _t1440Say(_t1440S, sx, sy - 76);   // ★[T1440]
+    _t1441Say(_t1441V, sx, sy - 90);   // ★[T1441 ①]
   }
   // 14.51: 3초 progress bar (DOM overlay)
   function ensureBuildProgressEl() {

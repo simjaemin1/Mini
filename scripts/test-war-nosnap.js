@@ -85,9 +85,10 @@ const mk = () => { const g = WL.buildGroup([{ type: 'champion', pid: 'a' }, { ty
 }
 
 // ── ⓒ 존 운영 문(아이 프로세스 — 손잡이는 모듈을 싣는 순간 읽는다) ──────────────────
+// ★[T1445] 아이 판 넷은 `T1381_WALK_HEAP=0` 을 준다 — 이 판은 T821 Map 탐색의 꺼냄(`_t821s.S.pops`)을 센다 · 칸 조각 · 유령 물음(T1381 · `T1445_BOOT_BOUND` 켬 기본)엔 `S` 없는 물음이 있다(조각 판은 test-t1381-walk-heap)
 console.log('\n[ⓒ] 존 운영 문 — 슬롯 놓기 · 귀환 · 늦음 셈(켬 · 끔)');
 const child = (knob) => {
-  const env = Object.assign({}, process.env, { T1089_RET_WALK: '0' }); if (knob === 'default') delete env.T790_NO_SNAP; else env.T790_NO_SNAP = knob ? '1' : '0';   // ★[T1089] 이 판은 T790 · T832 · T844 귀환 꼴(장부 원점 · 첫 틱에 놓임)을 잰다 — 걷는 귀환(T1089 켬)은 `test-t1089-ret-walk.js`
+  const env = Object.assign({}, process.env, { T1089_RET_WALK: '0', T1381_WALK_HEAP: process.env.T1381_WALK_HEAP || '0' }); if (knob === 'default') delete env.T790_NO_SNAP; else env.T790_NO_SNAP = knob ? '1' : '0';   // ★[T1089] 이 판은 T790 · T832 · T844 귀환 꼴(장부 원점 · 첫 틱에 놓임)을 잰다 — 걷는 귀환(T1089 켬)은 `test-t1089-ret-walk.js`
   const js = `const V=require(${JSON.stringify(path.join(ROOT, 'server', 'villages.js'))}),WLM=require(${JSON.stringify(path.join(ROOT, 'server', 'war-live.js'))});`
     + `const players=new Map(),live=WLM.createWarLive({cellPx:32,pxPerM:32,tickHz:30});`
     + `const H=V.__p3Bind({warLive:live,world:{day:12},dayMs:10000,deps:{players,moveSpeed:64,npcs:new Set(),broadcast(){}},_warStat:{standoff:0}});`
@@ -145,7 +146,7 @@ console.log('\n[ⓓ] T804 — 걷는 몸의 길 · 전진 풀기 걸음(아이 �
     'ⓓ 정적 — 새 수 0(창 `FOLLOW_CAP + 2` · 칸 가운데 0.5 · 길 길이 `< 2` 는 `_warPathNext` 와 같은 글자 · 칸 열쇠 `× 65536 +` 는 villages 칸 열쇠 관례) · 시한 0 · 주사위 0', added.length + '자');
 }
 const child804 = (knob) => {
-  const env = Object.assign({}, process.env, { T1089_RET_WALK: '0' }); if (knob === 'default') delete env.T790_NO_SNAP; else env.T790_NO_SNAP = knob ? '1' : '0';   // ★[T1089] 이 판은 T790 · T832 · T844 귀환 꼴(장부 원점 · 첫 틱에 놓임)을 잰다 — 걷는 귀환(T1089 켬)은 `test-t1089-ret-walk.js`
+  const env = Object.assign({}, process.env, { T1089_RET_WALK: '0', T1381_WALK_HEAP: process.env.T1381_WALK_HEAP || '0' }); if (knob === 'default') delete env.T790_NO_SNAP; else env.T790_NO_SNAP = knob ? '1' : '0';   // ★[T1089] 이 판은 T790 · T832 · T844 귀환 꼴(장부 원점 · 첫 틱에 놓임)을 잰다 — 걷는 귀환(T1089 켬)은 `test-t1089-ret-walk.js`
   const js = `const path=require('path'),fs=require('fs'),ROOT=${JSON.stringify(ROOT)};const V=require(path.join(ROOT,'server','villages.js')),WLM=require(path.join(ROOT,'server','war-live.js'));`
     + `const ZS=fs.readFileSync(path.join(ROOT,'server/zone.js'),'utf8');const mm=/function _standCellNear\\(x0, y0, blocked\\) \\{[\\s\\S]*?\\n\\}/.exec(ZS);`
     + `const stand=new Function('ZONE','_BLOCKED_STAND',mm[0]+'\\nreturn _standCellNear;')({zoneWidth:1e7,zoneHeight:1e7},()=>false);const SZ=32;`
@@ -222,7 +223,7 @@ console.log('\n[ⓔ] T821 — 먼 진 걷기: 재개형 걸음 탐색(아이 프
     'ⓔ 정적 — 새 수 0 · 시한 0(틱 예산은 시간이 아니라 꺼냄 수 — 결정론) · 주사위 0', added.length + '자');
 }
 const child821 = (knob) => {
-  const env = Object.assign({}, process.env, { T1089_RET_WALK: '0' }); if (knob === 'default') delete env.T790_NO_SNAP; else env.T790_NO_SNAP = knob ? '1' : '0';   // ★[T1089] 이 판은 T790 · T832 · T844 귀환 꼴(장부 원점 · 첫 틱에 놓임)을 잰다 — 걷는 귀환(T1089 켬)은 `test-t1089-ret-walk.js`
+  const env = Object.assign({}, process.env, { T1089_RET_WALK: '0', T1381_WALK_HEAP: process.env.T1381_WALK_HEAP || '0' }); if (knob === 'default') delete env.T790_NO_SNAP; else env.T790_NO_SNAP = knob ? '1' : '0';   // ★[T1089] 이 판은 T790 · T832 · T844 귀환 꼴(장부 원점 · 첫 틱에 놓임)을 잰다 — 걷는 귀환(T1089 켬)은 `test-t1089-ret-walk.js`
   const js = `const path=require('path'),fs=require('fs'),ROOT=${JSON.stringify(ROOT)};const V=require(path.join(ROOT,'server','villages.js')),WLM=require(path.join(ROOT,'server','war-live.js')),PC=require(path.join(ROOT,'sim','path-core.js'));`
     + `const ZS=fs.readFileSync(path.join(ROOT,'server/zone.js'),'utf8');const mm=/function _standCellNear\\(x0, y0, blocked\\) \\{[\\s\\S]*?\\n\\}/.exec(ZS);`
     + `const stand=new Function('ZONE','_BLOCKED_STAND',mm[0]+'\\nreturn _standCellNear;')({zoneWidth:1e7,zoneHeight:1e7},()=>false);const SZ=32;`
@@ -302,7 +303,7 @@ console.log('\n[ⓕ] T832 — 켬 판 결정론: 귀환 몸도 그날 몫(아이
   ok(!/[^\w.'D](?:[2-9]|\d{2,})(?:\.\d+)?(?![\w'])/.test(blk) && !/Math\.random/.test(blk), 'ⓕ 정적 — 새 수 0(몫 = 종전 `_t681Quota` · 시간 예산은 종전 마감 예산 그대로 — 끊겨도 몫이 남아 다음 조각에 잇는다)');
 }
 const child832 = (knob, t844) => {   // knob = T790_NO_SNAP · t844 = T844_RET_QUOTA(끔 판 귀환 몫)
-  const env = Object.assign({}, process.env, { T1089_RET_WALK: '0' }); if (knob === 'default') delete env.T790_NO_SNAP; else env.T790_NO_SNAP = knob ? '1' : '0'; if (t844 === 'default') delete env.T844_RET_QUOTA; else env.T844_RET_QUOTA = t844 ? '1' : '0';   // ★[T861] 켬 기본 — 끈 판은 명시 `=0` · 'default' = env 없음   ★[T1089] 이 판은 T790 · T832 · T844 귀환 꼴(장부 원점 · 첫 틱에 놓임)을 잰다 — 걷는 귀환(T1089 켬)은 `test-t1089-ret-walk.js`
+  const env = Object.assign({}, process.env, { T1089_RET_WALK: '0', T1381_WALK_HEAP: process.env.T1381_WALK_HEAP || '0' }); if (knob === 'default') delete env.T790_NO_SNAP; else env.T790_NO_SNAP = knob ? '1' : '0'; if (t844 === 'default') delete env.T844_RET_QUOTA; else env.T844_RET_QUOTA = t844 ? '1' : '0';   // ★[T861] 켬 기본 — 끈 판은 명시 `=0` · 'default' = env 없음   ★[T1089] 이 판은 T790 · T832 · T844 귀환 꼴(장부 원점 · 첫 틱에 놓임)을 잰다 — 걷는 귀환(T1089 켬)은 `test-t1089-ret-walk.js`
   const js = `const V=require(${JSON.stringify(path.join(ROOT, 'server', 'villages.js'))}),WLM=require(${JSON.stringify(path.join(ROOT, 'server', 'war-live.js'))});`
     + `const players=new Map(),live=WLM.createWarLive({cellPx:32,pxPerM:32,tickHz:30});let calls=0;const sf=live._muStepFollow;live._muStepFollow=function(){calls++;return sf.apply(this,arguments);};`
     + `const H=V.__p3Bind({warLive:live,world:{day:12},dayMs:10000,deps:{players,moveSpeed:64,npcs:new Set(),broadcast(){}},_warStat:{standoff:0},war:{WARS:[]}});`

@@ -1,0 +1,72 @@
+{
+  "kind": "historical aggregate; identity and reason not observable",
+  "day870": {
+    "day": 870,
+    "declarations": 44,
+    "battles": 34,
+    "casualties": 965,
+    "active": 1,
+    "bodies": 1,
+    "engaged": 1
+  },
+  "unchangedSummaryDays": [
+    868,
+    881
+  ],
+  "sameEngagementIdentity": "unknown",
+  "missingMetrics": [
+    "callsPerTick",
+    "scansPerCall",
+    "sameQuestionRepeatPct",
+    "rockPct",
+    "villagePair",
+    "zeroCasualtyReason"
+  ],
+  "progress": {
+    "cut-1020-c1196": [
+      {
+        "from": 0,
+        "to": 1196,
+        "sec": 5536.5,
+        "code": 0,
+        "at": "2026-11-23T19:49:25.233Z"
+      },
+      {
+        "from": 1196,
+        "to": 1460,
+        "sec": 2486.6,
+        "code": 0,
+        "at": "2026-11-23T20:30:52.849Z"
+      }
+    ],
+    "def-1020": [],
+    "def2-1020": [],
+    "h6g-1020": [
+      {
+        "from": 0,
+        "to": 1460,
+        "sec": 26225.8,
+        "code": 0,
+        "at": "2026-11-22T10:23:14.678Z"
+      }
+    ],
+    "h6g-42": [
+      {
+        "from": 0,
+        "to": 1460,
+        "sec": 92322.4,
+        "code": 0,
+        "at": "2026-11-23T16:32:08.582Z"
+      }
+    ],
+    "h6g-7": [
+      {
+        "from": 0,
+        "to": 1460,
+        "sec": 16210.2,
+        "code": 0,
+        "at": "2026-11-22T14:53:25.483Z"
+      }
+    ]
+  }
+}

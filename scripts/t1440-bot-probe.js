@@ -10,6 +10,7 @@
 //   ⓒ 악용(표): wingsU 주인 없는 땅 날개 · wingsP 사유지 날개 · thick 열 겹 · house 사유지로 남의 집(주인 없는 땅) 위로 길 몰기(들 · 목) ·
 //      vilpush 마을 땅 위 사유지로 마을 밖 남의 사유지에 길 내기 · neck 좁은 목 사유지 + 울타리(닫는 조각 · 부서질 때마다 다시 = again) · grad 조금씩 3배 · door 문 달고 통행세 ·
 //      shop 남의 가게 앞 길 돌리기(판정 51 — B 의 길가 칸 · B 가 "그대로 둠"으로 잡은 길 칸 앞을 A 가 "비켜 가게" 사유지로 한 칸씩 — 몇 칸이면 길이 떨어지나)
+//      ★[T1470] pin(`T1470_ROAD_PIN` 을 주면 — 켬 · 끔 둘 다) 갑이 길 칸을 "그대로 둠"(못) → 을이 앞 · 뒤 · 양옆 · 둘레 여덟을 "비켜 가게"로 한 칸씩 → 을이 제 지나는 칸에 울타리 → 갑이 풂 → 을이 한 칸 더
 //      ★ 길 위 칸 선포는 고름을 들고 간다(판정 51 — 봇은 기본 "비켜 가게" · shop 의 B 만 "그대로 둠")
 //   ⓓ 날마다 — 무리마다 서 있는 조각 · 표시 · 부숨 · 사유지 길이 지나는 칸 · 봇 벌점(접속 안 함 = 쌓인 몫) · 고립 귀환(`tradeLog.abandoned`) · 다시 구해 이음 · 인구
 //   ⓔ 먼저 잡은 사유지 처지 — 봇 손짓마다 앞뒤로 모든 사유지의 "길이 지나는 칸"을 견준다: 손짓의 급 이하인 남의 사유지가 바뀌면 어김(0 이어야)
@@ -21,7 +22,7 @@ require('./lib-port').noCentral();
 const ROOT = path.dirname(path.dirname(path.resolve(process.argv[1])));
 const ZF = path.join(ROOT, 'server', 'zone.js'), VF = path.join(ROOT, 'server', 'villages.js');
 const DAY = process.env.T1440_BOT_DAY ? +process.env.T1440_BOT_DAY : null, OUT = process.env.T1440_BOT_OUT, SZ = 32;
-const KINDS = String(process.env.T1440_BOT_KINDS || 'wingsU,wingsP,thick,house,vilpush,neck,grad,door,shop').split(',').filter(Boolean);
+const KINDS = String(process.env.T1440_BOT_KINDS || ('wingsU,wingsP,thick,house,vilpush,neck,grad,door,shop' + (process.env.T1470_ROAD_PIN != null ? ',pin' : ''))).split(',').filter(Boolean);   // ★[T1470] 못 판(켬 · 끔 둘 다 `T1470_ROAD_PIN` 을 주면 pin 무리를 더한다)
 const rec = { day: DAY, kinds: KINDS, knobs: { ROAD: process.env.T1440_ROAD_RULE || '', NO_BUILD: process.env.T1423_NO_BUILD || '' }, groups: {}, days: [], viol: [], acts: 0, tick: null, end: null, err: null };
 const save = () => { try { fs.writeFileSync(OUT, JSON.stringify(rec)); } catch (e) {} };
 const cpuMs = () => { const u = process.cpuUsage(); return (u.user + u.system) / 1000; };
@@ -110,7 +111,7 @@ function pick(st, H, SV) {
   //   shop · shopK — 남의 가게 앞(판정 51): 둘레 6칸이 열린 길 칸(마을 20칸 밖 · 앞 무리 자리 40칸 밖) · 앞 무리 자리를 지나는 쌍과 겹치지 않는 쌍만(앞 무리 손짓이 그 길을 먼저 옮기지 않게)
   if (KINDS.includes('shop')) {
     const uk = new Set(); for (const g of Object.values(out)) for (const [x, y] of g.cells || []) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const o = RC.get(K(x + dx, y + dy)); if (o) for (const k of o.keys) uk.add(k); }
-    for (const k of ['shop', 'shopK']) { const o = cand.find((r) => far(r.x, r.y, 40) && !nearVil(r.x, r.y, 20) && openBox(r.x, r.y, 6) && [...r.keys].every((q) => !uk.has(q))); if (o) { out[k] = { cells: [[o.x, o.y]], at: [o.x, o.y], routes: o.n, vert: Math.abs(o.dx) >= Math.abs(o.dy), keys: [...o.keys] }; used.push([o.x, o.y]); for (const q of o.keys) uk.add(q); } }
+    for (const k of ['shop', 'shopK'].concat(KINDS.includes('pin') ? ['pin'] : [])) { const o = cand.find((r) => far(r.x, r.y, 40) && !nearVil(r.x, r.y, 20) && openBox(r.x, r.y, 6) && [...r.keys].every((q) => !uk.has(q))); if (o) { out[k] = { cells: [[o.x, o.y]], at: [o.x, o.y], routes: o.n, vert: Math.abs(o.dx) >= Math.abs(o.dy), keys: [...o.keys] }; used.push([o.x, o.y]); for (const q of o.keys) uk.add(q); } }
   }
   return { out, RC };
 }
@@ -259,6 +260,27 @@ function place(st, H, SV, d) {
     const n0 = near(G.keys, G.at, 0); g.thru0 = n0.n;
     pushOn(g, G, G.at, 0, 0);
     const n1 = near(G.keys, G.at, 0); g.thru1 = n1.n; g.d1 = n1.dmin;
+  }
+  if (out.pin) {   // ★[T1470] 갑이 길 칸을 "그대로 둠"으로(못) → 을이 앞 · 뒤 · 양옆 · 둘레 전부를 "비켜 가게"로 한 칸씩 → 을이 제 지나는 칸에 울타리 → 갑이 풂 → 을이 한 칸 더
+    const G = out.pin, g = G0('pin', G, { keys: G.keys }), A = newBot('k'), [x0, y0] = G.at, ax = G.vert ? 0 : 1, ay = G.vert ? 1 : 0;
+    g.claimsK = [claim1(H, A, x0, y0, 'keep')];
+    g.thru0 = near(G.keys, G.at, 0).n; g.steps = [];
+    const ring = [[x0 - ax, y0 - ay, 'front'], [x0 + ax, y0 + ay, 'back'], [x0 + ay, y0 + ax, 'side1'], [x0 - ay, y0 - ax, 'side2'], [x0 - ax + ay, y0 - ay + ax, 'ring'], [x0 - ax - ay, y0 - ay - ax, 'ring'], [x0 + ax + ay, y0 + ay + ax, 'ring'], [x0 + ax - ay, y0 + ay - ax, 'ring']];
+    let P = null, n = 0;
+    for (const [x, y, w] of ring) {
+      if (claimedAt(x, y) || H.isTerrainBlockedLocal(x * SZ + 16, y * SZ + 16) || H.isBridgeTileLocal(x * SZ + 16, y * SZ + 16)) { g.steps.push([w, [x, y], 'skip']); continue; }
+      if (!P || n >= 4) { P = newBot('e'); n = 0; }
+      const r = claim1(H, P, x, y); n++; g.claims.push(r);
+      g.steps.push([w, [x, y], r.ok ? r.v : 'refused', r.pass, near(G.keys, G.at, 0).n, r.j ? r.j.cpu : null]);
+    }
+    g.thru1 = near(G.keys, G.at, 0).n;
+    const pc = g.claims.find((c) => c.pass && c.id);   // 을이 제 지나는 칸에 울타리(닫는 조각이 되나)
+    if (pc) { const by = botOf(pc.by); g.wall = place1(H, by, 'fence', pc.x, pc.y); g.pieces.push(g.wall); }
+    const kc = g.claimsK[0] && g.claimsK[0].id;   // 갑이 풂 → 을이 길 칸 하나 더(못 없이 판정)
+    if (kc) { try { H.tryUnclaim(A, kc, true); } catch (e) { g.relErr = String(e && e.message); } }
+    g.thruRel = near(G.keys, G.at, 0).n;
+    const nr = near(G.keys, G.at, 2); let best = null, bd = Infinity; for (const cc of nr.S.keys()) { const [x, y] = cc.split(',').map(Number), dd = Math.max(Math.abs(x - x0), Math.abs(y - y0)); if (dd && dd < bd && !claimedAt(x, y) && !H.isTerrainBlockedLocal(x * SZ + 16, y * SZ + 16) && !H.isBridgeTileLocal(x * SZ + 16, y * SZ + 16)) { best = [x, y]; bd = dd; } }   // 옛 못에 가장 가까운 길 칸
+    if (best) { const r = claim1(H, newBot('e'), best[0], best[1]); g.claims.push(r); g.after = [best, r.ok ? r.v : 'refused', r.pass, near(G.keys, G.at, 0).n]; }
   }
   if (rec.lastG && rec.groups[rec.lastG]) rec.groups[rec.lastG].cpuMs = +(cpuMs() - tg).toFixed(0);
   for (const g of Object.values(rec.groups)) g.verdicts = g.claims.concat(g.pieces).reduce((m, p) => { const k = p.ok ? (p.v || '?') : 'refused'; m[k] = (m[k] || 0) + 1; return m; }, {});

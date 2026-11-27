@@ -671,6 +671,7 @@ let RUN9 = null;
       players: world.players, mobs: world.mobs, buildings: world.buildings, activeChunkKeys, chunkManager, stairCellCache, qtBuildings,
       qtColl: qtBuildings,   // ★[T449 ③] 받침 술어(`hasFloorSupportAt`)가 이제 벽 질의 격자를 본다 — 여기선 같은 모의 격자(종류는 술어가 거른다 · 판정은 `test-coll-grid`)
       T385_ONE_SWEEP: on, T689_GC: GC9, BUILDING_SIZE: BS, FLOOR_HEIGHT: FH, HUNGER_MAX: 100, THIRST_MAX: 100,
+      T1467_STILL: false, _t67st: { sweep: 0 },   // ★[T1467] 서 있는 몸 건넘 손잡이 — 제품 기본(끔) 그대로(바퀴 몸통이 읽는 이름)
       T774_ACTIVE_COL: false, _t774I: 0, _t774Act: null,   // ★[T774] 활성 열 — 한 바퀴(`_sweepOne`)가 읽는 손잡이 · 이 판은 끔 갈래(열 증인은 `T774_ACTIVE_COL=1 node scripts/t738-witness.js`)
       T761_CLOCKS: { on: false, wx: false, mob: false, temp: false },   // ★[T761 · PM 착지 10-15] 몸 기온 · 몹 밤 현지 시계 갈래 — 제품 기본(끔) 그대로
       T823_FREEZE_SHELL: true,    // ★[T823 · PM 착지 10-21 · ★T831 켬 기본] 떠난 몸 껍데기 거르기 — 제품 기본(켬) 그대로(이 판 몸은 다 `handingOff: false` — 어느 쪽이든 같은 값)
@@ -1924,7 +1925,7 @@ console.log('\n⑳ T461 걸음 문 WASM 커널 — 1,000틱 뒤 전원 좌표 �
   // ★제품 글자를 뜬다: 이동 문(`movePlayerStep`) · 커널 앞문(`_wwPre`) · 뒷문(`_wwPost`) — 커널은 `server/walk-wasm.js`(제품 껍데기) 그대로.
   const MV = T1145P + body('movePlayerStep'), POST = body('_wwPost');   // ★[T1145] 열 손잡이 이름을 앞에(이동 문 · 앞문 묶음마다 한 번)
   //   ★[T689] 앞문 몸통이 `_wwPreOne` 으로 나뉘었다(손잡이 `T689_GC` · 켬 = `players.forEach`) — 둘을 같이 뜬다 · 판 손잡이는 이 프로세스 env(끔·켬 두 번 돌린다)
-  const PRE = T1145P + 'const T689_GC = ' + (process.env.T689_GC === '1') + ';\nlet _wwCut = false;\nconst T774_ACTIVE_COL = false; let _t774I = 0; const _t774Act = null;\n' + body('_wwPre') + '\n' + body('_wwPreOne');   // ★[T774] 앞문이 읽는 활성 열 손잡이 — 이 판은 끔 갈래
+  const PRE = T1145P + 'const T689_GC = ' + (process.env.T689_GC === '1') + ';\nlet _wwCut = false;\nconst T774_ACTIVE_COL = false; let _t774I = 0; const _t774Act = null;\nconst T1467_STILL = false;\n' + body('_wwPre') + '\n' + body('_wwPreOne');   // ★[T774] 앞문이 읽는 활성 열 손잡이 — 이 판은 끔 갈래
   const ISS = body('_wwIsStill'), SPOST = body('_wwStillPost');   // ★[T672] 서 있는 몸 거름 · 뒷일(앞문이 부른다 · 끔이면 안 열린다)
   const T672P = ['T672_WALK_CUT', '_wwStill', '_wwStill0', '_wwNoRes', '_wwTC', '_wwResGen', '_wwVerify'];
   const t672A = (on, gen) => [!!on, [], [], [], { src: null, rx: null, gen: -1, k: 0, hit: 0, miss: 0, treeBad: 0, still: 0, stillBad: 0 }, gen || 0, false];
@@ -1975,9 +1976,11 @@ console.log('\n⑳ T461 걸음 문 WASM 커널 — 1,000틱 뒤 전원 좌표 �
     //     ReferenceError(전수 가지 머리 첫 판). 제품 기본 끔 갈래(끔 = 종전 술어 `isTerrainBlockedLocal` 그대로 · 이 판은 NPC 로만 부른다 — 켬이어도 NPC 는 종전 술어) ·
     //     켬 판은 `e2e-zone-cross`(T1324_BAND_TERRAIN=1) · `scripts/t1324-band-check.js` 가 잰다(이 판 모의 세계엔 이웃 존 땅이 없다)
     'T1324_BAND_TERRAIN', '_t1324PBlk',
+    //   ★[T1441 ②] 이동 문이 존 맨 위 이름 `T1441_DOOR_OWNER`(문 주인 · '1' 만 켬 · 끔 기본) · `_t1441Wv`(걷는 NPC 의 마을 — 세 걸음 줄 동안만)를 읽는다 — 끔 갈래(제품 기본)로 넘긴다
+    'T1441_DOOR_OWNER', '_t1441Wv',
     MV + '\nreturn movePlayerStep;')(terr, (nx, ny, ox, oy) => wallJs(nx, ny, ox, oy), treeFast, null, iceBand, Roads, clamp, ZONE,
     64, 1 / 30, W, new Map(), null, { slide: true }, () => null, 'test', () => {}, 256, () => 1,   // ★[T585] 개울 걸음 배율 — 이 판엔 개울이 없다(×1 · 커널 앞문과 같은 수)
-    false, null);
+    false, null, false, null);
   // 커널 — 제품 껍데기 · 제품 앞문/뒷문 글자
   const WW = require(path.join(ROOT, 'server', 'walk-wasm.js')).create({ zw: ZW, zh: ZH, iceN: true, iceS: true, iceBand: ICE, speed: 64,
     terrMiss: (x, y) => terr0(x, y), wallQ: (nx, ny, ox, oy) => wallJs(nx, ny, ox, oy) });
@@ -2098,8 +2101,9 @@ console.log('\n⑳ T461 걸음 문 WASM 커널 — 1,000틱 뒤 전원 좌표 �
       const moveA = new Function('isTerrainBlockedLocal', 'isBlockedByWall', 'isBlockedByTree', 'treeBlockerAt', 'isInIceBand', 'Roads', 'clamp', 'ZONE',
         'MOVE_SPEED', 'moveDt', '_walk', 'buildings', 'MoveModel', 'MOVE_PARAMS', 'findZoneAt', 'ZONE_ID', 'fireHandoff', 'HANDOFF_COMMIT', '_streamWalkMul',
         'T1324_BAND_TERRAIN', '_t1324PBlk',   // ★[T1324] 사람 겹침 띠 땅 — 제품 기본 끔 갈래(위 `mkMove` 와 같다)
+        'T1441_DOOR_OWNER', '_t1441Wv',       // ★[T1441 ②] 문 주인 — 제품 기본 끔 갈래(위 `mkMove` 와 같다)
         MV + '\nreturn movePlayerStep;')(terr, (nx, ny, ox, oy) => wallJs(nx, ny, ox, oy), treeX, null, iceBand, Roads, clamp, ZONE,
-        64, 1 / 30, WA, new Map(), null, { slide: true }, () => null, 'test', () => {}, 256, () => 1, false, null);
+        64, 1 / 30, WA, new Map(), null, { slide: true }, () => null, 'test', () => {}, 256, () => 1, false, null, false, null);
       const A = mkNpcs(N, 999 + N), B = mkNpcs(N, 999 + N), C = mkNpcs(N, 999 + N);
       colOn(A, B, C);
       const fB = mkCut(new Map(B.map((p) => [p.pid, p])), WB, R, mkWW(), true, opt.still), fC = mkCut(new Map(C.map((p) => [p.pid, p])), WC, R, mkWW(), false);

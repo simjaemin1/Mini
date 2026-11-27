@@ -1,0 +1,5 @@
+core=/tmp/claude-0/-home-user-Mini/2b37f3bf-4e2c-5696-b52a-e22e02e2f0d7/scratchpad/core_main.js
+env=
+cap=600
+started=2026-11-24T08:04:42.048Z
+finished=2026-11-24T08:10:21.788Z cells=224 wallMs=339737

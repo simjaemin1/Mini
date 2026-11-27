@@ -161,6 +161,7 @@
     //     (`if (!verbs.length) return;` — 종전 그대로다). 그래서 여기서 대상을 내도 안전하다.
     const _g = { kind: 'ground', id: null, obj: null, absX: wx, absY: wy };
     if (t1438On()) t1438Attach(_g, wx, wy);   // ★[T1438] 빈 땅 대상에 그 자리의 무너진 자리 · 구조물을 곁들인다(빈 땅 동사는 그대로)
+    if (typeof t1455At === 'function') { const _vb = t1455At(wx, wy); if (_vb) _g.vbridge = _vb; }   // ★[T1455] 마을이 놓은 다리 칸(끊긴 칸 포함)
     return _g;
   }
   // ══ ★★[T1438 2026-11-22 · 재민 판정 38 · 39] 구조물은 낡는다 — 우클릭 한 줄(새 창 0) ══════════════════════════════
@@ -203,6 +204,10 @@
     const name = msg.name || '이것';
     if (!msg.parts || !msg.parts.length) { showNotice(`${name}은(는) 낡지 않습니다.`); return; }
     const lines = [];
+    //   ★[T1454] 시설 — 걸리는 시간 배수(서버가 셈 · 클라 셈 0) · 0 이면 고장 한 줄(왜 못 쓰는지)
+    if (msg.slow) lines.push(msg.slow.broken
+      ? { label: `고장 — 고쳐야 씁니다`, onClick: () => showNotice(`${name}이(가) 고장 났습니다. 아래 재료를 넣어 고치면 바로 다시 씁니다(가장 느린 데서부터).`) }
+      : { label: `낡음 ${Math.round((1 - msg.slow.x) * 100)}% — 걸리는 시간 ${msg.slow.mult.toFixed(2)}배`, onClick: () => showNotice(`${name} — 남은 몫 ${Math.round(msg.slow.x * 100)}% · 여기서 하는 일에 ${msg.slow.mult.toFixed(2)}배 걸립니다(나오는 양은 같습니다).`) });
     for (const p of msg.parts) {
       const pct = Math.round((p.v || 0) * 100);
       lines.push({ label: `${p.ko} ${pct}%`, onClick: () => showNotice(`${name} ${p.ko} ${pct}% — 지을 때 든 것: ${(p.items || []).join(' · ')}`) });
@@ -212,6 +217,28 @@
           onClick: () => sendPrimary({ type: 'repair_building', buildingId: msg.id, part: p.k, item: h.it }) });
       }
       if (!(p.have && p.have.length)) lines.push({ label: `　└ 넣을 것 없음 — ${(p.items || []).join(' · ')}`, onClick: () => showNotice(`${p.ko}에 넣을 것이 없습니다(${(p.items || []).join(' · ')}).`) });
+    }
+    showContextMenu(W.x, W.y, lines);
+  }
+
+  // ══ ★★[T1455 2026-11-23 · 재민 판정 71] 마을이 놓은 다리 — 우클릭 줄(새 창 0) ══════════════════════════════════════════════════
+  //   한 줄: "낡음 ○% — 건너는 시간 ○배 · 놓은 마을 ○"(끊기면 "끊긴 다리 — 낡아 끊겼습니다 · 놓은 마을 ○ · 나무를 넣으면 다시 섭니다") · "손질…" 은 서버에 묻는다(`t1455_peek` → `t1455_info`).
+  //   값 · 배수 · 넣을 것은 서버가 낸다(클라 셈 0 — 배수 줄은 서버 `t1454Slow` 가 낸 수 · 그날 값).
+  function t1455Line(r) {
+    const own = r.owner ? `놓은 마을 ${r.owner}` : '놓은 마을 없음(주인 없는 다리)';
+    if (r.cut) return { label: `끊긴 다리 — ${own}`, send: () => showNotice(`낡아서 끊긴 다리입니다(${own}). 건널 수 없습니다 — 나무를 넣으면 다시 섭니다.`) };
+    const pct = Math.round((1 - (r.x || 0)) * 100), mul = r.walk > 0 ? (1 / r.walk) : 0;
+    return { label: `낡음 ${pct}% — 건너는 시간 ${mul.toFixed(1)}배 · ${own}`, send: () => showNotice(`이 다리는 ${pct}% 낡았습니다. 건너는 데 ${mul.toFixed(1)}배 걸립니다(${own}).`) };
+  }
+  let _t1455Want = null;
+  function t1455Peek(r) { _t1455Want = { i: r.i, x: _lastMenuX, y: _lastMenuY }; sendPrimary({ type: 't1455_peek', i: r.i }); }
+  function t1455OnInfo(msg) {   // 서버 답(`t1455_info`) — 30-n-net 이 부른다(선언만)
+    const W = _t1455Want; if (!W || W.i !== msg.i) return;
+    _t1455Want = null;
+    const pct = Math.round((msg.x || 0) * 100), lines = [{ label: `${msg.ko || '다리'} ${pct}%${msg.cut ? ' — 끊김' : (msg.mul ? ` — 건너는 시간 ${(+msg.mul).toFixed(1)}배` : '')}`, onClick: () => showNotice(`다리 ${pct}% — 지을 때 든 것: ${(msg.items || []).join(' · ')}`) }];
+    if (pct < 100) {
+      for (const h of (msg.have || [])) lines.push({ label: `　└ ${h.ko} 넣기 (가진 것 ${h.n} · 하나 ${(h.one * 100).toFixed(1)}%)`, onClick: () => sendPrimary({ type: 't1455_repair', i: msg.i, item: h.it }) });
+      if (!(msg.have && msg.have.length)) lines.push({ label: `　└ 넣을 것 없음 — ${(msg.items || []).join(' · ')}`, onClick: () => showNotice(`다리에 넣을 것이 없습니다(${(msg.items || []).join(' · ')}).`) });
     }
     showContextMenu(W.x, W.y, lines);
   }
@@ -288,6 +315,7 @@
       else if (t1207On()) out.push({ label: '영토 넓히기', send: () => verbTerrQuote(t.absX, t.absY) });
       if (t.ruin) out.push({ label: `치우기 — 무너진 ${t.ruin.data && t.ruin.data.was === 'house' ? '집' : '움집'}`, send: () => sendPrimary({ type: 't1438_clear', id: t.ruin.id }) });   // ★[T1438]
       if (t.struct) out.push({ label: '손질…', send: () => t1438Peek(t.struct) });   // ★[T1438]
+      if (t.vbridge) { out.push(t1455Line(t.vbridge)); out.push({ label: '손질…', send: () => t1455Peek(t.vbridge) }); }   // ★[T1455] 마을 다리(아무나 보탠다)
       return out;
     }
     if (t.kind === 'nature') {

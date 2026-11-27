@@ -1,0 +1,13 @@
+== 1020
+pos-days.jsonl: 30/30 다름 []
+world-days.jsonl: 30/30 다름 []
+body: 32/32 다름 []
+== 7
+pos-days.jsonl: 30/30 다름 []
+world-days.jsonl: 30/30 다름 []
+body: 32/32 다름 []
+== 42
+pos-days.jsonl: 30/30 다름 []
+world-days.jsonl: 30/30 다름 []
+body: 32/32 다름 []
+boards done 10:01:36

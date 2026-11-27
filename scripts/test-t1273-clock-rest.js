@@ -66,7 +66,7 @@ const BAITS = [
 const READERS = {
   _t1034Pack: [3, '저장 — 메타 행 곁 칸(되살린 몸은 `_t1034Apply` 가 세 칸에 되쓰기만)'],
   _t1034Apply: [1, '되살림 T1182 아닌 갈래 상한(`at ≤ 실은 자리` 라 T1182 몸엔 안 걸린다)'],
-  spawnCaravanBody: [1, '세 칸끼리(`nomPxMs = len ÷ (arriveAt − now)`)'], startReturnLeg: [2, '세 칸끼리'], isolateCaravanReturn: [1, '세 칸끼리'], _t1136Isolate: [1, '세 칸끼리'],
+  spawnCaravanBody: [1, '세 칸끼리(`nomPxMs = len ÷ (arriveAt − now)`)'], startReturnLeg: [2, '세 칸끼리'], isolateCaravanReturn: [1, '세 칸끼리'], _t1136Isolate: [1, '세 칸끼리'], _t1441Waste: [1, '세 칸끼리(★[T1441] 닫힌 통로 헛걸음 — 고립 귀환 꼴 · `T1441_PASSAGE` 켬만)'],
   _caravanSyncOne: [1, '세 칸끼리(재라우팅)'], _xzMakeBody: [1, '세 칸끼리'], _xzStartReturnLeg: [1, '세 칸끼리'], _xzIsolate: [1, '세 칸끼리'], _xzAfterSend: [3, '세 칸끼리(되돌림)'],
   _xzWalkToBorder: [4, '세 칸끼리(경계 칸까지 명목 빠르기)'], _xzSend: [1, '경계 기다림 상한 `until`(`!body._t1182` 몸만 읽는다)'],
   _t661Vis: [1, '종전 보간(T1182 몸은 안 부른다)'], tickCaravanBodies: [6, '종전 페이싱(T1182 몸 줄 뒤)'],
@@ -522,9 +522,9 @@ const fnOf = (i) => { const j = VC.lastIndexOf('\nfunction ', i); return j < 0 ?
   //   ★[T1300] 전쟁 몸 두 자리(`_warEnsureBody` · `_warSetupReturn` — `if (T1253_CLOCK_FIX && body._t681)` 뒤)가 더해졌다 — 캐러밴 10자리는 종전 단언 그대로(그 줄들만 골라 같은 조건) · 전쟁 둘은 따로 · 그 밖 0
   const legsW = legs.filter((x) => x[0] === '_warEnsureBody' || x[0] === '_warSetupReturn'), legsC = legs.filter((x) => !legsW.includes(x));
   const legFns = legsC.map((x) => x[0]).sort().join();
-  ok(legsC.length === 10 && legsC.every((x) => /if \(T1253_CLOCK_FIX && body\._t1182\) $/.test(x[1])) && legFns === '_caravanSyncOne,_t1136Isolate,_xzAfterSend,_xzIsolate,_xzMakeBody,_xzStartReturnLeg,isolateCaravanReturn,spawnCaravanBody,startReturnLeg,startReturnLeg',
-    '⓪ ★[T1289] 세 칸 econ 축 줄 10자리(세 칸을 적는 함수 전부 · 경계 걷기는 따로) — 다 `if (T1253_CLOCK_FIX && body._t1182)` 뒤(끔 · T1182 아닌 몸 = 종전 줄 그대로)', legFns);
-  ok(legs.length === 12 && legsW.length === 2 && legsW.every((x) => /if \(T1253_CLOCK_FIX && body\._t681\) $/.test(x[1])) && legsW.map((x) => x[0]).sort().join() === '_warEnsureBody,_warSetupReturn',
+  ok(legsC.length === 11 && legsC.every((x) => /if \(T1253_CLOCK_FIX && body\._t1182\) $/.test(x[1])) && legFns === '_caravanSyncOne,_t1136Isolate,_t1441Waste,_xzAfterSend,_xzIsolate,_xzMakeBody,_xzStartReturnLeg,isolateCaravanReturn,spawnCaravanBody,startReturnLeg,startReturnLeg',   // ★[T1441] 헛걸음 한 자리(고립 귀환 꼴)
+    '⓪ ★[T1289] 세 칸 econ 축 줄 11자리(★[T1441] 헛걸음 하나 더 · 세 칸을 적는 함수 전부 · 경계 걷기는 따로) — 다 `if (T1253_CLOCK_FIX && body._t1182)` 뒤(끔 · T1182 아닌 몸 = 종전 줄 그대로)', legFns);
+  ok(legs.length === 13 && legsW.length === 2 && legsW.every((x) => /if \(T1253_CLOCK_FIX && body\._t681\) $/.test(x[1])) && legsW.map((x) => x[0]).sort().join() === '_warEnsureBody,_warSetupReturn',
     '⓪ ★[T1300] 전쟁 몸 세 칸 econ 축 줄 2자리(행군 · 귀환) — 다 `if (T1253_CLOCK_FIX && body._t681)` 뒤(끔 · T681 끔 판 = 종전 벽시계 줄 · 그 판의 페이싱만 세 칸을 읽는다)', `${legs.length}자리 · 전쟁 ${legsW.map((x) => x[0]).join(' · ')}`);
   const ins = [...VC.matchAll(/(?<!function )_t1289In\(/g)].map((m) => fnOf(m.index)).sort().join();
   ok(ins === '_t1034Apply,spawnCaravanBody' && /\.\.\.\(T1253_CLOCK_FIX \? \{ ax: body\._t1182 \? 'e' : 'w' \} : \{\}\)/.test(VC), '⓪ ★[T1289] 되살림 축 옮김 = 덮기 문 둘(`_t1034Apply` · 이웃 존 되살림) · 저장 표지 = 켬만(끔 = 칸 없음)', ins);

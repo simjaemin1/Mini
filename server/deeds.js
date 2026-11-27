@@ -21,7 +21,7 @@
 //   ⚠점수(무엇이 몇 점인가 — `SCORE` · `P_USE` · `Q_WORK` · `Q_IDLE`)는 판으로 고를 **제안**이다 — 정본은 재민(보고 T1343 고를 표).
 
 const _num = (k, d) => { const v = parseFloat(process.env[k]); return Number.isFinite(v) ? v : d; };
-const ON = process.env.T1305_DEEDS === '1';
+const ON = process.env.T1305_DEEDS !== '0';   // ★[T1428 -on 후보] 켬 기본(되돌림 `=0`) — 켬 기본 전환은 이 가지에만(재민 "켜" 뒤 PM 착지)
 const CFG = {
   // ★[T1343 ③] 버티는 날 D(N) = D0 × (N0 ÷ N)² — 재민 11-16 글의 두 수(15일 · 40칸)
   D0: Math.max(0.01, _num('T1343_D0', 15)),
@@ -164,7 +164,7 @@ function pickFarFast(P, bankrupt, G) {
 //   풀리는 칸이 목(빼면 갈라짐)이어도 그대로 먼 칸부터 한 칸씩 푼다(기다림 0 · 조각 통째로 0). 떨어진 조각은 그대로 내 땅이다(돌보면 남는다 · N 에 든다).
 //   새 칸을 붙이는 문(본거지 조각에만)은 존(`tryClaim`)에 있다. T1389 의 두 안(㉠ 기다림 · ㉡ `T1389_NECK_GIVE`)은 거뒀다 — 끔 = ㉠ 그대로(값 같음).
 //   먼 차례는 걸음 수 표로 센다 — 갈라진 뒤 집에 안 닿는 조각은 걸음 ∞(가장 먼저 · 그 청크가 바닥났을 때만).
-const SPLIT_OK = process.env.T1402_SPLIT_OK === '1';
+const SPLIT_OK = process.env.T1402_SPLIT_OK !== '0';   // ★[T1428 -on 후보] 판정 20 ~ 23 도 같이 켬 기본(되돌림 `=0`)
 const _debtStat = { iters: 0, maxIters: 0, maxFreed: 0, stuck: 0, capped: 0 };
 // ★셈 — P 를 지금까지(빠져나감 · 빚 · 칸 풀림을 일어난 차례대로). onFree(cell, at) = 부르는 쪽이 그 칸을 푼다 · onDrop(chunk) = 빈 청크 줄 지움.
 //   되풀이 상한 = 칸 수 × 2 + 청크 수 × 2 + 8(사건은 청크 바닥남 · 칸 풀림 둘뿐 — 넘으면 멈추고 셈 표에 남긴다).

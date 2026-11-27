@@ -154,6 +154,9 @@ function _projects(src, vil, chron) {
     if (nc) for (const pid of vil.npcPids || []) { const q = H.players && H.players.get(pid); if (q && q.simJob === 'farmer') { farmer = true; break; } }
     if (nc && farmer) now.push({ kind: 'clear', fields: vil._farmSet ? vil._farmSet.size : 0, crew: vil._clearCrew | 0 });
   }
+  // ★[T1455] 우리 다리 — 마을이 놓은 다리 수 · 손볼 것(낱개 하나 넘게 낡은 것 · 끊긴 것) · 가장 낡은 몫(켬 · 이 마을이 놓은 다리가 있을 때만 — 없으면 키가 없다)
+  { const B = (H.SimVillages && H.SimVillages.t1455VilBridges) ? H.SimVillages.t1455VilBridges(vil) : null;
+    if (B && B.n > 0) now.push({ kind: 'bridges', n: B.n, fix: B.fix, cut: B.cut, worst: B.worst }); }
   for (const c of (src.world && src.world.caravans) || []) {
     if (!c || c._done || c.from !== vil.econ) continue;
     const to = src.nameOfEcon ? src.nameOfEcon(c.to) : null;

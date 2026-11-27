@@ -1,0 +1,3090 @@
+{
+ "arms": {
+  "off": {
+   "n": 3,
+   "pop": 3603.6666666666665,
+   "ratio": 1,
+   "empty": 0,
+   "fd": 227.66666666666666
+  },
+  "farm": {
+   "n": 3,
+   "pop": 676.6666666666666,
+   "ratio": 0.18777171399500509,
+   "empty": 18.333333333333332,
+   "fd": 2560.6666666666665
+  },
+  "fish": {
+   "n": 3,
+   "pop": 3563.6666666666665,
+   "ratio": 0.9889001942466007,
+   "empty": 0.6666666666666666,
+   "fd": 209.66666666666666
+  },
+  "wood": {
+   "n": 3,
+   "pop": 3272.6666666666665,
+   "ratio": 0.9081491073906207,
+   "empty": 1,
+   "fd": 360.3333333333333
+  },
+  "forage": {
+   "n": 3,
+   "pop": 370.3333333333333,
+   "ratio": 0.102765701600222,
+   "empty": 43.666666666666664,
+   "fd": 5060.333333333333
+  },
+  "hunt": {
+   "n": 3,
+   "pop": 2122,
+   "ratio": 0.5888446952178337,
+   "empty": 5.666666666666667,
+   "fd": 354.6666666666667
+  },
+  "all5": {
+   "n": 3,
+   "pop": 0,
+   "ratio": 0,
+   "empty": 51,
+   "fd": 2028.6666666666667
+  }
+ },
+ "runs": {
+  "off-1020": {
+   "rc": 0,
+   "sec": 838,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 2488,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 28.04,
+     "emig": 2,
+     "dead": 5,
+     "fd": 0,
+     "jobs": {
+      "farmer": 1065,
+      "fisher": 346,
+      "lumberjack": 267,
+      "forager": 367,
+      "hunter": 234
+     },
+     "wood": 1378.9,
+     "cpuPerDay": 3.319
+    },
+    {
+     "day": 200,
+     "pop": 3300,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 12.65,
+     "emig": 363,
+     "dead": 256,
+     "fd": 37,
+     "jobs": {
+      "farmer": 1183,
+      "fisher": 841,
+      "lumberjack": 100,
+      "forager": 570,
+      "hunter": 407
+     },
+     "wood": 389.4,
+     "cpuPerDay": 1.697
+    },
+    {
+     "day": 300,
+     "pop": 3365,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 29.52,
+     "emig": 667,
+     "dead": 820,
+     "fd": 145,
+     "jobs": {
+      "farmer": 1327,
+      "fisher": 770,
+      "lumberjack": 154,
+      "forager": 504,
+      "hunter": 391
+     },
+     "wood": 359,
+     "cpuPerDay": 1.367
+    },
+    {
+     "day": 400,
+     "pop": 3345,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 31.95,
+     "emig": 729,
+     "dead": 1136,
+     "fd": 205,
+     "jobs": {
+      "farmer": 1374,
+      "fisher": 626,
+      "lumberjack": 178,
+      "forager": 531,
+      "hunter": 358
+     },
+     "wood": 105.1,
+     "cpuPerDay": 1.618
+    }
+   ]
+  },
+  "off-7": {
+   "rc": 0,
+   "sec": 937,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 2612,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 25.76,
+     "emig": 8,
+     "dead": 6,
+     "fd": 0,
+     "jobs": {
+      "farmer": 1203,
+      "fisher": 267,
+      "lumberjack": 291,
+      "forager": 348,
+      "hunter": 284
+     },
+     "wood": 1536.9,
+     "cpuPerDay": 3.308
+    },
+    {
+     "day": 200,
+     "pop": 3414,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 13.52,
+     "emig": 264,
+     "dead": 147,
+     "fd": 6,
+     "jobs": {
+      "farmer": 1277,
+      "fisher": 836,
+      "lumberjack": 158,
+      "forager": 529,
+      "hunter": 391
+     },
+     "wood": 1053.3,
+     "cpuPerDay": 1.705
+    },
+    {
+     "day": 300,
+     "pop": 3568,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 24.54,
+     "emig": 605,
+     "dead": 757,
+     "fd": 123,
+     "jobs": {
+      "farmer": 1383,
+      "fisher": 742,
+      "lumberjack": 162,
+      "forager": 474,
+      "hunter": 559
+     },
+     "wood": 558.2,
+     "cpuPerDay": 1.567
+    },
+    {
+     "day": 400,
+     "pop": 3582,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 26.73,
+     "emig": 771,
+     "dead": 1349,
+     "fd": 374,
+     "jobs": {
+      "farmer": 1465,
+      "fisher": 584,
+      "lumberjack": 164,
+      "forager": 637,
+      "hunter": 457
+     },
+     "wood": 995.3,
+     "cpuPerDay": 2.382
+    }
+   ]
+  },
+  "off-42": {
+   "rc": 0,
+   "sec": 856,
+   "lastDay": 900,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 2537,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 27.15,
+     "emig": 0,
+     "dead": 6,
+     "fd": 0,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 972.5,
+     "cpuPerDay": 3.364
+    },
+    {
+     "day": 200,
+     "pop": 3660,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 14.28,
+     "emig": 607,
+     "dead": 156,
+     "fd": 21,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 1179.2,
+     "cpuPerDay": 1.932
+    },
+    {
+     "day": 300,
+     "pop": 3650,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 31.67,
+     "emig": 744,
+     "dead": 585,
+     "fd": 104,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 586.7,
+     "cpuPerDay": 1.64
+    },
+    {
+     "day": 400,
+     "pop": 3884,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 38.57,
+     "emig": 749,
+     "dead": 841,
+     "fd": 104,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 1375.5,
+     "cpuPerDay": 2.332
+    },
+    {
+     "day": 500,
+     "pop": 4854,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 44.23,
+     "emig": 749,
+     "dead": 898,
+     "fd": 104,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 1359.7,
+     "cpuPerDay": 3.227
+    },
+    {
+     "day": 600,
+     "pop": 5498,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 43.95,
+     "emig": 752,
+     "dead": 1052,
+     "fd": 104,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 4055.1,
+     "cpuPerDay": 4.894
+    },
+    {
+     "day": 700,
+     "pop": 5429,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 38.12,
+     "emig": 772,
+     "dead": 1704,
+     "fd": 104,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 3199.1,
+     "cpuPerDay": 6.058
+    },
+    {
+     "day": 800,
+     "pop": 6315,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 41.61,
+     "emig": 776,
+     "dead": 1896,
+     "fd": 104,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 11210.9,
+     "cpuPerDay": 5.992
+    },
+    {
+     "day": 900,
+     "pop": 7006,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 47.87,
+     "emig": 776,
+     "dead": 2019,
+     "fd": 104,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 16567.4,
+     "cpuPerDay": 59.951
+    }
+   ]
+  },
+  "farm-1020": {
+   "rc": 0,
+   "sec": 732,
+   "lastDay": 6700,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 1563,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 7.61,
+     "emig": 0,
+     "dead": 6,
+     "fd": 2,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 75.5,
+     "cpuPerDay": 3.566
+    },
+    {
+     "day": 200,
+     "pop": 1156,
+     "vills": 51,
+     "empty": 6,
+     "foodDays": 4.88,
+     "emig": 91,
+     "dead": 1118,
+     "fd": 1107,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 0,
+     "cpuPerDay": 1.671
+    },
+    {
+     "day": 300,
+     "pop": 877,
+     "vills": 51,
+     "empty": 9,
+     "foodDays": 4.7,
+     "emig": 361,
+     "dead": 2029,
+     "fd": 2015,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 0,
+     "cpuPerDay": 1.531
+    },
+    {
+     "day": 400,
+     "pop": 637,
+     "vills": 51,
+     "empty": 20,
+     "foodDays": 6.85,
+     "emig": 543,
+     "dead": 2767,
+     "fd": 2747,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 0,
+     "cpuPerDay": 1.229
+    },
+    {
+     "day": 500,
+     "pop": 707,
+     "vills": 51,
+     "empty": 22,
+     "foodDays": 9.54,
+     "emig": 603,
+     "dead": 3057,
+     "fd": 3036,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 0,
+     "cpuPerDay": 1.066
+    },
+    {
+     "day": 600,
+     "pop": 815,
+     "vills": 51,
+     "empty": 23,
+     "foodDays": 10.3,
+     "emig": 623,
+     "dead": 3217,
+     "fd": 3194,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 705.1,
+     "cpuPerDay": 1.021
+    },
+    {
+     "day": 700,
+     "pop": 775,
+     "vills": 51,
+     "empty": 23,
+     "foodDays": 6.34,
+     "emig": 627,
+     "dead": 3382,
+     "fd": 3337,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 0,
+     "cpuPerDay": 1.167
+    },
+    {
+     "day": 800,
+     "pop": 714,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 8.87,
+     "emig": 722,
+     "dead": 3688,
+     "fd": 3607,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 0,
+     "cpuPerDay": 1.107
+    },
+    {
+     "day": 900,
+     "pop": 714,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 16.35,
+     "emig": 761,
+     "dead": 3793,
+     "fd": 3707,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 0,
+     "cpuPerDay": 1.059
+    },
+    {
+     "day": 1000,
+     "pop": 768,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 18.22,
+     "emig": 767,
+     "dead": 3799,
+     "fd": 3710,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 118.9,
+     "cpuPerDay": 1.127
+    },
+    {
+     "day": 1100,
+     "pop": 740,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 11.09,
+     "emig": 767,
+     "dead": 3885,
+     "fd": 3789,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 0,
+     "cpuPerDay": 1.045
+    },
+    {
+     "day": 1200,
+     "pop": 741,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 15.3,
+     "emig": 813,
+     "dead": 4026,
+     "fd": 3930,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 0,
+     "cpuPerDay": 1.12
+    },
+    {
+     "day": 1300,
+     "pop": 790,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 13.25,
+     "emig": 813,
+     "dead": 4034,
+     "fd": 3931,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 18.6,
+     "cpuPerDay": 1.08
+    },
+    {
+     "day": 1400,
+     "pop": 770,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 16.08,
+     "emig": 813,
+     "dead": 4059,
+     "fd": 3931,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 0.6,
+     "cpuPerDay": 1.171
+    },
+    {
+     "day": 1500,
+     "pop": 721,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 17.43,
+     "emig": 851,
+     "dead": 4183,
+     "fd": 4004,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 60.7,
+     "cpuPerDay": 1.068
+    },
+    {
+     "day": 1600,
+     "pop": 868,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 15.08,
+     "emig": 868,
+     "dead": 4205,
+     "fd": 4008,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 1.3,
+     "cpuPerDay": 1.113
+    },
+    {
+     "day": 1700,
+     "pop": 852,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 13.61,
+     "emig": 912,
+     "dead": 4311,
+     "fd": 4052,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 20.9,
+     "cpuPerDay": 1.059
+    },
+    {
+     "day": 1800,
+     "pop": 859,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 9.19,
+     "emig": 937,
+     "dead": 4403,
+     "fd": 4055,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 14.4,
+     "cpuPerDay": 1.124
+    },
+    {
+     "day": 1900,
+     "pop": 848,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 13.16,
+     "emig": 1000,
+     "dead": 4624,
+     "fd": 4234,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 0,
+     "cpuPerDay": 1.125
+    },
+    {
+     "day": 2000,
+     "pop": 942,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 11.4,
+     "emig": 1039,
+     "dead": 4678,
+     "fd": 4246,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 0,
+     "cpuPerDay": 1.105
+    },
+    {
+     "day": 2100,
+     "pop": 934,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 19.73,
+     "emig": 1039,
+     "dead": 4692,
+     "fd": 4246,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 0,
+     "cpuPerDay": 1.227
+    },
+    {
+     "day": 2200,
+     "pop": 892,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 10.9,
+     "emig": 1039,
+     "dead": 4763,
+     "fd": 4284,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 0,
+     "cpuPerDay": 1.148
+    },
+    {
+     "day": 2300,
+     "pop": 1006,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 15.68,
+     "emig": 1040,
+     "dead": 4795,
+     "fd": 4311,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 151,
+     "cpuPerDay": 1.191
+    },
+    {
+     "day": 2400,
+     "pop": 1074,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 10.69,
+     "emig": 1040,
+     "dead": 4799,
+     "fd": 4312,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 81.5,
+     "cpuPerDay": 1.189
+    },
+    {
+     "day": 2500,
+     "pop": 1040,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 8.54,
+     "emig": 1040,
+     "dead": 4870,
+     "fd": 4312,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 0,
+     "cpuPerDay": 1.172
+    },
+    {
+     "day": 2600,
+     "pop": 818,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 9.35,
+     "emig": 1232,
+     "dead": 5227,
+     "fd": 4471,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 0,
+     "cpuPerDay": 1.178
+    },
+    {
+     "day": 2700,
+     "pop": 855,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 15,
+     "emig": 1305,
+     "dead": 5344,
+     "fd": 4525,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 0,
+     "cpuPerDay": 1.119
+    },
+    {
+     "day": 2800,
+     "pop": 904,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 25.5,
+     "emig": 1353,
+     "dead": 5429,
+     "fd": 4558,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 0,
+     "cpuPerDay": 1.145
+    },
+    {
+     "day": 2900,
+     "pop": 854,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 19.29,
+     "emig": 1388,
+     "dead": 5528,
+     "fd": 4559,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 16.2,
+     "cpuPerDay": 1.204
+    },
+    {
+     "day": 3000,
+     "pop": 993,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 18.47,
+     "emig": 1388,
+     "dead": 5534,
+     "fd": 4559,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 877.4,
+     "cpuPerDay": 1.319
+    },
+    {
+     "day": 3100,
+     "pop": 1298,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 7.88,
+     "emig": 1388,
+     "dead": 5547,
+     "fd": 4559,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 498,
+     "cpuPerDay": 1.542
+    },
+    {
+     "day": 3200,
+     "pop": 1312,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 14.14,
+     "emig": 1388,
+     "dead": 5584,
+     "fd": 4566,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 590.2,
+     "cpuPerDay": 1.48
+    },
+    {
+     "day": 3300,
+     "pop": 1041,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 9.68,
+     "emig": 1549,
+     "dead": 6071,
+     "fd": 4846,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 241.4,
+     "cpuPerDay": 1.345
+    },
+    {
+     "day": 3400,
+     "pop": 1215,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 12.86,
+     "emig": 1733,
+     "dead": 6321,
+     "fd": 4908,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 1181.7,
+     "cpuPerDay": 1.488
+    },
+    {
+     "day": 3500,
+     "pop": 1251,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 17.42,
+     "emig": 1733,
+     "dead": 6350,
+     "fd": 4919,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 2216.5,
+     "cpuPerDay": 1.487
+    },
+    {
+     "day": 3600,
+     "pop": 1249,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 14.66,
+     "emig": 1736,
+     "dead": 6402,
+     "fd": 4925,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 321.8,
+     "cpuPerDay": 1.503
+    },
+    {
+     "day": 3700,
+     "pop": 1209,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 19.44,
+     "emig": 1776,
+     "dead": 6551,
+     "fd": 5019,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 299.1,
+     "cpuPerDay": 1.431
+    },
+    {
+     "day": 3800,
+     "pop": 1328,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 18,
+     "emig": 1779,
+     "dead": 6577,
+     "fd": 5019,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 1289.4,
+     "cpuPerDay": 1.527
+    },
+    {
+     "day": 3900,
+     "pop": 1423,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 20.2,
+     "emig": 1779,
+     "dead": 6623,
+     "fd": 5033,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 2956.7,
+     "cpuPerDay": 1.525
+    },
+    {
+     "day": 4000,
+     "pop": 1344,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 14.82,
+     "emig": 1779,
+     "dead": 6787,
+     "fd": 5091,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 5336.5,
+     "cpuPerDay": 1.596
+    },
+    {
+     "day": 4100,
+     "pop": 1232,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 16.4,
+     "emig": 1997,
+     "dead": 7204,
+     "fd": 5283,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 5912.7,
+     "cpuPerDay": 1.568
+    },
+    {
+     "day": 4200,
+     "pop": 1444,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 11.08,
+     "emig": 2017,
+     "dead": 7274,
+     "fd": 5300,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 1135.1,
+     "cpuPerDay": 1.537
+    },
+    {
+     "day": 4300,
+     "pop": 1406,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 16.93,
+     "emig": 2092,
+     "dead": 7451,
+     "fd": 5314,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 0,
+     "cpuPerDay": 1.665
+    },
+    {
+     "day": 4400,
+     "pop": 1222,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 12.29,
+     "emig": 2104,
+     "dead": 7693,
+     "fd": 5393,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 0,
+     "cpuPerDay": 1.522
+    },
+    {
+     "day": 4500,
+     "pop": 1276,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 16.17,
+     "emig": 2134,
+     "dead": 7751,
+     "fd": 5432,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 80.6,
+     "cpuPerDay": 1.607
+    },
+    {
+     "day": 4600,
+     "pop": 1303,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 18.95,
+     "emig": 2134,
+     "dead": 7766,
+     "fd": 5432,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 101.3,
+     "cpuPerDay": 1.551
+    },
+    {
+     "day": 4700,
+     "pop": 1276,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 16.9,
+     "emig": 2134,
+     "dead": 7873,
+     "fd": 5432,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 0,
+     "cpuPerDay": 1.628
+    },
+    {
+     "day": 4800,
+     "pop": 1279,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 15.72,
+     "emig": 2134,
+     "dead": 7935,
+     "fd": 5442,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 1835.6,
+     "cpuPerDay": 1.581
+    },
+    {
+     "day": 4900,
+     "pop": 1330,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 14,
+     "emig": 2134,
+     "dead": 7952,
+     "fd": 5449,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 5405.5,
+     "cpuPerDay": 1.611
+    },
+    {
+     "day": 5000,
+     "pop": 1425,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 19.81,
+     "emig": 2134,
+     "dead": 7987,
+     "fd": 5453,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 5681.4,
+     "cpuPerDay": 1.631
+    },
+    {
+     "day": 5100,
+     "pop": 1316,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 14.41,
+     "emig": 2158,
+     "dead": 8133,
+     "fd": 5492,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 3068.7,
+     "cpuPerDay": 1.572
+    },
+    {
+     "day": 5200,
+     "pop": 1261,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 19.91,
+     "emig": 2277,
+     "dead": 8334,
+     "fd": 5579,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 1940.7,
+     "cpuPerDay": 1.584
+    },
+    {
+     "day": 5300,
+     "pop": 1361,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 16.28,
+     "emig": 2317,
+     "dead": 8409,
+     "fd": 5588,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 1110.4,
+     "cpuPerDay": 2.027
+    },
+    {
+     "day": 5400,
+     "pop": 1393,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 19.56,
+     "emig": 2317,
+     "dead": 8472,
+     "fd": 5589,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 889.7,
+     "cpuPerDay": 1.666
+    },
+    {
+     "day": 5500,
+     "pop": 1341,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 13.56,
+     "emig": 2317,
+     "dead": 8571,
+     "fd": 5597,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 4686.1,
+     "cpuPerDay": 1.603
+    },
+    {
+     "day": 5600,
+     "pop": 1400,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 17.62,
+     "emig": 2335,
+     "dead": 8605,
+     "fd": 5600,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 8015.8,
+     "cpuPerDay": 1.629
+    },
+    {
+     "day": 5700,
+     "pop": 1418,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 18.5,
+     "emig": 2335,
+     "dead": 8667,
+     "fd": 5607,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 584,
+     "cpuPerDay": 1.575
+    },
+    {
+     "day": 5800,
+     "pop": 1448,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 12.89,
+     "emig": 2335,
+     "dead": 8732,
+     "fd": 5607,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 9335.8,
+     "cpuPerDay": 1.84
+    },
+    {
+     "day": 5900,
+     "pop": 1300,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 18.38,
+     "emig": 2624,
+     "dead": 9137,
+     "fd": 5711,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 11718,
+     "cpuPerDay": 2.027
+    },
+    {
+     "day": 6000,
+     "pop": 1527,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 18.3,
+     "emig": 2666,
+     "dead": 9218,
+     "fd": 5711,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 7850.5,
+     "cpuPerDay": 1.879
+    },
+    {
+     "day": 6100,
+     "pop": 1765,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 21.56,
+     "emig": 2666,
+     "dead": 9282,
+     "fd": 5711,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 1128.4,
+     "cpuPerDay": 2.024
+    },
+    {
+     "day": 6200,
+     "pop": 1496,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 11.1,
+     "emig": 2699,
+     "dead": 9621,
+     "fd": 5807,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 4701.3,
+     "cpuPerDay": 2.2
+    },
+    {
+     "day": 6300,
+     "pop": 1356,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 17.5,
+     "emig": 3074,
+     "dead": 10131,
+     "fd": 5947,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 117.5,
+     "cpuPerDay": 1.995
+    },
+    {
+     "day": 6400,
+     "pop": 1667,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 14.97,
+     "emig": 3094,
+     "dead": 10295,
+     "fd": 6077,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 6973.3,
+     "cpuPerDay": 1.878
+    },
+    {
+     "day": 6500,
+     "pop": 1443,
+     "vills": 51,
+     "empty": 25,
+     "foodDays": 17.42,
+     "emig": 3449,
+     "dead": 10786,
+     "fd": 6132,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 4649.5,
+     "cpuPerDay": 1.959
+    },
+    {
+     "day": 6600,
+     "pop": 1425,
+     "vills": 51,
+     "empty": 26,
+     "foodDays": 11.97,
+     "emig": 3494,
+     "dead": 11077,
+     "fd": 6306,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 6257,
+     "cpuPerDay": 1.9
+    },
+    {
+     "day": 6700,
+     "pop": 1471,
+     "vills": 51,
+     "empty": 27,
+     "foodDays": 15.69,
+     "emig": 3592,
+     "dead": 11219,
+     "fd": 6330,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 4780,
+     "cpuPerDay": 1.916
+    }
+   ]
+  },
+  "farm-7": {
+   "rc": 0,
+   "sec": 682,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 1561,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 6.9,
+     "emig": 0,
+     "dead": 27,
+     "fd": 23,
+     "jobs": {
+      "farmer": 657,
+      "fisher": 505,
+      "lumberjack": 20,
+      "forager": 83,
+      "hunter": 218
+     },
+     "wood": 78.9,
+     "cpuPerDay": 2.591
+    },
+    {
+     "day": 200,
+     "pop": 1177,
+     "vills": 51,
+     "empty": 6,
+     "foodDays": 7.33,
+     "emig": 82,
+     "dead": 1120,
+     "fd": 1109,
+     "jobs": {
+      "farmer": 444,
+      "fisher": 304,
+      "lumberjack": 8,
+      "forager": 131,
+      "hunter": 234
+     },
+     "wood": 0,
+     "cpuPerDay": 1.48
+    },
+    {
+     "day": 300,
+     "pop": 993,
+     "vills": 51,
+     "empty": 9,
+     "foodDays": 7.56,
+     "emig": 345,
+     "dead": 1818,
+     "fd": 1804,
+     "jobs": {
+      "farmer": 216,
+      "fisher": 470,
+      "lumberjack": 8,
+      "forager": 62,
+      "hunter": 195
+     },
+     "wood": 0,
+     "cpuPerDay": 1.301
+    },
+    {
+     "day": 400,
+     "pop": 771,
+     "vills": 51,
+     "empty": 14,
+     "foodDays": 8.65,
+     "emig": 422,
+     "dead": 2539,
+     "fd": 2523,
+     "jobs": {
+      "farmer": 320,
+      "fisher": 161,
+      "lumberjack": 5,
+      "forager": 109,
+      "hunter": 125
+     },
+     "wood": 0,
+     "cpuPerDay": 1.239
+    }
+   ]
+  },
+  "farm-42": {
+   "rc": 0,
+   "sec": 712,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 1541,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 7.88,
+     "emig": 0,
+     "dead": 14,
+     "fd": 9,
+     "jobs": {
+      "farmer": 643,
+      "fisher": 494,
+      "lumberjack": 19,
+      "forager": 69,
+      "hunter": 240
+     },
+     "wood": 102.3,
+     "cpuPerDay": 2.587
+    },
+    {
+     "day": 200,
+     "pop": 1219,
+     "vills": 51,
+     "empty": 6,
+     "foodDays": 6.44,
+     "emig": 77,
+     "dead": 876,
+     "fd": 869,
+     "jobs": {
+      "farmer": 532,
+      "fisher": 282,
+      "lumberjack": 10,
+      "forager": 143,
+      "hunter": 200
+     },
+     "wood": 0,
+     "cpuPerDay": 1.51
+    },
+    {
+     "day": 300,
+     "pop": 895,
+     "vills": 51,
+     "empty": 11,
+     "foodDays": 5.49,
+     "emig": 207,
+     "dead": 1678,
+     "fd": 1666,
+     "jobs": {
+      "farmer": 97,
+      "fisher": 512,
+      "lumberjack": 0,
+      "forager": 27,
+      "hunter": 227
+     },
+     "wood": 0,
+     "cpuPerDay": 1.667
+    },
+    {
+     "day": 400,
+     "pop": 622,
+     "vills": 51,
+     "empty": 21,
+     "foodDays": 10.59,
+     "emig": 342,
+     "dead": 2427,
+     "fd": 2412,
+     "jobs": {
+      "farmer": 177,
+      "fisher": 177,
+      "lumberjack": 7,
+      "forager": 89,
+      "hunter": 138
+     },
+     "wood": 58.3,
+     "cpuPerDay": 1.144
+    }
+   ]
+  },
+  "fish-1020": {
+   "rc": 0,
+   "sec": 896,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 2291,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 31.25,
+     "emig": 0,
+     "dead": 5,
+     "fd": 0,
+     "jobs": {
+      "farmer": 1073,
+      "fisher": 209,
+      "lumberjack": 233,
+      "forager": 313,
+      "hunter": 273
+     },
+     "wood": 1557.6,
+     "cpuPerDay": 2.375
+    },
+    {
+     "day": 200,
+     "pop": 3563,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 13.22,
+     "emig": 377,
+     "dead": 204,
+     "fd": 9,
+     "jobs": {
+      "farmer": 1380,
+      "fisher": 654,
+      "lumberjack": 183,
+      "forager": 646,
+      "hunter": 473
+     },
+     "wood": 5652,
+     "cpuPerDay": 1.941
+    },
+    {
+     "day": 300,
+     "pop": 3743,
+     "vills": 51,
+     "empty": 1,
+     "foodDays": 23.81,
+     "emig": 502,
+     "dead": 692,
+     "fd": 134,
+     "jobs": {
+      "farmer": 1546,
+      "fisher": 746,
+      "lumberjack": 207,
+      "forager": 541,
+      "hunter": 443
+     },
+     "wood": 7783.2,
+     "cpuPerDay": 1.864
+    },
+    {
+     "day": 400,
+     "pop": 3613,
+     "vills": 51,
+     "empty": 2,
+     "foodDays": 23.9,
+     "emig": 756,
+     "dead": 1507,
+     "fd": 448,
+     "jobs": {
+      "farmer": 1670,
+      "fisher": 525,
+      "lumberjack": 178,
+      "forager": 605,
+      "hunter": 364
+     },
+     "wood": 7234.8,
+     "cpuPerDay": 2.383
+    }
+   ]
+  },
+  "fish-7": {
+   "rc": 0,
+   "sec": 872,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 2307,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 30.93,
+     "emig": 2,
+     "dead": 4,
+     "fd": 0,
+     "jobs": {
+      "farmer": 1105,
+      "fisher": 239,
+      "lumberjack": 225,
+      "forager": 272,
+      "hunter": 283
+     },
+     "wood": 884.1,
+     "cpuPerDay": 2.351
+    },
+    {
+     "day": 200,
+     "pop": 2922,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 17.73,
+     "emig": 863,
+     "dead": 80,
+     "fd": 20,
+     "jobs": {
+      "farmer": 1181,
+      "fisher": 568,
+      "lumberjack": 125,
+      "forager": 475,
+      "hunter": 365
+     },
+     "wood": 289.2,
+     "cpuPerDay": 1.711
+    },
+    {
+     "day": 300,
+     "pop": 3196,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 31.99,
+     "emig": 1107,
+     "dead": 320,
+     "fd": 28,
+     "jobs": {
+      "farmer": 1352,
+      "fisher": 546,
+      "lumberjack": 178,
+      "forager": 523,
+      "hunter": 326
+     },
+     "wood": 423.7,
+     "cpuPerDay": 1.694
+    },
+    {
+     "day": 400,
+     "pop": 3648,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 27.98,
+     "emig": 1107,
+     "dead": 514,
+     "fd": 39,
+     "jobs": {
+      "farmer": 1554,
+      "fisher": 498,
+      "lumberjack": 223,
+      "forager": 630,
+      "hunter": 469
+     },
+     "wood": 886.5,
+     "cpuPerDay": 2.593
+    }
+   ]
+  },
+  "fish-42": {
+   "rc": 0,
+   "sec": 1648,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 2366,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 29.52,
+     "emig": 28,
+     "dead": 4,
+     "fd": 0,
+     "jobs": {
+      "farmer": 1125,
+      "fisher": 255,
+      "lumberjack": 220,
+      "forager": 305,
+      "hunter": 268
+     },
+     "wood": 1098.2,
+     "cpuPerDay": 2.393
+    },
+    {
+     "day": 200,
+     "pop": 3205,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 18.1,
+     "emig": 843,
+     "dead": 120,
+     "fd": 22,
+     "jobs": {
+      "farmer": 1321,
+      "fisher": 529,
+      "lumberjack": 190,
+      "forager": 554,
+      "hunter": 375
+     },
+     "wood": 894.5,
+     "cpuPerDay": 1.635
+    },
+    {
+     "day": 300,
+     "pop": 3557,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 27.65,
+     "emig": 982,
+     "dead": 429,
+     "fd": 22,
+     "jobs": {
+      "farmer": 1595,
+      "fisher": 574,
+      "lumberjack": 196,
+      "forager": 521,
+      "hunter": 387
+     },
+     "wood": 285.9,
+     "cpuPerDay": 1.603
+    },
+    {
+     "day": 400,
+     "pop": 3430,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 30.62,
+     "emig": 1116,
+     "dead": 916,
+     "fd": 142,
+     "jobs": {
+      "farmer": 1452,
+      "fisher": 464,
+      "lumberjack": 238,
+      "forager": 573,
+      "hunter": 342
+     },
+     "wood": 780.3,
+     "cpuPerDay": 10.252
+    }
+   ]
+  },
+  "wood-1020": {
+   "rc": 0,
+   "sec": 1182,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 2522,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 26.68,
+     "emig": 3,
+     "dead": 5,
+     "fd": 0,
+     "jobs": {
+      "farmer": 1041,
+      "fisher": 286,
+      "lumberjack": 312,
+      "forager": 369,
+      "hunter": 285
+     },
+     "wood": 1783,
+     "cpuPerDay": 3.023
+    },
+    {
+     "day": 200,
+     "pop": 3511,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 9.94,
+     "emig": 298,
+     "dead": 288,
+     "fd": 201,
+     "jobs": {
+      "farmer": 1535,
+      "fisher": 641,
+      "lumberjack": 128,
+      "forager": 479,
+      "hunter": 514
+     },
+     "wood": 542.1,
+     "cpuPerDay": 2.713
+    },
+    {
+     "day": 300,
+     "pop": 3357,
+     "vills": 51,
+     "empty": 1,
+     "foodDays": 28.54,
+     "emig": 1516,
+     "dead": 949,
+     "fd": 433,
+     "jobs": {
+      "farmer": 1598,
+      "fisher": 583,
+      "lumberjack": 115,
+      "forager": 449,
+      "hunter": 388
+     },
+     "wood": 511.6,
+     "cpuPerDay": 2.607
+    },
+    {
+     "day": 400,
+     "pop": 3152,
+     "vills": 51,
+     "empty": 2,
+     "foodDays": 41.29,
+     "emig": 1697,
+     "dead": 1366,
+     "fd": 507,
+     "jobs": {
+      "farmer": 1491,
+      "fisher": 480,
+      "lumberjack": 123,
+      "forager": 474,
+      "hunter": 336
+     },
+     "wood": 153.2,
+     "cpuPerDay": 3.104
+    }
+   ]
+  },
+  "wood-7": {
+   "rc": 0,
+   "sec": 1217,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 2548,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 26.71,
+     "emig": 0,
+     "dead": 7,
+     "fd": 0,
+     "jobs": {
+      "farmer": 1127,
+      "fisher": 291,
+      "lumberjack": 321,
+      "forager": 312,
+      "hunter": 283
+     },
+     "wood": 1647.2,
+     "cpuPerDay": 3.299
+    },
+    {
+     "day": 200,
+     "pop": 3352,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 14.82,
+     "emig": 348,
+     "dead": 103,
+     "fd": 75,
+     "jobs": {
+      "farmer": 1314,
+      "fisher": 664,
+      "lumberjack": 165,
+      "forager": 529,
+      "hunter": 453
+     },
+     "wood": 595.7,
+     "cpuPerDay": 2.646
+    },
+    {
+     "day": 300,
+     "pop": 3404,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 36.68,
+     "emig": 588,
+     "dead": 543,
+     "fd": 221,
+     "jobs": {
+      "farmer": 1540,
+      "fisher": 525,
+      "lumberjack": 145,
+      "forager": 525,
+      "hunter": 387
+     },
+     "wood": 656.4,
+     "cpuPerDay": 2.73
+    },
+    {
+     "day": 400,
+     "pop": 3428,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 39.95,
+     "emig": 623,
+     "dead": 755,
+     "fd": 260,
+     "jobs": {
+      "farmer": 1452,
+      "fisher": 468,
+      "lumberjack": 178,
+      "forager": 644,
+      "hunter": 371
+     },
+     "wood": 1116.1,
+     "cpuPerDay": 3.179
+    }
+   ]
+  },
+  "wood-42": {
+   "rc": 0,
+   "sec": 1172,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 2591,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 24.05,
+     "emig": 1,
+     "dead": 5,
+     "fd": 0,
+     "jobs": {
+      "farmer": 1068,
+      "fisher": 320,
+      "lumberjack": 308,
+      "forager": 378,
+      "hunter": 303
+     },
+     "wood": 2798.9,
+     "cpuPerDay": 3.154
+    },
+    {
+     "day": 200,
+     "pop": 3372,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 9.1,
+     "emig": 539,
+     "dead": 266,
+     "fd": 177,
+     "jobs": {
+      "farmer": 1398,
+      "fisher": 620,
+      "lumberjack": 113,
+      "forager": 505,
+      "hunter": 540
+     },
+     "wood": 676.1,
+     "cpuPerDay": 2.779
+    },
+    {
+     "day": 300,
+     "pop": 3243,
+     "vills": 51,
+     "empty": 1,
+     "foodDays": 35.7,
+     "emig": 1659,
+     "dead": 947,
+     "fd": 314,
+     "jobs": {
+      "farmer": 1513,
+      "fisher": 518,
+      "lumberjack": 84,
+      "forager": 484,
+      "hunter": 403
+     },
+     "wood": 189.5,
+     "cpuPerDay": 2.562
+    },
+    {
+     "day": 400,
+     "pop": 3238,
+     "vills": 51,
+     "empty": 1,
+     "foodDays": 45.42,
+     "emig": 1660,
+     "dead": 1084,
+     "fd": 314,
+     "jobs": {
+      "farmer": 1455,
+      "fisher": 486,
+      "lumberjack": 114,
+      "forager": 488,
+      "hunter": 402
+     },
+     "wood": 434.8,
+     "cpuPerDay": 2.883
+    }
+   ]
+  },
+  "forage-1020": {
+   "rc": 0,
+   "sec": 1366,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 2131,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 26.7,
+     "emig": 0,
+     "dead": 4,
+     "fd": 0,
+     "jobs": {
+      "farmer": 914,
+      "fisher": 198,
+      "lumberjack": 193,
+      "forager": 458,
+      "hunter": 210
+     },
+     "wood": 1205,
+     "cpuPerDay": 3.231
+    },
+    {
+     "day": 200,
+     "pop": 1771,
+     "vills": 51,
+     "empty": 3,
+     "foodDays": 0.58,
+     "emig": 0,
+     "dead": 1463,
+     "fd": 1452,
+     "jobs": {
+      "farmer": 338,
+      "fisher": 150,
+      "lumberjack": 20,
+      "forager": 1210,
+      "hunter": 47
+     },
+     "wood": 0,
+     "cpuPerDay": 4.298
+    },
+    {
+     "day": 300,
+     "pop": 783,
+     "vills": 51,
+     "empty": 29,
+     "foodDays": 0.01,
+     "emig": 0,
+     "dead": 4115,
+     "fd": 4100,
+     "jobs": {
+      "farmer": 255,
+      "fisher": 308,
+      "lumberjack": 9,
+      "forager": 99,
+      "hunter": 111
+     },
+     "wood": 0,
+     "cpuPerDay": 3.734
+    },
+    {
+     "day": 400,
+     "pop": 443,
+     "vills": 51,
+     "empty": 43,
+     "foodDays": 0.02,
+     "emig": 0,
+     "dead": 5142,
+     "fd": 5124,
+     "jobs": {
+      "farmer": 178,
+      "fisher": 3,
+      "lumberjack": 4,
+      "forager": 258,
+      "hunter": 0
+     },
+     "wood": 0,
+     "cpuPerDay": 2.039
+    }
+   ]
+  },
+  "forage-7": {
+   "rc": 0,
+   "sec": 1189,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 2070,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 27.81,
+     "emig": 0,
+     "dead": 5,
+     "fd": 0,
+     "jobs": {
+      "farmer": 962,
+      "fisher": 184,
+      "lumberjack": 192,
+      "forager": 377,
+      "hunter": 203
+     },
+     "wood": 369,
+     "cpuPerDay": 3.141
+    },
+    {
+     "day": 200,
+     "pop": 1600,
+     "vills": 51,
+     "empty": 1,
+     "foodDays": 0.88,
+     "emig": 31,
+     "dead": 1365,
+     "fd": 1352,
+     "jobs": {
+      "farmer": 279,
+      "fisher": 81,
+      "lumberjack": 4,
+      "forager": 1188,
+      "hunter": 43
+     },
+     "wood": 0,
+     "cpuPerDay": 3.691
+    },
+    {
+     "day": 300,
+     "pop": 554,
+     "vills": 51,
+     "empty": 33,
+     "foodDays": 0.01,
+     "emig": 31,
+     "dead": 3918,
+     "fd": 3901,
+     "jobs": {
+      "farmer": 282,
+      "fisher": 206,
+      "lumberjack": 0,
+      "forager": 59,
+      "hunter": 7
+     },
+     "wood": 0,
+     "cpuPerDay": 3.251
+    },
+    {
+     "day": 400,
+     "pop": 287,
+     "vills": 51,
+     "empty": 46,
+     "foodDays": 0.01,
+     "emig": 31,
+     "dead": 4713,
+     "fd": 4695,
+     "jobs": {
+      "farmer": 86,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 201,
+      "hunter": 0
+     },
+     "wood": 0,
+     "cpuPerDay": 1.585
+    }
+   ]
+  },
+  "forage-42": {
+   "rc": 0,
+   "sec": 1381,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 2184,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 24.24,
+     "emig": 0,
+     "dead": 6,
+     "fd": 0,
+     "jobs": {
+      "farmer": 930,
+      "fisher": 195,
+      "lumberjack": 229,
+      "forager": 434,
+      "hunter": 240
+     },
+     "wood": 1211.8,
+     "cpuPerDay": 3.186
+    },
+    {
+     "day": 200,
+     "pop": 1649,
+     "vills": 51,
+     "empty": 4,
+     "foodDays": 0.91,
+     "emig": 0,
+     "dead": 1636,
+     "fd": 1622,
+     "jobs": {
+      "farmer": 270,
+      "fisher": 142,
+      "lumberjack": 0,
+      "forager": 1147,
+      "hunter": 87
+     },
+     "wood": 0,
+     "cpuPerDay": 4.089
+    },
+    {
+     "day": 300,
+     "pop": 744,
+     "vills": 51,
+     "empty": 29,
+     "foodDays": 0.01,
+     "emig": 72,
+     "dead": 4234,
+     "fd": 4214,
+     "jobs": {
+      "farmer": 183,
+      "fisher": 329,
+      "lumberjack": 0,
+      "forager": 111,
+      "hunter": 121
+     },
+     "wood": 0,
+     "cpuPerDay": 3.804
+    },
+    {
+     "day": 400,
+     "pop": 381,
+     "vills": 51,
+     "empty": 42,
+     "foodDays": 0.02,
+     "emig": 72,
+     "dead": 5384,
+     "fd": 5362,
+     "jobs": {
+      "farmer": 84,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 283,
+      "hunter": 14
+     },
+     "wood": 0,
+     "cpuPerDay": 2.24
+    }
+   ]
+  },
+  "hunt-1020": {
+   "rc": 0,
+   "sec": 548,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 1666,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 32.56,
+     "emig": 0,
+     "dead": 7,
+     "fd": 3,
+     "jobs": {
+      "farmer": 846,
+      "fisher": 215,
+      "lumberjack": 78,
+      "forager": 105,
+      "hunter": 289
+     },
+     "wood": 1.2,
+     "cpuPerDay": 2.026
+    },
+    {
+     "day": 200,
+     "pop": 1854,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 22.49,
+     "emig": 10,
+     "dead": 48,
+     "fd": 32,
+     "jobs": {
+      "farmer": 771,
+      "fisher": 268,
+      "lumberjack": 114,
+      "forager": 323,
+      "hunter": 234
+     },
+     "wood": 311.7,
+     "cpuPerDay": 1.144
+    },
+    {
+     "day": 300,
+     "pop": 2240,
+     "vills": 51,
+     "empty": 1,
+     "foodDays": 23.68,
+     "emig": 161,
+     "dead": 349,
+     "fd": 122,
+     "jobs": {
+      "farmer": 937,
+      "fisher": 318,
+      "lumberjack": 181,
+      "forager": 371,
+      "hunter": 265
+     },
+     "wood": 192.5,
+     "cpuPerDay": 1.084
+    },
+    {
+     "day": 400,
+     "pop": 2078,
+     "vills": 51,
+     "empty": 7,
+     "foodDays": 22.35,
+     "emig": 436,
+     "dead": 897,
+     "fd": 380,
+     "jobs": {
+      "farmer": 1005,
+      "fisher": 237,
+      "lumberjack": 136,
+      "forager": 344,
+      "hunter": 207
+     },
+     "wood": 95.1,
+     "cpuPerDay": 1.127
+    }
+   ]
+  },
+  "hunt-7": {
+   "rc": 0,
+   "sec": 546,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 1656,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 35.94,
+     "emig": 0,
+     "dead": 5,
+     "fd": 0,
+     "jobs": {
+      "farmer": 900,
+      "fisher": 175,
+      "lumberjack": 104,
+      "forager": 69,
+      "hunter": 276
+     },
+     "wood": 0,
+     "cpuPerDay": 2.024
+    },
+    {
+     "day": 200,
+     "pop": 2016,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 21.07,
+     "emig": 1,
+     "dead": 33,
+     "fd": 19,
+     "jobs": {
+      "farmer": 843,
+      "fisher": 199,
+      "lumberjack": 172,
+      "forager": 365,
+      "hunter": 264
+     },
+     "wood": 679,
+     "cpuPerDay": 1.169
+    },
+    {
+     "day": 300,
+     "pop": 2418,
+     "vills": 51,
+     "empty": 4,
+     "foodDays": 22.94,
+     "emig": 231,
+     "dead": 369,
+     "fd": 119,
+     "jobs": {
+      "farmer": 1014,
+      "fisher": 349,
+      "lumberjack": 211,
+      "forager": 385,
+      "hunter": 290
+     },
+     "wood": 407,
+     "cpuPerDay": 1.146
+    },
+    {
+     "day": 400,
+     "pop": 2071,
+     "vills": 51,
+     "empty": 7,
+     "foodDays": 21.66,
+     "emig": 595,
+     "dead": 1095,
+     "fd": 393,
+     "jobs": {
+      "farmer": 969,
+      "fisher": 286,
+      "lumberjack": 149,
+      "forager": 382,
+      "hunter": 147
+     },
+     "wood": 148.9,
+     "cpuPerDay": 1.058
+    }
+   ]
+  },
+  "hunt-42": {
+   "rc": 0,
+   "sec": 581,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 1788,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 32.36,
+     "emig": 0,
+     "dead": 5,
+     "fd": 0,
+     "jobs": {
+      "farmer": 923,
+      "fisher": 200,
+      "lumberjack": 120,
+      "forager": 118,
+      "hunter": 268
+     },
+     "wood": 201.7,
+     "cpuPerDay": 2.222
+    },
+    {
+     "day": 200,
+     "pop": 2048,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 17.19,
+     "emig": 62,
+     "dead": 82,
+     "fd": 61,
+     "jobs": {
+      "farmer": 875,
+      "fisher": 349,
+      "lumberjack": 80,
+      "forager": 347,
+      "hunter": 238
+     },
+     "wood": 290,
+     "cpuPerDay": 1.272
+    },
+    {
+     "day": 300,
+     "pop": 2303,
+     "vills": 51,
+     "empty": 3,
+     "foodDays": 27.98,
+     "emig": 402,
+     "dead": 422,
+     "fd": 192,
+     "jobs": {
+      "farmer": 1024,
+      "fisher": 319,
+      "lumberjack": 150,
+      "forager": 381,
+      "hunter": 232
+     },
+     "wood": 0,
+     "cpuPerDay": 1.216
+    },
+    {
+     "day": 400,
+     "pop": 2217,
+     "vills": 51,
+     "empty": 3,
+     "foodDays": 26.44,
+     "emig": 665,
+     "dead": 830,
+     "fd": 291,
+     "jobs": {
+      "farmer": 1057,
+      "fisher": 272,
+      "lumberjack": 155,
+      "forager": 395,
+      "hunter": 172
+     },
+     "wood": 2.3,
+     "cpuPerDay": 0.915
+    }
+   ]
+  },
+  "all5-1020": {
+   "rc": 0,
+   "sec": 997,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 1064,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 3.09,
+     "emig": 0,
+     "dead": 263,
+     "fd": 260,
+     "jobs": {
+      "farmer": 396,
+      "fisher": 562,
+      "lumberjack": 0,
+      "forager": 56,
+      "hunter": 20
+     },
+     "wood": 0,
+     "cpuPerDay": 3.356
+    },
+    {
+     "day": 200,
+     "pop": 430,
+     "vills": 51,
+     "empty": 17,
+     "foodDays": 1.11,
+     "emig": 53,
+     "dead": 1469,
+     "fd": 1466,
+     "jobs": {
+      "farmer": 121,
+      "fisher": 54,
+      "lumberjack": 0,
+      "forager": 254,
+      "hunter": 1
+     },
+     "wood": 0,
+     "cpuPerDay": 2.532
+    },
+    {
+     "day": 300,
+     "pop": 0,
+     "vills": 51,
+     "empty": 51,
+     "foodDays": null,
+     "emig": 55,
+     "dead": 2074,
+     "fd": 2071,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 0,
+     "cpuPerDay": 2.247
+    },
+    {
+     "day": 400,
+     "pop": 0,
+     "vills": 51,
+     "empty": 51,
+     "foodDays": null,
+     "emig": 55,
+     "dead": 2074,
+     "fd": 2071,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 0,
+     "cpuPerDay": 1.461
+    }
+   ]
+  },
+  "all5-7": {
+   "rc": 0,
+   "sec": 997,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 1068,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 3.8,
+     "emig": 0,
+     "dead": 269,
+     "fd": 265,
+     "jobs": {
+      "farmer": 353,
+      "fisher": 573,
+      "lumberjack": 1,
+      "forager": 69,
+      "hunter": 39
+     },
+     "wood": 0.5,
+     "cpuPerDay": 3.151
+    },
+    {
+     "day": 200,
+     "pop": 387,
+     "vills": 51,
+     "empty": 18,
+     "foodDays": 0.48,
+     "emig": 59,
+     "dead": 1496,
+     "fd": 1490,
+     "jobs": {
+      "farmer": 115,
+      "fisher": 30,
+      "lumberjack": 0,
+      "forager": 242,
+      "hunter": 0
+     },
+     "wood": 0,
+     "cpuPerDay": 2.461
+    },
+    {
+     "day": 300,
+     "pop": 2,
+     "vills": 51,
+     "empty": 50,
+     "foodDays": 4.95,
+     "emig": 59,
+     "dead": 2006,
+     "fd": 2000,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 2,
+      "hunter": 0
+     },
+     "wood": 0,
+     "cpuPerDay": 2.577
+    },
+    {
+     "day": 400,
+     "pop": 0,
+     "vills": 51,
+     "empty": 51,
+     "foodDays": null,
+     "emig": 59,
+     "dead": 2009,
+     "fd": 2003,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 0,
+     "cpuPerDay": 1.52
+    }
+   ]
+  },
+  "all5-42": {
+   "rc": 0,
+   "sec": 1012,
+   "lastDay": 400,
+   "snaps": [
+    {
+     "day": 100,
+     "pop": 1067,
+     "vills": 51,
+     "empty": 0,
+     "foodDays": 3.48,
+     "emig": 0,
+     "dead": 270,
+     "fd": 265,
+     "jobs": {
+      "farmer": 398,
+      "fisher": 559,
+      "lumberjack": 0,
+      "forager": 34,
+      "hunter": 43
+     },
+     "wood": 0,
+     "cpuPerDay": 3.375
+    },
+    {
+     "day": 200,
+     "pop": 386,
+     "vills": 51,
+     "empty": 14,
+     "foodDays": 3.43,
+     "emig": 90,
+     "dead": 1491,
+     "fd": 1486,
+     "jobs": {
+      "farmer": 126,
+      "fisher": 81,
+      "lumberjack": 0,
+      "forager": 179,
+      "hunter": 0
+     },
+     "wood": 0,
+     "cpuPerDay": 2.22
+    },
+    {
+     "day": 300,
+     "pop": 3,
+     "vills": 51,
+     "empty": 49,
+     "foodDays": 2.61,
+     "emig": 119,
+     "dead": 2014,
+     "fd": 2009,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 3,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 0,
+     "cpuPerDay": 2.707
+    },
+    {
+     "day": 400,
+     "pop": 0,
+     "vills": 51,
+     "empty": 51,
+     "foodDays": null,
+     "emig": 119,
+     "dead": 2017,
+     "fd": 2012,
+     "jobs": {
+      "farmer": 0,
+      "fisher": 0,
+      "lumberjack": 0,
+      "forager": 0,
+      "hunter": 0
+     },
+     "wood": 0,
+     "cpuPerDay": 1.815
+    }
+   ]
+  }
+ }
+}

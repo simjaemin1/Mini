@@ -1198,7 +1198,8 @@ console.log('\n⑰ ★★[T412] 도구/작업 — 사건만 운다 · 서버가 
   const sitesOf = (type) => zsrc.split('\n').map((l, i) => (new RegExp(`type:\\s*'${type}'`).test(l) ? fnOf(i + 1) : null)).filter(Boolean);
   // ⑰a 줍기 — `ground_item_removed` 는 줍기 함수에서만 나간다(그래서 '누가 주웠다' 로 읽어도 된다)
   const gr = [...new Set(sitesOf('ground_item_removed'))];
-  ok(gr.length === 1 && gr[0] === 'tryPickupItem', '⑰a ★`ground_item_removed` 는 `tryPickupItem` 에서만 나간다(= 줍기 · 썩어 사라짐이 아니다)', gr.join(' '));
+  //   ★[T1447] 토벌대 몸이 그 사유지 바닥 짐을 지고 가는 자리(`_t1447Loot` — 몸이 줍는다 · 같은 줍기)도 줍기다 — 썩어 사라짐이 아니다(뜻 무변 · 줍기 자리 장부에 한 줄)
+  ok(gr.length >= 1 && gr.every((f) => f === 'tryPickupItem' || f === '_t1447Loot') && gr.includes('tryPickupItem'), '⑰a ★`ground_item_removed` 는 줍기 자리(`tryPickupItem` · 토벌대 몸 `_t1447Loot`)에서만 나간다(= 줍기 · 썩어 사라짐이 아니다)', gr.join(' '));
   ok(man.groundPick && KEYS[man.groundPick.key] && typeof (man.inventoryWhere || {}).pickup !== 'string',
      '⑰a2 줍기는 방송 한 길로만 운다 — `inventory where:pickup` 은 표에 없다(두 번 0)');
   // ⑰b 궤 — `chest_state` 는 넣기·꺼내기 뒤에만 나간다

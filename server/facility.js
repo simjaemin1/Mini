@@ -101,11 +101,18 @@ function _q(b) {
   if (!Array.isArray(b.data.queue)) b.data.queue = [];
   return b.data.queue;
 }
+// ★[T1454] 낡은 시설은 느려진다 — 존이 거는 배수 함수(시설 → { mult } · 고장이면 { broken, err } · 끔이면 안 건다 = 종전 바이트).
+//   식은 `decay.js t1454Slow` 하나 · 여기는 넣을 때 그 배수로 시간을 정할 뿐(진행 중인 일은 넣을 때 정한 시간 그대로 끝난다).
+let _slow = null;
+function setSlow(fn) { _slow = typeof fn === 'function' ? fn : null; }
 // 넣는다. 앞 주문이 끝난 뒤에 시작한다(시설은 하나씩 만든다).
 function enqueue(b, job, now) {
   const q = _q(b);
   if (q.length >= MAX_QUEUE) return { ok: false, err: `대기열이 찼다(${MAX_QUEUE})` };
-  const ms = job.ms != null ? job.ms : (CRAFT_MS[job.kind] || 0);
+  let mult = 1;
+  if (_slow) { const m = _slow(b); if (m && m.broken) return { ok: false, err: m.err || '고장 — 고쳐야 쓸 수 있습니다.', broken: true }; if (m && m.mult > 0 && Number.isFinite(m.mult)) mult = m.mult; }
+  const base = job.ms != null ? job.ms : (CRAFT_MS[job.kind] || 0);
+  const ms = mult === 1 ? base : Math.round(base * mult);
   const startAt = Math.max(now, q.length ? q[q.length - 1].doneAt : now);
   const rec = Object.assign({}, job, { startAt, doneAt: startAt + ms, ms });
   q.push(rec);
@@ -131,4 +138,4 @@ function collect(b, ownerId, now) {
 function pending(b, ownerId) { return _q(b).filter((j) => ownerId == null || j.owner === ownerId).length; }
 function clear(b) { if (b.data) b.data.queue = []; }
 
-module.exports = { FACILITIES, KIND_TYPES, CRAFT_MS, MAX_QUEUE, nearest, anyNear, enqueue, view, collect, pending, clear };
+module.exports = { FACILITIES, KIND_TYPES, CRAFT_MS, MAX_QUEUE, nearest, anyNear, enqueue, view, collect, pending, clear, setSlow };

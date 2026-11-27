@@ -1,0 +1,12 @@
+== ① 손잡이 `T1445_BOOT_BOUND`(켬 기본 · 끔 = 종전)
+  ✓ 미설정 = 칸 조각 켬 · BOOT_BOUND=0 = 종전 끔 · WALK_HEAP=0 = 끔 · BOOT_BOUND=0 + WALK_HEAP=1 = 켬  미설정 true · BOOT_BOUND=0 false · WALK_HEAP=0 false · 둘 다 true
+== ② 먼 걸음 재개형 물음이 그 손잡이를 저장 방식으로 넘긴다
+  ✓ `_t804Local` 의 `localPathBegin(… tile: T1381_WALK_HEAP · maxNodes: ROUTE_MAX_POPS)` 한 자리  자리 1
+== ③ 부팅 모형 — 같은 틱에 먼 걸음 탐색 N 개(닿을 수 없는 목표)
+  ✓ 칸 조각 판 힙 꼭대기 늘음 ≤ Map 판의 ¼ · 답 · 꺼냄 · 민 횟수 같음 · Map 판 늘음 ≥ 12 × 8 MB(자명 통과 금지)  Map 416.4 MB ↔ 칸 조각 2 MB · 같음 true · 꺼냄 250001 · 민 횟수 62
+== 미끼 셋
+  ✓ 미끼 ⓐ 손잡이 줄을 종전(T1381 env 만)으로 되돌린 villages 사본 → ① 빨강  바꾼 자리 1 · 미설정 false · BOOT_BOUND=0 false · WALK_HEAP=0 false · 둘 다 true
+  ✓ 미끼 ⓑ 먼 걸음 물음이 `tile: false` 인 villages 사본 → ② 빨강  바꾼 자리 1 · 자리 0
+  ✓ 미끼 ⓒ 칸 조각 저장이 늘 Map 으로 물러나는 path-core 사본 → ③ 빨강  바꾼 자리 1 · Map 416.1 ↔ 칸 조각 282.2 MB
+
+=== T1445 부팅 죽음 고리 6 통과 · 0 실패 ===

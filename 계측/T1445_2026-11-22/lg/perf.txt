@@ -1,0 +1,12 @@
+15 nope
+30 nope
+45 nope
+60 nope
+75 nope
+90 nope
+105 nope
+120 nope
+135 nope
+150 21.063 None 135.054 388
+zone exit after term 2s
+done

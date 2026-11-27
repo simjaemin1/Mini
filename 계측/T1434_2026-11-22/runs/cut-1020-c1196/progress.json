@@ -1,0 +1,39 @@
+{
+ "v": 1,
+ "tag": "cut",
+ "seed": 1020,
+ "days": 1460,
+ "every": 1460,
+ "dir": "/home/user/t1434/run/cut-1020-c1196",
+ "ck": 1460,
+ "segs": [
+  {
+   "from": 0,
+   "to": 1196,
+   "sec": 5536.5,
+   "code": 0,
+   "at": "2026-11-23T19:49:25.233Z"
+  },
+  {
+   "from": 1196,
+   "to": 1460,
+   "sec": 2486.6,
+   "code": 0,
+   "at": "2026-11-23T20:30:52.849Z"
+  }
+ ],
+ "done": true,
+ "env": {
+  "NODE_OPTIONS": "-r /home/user/Mini/계측/T1434_2026-11-22/t1434-observe.js",
+  "T400_BUILD_ACT": "0",
+  "VILLAGE_CARAVAN_MAX": "0",
+  "T745_VCLOCK": "1",
+  "T1434_OBS": "/home/user/t1434/run/cut-1020-c1196/obs"
+ },
+ "started": "2026-11-23T18:17:07.891Z",
+ "tries": 0,
+ "cuts": [
+  1196
+ ],
+ "ended": "2026-11-23T20:30:53.367Z"
+}

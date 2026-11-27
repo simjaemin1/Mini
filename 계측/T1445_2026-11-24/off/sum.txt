@@ -1,0 +1,8 @@
+ctrl died 230 fatal True t566 35572 jump 0 heapMax 1491 @ 223 liveMax 1492.3 p50med 23.5 p50last 23.238 maxTick 4291.362
+h1 died None fatal False t566 36316 jump 2 heapMax 639 @ 381 liveMax 509.2 p50med 21.1 p50last 21.468 maxTick 1784.739
+d1 died None fatal False t566 62575 jump 59 heapMax 632 @ 59 liveMax 508.6 p50med 23.4 p50last 24.297 maxTick 1876.915
+h34 died None fatal False t566 72931 jump 84 heapMax 646 @ 393 liveMax 508.3 p50med 23.6 p50last 24.072 maxTick 2623.749
+d7 died None fatal False t566 515786 jump 419 heapMax 617 @ 487 liveMax 463.9 p50med 24.0 p50last 24.997 maxTick 2295.602
+d30 died None fatal False t566 515786 jump 1799 heapMax 645 @ 44 liveMax 439 p50med 23.6 p50last 26.634 maxTick 1980.115
+liv died None fatal False t566 515786 jump 320 heapMax 628 @ 52 liveMax 477.8 p50med 24.6 p50last 25.614 maxTick 2027.735
+livB died None fatal False t566 None jump 320 heapMax 651 @ 218 liveMax 455.5 p50med 23.9 p50last 25.39 maxTick 1812.26

@@ -1,0 +1,51 @@
+001 bot on p01-어촌2-봄 9 spring
+002 bot off p01-어촌2-봄 9 spring
+003 bot on p02-광산4-봄 4 spring
+004 bot off p02-광산4-봄 4 spring
+005 bot on p03-어촌7-봄 25 spring
+006 bot off p03-어촌7-봄 25 spring
+007 bot on p04-어촌2-여름 9 summer
+008 bot off p04-어촌2-여름 9 summer
+009 bot on p05-광산4-여름 4 summer
+010 bot off p05-광산4-여름 4 summer
+011 bot on p06-어촌7-여름 25 summer
+012 bot off p06-어촌7-여름 25 summer
+013 bot on p07-어촌2-가을 9 autumn
+014 bot off p07-어촌2-가을 9 autumn
+015 bot on p08-광산4-가을 4 autumn
+016 bot off p08-광산4-가을 4 autumn
+017 bot on p09-어촌7-가을 25 autumn
+018 bot off p09-어촌7-가을 25 autumn
+019 bot on p10-어촌2-겨울 9 winter
+020 bot off p10-어촌2-겨울 9 winter
+021 bot on p11-광산4-겨울 4 winter
+022 bot off p11-광산4-겨울 4 winter
+023 bot on p12-어촌7-겨울 25 winter
+024 bot off p12-어촌7-겨울 25 winter
+025 bot on p13-임업1-봄 10 spring
+026 bot off p13-임업1-봄 10 spring
+027 bot on p14-광산1-봄 1 spring
+028 bot off p14-광산1-봄 1 spring
+029 bot on p15-농촌9-가을 38 autumn
+030 bot off p15-농촌9-가을 38 autumn
+031 bot on p16-임업4-가을 14 autumn
+032 bot off p16-임업4-가을 14 autumn
+033 bot on p17-임업6-겨울 17 winter
+034 bot off p17-임업6-겨울 17 winter
+035 bot on p18-농촌2-봄 18 spring
+036 bot off p18-농촌2-봄 18 spring
+037 bot on p19-어촌1-봄 5 spring
+038 bot off p19-어촌1-봄 5 spring
+039 bot on p20-농촌16-겨울 45 winter
+040 bot off p20-농촌16-겨울 45 winter
+041 bot on x1-어촌2-봄재 9 spring
+042 bot on x2-광산4-봄재 4 spring
+043 bot on x3-어촌7-봄재 25 spring
+044 m7 on 5 1
+045 m7 off 5 1
+046 m7 on 5 6
+047 m7 off 5 6
+048 m7 on 5 11
+049 m7 off 5 11
+050 m7 on 5 16
+051 m7 off 5 16
