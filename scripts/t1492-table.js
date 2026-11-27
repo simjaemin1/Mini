@@ -205,26 +205,27 @@ OUTJ.item3 = top3;
 
 // ── ④ 짐승 길 ──
 W('## ④ NPC_DEATH 짐승 길 — 봇 손짓 0 · BEAST_UNSEEN 끔(u0) ↔ 켬(u1)'); W('');
-W('| 판 | 날 | 인구 | 죽음(NPC_DEATH · 짐승 · 그 밖) | 굶어 죽음 | 야생 틱(활성 청크 있는 틱) | 블록 몹(살아 있는 · 끝 날) | 존 몹 | 블록 사람 대리 | 맞힘 | T1461 마을 밖 물음 · 밖 | T1461 사냥판 셈 |'); W('|---|---|---|---|---|---|---|---|---|---|---|---|');
-const I4 = []; let beastHits = 0, beastTicks = 0, beastMobs = 0;
+W('깔때기: 짐승 수(존 몹) → 활성 청크에 선 짐승(존 몹 걸음 · 야생 층은 활성 청크에서만 돈다) → 만날 수 있던 짝(날마다 한 번 표본 — 짐승 둘레 216 px 안 NPC 몸 · 날 합) → 야생 틱 · 블록 대리 → 맞힘 → 짐승 죽음'); W('');
+W('| 판 | 날 | 인구 | 죽음(NPC_DEATH · 짐승 · 그 밖) | 굶어 죽음 | 존 몹(최대) | 활성 청크에 선 존 몹(최대) | 만날 수 있던 짝(날 표본 합) | 야생 틱 | 블록 몹 · 사람 대리(최대) | 맞힘 | T1461 마을 밖 물음 · 밖 | T1461 사냥판 셈 |'); W('|---|---|---|---|---|---|---|---|---|---|---|---|---|');
+const I4 = []; let beastHits = 0, beastTicks = 0, beastMobs = 0; const funnel = { zone: 0, act: 0, enc: 0 };
 for (const n of Object.keys(RUN).filter((x) => /^nd-u[01]-\d+$/.test(x)).sort()) {
   const r = RUN[n], l = r.last; if (!l) continue; const b = l.beast || {};
-  let maxLab = 0, maxZone = 0, maxAg = 0; for (const d of r.ds) { const x = r.days.get(d).beast || {}; maxLab = Math.max(maxLab, x.lab | 0); maxZone = Math.max(maxZone, x.zoneMobs | 0); maxAg = Math.max(maxAg, x.agents | 0); }
+  let maxLab = 0, maxZone = 0, maxAg = 0, maxAct = 0, enc = 0; for (const d of r.ds) { const x = r.days.get(d).beast || {}; maxLab = Math.max(maxLab, x.lab | 0); maxZone = Math.max(maxZone, x.zoneMobs | 0); maxAg = Math.max(maxAg, x.agents | 0); maxAct = Math.max(maxAct, x.zoneMobsActive | 0); enc += x.encPairs | 0; }
   // 마디마다 야생 셈은 0 에서 다시 센다 — 마디 끝 줄을 더한다
   const segSum = (k) => r.segs.reduce((a, s) => { const rows = s.rec.days || []; const z = rows.length ? rows[rows.length - 1].beast || {} : {}; return a + (z[k] | 0); }, 0);
   const ticks = segSum('ticks'), hits = segSum('hits'), wild = segSum('wild'), died = segSum('died'), other = segSum('other');
   beastHits += wild; beastTicks += ticks; beastMobs += maxLab + maxZone;
-  I4.push({ n, d: l.d, pop: l.pop, died, wild, other, ticks, hits, maxLab, maxZone, maxAg });
-  W(`| ${n} | ${l.d} | ${l.pop} | ${died} · ${wild} · ${other} | ${l.fd} | ${ticks} | ${maxLab}(최대) | ${maxZone}(최대) | ${maxAg}(최대) | ${hits} | ${b.v1461 ? b.v1461.outQ + ' · ' + b.v1461.outY : '—'} | ${b.w1461 ? JSON.stringify(b.w1461).slice(0, 80) : '없음(사냥판 끔)'} |`);
+  I4.push({ n, d: l.d, pop: l.pop, died, wild, other, ticks, hits, maxLab, maxZone, maxAg, maxAct, enc }); funnel.zone += maxZone; funnel.act += maxAct; funnel.enc += enc;
+  W(`| ${n} | ${l.d} | ${l.pop} | ${died} · ${wild} · ${other} | ${l.fd} | ${maxZone} | ${maxAct} | ${enc} | ${ticks} | ${maxLab} · ${maxAg} | ${hits} | ${b.v1461 ? b.v1461.outQ + ' · ' + b.v1461.outY : '—'} | ${b.w1461 ? JSON.stringify(b.w1461).slice(0, 80) : '없음(사냥판 끔)'} |`);
 }
-const why4 = beastHits ? null : (beastTicks === 0 ? '야생 층이 한 틱도 안 돎(활성 청크 0 = 보는 사람 0 · 사냥판 T1331·T1393 끔 기본 → BEAST_UNSEEN 이 붙는 판이 없음)' : (beastMobs === 0 ? '짐승 몸 0' : '만남 0'));
+const why4 = beastHits ? null : (beastTicks === 0 ? `짐승 ${I4.length ? Math.round(funnel.zone / I4.length) : 0} · 활성 청크에 선 짐승 ${funnel.act} · 만날 짝 ${funnel.enc}(날 표본) · 맞힘 0 — 보는 사람 0 이라 활성 청크 0 · 야생 층 · 존 몹 걸음이 안 돎 · T1461 은 사냥판(T1331 · T1393 끔 기본) 안에서만` : (beastMobs === 0 ? '짐승 몸 0' : '만남 0'));
 W(''); W(`짐승이 스스로 친 죽음 합 ${beastHits}${why4 ? ' — 까닭: ' + why4 : ''}`); W('');
-OUTJ.item4 = { runs: I4, beastHits, why4 };
+OUTJ.item4 = { runs: I4, beastHits, why4, funnel };
 
 // ── ⑤ 넷 다 켬 ↔ 넷 다 끔 · 겹침 ──
 W('## ⑤ 넷 다 켬 ↔ 넷 다 끔(시드 1020) — 따로 켠 효과의 합과 견줌'); W('');
 const O5 = RUN['off-1020'], A5 = RUN['all4-1020'];
-const singles = ['nobuild', 'react', 'npcdeath', 'terrseq'].map((a) => [a, RUN[a + '-1020']]).filter(([, r]) => r);
+const singles = ['nobuild', 'react', 'npcdeath', 'terrseq'].map((a) => [a, RUN[a + '-1020']]);
 const MET = [['pop', '인구', (r, d) => row(r, d) && row(r, d).pop], ['dead', '죽음 누계', (r, d) => row(r, d) && row(r, d).dead], ['fd', '굶어 죽음', (r, d) => row(r, d) && row(r, d).fd], ['empty', '빈 마을', (r, d) => row(r, d) && row(r, d).empty],
   ['vb', '건물 행', (r, d) => { const x = dbAt(r, d); return x && x.vb; }], ['dbmb', 'DB MB', (r, d) => { const x = dbAt(r, d); return x && mb(x.db + x.wal); }], ['spd', '하루 걸린 초(앞 100날)', (r, d) => winSpd(r, Math.max(6, d - 100), d)]];
 const I5 = [];
@@ -234,11 +235,11 @@ if (O5 && A5) {
     if (!row(O5, d) || !row(A5, d)) continue;
     for (const [k, nm, g] of MET) {
       const o = g(O5, d), a = g(A5, d); if (o == null || a == null) continue;
-      const eff = singles.map(([s, r]) => { const v = g(r, d); return v == null ? null : v - o; });
-      const have = eff.every((x) => x != null), S = have ? eff.reduce((x, y) => x + y, 0) : null, ov = have ? (a - o) - S : null;
+      const eff = singles.map(([s, r]) => { const v = r ? g(r, d) : null; return v == null ? null : v - o; });
+      const have = eff.every((x) => x != null), nHave = eff.filter((x) => x != null).length, S = nHave ? eff.reduce((x, y) => x + (y || 0), 0) : null, ov = have ? (a - o) - S : null;
       I5.push({ d, k, off: o, all: a, eff, sum: S, overlap: ov, full: have });
       const nd = k === 'dbmb' || k === 'spd' ? 1 : 0;
-      W(`| ${d} | ${nm} | ${f(o, nd)} | ${f(a, nd)} | ${f(a - o, nd)} | ${eff.map((x) => f(x, nd)).join(' · ')} | ${f(S, nd)} | ${f(ov, nd)} | ${ov == null ? '—' : f(100 * ov / Math.max(1e-9, Math.abs(o)), 1) + ' %'} |`);
+      W(`| ${d} | ${nm} | ${f(o, nd)} | ${f(a, nd)} | ${f(a - o, nd)} | ${eff.map((x) => f(x, nd)).join(' · ')} | ${f(S, nd)}${have ? '' : ' (' + nHave + '/4 판)'} | ${f(ov, nd)} | ${ov == null ? '—' : f(100 * ov / Math.max(1e-9, Math.abs(o)), 1) + ' %'} |`);
     }
   }
   W('');

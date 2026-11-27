@@ -3,7 +3,7 @@
   "off-1020": {
    "kind": "long",
    "target": 800,
-   "reached": 400,
+   "reached": 500,
    "status": "덜 돎",
    "sec": null,
    "dead": [
@@ -12,13 +12,14 @@
     "off-1020 마디 죽음(코드 3 · ck=400) 2026-11-26T20:22:01Z — 다시",
     "off-1020 마디 죽음(코드 3 · ck=400) 2026-11-26T20:24:51Z — 다시",
     "off-1020 같은 마디(ck=400) 세 번 죽음 — 멈춤 2026-11-26T20:24:51Z",
-    "off-1020 · terrseq-1020 마디 400→500 SIGBUS(봇 관찰기 DB 읽기가 better-sqlite3 — 존 node:sqlite 와 다른 SQLite 사본 · -shm 다시 세움 · gdb walIndexAppend) — 관찰기를 node:sqlite 로 고치고 ck=400 에서 다시 2026-11-26T20:36:44Z"
+    "off-1020 · terrseq-1020 마디 400→500 SIGBUS(봇 관찰기 DB 읽기가 better-sqlite3 — 존 node:sqlite 와 다른 SQLite 사본 · -shm 다시 세움 · gdb walIndexAppend) — 관찰기를 node:sqlite 로 고치고 ck=400 에서 다시 2026-11-26T20:36:44Z",
+    "off-1020 2026-11-26T20:36:48Z 끊김 → 다시 2026-11-27T00:26:06Z ck=500"
    ]
   },
   "terrseq-1020": {
    "kind": "long",
    "target": 800,
-   "reached": 400,
+   "reached": 500,
    "status": "덜 돎",
    "sec": null,
    "dead": [
@@ -26,87 +27,34 @@
     "terrseq-1020 마디 죽음(코드 3 · ck=400) 2026-11-26T20:19:20Z — 다시",
     "terrseq-1020 마디 죽음(코드 3 · ck=400) 2026-11-26T20:22:10Z — 다시",
     "terrseq-1020 마디 죽음(코드 3 · ck=400) 2026-11-26T20:25:00Z — 다시",
-    "terrseq-1020 같은 마디(ck=400) 세 번 죽음 — 멈춤 2026-11-26T20:25:00Z"
+    "terrseq-1020 같은 마디(ck=400) 세 번 죽음 — 멈춤 2026-11-26T20:25:00Z",
+    "terrseq-1020 2026-11-26T20:36:48Z 끊김 → 다시 2026-11-27T00:26:06Z ck=500"
    ]
   },
   "all4-1020": {
    "kind": "long",
    "target": 800,
-   "reached": 430,
+   "reached": 600,
    "status": "덜 돎",
    "sec": null,
-   "dead": []
+   "dead": [
+    "all4-1020 2026-11-26T18:11:19Z 끊김 → 다시 2026-11-27T00:26:06Z ck=600"
+   ]
   },
   "nd-u0-1020": {
    "kind": "long",
    "target": 100,
-   "reached": 60,
-   "status": "덜 돎",
-   "sec": null,
+   "reached": 100,
+   "status": "끝",
+   "sec": 1900,
    "dead": []
   },
   "nd-u1-1020": {
    "kind": "long",
    "target": 100,
-   "reached": 60,
-   "status": "덜 돎",
-   "sec": null,
-   "dead": []
-  },
-  "off-7": {
-   "kind": "long",
-   "target": 300,
-   "reached": 0,
-   "status": "안 띄움",
-   "sec": null,
-   "dead": []
-  },
-  "terrseq-7": {
-   "kind": "long",
-   "target": 300,
-   "reached": 0,
-   "status": "안 띄움",
-   "sec": null,
-   "dead": []
-  },
-  "npcdeath-1020": {
-   "kind": "long",
-   "target": 200,
-   "reached": 0,
-   "status": "안 띄움",
-   "sec": null,
-   "dead": []
-  },
-  "react-1020": {
-   "kind": "long",
-   "target": 200,
-   "reached": 0,
-   "status": "안 띄움",
-   "sec": null,
-   "dead": []
-  },
-  "nobuild-1020": {
-   "kind": "long",
-   "target": 200,
-   "reached": 0,
-   "status": "안 띄움",
-   "sec": null,
-   "dead": []
-  },
-  "off-42": {
-   "kind": "long",
-   "target": 300,
-   "reached": 0,
-   "status": "안 띄움",
-   "sec": null,
-   "dead": []
-  },
-  "terrseq-42": {
-   "kind": "long",
-   "target": 300,
-   "reached": 0,
-   "status": "안 띄움",
-   "sec": null,
+   "reached": 100,
+   "status": "끝",
+   "sec": 1903,
    "dead": []
   },
   "nd-u0-7": {
@@ -136,6 +84,62 @@
   "nd-u1-42": {
    "kind": "long",
    "target": 100,
+   "reached": 0,
+   "status": "안 띄움",
+   "sec": null,
+   "dead": []
+  },
+  "off-7": {
+   "kind": "long",
+   "target": 300,
+   "reached": 0,
+   "status": "안 띄움",
+   "sec": null,
+   "dead": []
+  },
+  "terrseq-7": {
+   "kind": "long",
+   "target": 300,
+   "reached": 0,
+   "status": "안 띄움",
+   "sec": null,
+   "dead": []
+  },
+  "off-42": {
+   "kind": "long",
+   "target": 300,
+   "reached": 0,
+   "status": "안 띄움",
+   "sec": null,
+   "dead": []
+  },
+  "terrseq-42": {
+   "kind": "long",
+   "target": 300,
+   "reached": 0,
+   "status": "안 띄움",
+   "sec": null,
+   "dead": []
+  },
+  "npcdeath-1020": {
+   "kind": "long",
+   "target": 300,
+   "reached": 0,
+   "status": "안 띄움",
+   "sec": null,
+   "dead": []
+  },
+  "react-1020": {
+   "kind": "long",
+   "target": 300,
+   "reached": 0,
+   "status": "안 띄움",
+   "sec": null,
+   "dead": []
+  },
+  "nobuild-1020": {
+   "kind": "long",
+   "target": 300,
    "reached": 0,
    "status": "안 띄움",
    "sec": null,
@@ -256,6 +260,20 @@
      "popOff": 4165,
      "popOn": 4165,
      "ratio": 0.2152674153773659
+    },
+    {
+     "d": 500,
+     "vbOff": 750198,
+     "vbOn": 160991,
+     "dbOff": 367.18273162841797,
+     "dbOn": 337.44398498535156,
+     "terrOff": 591810,
+     "terrOn": 591810,
+     "spdOff": 62.16161616161617,
+     "spdOn": 62.47979797979798,
+     "popOff": 5171,
+     "popOn": 5171,
+     "ratio": 0.21459801279128976
     }
    ]
   },
@@ -263,9 +281,9 @@
    {
     "s": "1020",
     "rg": null,
-    "minD": 400,
-    "below": null,
-    "lastD": 400
+    "minD": 500,
+    "below": true,
+    "lastD": 500
    }
   ]
  },
@@ -298,15 +316,15 @@
   "knobSpd": {
    "off": [
     26.044680851063827,
-    35.20572390572391
+    41.94469696969695
    ],
    "terrseq": [
     26.02659574468085,
-    35.26498316498318
+    42.068686868686896
    ],
    "all4": [
     16.376595744680852,
-    21.808895705521476
+    33.77595959595961
    ],
    "jp-off": [
     34.803703703703704,
@@ -359,8 +377,8 @@
   "runs": [
    {
     "n": "nd-u0-1020",
-    "d": 60,
-    "pop": 1590,
+    "d": 100,
+    "pop": 1806,
     "died": 0,
     "wild": 0,
     "other": 0,
@@ -368,12 +386,14 @@
     "hits": 0,
     "maxLab": 0,
     "maxZone": 449,
-    "maxAg": 0
+    "maxAg": 0,
+    "maxAct": 0,
+    "enc": 356
    },
    {
     "n": "nd-u1-1020",
-    "d": 60,
-    "pop": 1590,
+    "d": 100,
+    "pop": 1806,
     "died": 0,
     "wild": 0,
     "other": 0,
@@ -381,11 +401,18 @@
     "hits": 0,
     "maxLab": 0,
     "maxZone": 449,
-    "maxAg": 0
+    "maxAg": 0,
+    "maxAct": 0,
+    "enc": 356
    }
   ],
   "beastHits": 0,
-  "why4": "야생 층이 한 틱도 안 돎(활성 청크 0 = 보는 사람 0 · 사냥판 T1331·T1393 끔 기본 → BEAST_UNSEEN 이 붙는 판이 없음)"
+  "why4": "짐승 449 · 활성 청크에 선 짐승 0 · 만날 짝 712(날 표본) · 맞힘 0 — 보는 사람 0 이라 활성 청크 0 · 야생 층 · 존 몹 걸음이 안 돎 · T1461 은 사냥판(T1331 · T1393 끔 기본) 안에서만",
+  "funnel": {
+   "zone": 898,
+   "act": 0,
+   "enc": 712
+  }
  },
  "item5": [
   {
@@ -394,11 +421,14 @@
    "off": 1743,
    "all": 1805,
    "eff": [
+    null,
+    null,
+    null,
     0
    ],
    "sum": 0,
-   "overlap": 62,
-   "full": true
+   "overlap": null,
+   "full": false
   },
   {
    "d": 100,
@@ -406,11 +436,14 @@
    "off": 3,
    "all": 3,
    "eff": [
+    null,
+    null,
+    null,
     0
    ],
    "sum": 0,
-   "overlap": 0,
-   "full": true
+   "overlap": null,
+   "full": false
   },
   {
    "d": 100,
@@ -418,11 +451,14 @@
    "off": 0,
    "all": 0,
    "eff": [
+    null,
+    null,
+    null,
     0
    ],
    "sum": 0,
-   "overlap": 0,
-   "full": true
+   "overlap": null,
+   "full": false
   },
   {
    "d": 100,
@@ -430,11 +466,14 @@
    "off": 0,
    "all": 0,
    "eff": [
+    null,
+    null,
+    null,
     0
    ],
    "sum": 0,
-   "overlap": 0,
-   "full": true
+   "overlap": null,
+   "full": false
   },
   {
    "d": 100,
@@ -442,11 +481,14 @@
    "off": 313011,
    "all": 70682,
    "eff": [
+    null,
+    null,
+    null,
     -243961
    ],
    "sum": -243961,
-   "overlap": 1632,
-   "full": true
+   "overlap": null,
+   "full": false
   },
   {
    "d": 100,
@@ -454,11 +496,14 @@
    "off": 84.02935791015625,
    "all": 72.79498291015625,
    "eff": [
+    null,
+    null,
+    null,
     -14.5234375
    ],
    "sum": -14.5234375,
-   "overlap": 3.2890625,
-   "full": true
+   "overlap": null,
+   "full": false
   },
   {
    "d": 100,
@@ -466,11 +511,14 @@
    "off": 26.044680851063827,
    "all": 16.376595744680852,
    "eff": [
+    null,
+    null,
+    null,
     -0.018085106382976335
    ],
    "sum": -0.018085106382976335,
-   "overlap": -9.649999999999999,
-   "full": true
+   "overlap": null,
+   "full": false
   },
   {
    "d": 200,
@@ -478,11 +526,14 @@
    "off": 2579,
    "all": 2818,
    "eff": [
+    null,
+    null,
+    null,
     0
    ],
    "sum": 0,
-   "overlap": 239,
-   "full": true
+   "overlap": null,
+   "full": false
   },
   {
    "d": 200,
@@ -490,11 +541,14 @@
    "off": 15,
    "all": 15,
    "eff": [
+    null,
+    null,
+    null,
     0
    ],
    "sum": 0,
-   "overlap": 0,
-   "full": true
+   "overlap": null,
+   "full": false
   },
   {
    "d": 200,
@@ -502,11 +556,14 @@
    "off": 0,
    "all": 0,
    "eff": [
+    null,
+    null,
+    null,
     0
    ],
    "sum": 0,
-   "overlap": 0,
-   "full": true
+   "overlap": null,
+   "full": false
   },
   {
    "d": 200,
@@ -514,11 +571,14 @@
    "off": 0,
    "all": 0,
    "eff": [
+    null,
+    null,
+    null,
     0
    ],
    "sum": 0,
-   "overlap": 0,
-   "full": true
+   "overlap": null,
+   "full": false
   },
   {
    "d": 200,
@@ -526,11 +586,14 @@
    "off": 393188,
    "all": 92863,
    "eff": [
+    null,
+    null,
+    null,
     -306090
    ],
    "sum": -306090,
-   "overlap": 5765,
-   "full": true
+   "overlap": null,
+   "full": false
   },
   {
    "d": 200,
@@ -538,11 +601,14 @@
    "off": 176.07154846191406,
    "all": 178.81338500976562,
    "eff": [
+    null,
+    null,
+    null,
     -16.13286590576172
    ],
    "sum": -16.13286590576172,
-   "overlap": 18.87470245361328,
-   "full": true
+   "overlap": null,
+   "full": false
   },
   {
    "d": 200,
@@ -550,11 +616,14 @@
    "off": 26.91717171717172,
    "all": 16.009090909090908,
    "eff": [
+    null,
+    null,
+    null,
     0.2787878787878775
    ],
    "sum": 0.2787878787878775,
-   "overlap": -11.186868686868689,
-   "full": true
+   "overlap": null,
+   "full": false
   },
   {
    "d": 300,
@@ -562,11 +631,14 @@
    "off": 3475,
    "all": 3433,
    "eff": [
+    null,
+    null,
+    null,
     0
    ],
    "sum": 0,
-   "overlap": -42,
-   "full": true
+   "overlap": null,
+   "full": false
   },
   {
    "d": 300,
@@ -574,11 +646,14 @@
    "off": 146,
    "all": 138,
    "eff": [
+    null,
+    null,
+    null,
     0
    ],
    "sum": 0,
-   "overlap": -8,
-   "full": true
+   "overlap": null,
+   "full": false
   },
   {
    "d": 300,
@@ -586,11 +661,14 @@
    "off": 0,
    "all": 0,
    "eff": [
+    null,
+    null,
+    null,
     0
    ],
    "sum": 0,
-   "overlap": 0,
-   "full": true
+   "overlap": null,
+   "full": false
   },
   {
    "d": 300,
@@ -598,11 +676,14 @@
    "off": 0,
    "all": 0,
    "eff": [
+    null,
+    null,
+    null,
     0
    ],
    "sum": 0,
-   "overlap": 0,
-   "full": true
+   "overlap": null,
+   "full": false
   },
   {
    "d": 300,
@@ -610,11 +691,14 @@
    "off": 524640,
    "all": 114651,
    "eff": [
+    null,
+    null,
+    null,
     -410618
    ],
    "sum": -410618,
-   "overlap": 629,
-   "full": true
+   "overlap": null,
+   "full": false
   },
   {
    "d": 300,
@@ -622,11 +706,14 @@
    "off": 211.76934814453125,
    "all": 205.94739532470703,
    "eff": [
+    null,
+    null,
+    null,
     -21.595237731933594
    ],
    "sum": -21.595237731933594,
-   "overlap": 15.773284912109375,
-   "full": true
+   "overlap": null,
+   "full": false
   },
   {
    "d": 300,
@@ -634,11 +721,14 @@
    "off": 26.134343434343435,
    "all": 16.374747474747473,
    "eff": [
+    null,
+    null,
+    null,
     -0.18484848484848726
    ],
    "sum": -0.18484848484848726,
-   "overlap": -9.574747474747475,
-   "full": true
+   "overlap": null,
+   "full": false
   },
   {
    "d": 400,
@@ -646,11 +736,14 @@
    "off": 4165,
    "all": 3820,
    "eff": [
+    null,
+    null,
+    null,
     0
    ],
    "sum": 0,
-   "overlap": -345,
-   "full": true
+   "overlap": null,
+   "full": false
   },
   {
    "d": 400,
@@ -658,11 +751,14 @@
    "off": 342,
    "all": 316,
    "eff": [
+    null,
+    null,
+    null,
     0
    ],
    "sum": 0,
-   "overlap": -26,
-   "full": true
+   "overlap": null,
+   "full": false
   },
   {
    "d": 400,
@@ -670,11 +766,14 @@
    "off": 0,
    "all": 0,
    "eff": [
+    null,
+    null,
+    null,
     0
    ],
    "sum": 0,
-   "overlap": 0,
-   "full": true
+   "overlap": null,
+   "full": false
   },
   {
    "d": 400,
@@ -682,11 +781,14 @@
    "off": 0,
    "all": 0,
    "eff": [
+    null,
+    null,
+    null,
     0
    ],
    "sum": 0,
-   "overlap": 0,
-   "full": true
+   "overlap": null,
+   "full": false
   },
   {
    "d": 400,
@@ -694,11 +796,14 @@
    "off": 623917,
    "all": 127351,
    "eff": [
+    null,
+    null,
+    null,
     -489608
    ],
    "sum": -489608,
-   "overlap": -6958,
-   "full": true
+   "overlap": null,
+   "full": false
   },
   {
    "d": 400,
@@ -706,11 +811,14 @@
    "off": 235.12860870361328,
    "all": 230.55618286132812,
    "eff": [
+    null,
+    null,
+    null,
     -24.927871704101562
    ],
    "sum": -24.927871704101562,
-   "overlap": 20.355445861816406,
-   "full": true
+   "overlap": null,
+   "full": false
   },
   {
    "d": 400,
@@ -718,11 +826,119 @@
    "off": 52.56565656565657,
    "all": 27.591919191919192,
    "eff": [
+    null,
+    null,
+    null,
     0.08383838383838338
    ],
    "sum": 0.08383838383838338,
-   "overlap": -25.05757575757576,
-   "full": true
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 500,
+   "k": "pop",
+   "off": 5171,
+   "all": 5451,
+   "eff": [
+    null,
+    null,
+    null,
+    0
+   ],
+   "sum": 0,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 500,
+   "k": "dead",
+   "off": 441,
+   "all": 370,
+   "eff": [
+    null,
+    null,
+    null,
+    0
+   ],
+   "sum": 0,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 500,
+   "k": "fd",
+   "off": 0,
+   "all": 0,
+   "eff": [
+    null,
+    null,
+    null,
+    0
+   ],
+   "sum": 0,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 500,
+   "k": "empty",
+   "off": 0,
+   "all": 0,
+   "eff": [
+    null,
+    null,
+    null,
+    0
+   ],
+   "sum": 0,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 500,
+   "k": "vb",
+   "off": 750198,
+   "all": 170957,
+   "eff": [
+    null,
+    null,
+    null,
+    -589207
+   ],
+   "sum": -589207,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 500,
+   "k": "dbmb",
+   "off": 367.18273162841797,
+   "all": 303.7970504760742,
+   "eff": [
+    null,
+    null,
+    null,
+    -29.738746643066406
+   ],
+   "sum": -29.738746643066406,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 500,
+   "k": "spd",
+   "off": 62.16161616161617,
+   "all": 48.78181818181819,
+   "eff": [
+    null,
+    null,
+    null,
+    0.3181818181818059
+   ],
+   "sum": 0.3181818181818059,
+   "overlap": null,
+   "full": false
   }
  ],
  "fp": {

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # === scripts/t1492-run.sh — T1492 긴 판 러너(코드 손 0 · `t1486-run.sh` 꼴 + 마디 판) ===
 #   판 목록 = $OUT/jobs.tsv(한 줄 한 판 · 차례 = 먼저 띄울 차례):  이름  꼴(long|short)  날  시드  손짓(T1492_ACTS · all = T1486 그대로 · none)  존(- = 한반도)  probe(- | prof | ss | count · + 로 묶음 — count 는 env 칸에 T1492_COUNT=이름+이름)  env(K=V,K=V · - = 없음)
-#   long  = scripts/t1308-long-run.js <날> <시드> --every 100(100날마다 체크포인트 · 끊기면 마지막 체크포인트에서 잇는다) + 봇 프리로드(scripts/t1492-bots.js · 마디마다 seg-<날>.bots.json)
+#   long  = scripts/t1308-long-run.js <날> <시드> --every 50(EVERY · 50날마다 체크포인트 · 끊기면 마지막 체크포인트에서 잇는다) + 봇 프리로드(scripts/t1492-bots.js · 마디마다 seg-<날>.bots.json)
 #   short = scripts/t577-server-run.js <날> <시드>(T1486 판 자 그대로) + 봇 프리로드 + (probe 면) scripts/t1492-probe.js
 #   이어 돌리기: 같은 줄을 다시 부르면 done.txt 에 있는 판은 건너뛰고, 돌던 긴 판은 체크포인트에서 잇고(죽은 판 = dead.txt 에 한 줄), 돌던 짧은 판은 처음부터.
 #   판마다 끝 표시 runs/<이름>.done · 다 끝나면 ALL_DONE. 긴 판이 끝나면 DB(w.db*)와 체크포인트(ck/)는 지운다(디스크) — 크기는 봇 관찰기가 20날마다 적었다.
@@ -44,7 +44,7 @@ one() {   # 한 줄(탭 갈림)
         ( cd "$ROOT" && env "${E[@]}" node scripts/t1308-long-run.js --resume "$R" >> "$R/runner.log" 2>&1 ); rc=$?
       else
         ( cd "$ROOT" && env "${E[@]}" T577_TAG=sbc T1492_SEG=1 NODE_OPTIONS="--max-old-space-size=4608 --require $HERE/t1492-bots.js" \
-            node scripts/t1308-long-run.js "$days" "$seed" --every 100 --dir "$R" --tag sbc >> "$R/runner.log" 2>&1 ); rc=$?
+            node scripts/t1308-long-run.js "$days" "$seed" --every "${EVERY:-50}" --dir "$R" --tag sbc >> "$R/runner.log" 2>&1 ); rc=$?
       fi
       [ "$rc" = 0 ] && continue
       [ "$rc" = 3 ] && { echo "$name 마디 죽음(코드 3 · ck=$ck) $(date -u +%FT%TZ) — 다시" >> "$OUT/dead.txt"; continue; }
