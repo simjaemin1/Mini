@@ -52,6 +52,9 @@ console.log('|---|---|---|---|---|---|---|---|');
 for (const d of runs) { const o = out[d]; console.log(`| ${d} | ${f(o.last)} | ${o.done ? '끝' : o.died ? '죽음' : '도는 중'} | ${f(o.sec700)} | ${f(o.liveSlope300)} | ${f(o.peakSlope300)} | ${f(o.maxPeak.v)}(${f(o.maxPeak.day)}날) | ${f(o.oomLive)} |`); }
 console.log('\n## 하루 초(구간 평균)');
 for (const d of runs) console.log(`- ${d}: ` + Object.entries(out[d].secPerDay).map(([k, v]) => `${k} ${f(v)}`).join(' · '));
+console.log('\n## 그릇 셈(100날마다) — 장부 판(옛 날) · 원시 판 · 첫 거름 칸(쓴 칸 / 몸을 쥔 칸) · 산 몸 · 켬 버린 수(장부 · 원시 · 칸) · 원시 다시 지음(수 · ms)');
+for (const d of runs) { const c = out[d].census.filter((r) => r.day % 100 === 0 && r.ring != null); if (!c.length) continue;
+  console.log(`- ${d}: ` + c.map((r) => `${r.day}날 장부 ${f(r.ring)}(옛 ${f(r.ringStale)}) · 원시 ${f(r.raw)} · 칸 ${f(r.ssN)}/${f(r.ssOwn)} · 몸 ${f(r.bodies)}` + (r.trim ? ` · 버림 ${f(r.trim.ringDrop)}/${f(r.trim.rawDrop)}/${f(r.trim.ssRel)} · 다시 ${f(r.trim.rawRebuild)}(${f(r.trim.rawRebuildMs)} ms)` : '')).join(' | ')); }
 console.log('\n## 그릇 셈(50날마다 · 마지막 줄)');
 for (const d of runs) { const c = out[d].census; if (!c.length) continue; const l = c[c.length - 1]; console.log(`- ${d} ${l.day}날: ` + JSON.stringify(l)); }
 if (JOUT) fs.writeFileSync(JOUT, JSON.stringify(out, null, 1));

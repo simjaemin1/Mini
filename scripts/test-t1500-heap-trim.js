@@ -137,6 +137,14 @@ if (process.argv[2] === '--child') {
       out.ss = { on: SS.ON, sx: sx >= 0, sy: sy >= 0, xOwn: SS.own[sx] === X, yOwn: SS.own[sy] === Y, xSlot: SS.slot(X.pid) === sx, ySlot: SS.slot(Y.pid) === sy, n: SS.count() };
       H.players.delete(Y.pid);
     }
+    // 다시 짓는 값 — 원시 판 하나를 짓는 데 드는 벽시계 ms(가상 시계 판은 hrtime 이 멎어 못 잰다 — 여기서 잰다 · 개체 200 넘는 숲 대각선 청크 스물까지 · 한 번 데운 뒤)
+    if (H.T1500_HEAP_TRIM) {
+      const qs = []; for (let k = 2; k < nC && qs.length < 20; k++) { const n = (CH.generateChunkResources('hanbando', Z.biome, k, k, CS, new Set(), 0) || []).length; if (n >= 200) qs.push([k, k]); }
+      H._ringBuild(qs[0][0], qs[0][1], undefined, undefined);
+      const ms = qs.map(([x, y]) => { const t = process.hrtime.bigint(); H._ringBuild(x, y, undefined, undefined); return Number(process.hrtime.bigint() - t) / 1e6; }).sort((a, b) => a - b);
+      out.rawMs = { n: ms.length, p50: +ms[ms.length >> 1].toFixed(2), max: +ms[ms.length - 1].toFixed(2), mean: +(ms.reduce((a, b) => a + b, 0) / ms.length).toFixed(2) };
+      const t = process.hrtime.bigint(); H._t1500.day = null; H._t1500Sweep(); out.sweepMs = +(Number(process.hrtime.bigint() - t) / 1e6).toFixed(3);
+    }
     out.on = !!H.T1500_HEAP_TRIM;
     out.trim = H._t1500 ? { ringDrop: H._t1500.ringDrop, rawDrop: H._t1500.rawDrop, rawBuild: H._t1500.rawBuild, rawRebuild: H._t1500.rawRebuild } : null;
     say(out);
@@ -178,7 +186,7 @@ const q5 = (o, s) => !!(o && s && !o.err && !s.err && !o.on && J(o.steps) === J(
   ok(!on.err && on.cut === 1, '[전제] 켬 아이가 섰고 A 의 한 그루를 벴다(장부에 듦 — 다시 낳은 답이 장부를 봐야 하는 판)', on.err || `벤 그루 ${on.cut}`);
   ok(q1(on), '★① 켬: 날이 바뀐 뒤 오늘 날이 아닌 장부 판 0 · 오늘 판은 같은 날 다시 훑어도 남는다', J(on.steps && on.steps.map((s) => [s.tag, s.stale, s.ring])));
   ok(q2(on, off), '★② 답 같음: 날마다 묻는 셀 답이 켬 = 끔 · 켬이 다시 낳은 답 = 장부를 넘긴 색인 답(벤 그루가 그루터기로)', `셀 ${on.ansA0 ? on.ansA0.length + on.ansB0.length : 0}`);
-  ok(q3(on), '★③ 원시 판: 이틀 안 쓴 판은 버려지고 다시 부르면 같은 판(셀 · 개체 차례 · 칸 전부)으로 선다', on.rebuild ? `다시 지음 ${on.rebuild.n} · ${on.rebuild.ms} ms` : '');
+  ok(q3(on), '★③ 원시 판: 이틀 안 쓴 판은 버려지고 다시 부르면 같은 판(셀 · 개체 차례 · 칸 전부)으로 선다', on.rebuild ? `다시 지음 ${on.rebuild.n} · ${on.rebuild.ms} ms · 원시 판 하나 짓기 p50 ${on.rawMs && on.rawMs.p50} ms(최대 ${on.rawMs && on.rawMs.max} · 청크 ${on.rawMs && on.rawMs.n}) · 훑기 한 번 ${on.sweepMs} ms` : '');
   ok(q4(on), '★④ 어제 지은 원시 판(내일 경계용 미리 짓기와 같은 처지)은 오늘 남고 · 이틀 안 쓰면 버려진다', J([step(on, 'D2 훑은 뒤').raw, step(on, 'D3 훑은 뒤').raw]));
   ok(q6(on), '★⑥ 첫 거름 칸: players 에서 빠진 몸(죽은 사람 · 나간 사람)의 칸은 비우고 · 산 몸의 칸은 그대로(같은 칸 · 같은 몸)', J(on.ss));
   ok(off.ss && off.ss.xOwn, '[전제] 끔: 빠진 몸을 칸이 그대로 쥔다(종전 — 낳을 때마다 새 칸 · 비우는 자리가 없다)', J(off.ss));
