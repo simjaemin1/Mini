@@ -1,0 +1,29 @@
+{
+  "base": "9d5c764c022aa43a32b3abfb9997eef3313dce15",
+  "node": "v24.22.1",
+  "productDiffLines": 0,
+  "scope": "diagnostic gates only; full card matrix and four product baits not run",
+  "checks": {
+    "lab-wiring-check": {
+      "fail": 0,
+      "warn": 2
+    },
+    "test-t1167-war-persist": {
+      "pass": 14,
+      "fail": 0
+    },
+    "test-t1445-boot-flood": {
+      "pass": 6,
+      "fail": 0
+    },
+    "checkpointRestoreBootOnOffJsonByteEqual": true,
+    "checkpointRestoreBootOnOffCsvByteEqual": true,
+    "collisionBootOnOffJsonByteEqual": true,
+    "collisionCasesPassed": 2
+  },
+  "initialDiagnosticFailures": [
+    "original SHM checksum differs, extractor refused before scratch input existed",
+    "first restore had no extracted input and exited ENOENT; neither counted as a world measurement"
+  ],
+  "longRunStarted": false
+}
