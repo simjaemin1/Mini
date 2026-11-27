@@ -1,8 +1,8 @@
 import json,subprocess,time
 from pathlib import Path
-repo=Path('/workspace/Mini-t1496');out=repo/'계측/T1496_2026-11-27/gates'
+repo=Path('/workspace/Mini-t1516');out=repo/'계측/T1516_2026-11-27/gates'
 rows=json.loads((out/'status.json').read_text());names=json.loads((out.parent/'touched-plan-final.json').read_text())['list']
-todo=[n for n in names if n not in {r['name'] for r in rows}]+['test-t1496-body-first.js','test-harness-lint.js','test-ci-list.js']
+todo=[n for n in names if n not in {r['name'] for r in rows}]+['test-t1516-body-first.js','test-harness-lint.js','test-ci-list.js']
 for name in todo:
  start=time.monotonic()
  with (out/(name+'.txt')).open('wb') as f:r=subprocess.run(['node','scripts/'+name],cwd=repo,stdout=f,stderr=subprocess.STDOUT)

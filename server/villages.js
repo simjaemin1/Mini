@@ -14444,17 +14444,17 @@ function _t717PackPut(vil, u) {
   return u;
 }
 //   짐을 곳간에 — 입구가 받은 만큼만 뺀다(나머지는 짐에 그대로). 받은 몫을 돌려준다.
-// T1496 (OFF by default): carried body wood keeps its existing demand share.
-const T1496_BODY_FIRST = process.env.T1496_BODY_FIRST === '1';
-function _t1496WoodLeft(vil) {
+// T1516 (OFF by default): carried body wood keeps its existing demand share.
+const T1516_BODY_FIRST = process.env.T1516_BODY_FIRST === '1';
+function _t1516WoodLeft(vil) {
   return _lifeEcon().woodDemandLeft(vil.econ, _t374Held(vil, _T374_WOOD));
 }
-function _t1496WoodOffer(vil, units) {
-  return T1496_BODY_FIRST && _lifeEcon().T325_WOOD_ACT ? Math.min(units, _t1496WoodLeft(vil)) : units;
+function _t1516WoodOffer(vil, units) {
+  return T1516_BODY_FIRST && _lifeEcon().T325_WOOD_ACT ? Math.min(units, _t1516WoodLeft(vil)) : units;
 }
 function _t717PackIn(vil) {
   const u = (vil && vil.econ && vil.econ._t717Pack) || 0; if (!(u > 0)) return 0;
-  const g = _lifeEcon().woodToGranary(vil.econ, _t1496WoodOffer(vil, u)) || 0;
+  const g = _lifeEcon().woodToGranary(vil.econ, _t1516WoodOffer(vil, u)) || 0;
   if (!(g > 0)) return 0;
   const r = +(u - g).toFixed(6);
   if (r > 1e-9) vil.econ._t717Pack = r; else _t862Drop(vil.econ, '_t717Pack');   // ★[T1203] T862 ② 문(켬 = `undefined` · 읽기는 `|| 0`)
@@ -17065,7 +17065,7 @@ function _lifeHandsIn(vil) {
   _t1195HuntIn(vil);   // ★[T1195] 어제 사냥꾼 몸이 잡은 짐승 → 곳간(econ 틱 바로 앞 · T720 켬이어도 · 끔 = 첫 줄에서 돌아간다)
   _t1196Seats(vil);   // ★[T1196] econ 틱 앞 — 장인 빈 몸 명부(끔 · 랩 = 첫 줄에서 돌아간다)
   _t1422In(vil);   // ★[T1422] 어제 남는 시간 식량 · 땔감 몸 시간 → econ(끔 = 첫 줄에서 돌아간다 · econ 틱 앞)
-  if (T1496_BODY_FIRST && LIFE_ON && _lifeEcon().T325_WOOD_ACT && vil && vil.econ && vil._terrSet && vil._terrSet.size) {
+  if (T1516_BODY_FIRST && LIFE_ON && _lifeEcon().T325_WOOD_ACT && vil && vil.econ && vil._terrSet && vil._terrSet.size) {
     _lifeVL();
     const seen = T449_BODY_DAY && _t449Seen(vil);
     const stats = T449_BODY_DAY ? (vil._t449 || (vil._t449 = { d: 0, seen: 0, hlFarm: 0, hlSite: 0, woodBody: 0, forageBody: 0 })) : null;
@@ -21435,7 +21435,7 @@ function _t561Walked(vil, npc, now) {
   const d = state.dayMs ? _bodyDay(npc, now) : 0;                                                  // 몸의 날(`npcLifeTick` 이 쓰는 그 날 · ★[T720] 켬 = 현지 날)
   if (npc._t561Wd !== d) { npc._t561Wd = d; vil._t325PreWalked = (vil._t325PreWalked | 0) + 1; }
 }
-// T1496: one wood-day implementation, called at the existing daily position
+// T1516: one wood-day implementation, called at the existing daily position
 // when OFF and after the body's day / before econ when ON. No new production formula.
 function _lifeWoodDay(vil, _t449S, _t449T, closingDay) {
   // ★★[T325] **낮이 끝나면 들고 있던 통나무를 곳간에 넣는다**(캐논 ⓐ — 귀환 시 입고). 어부 절과 같은 꼴.
@@ -21498,7 +21498,7 @@ function _lifeWoodDay(vil, _t449S, _t449T, closingDay) {
       //   ★★[T1148] 나무꾼(삭정이 줍기 포함) — 켬 ∧ 땔감 평형 판이면 산 나무를 베기 전에 숲 바닥(어제 남은 삭정이)부터 줍는다.
       //     같은 걸음 한도(`_cap` — 끔 판 한도는 그루라 단으로 바꾼다) · 같은 수요 문 · 같은 곳간 입구 · 숲 바닥 칸은 T1135 삭정이 절의 그 칸(`vil._t1135Dead`).
       if (_lifeEcon().T1148_FUEL_JOB && _t1135On() && (vil._t1135Dead || 0) > 0) {
-        const _left = T1496_BODY_FIRST ? _t1496WoodLeft(vil) : _lifeEcon().woodDemandLeft(vil.econ);
+        const _left = T1516_BODY_FIRST ? _t1516WoodLeft(vil) : _lifeEcon().woodDemandLeft(vil.econ);
         const _take = Math.min(vil._t1135Dead, _left === Infinity ? vil._t1135Dead : _left, _t491C ? _cap : _cap * _w);
         if (_take > 0) {
           const _g = _lifeEcon().woodToGranary(vil.econ, _take) || 0;
@@ -21511,7 +21511,7 @@ function _lifeWoodDay(vil, _t449S, _t449T, closingDay) {
       for (let k = 0; k < _tr.length * 8 && ci < _tr.length && made < _cap; k++) {
         //   ★★[T374] 나무꾼도 **같은 규칙**이다(사본 0 — econ 정본 `woodDemandLeft`).
         //     ⚠카드는 "값이 안 변할 것" 이라 했지만 실측은 **절반**이다(보고 §4 — 두 시계 어긋남의 반대 방향).
-        if (T1496_BODY_FIRST && !(_t1496WoodLeft(vil) > 0)) { vil._t325Dbg.stop = 1; break; }
+        if (T1516_BODY_FIRST && !(_t1516WoodLeft(vil) > 0)) { vil._t325Dbg.stop = 1; break; }
         if (!(_lifeEcon().woodDemandLeft(vil.econ) > 0)) { vil._t325Dbg.stop = 1; break; }
         const t = _tr[ci];
         let peek = null; try { peek = state.deps.t325TreesAtCell ? state.deps.t325TreesAtCell(t.cx, t.cy) : null; } catch (e) { peek = null; }
@@ -21525,7 +21525,7 @@ function _lifeWoodDay(vil, _t449S, _t449T, closingDay) {
         if (sk) (vil._t341Cut || (vil._t341Cut = [])).push(sk);   // ★재생이 되돌릴 목록(벤 순서)
         made += _t491C ? u : 1; vil._t325Dbg.cut++;                // ★[T491] 켬 = 단으로 센다(한도가 단이다) · 끔 = 그루(옛 줄 `made++` 와 같은 수)
         if (_t491C) vil._t325Dbg.t491.made = +(vil._t325Dbg.t491.made + u).toFixed(6);
-        const _g = _lifeEcon().woodToGranary(vil.econ, _t1496WoodOffer(vil, u));
+        const _g = _lifeEcon().woodToGranary(vil.econ, _t1516WoodOffer(vil, u));
         if (T717_WOOD_HAND) _t717PackPut(vil, u - (_g || 0));        // ★[T717 ②] 곳간이 안 받은 몫은 마을 짐에(끔 = 옛 줄 · 버림)
         if (T733_FELL_LOOT) _t733LootIn(vil, loot);                   // ★[T733 ①] 같은 그루의 잔가지 · 도토리 — 곳간 그 칸에(안 받은 몫은 짐에 · 끔 = 옛 줄 · 안 읽고 버림)
         vil._t325Deliv = +((vil._t325Deliv || 0) + u).toFixed(6);
@@ -21567,7 +21567,7 @@ function _lifeWoodDay(vil, _t449S, _t449T, closingDay) {
       const _cx0 = vil.ccx * SZ + SZ / 2, _cy0 = vil.ccy * SZ + SZ / 2;
       for (const t of _tr) { const dd = (t.x - _cx0) * (t.x - _cx0) + (t.y - _cy0) * (t.y - _cy0); if (dd < _bd) _bd = dd; }
       const _cap = _t491BodyDay(vil, Math.sqrt(_bd)) * _fg;
-      const _left = T1496_BODY_FIRST ? _t1496WoodLeft(vil) : _lifeEcon().woodDemandLeft(vil.econ);
+      const _left = T1516_BODY_FIRST ? _t1516WoodLeft(vil) : _lifeEcon().woodDemandLeft(vil.econ);
       const _take = Math.min(vil._t1135Dead, _left === Infinity ? vil._t1135Dead : _left, _cap);
       D.cap = _cap;
       if (_take > 0) {
@@ -21624,9 +21624,9 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
     const _pl = state.deps.players;
     if (!T720_LON_DAY) for (const pid of (vil.npcPids || [])) { const p = _pl && _pl.get(pid); if (p && p._t368H) _t368Deliver(vil, p, 'day'); }   // ★[T720 ③] 켬 = 손 비우기 없음
   }
-  // T1496: close the previous day's wood work before econ consumes its ledger.
+  // T1516: close the previous day's wood work before econ consumes its ledger.
   // The new day only primes the same tree index; bodies get the first turn.
-  if (T1496_BODY_FIRST && _lifeEcon().T325_WOOD_ACT) {
+  if (T1516_BODY_FIRST && _lifeEcon().T325_WOOD_ACT) {
     _t325Scan(vil, state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0);
   } else _lifeWoodDay(vil, _t449S, _t449T);
   // ★★[T347 2026-09-22] **채집도 같은 하루다** — 나무꾼 절(위)과 **같은 순서**다:

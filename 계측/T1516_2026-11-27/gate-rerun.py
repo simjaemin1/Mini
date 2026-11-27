@@ -1,12 +1,12 @@
 import json,subprocess,time,shutil
 from pathlib import Path
-repo=Path('/workspace/Mini-t1496');out=repo/'계측/T1496_2026-11-27/gates'
+repo=Path('/workspace/Mini-t1516');out=repo/'계측/T1516_2026-11-27/gates'
 rows=json.loads((out/'status.json').read_text());history=out/'history-initial';history.mkdir(exist_ok=True)
 shutil.copyfile(out/'status.json',history/'status.json')
 failed=[r['name'] for r in rows if r['exit']]
 for n in failed:shutil.copyfile(out/(n+'.txt'),history/(n+'.txt'))
 extra=['test-t1135-fuel-eq.js','test-t1148-fuel-job.js','test-t1202-produce-live.js','test-t1259-wood-cap.js','test-t1046-wood-share.js','test-wood-flow.js','test-ci-list.js']
-names=list(dict.fromkeys(failed+['test-t1496-body-first.js','test-wood-act.js']+extra));additional=[]
+names=list(dict.fromkeys(failed+['test-t1516-body-first.js','test-wood-act.js']+extra));additional=[]
 for name in names:
  start=time.monotonic()
  with (out/(name+'.txt')).open('wb') as f:r=subprocess.run(['node','scripts/'+name],cwd=repo,stdout=f,stderr=subprocess.STDOUT)

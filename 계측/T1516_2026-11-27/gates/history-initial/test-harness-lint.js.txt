@@ -133,7 +133,7 @@
 ⑲ 박힌 날짜 0 · 새 하네스 미끼 표지 `@bait <n>` [T1356]
   ✓ ⑲ [전제] 하네스를 다 읽었고(AST 못 읽은 파일 0) 옛 목록이 있다(0 이면 아래가 자명 통과다)  하네스 586 · 옛 목록 493 · 박힌 날짜 12줄 · 표지 `@bait` 133
   ✓ ★★⑲a 하네스 코드에 박힌 날짜 · 연도 0 — 있으면 머리 표지 `// @date-ok <까닭>`(주입 고정 시각 · 로그 픽스처)  표지 없는 파일 0 (12줄은 표지 단 파일)
-  ✗ ★★⑲b 새 `@regress` 하네스는 `// @bait <n>` 표지 · 미끼 판정 줄(`미끼` + `바꾼 자리`)이 꼭 n 개 — 미끼는 파일 안에  test-t1496-body-first.js(count 0/2)
+  ✗ ★★⑲b 새 `@regress` 하네스는 `// @bait <n>` 표지 · 미끼 판정 줄(`미끼` + `바꾼 자리`)이 꼭 n 개 — 미끼는 파일 안에  test-t1516-body-first.js(count 0/2)
   ✓ ★⑲c 옛 목록(`harness-bait-old.txt`)은 늘지 않는다 — 새 하네스를 거기 넣으면 ⑲b 를 피한다  493 ≤ 493
   ✓ ★⑲a 자명 통과 금지 — 박힌 `Date.UTC` · 날짜 글자는 물고 · 표지 단 파일 · 주석 · 파일 경로 속 날짜는 보낸다  utc=bad,str=bad,marked=ok,comment=ok,path=ok
   ✓ ★⑲b 자명 통과 금지 — 표지 · 수가 맞는 새 하네스만 보내고 · 표지 없음 · 수 어긋남 · 바꾼 자리 안 셈 · 표지 단 옛 하네스 어긋남 · 주석(보고)에만 적은 미끼는 문다  good=ok,nomark=bad,many=bad,nocount=bad,old=ok,oldmarked=bad,report=bad

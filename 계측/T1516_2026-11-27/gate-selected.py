@@ -1,6 +1,6 @@
 import subprocess,json,time,os
 from pathlib import Path
-repo=Path('/workspace/Mini-t1496');out=repo/'계측/T1496_2026-11-27/gates';out.mkdir(exist_ok=True)
+repo=Path('/workspace/Mini-t1516');out=repo/'계측/T1516_2026-11-27/gates';out.mkdir(exist_ok=True)
 plan=json.loads((out.parent/'touched-plan.json').read_text());rows=[]
 for name in plan['list']:
  start=time.monotonic()

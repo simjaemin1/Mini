@@ -11,25 +11,25 @@ const { spawnSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');
 
 if (process.argv.includes('--worker')) {
-  const bait = process.env.T1496_BAIT;
+  const bait = process.env.T1516_BAIT;
   if (bait) {
     const Module = require('module'), original = Module._extensions['.js'];
     Module._extensions['.js'] = function (m, file) {
       if (file !== path.join(ROOT, 'server/villages.js')) return original(m, file);
       let src = fs.readFileSync(file, 'utf8');
       const needle = bait === 'early'
-        ? 'if (T1496_BODY_FIRST && _lifeEcon().T325_WOOD_ACT) {'
+        ? 'if (T1516_BODY_FIRST && _lifeEcon().T325_WOOD_ACT) {'
         : 'return _lifeEcon().woodDemandLeft(vil.econ, _t374Held(vil, _T374_WOOD));';
       assert.strictEqual(src.split(needle).length - 1, 1, 'exactly one bait site');
       src = src.replace(needle, bait === 'early' ? 'if (false) {' : 'return _lifeEcon().woodDemandLeft(vil.econ);');
-      process.stderr.write('T1496_BAIT_SITES=1\n');
+      process.stderr.write('T1516_BAIT_SITES=1\n');
       m._compile(src, file);
     };
   }
   const E = require('../sim/economy-sim'), E2 = require('../sim/economy-sim-v2');
   const V = require('../server/villages'), P = V.__labProbe;
-  const scenario = process.env.T1496_CASE || 'flow';
-  const on = process.env.T1496_BODY_FIRST === '1' && E.T325_WOOD_ACT;
+  const scenario = process.env.T1516_CASE || 'flow';
+  const on = process.env.T1516_BODY_FIRST === '1' && E.T325_WOOD_ACT;
   const DAY = 1440000, D = 20, now = D * DAY + DAY * 0.35;
   const ccx = 400, ccy = 400, players = new Map(), trees = new Map();
   if (scenario !== 'noTrees') for (let i = 0; i < 12; i++) trees.set((ccx + 6) + ',' + (ccy + i), 3);
@@ -40,7 +40,7 @@ if (process.argv.includes('--worker')) {
     t325CutTreeAt: (cx, cy) => { const k = cx + ',' + cy, n = trees.get(k) || 0; if (!n) return null; trees.set(k, n - 1); cut++; return { wood: 6 }; },
     t325LootOf: () => ({ wood: 6 }), t341Unharvest: () => 0 };
   P._t400Probe.setup({ deps, db: { insertVillageBuilding: () => 1 }, dayMs: DAY, epoch: 0,
-    zoneId: 't1496', tickCtx: { now } });
+    zoneId: 't1516', tickCtx: { now } });
   const world = E2.createWorldV2({ seed: 42, villageCount: 1 });
   E.bindProductionActs(world);
   P._t400Probe.setup({ world });
@@ -113,10 +113,10 @@ function run(flag, scenario = 'flow', bait, extra = {}) {
   const env = { ...process.env, ENABLE_VILLAGES: '0', VILLAGE_LIFE: scenario === 'offLife' ? '0' : '1', T325_WOOD_ACT: scenario === 'offAct' ? '0' : '1',
     T312_FISH_ACT: '0', T347_FORAGE_ACT: '0', T400_BUILD_ACT: '0', T449_BODY_DAY: '0',
     T491_BATCH_FROM_BODY: '0', T561_ROSTER_BODY: '1', T374_DEMAND_STOP: '1',
-    T720_LON_DAY: '1', T1496_CASE: scenario, ...extra };
-  delete env.T1496_BODY_FIRST; delete env.T1496_BAIT;
-  if (flag !== undefined) env.T1496_BODY_FIRST = flag;
-  if (bait) env.T1496_BAIT = bait;
+    T720_LON_DAY: '1', T1516_CASE: scenario, ...extra };
+  delete env.T1516_BODY_FIRST; delete env.T1516_BAIT;
+  if (flag !== undefined) env.T1516_BODY_FIRST = flag;
+  if (bait) env.T1516_BAIT = bait;
   return spawnSync(process.execPath, [__filename, '--worker'], { cwd: ROOT, env, encoding: 'utf8' });
 }
 function check(name, fn) { try { fn(); pass++; console.log('PASS ' + name); } catch (e) { fail++; console.log('FAIL ' + name + ': ' + e.message); } }
@@ -134,7 +134,7 @@ check('ON with legacy hand delivery', () => {
 function assertBait(bait, scenario) {
   const r = run('1', scenario, bait);
   assert.notStrictEqual(r.status, 0);
-  assert(r.stderr.includes('T1496_BAIT_SITES=1'), 'bait really changed one production site');
+  assert(r.stderr.includes('T1516_BAIT_SITES=1'), 'bait really changed one production site');
   assert(r.stderr.includes('AssertionError'), r.stderr);
   assert(r.stderr.includes(bait === 'early' ? 'body gets the first turn before batch cuts' : 'batch leaves the carried body share available'), 'intended outcome assertion bites');
 }
