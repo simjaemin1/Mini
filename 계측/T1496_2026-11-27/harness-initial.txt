@@ -1,0 +1,13 @@
+PASS default OFF undefined
+PASS default OFF 0
+PASS default OFF 
+PASS default OFF false
+PASS ON flow
+PASS ON held
+PASS ON noDemand
+PASS ON noTrees
+PASS ON noWorkers
+PASS ON offAct
+PASS bait early is assertion RED
+PASS bait held is assertion RED
+PASS 12 FAIL 0

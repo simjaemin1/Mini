@@ -1,0 +1,3 @@
+# 옛 코드 빨강 — 하네스 = bb4da4e6a · 제품(server sim public lab) = 2ce164b94 · 시한 600초
+빨강 ○ | test-t1496-body-first.js | RC=1 · ✓ 10 · ✗ 9 | FAIL ON flow: node:assert:150
+# 합: 빨강 1 · 크래시 0 · 초록 0 · 모름 0 · 제품 무관 0

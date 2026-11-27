@@ -1,0 +1,22 @@
+{
+ "card": "T1496",
+ "branch": "batch/wood-body-first-1127",
+ "base": "2ce164b94",
+ "reference": "origin/batch/wood-site-1127@88a9ed68d",
+ "source": {
+  "server/villages.js": "693e98ab4a9f5f8fbdb64e81d403721169a3f4d459f7a520faf08c5d078dcaa1",
+  "sim/economy-sim.js": "177576961feddeaef03acec9ff675849eabc4a2a0e6b72d1307fd330bbf0e94d",
+  "server/zone.js": "0eaefaecdc90a67ba1b692c9a0812f166548925d9ecf003bc7cea1c376128dc5",
+  "scripts/test-t1496-body-first.js": "4c9490d0647c65289623b6330ff43c2ab1c91e48c8c84118e0952c60fd2f32a5",
+  "scripts/ci-class.json": "38a0d53719ad9b628fa4f0c9b77411a7b9fe1381249c06696a4a67a31997a9ca",
+  ".github/workflows/regress-unit.yml": "97bc249e973f4d01f6a49ae159bdec009d51a07d69de9aaf5a947978f4697cdb"
+ },
+ "productFiles": [
+  "server/villages.js"
+ ],
+ "default": "OFF; only literal 1 enables T1496_BODY_FIRST",
+ "worldLimit": 2,
+ "node": "22.23.0",
+ "abi": 127,
+ "scope": "Wood day ordering and uncovered demand; no job-choice or economy formula changes"
+}

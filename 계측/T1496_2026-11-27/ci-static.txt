@@ -1,0 +1,2 @@
+--static — 이 가지가 바꾼 하네스 6종만(test-dusk-stamp.js test-farm-act.js test-fell-loot.js test-t1496-body-first.js test-wood-act.js test-wood-step1.js) · 전부는 --all
+글자 분류 6종 · 가 95 · 나 280 · 다 108 · 라 12
