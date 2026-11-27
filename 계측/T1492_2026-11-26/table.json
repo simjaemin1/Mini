@@ -1,0 +1,1477 @@
+{
+ "runs": {
+  "off-1020": {
+   "kind": "long",
+   "target": 800,
+   "reached": 650,
+   "status": "끊음(날 650 · 시간)",
+   "sec": 17159,
+   "dead": [
+    "off-1020 마디 죽음(코드 3 · ck=0) 2026-11-26T20:16:22Z — 다시",
+    "off-1020 마디 죽음(코드 3 · ck=400) 2026-11-26T20:19:09Z — 다시",
+    "off-1020 마디 죽음(코드 3 · ck=400) 2026-11-26T20:22:01Z — 다시",
+    "off-1020 마디 죽음(코드 3 · ck=400) 2026-11-26T20:24:51Z — 다시",
+    "off-1020 같은 마디(ck=400) 세 번 죽음 — 멈춤 2026-11-26T20:24:51Z",
+    "off-1020 · terrseq-1020 마디 400→500 SIGBUS(봇 관찰기 DB 읽기가 better-sqlite3 — 존 node:sqlite 와 다른 SQLite 사본 · -shm 다시 세움 · gdb walIndexAppend) — 관찰기를 node:sqlite 로 고치고 ck=400 에서 다시 2026-11-26T20:36:44Z",
+    "off-1020 2026-11-26T20:36:48Z 끊김 → 다시 2026-11-27T00:26:06Z ck=500"
+   ]
+  },
+  "terrseq-1020": {
+   "kind": "long",
+   "target": 800,
+   "reached": 650,
+   "status": "끊음(날 650 · 시간)",
+   "sec": 17009,
+   "dead": [
+    "terrseq-1020 마디 죽음(코드 3 · ck=0) 2026-11-26T20:16:33Z — 다시",
+    "terrseq-1020 마디 죽음(코드 3 · ck=400) 2026-11-26T20:19:20Z — 다시",
+    "terrseq-1020 마디 죽음(코드 3 · ck=400) 2026-11-26T20:22:10Z — 다시",
+    "terrseq-1020 마디 죽음(코드 3 · ck=400) 2026-11-26T20:25:00Z — 다시",
+    "terrseq-1020 같은 마디(ck=400) 세 번 죽음 — 멈춤 2026-11-26T20:25:00Z",
+    "terrseq-1020 2026-11-26T20:36:48Z 끊김 → 다시 2026-11-27T00:26:06Z ck=500"
+   ]
+  },
+  "all4-1020": {
+   "kind": "long",
+   "target": 800,
+   "reached": 650,
+   "status": "끊음(날 650 · 시간)",
+   "sec": 5501,
+   "dead": [
+    "all4-1020 2026-11-26T18:11:19Z 끊김 → 다시 2026-11-27T00:26:06Z ck=600"
+   ]
+  },
+  "nd-u0-1020": {
+   "kind": "long",
+   "target": 100,
+   "reached": 100,
+   "status": "끝",
+   "sec": 1900,
+   "dead": []
+  },
+  "nd-u1-1020": {
+   "kind": "long",
+   "target": 100,
+   "reached": 100,
+   "status": "끝",
+   "sec": 1903,
+   "dead": []
+  },
+  "nd-u0-7": {
+   "kind": "long",
+   "target": 100,
+   "reached": 100,
+   "status": "끝",
+   "sec": 1694,
+   "dead": []
+  },
+  "nd-u1-7": {
+   "kind": "long",
+   "target": 100,
+   "reached": 100,
+   "status": "끝",
+   "sec": 1790,
+   "dead": []
+  },
+  "nd-u0-42": {
+   "kind": "long",
+   "target": 100,
+   "reached": 100,
+   "status": "끝",
+   "sec": 1793,
+   "dead": []
+  },
+  "nd-u1-42": {
+   "kind": "long",
+   "target": 100,
+   "reached": 100,
+   "status": "끝",
+   "sec": 1776,
+   "dead": []
+  },
+  "off-7": {
+   "kind": "long",
+   "target": 300,
+   "reached": 300,
+   "status": "끝",
+   "sec": 9882,
+   "dead": []
+  },
+  "terrseq-7": {
+   "kind": "long",
+   "target": 300,
+   "reached": 300,
+   "status": "끝",
+   "sec": 10405,
+   "dead": []
+  },
+  "off-42": {
+   "kind": "long",
+   "target": 300,
+   "reached": 300,
+   "status": "끝",
+   "sec": 9634,
+   "dead": []
+  },
+  "terrseq-42": {
+   "kind": "long",
+   "target": 300,
+   "reached": 300,
+   "status": "끝",
+   "sec": 10047,
+   "dead": []
+  },
+  "npcdeath-1020": {
+   "kind": "long",
+   "target": 300,
+   "reached": 300,
+   "status": "끝",
+   "sec": 9673,
+   "dead": []
+  },
+  "react-1020": {
+   "kind": "long",
+   "target": 300,
+   "reached": 300,
+   "status": "끝",
+   "sec": 10074,
+   "dead": []
+  },
+  "nobuild-1020": {
+   "kind": "long",
+   "target": 300,
+   "reached": 226,
+   "status": "끊음(날 226 · 시간)",
+   "sec": 4980,
+   "dead": []
+  },
+  "cnt-off-1020": {
+   "kind": "short",
+   "target": 22,
+   "reached": 22,
+   "status": "끝",
+   "sec": 492,
+   "dead": []
+  },
+  "main-off-1020": {
+   "kind": "short",
+   "target": 60,
+   "reached": 60,
+   "status": "끝",
+   "sec": 1437,
+   "dead": []
+  },
+  "prof-off-1020": {
+   "kind": "short",
+   "target": 22,
+   "reached": 22,
+   "status": "끝",
+   "sec": 520,
+   "dead": []
+  },
+  "prof-nobuild-1020": {
+   "kind": "short",
+   "target": 22,
+   "reached": 22,
+   "status": "끝",
+   "sec": 572,
+   "dead": []
+  },
+  "ss-react-1020": {
+   "kind": "short",
+   "target": 60,
+   "reached": 60,
+   "status": "끝",
+   "sec": 1696,
+   "dead": []
+  },
+  "jp-off-1020": {
+   "kind": "short",
+   "target": 60,
+   "reached": 60,
+   "status": "끝(판 자 검사 코드 1 — 마을 40곳 넘음 검사 · 닛폰 36곳)",
+   "sec": 2081,
+   "dead": []
+  },
+  "jp-nobuild-1020": {
+   "kind": "short",
+   "target": 60,
+   "reached": 60,
+   "status": "끝(판 자 검사 코드 1 — 마을 40곳 넘음 검사 · 닛폰 36곳)",
+   "sec": 1430,
+   "dead": []
+  }
+ },
+ "item1": {
+  "rows": {
+   "7": [
+    {
+     "d": 100,
+     "vbOff": 318307,
+     "vbOn": 70331,
+     "dbOff": 160.87296295166016,
+     "dbOn": 149.69337463378906,
+     "terrOff": 248490,
+     "terrOn": 248490,
+     "spdOff": 26.985714285714284,
+     "spdOn": 27.21836734693878,
+     "popOff": 1829,
+     "popOn": 1829,
+     "ratio": 0.2209533563509442
+    },
+    {
+     "d": 200,
+     "vbOff": 399900,
+     "vbOn": 87734,
+     "dbOff": 205.4765625,
+     "dbOn": 190.14786529541016,
+     "terrOff": 312870,
+     "terrOn": 312870,
+     "spdOff": 29.863265306122454,
+     "spdOn": 32.73265306122448,
+     "popOff": 2560,
+     "popOn": 2560,
+     "ratio": 0.21938984746186546
+    },
+    {
+     "d": 300,
+     "vbOff": 542830,
+     "vbOn": 116528,
+     "dbOff": 234.58565521240234,
+     "dbOn": 211.88903045654297,
+     "terrOff": 427170,
+     "terrOn": 427170,
+     "spdOff": 40.245918367346924,
+     "spdOn": 42.37448979591836,
+     "popOff": 3605,
+     "popOn": 3605,
+     "ratio": 0.21466757548403737
+    }
+   ],
+   "42": [
+    {
+     "d": 100,
+     "vbOff": 323062,
+     "vbOn": 71570,
+     "dbOff": 159.77880859375,
+     "dbOn": 144.03445434570312,
+     "terrOff": 252030,
+     "terrOn": 252030,
+     "spdOff": 27.398979591836728,
+     "spdOn": 30.83979591836734,
+     "popOff": 1887,
+     "popOn": 1887,
+     "ratio": 0.2215364233490785
+    },
+    {
+     "d": 200,
+     "vbOff": 424265,
+     "vbOn": 93555,
+     "dbOff": 204.85140991210938,
+     "dbOn": 186.75592041015625,
+     "terrOff": 331590,
+     "terrOn": 331590,
+     "spdOff": 32.774489795918385,
+     "spdOn": 34.55714285714286,
+     "popOff": 2827,
+     "popOn": 2827,
+     "ratio": 0.22051076567711217
+    },
+    {
+     "d": 300,
+     "vbOff": 550379,
+     "vbOn": 116313,
+     "dbOff": 236.11687469482422,
+     "dbOn": 211.66481018066406,
+     "terrOff": 434670,
+     "terrOn": 434670,
+     "spdOff": 34.3,
+     "spdOn": 33.183673469387756,
+     "popOff": 3628,
+     "popOn": 3628,
+     "ratio": 0.2113325544760974
+    }
+   ],
+   "1020": [
+    {
+     "d": 100,
+     "vbOff": 313011,
+     "vbOn": 69050,
+     "dbOff": 84.02935791015625,
+     "dbOn": 69.50592041015625,
+     "terrOff": 245190,
+     "terrOn": 245190,
+     "spdOff": 25.465656565656566,
+     "spdOn": 25.429292929292934,
+     "popOff": 1736,
+     "popOn": 1736,
+     "ratio": 0.22059927606378052
+    },
+    {
+     "d": 200,
+     "vbOff": 393188,
+     "vbOn": 87098,
+     "dbOff": 176.07154846191406,
+     "dbOn": 159.93868255615234,
+     "terrOff": 307170,
+     "terrOn": 307170,
+     "spdOff": 26.91717171717172,
+     "spdOn": 27.195959595959597,
+     "popOff": 2573,
+     "popOn": 2573,
+     "ratio": 0.22151744203790552
+    },
+    {
+     "d": 300,
+     "vbOff": 524640,
+     "vbOn": 114022,
+     "dbOff": 211.76934814453125,
+     "dbOn": 190.17411041259766,
+     "terrOff": 412410,
+     "terrOn": 412410,
+     "spdOff": 26.134343434343435,
+     "spdOn": 25.949494949494948,
+     "popOff": 3473,
+     "popOn": 3473,
+     "ratio": 0.21733379078987497
+    },
+    {
+     "d": 400,
+     "vbOff": 623917,
+     "vbOn": 134309,
+     "dbOff": 235.12860870361328,
+     "dbOn": 210.20073699951172,
+     "terrOff": 490950,
+     "terrOn": 490950,
+     "spdOff": 52.56565656565657,
+     "spdOn": 52.64949494949495,
+     "popOff": 4148,
+     "popOn": 4148,
+     "ratio": 0.2152674153773659
+    },
+    {
+     "d": 500,
+     "vbOff": 750198,
+     "vbOn": 160991,
+     "dbOff": 367.18273162841797,
+     "dbOn": 337.44398498535156,
+     "terrOff": 590910,
+     "terrOn": 590910,
+     "spdOff": 62.16161616161617,
+     "spdOn": 62.47979797979798,
+     "popOff": 5168,
+     "popOn": 5168,
+     "ratio": 0.21459801279128976
+    },
+    {
+     "d": 600,
+     "vbOff": 823559,
+     "vbOn": 175899,
+     "dbOff": 480.6199188232422,
+     "dbOn": 442.65476989746094,
+     "terrOff": 648090,
+     "terrOn": 648090,
+     "spdOff": 79.7,
+     "spdOn": 79.96020408163265,
+     "popOff": 5486,
+     "popOn": 5486,
+     "ratio": 0.2135839690902534
+    },
+    {
+     "d": 650,
+     "vbOff": 849474,
+     "vbOn": 182845,
+     "dbOff": 526.8183898925781,
+     "dbOn": 485.576904296875,
+     "terrOff": 671010,
+     "terrOn": 671010,
+     "spdOff": 138.21530612244902,
+     "spdOn": 136.4632653061225,
+     "popOff": 5595,
+     "popOn": 5595,
+     "ratio": 0.21524496335379306
+    }
+   ]
+  },
+  "regrow": [
+   {
+    "s": "7",
+    "rg": null,
+    "minD": 300,
+    "below": null,
+    "lastD": 300
+   },
+   {
+    "s": "42",
+    "rg": null,
+    "minD": 300,
+    "below": null,
+    "lastD": 300
+   },
+   {
+    "s": "1020",
+    "rg": null,
+    "minD": 600,
+    "below": true,
+    "lastD": 650
+   }
+  ]
+ },
+ "item2": {
+  "owner": {
+   "fn": "_distMatrixGen @server/villages.js:4396",
+   "inner": "_searchStep @sim/path-core.js:351",
+   "innerMs": 12696.808823529413,
+   "innerCalls": [
+    839314.25,
+    37871.76470588235
+   ],
+   "calls": [
+    1,
+    0
+   ],
+   "extraSec": 31.025,
+   "spikeDays": [
+    6,
+    9,
+    16,
+    19
+   ],
+   "med": 16.09,
+   "edge": [
+    300254404.75,
+    7178483.176470588
+   ]
+  },
+  "knobSpd": {
+   "off": [
+    26.044680851063827,
+    61.33756906077345
+   ],
+   "nobuild": [
+    21.579569892473117,
+    21.409756097560972
+   ],
+   "react": [
+    33.42258064516128,
+    33.17551020408164
+   ],
+   "npcdeath": [
+    31.809677419354852,
+    31.92346938775508
+   ],
+   "terrseq": [
+    26.02659574468085,
+    61.168876611418085
+   ],
+   "all4": [
+    16.376595744680852,
+    40.62279411764707
+   ],
+   "jp-off": [
+    34.803703703703704,
+    null
+   ],
+   "jp-nobuild": [
+    23.820370370370373,
+    null
+   ]
+  },
+  "refSpd": {
+   "off": {
+    "spd": 28.446296296296296,
+    "spikes": 39,
+    "onBridge": 36
+   },
+   "nobuild": {
+    "spd": 19.505555555555556,
+    "spikes": 6,
+    "onBridge": 3
+   },
+   "react": {
+    "spd": 30.75,
+    "spikes": 40,
+    "onBridge": 36
+   },
+   "npcdeath": {
+    "spd": 28.15925925925926,
+    "spikes": 39,
+    "onBridge": 36
+   },
+   "terrseq": {
+    "spd": 29.25185185185185,
+    "spikes": 39,
+    "onBridge": 36
+   }
+  }
+ },
+ "item3": {
+  "site": "walk · merchant · _t1182Walk ← _t1182Move ← tickCaravanBodies ← onGameTick",
+  "n": 441516,
+  "share": 1,
+  "rep": 0.9993612915500231,
+  "still": 0.9993726161679305,
+  "totRep": 0.9993612915500231,
+  "cpuPct": 0.9975200358684083,
+  "total": 441516
+ },
+ "item4": {
+  "runs": [
+   {
+    "n": "nd-u0-1020",
+    "d": 100,
+    "pop": 1806,
+    "died": 0,
+    "wild": 0,
+    "other": 0,
+    "ticks": 0,
+    "hits": 0,
+    "maxLab": 0,
+    "maxZone": 449,
+    "maxAg": 0,
+    "maxAct": 0,
+    "enc": 356
+   },
+   {
+    "n": "nd-u0-42",
+    "d": 100,
+    "pop": 1657,
+    "died": 0,
+    "wild": 0,
+    "other": 0,
+    "ticks": 0,
+    "hits": 0,
+    "maxLab": 0,
+    "maxZone": 449,
+    "maxAg": 0,
+    "maxAct": 0,
+    "enc": 326
+   },
+   {
+    "n": "nd-u0-7",
+    "d": 100,
+    "pop": 1959,
+    "died": 0,
+    "wild": 0,
+    "other": 0,
+    "ticks": 0,
+    "hits": 0,
+    "maxLab": 0,
+    "maxZone": 449,
+    "maxAg": 0,
+    "maxAct": 0,
+    "enc": 302
+   },
+   {
+    "n": "nd-u1-1020",
+    "d": 100,
+    "pop": 1806,
+    "died": 0,
+    "wild": 0,
+    "other": 0,
+    "ticks": 0,
+    "hits": 0,
+    "maxLab": 0,
+    "maxZone": 449,
+    "maxAg": 0,
+    "maxAct": 0,
+    "enc": 356
+   },
+   {
+    "n": "nd-u1-42",
+    "d": 100,
+    "pop": 1657,
+    "died": 0,
+    "wild": 0,
+    "other": 0,
+    "ticks": 0,
+    "hits": 0,
+    "maxLab": 0,
+    "maxZone": 449,
+    "maxAg": 0,
+    "maxAct": 0,
+    "enc": 326
+   },
+   {
+    "n": "nd-u1-7",
+    "d": 100,
+    "pop": 1959,
+    "died": 0,
+    "wild": 0,
+    "other": 0,
+    "ticks": 0,
+    "hits": 0,
+    "maxLab": 0,
+    "maxZone": 449,
+    "maxAg": 0,
+    "maxAct": 0,
+    "enc": 302
+   }
+  ],
+  "beastHits": 0,
+  "why4": "짐승 449 · 활성 청크에 선 짐승 0 · 만날 짝 1968(날 표본) · 맞힘 0 — 보는 사람 0 이라 활성 청크 0 · 야생 층 · 존 몹 걸음이 안 돎 · T1461 은 사냥판(T1331 · T1393 끔 기본) 안에서만",
+  "funnel": {
+   "zone": 2694,
+   "act": 0,
+   "enc": 1968
+  }
+ },
+ "item5": [
+  {
+   "d": 100,
+   "k": "pop",
+   "off": 1736,
+   "all": 1799,
+   "eff": [
+    5,
+    105,
+    142,
+    0
+   ],
+   "sum": 252,
+   "overlap": -189,
+   "full": true
+  },
+  {
+   "d": 100,
+   "k": "dead",
+   "off": 3,
+   "all": 3,
+   "eff": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "sum": 0,
+   "overlap": 0,
+   "full": true
+  },
+  {
+   "d": 100,
+   "k": "fd",
+   "off": 0,
+   "all": 0,
+   "eff": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "sum": 0,
+   "overlap": 0,
+   "full": true
+  },
+  {
+   "d": 100,
+   "k": "empty",
+   "off": 0,
+   "all": 0,
+   "eff": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "sum": 0,
+   "overlap": 0,
+   "full": true
+  },
+  {
+   "d": 100,
+   "k": "vb",
+   "off": 313011,
+   "all": 70682,
+   "eff": [
+    346,
+    9324,
+    12125,
+    -243961
+   ],
+   "sum": -222166,
+   "overlap": -20163,
+   "full": true
+  },
+  {
+   "d": 100,
+   "k": "dbmb",
+   "off": 84.02935791015625,
+   "all": 72.79498291015625,
+   "eff": [
+    null,
+    null,
+    null,
+    -14.5234375
+   ],
+   "sum": -14.5234375,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 100,
+   "k": "spd",
+   "off": 26.044680851063827,
+   "all": 16.376595744680852,
+   "eff": [
+    -4.46511095859071,
+    7.3778997940974556,
+    5.764996568291025,
+    -0.018085106382976335
+   ],
+   "sum": 8.659700297414794,
+   "overlap": -18.32778540379777,
+   "full": true
+  },
+  {
+   "d": 200,
+   "k": "pop",
+   "off": 2573,
+   "all": 2805,
+   "eff": [
+    132,
+    151,
+    211,
+    0
+   ],
+   "sum": 494,
+   "overlap": -262,
+   "full": true
+  },
+  {
+   "d": 200,
+   "k": "dead",
+   "off": 15,
+   "all": 15,
+   "eff": [
+    2,
+    2,
+    4,
+    0
+   ],
+   "sum": 8,
+   "overlap": -8,
+   "full": true
+  },
+  {
+   "d": 200,
+   "k": "fd",
+   "off": 0,
+   "all": 0,
+   "eff": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "sum": 0,
+   "overlap": 0,
+   "full": true
+  },
+  {
+   "d": 200,
+   "k": "empty",
+   "off": 0,
+   "all": 0,
+   "eff": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "sum": 0,
+   "overlap": 0,
+   "full": true
+  },
+  {
+   "d": 200,
+   "k": "vb",
+   "off": 393188,
+   "all": 92863,
+   "eff": [
+    10666,
+    24831,
+    30003,
+    -306090
+   ],
+   "sum": -240590,
+   "overlap": -59735,
+   "full": true
+  },
+  {
+   "d": 200,
+   "k": "dbmb",
+   "off": 176.07154846191406,
+   "all": 178.81338500976562,
+   "eff": [
+    null,
+    null,
+    null,
+    -16.13286590576172
+   ],
+   "sum": -16.13286590576172,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 200,
+   "k": "spd",
+   "off": 26.91717171717172,
+   "all": 16.009090909090908,
+   "eff": [
+    -5.307988043702334,
+    6.004256854256852,
+    3.9501752216037715,
+    0.2787878787878775
+   ],
+   "sum": 4.925231910946167,
+   "overlap": -15.833312719026978,
+   "full": true
+  },
+  {
+   "d": 300,
+   "k": "pop",
+   "off": 3473,
+   "all": 3427,
+   "eff": [
+    null,
+    282,
+    437,
+    0
+   ],
+   "sum": 719,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 300,
+   "k": "dead",
+   "off": 142,
+   "all": 135,
+   "eff": [
+    null,
+    59,
+    35,
+    0
+   ],
+   "sum": 94,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 300,
+   "k": "fd",
+   "off": 0,
+   "all": 0,
+   "eff": [
+    null,
+    0,
+    0,
+    0
+   ],
+   "sum": 0,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 300,
+   "k": "empty",
+   "off": 0,
+   "all": 0,
+   "eff": [
+    null,
+    0,
+    0,
+    0
+   ],
+   "sum": 0,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 300,
+   "k": "vb",
+   "off": 524640,
+   "all": 114651,
+   "eff": [
+    null,
+    38979,
+    55863,
+    -410618
+   ],
+   "sum": -315776,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 300,
+   "k": "dbmb",
+   "off": 211.76934814453125,
+   "all": 205.94739532470703,
+   "eff": [
+    null,
+    null,
+    null,
+    -21.595237731933594
+   ],
+   "sum": -21.595237731933594,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 300,
+   "k": "spd",
+   "off": 26.134343434343435,
+   "all": 16.374747474747473,
+   "eff": [
+    -5.506343434343435,
+    7.295248402391259,
+    6.845248402391249,
+    -0.18484848484848726
+   ],
+   "sum": 8.449304885590585,
+   "overlap": -18.208900845186548,
+   "full": true
+  },
+  {
+   "d": 400,
+   "k": "pop",
+   "off": 4148,
+   "all": 3808,
+   "eff": [
+    null,
+    null,
+    null,
+    0
+   ],
+   "sum": 0,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 400,
+   "k": "dead",
+   "off": 342,
+   "all": 316,
+   "eff": [
+    null,
+    null,
+    null,
+    0
+   ],
+   "sum": 0,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 400,
+   "k": "fd",
+   "off": 0,
+   "all": 0,
+   "eff": [
+    null,
+    null,
+    null,
+    0
+   ],
+   "sum": 0,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 400,
+   "k": "empty",
+   "off": 0,
+   "all": 0,
+   "eff": [
+    null,
+    null,
+    null,
+    0
+   ],
+   "sum": 0,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 400,
+   "k": "vb",
+   "off": 623917,
+   "all": 127351,
+   "eff": [
+    null,
+    null,
+    null,
+    -489608
+   ],
+   "sum": -489608,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 400,
+   "k": "dbmb",
+   "off": 235.12860870361328,
+   "all": 230.55618286132812,
+   "eff": [
+    null,
+    null,
+    null,
+    -24.927871704101562
+   ],
+   "sum": -24.927871704101562,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 400,
+   "k": "spd",
+   "off": 52.56565656565657,
+   "all": 27.591919191919192,
+   "eff": [
+    null,
+    null,
+    null,
+    0.08383838383838338
+   ],
+   "sum": 0.08383838383838338,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 500,
+   "k": "pop",
+   "off": 5168,
+   "all": 5440,
+   "eff": [
+    null,
+    null,
+    null,
+    0
+   ],
+   "sum": 0,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 500,
+   "k": "dead",
+   "off": 440,
+   "all": 370,
+   "eff": [
+    null,
+    null,
+    null,
+    0
+   ],
+   "sum": 0,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 500,
+   "k": "fd",
+   "off": 0,
+   "all": 0,
+   "eff": [
+    null,
+    null,
+    null,
+    0
+   ],
+   "sum": 0,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 500,
+   "k": "empty",
+   "off": 0,
+   "all": 0,
+   "eff": [
+    null,
+    null,
+    null,
+    0
+   ],
+   "sum": 0,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 500,
+   "k": "vb",
+   "off": 750198,
+   "all": 170957,
+   "eff": [
+    null,
+    null,
+    null,
+    -589207
+   ],
+   "sum": -589207,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 500,
+   "k": "dbmb",
+   "off": 367.18273162841797,
+   "all": 303.7970504760742,
+   "eff": [
+    null,
+    null,
+    null,
+    -29.738746643066406
+   ],
+   "sum": -29.738746643066406,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 500,
+   "k": "spd",
+   "off": 62.16161616161617,
+   "all": 48.78181818181819,
+   "eff": [
+    null,
+    null,
+    null,
+    0.3181818181818059
+   ],
+   "sum": 0.3181818181818059,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 600,
+   "k": "pop",
+   "off": 5486,
+   "all": 5557,
+   "eff": [
+    null,
+    null,
+    null,
+    0
+   ],
+   "sum": 0,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 600,
+   "k": "dead",
+   "off": 645,
+   "all": 589,
+   "eff": [
+    null,
+    null,
+    null,
+    0
+   ],
+   "sum": 0,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 600,
+   "k": "fd",
+   "off": 0,
+   "all": 0,
+   "eff": [
+    null,
+    null,
+    null,
+    0
+   ],
+   "sum": 0,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 600,
+   "k": "empty",
+   "off": 0,
+   "all": 0,
+   "eff": [
+    null,
+    null,
+    null,
+    0
+   ],
+   "sum": 0,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 600,
+   "k": "vb",
+   "off": 823559,
+   "all": 185980,
+   "eff": [
+    null,
+    null,
+    null,
+    -647660
+   ],
+   "sum": -647660,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 600,
+   "k": "dbmb",
+   "off": 480.6199188232422,
+   "all": 351.9030227661133,
+   "eff": [
+    null,
+    null,
+    null,
+    -37.96514892578125
+   ],
+   "sum": -37.96514892578125,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 600,
+   "k": "spd",
+   "off": 79.7,
+   "all": 60.12222222222223,
+   "eff": [
+    null,
+    null,
+    null,
+    0.26020408163265074
+   ],
+   "sum": 0.26020408163265074,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 650,
+   "k": "pop",
+   "off": 5595,
+   "all": 5572,
+   "eff": [
+    null,
+    null,
+    null,
+    0
+   ],
+   "sum": 0,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 650,
+   "k": "dead",
+   "off": 871,
+   "all": 817,
+   "eff": [
+    null,
+    null,
+    null,
+    0
+   ],
+   "sum": 0,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 650,
+   "k": "fd",
+   "off": 0,
+   "all": 0,
+   "eff": [
+    null,
+    null,
+    null,
+    0
+   ],
+   "sum": 0,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 650,
+   "k": "empty",
+   "off": 0,
+   "all": 0,
+   "eff": [
+    null,
+    null,
+    null,
+    0
+   ],
+   "sum": 0,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 650,
+   "k": "vb",
+   "off": 849474,
+   "all": 187812,
+   "eff": [
+    null,
+    null,
+    null,
+    -666629
+   ],
+   "sum": -666629,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 650,
+   "k": "dbmb",
+   "off": 526.8183898925781,
+   "all": 446.19632720947266,
+   "eff": [
+    null,
+    null,
+    null,
+    -41.241485595703125
+   ],
+   "sum": -41.241485595703125,
+   "overlap": null,
+   "full": false
+  },
+  {
+   "d": 650,
+   "k": "spd",
+   "off": 138.21530612244902,
+   "all": 89.44949494949492,
+   "eff": [
+    null,
+    null,
+    null,
+    -1.752040816326513
+   ],
+   "sum": -1.752040816326513,
+   "overlap": null,
+   "full": false
+  }
+ ],
+ "fp": {
+  "cnt-off-1020 ~ main": {
+   "tot": 23,
+   "same": 23,
+   "firstDiff": null,
+   "vbSame": true,
+   "ok": true
+  },
+  "cnt-off-1020 ~ T1486": {
+   "tot": 23,
+   "same": 23,
+   "firstDiff": null,
+   "vbSame": true,
+   "ok": true
+  },
+  "main-off-1020 ~ T1486": {
+   "tot": 61,
+   "same": 61,
+   "firstDiff": null,
+   "vbSame": true,
+   "ok": true
+  },
+  "nobuild-1020 ~ T1486": {
+   "tot": 61,
+   "same": 61,
+   "firstDiff": null,
+   "vbSame": true,
+   "ok": true
+  },
+  "npcdeath-1020 ~ T1486": {
+   "tot": 61,
+   "same": 61,
+   "firstDiff": null,
+   "vbSame": true,
+   "ok": true
+  },
+  "off-1020 ~ main": {
+   "tot": 61,
+   "same": 61,
+   "firstDiff": null,
+   "vbSame": true,
+   "ok": true
+  },
+  "off-1020 ~ T1486": {
+   "tot": 61,
+   "same": 61,
+   "firstDiff": null,
+   "vbSame": true,
+   "ok": true
+  },
+  "off-42 ~ T1486": {
+   "tot": 61,
+   "same": 61,
+   "firstDiff": null,
+   "vbSame": true,
+   "ok": true
+  },
+  "off-7 ~ T1486": {
+   "tot": 61,
+   "same": 55,
+   "firstDiff": 55,
+   "vbSame": true,
+   "ok": false
+  },
+  "prof-nobuild-1020 ~ T1486": {
+   "tot": 23,
+   "same": 23,
+   "firstDiff": null,
+   "vbSame": true,
+   "ok": true
+  },
+  "prof-off-1020 ~ main": {
+   "tot": 23,
+   "same": 23,
+   "firstDiff": null,
+   "vbSame": true,
+   "ok": true
+  },
+  "prof-off-1020 ~ T1486": {
+   "tot": 23,
+   "same": 23,
+   "firstDiff": null,
+   "vbSame": true,
+   "ok": true
+  },
+  "react-1020 ~ T1486": {
+   "tot": 61,
+   "same": 61,
+   "firstDiff": null,
+   "vbSame": true,
+   "ok": true
+  },
+  "ss-react-1020 ~ T1486": {
+   "tot": 61,
+   "same": 61,
+   "firstDiff": null,
+   "vbSame": true,
+   "ok": true
+  },
+  "terrseq-1020 ~ T1486": {
+   "tot": 61,
+   "same": 61,
+   "firstDiff": null,
+   "vbSame": true,
+   "ok": true
+  },
+  "terrseq-42 ~ T1486": {
+   "tot": 61,
+   "same": 61,
+   "firstDiff": null,
+   "vbSame": false,
+   "ok": false
+  },
+  "terrseq-7 ~ T1486": {
+   "tot": 61,
+   "same": 55,
+   "firstDiff": 55,
+   "vbSame": false,
+   "ok": false
+  }
+ }
+}
