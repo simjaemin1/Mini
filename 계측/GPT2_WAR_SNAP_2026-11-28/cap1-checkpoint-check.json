@@ -1,0 +1,14 @@
+{
+  "hashes": {
+    "w.db": "cde0db630c7c786e0484e47c63cb2d24fe9914422113713862b91df97771c8f1",
+    "w.db-wal": "d674a4ebece55f9b3c88cf56b12326bb4425fb455df95cd5964039495b480d42",
+    "w.db-shm": "eb118ebc18277666c5b111b516520fc1a65287e5bd00ab7f88b4078e4abac557"
+  },
+  "rngEqual": true,
+  "rng": {
+    "seed": 1621562505,
+    "npc": 1645,
+    "vil": 103,
+    "s0": 42
+  }
+}

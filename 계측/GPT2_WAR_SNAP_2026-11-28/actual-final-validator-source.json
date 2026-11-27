@@ -1,0 +1,12 @@
+{
+  "scripts/war-snapshot-zone-hook.js": "0d262bb888d16871f9e6fb4de8fb48b12ed42e28470cad1e468d2ee4505d7c67",
+  "scripts/t1308-long-run.js": "6bb73567c22b1a3f5f82fb768cd15ed5586d0f9ede64889c532e3342f989d91c",
+  "server/villages.js": "7e4900082ea020f0b199c1e19408cff88b050d609205188db35588b10e55e938",
+  "server/war-live.js": "677899eaced5225af1d69e0b2bc668cebace27b75ef503ec40ebfe4ef35166cf",
+  "server/war-snapshot.js": "699c97f60d15c809665e29b864419a28ac1e8c1902c84acaa515a8cce5051cf4",
+  "server/war-snapshot-host.js": "bf660d04287e45e29cb26a3b8d263b53e786baafc1df4de6269f05e40aefc5f0",
+  "sim/path-core.js": "c098bbf92ead03838fe4818359210c105887c66a469b25636513f45de2b07975",
+  "server/home-population.js": "e3515294e450a52bf38429e5b3cdd6d13a7083c2c9df4c253af7f620484eecb6",
+  "server/granary-lots.js": "5949d40f9addb94caef37c803e3ed53ea82f8093ff7268146772ddfb8cd0e800",
+  "server/lots.js": "f3696fc51b00221bbf1fcb77d9e1c5241eab8075a2b7388c968bf7dc2f22b480"
+}

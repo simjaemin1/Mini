@@ -1,0 +1,170 @@
+[
+  {
+    "bound": "1",
+    "seed": 7,
+    "stage": "muster",
+    "immediate": true,
+    "days": 10
+  },
+  {
+    "bound": "1",
+    "seed": 7,
+    "stage": "march",
+    "immediate": true,
+    "days": 10
+  },
+  {
+    "bound": "1",
+    "seed": 7,
+    "stage": "siege",
+    "immediate": true,
+    "days": 10
+  },
+  {
+    "bound": "1",
+    "seed": 7,
+    "stage": "fight",
+    "immediate": true,
+    "days": 10
+  },
+  {
+    "bound": "1",
+    "seed": 7,
+    "stage": "return",
+    "immediate": true,
+    "days": 10
+  },
+  {
+    "bound": "1",
+    "seed": 7,
+    "stage": "capture",
+    "immediate": true,
+    "days": 10
+  },
+  {
+    "bound": "1",
+    "seed": 42,
+    "stage": "muster",
+    "immediate": true,
+    "days": 10
+  },
+  {
+    "bound": "1",
+    "seed": 42,
+    "stage": "march",
+    "immediate": true,
+    "days": 10
+  },
+  {
+    "bound": "1",
+    "seed": 42,
+    "stage": "siege",
+    "immediate": true,
+    "days": 10
+  },
+  {
+    "bound": "1",
+    "seed": 42,
+    "stage": "fight",
+    "immediate": true,
+    "days": 10
+  },
+  {
+    "bound": "1",
+    "seed": 42,
+    "stage": "return",
+    "immediate": true,
+    "days": 10
+  },
+  {
+    "bound": "1",
+    "seed": 42,
+    "stage": "capture",
+    "immediate": true,
+    "days": 10
+  },
+  {
+    "bound": "0",
+    "seed": 7,
+    "stage": "muster",
+    "immediate": true,
+    "days": 10
+  },
+  {
+    "bound": "0",
+    "seed": 7,
+    "stage": "march",
+    "immediate": true,
+    "days": 10
+  },
+  {
+    "bound": "0",
+    "seed": 7,
+    "stage": "siege",
+    "immediate": true,
+    "days": 10
+  },
+  {
+    "bound": "0",
+    "seed": 7,
+    "stage": "fight",
+    "immediate": true,
+    "days": 10
+  },
+  {
+    "bound": "0",
+    "seed": 7,
+    "stage": "return",
+    "immediate": true,
+    "days": 10
+  },
+  {
+    "bound": "0",
+    "seed": 7,
+    "stage": "capture",
+    "immediate": true,
+    "days": 10
+  },
+  {
+    "bound": "0",
+    "seed": 42,
+    "stage": "muster",
+    "immediate": true,
+    "days": 10
+  },
+  {
+    "bound": "0",
+    "seed": 42,
+    "stage": "march",
+    "immediate": true,
+    "days": 10
+  },
+  {
+    "bound": "0",
+    "seed": 42,
+    "stage": "siege",
+    "immediate": true,
+    "days": 10
+  },
+  {
+    "bound": "0",
+    "seed": 42,
+    "stage": "fight",
+    "immediate": true,
+    "days": 10
+  },
+  {
+    "bound": "0",
+    "seed": 42,
+    "stage": "return",
+    "immediate": true,
+    "days": 10
+  },
+  {
+    "bound": "0",
+    "seed": 42,
+    "stage": "capture",
+    "immediate": true,
+    "days": 10
+  }
+]

@@ -1,0 +1,134 @@
+{
+  "test-war-snapshot-corners.js": {
+    "cls0": "나",
+    "why0": "child_process",
+    "cls": "가",
+    "maxSec": 0.4,
+    "same5": true,
+    "core": true,
+    "why": "core",
+    "runs": [
+      {
+        "rc": 0,
+        "secs": 0.3,
+        "green": true,
+        "fails": []
+      },
+      {
+        "rc": 0,
+        "secs": 0.3,
+        "green": true,
+        "fails": []
+      },
+      {
+        "rc": 0,
+        "secs": 0.3,
+        "green": true,
+        "fails": []
+      },
+      {
+        "rc": 0,
+        "secs": 0.3,
+        "green": true,
+        "fails": []
+      },
+      {
+        "rc": 0,
+        "secs": 0.4,
+        "green": true,
+        "fails": []
+      }
+    ],
+    "dyn": "가"
+  },
+  "test-war-snapshot-data.js": {
+    "cls0": "나",
+    "why0": "child_process",
+    "cls": "나",
+    "maxSec": 1.5,
+    "same5": true,
+    "core": true,
+    "why": "core",
+    "runs": [
+      {
+        "rc": 0,
+        "secs": 1.2,
+        "green": true,
+        "fails": []
+      },
+      {
+        "rc": 0,
+        "secs": 1.1,
+        "green": true,
+        "fails": []
+      },
+      {
+        "rc": 0,
+        "secs": 1.1,
+        "green": true,
+        "fails": []
+      },
+      {
+        "rc": 0,
+        "secs": 1.2,
+        "green": true,
+        "fails": []
+      },
+      {
+        "rc": 0,
+        "secs": 1.5,
+        "green": true,
+        "fails": []
+      }
+    ],
+    "dyn": "나",
+    "child": [
+      "spawnSync node"
+    ]
+  },
+  "test-war-snapshot.js": {
+    "cls0": "나",
+    "why0": "child_process",
+    "cls": "나",
+    "maxSec": 20,
+    "same5": true,
+    "core": true,
+    "why": "core",
+    "runs": [
+      {
+        "rc": 0,
+        "secs": 19.6,
+        "green": true,
+        "fails": []
+      },
+      {
+        "rc": 0,
+        "secs": 20,
+        "green": true,
+        "fails": []
+      },
+      {
+        "rc": 0,
+        "secs": 19.6,
+        "green": true,
+        "fails": []
+      },
+      {
+        "rc": 0,
+        "secs": 19.2,
+        "green": true,
+        "fails": []
+      },
+      {
+        "rc": 0,
+        "secs": 17.5,
+        "green": true,
+        "fails": []
+      }
+    ],
+    "dyn": "나",
+    "child": [
+      "spawnSync node"
+    ]
+  }
+}

@@ -1358,7 +1358,7 @@
       "id": "R31",
       "what": "전투 시작 위치·장애물",
       "disposition": "allow",
-      "reason": "독립 전투 표준 배치/실험 장애물과 존의 실제 좌표/장애물은 같은 BattleCore에 주는 다른 입력이다.",
+      "reason": "독립 전투 표준 배치/실험 장애물과 존의 실제 좌표/장애물은 같은 BattleCore에 주는 다른 입력이다. GPT2 WAR_SNAP은 기존 onArrow 설치를 bindFight로 분리해 저장된 ctx에 재결합한다(전투식 무변). makeFight와 bindFight를 각각 잠근다. OFF native 저장 바이트 동치와 물리 전투 연속/재개 비교는 보고/GPT2_WAR_SNAP_2026-11-28.md.",
       "lab": {
         "file": "lab/전투실험실.html",
         "line": 817,
@@ -1403,8 +1403,17 @@
             "kind": "function",
             "name": "makeFight"
           },
-          "hash": "685dd5b4ba26086a3b3844825e436f5ce84cb56a5b13315f324cf7eb0a050060",
-          "line": 333
+          "hash": "5a4e679b8aa00137179ce5414d08885e0e333970994f49272a835dc018605954",
+          "line": 338
+        },
+        {
+          "file": "server/war-live.js",
+          "selector": {
+            "kind": "function",
+            "name": "bindFight"
+          },
+          "hash": "0ec2fe58b5748b0f459e4972f5e92898f8fb47b9e0166e4a3386d2f77f42c98b",
+          "line": 351
         }
       ]
     },

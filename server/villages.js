@@ -10442,8 +10442,9 @@ function init(deps) {
         catch (e) { state._warStat.engageErr++; console.error(`[${state.zoneId}] ⚔️ 교전 훅 실패(이 전투만 war-core 정산으로 떨어진다):`, e.message); return false; }
       },
     });
-    if (T1167_WAR && T728_KEEP) { try { _t1167Early(); } catch (e) { console.error(`[${ZONE_ID}] ⚔️ [T1167] 진행 중 전쟁 되살림 실패(종전대로 계속):`, e.message); } }   // ★[T1167] 거울 정산 앞(짐이 쥔 무기를 곳간에 두 번 안 낸다)
-    state.war.rebuildFromEcon();   // 재부팅 복원: econ._warTribOut → world TRIBUTES 재구성
+    if (T1497_WAR_SNAP) _warSnapEarly();
+    if (T1167_WAR && T728_KEEP && !_warSnapPending) { try { _t1167Early(); } catch (e) { console.error(`[${ZONE_ID}] ⚔️ [T1167] 진행 중 전쟁 되살림 실패(종전대로 계속):`, e.message); } }   // ★[T1167] 거울 정산 앞(짐이 쥔 무기를 곳간에 두 번 안 낸다)
+    if (!_warSnapPending) state.war.rebuildFromEcon();   // WAR_SNAP: atomic saved ledger already matches the saved bodies; no mirror refund. 재부팅 복원: econ._warTribOut → world TRIBUTES 재구성
     if (state.war.rationActOn && state.war.rationActOn()) console.log(`[${state.zoneId}] 🍙 [T423] 짐이 먹는다 켬 — 원정 팩은 병사 몸의 짐 · 하루 경계에 몸이 먹는다 · 원정군은 마을 식사에서 빠진다`);
 
     // --- 실체 전쟁 기하(server/war-live) — 대형·교전 · 좌표 = 존(1셀 = 1m = 32px · zone.js "32px=1m") ---
@@ -10540,10 +10541,11 @@ function init(deps) {
     }
 
     // --- Stage 2: NPC 스폰 (부팅은 목표치까지 한 번에 — 클라 접속 전) ---
-    if (T1340_EXACT) { try { _t1382PreSpawn(); } catch (e) { _t1382Stat.err = e.message; console.error(`[${ZONE_ID}] 🏘️ [T1382] 마을 몸 저장 pid 로 낳기 실패(종전 길로 계속):`, e.message); } }   // ★[T1382 ㉠]
+    if (_warSnapPending) require('./war-snapshot-host').prepareBodies(_warSnapPending, state);
+    if (T1340_EXACT && !_warSnapPending) { try { _t1382PreSpawn(); } catch (e) { _t1382Stat.err = e.message; console.error(`[${ZONE_ID}] 🏘️ [T1382] 마을 몸 저장 pid 로 낳기 실패(종전 길로 계속):`, e.message); } }   // ★[T1382 ㉠]
     let npcTotal = 0;
     for (const vil of state.villages) {
-      syncVillagePop(vil, Infinity);
+      if (!_warSnapPending) syncVillagePop(vil, Infinity);
       npcTotal += vil.npcPids.length;
     }
     // --- Stage 4A: 직업 배정(부팅 1회 — 클라 접속 전이라 브로드캐스트 불필요, AOI isNew에 실림) ---
@@ -10568,7 +10570,7 @@ function init(deps) {
     if (T747_BODY) { try { _t747Restore(); } catch (e) { console.error(`[${ZONE_ID}] 🏘️ [T747] 몸 칸 복원 실패(종전대로 계속):`, e.message); } }
     else for (const v of state.villages) if (v.econ && _t862Has(v.econ, '_t747Body')) _t862Drop(v.econ, '_t747Body');   // ★[T747] 끔 — 켬으로 적은 행의 곁 칸을 econ 에 남기지 않는다(main 행엔 이 칸이 없어 무동작)
     if (T1471_LAND_FIT) { try { _t1471Bodies(); } catch (e) { console.error(`[${ZONE_ID}] 🏔️ [T1471] 산 속 몸 꺼내기 실패(그대로 계속):`, e.message); } }   // ★[T1471] 켬 = 되돌린 몸 자리가 지금 산 · 물이면 그 집 앞으로(끔 = 이 줄 0)
-    if (T1167_WAR) { try { _t1167Bind(); } catch (e) { console.error(`[${ZONE_ID}] ⚔️ [T1167] 전쟁 몸 다시 잇기 실패(명부 없이 계속):`, e.message); } }   // ★[T1167] 몸이 선 뒤 — 자리 → 새 pid · 낡은 징발 pid 지움
+    if (T1167_WAR && !_warSnapPending) { try { _t1167Bind(); } catch (e) { console.error(`[${ZONE_ID}] ⚔️ [T1167] 전쟁 몸 다시 잇기 실패(명부 없이 계속):`, e.message); } }   // ★[T1167] 몸이 선 뒤 — 자리 → 새 pid · 낡은 징발 pid 지움
     if (T1340_EXACT && state._t1372Car) { try { _t1372CarRestore(); } catch (e) { _t1372Stat.err = e.message; console.error(`[${ZONE_ID}] 🐂 [T1372] 캐러밴 몸 되살림 실패(종전 T775 길로 계속):`, e.message); } }   // ★[T1372 ⓐ] 마을 몸이 선 바로 뒤(저장 pid 차례)
     if (T822_BODY_SEED) _t833Boot();   // ★[T833] 되살림(T728 메타 · T747 몸 칸) 뒤 — 명부 자리 열쇠로 한 번(같은 판 씨 · 같은 자리면 되살린 값 그대로)
     if (_T732_ON) { try { _t732Boot(); } catch (e) { console.error(`[${ZONE_ID}] 🧺 [T732] 곳간 로트 장부 붙이기 실패(장부 없이 계속):`, e.message); } }
@@ -10577,10 +10579,12 @@ function init(deps) {
     if (econV2.T525_CROSS_ZONE && deps.xzonePost) { try { _xzInit(ZONE_ID); } catch (e) { state.xzone = null; console.error(`[${ZONE_ID}] 🌐 [T533] 경계 호스트 실패(경계 닫힌 채 계속):`, e.message); } }
     if (state._routeWarmPending) { state._routeWarmPending = false; try { _routeWarmBuild(); } catch (e) {} }   // ★[T42 ①ⓑ]
     if (T1340_EXACT && _t1382RtPend) { try { _t1382RtRestore(); } catch (e) { _t1382RtStat.err = e.message; console.error(`[${ZONE_ID}] 🛣️ [T1382] 교역로 줄 되돌림 실패(종전대로 계속):`, e.message); } }   // ★[T1382 ㉤] 부팅 끝 — 부팅이 다시 잰 · 다시 받은 것을 덮는다
+    if (_warSnapPending) { _warSnapRestore(_warSnapPending); _warSnapPending = null; _t1167Pend = null; }
     state.ready = true;
     console.log(`[${ZONE_ID}] 🏘️ 마을 시뮬 준비: 마을 ${state.villages.length}, econ 인구 ${world.villages.reduce((s, v) => s + v.npcs.length, 0)}, 스폰 NPC ${npcTotal}, econ day ${world.day}, 게임일 ${state.dayMs / 1000}s${process.env.VILLAGE_DAY_MS ? ' (VILLAGE_DAY_MS 테스트 오버라이드)' : ''}`);
   } catch (e) {
     state.ready = false;
+    if (T1497_WAR_SNAP && (e.code === 'WAR_SNAP_INVALID' || /^WAR_SNAP:/.test(e.message))) throw e;
     console.error(`[${state.zoneId || 'zone'}] 🏘️ 마을 시뮬 init 실패 (존 부팅은 계속):`, e.message, e.stack);
   }
 }
@@ -12735,6 +12739,11 @@ function _warTickOne(w, body, now, dtMs, C) {
   return 1;
 }
 function tickWarBodies(now) {
+  if (!T1497_WAR_SNAP) return _tickWarBodies(now);
+  _warSnapBusy++;
+  try { return _tickWarBodies(now); } finally { _warSnapBusy--; }
+}
+function _tickWarBodies(now) {
   if (!state.war || !state.warLive) { state._warTickAt = now; return; }
   const t0 = _perfNow();
   const dtMs = Math.min(500, Math.max(1, now - (state._warTickAt || now)));
@@ -12778,10 +12787,10 @@ function _warSideCtl(f, side) { for (const u of f.ctx.units) if (u.side === side
 //   "이전 자리도 막힘" 이면 제자리라 그 칸에서 **영원히 못 나온다**(T295 후속 주석의 그 판 · 실서버 T530 W1 76셀 `_blk` 1 · 재생 D6~).
 //   나선·술어는 `_warSnapToSlots` 와 같은 것(`_warStandNear`) · 못 찾으면 그대로.
 function _warReleaseAdv(f, A, g) {
-  if (T790_NO_SNAP && g && !(g._t790Walk > 0)) return; // 걸음 정본 미주입은 순간 배치 근거가 아니다.
-  if (T790_NO_SNAP && g && g.units && g._t790Walk > 0 && _t804WalkOut(g)) return;   // ★[T804 ②] 켬 — 막힌 칸 안의 몸은 가장 가까운 설 칸까지 걸어 나온 뒤에 푼다(한 칸 옮기기 0 · 그동안 그 쪽은 대형이 쥔다)
+  if (T790_NO_SNAP && g && !(g._t790Walk > 0)) { _warSnapGate('release-no-walk', f); return; } // 걸음 정본 미주입은 순간 배치 근거가 아니다.
+  if (T790_NO_SNAP && g && g.units && g._t790Walk > 0 && _t804WalkOut(g)) { _warSnapGate('release-walkout', f); return; }   // ★[T804 ②] 켬 — 막힌 칸 안의 몸은 가장 가까운 설 칸까지 걸어 나온 뒤에 푼다(한 칸 옮기기 0 · 그동안 그 쪽은 대형이 쥔다)
   if (!T790_NO_SNAP && g && g.units) for (const u of g.units) { if (u.dead || !_warBlockedCell(u.x, u.y)) continue; const c = _warStandNear(u.x, u.y); if (c) { u.x = c.cx; u.y = c.cy; } }
-  A.released = true; state.warLive.setSideCtl(f, A.side, false);
+  A.released = true; state.warLive.setSideCtl(f, A.side, false); _warSnapGate('advance-released', f);
 }
 // [T1183] 원정 시작은 실제 지휘 몸과 병사가 슬롯에 모인 뒤다.
 function _warGroupReady(g) {
@@ -12794,8 +12803,8 @@ function _warAdvanceMarch(body) {
   const g = A.side === 'A' ? body.atkGroup : body.defGroup;
   if (!g || !g.units.length) { _warReleaseAdv(f, A, g); return; }
   if (T790_NO_SNAP && !A.formed) {
-    if (!_warGroupReady(g)) { WL._muStepFollow(g, _warWalkCap(g)); f.gapT = f.t; return; }
-    A.formed = true;
+    if (!_warGroupReady(g)) { _warSnapGate('form-wait', f); WL._muStepFollow(g, _warWalkCap(g)); f.gapT = f.t; return; }
+    A.formed = true; _warSnapGate('form-ready', f);
   }
   const other = A.side === 'A' ? 'B' : 'A';
   const gc = { cx: g.cmd.cx, cy: g.cmd.cy };   // 대형 원점(흩어진 병사의 무게중심보다 단단하다)
@@ -12804,14 +12813,19 @@ function _warAdvanceMarch(body) {
   const T = aim ? { x: aim.cx * MPC, y: aim.cy * MPC } : f.objective;
   const gm = { x: gc.cx * MPC, y: gc.cy * MPC };
   const dist = Math.hypot(T.x - gm.x, T.y - gm.y);
-  if (dist <= WL.WAR_ENGAGE_R * MPC && _warClearLine(gm.x, gm.y, T.x, T.y)) { _warReleaseAdv(f, A, g); return; }
+  if (dist <= WL.WAR_ENGAGE_R * MPC) {
+    const clear = _warClearLine(gm.x, gm.y, T.x, T.y);
+    _warSnapGate(clear ? 'advance-clear' : 'advance-blocked', f, dist);
+    if (clear) { _warReleaseAdv(f, A, g); return; }
+  } else _warSnapGate('advance-far', f, dist);
   if (T790_NO_SNAP) {
     // 거친 행군선의 다음 미세 점이 벽이면 투영점 왕복에 갇힌다. 실제 적 몸까지 고운 걸음 경로로 간다.
     _warWalkGroupTo(g, { cx: T.x / MPC, cy: T.y / MPC }, _warWalkCap(g));
     const dx = g.cmd.cx - gc.cx, dy = g.cmd.cy - gc.cy;
     const mem = g._t804o, searching = mem && (mem._t821s || (mem._t804r && mem._t804r._t821s));
     if (Math.hypot(dx, dy) > 1e-9) { g.heading = Math.atan2(dy, dx); f.gapT = f.t; }
-    else if (searching) f.gapT = f.t; // 실제 경로 탐색이 진행 중인 동안 대치로 끊지 않는다.
+    else if (searching) f.gapT = f.t;
+    _warSnapGate(searching ? 'advance-search' : Math.hypot(dx, dy) > 1e-9 ? 'advance-move' : 'advance-still', f); // 실제 경로 탐색이 진행 중인 동안 대치로 끊지 않는다.
     return;
   }
   const poly = _warRoutePoly(f); if (!poly) { _warReleaseAdv(f, A, g); return; }
@@ -12980,7 +12994,9 @@ function onGameTick(now) {
   else if (!state.tickJobs) { if (!TB.out(TICK_SLICE_MS, 'route')) try { _routeWarmStep(); } catch (e) {} if (!TB.out(TICK_SLICE_MS, 'redig')) try { _routeRedigStep(); } catch (e) {} if (!TB.out(TICK_SLICE_MS, 'dist')) try { _t968DistBg(); } catch (e) {} }   // ★[T968] 거리행렬 다시 세기(마감 밖 · 선계산 다음 차례)   // ★[T687] 켬이면 이 틱 남은 몫이 없을 때 쉰다   // ★[T578 ④] 데우기 다음 차례 — 길이 바뀐 날 교역로를 다시 판다
   // ★자정 스파이크 분산: DB 직렬화(마을당 ~10KB JSON — 자정 틱 비용의 주범)는 이후 틱에 1마을/틱씩 배수(drain).
   //   econ 틱 자체는 일괄 유지 — 교역(tickWorldV2)이 마을 간 원자적이라 쪼개면 정합이 깨짐. 30Hz 예산(33ms) 보호.
-  if (state.saveQueue && state.saveQueue.length) {
+  if (_warSnapNeedsAtomic() && (_warSnapSavePending || (state.saveQueue && state.saveQueue.length))) {
+    try { if (_warSnapRequest()) state.saveQueue = []; } catch (e) { console.error(`[${state.zoneId}] WAR_SNAP atomic save failed:`, e.message); }
+  } else if (state.saveQueue && state.saveQueue.length) {
     const vil = state.saveQueue.shift();
     try { state.db.updateVillageState(vil.dbId, serializeEcon(vil.econ), vil.econ.npcs.length, state.world.day); } catch (e) { console.error(`[${state.zoneId}] 🏘️ 마을 저장 실패(재큐):`, e.message); state.saveQueue.push(vil); }
     if (T728_KEEP && !state.saveQueue.length) { try { _t728SaveMeta(); } catch (e) { console.error(`[${state.zoneId}] 🏘️ [T728] 메타 행 저장 실패:`, e.message); } }   // ★[T728] 그날 마을 행이 다 적힌 순간의 world 메타
@@ -13845,6 +13861,7 @@ function __p3Bind(mock) {
     T1094_CARRY_CAP, _t1094Stat,   // ★[T1094 문 6] 하네스(`test-t1094-carry-cap` · `test-t1094-arms-trip`)가 손잡이 값 · 셈을 읽는다(내보내기만)
     T811_ARMS_BODY, _warArmsLoad, _warArmsCollect, _warArmsUnload, _t811Fall, _t857Pick, _t811Sync, _t811Stat,   // ★[T811] 무기 몸 짐 — 하네스(`test-arms-body`)가 운영과 같은 문을 부른다(내보내기만)
     T790_NO_SNAP, _t790Stat, _t790Mark, _t790Place, _t790Lag, _warSetupReturn, _warPaceReturn,   // ★[T790] 하네스(`test-war-nosnap`)가 운영과 같은 문을 부른다(내보내기만)
+    _warSnapPack, _warSnapRestore, _warSnapEarly, _warSnapAtomicSave, _warSnapObserve, _warSnapNeedsAtomic, _warSnapRequest,
     _t804Way, _t804WalkOut, _t804Stat, _warWalkGroupTo,   // ★[T804] 걷는 몸의 길 · 전진 풀기 걸음 — 하네스가 운영과 같은 문을 부른다(내보내기만)
     _t821Stat,   // ★[T821] 재개형 걸음 탐색 셈(내보내기만 — 관찰자 · 하네스)
     _t1349Stat, _t1349Stand, _t804Nearest, T1349_WAR_PATH_SHARE: () => T1349_WAR_PATH_SHARE,   // ★[T1349] 물음 나눠 쓰기 셈 · 나선 답 기억(내보내기만 — 관찰자 · 하네스)
@@ -18338,11 +18355,14 @@ function _vilRowSave(v, S, mark) {
   else if (typeof v === 'number') vil = villageByDbId(v);
   else if (typeof v === 'string') vil = (state.villages || []).find((x) => x.name === v) || null;
   if (!vil || !vil.econ || vil.dbId == null) { S.miss++; return false; }
-  if (state.tickJobs) { S.skipClose++; if (mark) mark.add(vil); return false; }
+  if (state.tickJobs || (_warSnapNeedsAtomic() && state._t731)) { if (_warSnapNeedsAtomic()) _warSnapSavePending = true; S.skipClose++; if (mark) mark.add(vil); return false; }
   const t0 = process.hrtime.bigint();
   try {
-    const js = serializeEcon(vil.econ);
-    state.db.updateVillageState(vil.dbId, js, vil.econ.npcs.length, state.world.day);
+    let js;
+    if (_warSnapNeedsAtomic()) {
+      const saved = _warSnapRequest(); if (!saved) { S.skipClose++; if (mark) mark.add(vil); return false; }
+      js = { length: saved.rowBytes.get(vil.dbId) || 0 };
+    } else { js = serializeEcon(vil.econ); state.db.updateVillageState(vil.dbId, js, vil.econ.npcs.length, state.world.day); }
     const ms = Number(process.hrtime.bigint() - t0) / 1e6;
     S.n++; S.ms += ms; if (ms > S.maxMs) S.maxMs = ms;
     S.bytes += js.length; if (js.length > S.maxBytes) S.maxBytes = js.length;
@@ -18364,6 +18384,11 @@ function t1005Mark(vil, why) {
 // ★[T1005] 틱 꼬리(zone.js 게임 루프 끝) — 표한 마을마다 한 줄. 마감 중이면 표를 남겨 둔다(끝난 첫 틱에 쓴다).
 function t1005Flush() {
   if (!T1005_VIL_SAVE || !_t1005Dirty.size || state.tickJobs) return 0;
+  if (_warSnapNeedsAtomic()) {
+    const n = _t1005Dirty.size, first = _t1005Dirty.values().next().value;
+    if (!_vilRowSave(first, _t1005Stat, _t1005Dirty)) return 0;
+    _t1005Dirty.clear(); _t1005Stat.flush++; return n;
+  }
   const L = [..._t1005Dirty]; _t1005Dirty.clear();
   let n = 0; for (const vil of L) if (_vilRowSave(vil, _t1005Stat, _t1005Dirty)) n++;
   _t1005Stat.flush++;
@@ -23455,6 +23480,59 @@ t742Bind('villages.wfBox', () => { const o = {}; for (const v of state.villages 
 //          싸움 한가운데의 순간 상태라 싣지 않는다 — 다시 뜬 판은 그 자리에서 다시 맞붙는다 · 회부). 귀환 중이면 몸 없이 war-core 날 장부가 귀환을 끝내고
 //          (그 병사 몸 명부에서 짐을 모은다 — `_warRationCollect`) 징발을 푼다.
 //   ⚠소굴 토벌(`T476_PUNITIVE` · 끔 기본)은 싣지 않는다(목표가 갱 어댑터 · 도적 모듈은 마을 뒤에 선다 — 회부). 새 수 0 · 몸 필드 0.
+// GPT2 worktable WAR_SNAP (number pending; unrelated to S16 T1497 map card).
+const T1497_WAR_SNAP = process.env.T1497_WAR_SNAP === '1';
+let _warSnapBusy = 0, _warSnapPending = null, _warSnapObserver = null, _warSnapStored = false, _warSnapSavePending = false;
+function _warSnapGate(kind, f, detail) { if (T1497_WAR_SNAP && _warSnapObserver) _warSnapObserver(kind, f, detail); }
+function _warSnapObserve(fn) { _warSnapObserver = typeof fn === 'function' ? fn : null; }
+function _warSnapBindings() {
+  return { clearPending: (bodies) => { for (let i = _t1166Pend.length - 1; i >= 0; i--) if (bodies.has(_t1166Pend[i].b)) _t1166Pend.splice(i, 1); }, profile: () => ({ physical: T790_NO_SNAP, heap: T1381_WALK_HEAP, bound: T1445_BOOT_BOUND, share: T1349_WAR_PATH_SHARE, budget: T1338_WALK_BUDGET, day: state.dayMs, hz: state.warLive.TICK_HZ }), busy: () => _warSnapBusy > 0, blocked: _warBlockedCell, world: _warWorld, detour: _warDetourFor,
+    stand: _t1349Stand, route: _warRouteCache, pref: _t1167Pref,
+    polySeq: (n) => { if (n !== undefined) _polyOf.n = n; return _polyOf.n; },
+    setStand: (v) => { for (const k of Object.keys(_t1349Stand)) delete _t1349Stand[k]; Object.assign(_t1349Stand, v); },
+    setRoute: (m) => { _warRouteCache.clear(); for (const [k, v] of m) _warRouteCache.set(k, v); },
+    setPref: (m) => { _t1167Pref.clear(); for (const [k, v] of m) _t1167Pref.set(k, v); }
+  };
+}
+function _warSnapNeedsAtomic() { return T1497_WAR_SNAP && (_warSnapSavePending || _warSnapStored || !!(state.war && state.war.WARS.length) || !!(state.warBodies && state.warBodies.size)); }
+function _warSnapPack() { return T1497_WAR_SNAP ? require('./war-snapshot-host').pack(state, _warSnapBindings(), Date.now()) : null; }
+function _warSnapRestore(snapshot) {
+  if (!PathCore) PathCore = require('../sim/path-core');
+  try { return require('./war-snapshot-host').restore(snapshot, state, _warSnapBindings(), Date.now()); }
+  catch (e) { if (e.code === 'WAR_SNAP_INVALID') throw e; require('./war-snapshot').fail('restore validation failed: ' + e.message); }
+}
+function _warSnapEarly() {
+  _warSnapPending = null; _warSnapStored = false; _warSnapSavePending = false;
+  if (!T1497_WAR_SNAP || !state.db || !state.db.getWorldMeta) return;
+  const row = state.db.getWorldMeta(state.zoneId); if (!row) return;
+  let M; try { M = JSON.parse(row.data); } catch (_) { if (String(row.data).includes('"t1497WarSnap"')) require('./war-snapshot').fail('unreadable snapshot metadata'); return; }
+  if (!Object.prototype.hasOwnProperty.call(M, 't1497WarSnap')) return; // Legacy saves retain their legacy behavior.
+  require('./war-snapshot').validate(M.t1497WarSnap);
+  if (!M.anchor || M.anchor.day !== state.world.day) require('./war-snapshot').fail('snapshot/meta/world day mismatch');
+  _warSnapPending = M.t1497WarSnap; _warSnapStored = true;
+}
+function _warSnapRequest() {
+  if (_warSnapBusy || state.tickJobs || state._t731) { _warSnapSavePending = true; return false; }
+  try { if (state.warLive && state.warLive.snapshotRuntime) state.warLive.snapshotRuntime(); }
+  catch (_) { _warSnapSavePending = true; return false; }
+  const saved = _warSnapAtomicSave(); _warSnapSavePending = false; return saved;
+}
+function _warSnapAtomicSave() {
+  if (_warSnapBusy || state.tickJobs || state._t731) require('./war-snapshot').fail('save inside unfinished host/economic step');
+  const rows = [], previousShut = state._t1340Shut, previousContext = state._t1340C;
+  // Reuse the canonical complete-world packing contract at every new checkpoint.
+  state._t1340Shut = true; state._t1340C = _t1340Ctx(Date.now());
+  try {
+    for (const v of state.villages) if (v.econ && Number.isFinite(v.dbId)) rows.push({ id: v.dbId, econ: serializeEcon(v.econ), pop: v.econ.npcs.length, day: state.world.day });
+    const meta = _t728Meta();
+    state.db.saveVillagesAndMeta(rows, state.zoneId, meta, state.world.day | 0);
+    _warSnapStored = Object.prototype.hasOwnProperty.call(JSON.parse(meta), 't1497WarSnap');
+    return { rowBytes: new Map(rows.map((r) => [r.id, r.econ.length])) };
+  } finally {
+    if (previousShut === undefined) delete state._t1340Shut; else state._t1340Shut = previousShut;
+    if (previousContext === undefined) delete state._t1340C; else state._t1340C = previousContext;
+  }
+}
 const T1167_WAR = process.env.T1167_WAR_PERSIST !== '0';
 const _T1167_PIDMAPS = ['_armsPack', '_starve', '_debt'];
 const _T1167_SKIP = new Set(['atk', 'def', '_capResolve', '_vetRoster'].concat(_T1167_PIDMAPS));   // `_capResolve` = 결판 한 순간의 인계 칸(같은 함수 안에서 지워진다)
@@ -23577,12 +23655,14 @@ function _t728Meta() {
     ...(T1034_KEEP ? (() => { const P = _t1034Pack(); return P ? { t1034: P } : {}; })() : {}),   // ★[T1034] 몸 칸(몸이 없으면 칸이 안 선다 · 끔 = 칸 없음)   // ★[T742] 존 · 모듈 메모리(끔 = 칸 없음 · 종전 글자)
     ...(T1321_XZ_KEEP ? (() => { const P = _t1321Pack(); return P ? { t1321: P } : {}; })() : {}),
     ...(T1340_EXACT ? (() => { const P = _t1340EconPack(); return P ? { t1340: P } : {}; })() : {}),   // ★[T1340 ④] econ 세계 그날 메모리(끔 = 칸 없음)
+    ...(T1497_WAR_SNAP ? (() => { const P = _warSnapPack(); return P ? { t1497WarSnap: P } : {}; })() : {}),
     ...(T1324_XZ_MIGRATE ? (() => { const P = _t1324Pack(); return P ? { t1324: P } : {}; })() : {}) });   // ★[T1324] 주민 이주 길 위 줄(켬 · 줄이 있을 때만 칸)   // ★[T1321 ⓐ] 답 기다리는 넘김 · 받은 열쇠 · 받은 기록 줄(끔 = 칸 없음)
 }
 const _t728Stat = { metaSaves: 0, restored: null, shutdown: null, dropKeys: [] };
 function _t728SaveMeta() {
   if (!state.db || !state.db.upsertWorldMeta || !state.world || state._t1340Done) return;
-  state.db.upsertWorldMeta(state.zoneId, _t728Meta(), state.world.day | 0); _t728Stat.metaSaves++;
+  if (_warSnapNeedsAtomic()) { if (!_warSnapRequest()) return; }
+  else state.db.upsertWorldMeta(state.zoneId, _t728Meta(), state.world.day | 0); _t728Stat.metaSaves++;
   if (T1034_KEEP) _t1034Dirty = false;   // ★[T1034] 같은 줄이 몸 칸도 실었다
 }
 // ★★[T732 2026-10-14 · 손잡이 `T732_MOMENT_LOT` · ★[T778] 켬 기본(`=0` 끔) — 끄면 이 함수를 안 부른다] **곳간 로트 장부를 econ 마을에 붙인다**(부팅 한 번).

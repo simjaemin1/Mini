@@ -938,7 +938,7 @@ function preserveRecord(r,from,to,n){
   const nf=_nowFrac(),f=Spoil.freshnessOf(from,Spoil.exposureOf(r,Math.floor(nf))),pf=_gran();
   return{k:r.k,u:n,pu:1,it:to,f0:1,e:Spoil.carryExposure(to,f),t:nf,m:pf.m,w:pf.w};
 }
-module.exports = { preserveRecord, tagH, eatBegin, eatEnd, ON, T840, T856, legSettle: _legSettle, elevOf: _elevOf, attach, sync, pushIn, clearIn, capBegin, capEnd, suspend, txBegin, txEnd, isWrapped,
+module.exports = { snapshotBody: (p) => BAG.get(p), restoreBodySnapshot: (p, data) => { if (data === undefined) BAG.delete(p); else BAG.set(p, data); }, preserveRecord, tagH, eatBegin, eatEnd, ON, T840, T856, legSettle: _legSettle, elevOf: _elevOf, attach, sync, pushIn, clearIn, capBegin, capEnd, suspend, txBegin, txEnd, isWrapped,
   tickBegin, tickEnd, doorBegin, doorEnd, doorIn, doorRest, doorCap,
   recsFromPlayer, recsToPlayer, recsToItems, byCount, countOf: _t1128CountOf, hooks, cargo, unload, bounce, cargoDump, cargoLoad, packFrom, packKeep, giveBegin, giveEnd,
   itemSums, checkItems, itemFlow, eaten,   // ★[T768] 품목 칸 · 품목 불변식 · 마을이 먹은 품목

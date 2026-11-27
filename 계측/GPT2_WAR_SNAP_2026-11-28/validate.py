@@ -1,0 +1,28 @@
+"""Sequential repository checks; persist completion even after a failed check."""
+import os,json,subprocess,time,signal,hashlib
+from pathlib import Path
+root=Path('/workspace/Mini-WarSnap');out=Path('/workspace/scratch/war-snap-validation');out.mkdir(exist_ok=True)
+signal.signal(signal.SIGTERM,lambda s,f:(_ for _ in ()).throw(SystemExit(128+s)))
+results=[]
+def run(name,cmd,cwd=root,env=None,timeout=1800):
+ t=time.time()
+ with (out/(name+'.log')).open('wb') as log:
+  try:rc=subprocess.run(cmd,cwd=cwd,env=env or os.environ,stdin=subprocess.DEVNULL,stdout=log,stderr=log,timeout=timeout).returncode
+  except subprocess.TimeoutExpired:rc=124
+ results.append(dict(name=name,rc=rc,seconds=round(time.time()-t,2),cmd=cmd));(out/'results.json').write_text(json.dumps(results,indent=2));return rc
+try:
+ tests=[x for x in Path('/workspace/scratch/war-snap-prep-harnesses.txt').read_text().splitlines() if '/test-' in x]
+ tests+=['scripts/test-t1409-shared-rules.js','scripts/test-war-snapshot-data.js','scripts/test-war-snapshot.js']
+ env=dict(os.environ,WAR_WORLD_NO_SERVER='1',WAR_SNAP_TEST_OUT=str(out/'native-matrix'));env.pop('T1497_WAR_SNAP',None)
+ run('regional',['bash','scripts/run-regress.sh']+[Path(t).name for t in tests],env=env)
+ run('bundle-check',['node','sim/build-econ-bundle.js','--check'])
+ for lab in ['마을실험실','전쟁실험실']:run('smoke-'+lab,['node','scripts/lab-smoke.js','lab/'+lab+'.html','200'])
+ base=Path('/workspace/scratch/war-snap-base2502')
+ for seed in [1020,7,42]:
+  for tag,cwd in [('base',base),('new',root)]:
+   env=dict(os.environ,T17_JSON=str(out/f't17-{tag}-{seed}.json'));env.pop('T1497_WAR_SNAP',None)
+   run(f't17-{tag}-{seed}',['node','scripts/t17-metrics.js','800',str(seed)],cwd=cwd,env=env)
+  a=out/f't17-base-{seed}.json';b=out/f't17-new-{seed}.json'
+  results.append(dict(name=f't17-byte-{seed}',equal=a.exists() and b.exists() and a.read_bytes()==b.read_bytes()))
+ (out/'results.json').write_text(json.dumps(results,indent=2))
+finally:(out/'done').write_text(str(time.time()))

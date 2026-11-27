@@ -10293,7 +10293,7 @@ function noteNow(p, item, n, place) { return _mOn() ? _mNote(p, item, n, Math.fl
 function nowMs() { return _mOn() ? _mNowMs() : null; }
 function dayMs() { return _mOn() ? _mDay : null; }
 function msOf(day) { return _mOn() ? _mMsOf(day) : null; }
-module.exports = { CFG, LOT_CORE, _day, isLot, all, of, sum, note, reconcile, consume, consumeFrom, view, viewAll, toSave, fromSave,
+module.exports = { snapshotNpc: (p) => _mNpc.get(p), restoreNpcSnapshot: (p, data) => { if (data === undefined) _mNpc.delete(p); else _mNpc.set(p, data); }, CFG, LOT_CORE, _day, isLot, all, of, sum, note, reconcile, consume, consumeFrom, view, viewAll, toSave, fromSave,
   T732_MOMENT, setClock, momentOn, nowMs, dayMs, msOf, peek, stats, noteNow,   // ★[T732] 순간 로트(손잡이 · 시계 · 미리 보기 · 자)
   npcDump, npcLoad, npcStats,   // ★[T1166] NPC 몸 곁 장부 영속(villages 몸 줄 T747 이 부른다)
   T725_KINDS, NO_ROT,   // ★[T725 ②] 안 썩는 재료 표(하네스·보고가 읽는다)

@@ -26,4 +26,4 @@ function homePopulation(vil, players, cellSize) {
   }
   return Math.max(0, total - away);
 }
-module.exports = { homePopulation, bindWarBody };
+module.exports = { homePopulation, bindWarBody, warResidentOf: (body) => warResidents.get(body) };

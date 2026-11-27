@@ -10397,7 +10397,7 @@ function noteNow(p, item, n, place) { return _mOn() ? _mNote(p, item, n, Math.fl
 function nowMs() { return _mOn() ? _mNowMs() : null; }
 function dayMs() { return _mOn() ? _mDay : null; }
 function msOf(day) { return _mOn() ? _mMsOf(day) : null; }
-module.exports = { CFG, LOT_CORE, _day, isLot, all, of, sum, note, reconcile, consume, consumeFrom, view, viewAll, toSave, fromSave,
+module.exports = { snapshotNpc: (p) => _mNpc.get(p), restoreNpcSnapshot: (p, data) => { if (data === undefined) _mNpc.delete(p); else _mNpc.set(p, data); }, CFG, LOT_CORE, _day, isLot, all, of, sum, note, reconcile, consume, consumeFrom, view, viewAll, toSave, fromSave,
   T732_MOMENT, setClock, momentOn, nowMs, dayMs, msOf, peek, stats, noteNow,   // ★[T732] 순간 로트(손잡이 · 시계 · 미리 보기 · 자)
   npcDump, npcLoad, npcStats,   // ★[T1166] NPC 몸 곁 장부 영속(villages 몸 줄 T747 이 부른다)
   T725_KINDS, NO_ROT,   // ★[T725 ②] 안 썩는 재료 표(하네스·보고가 읽는다)
@@ -25767,6 +25767,9 @@ const DIRS8 = [[1, 0, ORTHO], [-1, 0, ORTHO], [0, 1, ORTHO], [0, -1, ORTHO], [1,
 //   ⇒ 같은 이진 최소힙을 타입 배열로: 올리기 `F[p] <= f` 면 멈춤 · 내리기 왼쪽 `<` 다음 오른쪽 `<`(종전 `a[m].f` 비교 그대로) —
 //     맞바꾸기 대신 구멍을 옮기는 것만 다르고 매 단계 같은 자리에 같은 값이 선다(최종 배열 같음 ⇒ 꺼내는 차례 같음).
 //   꺼낸 값은 힙의 칸 넷(`tf`·`tg`·`tx`·`ty`)에 둔다(객체 0). `size` · `pop()` 문은 그대로(하네스 ⑦ 이 재개 사이에 하나 뺀다).
+// WAR_SNAP exposes closure storage without changing the search or heap ordering.
+const _snapshotHeaps = new WeakMap(), _snapshotMaps = new WeakMap();
+const _snapshotOn = () => typeof process !== 'undefined' && process.env.T1497_WAR_SNAP === '1';
 function _mkHeap() {   // 이진 최소힙 (f,g,x,y) — 랩·서버 기존 구현 동형
   let cap = 1024, n = 0;
   let F = new Float64Array(cap), G = new Float64Array(cap), X = new Int32Array(cap), Y = new Int32Array(cap);
@@ -25802,6 +25805,10 @@ function _mkHeap() {   // 이진 최소힙 (f,g,x,y) — 랩·서버 기존 구�
     },
     get size() { return n; },
   };
+  if (_snapshotOn()) _snapshotHeaps.set(h, {
+    get: () => ({ cap, n, F, G, X, Y, tf: h.tf, tg: h.tg, tx: h.tx, ty: h.ty }),
+    set: (d) => { cap = d.cap; n = d.n; F = d.F; G = d.G; X = d.X; Y = d.Y; h.tf = d.tf; h.tg = d.tg; h.tx = d.tx; h.ty = d.ty; }
+  });
   return h;
 }
 function _perp(x, y, sx, sy, gx, gy, invLen) {   // 시작→목표 직선까지 수직거리(직선 편향)
@@ -25897,7 +25904,7 @@ function _searchBegin(sx, sy, gx, gy, o) {
     ? (x, y) => { const dx = Math.abs(x - gx), dy = Math.abs(y - gy); return ((dx > dy ? ORTHO * (dx - dy) + DIAG * dy : ORTHO * (dy - dx) + DIAG * dx) + _perp(x, y, sx, sy, gx, gy, invLen) * o.biasW * ORTHO) * hs; }
     : (x, y) => ((Math.abs(x - gx) + Math.abs(y - gy)) * ORTHO + _perp(x, y, sx, sy, gx, gy, invLen) * o.biasW * ORTHO) * hs;
   // 저장 백엔드: scratch(gen-스탬프 타이프트 — 대격자·좌표 [0,w)×[0,h) 전제) 또는 Map(소규모·좌표 무제한)
-  let gGet, gSet, cameGet, cameSet, W2 = 0;
+  let gGet, gSet, cameGet, cameSet, gm = null, cm = null, W2 = 0;
   const sc = o.scratch || null;
   if (sc) {
     sc.gen = (sc.gen | 0) + 1; const gen = sc.gen; W2 = sc.w;
@@ -25906,7 +25913,7 @@ function _searchBegin(sx, sy, gx, gy, o) {
     cameGet = (x, y) => sc.came[y * W2 + x];
     cameSet = (x, y, v) => { sc.came[y * W2 + x] = v; };
   } else {
-    const gm = new Map(), cm = new Map(), key = (x, y) => x + ',' + y;
+    gm = new Map(); cm = new Map(); const key = (x, y) => x + ',' + y;
     gGet = (x, y) => { const v = gm.get(key(x, y)); return v === undefined ? Infinity : v; };
     gSet = (x, y, v) => gm.set(key(x, y), v);
     cameGet = (x, y) => { const v = cm.get(key(x, y)); return v === undefined ? -1 : v; };
@@ -25918,13 +25925,15 @@ function _searchBegin(sx, sy, gx, gy, o) {
   gSet(sx, sy, 0); cameSet(sx, sy, -1);
   open.push(H(sx, sy), 0, sx, sy);
   // ★상태는 **전부 여기 한 덩어리**다 — 그래야 놓았다 이어 갈 수 있다(지역 변수로 남으면 못 잇는다).
-  return {
+  const S = {
     sx, sy, gx, gy, rev, minX, maxX, minY, maxY, H,
     gGet, gSet, cameGet, cameSet, enc, sc, W2, open, scGen: sc ? sc.gen : 0,   // ★[T662] 이 탐색의 세대(시작 때 값 — 클로저 `gen` 과 같은 수)
     maxPops: o.maxPops, dirs: o.dirs, nodeBlocked: o.nodeBlocked,
     costMul: o.costMul, prefer: o.prefer, stepBlocked: o.stepBlocked,
     pops: 0, found: false, done: false, path: null,
   };
+  if (_snapshotOn()) _snapshotMaps.set(S, { gm, cm, oct: !!o.octile, biasW: o.biasW, invLen, hs });
+  return S;
 }
 
 // ── [T1381 ㉠] 칸 조각 저장 — 재개형 걸음 탐색(T821)의 g · came 를 64×64 칸 조각(타입 배열)에 ──
@@ -26213,7 +26222,55 @@ function smoothPath(path, canPass, opts) {
   return rev ? out.reverse() : out;
 }
 
-const PathCore = { localPath, localPathBegin, routePath, smoothPath, routePathBegin, pathStep, setLean, ORTHO, DIAG, LOCAL_MAX_NODES, ROUTE_MAX_POPS };   // ★[T697] setLean — 서버만 부른다(랩 = 끔) · ★[T821] 걸음 재개형 문 · 정본 상한 이름
+// Data API for a suspended local search. Host predicates are explicitly rebound by the host.
+function snapshotState(S) {
+  if (!S || typeof S !== 'object') throw new Error('WAR_SNAP: missing path state');
+  const d = {};
+  const skip = new Set(['H', 'gGet', 'gSet', 'cameGet', 'cameSet', 'enc', 'open', 'nodeBlocked', 'stepBlocked', 'costMul', 'prefer']);
+  if (S.costMul || S.prefer) throw new Error('WAR_SNAP: unregistered path cost/preference callback');
+  for (const k of Object.keys(S)) if (!skip.has(k)) d[k] = S[k];
+  d.$node = !!S.nodeBlocked; d.$step = !!S.stepBlocked;
+  if (S.lean) { const h = S.open; d.open = {}; for (const k of Object.keys(h)) if (typeof h[k] !== 'function' && k !== 'size' && k !== 'tg') d.open[k] = h[k]; }
+  else {
+    const m = _snapshotMaps.get(S), h = _snapshotHeaps.get(S.open);
+    if (!m || !h) throw new Error('WAR_SNAP: search predates snapshot tracking');
+    d.$maps = m; d.open = h.get();
+  }
+  return d;
+}
+function resumeState(S, bindings) {
+  if (!bindings || typeof bindings.blocked !== 'function') throw new Error('WAR_SNAP: missing path binding');
+  S.nodeBlocked = S.$node ? bindings.blocked : null;
+  S.stepBlocked = S.$step ? ((fx, fy, x, y) => bindings.blocked(x, y)) : null;
+  S.costMul = null; S.prefer = null;
+  delete S.$node; delete S.$step;
+  const m = S.lean ? S : S.$maps;
+  if (!m) throw new Error('WAR_SNAP: missing path closure storage');
+  const { sx, sy, gx, gy } = S, { oct, biasW, invLen, hs } = m;
+  S.H = oct
+    ? (x, y) => { const dx = Math.abs(x - gx), dy = Math.abs(y - gy); return ((dx > dy ? ORTHO * (dx - dy) + DIAG * dy : ORTHO * (dy - dx) + DIAG * dx) + _perp(x, y, sx, sy, gx, gy, invLen) * biasW * ORTHO) * hs; }
+    : (x, y) => ((Math.abs(x - gx) + Math.abs(y - gy)) * ORTHO + _perp(x, y, sx, sy, gx, gy, invLen) * biasW * ORTHO) * hs;
+  if (S.lean) {
+    const hp = S.open;
+    hp.push = (f, g, x, y) => _hlPush(hp, f, g, x, y); hp.pop = () => { _hlPop(hp); return hp; };
+    Object.defineProperties(hp, { size: { get: () => hp.n, configurable: true }, tg: { get: () => hp.TG[0], configurable: true } });
+    S.gGet = null; S.gSet = null; S.cameSet = null; S.enc = null;
+    S.cameGet = S.sc ? ((x, y) => S.sc.came[y * S.W2 + x]) : S.tl ? null : ((x, y) => { const v = S.cm.get(_lk(x, y)); return v === undefined ? -1 : v; });
+  } else {
+    const hp = _mkHeap(); _snapshotHeaps.get(hp).set(S.open); S.open = hp;
+    const sc = S.sc, W2 = S.W2, gen = S.scGen;
+    const key = (x, y) => x + ',' + y;
+    S.gGet = sc ? ((x, y) => sc.stamp[y * W2 + x] === gen ? sc.g[y * W2 + x] : Infinity) : ((x, y) => { const v = m.gm.get(key(x, y)); return v === undefined ? Infinity : v; });
+    S.gSet = sc ? ((x, y, v) => { const i = y * W2 + x; sc.stamp[i] = gen; sc.g[i] = v; }) : ((x, y, v) => m.gm.set(key(x, y), v));
+    S.cameGet = sc ? ((x, y) => sc.came[y * W2 + x]) : ((x, y) => { const v = m.cm.get(key(x, y)); return v === undefined ? -1 : v; });
+    S.cameSet = sc ? ((x, y, v) => { sc.came[y * W2 + x] = v; }) : ((x, y, v) => m.cm.set(key(x, y), v));
+    S.enc = (x, y) => sc ? y * W2 + x : key(x, y);
+    _snapshotMaps.set(S, m); delete S.$maps;
+  }
+  return S;
+}
+
+const PathCore = { snapshotState, resumeState, localPath, localPathBegin, routePath, smoothPath, routePathBegin, pathStep, setLean, ORTHO, DIAG, LOCAL_MAX_NODES, ROUTE_MAX_POPS };   // ★[T697] setLean — 서버만 부른다(랩 = 끔) · ★[T821] 걸음 재개형 문 · 정본 상한 이름
 if (typeof module !== 'undefined' && module.exports) module.exports = PathCore;
 if (typeof window !== 'undefined') window.PathCore = PathCore;
 // ===== PATH-CORE-END =====

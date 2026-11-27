@@ -24,7 +24,12 @@ var BattleCore = (typeof module !== 'undefined' && module.exports && typeof requ
   ? require('../sim/battle-core.js') : root.BattleCore;
 
 // ═══════════ 결정론 RNG (랩 _muRng verbatim — xorshift32, Math.random 금지) ═══════════
-function _muRng(seed) { let s = (seed >>> 0) || 1; return () => { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
+function _muRng(seed) {
+  let s = (seed >>> 0) || 1;
+  const rng = () => { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
+  Object.defineProperties(rng, { getState: { value: () => s }, setState: { value: (v) => { if (!Number.isInteger(v) || v < 0 || v > 4294967295) throw new Error('WAR_SNAP: RNG state'); s = v; } } });
+  return rng;
+}
 
 // ═══════════ ★[T874 2026-10-23] 교전 병사 · 대형 병사 빠른 꼴 — 손잡이 `T874_BATTLE_FAST`(★T900 켬 기본 · `=0` 끔 = 종전 그대로) ═══════════
 //   왜: 몸 자리 묶기(아래 enlist · bindGroupUnit)가 x/y 접근자를 **몸마다 새 닫힘**으로 단다. ⓐ 교전 병사는 battle-core spawn 리터럴이
@@ -340,6 +345,11 @@ function createWarLive(opts) {
     const f = { w, ctx, handle, seed, quality: quality || { A: null, B: null },
       state: 'form', t: 0, contactT: -1, gapT: 0, bestGap: Infinity, engagedOnce: false, contacts: 0,
       byPid: new Map(), settled: null, _stepMs: 0 };
+    bindFight(f);
+    return f;
+  }
+  function bindFight(f) {
+    const ctx = f.ctx;
     ctx.onArrow = (kind, ar, u) => {
       // [T1183] 피격 몸은 실제 발사자를 기억한다. 화살 계산은 battle-core 그대로다.
       if (f.physical && kind === 'hit' && u && ar.sh && ar.sh.side !== u.side) u._t1183Shooter = ar.sh;
@@ -520,11 +530,31 @@ function createWarLive(opts) {
     return true;
   }
 
+  // Rebind existing data only: no spawn, addUnits, slot assignment or RNG draw.
+  function resumeFight(f, rngState) {
+    f.ctx.rng = _muRng(f.seed); f.ctx.rng.setState(rngState);
+    f.handle = BC._makeHandle(f.ctx); bindFight(f);
+  }
+  function resumeUnit(u, p, group) {
+    if (!u || !p) throw new Error('WAR_SNAP: missing soldier body');
+    _T874.stamp(u, p, PX_PER_M, group ? M_PER_CELL : 1);
+    Object.defineProperty(u, 'x', group ? _T874.D.gx : _T874.D.ux);
+    Object.defineProperty(u, 'y', group ? _T874.D.gy : _T874.D.uy);
+  }
+  let snapshotStepping = 0;
+  const snapshotOn = typeof process !== 'undefined' && process.env.T1497_WAR_SNAP === '1';
+  const snapshotStep = (f) => { snapshotStepping++; try { return stepFight(f); } finally { snapshotStepping--; } };
+  function snapshotRuntime(value) {
+    if (snapshotStepping) throw new Error('WAR_SNAP: save inside unfinished battle step');
+    if (value !== undefined) _arrowSeq = value.arrowSeq;
+    return { arrowSeq: _arrowSeq };
+  }
+
   return {
     // 대형
     buildGroup, regroup, _muAssignSlots, _muSlotXY, _muSeparate, _muStepFollow, _muDefHold, _muCmdDist, _muCompForm, bindGroupUnit,
     // 교전
-    makeFight, enlist, stepFight, hasRangedContact, arrowStat, orderAdvance, toStandoff, setSideCtl, settle, buildRes, aliveCounts, centroid, engR, standoffSec,
+    makeFight, enlist, stepFight: snapshotOn ? snapshotStep : stepFight, resumeFight, resumeUnit, snapshotRuntime, hasRangedContact, arrowStat, orderAdvance, toStandoff, setSideCtl, settle, buildRes, aliveCounts, centroid, engR, standoffSec,
     // 상수
     WAR_ENGAGE_R, WAR_ALERT_R, WAR_DEF_STANDOFF, MU, MU_TYPES, MU_TYPE_INT, M_PER_CELL, PX_PER_M, TICK_HZ, STEP_DT, MELEE_ENG_R,
   };
