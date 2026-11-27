@@ -1,0 +1,57 @@
+[
+ {
+  "name": "body-on-30-plain",
+  "command": [
+   "node",
+   "scripts/server-baseline-check.js",
+   "--make",
+   "/workspace/Mini-t1496/\uacc4\uce21/T1496_2026-11-27/body-on-30-plain.json",
+   "--days",
+   "30",
+   "--seeds",
+   "1020",
+   "--par",
+   "1",
+   "--vclock",
+   "--body-day",
+   "--bodies",
+   "all"
+  ],
+  "env": {
+   "T1496_BODY_FIRST": "1",
+   "T325_WOOD_ACT": "1"
+  },
+  "sourceSha256": "693e98ab4a9f5f8fbdb64e81d403721169a3f4d459f7a520faf08c5d078dcaa1",
+  "state": "finished",
+  "exit": 0,
+  "seconds": 1229.593
+ },
+ {
+  "name": "body-on-30-observed",
+  "command": [
+   "node",
+   "scripts/server-baseline-check.js",
+   "/workspace/Mini-t1496/\uacc4\uce21/T1496_2026-11-27/body-on-30-plain.json",
+   "--days",
+   "30",
+   "--seeds",
+   "1020",
+   "--par",
+   "1",
+   "--vclock",
+   "--body-day",
+   "--bodies",
+   "all"
+  ],
+  "env": {
+   "T1496_BODY_FIRST": "1",
+   "T325_WOOD_ACT": "1",
+   "NODE_OPTIONS": "--require /tmp/t1496/observe.cjs",
+   "T1496_OBS_OUT": "/workspace/Mini-t1496/\uacc4\uce21/T1496_2026-11-27/body-on-30-observed.json"
+  },
+  "sourceSha256": "693e98ab4a9f5f8fbdb64e81d403721169a3f4d459f7a520faf08c5d078dcaa1",
+  "state": "finished",
+  "exit": 0,
+  "seconds": 1203.209
+ }
+]

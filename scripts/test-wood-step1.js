@@ -42,18 +42,19 @@ console.log('\n② 손·짐에 남는 통나무 — 정적');
   const VC = codeOf(VSRC);
   const body = (name) => (VC.match(new RegExp('function ' + name + '\\([^)]*\\) \\{[\\s\\S]*?\\n\\}')) || [''])[0];
   const del = body('_t325Deliver'), pin = body('_t717PackIn'), put = body('_t717PackPut'), nw = body('_t717NewWood');
-  const daily = (VC.match(/function\* _lifeDailySteps\(vil\) \{[\s\S]*?\n\}/) || [''])[0];
+  const dayEntry = (VC.match(/function\* _lifeDailySteps\(vil\) \{[\s\S]*?\n\}/) || [''])[0];
+  const daily = dayEntry + (dayEntry.includes('_lifeWoodDay(') ? body('_lifeWoodDay') : '');
   const hin = body('_lifeHandsIn');
   ok(/const T717_WOOD_HAND = process\.env\.T717_WOOD_HAND !== '0';/.test(VC), 'ⓐ 손잡이 `T717_WOOD_HAND` — 기본 켬(`=0` 만 끔)');
   ok(/if \(T717_WOOD_HAND\) \{ const r = \+\(u - got\)\.toFixed\(6\); npc\.inventory\.wood = r > 1e-9 \? r : 0; npc\._t717L = npc\.inventory\.wood; \}/.test(del)
      && /else npc\.inventory\.wood = 0;/.test(del),
     'ⓐ ★★몸 갈래(`_t325Deliver`) — 켬 = 넣은 만큼만 손에서 뺀다(남긴 몫 `_t717L`) · 끔 = 옛 줄(손 0)');
-  ok(/const _g = _lifeEcon\(\)\.woodToGranary\(vil\.econ, u\);\s*if \(T717_WOOD_HAND\) _t717PackPut\(vil, u - \(_g \|\| 0\)\);/.test(daily),
+  ok(/const _g = _lifeEcon\(\)\.woodToGranary\(vil\.econ, (?:u|_t1496WoodOffer\(vil, u\))\);\s*if \(T717_WOOD_HAND\) _t717PackPut\(vil, u - \(_g \|\| 0\)\);/.test(daily),
     'ⓐ ★★헤드리스 하루 — 입구가 돌려준 받은 몫을 읽고 나머지(`u − 받은 몫`)는 켬이면 마을 짐에(끔 = 옛 줄 · 안 읽고 버림)');
   ok(/if \(T717_WOOD_HAND && _on && \(!_bodyOnly \|\| T1202_BATCH\)\) _t717PackIn\(vil\);/.test(daily)   // ★[T1202] 실제 호스트도 일괄 짐(일괄 몫)은 다시 든다 · T1202 끔 = T1180 줄(몸만) && daily.indexOf('_t717PackIn(vil)') < daily.indexOf('for (let k = 0; k < _tr.length * 8')
      && daily.indexOf('_t717PackIn(vil)') > daily.indexOf('_t325Deliver(vil, p)'),
     'ⓐ ★짐은 **베기 전** · 손 입고 뒤에 든다(채집 `_t544PackIn` 과 같은 자리) · 켬 ∧ 행위 마을만');
-  ok(/vil\.econ\._t717Pack = \+\(\(vil\.econ\._t717Pack \|\| 0\) \+ u\)\.toFixed\(6\);/.test(put) && /woodToGranary\(vil\.econ, u\)/.test(pin)
+  ok(/vil\.econ\._t717Pack = \+\(\(vil\.econ\._t717Pack \|\| 0\) \+ u\)\.toFixed\(6\);/.test(put) && /woodToGranary\(vil\.econ, (?:u|_t1496WoodOffer\(vil, u\))\)/.test(pin)
      && /if \(r > 1e-9\) vil\.econ\._t717Pack = r; else _t862Drop\(vil\.econ, '_t717Pack'\);/.test(pin),
     'ⓐ 짐 = econ 마을 칸 하나(단) · 입고는 같은 입구(`woodToGranary`) · 받은 만큼만 뺀다');
   ok(/return T717_WOOD_HAND \? w > \(p\._t717L \|\| 0\) \+ 1e-9 : w > 0;/.test(nw)

@@ -1,0 +1,18 @@
+PASS default undefined
+PASS default 0
+PASS default 1
+PASS default 
+[econ-sim-v2] specialty.js 통합: 276종 → 총 296 TRADABLE
+PASS clock threshold: a 250ms village day cannot hold one cell round trip; the canonical day can
+PASS roster = bodiless workers always + idle bodies only on a short clock; an observed village keeps its body roster (T449)
+PASS fish batch: bodiless fishers land whole fish up to the day demand through the same quota and granary door
+PASS fish batch: no fisher, no shore, or knob off brings nothing
+PASS production off (the default world): the fish batch and the shore search never run
+PASS fish batch: a big demand is bounded by the bodies day (time and carry), not by the demand
+PASS nearest shore: a village with no bank in its territory walks to the first water ring
+PASS wood and forage rosters use the T1202 roster only on the real host (T1180 body-only line otherwise)
+PASS mutant bodiless is caught
+PASS mutant clock is caught
+PASS mutant observed is caught
+PASS mutant demand is caught
+PASS 16 / FAIL 0
