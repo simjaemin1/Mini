@@ -9,7 +9,7 @@ set -u
 ROOT="${ROOT:?}"; OUT="${OUT:?}"; PLAN="${PLAN:?}"; JOBS="${JOBS:-2}"; CAP_SEC="${CAP_SEC:-43200}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 RC="${RC:-$OUT/route-cache}"
-mkdir -p "$OUT/runs" "$OUT/tmp" "$RC"
+mkdir -p "$OUT/runs" "$OUT/obs1491" "$OUT/tmp" "$RC"
 touch "$OUT/done.txt"
 echo "start $(date -u +%FT%TZ) $(git -C "$ROOT" rev-parse --short HEAD) plan=$(basename "$PLAN") jobs=$JOBS" >> "$OUT/meta.txt"
 one() {
@@ -18,7 +18,7 @@ one() {
   local T="$OUT/tmp/$tag"; rm -rf "$T"; mkdir -p "$T"
   local t0; t0=$(date +%s); local VF=""; [ "$vc" = 1 ] && VF="--vclock"
   ( cd "$ROOT" && env $envs TMPDIR="$T" T1499_OBS="$OUT/runs" T1499_ARM="$tag" \
-      T1491_OBS="$OUT/runs" T1491_ARM="$tag" T1491_SKIP=0 NODE_OPTIONS="--max-old-space-size=${HEAP:-6144} --require $HERE/t1499-observe.js --require $HERE/t1491-observe.js" \
+      T1491_OBS="$OUT/obs1491" T1491_ARM="$tag" T1491_SKIP=0 NODE_OPTIONS="--max-old-space-size=${HEAP:-6144} --require $HERE/t1499-observe.js --require $HERE/t1491-observe.js" \
       timeout "$CAP_SEC" node scripts/server-baseline-check.js --make "$OUT/runs/$tag.json" --days "$days" --seeds "$s" --par 1 $VF \
       --route-cache "$RC" > "$OUT/runs/$tag.out" 2>&1 )
   local rc=$? dt=$(( $(date +%s) - t0 ))
