@@ -9320,12 +9320,31 @@ function _terrGrowCore(vil) {
 }
 // ★[T1468] 영토 넓히기의 **고르기**(경계 후보 · 막힘 · 남의 영토 · 점수 · 하루 몫) — `_terrGrowCore` 에서 떼어 낸 몸통(글자 · 차례 그대로 · 사본 0).
 //   랩 땅 굽기(`scripts/t1468-land-bake.js`)가 `__labProbe._t1468Probe.pick` 으로 **이 함수**를 부른다. 후보가 없으면 null.
+// ★★[T1497 ① · T1468 회부 4] 손잡이 `T1497_FERT_PICK`(끔 기본 · `'1'` 만 켬 · 끔 = 종전 바이트 — 서버 기준선 같음)
+//   영토 넓히기 점수의 비옥도는 지형 어댑터의 장(`ta.fert` — **마지막으로 깐 상자 하나**: 부팅 시딩 끝 마을 · 반경 62)을 읽는다 ⇒
+//   다른 50마을에선 늘 중립 0.5 — 칸을 거리로만 고른다(T237 머리말 · T1468 굽기가 수로 확인 · 50/51 마을 128/255).
+//   켬 — 마을마다 **제 비옥도 장**(정본 `server/fertility.js` `buildField` · 사본 0)을 영토 상자 + 여유로 깔아 그 값을 읽는다.
+//     상자 밖 칸을 물으면 영토 상자 ∪ 그 칸을 덮게 다시 깐다(여유 = 64칸 또는 상자 폭의 절반 · 마을 칸 `_t1497FF` · 계산 캐시 — 세지 않는 칸).
+//   econ `land.fertility` 는 안 바꾼다(T237 "창설 값 유지" 그대로) — 고르는 차례만 바뀐다.
+const T1497_FERT_PICK = process.env.T1497_FERT_PICK === '1';
+function _t1497FertOf(vil) {
+  const ta = state.ta, VL = _lifeVL(), FERT = require('./fertility');
+  const box = (x, y) => { const F = vil._t1497FF; return !!F && x >= F.x0 && y >= F.y0 && x < F.x0 + F.w && y < F.y0 + F.h; };
+  const lay = (qx, qy) => {
+    let x0 = qx, y0 = qy, x1 = qx, y1 = qy;
+    for (const k of vil._terrSet) { const ci = k.indexOf(','), x = +k.slice(0, ci), y = +k.slice(ci + 1); if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    const m = Math.max(64, Math.ceil(Math.max(x1 - x0, y1 - y0) / 2));
+    const F = FERT.buildField({ isWater: ta.isWater, isRock: ta.isRock, isWoody: (x, y) => ta.forestMult(x, y) > 1.2, maskEDT: VL.maskEDT }, x0 - m, y0 - m, x1 + m, y1 + m);
+    if (vil._t1497FF === undefined) Object.defineProperty(vil, '_t1497FF', { value: F, writable: true, configurable: true, enumerable: false }); else vil._t1497FF = F;
+  };
+  return (x, y) => { if (!box(x, y)) lay(x, y); return vil._t1497FF.at(x, y); };
+}
 function _terrPick(vil, target) {
   const ta = state.ta, own = vil._terrSet, ccx = vil.ccx, ccy = vil.ccy;
   const fertW = 3.5, compactW = 0, distW = 0.1;
   const K = (x, y) => x + ',' + y;
   const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-  const fertOf = (x, y) => (ta.fert ? ta.fert(x, y) : 0.5);
+  const fertOf = (T1497_FERT_PICK && ta.isWater && ta.isRock && ta.forestMult) ? _t1497FertOf(vil) : (x, y) => (ta.fert ? ta.fert(x, y) : 0.5);   // ★[T1497 ①] 켬 = 제 장
   const nbCount = (x, y) => { let n = 0; for (const [dx, dy] of N4) if (own.has(K(x + dx, y + dy))) n++; return n; };
   const score = (x, y) => fertW * fertOf(x, y) + compactW * nbCount(x, y) - distW * Math.hypot(x - ccx, y - ccy);
   // 경계 후보 수집(영토에 인접한 미소유·비차단 셀)

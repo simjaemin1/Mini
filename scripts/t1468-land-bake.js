@@ -27,12 +27,12 @@ const MAP_FILES = ['server/hanbando-terrain.json', 'server/terrain.js', 'server/
   'server/zone-config.js', 'server/fertility.js', 'public/coast-shape.js'];
 function ruleText(src) {   // 서버 영토 고르기 규칙의 글자(함수 몸 — 줄 번호가 아니라 글자)
   const grab = (re) => { const m = src.match(re); return m ? m[0] : ''; };
-  return [grab(/function _terrPick\(vil, target\) \{[\s\S]*?\n\}\n/), grab(/function _t569Near\(vil\) \{[\s\S]*?\n\}\n/), grab(/const _t569OwnedBy = [^\n]*\n/), grab(/const TERR_GROW_MAX_PER_DAY = [^\n]*\n/)].join('');
+  return [grab(/function _terrPick\(vil, target\) \{[\s\S]*?\n\}\n/), grab(/function _t569Near\(vil\) \{[\s\S]*?\n\}\n/), grab(/const _t569OwnedBy = [^\n]*\n/), grab(/const TERR_GROW_MAX_PER_DAY = [^\n]*\n/), grab(/function _t1497FertOf\(vil\) \{[\s\S]*?\n\}\n/)].join('');
 }
 function mapSig(streamSig, root) {
   root = root || ROOT;
   const h = crypto.createHash('sha1');
-  h.update(Z); h.update(streamSig || '');
+  h.update(Z); h.update(streamSig || ''); h.update('T1497_FERT_PICK=' + (process.env.T1497_FERT_PICK === '1' ? '1' : ''));   // ★[T1497] 서버 고르기 손잡이도 지문에(켬 표 · 끔 표가 서로를 못 읽게)
   for (const f of MAP_FILES) { h.update(f); try { h.update(fs.readFileSync(path.join(root, f))); } catch (e) { h.update('(없음)'); } }
   h.update(ruleText(fs.readFileSync(path.join(root, 'server/villages.js'), 'utf8')));
   return h.digest('hex').slice(0, 16);
