@@ -1,7 +1,7 @@
 'use strict';
-// === 계측/T1491_2026-11-26/t1491-observe.js — 서버 판 곁 관찰기(T1491 · 제품 코드 손 0) ===
-//   쓰는 법: T1491_OBS=<폴더> T1491_ARM=<팔> T1491_SKIP=<0|gate|all> NODE_OPTIONS="--require <이 파일>" node scripts/server-baseline-check.js --make … --vclock
-//   T1491_SKIP
+// === 계측/T1511_2026-11-26/t1511-observe.js — 서버 판 곁 관찰기(T1511 · 제품 코드 손 0) ===
+//   쓰는 법: T1511_OBS=<폴더> T1511_ARM=<팔> T1511_SKIP=<0|gate|all> NODE_OPTIONS="--require <이 파일>" node scripts/server-baseline-check.js --make … --vclock
+//   T1511_SKIP
 //     0    = 아무 문도 안 건너뛴다(읽기만 · 기본 판과 지문이 같아야 한다 — 무변 판)
 //     gate = 몸 틱 안 나무꾼의 몫 문(`_t374Done` 참)만 거짓으로 돌려준다(건너뜀을 센다)
 //     all  = gate + 일괄 자물쇠: 하루 경계 일괄 벌목(`_lifeDailySteps`)의 `t325CutTreeAt` 을 부르지 않고 null 을 돌려준다
@@ -16,15 +16,15 @@
 const path = require('path'), fs = require('fs');
 const A1 = process.argv[1] || '';
 if (!(process.env.T577_SEED && /server[\/\\]zone\.js$/.test(A1))) return;
-const DIR = process.env.T1491_OBS; if (!DIR) return;
+const DIR = process.env.T1511_OBS; if (!DIR) return;
 const ROOT = path.resolve(path.dirname(A1), '..');
-const ARM = process.env.T1491_ARM || 'x', SEED = process.env.T577_SEED, SKIP = process.env.T1491_SKIP || '0';
+const ARM = process.env.T1511_ARM || 'x', SEED = process.env.T577_SEED, SKIP = process.env.T1511_SKIP || '0';
 const SKIP_GATE = SKIP === 'gate' || SKIP === 'all', SKIP_BATCH = SKIP === 'all';
-const PROBE_CAP = +(process.env.T1491_PROBE_CAP || 60);   // 예산 없는 A* 탐침 하루 상한(판 시간 지킴)
+const PROBE_CAP = +(process.env.T1511_PROBE_CAP || 60);   // 예산 없는 A* 탐침 하루 상한(판 시간 지킴)
 const OUT = path.join(DIR, `obs-${ARM}-${SEED}.json`);
 const Module = require('module');
 const SNIP_V = `
-;(function(){ var H = global.__T1491; if (!H) return; try {
+;(function(){ var H = global.__T1511; if (!H) return; try {
   var o1 = _t374Done; _t374Done = function(vil, job){ var r = o1.apply(this, arguments); try { return H.gate(vil, job, r); } catch (e) { H.err(e); return r; } };
   var o2 = _lifeGoHome; _lifeGoHome = function(npc, act){ try { H.home(npc, act); } catch (e) { H.err(e); } return o2.apply(this, arguments); };
   var o3 = _t561Standing; _t561Standing = function(tr, npc, h, first){ var r = o3.apply(this, arguments); try { H.standing(npc, r); } catch (e) { H.err(e); } return r; };
@@ -36,13 +36,13 @@ const SNIP_V = `
 } catch (e) { H.err(e); } })();
 `;
 const SNIP_Z = `
-;(function(){ var H = global.__T1491; if (!H) return; try {
+;(function(){ var H = global.__T1511; if (!H) return; try {
   var c1 = computeNpcPath; computeNpcPath = function(npc, now){
     if (!H.pathWant(npc)) return c1.apply(this, arguments);
     var la = npc._lastAStarAt; H.pc = { route: null, pf: 0, pfNull: 0, cd: 0 }; H.inCNP = 1; var r;
     try { r = c1.apply(this, arguments); } finally { H.inCNP = 0; }
     try { H.path(npc, now, r, la); } catch (e) { H.err(e); } return r; };
-  var c2 = _t678Init; _t678Init = function(){ var G = c2.apply(this, arguments); try { if (G && !G.__t1491) { G.__t1491 = 1; var gr = G.route; G.route = function(){ var r = gr.apply(this, arguments); try { if (H.inCNP && H.pc && r) H.pc.route = r.res; } catch (e) {} return r; }; } } catch (e) { H.err(e); } return G; };
+  var c2 = _t678Init; _t678Init = function(){ var G = c2.apply(this, arguments); try { if (G && !G.__t1511) { G.__t1511 = 1; var gr = G.route; G.route = function(){ var r = gr.apply(this, arguments); try { if (H.inCNP && H.pc && r) H.pc.route = r.res; } catch (e) {} return r; }; } } catch (e) { H.err(e); } return G; };
   var c4 = npcStep; npcStep = function(npc, dt, now){ var r = c4.apply(this, arguments); try { if (npc && npc.simVillageId && (npc.simJob === 'lumberjack' || npc.simJob === 'fisher')) H.step(npc, dt, now); } catch (e) { H.err(e); } return r; };
   var c3 = _npcGatherResource; _npcGatherResource = function(npc, r){ var w = (npc && npc.inventory && npc.inventory.wood) || 0; var x = c3.apply(this, arguments); try { H.gather(npc, r, w); } catch (e) { H.err(e); } return x; };
   H.zint = { rock: isRockTileLocal, water: isWaterTileLocal, bridge: isBridgeTileLocal, ditch: isDitchTileLocal, terr: isTerrainBlockedLocal, wall: isBlockedByWall,
@@ -66,7 +66,7 @@ const rec = { seed: +SEED, arm: ARM, skip: SKIP, lastDay: 0, err: null, maxRss: 
   agg: {}, bins: {}, vb: {}, glob: [], kind: {}, land: {}, skips: { gate: 0, gateBD: 0, batch: 0, batchVD: 0, gateTrueOther: 0 },
   cut: {}, gran: {}, dup: {}, rep: { n: 0, gapSum: 0 }, dbg: { cut: 0, stop: 0, noloot: 0, vd: 0, on: 0, walked: 0 }, batchHookCut: 0,
   path: {}, probe: {}, night: {}, gate: {}, gather: {}, univ: {}, samp: [], chk: { pfCalls: 0, probes: 0, probeCapHit: 0, walkFix: 0 } };
-const H = global.__T1491 = { inDel: 0, inCNP: 0, pc: null, vint: null, zint: null,
+const H = global.__T1511 = { inDel: 0, inCNP: 0, pc: null, vint: null, zint: null,
   err: (e) => { rec.err = rec.err || ('hook ' + String(e && e.stack || e).slice(0, 300)); } };
 PF.findPath = function (sx, sy, ex, ey, opts) {
   const r = pfOrig.apply(this, arguments);
@@ -137,9 +137,9 @@ const cutSeen = new Map();   // seedKey → [날, 자리]
 let cutDay = -1; const daySeen = new Map();
 let depsRef = null;
 function wrapDeps() {
-  const dp = ST && ST.deps; if (!dp || dp === depsRef && dp.t325CutTreeAt && dp.t325CutTreeAt.__t1491) return;
+  const dp = ST && ST.deps; if (!dp || dp === depsRef && dp.t325CutTreeAt && dp.t325CutTreeAt.__t1511) return;
   depsRef = dp;
-  const f = dp.t325CutTreeAt; if (typeof f !== 'function' || f.__t1491) return;
+  const f = dp.t325CutTreeAt; if (typeof f !== 'function' || f.__t1511) return;
   const g = function (cx, cy) {
     let ctx = 'other'; try { ctx = ctxOf(); } catch (e) {}
     if (SKIP_BATCH && ctx === 'batch') { rec.skips.batch++; return null; }   // 일괄 자물쇠 건너뜀(유일한 바꿈 자리 ②)
@@ -159,7 +159,7 @@ function wrapDeps() {
     } catch (e) { H.err(e); }
     return r;
   };
-  g.__t1491 = 1; dp.t325CutTreeAt = g; rec.hooked.cut = 1;
+  g.__t1511 = 1; dp.t325CutTreeAt = g; rec.hooked.cut = 1;
 }
 const w2g = V1.woodToGranary;
 V1.woodToGranary = function (v, units) {

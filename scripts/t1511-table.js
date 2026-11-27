@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// === scripts/t1491-table.js — T1491 몫 문 푼 판 · 끈 세계 · 어부 길 · 밤 칸: 관찰기 판 자료 → 표(제품 무변 · 판 자료만 읽는다) ===
+// === scripts/t1511-table.js — T1511 몫 문 푼 판 · 끈 세계 · 어부 길 · 밤 칸: 관찰기 판 자료 → 표(제품 무변 · 판 자료만 읽는다) ===
 // 읽는 것: <R>/done.txt · <R>/runs/obs-<태그>-<시드>.json · <R>/runs/<태그>.json(byseed 지문)
 //          <INV>/runs/(무변 판) · <T87>/inv/*-plain.json · <T87>/runs/<팔>-<시드>.json(T1487 기본 판 지문)
-// 쓰는 법(인자 넷 다 적는다 — 기본값 없음): node scripts/t1491-table.js <R> <INV> <T87> <OUTDIR>
+// 쓰는 법(인자 넷 다 적는다 — 기본값 없음): node scripts/t1511-table.js <R> <INV> <T87> <OUTDIR>
 //   → <OUTDIR>/table.txt · <OUTDIR>/table.json
 'use strict';
 const fs = require('fs'), path = require('path');
@@ -27,7 +27,7 @@ const ofArm = (arm) => Object.values(runs).filter((r) => r.arm === arm && r.o);
 const aggOf = (rs, key) => { const A = {}; for (const r of rs) add(A, r.o.agg[key]); return A; };
 const aggKind = (rs, J1, pred) => { const A = {}; for (const r of rs) for (const k in r.o.agg) { const [j, kind, w] = k.split('|'); if (j !== J1 || kind === '*') continue; if (pred && !pred(kind, w)) continue; add(A, r.o.agg[k]); } return A; };
 const glob = (rs, from, to) => { const G = { n: 0, pop: 0, cons: 0, D: 0, woodSt: 0, fuelShort: 0, vd: 0, lj: 0, fi: 0, gran: {} }; for (const r of rs) for (const g of r.o.glob) { if (g.day < from || g.day > to) continue; G.n++; G.pop += g.pop; G.cons += g.consWood; G.D += g.D; G.woodSt += g.woodSt; G.fuelShort += g.fuelShort; G.vd += g.vd; G.lj += g.lj; G.fi += g.fi; add(G.gran, g.gran); } return G; };
-L.push('# T1491 몫 문 푼 판 — 표 (관찰기 서버 730날 · 가상 시계 · 제품 코드 손 0)'); L.push('');
+L.push('# T1511 몫 문 푼 판 — 표 (관찰기 서버 730날 · 가상 시계 · 제품 코드 손 0)'); L.push('');
 // ① 판 상태
 L.push('## ① 판 상태');
 L.push('| 판 | 팔 | rc | 초 | 마지막 날 | 관찰기 err | 걸개 | 몫 문 건너뜀(번 · 몸-날) | 일괄 건너뜀(번) | 일괄 벰 껍질 = 마을 Dbg.cut | 몸 탐침(예산 없는 A*) | maxRss GB | 730날 인구 |');
