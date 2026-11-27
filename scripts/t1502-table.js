@@ -21,6 +21,9 @@ for (const f of fs.readdirSync(RUNS)) {
   let fp = null; try { fp = JSON.parse(fs.readFileSync(path.join(RUNS, tag + '.json'), 'utf8')); } catch (e) {}
   recs[tag] = { tag, arm, seed, r, fp };
 }
+// off 판에 탐침이 없을 때(앞서 돈 main 끈 판) — T1472 관찰기 `obs-off-<시드>.json`(snaps 만)으로 인구 끔비만 잇는다
+const obsOff = {};
+for (const f of fs.readdirSync(RUNS)) { const m = /^obs-off-(\d+)\.json$/.exec(f); if (!m) continue; try { obsOff[m[1]] = JSON.parse(fs.readFileSync(path.join(RUNS, f), 'utf8')); } catch (e) {} }
 const pct = (a, b) => b > 0 ? (100 * a / b).toFixed(1) : '-';
 const f1 = (x) => (x == null || !isFinite(x)) ? '-' : (+x).toFixed(1);
 const f3 = (x) => (x == null || !isFinite(x)) ? '-' : (+x).toFixed(3);
@@ -51,7 +54,7 @@ out('| 판 | 인구 | off 인구 | 끔비 | 굶어 죽음 | 빈 마을 |');
 out('|---|---|---|---|---|---|');
 for (const t of tags) {
   const { arm, seed, r } = recs[t]; if (arm === 'off') continue;
-  const o = recs['off-' + seed]; const s = lastSnap(r) || {}, so = o ? lastSnap(o.r) || {} : {};
+  const o = recs['off-' + seed]; const s = lastSnap(r) || {}, so = o ? lastSnap(o.r) || {} : (obsOff[seed] ? lastSnap(obsOff[seed]) || {} : {});
   out(`| ${t} | ${s.pop ?? '-'} | ${so.pop ?? '-'} | ${so.pop ? (s.pop / so.pop).toFixed(3) : '-'} | ${s.fd ?? '-'} | ${s.empty ?? '-'} |`);
   J.runs[t].ratio = so.pop ? +(s.pop / so.pop).toFixed(4) : null;
 }

@@ -26,7 +26,7 @@ const STAGE_KO = { bd: '몸-날', tick: '틱 받음', out: '나섬', reach: '일
 const REACH_R = { farmer: 44, forager: 240, lumberjack: 240, fisher: 130, miner: 240 };   // 생활층 도착 반경 그대로(villages.js npcLifeTick 갈래마다 · 새 수 아님 — 읽어 온 값)
 
 function newRow() {
-  const r = { stepN: 0, lifeN: 0, workN: 0, harvU: 0, carryU: 0, granU: 0, granFE: 0, walkPx: 0, d0Sum: 0, d0N: 0, walkOutPx: 0, harvNoReach: 0,
+  const r = { stepN: 0, lifeN: 0, workN: 0, harvU: 0, carryU: 0, granU: 0, granX: 0, granFE: 0, walkPx: 0, d0Sum: 0, d0N: 0, walkOutPx: 0, harvNoReach: 0,
     why: { noTick: 0, noSite: 0, far: 0 }, lab: {}, del: { walk: { n: 0, u: 0, g: 0, fe: 0 }, day: { n: 0, u: 0, g: 0, fe: 0 } }, farHist: [0, 0, 0, 0, 0, 0] };
   for (const s of STAGES) r[s] = 0;
   return r;
@@ -128,11 +128,13 @@ const bodies = new Map();
 function vilOf(npc) { const st = H.vint && H.vint.state; return st && st.byDbId && st.byDbId.get(npc.simVillageId); }
 function B(npc, J) {
   let b = bodies.get(npc.pid);
+  const pJ = b ? b.J : J;
   if (!b || b.day !== last) {
     const lx = b ? b.lx : npc.x, ly = b ? b.ly : npc.y, lh = b ? b.lh : null;
-    b = { J, day: last, step: 0, life: 0, out: 0, reach: 0, work: 0, harv: 0, carry: 0, gran: 0, harvU: 0, walk: 0, walkOut: 0, d0: null, dmin: Infinity, lx, ly, lh, lab: null, noReachHarv: 0 };
+    b = { J, pid: npc.pid, day: last, step: 0, life: 0, out: 0, reach: 0, work: 0, harv: 0, carry: 0, gran: 0, harvU: 0, walk: 0, walkOut: 0, d0: null, dmin: Infinity, lx, ly, lh, lab: null, noReachHarv: 0 };
     bodies.set(npc.pid, b);
   }
+  if (pJ !== J) b.lh = null;   // 직업이 바뀌면 손 칸 자(`H.hand`)가 바뀐다 — 기준을 새로 잡는다(자가 바뀐 차를 거둠으로 세지 않는다 · 탐침 고침 ①)
   b.J = J;
   return b;
 }
@@ -179,7 +181,17 @@ function observe(npc, J, b) {
     b.lh = h;
   }
 }
-function addHarv(b, u) { if (!(u > 0)) return; b.harvU += u; b.harv = 1; if (!b.work) b.work = 1; if (!b.reach) b.noReachHarv = 1; }   // 거둠은 일이다(밭 일 문이 거짓을 돌려줘도)
+function addHarv(b, u) { if (!(u > 0)) return; b.harvU += u; b.harv = 1; if (!b.work) b.work = 1; if (!b.reach) b.noReachHarv = 1; holdAdd(b, u); }   // 거둠은 일이다(밭 일 문이 거짓을 돌려줘도)
+// 몸마다 직업별로 거둔 손(곳간에 아직 안 든 양) — 직업을 바꾼 몸이 앞 직업 때 거둔 손을 넣으면 그 몫은 앞 직업 손이다(탐침 고침 ③ · 한 몸 안에서만 옮긴다:
+//   어느 직업으로도 거둔 적 없는 손은 지금 직업 `granU` 에 그대로 남는다 — 구멍은 숨지 않는다)
+const held = new Map();
+function holdAdd(b, u) { if (!(u > 0) || b.pid == null) return; const m = held.get(b.pid) || {}; m[b.J] = (m[b.J] || 0) + u; held.set(b.pid, m); }
+function holdTake(pid, J, u) {   // → 다른 직업 때 거둔 몫(단위)
+  const m = held.get(pid); if (!m || !(u > 0)) return 0;
+  const own = Math.min(u, m[J] || 0); m[J] = (m[J] || 0) - own; let rest = u - own, x = 0;
+  for (const k of Object.keys(m)) { if (k === J || !(rest > 0)) continue; const t = Math.min(rest, m[k]); m[k] -= t; rest -= t; x += t; }
+  return x;
+}
 H.pre = (npc, J) => { const b = B(npc, J); observe(npc, J, b); };
 H.post = (npc, J) => { const b = B(npc, J); b.step++; rec.ticks.steps++; observe(npc, J, b); };
 H.life = (npc) => { const J = H.J(npc); if (!J) return; const b = B(npc, J); b.life++; rec.ticks.lifes++; b.lab = npc._lifeAct || null; observe(npc, J, b); };
@@ -187,19 +199,22 @@ H.work = (npc, n) => { rec.hooked.work = 1; const J = H.J(npc); if (!J) return; 
 H.harvFarm = (npc, u) => { rec.hooked.hold = 1; const J = H.J(npc); if (!J) return; const b = B(npc, J); observe(npc, J, b); addHarv(b, u); };
 H.gather = (npc, J, h0) => {
   rec.hooked.gather = 1; const b = B(npc, J); b.work++;
-  if (J !== 'farmer' && J !== 'hunter') { const h = H.hand(npc, J); if (h > h0 + 1e-9) addHarv(b, h - h0); b.lh = h; }
+  if (J !== 'farmer' && J !== 'hunter') { const h = H.hand(npc, J); if (h > h0 + 1e-9) { if (b.out) b.reach = 1; addHarv(b, h - h0); } b.lh = h; }   // 존 채집은 자원 곁(`GATHER_RANGE` — 존이 재고 부른다)에서만 — 그 몸은 일터에 닿았다(탐침 고침 ②)
 };
 function feOf(v) { try { return +V1.totalFoodEquivalent(v) || 0; } catch (e) { return 0; } }
 H.del = (vil, npc, u, call) => {
   rec.hooked.del = 1;
   const J = npc ? H.J(npc) : null, inLife = H.cur === npc, e = vil && vil.econ;
   const fe0 = (J && e) ? feOf(e) : 0;
+  if (J) { try { observe(npc, J, B(npc, J)); } catch (x) { H.err(x); } }   // 넣기 전 손을 한 번 본다 — 한 걸음 안에서 거두고 바로 넣은 손(어부 짐 한도)도 거둠에 든다(탐침 고침 ④)
   H.inDel++; let g; try { g = call(); } finally { H.inDel--; }
   try {
     if (J) {
       const b = B(npc, J), gg = +g || 0, fe = e ? feOf(e) - fe0 : 0;
+      const xu = u > 1e-9 ? holdTake(npc.pid, J, u) : 0, gx = xu > 0 ? gg * xu / u : 0;   // 앞 직업 때 거둔 손의 몫
       if (u > 1e-9) { b.carry = 1; b.carryU = (b.carryU || 0) + u; }
-      if (gg > 1e-9) { b.gran = 1; b.granU = (b.granU || 0) + gg; b.granFE = (b.granFE || 0) + fe; }
+      if (gg > 1e-9) { b.gran = 1; b.granU = (b.granU || 0) + gg - gx; b.granFE = (b.granFE || 0) + fe; }
+      if (gx > 0) b.granX = (b.granX || 0) + gx;
       const k = inLife ? 'walk' : 'day';
       for (const R of [rec.rows[J], winRows[J]]) { const D = R.del[k]; if (u > 1e-9) { D.n++; D.u += u; } D.g += gg; D.fe += fe; }
       if (J !== 'farmer' && J !== 'hunter') b.lh = H.hand(npc, J);
@@ -237,13 +252,13 @@ function flush() {
       if (cur.work) { R.work++; R.workN += cur.work; if (cur.harv) { R.harv++; if (cur.carry) { R.carry++; if (cur.gran) R.gran++; } } }
       R.harvU += cur.harvU;
       R.carryU += cur.carryU || 0;
-      R.granU += cur.granU || 0; R.granFE += cur.granFE || 0;
+      R.granU += cur.granU || 0; R.granX += cur.granX || 0; R.granFE += cur.granFE || 0;
     }
   }
   // 닿지 않은 몸-날의 거둠 · 짐 · 듦도 양으로는 센다(단계 칸은 위 차례 그대로 — 닿은 몸만 아래 단계에 든다)
   for (const b of bodies.values()) {
     if (b.day !== last || b.reach) continue;
-    for (const R of [rec.rows[b.J], winRows[b.J]]) { R.harvU += b.harvU; R.carryU += b.carryU || 0; R.granU += b.granU || 0; R.granFE += b.granFE || 0; }
+    for (const R of [rec.rows[b.J], winRows[b.J]]) { R.harvU += b.harvU; R.carryU += b.carryU || 0; R.granU += b.granU || 0; R.granX += b.granX || 0; R.granFE += b.granFE || 0; }
   }
 }
 // 일괄(몸 없는 일꾼) 채집의 하루 — 생활층이 마을마다 남기는 `vil._t347Dbg`(그날 판 · 읽기만) · 어제 몫을 오늘 첫 틱에 센다
