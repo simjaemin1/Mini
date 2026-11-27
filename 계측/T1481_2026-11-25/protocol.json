@@ -1,0 +1,53 @@
+{
+  "base": "53a54a4f",
+  "runtime": "v24.22.1",
+  "controller": {
+    "pid": 58288,
+    "started": 1795587438.4220948,
+    "exit": 0,
+    "finished": 1795590189.6948302
+  },
+  "segments": [
+    {
+      "from": 0,
+      "to": 870,
+      "sec": 2695.1,
+      "code": 0,
+      "at": "2026-11-25T07:02:14.598Z"
+    },
+    {
+      "from": 870,
+      "to": 872,
+      "sec": 53.9,
+      "code": 0,
+      "at": "2026-11-25T07:03:09.393Z"
+    }
+  ],
+  "completionObservedUtc": "2026-11-25T07:09:51Z",
+  "failedNohup": {
+    "startedUtc": "2026-11-25T05:15:20Z",
+    "lastProgressUtc": "2026-11-25T05:16:20.683Z",
+    "zombieObservedUtc": "2026-11-25T06:16:20Z",
+    "exitCode": null,
+    "cause": "unknown; detachment failure suspected",
+    "excluded": true
+  },
+  "checkpointDay": "870",
+  "savedCheckpoint": "/workspace/scratch/t1481-main870/saved-870",
+  "heap": {
+    "NODE_OPTIONS": "--max-old-space-size=6144",
+    "runtimeDefaultComparison": false,
+    "T1445_BOOT_BOUND": "default ON",
+    "T1381_WALK_HEAP": "ON via T1445 default"
+  },
+  "forensicExit": 0,
+  "forensicSegment": [
+    {
+      "from": 870,
+      "to": 871,
+      "sec": 43.6,
+      "code": 0,
+      "at": "2026-11-25T07:15:22.479Z"
+    }
+  ]
+}

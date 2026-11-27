@@ -1,0 +1,362 @@
+{
+ "runs": [
+  {
+   "conf": "cap16",
+   "tag": "c16st1",
+   "probe": true,
+   "ref": "5cdd5bd70",
+   "prof": false,
+   "W": "day",
+   "pop": 819,
+   "ticks": 5400,
+   "step": null,
+   "stepBr": null,
+   "tickP50": 2.8855,
+   "tickP95": 4.243,
+   "totUs": 3.806,
+   "tq": {
+    "n": 6,
+    "p50": 2.8635,
+    "p95": 4.3985,
+    "p99": 6.592499999999999,
+    "max": 29.399
+   },
+   "segUs": {
+    "econ(마을 하루 조각·캐러밴 몸)": 0.468,
+    "일 훅(도적·길·흙·눈)": 0.205,
+    "idle 문": 0.003,
+    "청크": 0.061,
+    "공간 색인·입력 시한": 0.231,
+    "결정 문(순회)": 1.101,
+    "화살·걸음 커널 준비": 0.536,
+    "이동 문(순회)": 0.439,
+    "계단·낙하·게이지·HP": 0.093,
+    "몹 AI": 0.271,
+    "델타·방송(AOI)": 0.284,
+    "꼬리(어로·저장·쓰러짐·계측)": 0.112
+   },
+   "segSumUs": 3.804,
+   "subUs": {
+    "gc": 0.149
+   },
+   "subN": {
+    "gc": 0.1
+   },
+   "hq": {
+    "dec": {
+     "n": 0,
+     "sameRate": 0,
+     "gatedRate": 0,
+     "sameUs": 0,
+     "diffUs": 0,
+     "changes": {
+      "a": 0,
+      "b": 0,
+      "c": 0
+     },
+     "runP50": 0,
+     "runP95": 0
+    },
+    "life": {
+     "n": 0,
+     "sameRate": 0,
+     "gatedRate": 0,
+     "sameUs": 0,
+     "diffUs": 0,
+     "changes": {
+      "a": 0,
+      "b": 0,
+      "c": 0
+     },
+     "runP50": 0,
+     "runP95": 0
+    },
+    "follow": {
+     "n": 0,
+     "sameRate": 0,
+     "gatedRate": 0,
+     "sameUs": 0,
+     "diffUs": 0,
+     "changes": {
+      "a": 0,
+      "b": 0,
+      "c": 0
+     },
+     "runP50": 0,
+     "runP95": 0
+    }
+   },
+   "ast": {
+    "near": [
+     0,
+     0
+    ],
+    "beeline": [
+     0,
+     0
+    ],
+    "straight": [
+     0,
+     0
+    ],
+    "cooldown": [
+     0,
+     0
+    ],
+    "fail": [
+     0,
+     0
+    ],
+    "found": [
+     0,
+     0
+    ],
+    "inside": 0,
+    "outside": 0,
+    "outLab": {},
+    "why": {},
+    "walked": {},
+    "insideRate": 0,
+    "cats": {
+     "near": {
+      "n": 0,
+      "us": 0,
+      "perCallUs": 0
+     },
+     "beeline": {
+      "n": 0,
+      "us": 0,
+      "perCallUs": 0
+     },
+     "straight": {
+      "n": 0,
+      "us": 0,
+      "perCallUs": 0
+     },
+     "cooldown": {
+      "n": 0,
+      "us": 0,
+      "perCallUs": 0
+     },
+     "fail": {
+      "n": 0,
+      "us": 0,
+      "perCallUs": 0
+     },
+     "found": {
+      "n": 0,
+      "us": 0,
+      "perCallUs": 0
+     }
+    }
+   },
+   "sliceLines": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "slicePh": [
+    0.121,
+    0.142,
+    0.163,
+    0.184,
+    0.205,
+    0.226
+   ],
+   "flags": []
+  },
+  {
+   "conf": "cap16",
+   "tag": "c16x1",
+   "probe": true,
+   "ref": "5cdd5bd70",
+   "prof": false,
+   "W": "day",
+   "pop": 819,
+   "ticks": 5400,
+   "step": null,
+   "stepBr": null,
+   "tickP50": 2.841,
+   "tickP95": 4.143000000000001,
+   "totUs": 3.669,
+   "tq": {
+    "n": 6,
+    "p50": 2.8285,
+    "p95": 4.1065000000000005,
+    "p99": 6.0145,
+    "max": 28.363
+   },
+   "segUs": {
+    "econ(마을 하루 조각·캐러밴 몸)": 0.431,
+    "일 훅(도적·길·흙·눈)": 0.198,
+    "idle 문": 0.003,
+    "청크": 0.056,
+    "공간 색인·입력 시한": 0.174,
+    "결정 문(순회)": 1.077,
+    "화살·걸음 커널 준비": 0.451,
+    "이동 문(순회)": 0.456,
+    "계단·낙하·게이지·HP": 0.185,
+    "몹 AI": 0.227,
+    "델타·방송(AOI)": 0.283,
+    "꼬리(어로·저장·쓰러짐·계측)": 0.125
+   },
+   "segSumUs": 3.667,
+   "subUs": {
+    "gc": 0.161
+   },
+   "subN": {
+    "gc": 0.1
+   },
+   "hq": {
+    "dec": {
+     "n": 0,
+     "sameRate": 0,
+     "gatedRate": 0,
+     "sameUs": 0,
+     "diffUs": 0,
+     "changes": {
+      "a": 0,
+      "b": 0,
+      "c": 0
+     },
+     "runP50": 0,
+     "runP95": 0
+    },
+    "life": {
+     "n": 0,
+     "sameRate": 0,
+     "gatedRate": 0,
+     "sameUs": 0,
+     "diffUs": 0,
+     "changes": {
+      "a": 0,
+      "b": 0,
+      "c": 0
+     },
+     "runP50": 0,
+     "runP95": 0
+    },
+    "follow": {
+     "n": 0,
+     "sameRate": 0,
+     "gatedRate": 0,
+     "sameUs": 0,
+     "diffUs": 0,
+     "changes": {
+      "a": 0,
+      "b": 0,
+      "c": 0
+     },
+     "runP50": 0,
+     "runP95": 0
+    }
+   },
+   "ast": {
+    "near": [
+     0,
+     0
+    ],
+    "beeline": [
+     0,
+     0
+    ],
+    "straight": [
+     0,
+     0
+    ],
+    "cooldown": [
+     0,
+     0
+    ],
+    "fail": [
+     0,
+     0
+    ],
+    "found": [
+     0,
+     0
+    ],
+    "inside": 0,
+    "outside": 0,
+    "outLab": {},
+    "why": {},
+    "walked": {},
+    "insideRate": 0,
+    "cats": {
+     "near": {
+      "n": 0,
+      "us": 0,
+      "perCallUs": 0
+     },
+     "beeline": {
+      "n": 0,
+      "us": 0,
+      "perCallUs": 0
+     },
+     "straight": {
+      "n": 0,
+      "us": 0,
+      "perCallUs": 0
+     },
+     "cooldown": {
+      "n": 0,
+      "us": 0,
+      "perCallUs": 0
+     },
+     "fail": {
+      "n": 0,
+      "us": 0,
+      "perCallUs": 0
+     },
+     "found": {
+      "n": 0,
+      "us": 0,
+      "perCallUs": 0
+     }
+    }
+   },
+   "sliceLines": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "slicePh": [
+    0.121,
+    0.142,
+    0.163,
+    0.184,
+    0.205,
+    0.226
+   ],
+   "flags": []
+  }
+ ],
+ "dest": {
+  "c16st1.dest.json": {
+   "villageDays": 0,
+   "cellsP50": 0,
+   "cellsP95": 0,
+   "cellsMax": 0,
+   "usersP50": 0,
+   "usersP95": 0,
+   "usersMax": 0,
+   "top10": []
+  },
+  "c16x1.dest.json": {
+   "villageDays": 0,
+   "cellsP50": 0,
+   "cellsP95": 0,
+   "cellsMax": 0,
+   "usersP50": 0,
+   "usersP95": 0,
+   "usersMax": 0,
+   "top10": []
+  }
+ }
+}

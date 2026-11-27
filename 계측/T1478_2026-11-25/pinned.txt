@@ -1,0 +1,15 @@
+test-claim-v2.js
+test-deeds-blackbox.js
+test-t1386-deeds-debt.js
+test-t1389-deeds-on.js
+test-t1392-first-lot.js
+test-t1402-deeds-split.js
+test-t1402-deeds-uptime.js
+test-t1402-deeds-work.js
+test-t1403-small-hut.js
+test-t1423-block-react.js
+test-t1428-deeds-home.js
+test-t1441-village-rules.js
+test-village-only.js
+e2e-onboarding.js
+e2e-t1389-deeds-on.js

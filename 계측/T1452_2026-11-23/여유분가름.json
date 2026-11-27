@@ -1,0 +1,52 @@
+{
+ "/tmp/claude-0/-home-claude/1f1e7ed8-6ef5-52d5-88f7-6d92b60be336/scratchpad/t1452/bench/farm-1020-420.json": {
+  "villages": 51,
+  "days": 420,
+  "sigmaMed": 7.72,
+  "rwDrawdown365": 184.9,
+  "rwDrawdownT": 198.3,
+  "mdd": {
+   "med": 657.36,
+   "p90": 1270.493
+  },
+  "mddNoFieldMiss": {
+   "med": 657.36,
+   "p90": 1270.493
+  },
+  "fieldMissDays": 0,
+  "fieldMissSum": 0.0,
+  "villageDays": 20625,
+  "driftY1": -1.763,
+  "driftY2": 0.217,
+  "mddY2": {
+   "med": 30.2,
+   "p90": 113.1,
+   "days": 55
+  }
+ },
+ "/tmp/claude-0/-home-claude/1f1e7ed8-6ef5-52d5-88f7-6d92b60be336/scratchpad/t1452/bench/lab-1020.json": {
+  "villages": 51,
+  "days": 450,
+  "sigmaMed": 2.49,
+  "rwDrawdown365": 59.6,
+  "rwDrawdownT": 66.2,
+  "mdd": {
+   "med": 240.967,
+   "p90": 581.586
+  },
+  "mddNoFieldMiss": {
+   "med": 240.967,
+   "p90": 581.586
+  },
+  "fieldMissDays": 0,
+  "fieldMissSum": 0.0,
+  "villageDays": 22899,
+  "driftY1": -0.634,
+  "driftY2": 0.495,
+  "mddY2": {
+   "med": 8.7,
+   "p90": 51.1,
+   "days": 85
+  }
+ }
+}

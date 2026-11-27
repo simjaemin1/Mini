@@ -1,0 +1,110 @@
+0131d3057	e2e-membership	1	G	0	86	 === PASS 28 / FAIL 0 === 
+0131d3057	e2e-membership	2	G	0	67	 === PASS 28 / FAIL 0 === 
+0131d3057	e2e-membership	3	G	0	68	 === PASS 28 / FAIL 0 === 
+0131d3057	e2e-membership	4	G	0	85	 === PASS 28 / FAIL 0 === 
+0131d3057	e2e-membership	5	G	0	93	 === PASS 28 / FAIL 0 === 
+0131d3057	e2e-membership	6	R	1	66	  ✗ ⑦ 곳간은 촌장만 — `/인출` 이 거절된다(NPC 마을 = 사람 촌장 없음)  ["마을에서 너무 멉니다. 곳간 앞으로 가십시오."]
+0131d3057	e2e-membership	7	G	0	82	 === PASS 28 / FAIL 0 === 
+0131d3057	e2e-membership	8	G	0	68	 === PASS 28 / FAIL 0 === 
+0131d3057	e2e-membership	9	G	0	66	 === PASS 28 / FAIL 0 === 
+0131d3057	e2e-membership	10	R	1	73	  ✗ ⑦ 곳간은 촌장만 — `/인출` 이 거절된다(NPC 마을 = 사람 촌장 없음)  ["마을에서 너무 멉니다. 곳간 앞으로 가십시오."]
+0c2b30de1	e2e-membership	1	R	1	117	  ✗ ⑦ 곳간은 촌장만 — `/인출` 이 거절된다(NPC 마을 = 사람 촌장 없음)  ["마을에서 너무 멉니다. 곳간 앞으로 가십시오."]
+0c2b30de1	e2e-membership	2	R	1	73	  ✗ ⑦ 곳간은 촌장만 — `/인출` 이 거절된다(NPC 마을 = 사람 촌장 없음)  ["마을에서 너무 멉니다. 곳간 앞으로 가십시오."]
+0c2b30de1	e2e-membership	3	R	1	77	  ✗ ⑦ 곳간은 촌장만 — `/인출` 이 거절된다(NPC 마을 = 사람 촌장 없음)  ["마을에서 너무 멉니다. 곳간 앞으로 가십시오."]
+0c2b30de1	e2e-membership	4	R	1	78	  ✗ ⑦ 곳간은 촌장만 — `/인출` 이 거절된다(NPC 마을 = 사람 촌장 없음)  ["마을에서 너무 멉니다. 곳간 앞으로 가십시오."]
+0c2b30de1	e2e-membership	5	R	1	95	  ✗ ⑦ 곳간은 촌장만 — `/인출` 이 거절된다(NPC 마을 = 사람 촌장 없음)  ["마을에서 너무 멉니다. 곳간 앞으로 가십시오."]
+12dde872d	e2e-membership	1	G	0	79	 === PASS 28 / FAIL 0 === 
+12dde872d	e2e-membership	2	G	0	69	 === PASS 28 / FAIL 0 === 
+12dde872d	e2e-membership	3	G	0	75	 === PASS 28 / FAIL 0 === 
+12dde872d	e2e-membership	4	G	0	66	 === PASS 28 / FAIL 0 === 
+12dde872d	e2e-membership	5	G	0	72	 === PASS 28 / FAIL 0 === 
+1b45ec5a2	e2e-membership	1	X	1	0	 Node.js v22.23.4 
+1b45ec5a2	e2e-membership	2	X	1	1	 Node.js v22.23.4 
+1b45ec5a2	e2e-membership	3	X	1	0	 Node.js v22.23.4 
+1b45ec5a2	e2e-membership	4	X	1	0	 Node.js v22.23.4 
+1b45ec5a2	e2e-membership	5	X	1	0	 Node.js v22.23.4 
+1fd4844bf	e2e-membership	1	X	1	0	 Node.js v22.23.4 
+1fd4844bf	e2e-membership	2	X	1	0	 Node.js v22.23.4 
+1fd4844bf	e2e-membership	3	X	1	0	 Node.js v22.23.4 
+1fd4844bf	e2e-membership	4	X	1	0	 Node.js v22.23.4 
+1fd4844bf	e2e-membership	5	X	1	0	 Node.js v22.23.4 
+2f8695a74	e2e-membership	1	G	0	66	 === PASS 28 / FAIL 0 === 
+2f8695a74	e2e-membership	2	G	0	62	 === PASS 28 / FAIL 0 === 
+2f8695a74	e2e-membership	3	G	0	80	 === PASS 28 / FAIL 0 === 
+2f8695a74	e2e-membership	4	G	0	62	 === PASS 28 / FAIL 0 === 
+2f8695a74	e2e-membership	5	G	0	75	 === PASS 28 / FAIL 0 === 
+353ca72e0	e2e-membership	1	G	0	71	 === PASS 28 / FAIL 0 === 
+353ca72e0	e2e-membership	2	G	0	82	 === PASS 28 / FAIL 0 === 
+353ca72e0	e2e-membership	3	G	0	78	 === PASS 28 / FAIL 0 === 
+353ca72e0	e2e-membership	4	G	0	58	 === PASS 28 / FAIL 0 === 
+353ca72e0	e2e-membership	5	G	0	75	 === PASS 28 / FAIL 0 === 
+5296e08da	e2e-membership	1	G	0	92	 === PASS 28 / FAIL 0 === 
+5296e08da	e2e-membership	2	R	1	68	  ✗ ⑦ 곳간은 촌장만 — `/인출` 이 거절된다(NPC 마을 = 사람 촌장 없음)  ["마을에서 너무 멉니다. 곳간 앞으로 가십시오."]
+5296e08da	e2e-membership	3	R	1	73	  ✗ ⑦ 곳간은 촌장만 — `/인출` 이 거절된다(NPC 마을 = 사람 촌장 없음)  ["마을에서 너무 멉니다. 곳간 앞으로 가십시오."]
+5296e08da	e2e-membership	4	G	0	69	 === PASS 28 / FAIL 0 === 
+5296e08da	e2e-membership	5	G	0	68	 === PASS 28 / FAIL 0 === 
+5296e08da	e2e-membership	6	G	0	77	 === PASS 28 / FAIL 0 === 
+5296e08da	e2e-membership	7	G	0	87	 === PASS 28 / FAIL 0 === 
+5296e08da	e2e-membership	8	G	0	71	 === PASS 28 / FAIL 0 === 
+5296e08da	e2e-membership	9	G	0	84	 === PASS 28 / FAIL 0 === 
+5296e08da	e2e-membership	10	G	0	68	 === PASS 28 / FAIL 0 === 
+53a54a4f8	e2e-membership	1	R	1	95	  ✗ ⑦ 곳간은 촌장만 — `/인출` 이 거절된다(NPC 마을 = 사람 촌장 없음)  ["마을에서 너무 멉니다. 곳간 앞으로 가십시오."]
+53a54a4f8	e2e-membership	2	R	1	70	  ✗ ⑦ 곳간은 촌장만 — `/인출` 이 거절된다(NPC 마을 = 사람 촌장 없음)  ["마을에서 너무 멉니다. 곳간 앞으로 가십시오."]
+53a54a4f8	e2e-membership	3	G	0	85	 === PASS 28 / FAIL 0 === 
+53a54a4f8	e2e-membership	4	G	0	72	 === PASS 28 / FAIL 0 === 
+53a54a4f8	e2e-membership	5	R	1	92	  ✗ ⑦ 곳간은 촌장만 — `/인출` 이 거절된다(NPC 마을 = 사람 촌장 없음)  ["마을에서 너무 멉니다. 곳간 앞으로 가십시오."]
+53cc1e6ed	e2e-membership	1	X	1	0	 Node.js v22.23.4 
+53cc1e6ed	e2e-membership	2	X	1	0	 Node.js v22.23.4 
+53cc1e6ed	e2e-membership	3	X	1	0	 Node.js v22.23.4 
+53cc1e6ed	e2e-membership	4	X	1	0	 Node.js v22.23.4 
+53cc1e6ed	e2e-membership	5	X	1	0	 Node.js v22.23.4 
+5ac57c743	e2e-membership	1	G	0	83	 === PASS 28 / FAIL 0 === 
+5ac57c743	e2e-membership	2	G	0	83	 === PASS 28 / FAIL 0 === 
+5ac57c743	e2e-membership	3	G	0	89	 === PASS 28 / FAIL 0 === 
+5ac57c743	e2e-membership	4	R	1	69	  ✗ ⑦ 곳간은 촌장만 — `/인출` 이 거절된다(NPC 마을 = 사람 촌장 없음)  ["마을에서 너무 멉니다. 곳간 앞으로 가십시오."]
+5ac57c743	e2e-membership	5	R	1	68	  ✗ ⑦ 곳간은 촌장만 — `/인출` 이 거절된다(NPC 마을 = 사람 촌장 없음)  ["마을에서 너무 멉니다. 곳간 앞으로 가십시오."]
+691f7199c	e2e-membership	1	G	0	73	 === PASS 28 / FAIL 0 === 
+691f7199c	e2e-membership	2	G	0	70	 === PASS 28 / FAIL 0 === 
+691f7199c	e2e-membership	3	G	0	78	 === PASS 28 / FAIL 0 === 
+691f7199c	e2e-membership	4	G	0	75	 === PASS 28 / FAIL 0 === 
+691f7199c	e2e-membership	5	G	0	60	 === PASS 28 / FAIL 0 === 
+7e46151e7	e2e-membership	1	X	1	0	 Node.js v22.23.4 
+7e46151e7	e2e-membership	2	X	1	0	 Node.js v22.23.4 
+7e46151e7	e2e-membership	3	X	1	0	 Node.js v22.23.4 
+7e46151e7	e2e-membership	4	X	1	0	 Node.js v22.23.4 
+7e46151e7	e2e-membership	5	X	1	0	 Node.js v22.23.4 
+9bd684b8b	e2e-membership	1	X	1	0	 Node.js v22.23.4 
+9bd684b8b	e2e-membership	2	X	1	0	 Node.js v22.23.4 
+9bd684b8b	e2e-membership	3	X	1	0	 Node.js v22.23.4 
+9bd684b8b	e2e-membership	4	X	1	1	 Node.js v22.23.4 
+9bd684b8b	e2e-membership	5	X	1	0	 Node.js v22.23.4 
+b051b4b97	e2e-membership	1	G	0	68	 === PASS 28 / FAIL 0 === 
+b051b4b97	e2e-membership	2	G	0	64	 === PASS 28 / FAIL 0 === 
+b051b4b97	e2e-membership	3	G	0	69	 === PASS 28 / FAIL 0 === 
+b051b4b97	e2e-membership	4	G	0	76	 === PASS 28 / FAIL 0 === 
+b051b4b97	e2e-membership	5	G	0	55	 === PASS 28 / FAIL 0 === 
+b051b4b97	e2e-membership	6	G	0	62	 === PASS 28 / FAIL 0 === 
+b051b4b97	e2e-membership	7	G	0	66	 === PASS 28 / FAIL 0 === 
+b051b4b97	e2e-membership	8	G	0	58	 === PASS 28 / FAIL 0 === 
+b051b4b97	e2e-membership	9	G	0	59	 === PASS 28 / FAIL 0 === 
+b051b4b97	e2e-membership	10	G	0	55	 === PASS 28 / FAIL 0 === 
+b241f9d9e	e2e-membership	1	G	0	89	 === PASS 28 / FAIL 0 === 
+b241f9d9e	e2e-membership	2	G	0	67	 === PASS 28 / FAIL 0 === 
+b241f9d9e	e2e-membership	3	R	1	75	  ✗ ⑦ 곳간은 촌장만 — `/인출` 이 거절된다(NPC 마을 = 사람 촌장 없음)  ["마을에서 너무 멉니다. 곳간 앞으로 가십시오."]
+b241f9d9e	e2e-membership	4	R	1	82	  ✗ ⑦ 곳간은 촌장만 — `/인출` 이 거절된다(NPC 마을 = 사람 촌장 없음)  ["마을에서 너무 멉니다. 곳간 앞으로 가십시오."]
+b241f9d9e	e2e-membership	5	G	0	84	 === PASS 28 / FAIL 0 === 
+b481b8066	e2e-membership	1	R	1	88	  ✗ ⑦ 곳간은 촌장만 — `/인출` 이 거절된다(NPC 마을 = 사람 촌장 없음)  ["마을에서 너무 멉니다. 곳간 앞으로 가십시오."]
+b481b8066	e2e-membership	2	G	0	69	 === PASS 28 / FAIL 0 === 
+b481b8066	e2e-membership	3	G	0	67	 === PASS 28 / FAIL 0 === 
+b481b8066	e2e-membership	4	G	0	68	 === PASS 28 / FAIL 0 === 
+b481b8066	e2e-membership	5	G	0	66	 === PASS 28 / FAIL 0 === 
+c2a1dc20c	e2e-membership	1	R	1	92	  ✗ ⑦ 곳간은 촌장만 — `/인출` 이 거절된다(NPC 마을 = 사람 촌장 없음)  ["마을에서 너무 멉니다. 곳간 앞으로 가십시오."]
+c2a1dc20c	e2e-membership	2	G	0	70	 === PASS 28 / FAIL 0 === 
+c2a1dc20c	e2e-membership	3	R	1	68	  ✗ ⑦ 곳간은 촌장만 — `/인출` 이 거절된다(NPC 마을 = 사람 촌장 없음)  ["마을에서 너무 멉니다. 곳간 앞으로 가십시오."]
+c2a1dc20c	e2e-membership	4	G	0	68	 === PASS 28 / FAIL 0 === 
+c2a1dc20c	e2e-membership	5	R	1	73	  ✗ ⑦ 곳간은 촌장만 — `/인출` 이 거절된다(NPC 마을 = 사람 촌장 없음)  ["마을에서 너무 멉니다. 곳간 앞으로 가십시오."]
+f5bde7a8e	e2e-membership	1	G	0	69	 === PASS 28 / FAIL 0 === 
+f5bde7a8e	e2e-membership	2	R	1	93	  ✗ ⑦ 곳간은 촌장만 — `/인출` 이 거절된다(NPC 마을 = 사람 촌장 없음)  ["마을에서 너무 멉니다. 곳간 앞으로 가십시오."]
+f5bde7a8e	e2e-membership	3	R	1	105	  ✗ ⑦ 곳간은 촌장만 — `/인출` 이 거절된다(NPC 마을 = 사람 촌장 없음)  ["마을에서 너무 멉니다. 곳간 앞으로 가십시오."]
+f5bde7a8e	e2e-membership	4	R	1	88	  ✗ ⑦ 곳간은 촌장만 — `/인출` 이 거절된다(NPC 마을 = 사람 촌장 없음)  ["마을에서 너무 멉니다. 곳간 앞으로 가십시오."]
+f5bde7a8e	e2e-membership	5	R	1	72	  ✗ ⑦ 곳간은 촌장만 — `/인출` 이 거절된다(NPC 마을 = 사람 촌장 없음)  ["마을에서 너무 멉니다. 곳간 앞으로 가십시오."]

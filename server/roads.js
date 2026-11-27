@@ -45,6 +45,24 @@ const T688 = (process.env.T688_ROAD_DAY || '').trim(), T688_ON = T688 !== '0' &&
 //   묶음 행 상한(`_flRate`)은 견주기 **전에** 잰 ms 로 정한다 ⇒ 묶음 경계 · DB 쓰기 차례도 같다.
 const T713 = process.env.T713_FLUSH_END !== '0';   // ★[PM 10-13] 켬 기본(바이트 같음 3/3 · 끝 틱 21.6 → 1.1 ms) · 되돌림 `=0`
 
+// ★★[T1448 2026-11-23 · 재민 판정 62 (나) "모든 셀마다 갖는 속성 중에 길 수치를 두면 되는 거 아니었어..?"] 길 장부를 **칸 배열로** —
+//   손잡이 `T1448_ROAD_GRID`(끔 기본 · `=1` 켬 · 끔 = 종전 Map · Set · 칸 행 그대로).
+//   켬: 칸마다 쥐던 것 — `S.cells`(값 · 날) · `S.sent`(방송 등급) · `S.paved`(다진 길) · T688 `I.lvl`(등급) · `I.sched`(문턱 날) — 을 구역(16 × 16칸) 숫자 배열로 ·
+//     `I.due`(날 → 그날 문턱 칸)는 날마다 Int32 줄(다시 잡힌 칸은 `sched` 로 거른다) · `S.coarse`(4칸 격자 코스 지도)는 격자 칸 바이트 배열(`server/road-grid.js` —
+//     같은 Map · Set 꼴 · 문 글자 무변 · 칸마다 객체 · 색인 항목 0 · 밟힌 적 없는 구역은 배열 0) · `S.dirty` 는 그날 바뀐 구역 표를 곁에 단 Set(그날 일감 — 종전 그대로).
+//   DB = 구역 묶음 행(`road_chunks` — 구역 하나 한 줄) · 칸 행(`roads`)은 첫 부팅에 **한 거래로** 옮기고 지운다.
+//     끈 부팅이 구역 행을 보면 칸 행으로 되돌린다(한 거래 · `scripts/t1448-road-migrate.js --back` 과 같은 일) — 켠 적 없는 DB 는 무동작(종전 그대로).
+//     하루 저장은 그날 바뀐 칸이 든 구역을 경계 값으로 한 줄씩(쓰기 전 복사가 그 구역 칸을 다 든다) · 방송 견줌은 종전 그대로(바뀐 키 · 같은 차례).
+//   종료 저장 덩이(`t1382Dump`) = 칸은 구역 덩이째(base64) · 나머지 종전 꼴. 값 · 날 · 등급 · 감쇠 · 지움(1 밑 = 0)은 종전 글자 그대로.
+//   차례 = 칸 키 오름(종전 Map 은 넣은 차례 — 값에 닿는 차례 자리 0 · 보고 T1448 §3).
+const T1448 = process.env.T1448_ROAD_GRID === '1';
+const RG = T1448 ? require('./road-grid') : null;
+class _T1448Dirty extends Set {   // 그날 바뀐 키 + 그 구역(얼릴 때 같이 넘긴다)
+  constructor(g) { super(); this.g = g; this.ch = new Set(); }
+  add(k) { this.ch.add(this.g._ci(k)); return super.add(k); }
+  clear() { this.ch.clear(); return super.clear(); }
+}
+
 const SZ = 32;
 const T1 = 8, T2 = 28, VMAX = 120, DK = 0.995;                 // 랩 L_ROAD_T1/T2/MAX/DK verbatim
 const SPD = [1, 1.10, 1.15], COST = [1, 0.93, 0.87];           // 랩 L_ROAD_SPD/COST verbatim
@@ -148,8 +166,18 @@ function courseCostMul(gx, gy) {
 let _t688FullRel = null;   // [T688 견줌] 종전 셈의 풀림 차례(읽기만)
 function _rebuildCoarse(t) { // 일 1회 재구축(감쇠 강등 반영 — graded 소수라 저렴)
   const prev = S.coarse;   // ★[T578 ④] 등급 지도가 바뀌었나 — 바뀌면 `coarseGen` 이 오른다(교역로를 다시 팔 때를 정한다)
-  S.coarse = new Map();
+  S.coarse = T1448 ? new RG.DenseU8(S.gw, S.gh) : new Map();   // ★[T1448] 켬 = 격자 칸 바이트 배열
   let graded = 0;
+  if (T1448) S.cells.scan((k, rv, rd) => {   // ★[T1448] 배열 훑기(객체 0) — 아래 고리와 같은 식 · 같은 차례(칸 키 오름)
+    const v = (t > rd) ? rv * Math.pow(DK, t - rd) : rv;
+    const lv = v >= T2 ? 2 : (v >= T1 ? 1 : 0);
+    if (!lv) return;
+    graded++;
+    const cx = k % S.cellsW, cy = (k / S.cellsW) | 0;
+    const ck = ((cy / COARSE) | 0) * S.gw + ((cx / COARSE) | 0);
+    if ((S.coarse.get(ck) || 0) < lv) S.coarse.set(ck, lv);
+  });
+  else
   for (const [k, r] of S.cells) {
     const v = (t > r.d) ? r.v * Math.pow(DK, t - r.d) : r.v;   // 조회 전용 감쇠(쓰기는 접근 경로 소유)
     const lv = v >= T2 ? 2 : (v >= T1 ? 1 : 0);
@@ -213,14 +241,21 @@ function _i688Set(k, r, nl) {
   const dd = nl ? _i688Cross(r, nl) : undefined;
   if (od !== dd) {
     if (od !== undefined) { const a = I.due.get(od); if (a) a.delete(k); }
-    if (dd !== undefined) { I.sched.set(k, dd); let a = I.due.get(dd); if (!a) I.due.set(dd, a = new Set()); a.add(k); } else I.sched.delete(k);
+    if (dd !== undefined) { I.sched.set(k, dd); let a = I.due.get(dd); if (!a) I.due.set(dd, a = _dueNew(dd)); a.add(k); } else I.sched.delete(k);
   }
 }
+function _dueNew(dd) { return T1448 ? new RG.DueList(I.sched, dd) : new Set(); }   // ★[T1448] 켬 = 날 통이 Int32 줄(거르기 · `RG.DueList`)
 function _i688Touch(k, r, nl) { I.st.touch++; if (nl || I.lvl.has(k)) _i688Set(k, r, nl); }   // 등급 0 → 0 은 아무 일도 없다(밟힌 셀 대부분)
 // 부팅 — 종전 전수 재구축(init)과 같은 날로 한 번 다 잰다(부팅 몫 · 하루 훅 아님)
 function _i688Seed(t) {
   I.lvl.clear(); I.sched.clear(); I.due.clear(); I.graded = 0; I.tg = []; I.low.clear();
   I.c1 = new Uint8Array(S.gw * S.gh); I.c2 = new Uint8Array(S.gw * S.gh); I.tgMark = new Uint8Array(S.gw * S.gh);
+  if (T1448) { const r = { v: 0, d: 0 }; S.cells.scan((k, rv, rd) => {   // ★[T1448] 배열 훑기 — 아래 고리와 같은 식 · 같은 차례(r = 돌 때마다 다시 쓰는 한 객체 · 읽기만)
+    r.v = rv; r.d = rd;
+    const lv = _i688Lv(r, t); if (!lv) return;
+    I.lvl.set(k, lv); I.graded++; (lv === 2 ? I.c2 : I.c1)[_i688Ck(k)]++;
+    const dd = _i688Cross(r, lv); I.sched.set(k, dd); let a = I.due.get(dd); if (!a) I.due.set(dd, a = _dueNew(dd)); a.add(k);
+  }); } else
   for (const [k, r] of S.cells) {
     const lv = _i688Lv(r, t); if (!lv) continue;
     I.lvl.set(k, lv); I.graded++; (lv === 2 ? I.c2 : I.c1)[_i688Ck(k)]++;
@@ -257,6 +292,8 @@ function _rebuildCoarseInc(t) {
   const t2 = _i688Now(); let relN = 0, lowN = I.low.size, t3 = t2;
   if (S.paved.size && I.low.size) {   // 종전 풀림 — `S.paved` 차례 그대로(등급 2 에서 내려가 아직 2 가 아닌 셀만)
     const rel = [];
+    if (T1448) { for (const k of I.low) if (S.paved.has(k) && I.lvl.get(k) !== 2) rel.push(k); rel.sort((a, b) => a - b); }   // ★[T1448] 다진 길 그릇이 칸 키 오름으로 돈다 — 같은 줄을 내려간 칸만 보고 짓는다(17만 칸 훑기 0)
+    else
     for (const k of S.paved) if (I.low.has(k) && I.lvl.get(k) !== 2) rel.push(k);
     for (const k of rel) S.paved.delete(k);
     t3 = _i688Now(); relN = rel.length;
@@ -322,6 +359,7 @@ function coarseGen() { return S.coarseGen; }
 //   교역로 A* 가 h 를 줄일 몫을 **그 쌍 둘레에서만** 본다(전역 `courseCostMin` 은 지도 어디든 칸 하나면 모든 쌍의 h 를 바꾼다 — T605 §2).
 //   등급 칸은 소수라(일 1회 재구축이 세는 그것) 지도 전체를 훑지 않고 칸 목록만 본다.
 function _minIn(C, gx0, gy0, gx1, gy1) {
+  if (C.minIn) return C.minIn(COST, gx0, gy0, gx1, gy1);   // ★[T1448] 켬 = 코스 지도가 배열 — 상자만 본다(같은 답)
   let m = 1;
   for (const [k, lv] of C) {
     if (!lv) continue;
@@ -339,7 +377,7 @@ function courseCostMinIn(gx0, gy0, gx1, gy1) {
 //   같은 식으로 낸다. 새 세계 첫 부팅의 도적 교역로 표본을 틱마다 조각으로 파는 동안(`T640_BOOT_SLICE`) 사람이 와서 칸이 등급을 받아도
 //   표본은 부팅 순간 지도만 본다 ⇒ 부팅 때 한 번에 판 길(종전)과 바이트가 같다. 사본은 등급 칸뿐이라 작다(새 세계는 빈 지도).
 function frozenView() {
-  const C = new Map(S.coarse), ready = S.ready;
+  const C = (T1448 && S.coarse.copy) ? S.coarse.copy() : new Map(S.coarse), ready = S.ready;   // ★[T1448] 켬 = 배열 사본(같은 답 · `_minIn` 상자 훑기)
   return {
     frozen: true,
     isReady: () => ready,
@@ -357,12 +395,32 @@ function takeCoarseChanges() {
 function clientRoads() { // welcome 1회 — 등급 셀 flat [cx,cy,lv,...] (밟힌 전체가 아니라 등급만 — 소형)
   if (!S.ready) return null;
   const t = dayNow(), out = [];
+  if (T1448) S.cells.scan((k, rv, rd) => {   // ★[T1448] 배열 훑기 — 아래 고리와 같은 식(차례 = 칸 키 오름 · 보고 T1448 차례 표)
+    const v = (t > rd) ? rv * Math.pow(DK, t - rd) : rv;
+    const lv = v >= T2 ? 2 : (v >= T1 ? 1 : 0);
+    if (lv) out.push(k % S.cellsW, (k / S.cellsW) | 0, lv);
+  });
+  else
   for (const [k, r] of S.cells) {
     const v = (t > r.d) ? r.v * Math.pow(DK, t - r.d) : r.v;
     const lv = v >= T2 ? 2 : (v >= T1 ? 1 : 0);
     if (lv) out.push(k % S.cellsW, (k / S.cellsW) | 0, lv);
   }
   return out.length ? out : null;
+}
+// ★★[T1453 2026-11-23 · ★재민 11-22 판정 68] 칸 상자 하나의 등급 셀 — 손잡이 `T1453_VIEW_SEND`(zone.js · 끔 기본)가 welcome · 청크 몫을 지을 때만 부른다.
+//   `clientRoads` 와 **같은 식**(같은 날 `dayNow()` · 같은 게으른 감쇠 · 같은 문턱 · 읽기만 — 셀 값 · dirty · `S.sent` 무접촉)을 상자 안 칸에만 묻는다(줄 차례 · 1,024칸 = 청크 하나).
+//   `clientRoads` 는 글자 그대로 둔다(끔 = 종전 바이트 · T1448 이 같이 만지는 자리 — 충돌 줄을 줄인다). 두 길이 같은 답인지는 하네스가 청크마다 견준다(`test-t1453-load.js` Ⓒ).
+function clientRoadsIn(cx0, cy0, w, h, out) {
+  if (!S.ready) return out;
+  const t = dayNow(), x0 = Math.max(0, cx0), y0 = Math.max(0, cy0), x1 = Math.min(S.cellsW, cx0 + w), y1 = Math.min(S.cellsH, cy0 + h);
+  for (let cy = y0; cy < y1; cy++) for (let cx = x0; cx < x1; cx++) {
+    const r = S.cells.get(cy * S.cellsW + cx); if (!r) continue;
+    const v = (t > r.d) ? r.v * Math.pow(DK, t - r.d) : r.v;
+    const lv = v >= T2 ? 2 : (v >= T1 ? 1 : 0);
+    if (lv) out.push(cx, cy, lv);
+  }
+  return out;
 }
 // ★★[T630 2026-10-04] **하루 플러시를 틱 조각으로** — 길 일 훅 최대 80~111ms 의 주인이 이 함수였다(T605·T617 실측: 하루 1만 행 한 트랜잭션 34~88ms).
 //   ⓐ 날이 바뀐 그 틱에 **그날의 행을 얼린다**(dirty 키마다 그 순간의 v·d · 셀이 없으면 지움) — 종전이 그 틱에 쓰던 바로 그 값이다.
@@ -386,15 +444,17 @@ const _flSt = { n: 0, maxMs: 0, maxRows: 0, capped: 0, snap: 0 };
 // 쓰기 전 복사 — 아직 안 쓴 그날 키의 값을 바꾸기 **전에** 경계 값을 적는다(r = null 이면 그 순간 셀이 없다 = 지울 행)
 function _flSnap(k, r) {
   const F = _fl; if (!F || !F.lazy || F.end) { _flCow = false; return; }
-  if (F.snap.has(k) || !F.keys.has(k)) return;
+  if (F.snap.has(k)) return;
+  if (!F.keys.has(k) && !(F.grid && F.chunks.has(S.cells._ci(k)) && !F.written.has(S.cells._ci(k)))) return;   // ★[T1448] 켬 = 아직 안 쓴 얼린 구역의 칸도(구역 행은 그 구역 칸을 다 적는다)
   F.snap.set(k, r ? [r.v, r.d] : null); _flSt.snap++;
 }
 function flushDaily(day) { // 그날 행을 얼려 둔다(쓰기는 `_flushStep` — 틱마다 한 묶음)
   if (_fl) _flushStep(0);   // 앞날 것이 남았으면 먼저 다 쓴다(날이 조각보다 길어 실제론 안 난다)
   if (!S.dirty.size) return { rows: 0, sentN: 0, pending: false };
-  if (T688_ON) {   // ★[T688 ⓑ] 얼리기 = dirty 집합을 넘겨받기(O(1)) · 값은 묶음이 쓸 때 읽는다(그 사이 바뀐 키는 `_flSnap` 이 경계 값을 들고 있다) · 첫 묶음은 다음 틱
-    const keys = S.dirty; S.dirty = new Set();
+  if (T688_ON || T1448) {   // ★[T688 ⓑ] 얼리기 = dirty 집합을 넘겨받기(O(1)) · 값은 묶음이 쓸 때 읽는다(그 사이 바뀐 키는 `_flSnap` 이 경계 값을 들고 있다) · 첫 묶음은 다음 틱 · ★[T1448] 켬 = 늘 이 꼴(구역 행)
+    const keys = S.dirty; S.dirty = T1448 ? new _T1448Dirty(S.cells) : new Set();
     _fl = { lazy: true, day, keys, it: keys.values(), snap: new Map(), out: [], i: 0, n: 0, total: keys.size, end: false, cells: S.cells.size, graded: S.stats.graded, stamped: S.stats.stamped };
+    if (T1448) { _fl.grid = true; _fl.chunks = keys.ch; _fl.written = new Set(); }
     _flCow = true; _flDayMin = 0;
     return { rows: keys.size, sentN: 0, pending: true };
   }
@@ -446,16 +506,17 @@ function _flushEnd(F, kv) {
 function _flushStepLazy(F, budgetMs) {
   const db = S.db, t0 = Date.now(), p0 = _i688Now();
   const cap = budgetMs > 0 ? (_flRate > 0 ? Math.max(1, Math.floor(_flRate * budgetMs)) : 1) : 0;   // 0 = 상한 없음(정상 종료 때 남은 것 다)
-  const batch = [];
+  const batch = []; let cur = null;   // cur = 쓰던 키(던졌을 때 — ★[T1448] 켬은 그 키도 다음 날로)
   try {
     db.db.exec('BEGIN');
     for (;;) {
       const nx = F.it.next(); if (nx.done) { F.end = true; break; }
-      const k = nx.value; let v, d;
+      const k = nx.value; let v, d; cur = k;
       if (F.snap.has(k)) { const sv = F.snap.get(k); if (sv) { v = sv[0]; d = sv[1]; } else v = null; }
       else { const r = S.cells.get(k); if (r) { v = r.v; d = r.d; } else v = null; }
-      if (v !== null) db.upsertRoadCell(S.zoneId, k, v, d); else db.deleteRoadCell(S.zoneId, k);
-      batch.push(k, v); F.i++;
+      if (F.grid) { const ci = S.cells._ci(k); if (!F.written.has(ci)) { _t1448WriteChunk(F, ci); F.written.add(ci); } }   // ★[T1448] 구역 한 줄(경계 값 · 그 구역 첫 키에서)
+      else if (v !== null) db.upsertRoadCell(S.zoneId, k, v, d); else db.deleteRoadCell(S.zoneId, k);
+      batch.push(k, v); F.i++; cur = null;
       if (cap && batch.length / 2 >= cap) { _flSt.capped++; break; }
       if (budgetMs > 0 && Date.now() - t0 >= budgetMs) break;
     }
@@ -465,6 +526,7 @@ function _flushStepLazy(F, budgetMs) {
     try { db.db.exec('ROLLBACK'); } catch (_) { }
     for (let j = 0; j < batch.length; j += 2) S.dirty.add(batch[j]);
     for (let nx = F.it.next(); !nx.done; nx = F.it.next()) S.dirty.add(nx.value);   // ⓓ 이 묶음과 남은 키 — 다음 날 그때 값으로(종전과 같은 뜻)
+    if (F.grid && cur !== null) S.dirty.add(cur);   // ★[T1448] 켬 = 던진 그 키도 다음 날(종전 끔 갈래는 그 키 하나를 놓친다 — 보고 T1448 회부 · 끔 글자 무변)
     _fl = null; _flCow = false;
     console.error(`[${S.zoneId}] 🛤️ 답압 길 저장 실패(다음 날 재시도 ${F.total - F.i + batch.length / 2}행):`, e.message);
     return;
@@ -479,6 +541,18 @@ function _flushStepLazy(F, budgetMs) {
   if (T713) { _t713End(F); return; }
   const kv = []; for (let j = 0; j < F.out.length; j += 2) kv.push([F.out[j], F.out[j + 1]]);
   _flushEnd(F, kv);
+}
+// ★[T1448] 구역 ci 를 경계 값으로 한 줄(있는 칸만 · 칸 자리 오름) — 지금 칸 + 쓰기 전 복사(그 사이 바뀐 칸 = 경계 값 · 새로 든 칸 = 없던 칸 · 지운 칸 = 있던 칸)
+function _t1448WriteChunk(F, ci) {
+  const G = S.cells, W = S.cellsW, gy = (ci / G.GW) | 0, gx = ci - gy * G.GW, c = G.ch[ci], sn = F.snap.size > 0, db = G.d64 ? 0 : G.dB;
+  const li = [], vv = [], dd = [];
+  for (let i = 0; i < RG.CC; i++) {
+    const cx = (gx << RG.SHIFT) + (i & (RG.C - 1)), cy = (gy << RG.SHIFT) + (i >> RG.SHIFT); if (cx >= W || cy >= S.cellsH) continue;
+    if (sn) { const k = cy * W + cx; if (F.snap.has(k)) { const sv = F.snap.get(k); if (sv) { li.push(i); vv.push(sv[0]); dd.push(sv[1]); } continue; } }
+    if (c && c.v[i] > 0) { li.push(i); vv.push(c.v[i]); dd.push(c.d[i] + db); }
+  }
+  if (!li.length) { S.db.deleteRoadChunk(S.zoneId, ci); return; }
+  S.db.upsertRoadChunk(S.zoneId, ci, li.length, RG.encodeChunk({ n: li.length, li, v: vv, d: dd }));
 }
 // ★[T713] `S.sent` 고침 남은 몫 — 방송 뒤 틱들에 나눠 한다(budgetMs 0 = 남은 것 다)
 let _t713Q = null;
@@ -511,6 +585,63 @@ function _t713End(F) {
 }
 process.on('exit', () => { if (_fl) { try { _flushStep(0); } catch (e) { } } });   // ⓔ
 
+// ★[T1448] 구역 ck 의 칸 자리 i → 칸 키(끔에서도 — 되돌림 · 덤프 되올림)
+function _t1448Key(ck, i) { const G = RG || require('./road-grid'), GW = Math.ceil(S.cellsW / G.C), gy = (ck / GW) | 0, gx = ck - gy * GW; return ((gy << G.SHIFT) + (i >> G.SHIFT)) * S.cellsW + (gx << G.SHIFT) + (i & (G.C - 1)); }
+// ★[T1448] 켬 부팅 — 구역 행을 읽는다(날 클램프 = 칸 행과 같은 줄) · 칸 행이 있으면(옛 DB) 그것도 읽어(더 새 값 — 덧쓴다) 지금 칸을 구역 행으로 한 거래에 옮긴다
+function _t1448Boot(_tNow) {
+  const db = S.db, Z = S.zoneId, t0 = Date.now();
+  const nCh = db.countRoadChunks(Z), nCell = db.countRoadCells(Z);
+  const KN = S.cellsW * S.cellsH; let outside = 0;   // 존 칸 밖 키(존 넓이가 바뀐 DB) — 배열에 자리가 없다 · 세고 건너뛴다(칸 행은 옮기며 지운다)
+  if (nCh) for (const r of db.getRoadChunks(Z)) { const p = RG.decodeChunk(r.data); for (let j = 0; j < p.n; j++) { const k = _t1448Key(r.ck, p.li[j]); if (k < KN) S.cells.set(k, { v: p.v[j], d: Math.min(p.d[j], _tNow) }); else outside++; } }
+  S.t1448Boot = { chunkRows: nCh, cellRows: nCell, readMs: 0, mig: null, outside: 0 };
+  if (nCell) {
+    for (const r of db.getRoadCells(Z)) { const k = r.cell_key | 0; if (k >= 0 && k < KN) S.cells.set(k, { v: r.v, d: Math.min(r.d | 0, _tNow) }); else outside++; }
+    const t1 = Date.now(); let wrote = 0;
+    try {
+      db.db.exec('BEGIN');
+      for (const ci of S.cells.chunkKeys()) { const p = S.cells.packChunk(ci); db.upsertRoadChunk(Z, ci, p.n, RG.encodeChunk(p)); wrote++; }
+      db.deleteRoadCellsAll(Z);
+      db.db.exec('COMMIT');
+      S.t1448Boot.mig = { cellRows: nCell, chunkRows: wrote, ms: Date.now() - t1 };
+      console.log(`[${Z}] 🛤️ [T1448] 칸 행 ${nCell} → 구역 행 ${wrote}(한 거래 · 앞서 있던 구역 행 ${nCh} · ${Date.now() - t1}ms)`);
+    } catch (e) { try { db.db.exec('ROLLBACK'); } catch (_) { } S.t1448Boot.mig = { err: e.message }; console.error(`[${Z}] 🛤️ [T1448] 구역 행 옮기기 실패(되돌림 · 칸 행 그대로 · 다음 부팅 다시):`, e.message); }
+  }
+  S.t1448Boot.readMs = Date.now() - t0; S.t1448Boot.outside = outside;
+  if (outside) console.error(`[${Z}] 🛤️ [T1448] 존 칸 밖 길 키 ${outside}개 — 건너뜀(존 넓이가 바뀐 DB)`);
+}
+// ★[T1448] 끔 부팅 — 구역 행이 있으면(켰던 DB) 칸 행으로 되돌린다(한 거래 · 같은 칸 칸 행이 이미 있으면 그쪽이 새 값) · 없으면 무동작
+function _t1448BackBoot() {
+  const db = S.db, Z = S.zoneId;
+  if (!db.hasRoadChunks || !db.hasRoadChunks(Z)) return;
+  const G = require('./road-grid'), t0 = Date.now(); let n = 0, ch = 0;
+  try {
+    db.db.exec('BEGIN');
+    const have = new Set(db.getRoadCells(Z).map((r) => r.cell_key | 0));
+    for (const r of db.getRoadChunks(Z)) {
+      const p = G.decodeChunk(r.data); ch++;
+      for (let j = 0; j < p.n; j++) { const k = _t1448Key(r.ck, p.li[j]); if (have.has(k)) continue; db.upsertRoadCell(Z, k, p.v[j], p.d[j]); n++; }
+    }
+    db.deleteRoadChunksAll(Z);
+    db.db.exec('COMMIT');
+    console.log(`[${Z}] 🛤️ [T1448] 손잡이 끔 — 구역 행 ${ch} → 칸 행 ${n}(한 거래 · ${Date.now() - t0}ms)`);
+  } catch (e) { try { db.db.exec('ROLLBACK'); } catch (_) { } console.error(`[${Z}] 🛤️ [T1448] 칸 행 되돌리기 실패(구역 행 그대로 — 길이 비어 보인다 · scripts/t1448-road-migrate.js --back):`, e.message); }
+}
+// ★[T1448] 장부 메모리(배열 바이트 — 켬만) · 하네스 · 보고 자
+function t1448Mem() { if (!(T1448 && S.ready)) return null; let due = 0; for (const a of I.due.values()) due += a.mem ? a.mem() : 0;
+  return { cells: S.cells.mem(), sent: S.sent.mem(), paved: S.paved.mem(), lvl: I.lvl.mem(), sched: I.sched.mem ? I.sched.mem() : 0, due, coarse: S.coarse.mem ? S.coarse.mem() : 0, chunks: S.cells.nCh, size: S.cells.size }; }
+// ★[T1448] 보이는 구역만(서버 문 — 회부 1 (가) · 존은 아직 안 부른다) — 구역 상자 [gx0..gx1]×[gy0..gy1](32칸 = 존 청크 1,024 px) 안 등급 칸 flat [cx, cy, lv, …] ·
+//   `clientRoads` 와 같은 값 · 같은 식(그 상자 안만 · 칸 키 오름) · 끔이어도 같은 답
+function clientRoadsBox(gx0, gy0, gx1, gy1) {
+  if (!S.ready) return null;
+  const t = dayNow(), out = [];
+  const y0 = Math.max(0, gy0 * 32), y1 = Math.min(S.cellsH - 1, (gy1 + 1) * 32 - 1), x0 = Math.max(0, gx0 * 32), x1 = Math.min(S.cellsW - 1, (gx1 + 1) * 32 - 1);
+  for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) {
+    const r = S.cells.get(cy * S.cellsW + cx); if (!r) continue;
+    const v = (t > r.d) ? r.v * Math.pow(DK, t - r.d) : r.v, lv = v >= T2 ? 2 : (v >= T1 ? 1 : 0);
+    if (lv) out.push(cx, cy, lv);
+  }
+  return out;
+}
 function init(deps) { // deps: { zoneId, cellsW, cellsH, epoch, dayMs, broadcast }
   if (!ENABLED) { console.log(`[${deps && deps.zoneId || 'zone'}] 🛤️ roads: ENABLE_ROADS=0 — 비활성(no-op)`); return; }
   try {
@@ -519,14 +650,27 @@ function init(deps) { // deps: { zoneId, cellsW, cellsH, epoch, dayMs, broadcast
     S.epoch = deps.epoch || 0; S.dayMs = deps.dayMs || 600000; S.broadcast = deps.broadcast || null;
     S.db = require('./zone-local-db');
     const t0 = Date.now();
-    const rows = S.db.getRoadCells(S.zoneId);
     const _tNow = Math.floor((Date.now() - (deps.epoch || 0)) / (deps.dayMs || 600000));
+    if (T1448) {   // ★[T1448] 배열 장부 · 구역 행(옛 DB = 칸 행을 한 거래로 옮긴다)
+      S.cells = new RG.CellGrid(S.cellsW, S.cellsH); S.sent = new RG.U8Map(S.cellsW, S.cellsH); S.paved = new RG.BitSet(S.cellsW, S.cellsH); S.coarse = new RG.DenseU8(S.gw, S.gh);
+      I.lvl = new RG.U8Map(S.cellsW, S.cellsH); I.sched = new RG.DayMap(S.cellsW, S.cellsH);
+      S.dirty = new _T1448Dirty(S.cells);
+      _t1448Boot(_tNow);
+    } else {
+    _t1448BackBoot();   // ★[T1448] 끔 — 켰던 DB(구역 행)면 칸 행으로 되돌린다 · 켠 적 없는 DB 는 무동작(표 하나 있나 보기만)
+    const rows = S.db.getRoadCells(S.zoneId);
     for (const r of rows) S.cells.set(r.cell_key | 0, { v: r.v, d: Math.min(r.d | 0, _tNow) });   // ★미래 일번호 방어: dayLengthMs 변경(예: 10분→24분)으로 절대 일번호가 뒤로 점프하면 저장된 d가 미래가 되어 감쇠 정지 — 오늘로 클램프(1회성 이행)
+    }
     S.lastDay = dayNow();
     // ★[T566] 다져진 길 집합 — 코스와 **같은 날·같은 식**으로 세운다(아래 `_rebuildCoarse` 가 같은 날로 다시 재도 아무도 안 빠진다).
     //   저장 v 는 T2 이상인데 오늘 감쇠로 아래면 — 꺼진 사이 풀린 셀이다(부르는 쪽이 시계가 선 뒤 풀어 준다).
     S.onPaved = deps.onPaved || null; S.onUnpaved = deps.onUnpaved || null;
     S.paved.clear(); S.bootUnpaved = [];
+    if (T1448) S.cells.scan((k, rv, rd) => {   // ★[T1448] 배열 훑기 — 아래 고리와 같은 식 · 같은 차례(칸 키 오름 = 종전 DB 행 차례)
+      const v = (S.lastDay > rd) ? rv * Math.pow(DK, S.lastDay - rd) : rv;
+      if (v >= T2) S.paved.add(k); else if (rv >= T2) S.bootUnpaved.push(k);
+    });
+    else
     for (const [k, r] of S.cells) {
       const v = (S.lastDay > r.d) ? r.v * Math.pow(DK, S.lastDay - r.d) : r.v;
       if (v >= T2) S.paved.add(k); else if (r.v >= T2) S.bootUnpaved.push(k);
@@ -575,7 +719,8 @@ function dayTick() {
 function t1382Dump() {
   if (!S.ready) return null;
   const sparse = (a) => { const o = []; if (a) for (let i = 0; i < a.length; i++) if (a[i]) o.push(i, a[i]); return o; };
-  return { cells: [...S.cells].map(([k, r]) => [k, r.v, r.d]), coarse: [...S.coarse], paved: [...S.paved], dirty: [...S.dirty], lastDay: S.lastDay, coarseGen: S.coarseGen,
+  return { ...(T1448 ? { cells: [], cellsG: S.cells.chunkKeys().map((ci) => [ci, RG.encodeChunk(S.cells.packChunk(ci)).toString('base64')]) } : { cells: [...S.cells].map(([k, r]) => [k, r.v, r.d]) }),   // ★[T1448] 켬 = 칸은 구역 덩이째
+    coarse: [...S.coarse], paved: [...S.paved], dirty: [...S.dirty], lastDay: S.lastDay, coarseGen: S.coarseGen,
     stats: Object.assign({}, S.stats), bootUnpaved: S.bootUnpaved.slice(), chgOn: S.chgOn, chg: S.chg ? [...S.chg] : null,
     I: I.ready ? { lvl: [...I.lvl], sched: [...I.sched], due: [...I.due].map(([d, a]) => [d, [...a]]), c1: sparse(I.c1), c2: sparse(I.c2), tgMark: sparse(I.tgMark), n: I.c1 ? I.c1.length : 0,
       graded: I.graded, tg: I.tg.slice(), low: [...I.low], same: I.coarse === S.coarse } : null };
@@ -584,13 +729,22 @@ function t1382Load(o) {
   if (!S.ready || !o || !Array.isArray(o.cells)) return false;
   //   같은 Map · Set 객체에 채운다(남이 쥔 참조 — `I.coarse` · 판 보기 — 가 그대로 산다)
   S.cells.clear(); for (const [k, v, d] of o.cells) S.cells.set(k, { v, d });
+  if (Array.isArray(o.cellsG)) {   // ★[T1448] 구역 덩이(켠 판이 낸 덤프) — 켬 = 구역째 · 끔 = 칸 키 오름으로 Map 에(켠 판의 도는 차례)
+    const G = RG || require('./road-grid'), all = [];
+    for (const [ci, b] of o.cellsG) { const p = G.decodeChunk(Buffer.from(b, 'base64')); if (T1448) S.cells.unpackChunk(ci, p.li, p.v, p.d); else for (let j = 0; j < p.n; j++) all.push([_t1448Key(ci, p.li[j]), p.v[j], p.d[j]]); }
+    if (!T1448) { all.sort((a, b) => a[0] - b[0]); for (const [k, v, d] of all) S.cells.set(k, { v, d }); }
+  }
   S.coarse.clear(); for (const [k, v] of o.coarse) S.coarse.set(k, v);
   S.paved.clear(); for (const k of o.paved) S.paved.add(k);
   S.dirty.clear(); for (const k of o.dirty) S.dirty.add(k);
   S.lastDay = o.lastDay; S.coarseGen = o.coarseGen; S.stats = Object.assign({}, o.stats); S.bootUnpaved = (o.bootUnpaved || []).slice(); if ('chgOn' in o) { S.chgOn = !!o.chgOn; S.chg = o.chg ? new Set(o.chg) : null; }   // ★[T619] 바뀐 코스 칸 줄(교역로 다시 파기가 읽는다)
   if (o.I) {
     const un = (a, n) => { const u = new Uint8Array(n); for (let i = 0; i + 1 < a.length; i += 2) u[a[i]] = a[i + 1]; return u; };
-    I.lvl = new Map(o.I.lvl); I.sched = new Map(o.I.sched); I.due = new Map(o.I.due.map(([d, a]) => [d, new Set(a)]));
+    if (T1448) {   // ★[T1448] 켬 = 배열 그릇에 채운다(날 통은 이 `sched` 를 본다)
+      I.lvl.clear(); for (const [k, x] of o.I.lvl) I.lvl.set(k, x);
+      I.sched.clear(); for (const [k, x] of o.I.sched) I.sched.set(k, x);
+      I.due = new Map(o.I.due.map(([d, a]) => { const L = new RG.DueList(I.sched, d); for (const k of a) L.add(k); return [d, L]; }));
+    } else { I.lvl = new Map(o.I.lvl); I.sched = new Map(o.I.sched); I.due = new Map(o.I.due.map(([d, a]) => [d, new Set(a)])); }
     I.c1 = un(o.I.c1, o.I.n); I.c2 = un(o.I.c2, o.I.n); I.tgMark = un(o.I.tgMark, o.I.n);
     I.graded = o.I.graded; I.tg = o.I.tg.slice(); I.low = new Set(o.I.low); I.coarse = o.I.same ? S.coarse : new Map(S.coarse); I.ready = true;
   }
@@ -600,5 +754,6 @@ function t1382Load(o) {
 function pavedCount() { return S.ready ? S.paved.size : 0; }
 function pavedKeys() { return S.ready ? [...S.paved] : []; }
 module.exports = { t1382Dump, t1382Load,   // ★[T1382 ㉡] 길 닳음 모듈 메모리(존 종료 저장 · 다시 뜬 판)
+  T1448, t1448Mem, clientRoadsBox,   // ★[T1448] 배열 장부 손잡이 · 메모리 · 보이는 구역만(서버 문)
   SPD,   // ★[T1241] 사건 시뮬 걸음 토막이 칸 빠르기를 읽는다(도장 없이 — `levelOf` 등급 → 배율 · 읽기만)
-  setEconDay, dayTick, roadDayPerf, retouchCell, unpaveSoonKeys, init, onGameTick, stampCell, stampEntityPx, speedMulOf, levelOf, courseCostMul, courseCostMin, courseCostMinIn, takeCoarseChanges, frozenView, coarseGen, isReady: () => S.ready, clientRoads, pavedNear, pavedCount, pavedKeys, ENABLED, _S: S };
+  setEconDay, dayTick, roadDayPerf, retouchCell, unpaveSoonKeys, init, onGameTick, stampCell, stampEntityPx, speedMulOf, levelOf, courseCostMul, courseCostMin, courseCostMinIn, costFloor: () => Math.min(...COST), takeCoarseChanges, frozenView, coarseGen, isReady: () => S.ready, clientRoads, clientRoadsIn, pavedNear, pavedCount, pavedKeys, ENABLED, _S: S };

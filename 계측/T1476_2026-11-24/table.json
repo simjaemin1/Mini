@@ -1,0 +1,2933 @@
+{
+ "m7ctlSum": {
+  "on": {
+   "n": 5,
+   "valid": 5,
+   "dead": 0,
+   "red": 4,
+   "redB": 0,
+   "otherFail": 0,
+   "msgs": [
+    "\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\""
+   ]
+  },
+  "off": {
+   "n": 5,
+   "valid": 5,
+   "dead": 0,
+   "red": 5,
+   "redB": 0,
+   "otherFail": 0,
+   "msgs": [
+    "\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\""
+   ]
+  }
+ },
+ "six": [
+  {
+   "id": "g-v4",
+   "village": "광산4",
+   "season": "봄",
+   "seasonRaw": "spring",
+   "cause": "막힘",
+   "why": "아홉 칸 막힘 28번 · 첫 막힘 18.46분 → 집터 33.31분",
+   "hutReach": "움집터(① 굴착)",
+   "stages": "집터 33.31 → 곡괭이 34.24 → ① 굴착 34.68",
+   "gap": {
+    "from": "첫 돌",
+    "to": "집터",
+    "d": 15.16,
+    "at": 18.15
+   },
+   "endMin": 35.01,
+   "stageMinAtEnd": 0.33,
+   "lastPanel": "34.85분 tool:조잡한 돌괭이 손에 들기",
+   "lastSite": null,
+   "bag": "wood 10 · stone 1 · fiber 3 · twig 5 · seed_barley 1 · pebble 3 · acorn 1 · seed_radish 1",
+   "maxCold": 0.47,
+   "coldOver05Min": 0,
+   "nightFrac": 0.48,
+   "warmSec": 0,
+   "lost": {
+    "stucks": 1,
+    "exploreSec": 729.75,
+    "unfreeNotes": 1
+   },
+   "tail": {
+    "legs": [
+     "31.77분 lot-preview-blocked",
+     "33.09분 lot-preview-blocked",
+     "33.16분 lot-preview-blocked",
+     "33.48분 gather",
+     "34.06분 drink",
+     "34.23분 gather",
+     "34.85분 gather",
+     "34.99분 gather",
+     "35분 gather(실패 time)"
+    ],
+    "notes": [
+     "2003.9s [자] 장애 둘레를 좁혀 길을 찾음",
+     "2003.9s 갇힘 풀기 — 둘레 0칸",
+     "2035.9s [칸] 화살이 데려갔던 rock 자리로 돌아감 ",
+     "2099.4s [열매] 찾음(berry) — 탐색 누적 394초 → 0"
+    ],
+    "notices": [
+     "34.06분 물을 마셨습니다(갈증 +30).",
+     "34.08분 물을 마셨습니다(갈증 +8).",
+     "34.23분 곡괭이을(를) 만들어 가방에 넣었습니다.",
+     "34.67분 ① 수혈 굴착(터파기)을(를) 마쳤습니다. 다음은 ② 굴립주 기둥",
+     "34.99분 베리을(를) 먹었습니다(허기 +5)",
+     "34.99분 베리을(를) 먹었습니다(허기 +5)"
+    ]
+   },
+   "thirstEnd": 99,
+   "hungerEnd": 12,
+   "nine": 28,
+   "nineFirst": 18.46
+  },
+  {
+   "id": "r03-임업1",
+   "village": "임업1",
+   "season": "봄",
+   "seasonRaw": "spring",
+   "cause": "재료",
+   "why": "움집 ③ 단계 — 끝 칸 site:도리·서까래 골조(서까래 5·풀 3) · 가장 긴 칸 움집 ② 단계→움집 ③ 단계 18.86분",
+   "hutReach": "움집 ③ 단계",
+   "stages": "집터 8.56 → 곡괭이 8.73 → ① 굴착 8.74 → ② 8.85 → ③ 27.71",
+   "gap": {
+    "from": "움집 ② 단계",
+    "to": "움집 ③ 단계",
+    "d": 18.86,
+    "at": 8.85
+   },
+   "endMin": 35.02,
+   "stageMinAtEnd": 7.31,
+   "lastPanel": "33.92분 gather:풀 모으기",
+   "lastSite": "site:도리·서까래 골조(서까래 5·풀 3)",
+   "bag": "wood 5 · stone 1 · twig 15 · pebble 3 · acorn 1 · rafter 1 · seed_wheat 1 · seed_turnip 1 · thatch 1",
+   "maxCold": 0.6,
+   "coldOver05Min": 13.16,
+   "nightFrac": 0.34,
+   "warmSec": 0,
+   "lost": {
+    "stucks": 12,
+    "exploreSec": 839.75,
+    "unfreeNotes": 9
+   },
+   "tail": {
+    "legs": [
+     "30.25분 explore/berry",
+     "30.63분 explore/물",
+     "30.93분 explore/물",
+     "31.28분 explore/물",
+     "31.76분 explore/물",
+     "32.42분 explore/물",
+     "32.86분 gather",
+     "33.19분 gather(실패 stuck×8)",
+     "33.67분 explore/berry",
+     "33.91분 gather"
+    ],
+    "notes": [
+     "1987.2s 갇힘 풀기 — 둘레 1칸",
+     "1989.6s [자] 장애 둘레를 좁혀 길을 찾음",
+     "1989.6s 갇힘 풀기 — 둘레 1칸",
+     "2034.5s [열매] 찾음(berry) — 탐색 누적 28초 → 0"
+    ],
+    "notices": [
+     "32.83분 crude_axe이(가) 깨졌습니다.",
+     "32.86분 베리을(를) 먹었습니다(허기 +5)",
+     "32.87분 베리을(를) 먹었습니다(허기 +5)",
+     "33.91분 베리을(를) 먹었습니다(허기 +5)",
+     "33.91분 베리을(를) 먹었습니다(허기 +5)",
+     "33.92분 이엉 (풀 4 → 이엉 1 — 맨손 엮기)을(를) 마쳤습니다."
+    ]
+   },
+   "thirstEnd": 54,
+   "hungerEnd": 55,
+   "nine": 0,
+   "nineFirst": null
+  },
+  {
+   "id": "r04-광산1",
+   "village": "광산1",
+   "season": "봄",
+   "seasonRaw": "spring",
+   "cause": "재료",
+   "why": "움집 ③ 단계 — 끝 칸 site:도리·서까래 골조(서까래 5·풀 3) · 가장 긴 칸 집터→곡괭이(손 제작) 13.13분",
+   "hutReach": "움집 ③ 단계",
+   "stages": "집터 6.2 → 곡괭이 19.33 → ① 굴착 19.5 → ② 24.06 → ③ 24.08",
+   "gap": {
+    "from": "집터",
+    "to": "곡괭이(손 제작)",
+    "d": 13.13,
+    "at": 6.2
+   },
+   "endMin": 35,
+   "stageMinAtEnd": 10.92,
+   "lastPanel": "31.54분 gather:풀 모으기",
+   "lastSite": "site:도리·서까래 골조(서까래 5·풀 3)",
+   "bag": "stone 1 · twig 14 · pebble 3 · seed_scallion 2 · rafter 1 · seed_lettuce 1 · thatch 1",
+   "maxCold": 0.6,
+   "coldOver05Min": 8.49,
+   "nightFrac": 0.23,
+   "warmSec": 0,
+   "lost": {
+    "stucks": 4,
+    "exploreSec": 661.56,
+    "unfreeNotes": 0
+   },
+   "tail": {
+    "legs": [
+     "31.43분 explore/berry",
+     "31.53분 gather",
+     "34.38분 explore/berry",
+     "34.55분 explore/berry",
+     "34.71분 explore/berry",
+     "34.93분 explore/berry",
+     "35분 gather(실패 time)"
+    ],
+    "notes": [
+     "1891.9s [열매] 찾음(berry) — 탐색 누적 10초 → 0"
+    ],
+    "notices": [
+     "31.53분 베리을(를) 먹었습니다(허기 +5)",
+     "31.54분 베리을(를) 먹었습니다(허기 +5)",
+     "31.54분 이엉 (풀 4 → 이엉 1 — 맨손 엮기)을(를) 마쳤습니다."
+    ]
+   },
+   "thirstEnd": 20,
+   "hungerEnd": 52,
+   "nine": 0,
+   "nineFirst": null
+  },
+  {
+   "id": "r09-농촌9",
+   "village": "농촌9",
+   "season": "가을",
+   "seasonRaw": "autumn",
+   "cause": "재료",
+   "why": "움집 ③ 단계 — 끝 칸 site:도리·서까래 골조(서까래 5·풀 3) · 가장 긴 칸 움집 ③ 단계→판 끝 13.72분",
+   "hutReach": "움집 ③ 단계",
+   "stages": "집터 16.16 → 곡괭이 17.05 → ① 굴착 17.4 → ② 20.86 → ③ 21.31",
+   "gap": {
+    "from": "움집 ③ 단계",
+    "to": "판 끝",
+    "d": 13.72,
+    "at": 21.31
+   },
+   "endMin": 35.03,
+   "stageMinAtEnd": 13.72,
+   "lastPanel": "31.48분 gather:풀 모으기",
+   "lastSite": "site:도리·서까래 골조(서까래 5·풀 3)",
+   "bag": "wood 4 · stone 1 · fiber 1 · twig 16 · pebble 3 · seed_lettuce 1 · seed_barley 1 · rafter 1 · seed_turnip 1 · thatch 1",
+   "maxCold": 0.65,
+   "coldOver05Min": 21.83,
+   "nightFrac": 0.23,
+   "warmSec": 0,
+   "lost": {
+    "stucks": 2,
+    "exploreSec": 812.52,
+    "unfreeNotes": 4
+   },
+   "tail": {
+    "legs": [
+     "30.97분 explore/berry",
+     "31.16분 explore/berry",
+     "31.34분 explore/berry",
+     "31.47분 gather",
+     "32.84분 explore/물",
+     "33.03분 explore/물",
+     "33.22분 explore/물",
+     "33.41분 explore/물",
+     "33.6분 explore/물",
+     "33.79분 explore/물",
+     "33.92분 gather"
+    ],
+    "notes": [
+     "1888.2s [열매] 찾음(berry) — 탐색 누적 33초 → 0"
+    ],
+    "notices": [
+     "31.47분 베리을(를) 먹었습니다(허기 +5)",
+     "31.47분 베리을(를) 먹었습니다(허기 +5)",
+     "31.48분 이엉 (풀 4 → 이엉 1 — 맨손 엮기)을(를) 마쳤습니다.",
+     "33.92분 베리을(를) 먹었습니다(허기 +5)",
+     "33.92분 베리을(를) 먹었습니다(허기 +5)"
+    ]
+   },
+   "thirstEnd": 55,
+   "hungerEnd": 60,
+   "nine": 0,
+   "nineFirst": null
+  },
+  {
+   "id": "r11-임업4",
+   "village": "임업4",
+   "season": "가을",
+   "seasonRaw": "autumn",
+   "cause": "재료",
+   "why": "움집 ③ 단계 — 끝 칸 site:도리·서까래 골조(서까래 5·풀 3) · 가장 긴 칸 움집 ② 단계→움집 ③ 단계 24.05분",
+   "hutReach": "움집 ③ 단계",
+   "stages": "집터 4.58 → 곡괭이 4.77 → ① 굴착 4.78 → ② 5.2 → ③ 29.25",
+   "gap": {
+    "from": "움집 ② 단계",
+    "to": "움집 ③ 단계",
+    "d": 24.05,
+    "at": 5.2
+   },
+   "endMin": 35.03,
+   "stageMinAtEnd": 5.78,
+   "lastPanel": "31.14분 gather:풀 모으기",
+   "lastSite": "site:도리·서까래 골조(서까래 5·풀 3)",
+   "bag": "wood 1 · stone 1 · fiber 1 · twig 16 · seed_lettuce 1 · pebble 3 · seed_scallion 1 · rafter 1 · seed_turnip 1 · thatch 1",
+   "maxCold": 0.66,
+   "coldOver05Min": 16.92,
+   "nightFrac": 0.35,
+   "warmSec": 0,
+   "lost": {
+    "stucks": 1,
+    "exploreSec": 523.38,
+    "unfreeNotes": 0
+   },
+   "tail": {
+    "legs": [
+     "30.56분 explore/berry",
+     "30.74분 explore/berry",
+     "30.92분 explore/berry",
+     "31.13분 gather",
+     "33.55분 gather"
+    ],
+    "notes": [
+     "1867.5s [열매] 찾음(berry) — 탐색 누적 31초 → 0"
+    ],
+    "notices": [
+     "30.84분 임업4 촌장 — 별일 없네. 자네도 몸 성히 지내게.",
+     "31.13분 베리을(를) 먹었습니다(허기 +5)",
+     "31.13분 베리을(를) 먹었습니다(허기 +5)",
+     "31.13분 이엉 (풀 4 → 이엉 1 — 맨손 엮기)을(를) 마쳤습니다.",
+     "33.55분 베리을(를) 먹었습니다(허기 +5)",
+     "33.55분 베리을(를) 먹었습니다(허기 +5)"
+    ]
+   },
+   "thirstEnd": 71,
+   "hungerEnd": 60,
+   "nine": 0,
+   "nineFirst": null
+  },
+  {
+   "id": "r15-임업6",
+   "village": "임업6",
+   "season": "겨울",
+   "seasonRaw": "winter",
+   "cause": "시간",
+   "why": "집터가 27.05분 — 첫 돌 20.23분 · 첫 통나무 10.66분",
+   "hutReach": "움집터(① 굴착)",
+   "stages": "집터 27.05 → 곡괭이 27.83 → ① 굴착 28.42",
+   "gap": {
+    "from": "첫 통나무",
+    "to": "첫 돌",
+    "d": 9.57,
+    "at": 10.66
+   },
+   "endMin": 35,
+   "stageMinAtEnd": 6.58,
+   "lastPanel": "28.48분 tool:바위 채굴",
+   "lastSite": null,
+   "bag": "wood 7 · stone 1 · fiber 6 · twig 12 · seed_lettuce 2 · pebble 3 · seed_radish 1 · seed_scallion 1",
+   "maxCold": 0.72,
+   "coldOver05Min": 19.01,
+   "nightFrac": 0.28,
+   "warmSec": 240.5,
+   "lost": {
+    "stucks": 2,
+    "exploreSec": 918.64,
+    "unfreeNotes": 4
+   },
+   "tail": {
+    "legs": [
+     "30.02분 explore/berry",
+     "30.23분 explore/berry",
+     "30.44분 explore/berry",
+     "30.66분 explore/berry",
+     "30.87분 explore/berry",
+     "31.38분 drink",
+     "31.63분 explore/berry",
+     "31.86분 gather",
+     "34.72분 warm",
+     "35분 explore/berry(실패 time)"
+    ],
+    "notes": [
+     "1911.8s [열매] 찾음(berry) — 탐색 누적 112초 → 0",
+     "2028.7s [칸] 화살이 데려갔던 rock 자리로 돌아감 ",
+     "2095.2s [자] 장애 둘레를 좁혀 길을 찾음",
+     "2095.2s 갇힘 풀기 — 둘레 0칸"
+    ],
+    "notices": [
+     "31.38분 물을 마셨습니다(갈증 +30).",
+     "31.4분 물을 마셨습니다(갈증 +10).",
+     "31.86분 베리을(를) 먹었습니다(허기 +5)",
+     "31.87분 베리을(를) 먹었습니다(허기 +5)"
+    ]
+   },
+   "thirstEnd": 76,
+   "hungerEnd": 46,
+   "nine": 0,
+   "nineFirst": null
+  }
+ ],
+ "sixCount": {
+  "재료": 4,
+  "추위": 0,
+  "시간": 1,
+  "막힘": 1
+ },
+ "sixWarm": [
+  "r15-임업6"
+ ],
+ "seasonOld": {
+  "봄": {
+   "n": 12,
+   "lot": 12,
+   "done": 9
+  },
+  "가을": {
+   "n": 4,
+   "lot": 4,
+   "done": 2
+  },
+  "겨울": {
+   "n": 4,
+   "lot": 4,
+   "done": 3
+  }
+ },
+ "pairs": [
+  {
+   "pid": "p01-어촌2-봄",
+   "off": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 2.6,
+     "dig": 3.56,
+     "done": 6.6,
+     "nine": 0,
+     "nineFirst": null,
+     "away": 1,
+     "lotTries": 0,
+     "previews": 0,
+     "whyAll": {},
+     "whyFirst": {},
+     "firstBlockMin": null,
+     "blockToLot": null,
+     "nineToLot": null,
+     "claimNotices": [
+      "어촌2 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": null,
+     "err": 0,
+     "fatal": null,
+     "village": "어촌2",
+     "season": "spring",
+     "vid": 9,
+     "endMin": 6.6
+    }
+   },
+   "on": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 6.18,
+     "dig": 7.64,
+     "done": 12.04,
+     "nine": 10,
+     "nineFirst": 2.82,
+     "away": 13,
+     "lotTries": 23,
+     "previews": 169,
+     "whyAll": {
+      "영토 문(인정받은 구성원만)": 75,
+      "village": 49
+     },
+     "whyFirst": {
+      "영토 문(인정받은 구성원만)": 1
+     },
+     "firstBlockMin": 2.42,
+     "blockToLot": 3.76,
+     "nineToLot": 3.36,
+     "claimNotices": [
+      "🏠 어촌2 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": null,
+     "err": 0,
+     "fatal": null,
+     "village": "어촌2",
+     "season": "spring",
+     "vid": 9,
+     "endMin": 11.95
+    }
+   }
+  },
+  {
+   "pid": "p02-광산4-봄",
+   "off": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 3.38,
+     "dig": 7.22,
+     "done": 18.51,
+     "nine": 0,
+     "nineFirst": null,
+     "away": 1,
+     "lotTries": 0,
+     "previews": 0,
+     "whyAll": {},
+     "whyFirst": {},
+     "firstBlockMin": null,
+     "blockToLot": null,
+     "nineToLot": null,
+     "claimNotices": [
+      "광산4 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": null,
+     "err": 0,
+     "fatal": null,
+     "village": "광산4",
+     "season": "spring",
+     "vid": 4,
+     "endMin": 18.51
+    }
+   },
+   "on": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 14.31,
+     "dig": 21.17,
+     "done": 29.24,
+     "nine": 2,
+     "nineFirst": 3.4,
+     "away": 2,
+     "lotTries": 4,
+     "previews": 242,
+     "whyAll": {
+      "영토 문(인정받은 구성원만)": 53,
+      "village": 4,
+      "water": 22
+     },
+     "whyFirst": {
+      "영토 문(인정받은 구성원만)": 1
+     },
+     "firstBlockMin": 3.38,
+     "blockToLot": 10.93,
+     "nineToLot": 10.91,
+     "claimNotices": [
+      "🏠 광산4 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": null,
+     "err": 0,
+     "fatal": null,
+     "village": "광산4",
+     "season": "spring",
+     "vid": 4,
+     "endMin": 29.24
+    }
+   }
+  },
+  {
+   "pid": "p03-어촌7-봄",
+   "off": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 2.02,
+     "dig": 2.17,
+     "done": 8.46,
+     "nine": 0,
+     "nineFirst": null,
+     "away": 0,
+     "lotTries": 0,
+     "previews": 0,
+     "whyAll": {},
+     "whyFirst": {},
+     "firstBlockMin": null,
+     "blockToLot": null,
+     "nineToLot": null,
+     "claimNotices": [],
+     "deedsBlk": [],
+     "hutReach": null,
+     "err": 0,
+     "fatal": null,
+     "village": "어촌7",
+     "season": "spring",
+     "vid": 25,
+     "endMin": 8.46
+    }
+   },
+   "on": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 2.64,
+     "dig": 3.88,
+     "done": 5.74,
+     "nine": 1,
+     "nineFirst": 2.63,
+     "away": 0,
+     "lotTries": 1,
+     "previews": 67,
+     "whyAll": {
+      "water": 3
+     },
+     "whyFirst": {
+      "water": 1
+     },
+     "firstBlockMin": 2.61,
+     "blockToLot": 0.03,
+     "nineToLot": 0.01,
+     "claimNotices": [
+      "🏠 어촌7 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": null,
+     "err": 0,
+     "fatal": null,
+     "village": "어촌7",
+     "season": "spring",
+     "vid": 25,
+     "endMin": 5.74
+    }
+   }
+  },
+  {
+   "pid": "p04-어촌2-여름",
+   "off": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 2.56,
+     "dig": 3.56,
+     "done": 7.42,
+     "nine": 0,
+     "nineFirst": null,
+     "away": 1,
+     "lotTries": 0,
+     "previews": 0,
+     "whyAll": {},
+     "whyFirst": {},
+     "firstBlockMin": null,
+     "blockToLot": null,
+     "nineToLot": null,
+     "claimNotices": [
+      "어촌2 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": null,
+     "err": 0,
+     "fatal": null,
+     "village": "어촌2",
+     "season": "summer",
+     "vid": 9,
+     "endMin": 7.42
+    }
+   },
+   "on": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 7.36,
+     "dig": 10,
+     "done": 18.29,
+     "nine": 9,
+     "nineFirst": 2.89,
+     "away": 9,
+     "lotTries": 18,
+     "previews": 142,
+     "whyAll": {
+      "영토 문(인정받은 구성원만)": 37,
+      "village": 58
+     },
+     "whyFirst": {
+      "영토 문(인정받은 구성원만)": 1
+     },
+     "firstBlockMin": 2.48,
+     "blockToLot": 4.88,
+     "nineToLot": 4.47,
+     "claimNotices": [
+      "🏠 어촌2 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": null,
+     "err": 0,
+     "fatal": null,
+     "village": "어촌2",
+     "season": "summer",
+     "vid": 9,
+     "endMin": 18.29
+    }
+   }
+  },
+  {
+   "pid": "p05-광산4-여름",
+   "off": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 3.33,
+     "dig": 4,
+     "done": 25.56,
+     "nine": 0,
+     "nineFirst": null,
+     "away": 1,
+     "lotTries": 0,
+     "previews": 0,
+     "whyAll": {},
+     "whyFirst": {},
+     "firstBlockMin": null,
+     "blockToLot": null,
+     "nineToLot": null,
+     "claimNotices": [
+      "광산4 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": null,
+     "err": 0,
+     "fatal": null,
+     "village": "광산4",
+     "season": "summer",
+     "vid": 4,
+     "endMin": 25.56
+    }
+   },
+   "on": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 5.1,
+     "dig": 6.19,
+     "done": 13.88,
+     "nine": 2,
+     "nineFirst": 3.38,
+     "away": 5,
+     "lotTries": 7,
+     "previews": 220,
+     "whyAll": {
+      "영토 문(인정받은 구성원만)": 57,
+      "village": 4
+     },
+     "whyFirst": {
+      "영토 문(인정받은 구성원만)": 1
+     },
+     "firstBlockMin": 3.36,
+     "blockToLot": 1.74,
+     "nineToLot": 1.72,
+     "claimNotices": [
+      "🏠 광산4 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": null,
+     "err": 0,
+     "fatal": null,
+     "village": "광산4",
+     "season": "summer",
+     "vid": 4,
+     "endMin": 13.88
+    }
+   }
+  },
+  {
+   "pid": "p06-어촌7-여름",
+   "off": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 2.04,
+     "dig": 2.18,
+     "done": 8.58,
+     "nine": 0,
+     "nineFirst": null,
+     "away": 0,
+     "lotTries": 0,
+     "previews": 0,
+     "whyAll": {},
+     "whyFirst": {},
+     "firstBlockMin": null,
+     "blockToLot": null,
+     "nineToLot": null,
+     "claimNotices": [],
+     "deedsBlk": [],
+     "hutReach": null,
+     "err": 0,
+     "fatal": null,
+     "village": "어촌7",
+     "season": "summer",
+     "vid": 25,
+     "endMin": 8.58
+    }
+   },
+   "on": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 2.69,
+     "dig": 3.94,
+     "done": 5.78,
+     "nine": 1,
+     "nineFirst": 2.67,
+     "away": 0,
+     "lotTries": 1,
+     "previews": 62,
+     "whyAll": {
+      "water": 3
+     },
+     "whyFirst": {
+      "water": 1
+     },
+     "firstBlockMin": 2.65,
+     "blockToLot": 0.04,
+     "nineToLot": 0.02,
+     "claimNotices": [
+      "🏠 어촌7 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": null,
+     "err": 0,
+     "fatal": null,
+     "village": "어촌7",
+     "season": "summer",
+     "vid": 25,
+     "endMin": 5.78
+    }
+   }
+  },
+  {
+   "pid": "p07-어촌2-가을",
+   "off": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 2.57,
+     "dig": 3.57,
+     "done": 9.73,
+     "nine": 0,
+     "nineFirst": null,
+     "away": 1,
+     "lotTries": 0,
+     "previews": 0,
+     "whyAll": {},
+     "whyFirst": {},
+     "firstBlockMin": null,
+     "blockToLot": null,
+     "nineToLot": null,
+     "claimNotices": [
+      "어촌2 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": null,
+     "err": 0,
+     "fatal": null,
+     "village": "어촌2",
+     "season": "autumn",
+     "vid": 9,
+     "endMin": 9.73
+    }
+   },
+   "on": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 6.18,
+     "dig": 8.99,
+     "done": null,
+     "nine": 9,
+     "nineFirst": 2.9,
+     "away": 12,
+     "lotTries": 21,
+     "previews": 175,
+     "whyAll": {
+      "영토 문(인정받은 구성원만)": 76,
+      "village": 48
+     },
+     "whyFirst": {
+      "영토 문(인정받은 구성원만)": 1
+     },
+     "firstBlockMin": 2.49,
+     "blockToLot": 3.69,
+     "nineToLot": 3.28,
+     "claimNotices": [
+      "🏠 어촌2 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": "움집 ③ 단계",
+     "err": 0,
+     "fatal": null,
+     "village": "어촌2",
+     "season": "autumn",
+     "vid": 9,
+     "endMin": 35.11
+    }
+   }
+  },
+  {
+   "pid": "p08-광산4-가을",
+   "off": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 3.4,
+     "dig": 7.15,
+     "done": 31.95,
+     "nine": 0,
+     "nineFirst": null,
+     "away": 1,
+     "lotTries": 0,
+     "previews": 0,
+     "whyAll": {},
+     "whyFirst": {},
+     "firstBlockMin": null,
+     "blockToLot": null,
+     "nineToLot": null,
+     "claimNotices": [
+      "광산4 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": null,
+     "err": 0,
+     "fatal": null,
+     "village": "광산4",
+     "season": "autumn",
+     "vid": 4,
+     "endMin": 31.95
+    }
+   },
+   "on": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 14.29,
+     "dig": 21.17,
+     "done": 29.51,
+     "nine": 2,
+     "nineFirst": 3.36,
+     "away": 2,
+     "lotTries": 4,
+     "previews": 246,
+     "whyAll": {
+      "영토 문(인정받은 구성원만)": 53,
+      "village": 4,
+      "water": 20
+     },
+     "whyFirst": {
+      "영토 문(인정받은 구성원만)": 1
+     },
+     "firstBlockMin": 3.35,
+     "blockToLot": 10.94,
+     "nineToLot": 10.93,
+     "claimNotices": [
+      "🏠 광산4 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": null,
+     "err": 0,
+     "fatal": null,
+     "village": "광산4",
+     "season": "autumn",
+     "vid": 4,
+     "endMin": 29.51
+    }
+   }
+  },
+  {
+   "pid": "p09-어촌7-가을",
+   "off": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 2.05,
+     "dig": 2.2,
+     "done": 8.61,
+     "nine": 0,
+     "nineFirst": null,
+     "away": 0,
+     "lotTries": 0,
+     "previews": 0,
+     "whyAll": {},
+     "whyFirst": {},
+     "firstBlockMin": null,
+     "blockToLot": null,
+     "nineToLot": null,
+     "claimNotices": [],
+     "deedsBlk": [],
+     "hutReach": null,
+     "err": 0,
+     "fatal": null,
+     "village": "어촌7",
+     "season": "autumn",
+     "vid": 25,
+     "endMin": 8.61
+    }
+   },
+   "on": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 2.67,
+     "dig": 3.92,
+     "done": 5.76,
+     "nine": 1,
+     "nineFirst": 2.66,
+     "away": 0,
+     "lotTries": 1,
+     "previews": 67,
+     "whyAll": {
+      "water": 2
+     },
+     "whyFirst": {
+      "water": 1
+     },
+     "firstBlockMin": 2.64,
+     "blockToLot": 0.03,
+     "nineToLot": 0.01,
+     "claimNotices": [
+      "🏠 어촌7 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": null,
+     "err": 0,
+     "fatal": null,
+     "village": "어촌7",
+     "season": "autumn",
+     "vid": 25,
+     "endMin": 5.76
+    }
+   }
+  },
+  {
+   "pid": "p10-어촌2-겨울",
+   "off": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 2.64,
+     "dig": 3.62,
+     "done": 6.75,
+     "nine": 0,
+     "nineFirst": null,
+     "away": 1,
+     "lotTries": 0,
+     "previews": 0,
+     "whyAll": {},
+     "whyFirst": {},
+     "firstBlockMin": null,
+     "blockToLot": null,
+     "nineToLot": null,
+     "claimNotices": [
+      "어촌2 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": null,
+     "err": 0,
+     "fatal": null,
+     "village": "어촌2",
+     "season": "winter",
+     "vid": 9,
+     "endMin": 6.75
+    }
+   },
+   "on": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 14.25,
+     "dig": 21.35,
+     "done": null,
+     "nine": 8,
+     "nineFirst": 2.87,
+     "away": 10,
+     "lotTries": 18,
+     "previews": 241,
+     "whyAll": {
+      "영토 문(인정받은 구성원만)": 109,
+      "water": 11,
+      "village": 76
+     },
+     "whyFirst": {
+      "영토 문(인정받은 구성원만)": 1
+     },
+     "firstBlockMin": 2.47,
+     "blockToLot": 11.78,
+     "nineToLot": 11.38,
+     "claimNotices": [
+      "🏠 어촌2 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": "움집 ③ 단계",
+     "err": 0,
+     "fatal": null,
+     "village": "어촌2",
+     "season": "winter",
+     "vid": 9,
+     "endMin": 35.01
+    }
+   }
+  },
+  {
+   "pid": "p11-광산4-겨울",
+   "off": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 3.48,
+     "dig": 7.81,
+     "done": 30.46,
+     "nine": 0,
+     "nineFirst": null,
+     "away": 1,
+     "lotTries": 0,
+     "previews": 0,
+     "whyAll": {},
+     "whyFirst": {},
+     "firstBlockMin": null,
+     "blockToLot": null,
+     "nineToLot": null,
+     "claimNotices": [
+      "광산4 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": null,
+     "err": 0,
+     "fatal": null,
+     "village": "광산4",
+     "season": "winter",
+     "vid": 4,
+     "endMin": 30.46
+    }
+   },
+   "on": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 4.89,
+     "dig": 6.06,
+     "done": 9.26,
+     "nine": 2,
+     "nineFirst": 3.5,
+     "away": 1,
+     "lotTries": 3,
+     "previews": 220,
+     "whyAll": {
+      "영토 문(인정받은 구성원만)": 54,
+      "village": 4,
+      "building": 3
+     },
+     "whyFirst": {
+      "영토 문(인정받은 구성원만)": 1
+     },
+     "firstBlockMin": 3.48,
+     "blockToLot": 1.41,
+     "nineToLot": 1.39,
+     "claimNotices": [
+      "🏠 광산4 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": null,
+     "err": 0,
+     "fatal": null,
+     "village": "광산4",
+     "season": "winter",
+     "vid": 4,
+     "endMin": 9.26
+    }
+   }
+  },
+  {
+   "pid": "p12-어촌7-겨울",
+   "off": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 2.06,
+     "dig": 2.26,
+     "done": 8.47,
+     "nine": 0,
+     "nineFirst": null,
+     "away": 0,
+     "lotTries": 0,
+     "previews": 0,
+     "whyAll": {},
+     "whyFirst": {},
+     "firstBlockMin": null,
+     "blockToLot": null,
+     "nineToLot": null,
+     "claimNotices": [],
+     "deedsBlk": [],
+     "hutReach": null,
+     "err": 0,
+     "fatal": null,
+     "village": "어촌7",
+     "season": "winter",
+     "vid": 25,
+     "endMin": 8.47
+    }
+   },
+   "on": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 2.68,
+     "dig": 4.25,
+     "done": 5.89,
+     "nine": 1,
+     "nineFirst": 2.67,
+     "away": 0,
+     "lotTries": 1,
+     "previews": 67,
+     "whyAll": {
+      "water": 3
+     },
+     "whyFirst": {
+      "water": 1
+     },
+     "firstBlockMin": 2.65,
+     "blockToLot": 0.03,
+     "nineToLot": 0.01,
+     "claimNotices": [
+      "🏠 어촌7 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": null,
+     "err": 0,
+     "fatal": null,
+     "village": "어촌7",
+     "season": "winter",
+     "vid": 25,
+     "endMin": 5.89
+    }
+   }
+  },
+  {
+   "pid": "p13-임업1-봄",
+   "off": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 7.25,
+     "dig": 7.54,
+     "done": null,
+     "nine": 0,
+     "nineFirst": null,
+     "away": 0,
+     "lotTries": 0,
+     "previews": 0,
+     "whyAll": {},
+     "whyFirst": {},
+     "firstBlockMin": null,
+     "blockToLot": null,
+     "nineToLot": null,
+     "claimNotices": [],
+     "deedsBlk": [],
+     "hutReach": "움집 ③ 단계",
+     "err": 0,
+     "fatal": null,
+     "village": "임업1",
+     "season": "spring",
+     "vid": 10,
+     "endMin": 35.02
+    }
+   },
+   "on": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 34.08,
+     "dig": null,
+     "done": null,
+     "nine": 0,
+     "nineFirst": null,
+     "away": 0,
+     "lotTries": 0,
+     "previews": 400,
+     "whyAll": {},
+     "whyFirst": {},
+     "firstBlockMin": null,
+     "blockToLot": null,
+     "nineToLot": null,
+     "claimNotices": [
+      "🏠 임업1 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다.",
+      "🏠 어촌12 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": "곡괭이 전",
+     "err": 0,
+     "fatal": null,
+     "village": "임업1",
+     "season": "spring",
+     "vid": 10,
+     "endMin": 35.01
+    }
+   }
+  },
+  {
+   "pid": "p14-광산1-봄",
+   "off": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 5.18,
+     "dig": 5.31,
+     "done": null,
+     "nine": 0,
+     "nineFirst": null,
+     "away": 0,
+     "lotTries": 0,
+     "previews": 0,
+     "whyAll": {},
+     "whyFirst": {},
+     "firstBlockMin": null,
+     "blockToLot": null,
+     "nineToLot": null,
+     "claimNotices": [],
+     "deedsBlk": [],
+     "hutReach": "도끼(손 제작)",
+     "err": 0,
+     "fatal": null,
+     "village": "광산1",
+     "season": "spring",
+     "vid": 1,
+     "endMin": 35
+    }
+   },
+   "on": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 8.53,
+     "dig": 9.44,
+     "done": null,
+     "nine": 0,
+     "nineFirst": null,
+     "away": 0,
+     "lotTries": 0,
+     "previews": 178,
+     "whyAll": {},
+     "whyFirst": {},
+     "firstBlockMin": null,
+     "blockToLot": null,
+     "nineToLot": null,
+     "claimNotices": [
+      "🏠 광산1 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": "움집 ② 단계",
+     "err": 0,
+     "fatal": null,
+     "village": "광산1",
+     "season": "spring",
+     "vid": 1,
+     "endMin": 35
+    }
+   }
+  },
+  {
+   "pid": "p15-농촌9-가을",
+   "off": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 4.71,
+     "dig": 5.22,
+     "done": null,
+     "nine": 0,
+     "nineFirst": null,
+     "away": 1,
+     "lotTries": 0,
+     "previews": 0,
+     "whyAll": {},
+     "whyFirst": {},
+     "firstBlockMin": null,
+     "blockToLot": null,
+     "nineToLot": null,
+     "claimNotices": [
+      "농촌9 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": "움집 ③ 단계",
+     "err": 0,
+     "fatal": null,
+     "village": "농촌9",
+     "season": "autumn",
+     "vid": 38,
+     "endMin": 35
+    }
+   },
+   "on": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 5.08,
+     "dig": 5.58,
+     "done": 13.9,
+     "nine": 0,
+     "nineFirst": null,
+     "away": 2,
+     "lotTries": 2,
+     "previews": 104,
+     "whyAll": {
+      "영토 문(인정받은 구성원만)": 11
+     },
+     "whyFirst": {
+      "영토 문(인정받은 구성원만)": 1
+     },
+     "firstBlockMin": 4.91,
+     "blockToLot": 0.17,
+     "nineToLot": null,
+     "claimNotices": [
+      "🏠 농촌9 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": null,
+     "err": 0,
+     "fatal": null,
+     "village": "농촌9",
+     "season": "autumn",
+     "vid": 38,
+     "endMin": 13.9
+    }
+   }
+  },
+  {
+   "pid": "p16-임업4-가을",
+   "off": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 3.44,
+     "dig": 3.6,
+     "done": null,
+     "nine": 0,
+     "nineFirst": null,
+     "away": 0,
+     "lotTries": 0,
+     "previews": 0,
+     "whyAll": {},
+     "whyFirst": {},
+     "firstBlockMin": null,
+     "blockToLot": null,
+     "nineToLot": null,
+     "claimNotices": [],
+     "deedsBlk": [],
+     "hutReach": "움집 ③ 단계",
+     "err": 0,
+     "fatal": null,
+     "village": "임업4",
+     "season": "autumn",
+     "vid": 14,
+     "endMin": 35
+    }
+   },
+   "on": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 5.74,
+     "dig": 6,
+     "done": null,
+     "nine": 0,
+     "nineFirst": null,
+     "away": 0,
+     "lotTries": 0,
+     "previews": 53,
+     "whyAll": {},
+     "whyFirst": {},
+     "firstBlockMin": null,
+     "blockToLot": null,
+     "nineToLot": null,
+     "claimNotices": [
+      "🏠 임업4 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": "움집 ③ 단계",
+     "err": 0,
+     "fatal": null,
+     "village": "임업4",
+     "season": "autumn",
+     "vid": 14,
+     "endMin": 35.03
+    }
+   }
+  },
+  {
+   "pid": "p17-임업6-겨울",
+   "off": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 7.77,
+     "dig": 7.99,
+     "done": null,
+     "nine": 0,
+     "nineFirst": null,
+     "away": 1,
+     "lotTries": 0,
+     "previews": 0,
+     "whyAll": {},
+     "whyFirst": {},
+     "firstBlockMin": null,
+     "blockToLot": null,
+     "nineToLot": null,
+     "claimNotices": [
+      "임업6 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": "움집 ③ 단계",
+     "err": 0,
+     "fatal": null,
+     "village": "임업6",
+     "season": "winter",
+     "vid": 17,
+     "endMin": 35.01
+    }
+   },
+   "on": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 18.23,
+     "dig": 18.56,
+     "done": 21.98,
+     "nine": 0,
+     "nineFirst": null,
+     "away": 2,
+     "lotTries": 2,
+     "previews": 306,
+     "whyAll": {
+      "영토 문(인정받은 구성원만)": 8
+     },
+     "whyFirst": {
+      "영토 문(인정받은 구성원만)": 1
+     },
+     "firstBlockMin": 17.98,
+     "blockToLot": 0.25,
+     "nineToLot": null,
+     "claimNotices": [
+      "🏠 임업6 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다.",
+      "🏠 어촌14 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": null,
+     "err": 0,
+     "fatal": null,
+     "village": "임업6",
+     "season": "winter",
+     "vid": 17,
+     "endMin": 21.98
+    }
+   }
+  },
+  {
+   "pid": "p18-농촌2-봄",
+   "off": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 1.47,
+     "dig": 1.7,
+     "done": 14.39,
+     "nine": 0,
+     "nineFirst": null,
+     "away": 0,
+     "lotTries": 0,
+     "previews": 0,
+     "whyAll": {},
+     "whyFirst": {},
+     "firstBlockMin": null,
+     "blockToLot": null,
+     "nineToLot": null,
+     "claimNotices": [],
+     "deedsBlk": [],
+     "hutReach": null,
+     "err": 0,
+     "fatal": null,
+     "village": "농촌2",
+     "season": "spring",
+     "vid": 18,
+     "endMin": 14.39
+    }
+   },
+   "on": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 1.81,
+     "dig": 2.02,
+     "done": 6.58,
+     "nine": 0,
+     "nineFirst": null,
+     "away": 0,
+     "lotTries": 0,
+     "previews": 21,
+     "whyAll": {},
+     "whyFirst": {},
+     "firstBlockMin": null,
+     "blockToLot": null,
+     "nineToLot": null,
+     "claimNotices": [
+      "🏠 농촌2 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": null,
+     "err": 0,
+     "fatal": null,
+     "village": "농촌2",
+     "season": "spring",
+     "vid": 18,
+     "endMin": 6.58
+    }
+   }
+  },
+  {
+   "pid": "p19-어촌1-봄",
+   "off": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 5.39,
+     "dig": 5.74,
+     "done": null,
+     "nine": 0,
+     "nineFirst": null,
+     "away": 0,
+     "lotTries": 0,
+     "previews": 0,
+     "whyAll": {},
+     "whyFirst": {},
+     "firstBlockMin": null,
+     "blockToLot": null,
+     "nineToLot": null,
+     "claimNotices": [],
+     "deedsBlk": [],
+     "hutReach": "움집 ② 단계",
+     "err": 0,
+     "fatal": null,
+     "village": "어촌1",
+     "season": "spring",
+     "vid": 5,
+     "endMin": 35.02
+    }
+   },
+   "on": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 13.13,
+     "dig": 13.3,
+     "done": 15.74,
+     "nine": 0,
+     "nineFirst": null,
+     "away": 0,
+     "lotTries": 0,
+     "previews": 370,
+     "whyAll": {},
+     "whyFirst": {},
+     "firstBlockMin": null,
+     "blockToLot": null,
+     "nineToLot": null,
+     "claimNotices": [
+      "🏠 어촌1 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": null,
+     "err": 0,
+     "fatal": null,
+     "village": "어촌1",
+     "season": "spring",
+     "vid": 5,
+     "endMin": 15.74
+    }
+   }
+  },
+  {
+   "pid": "p20-농촌16-겨울",
+   "off": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 2.48,
+     "dig": 3.04,
+     "done": 12.44,
+     "nine": 0,
+     "nineFirst": null,
+     "away": 1,
+     "lotTries": 0,
+     "previews": 0,
+     "whyAll": {},
+     "whyFirst": {},
+     "firstBlockMin": null,
+     "blockToLot": null,
+     "nineToLot": null,
+     "claimNotices": [
+      "농촌16 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": null,
+     "err": 0,
+     "fatal": null,
+     "village": "농촌16",
+     "season": "winter",
+     "vid": 45,
+     "endMin": 12.44
+    }
+   },
+   "on": {
+    "rc": 0,
+    "cut": false,
+    "dead": false,
+    "m": {
+     "lot": 3.4,
+     "dig": 5.4,
+     "done": 11.78,
+     "nine": 0,
+     "nineFirst": null,
+     "away": 8,
+     "lotTries": 8,
+     "previews": 52,
+     "whyAll": {
+      "영토 문(인정받은 구성원만)": 45
+     },
+     "whyFirst": {
+      "영토 문(인정받은 구성원만)": 1
+     },
+     "firstBlockMin": 2.51,
+     "blockToLot": 0.89,
+     "nineToLot": null,
+     "claimNotices": [
+      "🏠 농촌16 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+     ],
+     "deedsBlk": [],
+     "hutReach": null,
+     "err": 0,
+     "fatal": null,
+     "village": "농촌16",
+     "season": "winter",
+     "vid": 45,
+     "endMin": 11.78
+    }
+   }
+  }
+ ],
+ "sumOff": {
+  "n": 20,
+  "valid": 20,
+  "dead": 0,
+  "cut": 0,
+  "lot": 20,
+  "done": 14,
+  "lotMed": 2.99,
+  "lotMean": 3.49,
+  "doneMed": 9.17,
+  "doneMean": 14.14,
+  "nineRuns": 0,
+  "nineTotal": 0,
+  "lotTries": 0
+ },
+ "sumOn": {
+  "n": 20,
+  "valid": 20,
+  "dead": 0,
+  "cut": 0,
+  "lot": 20,
+  "done": 15,
+  "lotMed": 5.96,
+  "lotMean": 8.66,
+  "doneMed": 12.04,
+  "doneMean": 13.69,
+  "nineRuns": 12,
+  "nineTotal": 48,
+  "lotTries": 114
+ },
+ "pairCmp": {
+  "bothLot": 20,
+  "onFaster": 0,
+  "offFaster": 20,
+  "diffMed": 2.83,
+  "bothDone": 12,
+  "onOnlyDone": [
+   "p15-농촌9-가을",
+   "p17-임업6-겨울",
+   "p19-어촌1-봄"
+  ],
+  "offOnlyDone": [
+   "p07-어촌2-가을",
+   "p10-어촌2-겨울"
+  ]
+ },
+ "bySeasonPair": {
+  "spring": {
+   "off": {
+    "n": 7,
+    "done": 4
+   },
+   "on": {
+    "n": 7,
+    "done": 5
+   }
+  },
+  "summer": {
+   "off": {
+    "n": 3,
+    "done": 3
+   },
+   "on": {
+    "n": 3,
+    "done": 3
+   }
+  },
+  "autumn": {
+   "off": {
+    "n": 5,
+    "done": 3
+   },
+   "on": {
+    "n": 5,
+    "done": 3
+   }
+  },
+  "winter": {
+   "off": {
+    "n": 5,
+    "done": 4
+   },
+   "on": {
+    "n": 5,
+    "done": 4
+   }
+  }
+ },
+ "noticeOn": [
+  [
+   "어촌# 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다.",
+   13
+  ],
+  [
+   "광산# 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다.",
+   6
+  ],
+  [
+   "임업# 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다.",
+   3
+  ],
+  [
+   "농촌# 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다.",
+   3
+  ]
+ ],
+ "noticeOff": [
+  [
+   "어촌# 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다.",
+   4
+  ],
+  [
+   "광산# 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다.",
+   4
+  ],
+  [
+   "농촌# 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다.",
+   2
+  ],
+  [
+   "임업# 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다.",
+   1
+  ]
+ ],
+ "nineBy": {
+  "어촌2": {
+   "runs": 5,
+   "blocked": 5,
+   "causeRuns": {
+    "영토 문(인정받은 구성원만)": 5,
+    "village": 5,
+    "water": 2
+   },
+   "causeFirst": {
+    "영토 문(인정받은 구성원만)": 5
+   },
+   "blockToLotMed": 4.88,
+   "blockToLotMax": 11.78,
+   "lotMed": 7.36,
+   "done": 2
+  },
+  "광산4": {
+   "runs": 5,
+   "blocked": 5,
+   "causeRuns": {
+    "영토 문(인정받은 구성원만)": 5,
+    "village": 5,
+    "water": 2,
+    "building": 1
+   },
+   "causeFirst": {
+    "영토 문(인정받은 구성원만)": 5
+   },
+   "blockToLotMed": 1.74,
+   "blockToLotMax": 10.94,
+   "lotMed": 5.17,
+   "done": 5
+  },
+  "어촌7": {
+   "runs": 5,
+   "blocked": 5,
+   "causeRuns": {
+    "water": 5
+   },
+   "causeFirst": {
+    "water": 5
+   },
+   "blockToLotMed": 0.03,
+   "blockToLotMax": 0.04,
+   "lotMed": 2.67,
+   "done": 5
+  }
+ },
+ "nineCauseAll": {
+  "영토 문(인정받은 구성원만)": 10,
+  "village": 10,
+  "water": 9,
+  "building": 1
+ },
+ "nineRuns": [
+  {
+   "pid": "p02-광산4-봄",
+   "rc": 0,
+   "m": {
+    "lot": 14.31,
+    "dig": 21.17,
+    "done": 29.24,
+    "nine": 2,
+    "nineFirst": 3.4,
+    "away": 2,
+    "lotTries": 4,
+    "previews": 242,
+    "whyAll": {
+     "영토 문(인정받은 구성원만)": 53,
+     "village": 4,
+     "water": 22
+    },
+    "whyFirst": {
+     "영토 문(인정받은 구성원만)": 1
+    },
+    "firstBlockMin": 3.38,
+    "blockToLot": 10.93,
+    "nineToLot": 10.91,
+    "claimNotices": [
+     "🏠 광산4 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+    ],
+    "deedsBlk": [],
+    "hutReach": null,
+    "err": 0,
+    "fatal": null,
+    "village": "광산4",
+    "season": "spring",
+    "vid": 4,
+    "endMin": 29.24
+   }
+  },
+  {
+   "pid": "p05-광산4-여름",
+   "rc": 0,
+   "m": {
+    "lot": 5.1,
+    "dig": 6.19,
+    "done": 13.88,
+    "nine": 2,
+    "nineFirst": 3.38,
+    "away": 5,
+    "lotTries": 7,
+    "previews": 220,
+    "whyAll": {
+     "영토 문(인정받은 구성원만)": 57,
+     "village": 4
+    },
+    "whyFirst": {
+     "영토 문(인정받은 구성원만)": 1
+    },
+    "firstBlockMin": 3.36,
+    "blockToLot": 1.74,
+    "nineToLot": 1.72,
+    "claimNotices": [
+     "🏠 광산4 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+    ],
+    "deedsBlk": [],
+    "hutReach": null,
+    "err": 0,
+    "fatal": null,
+    "village": "광산4",
+    "season": "summer",
+    "vid": 4,
+    "endMin": 13.88
+   }
+  },
+  {
+   "pid": "p08-광산4-가을",
+   "rc": 0,
+   "m": {
+    "lot": 14.29,
+    "dig": 21.17,
+    "done": 29.51,
+    "nine": 2,
+    "nineFirst": 3.36,
+    "away": 2,
+    "lotTries": 4,
+    "previews": 246,
+    "whyAll": {
+     "영토 문(인정받은 구성원만)": 53,
+     "village": 4,
+     "water": 20
+    },
+    "whyFirst": {
+     "영토 문(인정받은 구성원만)": 1
+    },
+    "firstBlockMin": 3.35,
+    "blockToLot": 10.94,
+    "nineToLot": 10.93,
+    "claimNotices": [
+     "🏠 광산4 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+    ],
+    "deedsBlk": [],
+    "hutReach": null,
+    "err": 0,
+    "fatal": null,
+    "village": "광산4",
+    "season": "autumn",
+    "vid": 4,
+    "endMin": 29.51
+   }
+  },
+  {
+   "pid": "p11-광산4-겨울",
+   "rc": 0,
+   "m": {
+    "lot": 4.89,
+    "dig": 6.06,
+    "done": 9.26,
+    "nine": 2,
+    "nineFirst": 3.5,
+    "away": 1,
+    "lotTries": 3,
+    "previews": 220,
+    "whyAll": {
+     "영토 문(인정받은 구성원만)": 54,
+     "village": 4,
+     "building": 3
+    },
+    "whyFirst": {
+     "영토 문(인정받은 구성원만)": 1
+    },
+    "firstBlockMin": 3.48,
+    "blockToLot": 1.41,
+    "nineToLot": 1.39,
+    "claimNotices": [
+     "🏠 광산4 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+    ],
+    "deedsBlk": [],
+    "hutReach": null,
+    "err": 0,
+    "fatal": null,
+    "village": "광산4",
+    "season": "winter",
+    "vid": 4,
+    "endMin": 9.26
+   }
+  },
+  {
+   "pid": "x2-광산4-봄재",
+   "rc": 0,
+   "m": {
+    "lot": 5.17,
+    "dig": 6.27,
+    "done": 9.38,
+    "nine": 2,
+    "nineFirst": 3.81,
+    "away": 1,
+    "lotTries": 3,
+    "previews": 214,
+    "whyAll": {
+     "영토 문(인정받은 구성원만)": 62,
+     "village": 5
+    },
+    "whyFirst": {
+     "영토 문(인정받은 구성원만)": 1
+    },
+    "firstBlockMin": 3.79,
+    "blockToLot": 1.38,
+    "nineToLot": 1.36,
+    "claimNotices": [
+     "🏠 광산4 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+    ],
+    "deedsBlk": [],
+    "hutReach": null,
+    "err": 0,
+    "fatal": null,
+    "village": "광산4",
+    "season": "spring",
+    "vid": 4,
+    "endMin": 9.38
+   }
+  },
+  {
+   "pid": "p01-어촌2-봄",
+   "rc": 0,
+   "m": {
+    "lot": 6.18,
+    "dig": 7.64,
+    "done": 12.04,
+    "nine": 10,
+    "nineFirst": 2.82,
+    "away": 13,
+    "lotTries": 23,
+    "previews": 169,
+    "whyAll": {
+     "영토 문(인정받은 구성원만)": 75,
+     "village": 49
+    },
+    "whyFirst": {
+     "영토 문(인정받은 구성원만)": 1
+    },
+    "firstBlockMin": 2.42,
+    "blockToLot": 3.76,
+    "nineToLot": 3.36,
+    "claimNotices": [
+     "🏠 어촌2 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+    ],
+    "deedsBlk": [],
+    "hutReach": null,
+    "err": 0,
+    "fatal": null,
+    "village": "어촌2",
+    "season": "spring",
+    "vid": 9,
+    "endMin": 11.95
+   }
+  },
+  {
+   "pid": "p04-어촌2-여름",
+   "rc": 0,
+   "m": {
+    "lot": 7.36,
+    "dig": 10,
+    "done": 18.29,
+    "nine": 9,
+    "nineFirst": 2.89,
+    "away": 9,
+    "lotTries": 18,
+    "previews": 142,
+    "whyAll": {
+     "영토 문(인정받은 구성원만)": 37,
+     "village": 58
+    },
+    "whyFirst": {
+     "영토 문(인정받은 구성원만)": 1
+    },
+    "firstBlockMin": 2.48,
+    "blockToLot": 4.88,
+    "nineToLot": 4.47,
+    "claimNotices": [
+     "🏠 어촌2 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+    ],
+    "deedsBlk": [],
+    "hutReach": null,
+    "err": 0,
+    "fatal": null,
+    "village": "어촌2",
+    "season": "summer",
+    "vid": 9,
+    "endMin": 18.29
+   }
+  },
+  {
+   "pid": "p07-어촌2-가을",
+   "rc": 0,
+   "m": {
+    "lot": 6.18,
+    "dig": 8.99,
+    "done": null,
+    "nine": 9,
+    "nineFirst": 2.9,
+    "away": 12,
+    "lotTries": 21,
+    "previews": 175,
+    "whyAll": {
+     "영토 문(인정받은 구성원만)": 76,
+     "village": 48
+    },
+    "whyFirst": {
+     "영토 문(인정받은 구성원만)": 1
+    },
+    "firstBlockMin": 2.49,
+    "blockToLot": 3.69,
+    "nineToLot": 3.28,
+    "claimNotices": [
+     "🏠 어촌2 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+    ],
+    "deedsBlk": [],
+    "hutReach": "움집 ③ 단계",
+    "err": 0,
+    "fatal": null,
+    "village": "어촌2",
+    "season": "autumn",
+    "vid": 9,
+    "endMin": 35.11
+   }
+  },
+  {
+   "pid": "p10-어촌2-겨울",
+   "rc": 0,
+   "m": {
+    "lot": 14.25,
+    "dig": 21.35,
+    "done": null,
+    "nine": 8,
+    "nineFirst": 2.87,
+    "away": 10,
+    "lotTries": 18,
+    "previews": 241,
+    "whyAll": {
+     "영토 문(인정받은 구성원만)": 109,
+     "water": 11,
+     "village": 76
+    },
+    "whyFirst": {
+     "영토 문(인정받은 구성원만)": 1
+    },
+    "firstBlockMin": 2.47,
+    "blockToLot": 11.78,
+    "nineToLot": 11.38,
+    "claimNotices": [
+     "🏠 어촌2 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+    ],
+    "deedsBlk": [],
+    "hutReach": "움집 ③ 단계",
+    "err": 0,
+    "fatal": null,
+    "village": "어촌2",
+    "season": "winter",
+    "vid": 9,
+    "endMin": 35.01
+   }
+  },
+  {
+   "pid": "x1-어촌2-봄재",
+   "rc": 0,
+   "m": {
+    "lot": 8.82,
+    "dig": 10.54,
+    "done": null,
+    "nine": 8,
+    "nineFirst": 2.96,
+    "away": 12,
+    "lotTries": 20,
+    "previews": 189,
+    "whyAll": {
+     "영토 문(인정받은 구성원만)": 96,
+     "water": 4,
+     "village": 41
+    },
+    "whyFirst": {
+     "영토 문(인정받은 구성원만)": 1
+    },
+    "firstBlockMin": 2.55,
+    "blockToLot": 6.27,
+    "nineToLot": 5.86,
+    "claimNotices": [
+     "🏠 어촌2 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+    ],
+    "deedsBlk": [],
+    "hutReach": "움집터(① 굴착)",
+    "err": 0,
+    "fatal": null,
+    "village": "어촌2",
+    "season": "spring",
+    "vid": 9,
+    "endMin": 35
+   }
+  },
+  {
+   "pid": "p03-어촌7-봄",
+   "rc": 0,
+   "m": {
+    "lot": 2.64,
+    "dig": 3.88,
+    "done": 5.74,
+    "nine": 1,
+    "nineFirst": 2.63,
+    "away": 0,
+    "lotTries": 1,
+    "previews": 67,
+    "whyAll": {
+     "water": 3
+    },
+    "whyFirst": {
+     "water": 1
+    },
+    "firstBlockMin": 2.61,
+    "blockToLot": 0.03,
+    "nineToLot": 0.01,
+    "claimNotices": [
+     "🏠 어촌7 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+    ],
+    "deedsBlk": [],
+    "hutReach": null,
+    "err": 0,
+    "fatal": null,
+    "village": "어촌7",
+    "season": "spring",
+    "vid": 25,
+    "endMin": 5.74
+   }
+  },
+  {
+   "pid": "p06-어촌7-여름",
+   "rc": 0,
+   "m": {
+    "lot": 2.69,
+    "dig": 3.94,
+    "done": 5.78,
+    "nine": 1,
+    "nineFirst": 2.67,
+    "away": 0,
+    "lotTries": 1,
+    "previews": 62,
+    "whyAll": {
+     "water": 3
+    },
+    "whyFirst": {
+     "water": 1
+    },
+    "firstBlockMin": 2.65,
+    "blockToLot": 0.04,
+    "nineToLot": 0.02,
+    "claimNotices": [
+     "🏠 어촌7 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+    ],
+    "deedsBlk": [],
+    "hutReach": null,
+    "err": 0,
+    "fatal": null,
+    "village": "어촌7",
+    "season": "summer",
+    "vid": 25,
+    "endMin": 5.78
+   }
+  },
+  {
+   "pid": "p09-어촌7-가을",
+   "rc": 0,
+   "m": {
+    "lot": 2.67,
+    "dig": 3.92,
+    "done": 5.76,
+    "nine": 1,
+    "nineFirst": 2.66,
+    "away": 0,
+    "lotTries": 1,
+    "previews": 67,
+    "whyAll": {
+     "water": 2
+    },
+    "whyFirst": {
+     "water": 1
+    },
+    "firstBlockMin": 2.64,
+    "blockToLot": 0.03,
+    "nineToLot": 0.01,
+    "claimNotices": [
+     "🏠 어촌7 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+    ],
+    "deedsBlk": [],
+    "hutReach": null,
+    "err": 0,
+    "fatal": null,
+    "village": "어촌7",
+    "season": "autumn",
+    "vid": 25,
+    "endMin": 5.76
+   }
+  },
+  {
+   "pid": "p12-어촌7-겨울",
+   "rc": 0,
+   "m": {
+    "lot": 2.68,
+    "dig": 4.25,
+    "done": 5.89,
+    "nine": 1,
+    "nineFirst": 2.67,
+    "away": 0,
+    "lotTries": 1,
+    "previews": 67,
+    "whyAll": {
+     "water": 3
+    },
+    "whyFirst": {
+     "water": 1
+    },
+    "firstBlockMin": 2.65,
+    "blockToLot": 0.03,
+    "nineToLot": 0.01,
+    "claimNotices": [
+     "🏠 어촌7 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+    ],
+    "deedsBlk": [],
+    "hutReach": null,
+    "err": 0,
+    "fatal": null,
+    "village": "어촌7",
+    "season": "winter",
+    "vid": 25,
+    "endMin": 5.89
+   }
+  },
+  {
+   "pid": "x3-어촌7-봄재",
+   "rc": 0,
+   "m": {
+    "lot": 2.67,
+    "dig": 3.92,
+    "done": 5.75,
+    "nine": 1,
+    "nineFirst": 2.65,
+    "away": 0,
+    "lotTries": 1,
+    "previews": 65,
+    "whyAll": {
+     "water": 3
+    },
+    "whyFirst": {
+     "water": 1
+    },
+    "firstBlockMin": 2.63,
+    "blockToLot": 0.04,
+    "nineToLot": 0.02,
+    "claimNotices": [
+     "🏠 어촌7 영토 안 집터는 그 마을에서 인정받은 구성원만 잡을 수 있습니다. 영토 밖 빈 들은 누구나 잡을 수 있습니다."
+    ],
+    "deedsBlk": [],
+    "hutReach": null,
+    "err": 0,
+    "fatal": null,
+    "village": "어촌7",
+    "season": "spring",
+    "vid": 25,
+    "endMin": 5.75
+   }
+  }
+ ],
+ "m7Sum": {
+  "on": {
+   "n": 20,
+   "valid": 20,
+   "dead": 0,
+   "red": 15,
+   "redB": 0,
+   "otherFail": 0,
+   "msgs": [
+    "\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\""
+   ]
+  },
+  "off": {
+   "n": 20,
+   "valid": 20,
+   "dead": 0,
+   "red": 10,
+   "redB": 0,
+   "otherFail": 0,
+   "msgs": [
+    "\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\""
+   ]
+  }
+ },
+ "m7": [
+  {
+   "name": "m7-off-01",
+   "mode": "off",
+   "rc": 0,
+   "pass": 28,
+   "fail": 0,
+   "red": false,
+   "redB": false,
+   "msg": "\"이 마을 곳간은 사람이 열지 않습니다.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-off-02",
+   "mode": "off",
+   "rc": 1,
+   "pass": 27,
+   "fail": 1,
+   "red": true,
+   "redB": false,
+   "msg": "\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-off-03",
+   "mode": "off",
+   "rc": 0,
+   "pass": 28,
+   "fail": 0,
+   "red": false,
+   "redB": false,
+   "msg": "\"이 마을 곳간은 사람이 열지 않습니다.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-off-04",
+   "mode": "off",
+   "rc": 1,
+   "pass": 27,
+   "fail": 1,
+   "red": true,
+   "redB": false,
+   "msg": "\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-off-05",
+   "mode": "off",
+   "rc": 0,
+   "pass": 28,
+   "fail": 0,
+   "red": false,
+   "redB": false,
+   "msg": "\"이 마을 곳간은 사람이 열지 않습니다.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-off-06",
+   "mode": "off",
+   "rc": 1,
+   "pass": 27,
+   "fail": 1,
+   "red": true,
+   "redB": false,
+   "msg": "\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-off-07",
+   "mode": "off",
+   "rc": 1,
+   "pass": 27,
+   "fail": 1,
+   "red": true,
+   "redB": false,
+   "msg": "\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-off-08",
+   "mode": "off",
+   "rc": 0,
+   "pass": 28,
+   "fail": 0,
+   "red": false,
+   "redB": false,
+   "msg": "\"이 마을 곳간은 사람이 열지 않습니다.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-off-09",
+   "mode": "off",
+   "rc": 0,
+   "pass": 28,
+   "fail": 0,
+   "red": false,
+   "redB": false,
+   "msg": "\"이 마을 곳간은 사람이 열지 않습니다.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-off-10",
+   "mode": "off",
+   "rc": 1,
+   "pass": 27,
+   "fail": 1,
+   "red": true,
+   "redB": false,
+   "msg": "\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-off-11",
+   "mode": "off",
+   "rc": 1,
+   "pass": 27,
+   "fail": 1,
+   "red": true,
+   "redB": false,
+   "msg": "\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-off-12",
+   "mode": "off",
+   "rc": 0,
+   "pass": 28,
+   "fail": 0,
+   "red": false,
+   "redB": false,
+   "msg": "\"이 마을 곳간은 사람이 열지 않습니다.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-off-13",
+   "mode": "off",
+   "rc": 0,
+   "pass": 28,
+   "fail": 0,
+   "red": false,
+   "redB": false,
+   "msg": "\"이 마을 곳간은 사람이 열지 않습니다.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-off-14",
+   "mode": "off",
+   "rc": 0,
+   "pass": 28,
+   "fail": 0,
+   "red": false,
+   "redB": false,
+   "msg": "\"이 마을 곳간은 사람이 열지 않습니다.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-off-15",
+   "mode": "off",
+   "rc": 1,
+   "pass": 27,
+   "fail": 1,
+   "red": true,
+   "redB": false,
+   "msg": "\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-off-16",
+   "mode": "off",
+   "rc": 1,
+   "pass": 27,
+   "fail": 1,
+   "red": true,
+   "redB": false,
+   "msg": "\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-off-17",
+   "mode": "off",
+   "rc": 1,
+   "pass": 27,
+   "fail": 1,
+   "red": true,
+   "redB": false,
+   "msg": "\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-off-18",
+   "mode": "off",
+   "rc": 1,
+   "pass": 27,
+   "fail": 1,
+   "red": true,
+   "redB": false,
+   "msg": "\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-off-19",
+   "mode": "off",
+   "rc": 0,
+   "pass": 28,
+   "fail": 0,
+   "red": false,
+   "redB": false,
+   "msg": "\"이 마을 곳간은 사람이 열지 않습니다.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-off-20",
+   "mode": "off",
+   "rc": 0,
+   "pass": 28,
+   "fail": 0,
+   "red": false,
+   "redB": false,
+   "msg": "\"이 마을 곳간은 사람이 열지 않습니다.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-on-01",
+   "mode": "on",
+   "rc": 0,
+   "pass": 28,
+   "fail": 0,
+   "red": false,
+   "redB": false,
+   "msg": "\"이 마을 곳간은 사람이 열지 않습니다.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-on-02",
+   "mode": "on",
+   "rc": 1,
+   "pass": 27,
+   "fail": 1,
+   "red": true,
+   "redB": false,
+   "msg": "\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-on-03",
+   "mode": "on",
+   "rc": 0,
+   "pass": 28,
+   "fail": 0,
+   "red": false,
+   "redB": false,
+   "msg": "\"이 마을 곳간은 사람이 열지 않습니다.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-on-04",
+   "mode": "on",
+   "rc": 0,
+   "pass": 28,
+   "fail": 0,
+   "red": false,
+   "redB": false,
+   "msg": "\"이 마을 곳간은 사람이 열지 않습니다.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-on-05",
+   "mode": "on",
+   "rc": 1,
+   "pass": 27,
+   "fail": 1,
+   "red": true,
+   "redB": false,
+   "msg": "\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-on-06",
+   "mode": "on",
+   "rc": 1,
+   "pass": 27,
+   "fail": 1,
+   "red": true,
+   "redB": false,
+   "msg": "\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-on-07",
+   "mode": "on",
+   "rc": 1,
+   "pass": 27,
+   "fail": 1,
+   "red": true,
+   "redB": false,
+   "msg": "\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-on-08",
+   "mode": "on",
+   "rc": 1,
+   "pass": 27,
+   "fail": 1,
+   "red": true,
+   "redB": false,
+   "msg": "\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-on-09",
+   "mode": "on",
+   "rc": 1,
+   "pass": 27,
+   "fail": 1,
+   "red": true,
+   "redB": false,
+   "msg": "\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-on-10",
+   "mode": "on",
+   "rc": 1,
+   "pass": 27,
+   "fail": 1,
+   "red": true,
+   "redB": false,
+   "msg": "\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-on-11",
+   "mode": "on",
+   "rc": 1,
+   "pass": 27,
+   "fail": 1,
+   "red": true,
+   "redB": false,
+   "msg": "\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-on-12",
+   "mode": "on",
+   "rc": 1,
+   "pass": 27,
+   "fail": 1,
+   "red": true,
+   "redB": false,
+   "msg": "\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-on-13",
+   "mode": "on",
+   "rc": 1,
+   "pass": 27,
+   "fail": 1,
+   "red": true,
+   "redB": false,
+   "msg": "\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-on-14",
+   "mode": "on",
+   "rc": 1,
+   "pass": 27,
+   "fail": 1,
+   "red": true,
+   "redB": false,
+   "msg": "\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-on-15",
+   "mode": "on",
+   "rc": 0,
+   "pass": 28,
+   "fail": 0,
+   "red": false,
+   "redB": false,
+   "msg": "\"이 마을 곳간은 사람이 열지 않습니다.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-on-16",
+   "mode": "on",
+   "rc": 1,
+   "pass": 27,
+   "fail": 1,
+   "red": true,
+   "redB": false,
+   "msg": "\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-on-17",
+   "mode": "on",
+   "rc": 1,
+   "pass": 27,
+   "fail": 1,
+   "red": true,
+   "redB": false,
+   "msg": "\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-on-18",
+   "mode": "on",
+   "rc": 1,
+   "pass": 27,
+   "fail": 1,
+   "red": true,
+   "redB": false,
+   "msg": "\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-on-19",
+   "mode": "on",
+   "rc": 1,
+   "pass": 27,
+   "fail": 1,
+   "red": true,
+   "redB": false,
+   "msg": "\"마을에서 너무 멉니다. 곳간 앞으로 가십시오.\"",
+   "dead": false
+  },
+  {
+   "name": "m7-on-20",
+   "mode": "on",
+   "rc": 0,
+   "pass": 28,
+   "fail": 0,
+   "red": false,
+   "redB": false,
+   "msg": "\"이 마을 곳간은 사람이 열지 않습니다.\"",
+   "dead": false
+  }
+ ]
+}

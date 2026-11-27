@@ -10,7 +10,7 @@ function mkRng(s) { s = (s >>> 0) || 1; return () => { s ^= s << 13; s >>>= 0; s
 // resolveRaid — 호위 병종 구성 vs 도적. battle-core 인스턴스 1회전.
 //   spear/archer = 호위 병종 수 · banditN = 도적 수 · weapQ = 마을 무기품질(호위 atk 배수)
 //   반환: { repelled, win, escStart, escAlive, traderAlive, banditStart, banditAlive, ticks }
-function resolveRaid({ spear = 0, archer = 0, banditN = 6, weapQ = 0.5, banditWeapQ = 0.46, seed = 1, dt = 0.1, maxT = 6000, militia = 0, banditMilitia = 0, mrlA = null, rng = null } = {}) {
+function resolveRaid({ spear = 0, archer = 0, banditN = 6, weapQ = 0.5, banditWeapQ = 0.46, seed = 1, dt = 0.1, maxT = 6000, militia = 0, banditMilitia = 0, mrlA = null, rng = null, world = null } = {}) {
   const spec = {
     A: { spear, archer, form: 'circle' },   // 호위 원형 방어(창병 외곽·궁수 내부). 상인은 비전투 — 호위 격퇴 시 안전
     B: { dagger: Math.max(1, banditN | 0), form: 'line' },
@@ -23,8 +23,10 @@ function resolveRaid({ spear = 0, archer = 0, banditN = 6, weapQ = 0.5, banditWe
   if (banditMilitia > 0) { spec.B.militia = banditMilitia | 0; spec.B.dagger = Math.max(0, banditN | 0); }
   const h = BC.createBattle(spec, { rng: rng || mkRng(seed) });
   if (mrlA != null) h.ctx.sides.A.armyMrl = mrlA;
+  if (world) { h.ctx.world = world; if (world.settle) world.settle(h.ctx); }   // ★[T1459] (settle = 막힌 칸에 선 몸을 가장 가까운 빈 칸으로 — 빈 땅이면 아무도 안 옮긴다)
+  //   ★[T1459] 존 지형 판 — 막힘 · 시야 · 엄폐만 존이 답한다(걸음 · 궤주 방향 · 쫓음은 battle-core 그대로 = 머리 없는 판과 같은 식) · 판 결과는 같은 식(`_judge`)을 걸음마다
   let t = 0;
-  for (; t < maxT && !h.result; t++) h.step(dt);
+  for (; t < maxT && !h.result; t++) { h.step(dt); if (world) BC._judge(h.ctx); }
   const A = h.units.filter(u => u.side === 'A'), B = h.units.filter(u => u.side === 'B');
   const escAlive = A.filter(u => u.hp > 0).length;
   const banditAlive = B.filter(u => u.hp > 0).length;
@@ -81,16 +83,40 @@ function seedOf(day, cid, gid) {
 }
 //   행상: 호위가 있으면 싸우는 몸이 아니다(이 파일 `resolveRaid` 의 그 약속 — "상인은 비전투") — 짐 곁에 있다가 호위가 지면 궤주에 섞여 달아난다(쓰러진 몸만 죽는다 · 판정 35).
 //     호위가 없으면 행상 혼자가 그 편의 몸이다(농기구 민병 — econ 스크럼도 행상을 싸우는 몸으로 셌다) — 혼자면 거의 늘 밀리고 사기가 낮아 짐을 버리고 달아난다.
-function raidBattle({ esc = 0, gangN = 1, armed = null, qA = 0.42, qB = 0.42, happy = 1, seed = 1 } = {}) {
+function raidBattle({ esc = 0, gangN = 1, armed = null, qA = 0.42, qB = 0.42, happy = 1, seed = 1, world = null } = {}) {
   const E = Math.max(0, esc | 0), G = Math.max(1, gangN | 0), Ar = armed == null ? G : Math.max(0, Math.min(G, Math.floor(armed)));
   const A = E > 0 ? [['spear', E]] : [['militia', 1]], B = [['dagger', Ar], ['militia', G - Ar]];
   const d = decide({ A, B, qA, qB, happy });
   if (d.flee) return { fled: true, repel: false, banditsKilled: 0, escKilled: 0, traderDead: false, escStart: E, loss: 1, d, secs: 0 };
-  const r = resolveRaid({ spear: E, militia: E > 0 ? 0 : 1, banditN: Ar, banditMilitia: G - Ar > 0 ? G - Ar : 0, weapQ: qA, banditWeapQ: qB, seed, mrlA: d.happy });
+  const r = resolveRaid({ spear: E, militia: E > 0 ? 0 : 1, banditN: Ar, banditMilitia: G - Ar > 0 ? G - Ar : 0, weapQ: qA, banditWeapQ: qB, seed, mrlA: d.happy, world });   // ★[T1459] world = 존 지형 어댑터(안 주면 빈 들판 — 종전)
   if (E > 0) r.traderAlive = true;   // 싸우지 않은 행상 — 산다(위)
   //   진 쪽이 궤주한다 — 캐러밴이 지면(도적 승) 짐을 그 자리에 버리고 달아난다(손실 1 · 산 몸은 산다) · 비기면(120초 판 끝) 도적이 못 가져갔다(손실 0).
   const repel = r.win !== 'B';
   return { fled: false, repel, draw: r.win === '무', banditsKilled: r.banditDead, escKilled: r.escDead, traderDead: !r.traderAlive, escStart: E, loss: repel ? 0 : 1, d, secs: r.secs, win: r.win };
 }
 
-module.exports = { resolveRaid, decide, raidBattle, seedOf, inRange, ENGAGE_R };
+// ★★[T1459 2026-11-23 · 세션6 · T1431 회부 2] **존 지형 위 판** — 표준 배치(battle-core 0 ~ 130m 상자 · 두 편 50m)를 만난 자리로 옮겨 돌려 놓는다:
+//   상자 가운데(65 · 65) = 캐러밴 자리와 단 자리의 가운데 · 상자 x 축 = 캐러밴 → 단 방향(A = 캐러밴 · B = 단). 존 1칸 = 1m(zone "32px = 1m").
+//   cell(cx, cy) = { b 막힘(지형 · 물 · 건물 · 나무 — 전쟁 층 `_warBlockedCell` 그 술어) · l 화살을 막음(바위 · 도랑 · 건물 · 나무) · c 엄폐(나무 · 건물) } — 호스트가 준다.
+//   어댑터는 막힘 · 시야 · 엄폐 셋만 답한다 — 걸음 · 궤주 방향(제 편 뒤쪽) · 쫓음은 battle-core 그대로라 빈 땅이면 머리 없는 판과 **같은 판**이다(하네스).
+function zoneWorld(ax, ay, bx, by, cell) {   // ax · ay = 캐러밴 자리(칸) · bx · by = 단 자리(칸)
+  const ox = (ax + bx) / 2, oy = (ay + by) / 2, L = Math.hypot(bx - ax, by - ay), ux = L > 1e-6 ? (bx - ax) / L : 1, uy = L > 1e-6 ? (by - ay) / L : 0;
+  const C = (x, y) => { const lx = x - 65, ly = y - 65; return [Math.floor(ox + lx * ux - ly * uy), Math.floor(oy + lx * uy + ly * ux)]; };
+  const memo = new Map(), at = (x, y) => { const [cx, cy] = C(x, y), k = cx * 65536 + cy; let v = memo.get(k); if (v === undefined) { v = cell(cx, cy) || {}; memo.set(k, v); } return v; };
+  return {
+    blocked(x, y) { return !!at(x, y).b; },
+    losBlocked(x1, y1, x2, y2) { const dx = x2 - x1, dy = y2 - y1, d = Math.hypot(dx, dy), n = Math.ceil(d / 1.5); for (let i = 1; i < n; i++) { const s = i / n; if (at(x1 + dx * s, y1 + dy * s).l) return true; } return false; },   // 1.5m 표본(전쟁 층 `_warWorld` 그 간격)
+    coverAt(x, y) { return !!at(x, y).c; },
+    toZone: C,   // 판 자리 → 존 칸(몸 · 더미 자리 읽기)
+    settle(ctx) {   // 표준 배치에서 막힌 칸(물 · 벽 · 나무)에 선 몸 — 가장 가까운 빈 칸 가운데로(1m 고리를 넓혀 가며 · 판 상자 안 · 못 찾으면 그 자리)
+      for (const u of ctx.units) {
+        if (!this.blocked(u.x, u.y)) continue;
+        let done = false;
+        for (let r = 1; r <= 65 && !done; r++) for (let dx = -r; dx <= r && !done; dx++) for (const dy of [-r, r]) { const x = u.x + dx, y = u.y + dy; if (!this.blocked(x, y)) { u.x = x; u.y = y; done = true; break; } }
+        for (let r = 1; r <= 65 && !done; r++) for (let dy = -r + 1; dy <= r - 1 && !done; dy++) for (const dx of [-r, r]) { const x = u.x + dx, y = u.y + dy; if (!this.blocked(x, y)) { u.x = x; u.y = y; done = true; break; } }
+      }
+    },
+  };
+}
+
+module.exports = { resolveRaid, decide, raidBattle, seedOf, inRange, ENGAGE_R, zoneWorld };

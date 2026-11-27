@@ -145,7 +145,7 @@
             let m = null; try { m = JSON.parse(d); } catch (e) { return; }
             _live.set(m.zone || zid, { at: performance.now(), players: Array.isArray(m.players) ? m.players : [], off: !!m.off });
             if (visible) needsRedraw = true;
-          } else if (d.lastIndexOf('{"type":"bridges_add"', 0) === 0) {
+          } else if (d.lastIndexOf('{"type":"bridges_add"', 0) === 0 || d.lastIndexOf('{"type":"bridges_cut"', 0) === 0) {   // ★[T1455] 끊김 · 되살림도 같은 그림 바뀜
             // 지은 다리 — 그 존의 그림이 바뀌었다(서버가 버전을 새로 냈다). 다음 그리기에 다시 받는다.
             const r = _zmap.get(zid); if (r) r.epoch = 0;
             _dropTiles(zid);

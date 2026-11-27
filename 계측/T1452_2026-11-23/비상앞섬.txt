@@ -1,0 +1,10 @@
+FS episodes 171 emerg {'warned%': 100.0, 'leadMed': 90} emerg on day before 97.7 trough k0 {'warned%': 98.2, 'leadMed': 90.0} (가) {'warned%': 100.0, 'leadMed': 73}
+    봄 25 emerg warned% 100.0 leadMed 90
+    여름 11 emerg warned% 100.0 leadMed 90
+    가을 16 emerg warned% 100.0 leadMed 90.0
+    겨울 119 emerg warned% 100.0 leadMed 90
+FA episodes 205 emerg {'warned%': 99.0, 'leadMed': 90} emerg on day before 87.8 trough k0 {'warned%': 95.1, 'leadMed': 90} (가) {'warned%': 100.0, 'leadMed': 89}
+    봄 47 emerg warned% 100.0 leadMed 90
+    여름 61 emerg warned% 100.0 leadMed 90
+    가을 43 emerg warned% 100.0 leadMed 90
+    겨울 53 emerg warned% 96.2 leadMed 90

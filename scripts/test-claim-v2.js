@@ -305,7 +305,7 @@ console.log('\n⓪ 검사 상황 — 실서버의 정본을 쥐고 있나');
     '실서버 클레임 함수 셋을 정본 그대로 쥐었다');
   ok(!!Claims && typeof Claims.adjacencyOf === 'function', '`server/claims.js` 정본이 붙어 있다');
   ok(SZ === 32, `셀 크기 ${SZ}px — 사람 클레임은 정확히 1셀이다(문서 §0-ⓐ)`);
-  ok(H.CLAIM_SLOT_PERSONAL_START === 9, `개인 슬롯 S0 = ${H.CLAIM_SLOT_PERSONAL_START} (L-1 확정: 9 유지)`);
+  ok(H.CLAIM_SLOT_PERSONAL_START === undefined, '개인 숫자 한도(S0 = 9)는 지웠다(★T1428 -on · 판정 28 — 개인의 상한 = 돌봄)');
   ok(Claims.CFG.HOLD_DAYS === 14 && Claims.CFG.HOLD_DAYS_TEMP === 3 && Claims.CFG.PREF_DAYS === 14,
     `시계 확정값 — 개인 T1 ${Claims.CFG.HOLD_DAYS}일 · 임시 ${Claims.CFG.HOLD_DAYS_TEMP}일(L-3) · T2 ${Claims.CFG.PREF_DAYS}일(L-4)`);
 }
@@ -592,7 +592,7 @@ console.log('\n⑨ ★[T1305 → T1343] 사유지 돌봄(청크 계량기 · 실
     catch (e) { out = String((e && e.stdout) || ''); }
     const m = /@@T1305 (\{.*\})/.exec(out); return m ? JSON.parse(m[1]) : null;
   };
-  ok(!H.Deeds.ON && H.CLAIM_SLOT_PERSONAL_START === 9, '⑨ 끔(이 판) — 손잡이 꺼짐 · 숫자 상한 9 그대로(끈 판 = 종전)');
+  ok(!H.Deeds.ON && H.CLAIM_SLOT_PERSONAL_START === undefined, '⑨ 끔(이 판) — 손잡이 꺼짐 · 숫자 한도 9 는 지웠다(★T1428 -on · 판정 28)');
   const R = sub(null);
   ok(!!R && R.on, '⑨ 상황 assert — 켬 아이 판이 정본 함수를 쥐고 돌았다');
   const NAMES = {
@@ -622,7 +622,7 @@ console.log('\n⑨ ★[T1305 → T1343] 사유지 돌봄(청크 계량기 · 실
   const Z = fs.readFileSync(path.join(ROOT, 'server', 'zone.js'), 'utf8');
   const BAITS = [
     ['gate', '마을 문을 되살린 사본(영토 밖도 마을 사람만)', 'if (_t1305P && !_onbLot) {', 'if (false && _t1305P && !_onbLot) {', ['outsideAny']],
-    ['cap', '숫자 상한을 되살린 사본(9 한도)', 'if (!_t1305P && usedCount >= max) {', 'if (usedCount >= max) {', ['noCap']],
+    ['cap', '숫자 상한을 되살린 사본(9 한도)', "(kind === 'guild' ? CLAIM_SLOT_GUILD_START : Infinity);", "(kind === 'guild' ? CLAIM_SLOT_GUILD_START : 9);", ['noCap']],   // ★[T1428 -on] 한도 줄이 지워져 개인 한도 = 무한 — 그 자리를 9 로
     ['online', '★[T1343] 접속해 있을 때만 줄이는 사본(접속한 날만 세는 꼴)', 'function _t1343Advance(pid, now, noStage, opt) {', 'function _t1343Advance(pid, now, noStage, opt) {\n  if (!_t1343Online(pid)) { const m0 = _t1332MyChunks(pid); return { N: 0, chunks: m0, freed: 0, P: _t1386Build(pid, m0, 0) }; }\n', ['offlineFlows', 'd40']],
     ['flat', '★[T1343] 칸 수에 비례 안 하는 사본(청크 상한 100 고정)', 'const capOf = (n) => CFG.PT * Math.max(0, n | 0);', 'const capOf = (n) => CFG.PT * (n > 0 ? 1 : 0);', ['cap'], 'deeds'],
     ['all', '★[T1343] 전 청크를 한꺼번에 올리는 사본', '  else Deeds.addPts(P, w, pts == null ? Deeds.CFG.P_USE : pts);', '  else for (const ww of P.chunks) { Deeds.addPts(P, ww, pts == null ? Deeds.CFG.P_USE : pts); ww.row.m = ww.m; }', ['neighborSame']],

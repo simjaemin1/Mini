@@ -1,0 +1,33 @@
+# 만진 함수 → 하네스 (touched-harness · base origin/batch/client-scan-1122 · 갈림점 b0a83aaa0)
+· 바뀐 코드 파일 8 · 이름 35(물린 것 18 · 흔한 이름 뺌 0) · 바뀐 하네스 1 · 규약 다섯 · **돌릴 하네스 67**(@regress 아님 1: e2e-first30.js)
+  public/client/00-const.js: T1453_NAT_ON _ccAdd _ccBuild _ccBump _ccDel _has _near _t1453Ck _t1453NatCells constructor cropSprite
+  public/client/11-r1-mountain.js: _natBlockReset
+  public/client/99-main.js: ccBuildMs natCheck natPts natRebuildMs setNat stat
+  server/roads.js: clientRoads clientRoadsIn
+  server/zone.js: T1453_VIEW_SEND _acceptConnection _t1453Forget _t1453Keys _t1453On _t1453RoadsOf _t1453ViewOne _t1453ViewTick _t1453WelBlds _t1453WelRoads activeChunkBuildings deactivateChunk
+  scripts/t1453-load-repro.js: t1453-load-repro
+  scripts/t1453-seed.js: t1453-seed
+  scripts/t1453-srv-meter.cjs: t1453-srv-meter
+· 이름 → 하네스 수: T1453_VIEW_SEND 1 · _acceptConnection 1 · _has 3 · _near 1 · _t1453Ck 1 · _t1453RoadsOf 1 · _t1453ViewOne 1 · clientRoads 1 · clientRoadsIn 1 · constructor 2 · cropSprite 3 · deactivateChunk 3 · natCheck 1 · natPts 1 · setNat 1 · stat 51 · t1453-load-repro 1 · t1453-seed 1
+· 바뀐 하네스: test-t1453-load.js
+· 돌릴 하네스: e2e-audio-probe.js e2e-first30.js e2e-pid-collide.js test-arms-body.js test-bandit-all.js test-bandit-body.js test-bandit-camp.js test-bandit-walk.js test-body-chunks.js test-body-fields.js test-cand-walk.js test-cargo-age.js test-coll-grid.js test-crop-memo.js test-crops-world.js test-crops.js test-deforest-game.js test-fixture-reap.js test-handoff-body.js test-harness-lint.js test-hp-src.js test-lon-day.js test-mining.js test-move-soa.js test-props.js test-regrow-block.js test-regrow.js test-reset-world.js test-resource-index.js test-seam-walk.js test-server-market.js test-t1013-band-day.js test-t1065-tool-gate.js test-t1089-ret-walk.js test-t1094-carry-cap.js test-t1095-mine-demand.js test-t1126-rock-yield.js test-t1146-stone-rule.js test-t1161-two-prices.js test-t1214-step-fast.js test-t1219-step-fast.js test-t1225-fish-capital.js test-t1238-terr-v2.js test-t1243-farm-on.js test-t1260-food-reads.js test-t1292-xz-esc.js test-t1314-cols.js test-t1322-prefilter.js test-t1324-xz-migrate.js test-t1331-beast-body.js test-t1337-wake.js test-t1342-gate-home.js test-t1348-loop.js test-t1352-xz-news.js test-t1359-hunt-body.js test-t1376-tick-fail.js test-t1402-deeds-uptime.js test-t1404-bandit-live.js test-t1405-leave-rare.js test-t1446-view-index.js test-t1453-load.js test-t772-leg.js test-valuechain.js test-village-view.js test-war-nosnap.js test-war-world.js test-wild-door.js
+test-body-fields.js | RC 0 | 0s | === 14 통과 / 0 실패 ===
+test-coll-grid.js | RC 0 | 13s | === 결과: 20 PASS / 0 FAIL ===
+test-hp-src.js | RC 0 | 2s | === 54 통과 / 0 실패 ===
+test-lon-day.js | RC 0 | 0s | === 22건 중 PASS 22 · FAIL 0 ===
+test-handoff-body.js | RC 0 | 329s | === 94 통과 / 0 실패 ===
+test-village-view.js | RC 0 | 33s | 결과: PASS 132 · FAIL 0
+test-move-soa.js | RC 0 | 84s | === 결과: 287 PASS / 0 FAIL ===
+test-t1161-two-prices.js | RC 0 | 35s | 10/10 통과
+test-crops-world.js | RC 0 | 1s | 결과: PASS
+test-crops.js | RC 0 | 3s | === 결과: 170 PASS / 0 FAIL ===
+test-props.js | RC 0 | 1s | 결과: PASS
+test-body-chunks.js | RC 0 | 0s | === 결과: 27 PASS / 0 FAIL ===
+test-regrow.js | RC 0 | 18s | === 101건 중 PASS 101 · FAIL 0 ===
+test-resource-index.js | RC 0 | 1s | === 자원 색인 하네스: 20 통과 / 0 실패 ✅ ===
+test-client-globals.js | RC 0 | 1s | === PASS 26 / FAIL 0 ===
+test-t1446-view-index.js | RC 1 | 105s | 결과: PASS 22 / FAIL 1
+e2e-nature.js | RC 0 | 455s | === 자연물 E2E: 146 통과 / 0 실패 ✅ ===
+e2e-tilestate.js | RC 0 | 115s | === 타일 상태계: 통과 40 · 실패 0 ===
+DONE
+test-t1446-view-index.js (00-const 지움 자리표 한 줄 뒤 다시) | RC 0 | 결과: PASS 23 / FAIL 0

@@ -1,0 +1,2 @@
+--static — 이 가지가 바꾼 하네스 3종만(test-move-soa.js test-t1425-ruler.js test-t1467-us-all.js) · 전부는 --all
+글자 분류 3종 · 가 95 · 나 265 · 다 93 · 라 10

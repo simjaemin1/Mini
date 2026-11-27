@@ -1,0 +1,3 @@
+# 옛 코드 빨강 — 하네스 = ee63b2809 · 제품(server sim public lab) = 82cf4f2ed · 시한 600초
+빨강 ○ | test-t1448-road-grid.js | RC=1 · ✓ 3 · ✗ 7 |   ❌ 칸 배열 그릇 모듈(`server/road-grid.js`)이 있다
+# 합: 빨강 1 · 크래시 0 · 초록 0 · 모름 0 · 제품 무관 0

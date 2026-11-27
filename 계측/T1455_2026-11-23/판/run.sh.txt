@@ -1,0 +1,4 @@
+# usage: run.sh TAG SEED DAYS "ENV k=v ..." [K]
+TAG=$1; SEED=$2; DAYS=$3; ENVS=$4; K=${5:-0}
+cd /root/t1455 && unshare -n bash -c "python3 /tmp/t1341/loup.py && cd /root/t1455 && env $ENVS T745_VCLOCK=1 T577_PAR=1 T577_DIR=/tmp/t1455run/$TAG.d T577_TAG=$TAG T1455_PROBE_OUT=/tmp/t1455run/$TAG.probe.json T1455_PROBE_CLOCK=$K NODE_OPTIONS='--max-old-space-size=4096 --require /root/t1455/scripts/t745-vclock.js --require /root/t1455/scripts/t1455-bridge-probe.js' node scripts/t577-server-run.js $DAYS $SEED" > /tmp/t1455run/$TAG.out 2>&1
+echo "$TAG $(date +%H:%M)" >> /tmp/t1455run/done.txt

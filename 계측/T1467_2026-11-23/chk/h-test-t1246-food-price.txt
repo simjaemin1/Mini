@@ -1,0 +1,10 @@
+[econ-sim-v2] specialty.js 통합: 276종 → 총 296 TRADABLE
+PASS grain-only, monotone price, seed, actual consumption, milling once, normalized/preserved units, production, spoilage and trade
+[econ-sim-v2] specialty.js 통합: 276종 → 총 296 TRADABLE
+PASS OFF retains food-only price
+[econ-sim-v2] specialty.js 통합: 276종 → 총 296 TRADABLE
+PASS grain-only, monotone price, seed, actual consumption, milling once, normalized/preserved units, production, spoilage and trade
+[econ-sim-v2] specialty.js 통합: 276종 → 총 296 TRADABLE
+PASS grain-only, monotone price, seed, actual consumption, milling once, normalized/preserved units, production, spoilage and trade
+PASS 미끼 ① mutant old food-only read is rejected · 바꾼 자리 1
+PASS 미끼 ② mutant double rot subtraction is rejected · 바꾼 자리 1

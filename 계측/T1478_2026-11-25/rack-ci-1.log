@@ -1,0 +1,167 @@
+##### test-bridge-act.js #####
+  [찌꺼기] /tmp 에서 죽은 판 이름 DB 5개 지움(6 MB)
+  [소요] 9초
+  ✓ RC=0
+##### test-donate.js #####
+  ✓ 대조 — 게시판 납품 훅(`Onboarding.onDeliver`)은 같은 계량기를 1 올린다(자명 통과 금지)  1
+  ✓ [켬] ★`server/winter.js` 가 없다(불러도 못 찾는다)  false · MODULE_NOT_FOUND
+  ✓ [끔] ★`server/winter.js` 가 없다(불러도 못 찾는다)  false · MODULE_NOT_FOUND
+=== 42건 중 PASS 42 · FAIL 0 ===
+  [소요] 16초
+  ✓ RC=0
+##### test-doors.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 3초 쉰다
+=== 문 전수 하네스: 45 통과 / 0 실패 ✅ ===
+  ✓ ⓔ3 전제: `_devAsGate` 를 소스에서 그대로 떠 왔다(못 뜨면 아래가 자명 통과다)
+  ✓ ⓔ6b ★자명 통과 금지 — 두 팔이 **실제로 다른 값**을 낸다(손잡이가 부를 때 읽힌다) · /startinfo?as=%EC%9E%AC%EB%AF%BC vs /startinfo
+  ✓ ⓖ3 자명 통과 금지 — 없는 이름엔 `false` 다(늘 true 면 위가 뜻이 없다) · {"taken":false}
+=== 문 전수 하네스: 45 통과 / 0 실패 ✅ ===
+  [소요] 5초
+  ✓ RC=0
+##### test-emptystart.js #####
+  [찌꺼기] /tmp 에서 죽은 판 이름 DB 4개 지움(3 MB)
+  ✓ ★★⓪ 자명 통과 금지 — 대체 경로(맨손 채집·조잡 석기)는 **살아 있다**
+=== 41건 중 PASS 41 · FAIL 0 ===
+  [소요] 14초
+  ✓ RC=0
+##### test-fishing.js #####
+  ✓ ★전제 — **마을 노동권 안의 물**을 실제로 찾았다(없으면 이 절이 자명 통과다)  42곳 · 첫 마을 농촌1
+  ✓ ★전제 — 실지도에 뭍과 맞닿은 바다 칸이 충분하다(자명 통과 금지)  300곳
+  ✓ ⑧ⓖ 여름 풀이 겨울 풀보다 넓다(철이 실제로 거른다 — 자명 통과 금지)  여름 7 · 겨울 1
+=== 120건 중 PASS 120 · FAIL 0 ===
+  [소요] 51초
+  ✓ RC=0
+##### test-game-meat.js #####
+=== 54건 중 PASS 54 · FAIL 0 ===
+  [소요] 8초
+  ✓ RC=0
+##### test-granary-rot.js #####
+=== 28건 중 PASS 28 · FAIL 0 ===
+  [소요] 12초
+  ✓ RC=0
+##### test-guest-identity.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 3초 쉰다
+=== 게스트 영속 신원 하네스: 117 통과 / 0 실패 ✅ ===
+  ✓ ⑨ⓒ4 ★안 문에서는 **전부 준다**(자명 통과 금지 — 투영이 늘 비어 있는 게 아니다)
+  ✓ ⑨ⓓ 전제: 사람 하나가 실제로 존에 붙어 있다(아래가 자명 통과가 아니다)
+  ✓ ⑨ⓔ2 ★자명 통과 금지 — 안 문으로 부른 것은 **실제로 바뀌었다**(소개문·길드원 2) · "존이 쓴 소개문" · 길드원 2
+=== 게스트 영속 신원 하네스: 117 통과 / 0 실패 ✅ ===
+  [소요] 16초
+  ✓ RC=0
+##### test-hall-units.js #####
+=== 23건 중 PASS 23 · FAIL 0 ===
+  [소요] 17초
+  ✓ RC=0
+##### test-member-open.js #####
+  ✓ 부탁 11 = 아직(문턱 바로 아래 — 자명 통과 금지)  {"rec":false,"contrib":11} · 영토 안 집터는 구성원으로 인정된 사람만 잡을 수 있습니다. 마을 부탁을 1건 더 채우십시오.
+  ✓ [상황] 한 개를 내도 한 개 이상 받는 짝이 있다(자명 통과 금지)  {"it":"berry","res":"fruit","take":"food"}
+  [소요] 21초
+  ✓ RC=0
+##### test-mob-hp-door.js #####
+  ✓ ★⑥ 끔 자식이 제 판 검사를 다 통과한다(끔 = T954 문 — 값 그대로 · 화살 저장 표 없음 · 0 밑 방송)  === 17건 중 PASS 17 · FAIL 0 ===
+=== 19건 중 PASS 19 · FAIL 0 ===
+  [소요] 3초
+  ✓ RC=0
+##### test-preserve.js #####
+  [찌꺼기] /tmp 에서 죽은 판 이름 DB 4개 지움(6 MB)
+[hanbando] central save 실패 (tp_fresh): connect ECONNREFUSED 127.0.0.1:1 — ★[T916] 줄에 남김
+[hanbando] central save 실패 (tp_wilt): connect ECONNREFUSED 127.0.0.1:1 — ★[T916] 줄에 남김
+[hanbando] central save 실패 (tp_part): connect ECONNREFUSED 127.0.0.1:1 — ★[T916] 줄에 남김
+[hanbando] central save 실패 (tp_bad0): connect ECONNREFUSED 127.0.0.1:1 — ★[T916] 줄에 남김
+[hanbando] central save 실패 (tp_bad1): connect ECONNREFUSED 127.0.0.1:1 — ★[T916] 줄에 남김
+[hanbando] central save 실패 (tp_bad2): connect ECONNREFUSED 127.0.0.1:1 — ★[T916] 줄에 남김
+  · [상황] 이 양은 문턱을 넘는다(안 앓는 양이면 아래가 자명 통과)  독 0.5 · 앓기 시작 1.100000000000001시간
+  · [상황] 이 자리 사거리 안에 **건조대가 하나도 없다**(있으면 소유권 거절로 새어 가짜 통과)  건조대 0개
+  ✓ [T778 끔 탐침] 순간 로트 끔(`T732_MOMENT_LOT=0`)으로 같은 하네스 — 같은 줄 수 다 통과  69 / 0
+=== 결과: 70 PASS / 0 FAIL ===
+  [소요] 5초
+  ✓ RC=0
+##### test-reset-world.js #####
+  [남은 아이] 있음 — 내려 보내고 다음 판 앞에서 3초 쉰다
+  ✓ ★[T892] `--live` 는 컨테이너 · env 손잡이 · 관측자 줄을 찍고 DB 는 안 읽는다(`--check` 는 읽는다 — 자명 통과 0)  --check DB 줄 true · --live DB 줄 false
+⑫ ★자명 통과 금지 — 값을 흘리는 미끼 사본
+=== PASS 69 / FAIL 0 ===
+  [소요] 35초
+  ✓ RC=0
+##### test-shelter.js #####
+  [찌꺼기] /tmp 에서 죽은 판 이름 DB 3개 지움(107 MB)
+⑧ ★이 하네스가 실패할 줄 아는가 — 일부러 틀린 것을 넣는다
+  ✓ ③ ★대조 — 같은 필터가 **거절도 한다**(늘 통과하는 필터가 아니다)  기존 집과 너무 가까움(<15)
+  ✓ ⑥ ★사람이 세운 마을엔 백필이 안 든다 — 그래야 T19 자격이 자명 통과가 아니다  사람이 세운 마을은 세운 사람이 짓습니다.
+  ✓ ⑥ ★대조 — 표지만 떼면 같은 호출이 통과한다(막은 것이 그 표지다)
+=== PASS 47 / FAIL 0 ===
+  [소요] 60초
+  ✓ RC=0
+##### test-spoil2.js #####
+  [찌꺼기] /tmp 에서 죽은 판 이름 DB 6개 지움(6 MB)
+=== 결과: 38 PASS / 0 FAIL ===
+  · [상황] 날씨 정본에 닿는다(못 닿으면 노출이 1.0 고정이라 아래가 전부 자명 통과)
+  · [상황] ★자명 통과 금지 — 실제로 0 이 아닌 값을 셌다  3411001
+  ✓ [T778 끔 탐침] 순간 로트 끔(`T732_MOMENT_LOT=0`)으로 같은 하네스 — 같은 줄 수 다 통과  37 / 0
+=== 결과: 38 PASS / 0 FAIL ===
+  [소요] 3초
+  ✓ RC=0
+##### test-t1065-tool-gate.js #####
+  ✓ ★[자명 통과 금지] 끔 — 맨손 낚시가 던져진다(종전)  낚싯줄을 던졌습니다. 찌가 흔들리면 Shift+F를 누르십시오.
+  ✓ ★★[자명 통과 금지] 끔 — 같은 자리 맨손 E 는 그 나무를 벤다(나무가 손 닿는 곳에 있다 — 켬의 잔가지 줍기가 건너뛴 결과다)  나무 3→2 · {}
+  ✓ ★★[자명 통과 금지] 끔 — 같은 자리 맨손 E 는 바위를 캔다(자갈 줍기 ③′ 는 켬 판에만)  바위 232→231 · 깎인 0 kg · {"stone":1}
+=== T1065: 통과 43 · 실패 0 ===
+  [소요] 2초
+  ✓ RC=0
+##### test-t1093-shelter-roof.js #####
+결과: 19 통과 · 0 실패
+  ✓ ⓪ 진짜 `ensureShelter` 가 쉼터 한 채를 세웠다(없으면 아래가 자명 통과다)  농촌1(vid 1) · 셀 454,2424
+⑦ 자명 통과 금지 — 선언 없이 세운 6×4 에 같은 단언
+결과: 19 통과 · 0 실패
+  [소요] 39초
+  ✓ RC=0
+##### test-t1118-rack-age.js #####
+  [찌꺼기] /tmp 에서 죽은 판 이름 DB 12개 지움(18 MB)
+=== 결과: 50 PASS / 0 FAIL ===
+=== 결과: 50 PASS / 0 FAIL ===
+  [소요] 15초
+  ✓ RC=0
+##### test-t1120-next-tool.js #####
+  ✓ ② 한 번 = 문이 열릴 때까지(`_t1065Gate` 통과 갈래가 비운다)
+  ✓ ★★[자명 통과 금지] 끔 — 바위 곁 맨손 E 는 줍기 한 줄뿐(종전 · 이유 0) · 자갈은 같다  1통 · 자갈 1/2
+⑨ 돌연변이 — 고침의 뼈를 걷어 낸 글자면 위 판정이 빨갛다(자명 통과 금지)
+=== T1120: 85건 중 PASS 85 · FAIL 0 ===
+  [소요] 5초
+  ✓ RC=0
+##### test-t1126-rock-yield.js #####
+=== T1126: 52건 중 PASS 52 · FAIL 0 ===
+  [소요] 8초
+  ✓ RC=0
+##### test-t1128-kcal-tidy.js #####
+  ✓ 전제 — 낚시 어종이 스물 넘게 있다(아래가 자명 통과가 아니다)  21
+=== 24건 중 PASS 24 · FAIL 0 ===
+  [소요] 4초
+  ✓ RC=0
+##### test-t1132-hall-view.js #####
+⓪ 끔 — 종전 문(자명 통과 막기)
+=== 18건 중 PASS 18 · FAIL 0 ===
+  [소요] 11초
+  ✓ RC=0
+##### test-t1238-terr-v2.js #####
+  [찌꺼기] /tmp 에서 죽은 판 이름 DB 3개 지움(3 MB)
+  ✓ ★켬 = 부서진 울타리는 콜라이더 통과(종전엔 부서져도 막았다 — 회부)
+=== T1238: 117건 중 PASS 117 · FAIL 0 ===
+  [소요] 7초
+  ✓ RC=0
+##### test-t1447-grudge.js #####
+결과: 47 통과 · 0 실패
+결과: 47 통과 · 0 실패
+  [소요] 20초
+  ✓ RC=0
+##### test-t1454-slow.js #####
+결과: 28 통과 · 0 실패
+결과: 28 통과 · 0 실패
+  [소요] 14초
+  ✓ RC=0
+
+=== 러너 요약 ===
+  통과 25: test-bridge-act.js test-donate.js test-doors.js test-emptystart.js test-fishing.js test-game-meat.js test-granary-rot.js test-guest-identity.js test-hall-units.js test-member-open.js test-mob-hp-door.js test-preserve.js test-reset-world.js test-shelter.js test-spoil2.js test-t1065-tool-gate.js test-t1093-shelter-roof.js test-t1118-rack-age.js test-t1120-next-tool.js test-t1126-rock-yield.js test-t1128-kcal-tidy.js test-t1132-hall-view.js test-t1238-terr-v2.js test-t1447-grudge.js test-t1454-slow.js
+  실패 0: 없음
+  걸린 시간 상위(초): test-shelter.js 60 · test-fishing.js 51 · test-t1093-shelter-roof.js 39 · test-reset-world.js 35 · test-member-open.js 21 · test-t1447-grudge.js 20 · test-hall-units.js 17 · test-donate.js 16 · test-guest-identity.js 16 · test-t1118-rack-age.js 15
+  걸린 시간 합: 하네스 400초 · 러너 전체 417초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 4번 × 3초 · 건넘 22번(앞 판이 남긴 아이 없음)

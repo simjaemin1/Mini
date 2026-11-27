@@ -1,0 +1,5 @@
+core=/tmp/t1464-core/battle-core.js(sim/battle-core.js 사본 · 46줄 M_BREAK 0.45 → 0.40 한 글자만 — 레포 밖)
+env=
+cap=600
+started=2026-11-23T03:27:40.644Z
+finished=2026-11-23T03:35:07.999Z cells=64 wallMs=447347

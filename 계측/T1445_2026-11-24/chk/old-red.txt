@@ -1,0 +1,4 @@
+# 옛 코드 빨강 — 하네스 = c9989e1ce · 제품(server sim public lab) = a92425ebd · 시한 600초
+빨강 ○ | test-t1445-boot-flood.js | RC=1 · ✓ 4 · ✗ 2 | (옛 판으로 되돌린 운영 파일: server/villages.js)   ✗ 미설정 = 칸 조각 켬 · BOOT_BOUND=0 = 종전 끔 · WALK_HEAP=0 = 끔 · BOOT_BOUND=0 + WALK_HEAP=1 = 켬  미설정 false · BOOT_BOUND=0 false ·
+# 합: 빨강 1 · 크래시 0 · 초록 0 · 모름 0 · 제품 무관 0
+rc=0

@@ -1,0 +1,26 @@
+# T1445 · 한반도 DB 201 → 411.6 MB(행 수 같음) — 두 사본 견줌(맥 ~/Mini/_backup · 읽기만 · immutable)
+# 11-22 12:17:48Z  update-live 앞 스냅숏 · 이미지 664a622b(land1076)  sha256 04992bb5…
+# 11-23 10:00:04Z  날 백업 · 이미지 90bf5e3a(land1090)               sha256 7bb2686c…
+                       11-22            11-23
+쪽(4096 B)             51,461           105,381
+파일                   210.8 MB         431.6 MB
+빈 쪽(freelist)        2,890 = 11.8 MB  55,818 = 228.6 MB
+산 쪽                  199.0 MB         203.0 MB   (+4.0 MB)
+행 합                  2,180,776        2,188,885  (+0.4 %)
+auto_vacuum            0(NONE)          0(NONE)
+world_meta 행          10.3 MB          11.9 MB
+표마다(dbstat · MB)     roads 42.0 · autoindex 24.9 · village_buildings 30.3 · villages 20.0 · trade_routes 13.6 · world_meta 10.4
+                       → roads 43.2 · 25.3 · 30.4 · 20.5 · 14.0 · world_meta 11.9  (다 +0 ~ +1.5)
+
+# 빈 쪽 55,818 의 속(11-23 · freelist 줄기를 따라 쪽마다 앞 글자):
+#   숫자 배열(x,y,x,y … · 1,1,1 …)        38,921 쪽 ≈ 159 MB
+#   좌표 [x,y] 줄                          7,366 쪽 ≈ 30 MB
+#   "x,y",레벨 짝(길 칸 덤프)               (숫자 배열 안)
+#   SS 행(pid · VID · WSC · T95 · NDA …)   1,695 쪽 ≈ 7 MB
+#   base64(deflate — 문 그래프 표)          465 쪽 ≈ 2 MB
+#   t742 이름이 박힌 쪽: vil.t719 · zone.t1382Gate · zone.t1382Roads · vil.t1382Rt · zone.t1372SS · "t742" · "t1167" · "t1034" · "t1340"
+# ⇒ 빈 쪽 = 종료 저장의 world_meta 한 행(T1340 되살림 덤프 — T1382 길 · 교역로 점 · 문 그래프 · T1372 첫 거름 표 · T1034 몸 칸)이 다음 부팅 뒤 첫 경계 저장(덤프 칸 null)으로
+#   바뀌며 놓은 넘침 쪽. SQLite 는 auto_vacuum 끔이라 놓은 쪽을 파일에서 안 줄인다(VACUUM 전까지 · 다음 종료 저장이 그 쪽을 다시 쓴다).
+# 재현(컨테이너 · 11-22 사본 · a7ab5a9d · 270초 뒤 SIGTERM): 파일 210.8 → 349.0 MB · world_meta 10.3 → 104.6 MB
+#   (t742 82.2 — zone.t1382Roads 68.6 · vil.t1382Rt 8.4 · zone.t1372SS 4.1 · zone.t1382Gate 0.8 · t1034 33.0) · 꺼내기 시간 t1382Roads 5,056 ms(힙 +233 MB)
+# land1076(664a622b)엔 이 덤프 칸이 없다(zone.t1382* · vil.t1382Rt 0 자리) — 11-22 12:17 배포(a7ab5a9d)의 첫 점잖은 종료부터 생긴다.

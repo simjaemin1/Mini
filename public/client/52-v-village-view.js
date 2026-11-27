@@ -54,6 +54,9 @@ function vvAdapt(raw) {
       o.name = '밭 일구기'; o.status = '하는 중';
       if (num(q.fields) != null) o.after.push(`지금 밭 ${q.fields}칸`);
       if (num(q.crew) && q.crew > 0) o.after.push(`${q.crew}명이 일구고 있습니다.`);
+    } else if (q.kind === 'bridges') {   // ★[T1455] 우리 다리 — 서버 수 그대로(문장 틀만)
+      o.name = `우리 다리 ${q.n | 0} — 손볼 것 ${q.fix | 0}`; o.status = (q.cut | 0) > 0 ? `끊긴 다리 ${q.cut | 0}` : '';
+      if (num(q.worst) != null) { o.frac = q.worst; o.after.push(`가장 낡은 다리 ${Math.round((1 - q.worst) * 100)}% 낡음`); }
     } else if (q.kind === 'caravan') {
       o.name = q.to ? `${q.to}${vvJosa(q.to, '으로', '로')} 가는 행상` : '행상'; o.status = caravanStatus(q);
       if ((q.cargo || []).length) o.after.push(`실은 것 · ${q.cargo.map((c) => `${c.ko || c.res} ${c.n}`).join(' · ')}`);

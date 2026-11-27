@@ -763,20 +763,21 @@
       }
       if (_fcS) _rdMs += performance.now() - _rdT0;   // ★[T1446] 길 훑기
       // ★[다리 층] 통나무 널다리 상판 — 길(-950)보다 위, 건물보다 아래(-930). 물 위 정적 사물.
-      if (c.bridges && c.bridges.size) {
-        for (const bk of c.bridges) {
+      if ((c.bridges && c.bridges.size) || (c.bridgesCut && c.bridgesCut.size)) {   // ★[T1455] 끊긴 마을 다리 칸(`bridgesCut`)도 같은 자리에 — 있는 부서짐 표지(반투명)로
+        const _bc = c.bridgesCut || null, _bhas = (k) => c.bridges.has(k) || (!!_bc && _bc.has(k));
+        for (const bk of (_bc && _bc.size ? [...c.bridges, ..._bc] : c.bridges)) {
           const ci = bk.indexOf(','); const bcx = +bk.slice(0, ci), bcy = +bk.slice(ci + 1);
           const bax = ox + bcx * CL_BUILDING_SIZE + 16, bay = oy + bcy * CL_BUILDING_SIZE + 16;
           if (Math.abs(bax - worldCx) > VIEW_RADIUS || Math.abs(bay - worldCy) > VIEW_RADIUS) continue;
           // ★스프라이트 종류 판정(다리 셀 집합만으로 결정 — 서버 페이로드 불변):
           //   다리는 폭 2셀이라 축 판정에 이웃 1칸만 보면 평행한 옆줄 때문에 헷갈린다 → **2칸 앞까지** 세어
           //   더 길게 뻗은 쪽을 다리 축으로 잡는다. 그 축 방향으로 이웃이 없는 쪽 = 뭍에 닿는 끝(cap).
-          const cnt = (dx, dy) => { let n = 0; for (let k = 1; k <= 2; k++) if (c.bridges.has((bcx + dx * k) + ',' + (bcy + dy * k))) n++; return n; };
+          const cnt = (dx, dy) => { let n = 0; for (let k = 1; k <= 2; k++) if (_bhas((bcx + dx * k) + ',' + (bcy + dy * k))) n++; return n; };
           const ax = (cnt(-1, 0) + cnt(1, 0)) >= (cnt(0, -1) + cnt(0, 1)) ? 'x' : 'y';
-          const hiN = ax === 'x' ? c.bridges.has((bcx + 1) + ',' + bcy) : c.bridges.has(bcx + ',' + (bcy + 1));
-          const loN = ax === 'x' ? c.bridges.has((bcx - 1) + ',' + bcy) : c.bridges.has(bcx + ',' + (bcy - 1));
+          const hiN = ax === 'x' ? _bhas((bcx + 1) + ',' + bcy) : _bhas(bcx + ',' + (bcy + 1));
+          const loN = ax === 'x' ? _bhas((bcx - 1) + ',' + bcy) : _bhas(bcx + ',' + (bcy - 1));
           const bs = 'bridge_' + (!hiN ? 'cap1' : (!loN ? 'cap0' : 'mid')) + '_' + ax;
-          renderables.push({ z: w2i(bax, bay).y - 930, kind: 'bridge', bx: bax, by: bay, bk, bs, wx: bax, wy: bay });
+          renderables.push({ z: w2i(bax, bay).y - 930, kind: 'bridge', bx: bax, by: bay, bk, bs, wx: bax, wy: bay, cut: !!(_bc && _bc.has(bk)) });
         }
       }
       // ★★[11차 T3 환호] 도랑 타일 — 길(-950)보다 위, 다리(-930)보다 아래(-940). 마을 소유 정적 사물.
@@ -1488,7 +1489,8 @@
         // ★[에셋 9차] Blender 통나무 널다리 타일 — 로드됐으면 벡터 대신 스프라이트.
         //   렌더 규약: 카메라가 w2i와 동일한 2:1(방위 45°·고도 30°), ortho_scale=2√2 ⇒ **이미지 중심=셀 중심,
         //   셀 다이아 폭=이미지 폭의 1/2**. 따라서 셀 중심에 한 변 128px(=64×2) 정사각으로 그리면 정확히 맞는다.
-        if (drawBridgeSprite(item.bs, item.bx, item.by, toScreen)) continue;
+        const _ba = ctx.globalAlpha; if (item.cut) ctx.globalAlpha = _ba * 0.45;   // ★[T1455] 끊긴 마을 다리 = 있는 부서짐 표지(부서진 벽과 같은 반투명 · 새 그림 0)
+        if (drawBridgeSprite(item.bs, item.bx, item.by, toScreen)) { ctx.globalAlpha = _ba; continue; }
         ctx.fillStyle = '#8a6a40';            // 널 상판(스프라이트 미로드 폴백 — 이하 벡터 경로)
         ctx.beginPath(); ctx.moveTo(a1.x, a1.y); ctx.lineTo(b1.x, b1.y); ctx.lineTo(c1.x, c1.y); ctx.lineTo(d1.x, d1.y); ctx.closePath(); ctx.fill();
         ctx.strokeStyle = 'rgba(70,50,28,0.85)'; ctx.lineWidth = 1;
@@ -1498,6 +1500,7 @@
         ctx.beginPath();
         for (const t of [10.7, 21.3]) { const p1 = P(t, 0), p2 = P(t, 32); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); }
         ctx.stroke();
+        ctx.globalAlpha = _ba;   // ★[T1455]
       } else if (item.kind === 'cellprop') {
         // ★[마당 소품] 화덕·장독 — 다리 타일과 같은 셀 정합 규약(이미지 중심=셀 중심·128px). 폴백은 없음(없으면 안 그림).
         drawBridgeSprite(item.key, item.gx, item.gy, toScreen);

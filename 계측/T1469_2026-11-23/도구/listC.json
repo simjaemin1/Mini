@@ -1,0 +1,122 @@
+[
+ {
+  "tag": "M_1020",
+  "seed": 1020,
+  "days": 730,
+  "heap": 4608,
+  "env": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1",
+   "T1469_DEN_MOVE": "1"
+  }
+ },
+ {
+  "tag": "MD_1020",
+  "seed": 1020,
+  "days": 730,
+  "heap": 4608,
+  "env": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1",
+   "T1460_DEN_LAND": "1",
+   "T1469_DEN_MOVE": "1"
+  }
+ },
+ {
+  "tag": "M_7",
+  "seed": 7,
+  "days": 730,
+  "heap": 4608,
+  "env": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1",
+   "T1469_DEN_MOVE": "1"
+  }
+ },
+ {
+  "tag": "MD_7",
+  "seed": 7,
+  "days": 730,
+  "heap": 4608,
+  "env": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1",
+   "T1460_DEN_LAND": "1",
+   "T1469_DEN_MOVE": "1"
+  }
+ },
+ {
+  "tag": "M_42",
+  "seed": 42,
+  "days": 730,
+  "heap": 4608,
+  "env": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1",
+   "T1469_DEN_MOVE": "1"
+  }
+ },
+ {
+  "tag": "MD_42",
+  "seed": 42,
+  "days": 730,
+  "heap": 4608,
+  "env": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1",
+   "T1460_DEN_LAND": "1",
+   "T1469_DEN_MOVE": "1"
+  }
+ },
+ {
+  "tag": "MF_1020",
+  "seed": 1020,
+  "days": 730,
+  "heap": 4608,
+  "env": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1",
+   "T1460_DEN_LAND": "1",
+   "T1469_DEN_MOVE": "feed"
+  }
+ },
+ {
+  "tag": "WN_1020",
+  "seed": 1020,
+  "days": 360,
+  "kind": "war",
+  "env": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1"
+  }
+ },
+ {
+  "tag": "WM_1020",
+  "seed": 1020,
+  "days": 360,
+  "kind": "war",
+  "env": {
+   "T1404_DEN_ROUTE": "1",
+   "T1404_GANG_FORAGE": "1",
+   "T1404_GANG_SIZE": "1",
+   "T1404_RAID_LURK": "1",
+   "T1469_DEN_MOVE": "1"
+  }
+ }
+]

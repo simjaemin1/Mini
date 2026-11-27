@@ -1,0 +1,953 @@
+{
+ "runs": [
+  {
+   "tag": "N_1020",
+   "seed": 1020,
+   "days": 730,
+   "popEnd": 4038,
+   "empty": 2,
+   "gangsSeen": 15,
+   "lifeMed": 22,
+   "memMed": 12,
+   "memMax": 28,
+   "biggest": 19,
+   "loot": 222,
+   "raidPct": 1.4,
+   "killed": 225,
+   "foodImp": 394521.5,
+   "home": 24,
+   "starve": 0,
+   "doors": 2,
+   "doorPeople": 24,
+   "doorDays": [
+    185,
+    583
+   ],
+   "moves": 0,
+   "moveDays": [],
+   "moveDist": null,
+   "walkDays": null,
+   "lootBefore": 0,
+   "lootAfter": 0,
+   "movedLife": null,
+   "crowd": 1,
+   "crowdAt": [
+    46,
+    "어촌11"
+   ],
+   "rich": null,
+   "st9": null,
+   "firstMove": null
+  },
+  {
+   "tag": "D_1020",
+   "seed": 1020,
+   "days": 730,
+   "popEnd": 4915,
+   "empty": 2,
+   "gangsSeen": 17,
+   "lifeMed": 14,
+   "memMed": 9,
+   "memMax": 16,
+   "biggest": 7,
+   "loot": 200,
+   "raidPct": 1.2,
+   "killed": 207,
+   "foodImp": 486113.1,
+   "home": 21,
+   "starve": 0,
+   "doors": 4,
+   "doorPeople": 21,
+   "doorDays": [
+    144,
+    265,
+    324,
+    595
+   ],
+   "moves": 0,
+   "moveDays": [],
+   "moveDist": null,
+   "walkDays": null,
+   "lootBefore": 0,
+   "lootAfter": 0,
+   "movedLife": null,
+   "crowd": 1,
+   "crowdAt": [
+    46,
+    "어촌11"
+   ],
+   "rich": {
+    "v": "임업3",
+    "loot": 10419.525,
+    "pop": 197,
+    "hap": null
+   },
+   "st9": null,
+   "firstMove": null
+  },
+  {
+   "tag": "M_1020",
+   "seed": 1020,
+   "days": 730,
+   "popEnd": 4904,
+   "empty": 1,
+   "gangsSeen": 18,
+   "lifeMed": 18,
+   "memMed": 10,
+   "memMax": 17,
+   "biggest": 10,
+   "loot": 113,
+   "raidPct": 0.7,
+   "killed": 114,
+   "foodImp": 505928.1,
+   "home": 21,
+   "starve": 0,
+   "doors": 3,
+   "doorPeople": 21,
+   "doorDays": [
+    195,
+    351,
+    637
+   ],
+   "moves": 3,
+   "moveDays": [
+    185,
+    341,
+    627
+   ],
+   "moveDist": 1399,
+   "walkDays": 1,
+   "lootBefore": 13,
+   "lootAfter": 0,
+   "movedLife": 149,
+   "crowd": 1,
+   "crowdAt": [
+    46,
+    "어촌11"
+   ],
+   "rich": {
+    "v": "임업3",
+    "loot": 9379.262,
+    "pop": 199,
+    "hap": 0.835
+   },
+   "st9": {
+    "door": 6,
+    "moved": 3,
+    "again": 3,
+    "none": 0,
+    "arrive": 3,
+    "walkDays": 3,
+    "dist": 3866,
+    "feedPick": 0,
+    "lootPick": 3,
+    "pile": 3,
+    "pileFood": 0,
+    "bodies": 15,
+    "noBody": 6,
+    "denMoved": 3
+   },
+   "firstMove": 185,
+   "popRatio": 1.214,
+   "base": "N_1020"
+  },
+  {
+   "tag": "MD_1020",
+   "seed": 1020,
+   "days": 730,
+   "popEnd": 5154,
+   "empty": 2,
+   "gangsSeen": 23,
+   "lifeMed": 10,
+   "memMed": 10,
+   "memMax": 20,
+   "biggest": 12,
+   "loot": 134,
+   "raidPct": 0.8,
+   "killed": 134,
+   "foodImp": 528927.6,
+   "home": 17,
+   "starve": 0,
+   "doors": 2,
+   "doorPeople": 17,
+   "doorDays": [
+    154,
+    586
+   ],
+   "moves": 3,
+   "moveDays": [
+    144,
+    360,
+    576
+   ],
+   "moveDist": 1013,
+   "walkDays": 1,
+   "lootBefore": 13,
+   "lootAfter": 11,
+   "movedLife": 154,
+   "crowd": 1,
+   "crowdAt": [
+    46,
+    "어촌11"
+   ],
+   "rich": {
+    "v": "임업2",
+    "loot": 10505.719,
+    "pop": 208,
+    "hap": 0.805
+   },
+   "st9": {
+    "door": 5,
+    "moved": 3,
+    "again": 2,
+    "none": 0,
+    "arrive": 3,
+    "walkDays": 3,
+    "dist": 2962,
+    "feedPick": 0,
+    "lootPick": 3,
+    "pile": 3,
+    "pileFood": 0,
+    "bodies": 16,
+    "noBody": 6,
+    "denMoved": 3
+   },
+   "firstMove": 144,
+   "popRatio": 1.049,
+   "base": "D_1020"
+  },
+  {
+   "tag": "N_7",
+   "seed": 7,
+   "days": 730,
+   "popEnd": 5446,
+   "empty": 0,
+   "gangsSeen": 16,
+   "lifeMed": 5,
+   "memMed": 10,
+   "memMax": 16,
+   "biggest": 6,
+   "loot": 242,
+   "raidPct": 1.4,
+   "killed": 245,
+   "foodImp": 545672.1,
+   "home": 0,
+   "starve": 0,
+   "doors": 0,
+   "doorPeople": 0,
+   "doorDays": [],
+   "moves": 0,
+   "moveDays": [],
+   "moveDist": null,
+   "walkDays": null,
+   "lootBefore": 0,
+   "lootAfter": 0,
+   "movedLife": null,
+   "crowd": 1,
+   "crowdAt": [
+    46,
+    "어촌11"
+   ],
+   "rich": {
+    "v": "임업3",
+    "loot": 10392.109,
+    "pop": 188,
+    "hap": 0.588
+   },
+   "st9": null,
+   "firstMove": null
+  },
+  {
+   "tag": "D_7",
+   "seed": 7,
+   "days": 730,
+   "popEnd": 4953,
+   "empty": 1,
+   "gangsSeen": 16,
+   "lifeMed": 42,
+   "memMed": 10,
+   "memMax": 17,
+   "biggest": 8,
+   "loot": 199,
+   "raidPct": 1.1,
+   "killed": 198,
+   "foodImp": 526787.5,
+   "home": 15,
+   "starve": 0,
+   "doors": 3,
+   "doorPeople": 15,
+   "doorDays": [
+    176,
+    222,
+    272
+   ],
+   "moves": 0,
+   "moveDays": [],
+   "moveDist": null,
+   "walkDays": null,
+   "lootBefore": 0,
+   "lootAfter": 0,
+   "movedLife": null,
+   "crowd": 1,
+   "crowdAt": [
+    46,
+    "어촌11"
+   ],
+   "rich": {
+    "v": "임업3",
+    "loot": 9831.154,
+    "pop": 190,
+    "hap": 0.788
+   },
+   "st9": null,
+   "firstMove": null
+  },
+  {
+   "tag": "M_7",
+   "seed": 7,
+   "days": 730,
+   "popEnd": 5446,
+   "empty": 0,
+   "gangsSeen": 16,
+   "lifeMed": 5,
+   "memMed": 10,
+   "memMax": 16,
+   "biggest": 6,
+   "loot": 242,
+   "raidPct": 1.4,
+   "killed": 245,
+   "foodImp": 545672.1,
+   "home": 0,
+   "starve": 0,
+   "doors": 0,
+   "doorPeople": 0,
+   "doorDays": [],
+   "moves": 0,
+   "moveDays": [],
+   "moveDist": null,
+   "walkDays": null,
+   "lootBefore": 0,
+   "lootAfter": 0,
+   "movedLife": null,
+   "crowd": 1,
+   "crowdAt": [
+    46,
+    "어촌11"
+   ],
+   "rich": {
+    "v": "임업3",
+    "loot": 10392.109,
+    "pop": 188,
+    "hap": 0.588
+   },
+   "st9": null,
+   "firstMove": null,
+   "popRatio": 1,
+   "base": "N_7"
+  },
+  {
+   "tag": "MD_7",
+   "seed": 7,
+   "days": 730,
+   "popEnd": 4953,
+   "empty": 2,
+   "gangsSeen": 16,
+   "lifeMed": 18,
+   "memMed": 10,
+   "memMax": 16,
+   "biggest": 10,
+   "loot": 169,
+   "raidPct": 1,
+   "killed": 170,
+   "foodImp": 518214.5,
+   "home": 15,
+   "starve": 0,
+   "doors": 3,
+   "doorPeople": 15,
+   "doorDays": [
+    186,
+    229,
+    244
+   ],
+   "moves": 4,
+   "moveDays": [
+    176,
+    213,
+    219,
+    724
+   ],
+   "moveDist": 1068,
+   "walkDays": 1,
+   "lootBefore": 65,
+   "lootAfter": 3,
+   "movedLife": 136,
+   "crowd": 1,
+   "crowdAt": [
+    46,
+    "어촌11"
+   ],
+   "rich": {
+    "v": "어촌2",
+    "loot": 9512.853,
+    "pop": 217,
+    "hap": 0.753
+   },
+   "st9": {
+    "door": 7,
+    "moved": 4,
+    "again": 3,
+    "none": 0,
+    "arrive": 4,
+    "walkDays": 4,
+    "dist": 4881,
+    "feedPick": 0,
+    "lootPick": 4,
+    "pile": 4,
+    "pileFood": 0,
+    "bodies": 20,
+    "noBody": 4,
+    "denMoved": 4
+   },
+   "firstMove": 176,
+   "popRatio": 1,
+   "base": "D_7"
+  },
+  {
+   "tag": "N_42",
+   "seed": 42,
+   "days": 365,
+   "popEnd": 3289,
+   "empty": 2,
+   "gangsSeen": 3,
+   "lifeMed": 316,
+   "memMed": 15,
+   "memMax": 15,
+   "biggest": 6,
+   "loot": 111,
+   "raidPct": 1.5,
+   "killed": 110,
+   "foodImp": 121569.5,
+   "home": 4,
+   "starve": 0,
+   "doors": 1,
+   "doorPeople": 4,
+   "doorDays": [
+    330
+   ],
+   "moves": 0,
+   "moveDays": [],
+   "moveDist": null,
+   "walkDays": null,
+   "lootBefore": 0,
+   "lootAfter": 0,
+   "movedLife": null,
+   "crowd": 1,
+   "crowdAt": [
+    46,
+    "어촌11"
+   ],
+   "rich": {
+    "v": "어촌2",
+    "loot": 5458.067,
+    "pop": 200,
+    "hap": 0.58
+   },
+   "st9": null,
+   "firstMove": null
+  },
+  {
+   "tag": "D_42",
+   "seed": 42,
+   "days": 365,
+   "popEnd": 3302,
+   "empty": 1,
+   "gangsSeen": 5,
+   "lifeMed": 172,
+   "memMed": 15,
+   "memMax": 16,
+   "biggest": 6,
+   "loot": 130,
+   "raidPct": 1.7,
+   "killed": 130,
+   "foodImp": 111828.9,
+   "home": 9,
+   "starve": 0,
+   "doors": 2,
+   "doorPeople": 9,
+   "doorDays": [
+    218,
+    293
+   ],
+   "moves": 0,
+   "moveDays": [],
+   "moveDist": null,
+   "walkDays": null,
+   "lootBefore": 0,
+   "lootAfter": 0,
+   "movedLife": null,
+   "crowd": 1,
+   "crowdAt": [
+    46,
+    "어촌11"
+   ],
+   "rich": {
+    "v": "어촌2",
+    "loot": 5501.719,
+    "pop": 196,
+    "hap": 0.5
+   },
+   "st9": null,
+   "firstMove": null
+  },
+  {
+   "tag": "M_42",
+   "seed": 42,
+   "days": 365,
+   "popEnd": 3296,
+   "empty": 2,
+   "gangsSeen": 3,
+   "lifeMed": 320,
+   "memMed": 15,
+   "memMax": 15,
+   "biggest": 6,
+   "loot": 118,
+   "raidPct": 1.6,
+   "killed": 117,
+   "foodImp": 120421.1,
+   "home": 0,
+   "starve": 0,
+   "doors": 0,
+   "doorPeople": 0,
+   "doorDays": [],
+   "moves": 1,
+   "moveDays": [
+    330
+   ],
+   "moveDist": 2004,
+   "walkDays": 1,
+   "lootBefore": 30,
+   "lootAfter": 6,
+   "movedLife": 320,
+   "crowd": 1,
+   "crowdAt": [
+    46,
+    "어촌11"
+   ],
+   "rich": {
+    "v": "임업1",
+    "loot": 5462.408,
+    "pop": 167,
+    "hap": 0.611
+   },
+   "st9": {
+    "door": 1,
+    "moved": 1,
+    "again": 0,
+    "none": 0,
+    "arrive": 1,
+    "walkDays": 1,
+    "dist": 2004,
+    "feedPick": 0,
+    "lootPick": 1,
+    "pile": 1,
+    "pileFood": 0,
+    "bodies": 4,
+    "noBody": 0,
+    "denMoved": 1
+   },
+   "firstMove": 330,
+   "popRatio": 1.002,
+   "base": "N_42"
+  },
+  {
+   "tag": "MD_42",
+   "seed": 42,
+   "days": 365,
+   "popEnd": 3374,
+   "empty": 0,
+   "gangsSeen": 4,
+   "lifeMed": 266,
+   "memMed": 15,
+   "memMax": 15,
+   "biggest": 6,
+   "loot": 129,
+   "raidPct": 1.7,
+   "killed": 128,
+   "foodImp": 133569.5,
+   "home": 9,
+   "starve": 0,
+   "doors": 2,
+   "doorPeople": 9,
+   "doorDays": [
+    312,
+    352
+   ],
+   "moves": 2,
+   "moveDays": [
+    218,
+    293
+   ],
+   "moveDist": 914,
+   "walkDays": 1,
+   "lootBefore": 52,
+   "lootAfter": 22,
+   "movedLife": 266,
+   "crowd": 1,
+   "crowdAt": [
+    46,
+    "어촌11"
+   ],
+   "rich": {
+    "v": "농촌1",
+    "loot": 5202.453,
+    "pop": 175,
+    "hap": 0.732
+   },
+   "st9": {
+    "door": 4,
+    "moved": 2,
+    "again": 2,
+    "none": 0,
+    "arrive": 2,
+    "walkDays": 2,
+    "dist": 2918,
+    "feedPick": 0,
+    "lootPick": 2,
+    "pile": 2,
+    "pileFood": 0,
+    "bodies": 9,
+    "noBody": 0,
+    "denMoved": 2
+   },
+   "firstMove": 218,
+   "popRatio": 1.022,
+   "base": "D_42"
+  },
+  {
+   "tag": "MF_1020",
+   "seed": 1020,
+   "days": 730,
+   "popEnd": 5154,
+   "empty": 2,
+   "gangsSeen": 23,
+   "lifeMed": 10,
+   "memMed": 10,
+   "memMax": 20,
+   "biggest": 12,
+   "loot": 134,
+   "raidPct": 0.8,
+   "killed": 134,
+   "foodImp": 528927.6,
+   "home": 17,
+   "starve": 0,
+   "doors": 2,
+   "doorPeople": 17,
+   "doorDays": [
+    154,
+    586
+   ],
+   "moves": 3,
+   "moveDays": [
+    144,
+    360,
+    576
+   ],
+   "moveDist": 1013,
+   "walkDays": 1,
+   "lootBefore": 13,
+   "lootAfter": 11,
+   "movedLife": 154,
+   "crowd": 1,
+   "crowdAt": [
+    46,
+    "어촌11"
+   ],
+   "rich": {
+    "v": "임업2",
+    "loot": 10505.719,
+    "pop": 208,
+    "hap": 0.805
+   },
+   "st9": {
+    "door": 5,
+    "moved": 3,
+    "again": 2,
+    "none": 0,
+    "arrive": 3,
+    "walkDays": 3,
+    "dist": 2962,
+    "feedPick": 0,
+    "lootPick": 3,
+    "pile": 3,
+    "pileFood": 0,
+    "bodies": 16,
+    "noBody": 6,
+    "denMoved": 3
+   },
+   "firstMove": 144,
+   "popRatio": 1.049,
+   "base": "D_1020"
+  },
+  {
+   "tag": "WN_1020",
+   "seed": 1020,
+   "days": 360,
+   "popEnd": 3239,
+   "empty": 3,
+   "gangsSeen": 3,
+   "lifeMed": 304,
+   "memMed": 14,
+   "memMax": 15,
+   "biggest": 6,
+   "loot": 132,
+   "raidPct": 1.8,
+   "killed": 137,
+   "foodImp": 96127.8,
+   "home": 0,
+   "starve": 0,
+   "doors": 0,
+   "doorPeople": 0,
+   "doorDays": [],
+   "moves": 0,
+   "moveDays": [],
+   "moveDist": null,
+   "walkDays": null,
+   "lootBefore": 0,
+   "lootAfter": 0,
+   "movedLife": null,
+   "crowd": 1,
+   "crowdAt": [
+    46,
+    "어촌11"
+   ],
+   "rich": null,
+   "st9": null,
+   "firstMove": null
+  },
+  {
+   "tag": "WM_1020",
+   "seed": 1020,
+   "days": 360,
+   "popEnd": 3363,
+   "empty": 3,
+   "gangsSeen": 6,
+   "lifeMed": 57,
+   "memMed": 12,
+   "memMax": 15,
+   "biggest": 6,
+   "loot": 140,
+   "raidPct": 1.8,
+   "killed": 142,
+   "foodImp": 119705.9,
+   "home": 4,
+   "starve": 0,
+   "doors": 1,
+   "doorPeople": 4,
+   "doorDays": [
+    253
+   ],
+   "moves": 1,
+   "moveDays": [
+    243
+   ],
+   "moveDist": 1520,
+   "walkDays": 1,
+   "lootBefore": 22,
+   "lootAfter": 0,
+   "movedLife": 207,
+   "crowd": 1,
+   "crowdAt": [
+    46,
+    "어촌11"
+   ],
+   "rich": null,
+   "st9": {
+    "door": 2,
+    "moved": 1,
+    "again": 1,
+    "none": 0,
+    "arrive": 1,
+    "walkDays": 1,
+    "dist": 1520,
+    "feedPick": 0,
+    "lootPick": 1,
+    "pile": 1,
+    "pileFood": 0,
+    "bodies": 4,
+    "noBody": 0,
+    "denMoved": 1
+   },
+   "firstMove": 243,
+   "popRatio": 1.038,
+   "base": "WN_1020"
+  }
+ ],
+ "diag": [
+  {
+   "seed": 7,
+   "from": {
+    "T1404_DEN_ROUTE": "1",
+    "T1404_GANG_FORAGE": "1",
+    "T1404_GANG_SIZE": "1",
+    "T1404_RAID_LURK": "1",
+    "T1404_ROOT": "/home/user/t1460run"
+   },
+   "top": {
+    "60": [
+     [
+      "어촌3",
+      1094
+     ],
+     [
+      "어촌2",
+      1020
+     ],
+     [
+      "농촌1",
+      976
+     ]
+    ],
+    "365": [
+     [
+      "어촌2",
+      3895
+     ],
+     [
+      "농촌1",
+      3194
+     ],
+     [
+      "농촌22",
+      2620
+     ]
+    ],
+    "400": [
+     [
+      "어촌2",
+      5720
+     ],
+     [
+      "임업3",
+      4123
+     ],
+     [
+      "농촌1",
+      3967
+     ]
+    ],
+    "730": [
+     [
+      "임업3",
+      10392
+     ],
+     [
+      "임업2",
+      10177
+     ],
+     [
+      "어촌2",
+      9896
+     ]
+    ]
+   },
+   "dens": [
+    {
+     "id": 1,
+     "at": [
+      1682,
+      2893
+     ],
+     "near": "어촌11",
+     "rank60": 36
+    },
+    {
+     "id": 2,
+     "at": [
+      157,
+      530
+     ],
+     "near": "농촌4",
+     "rank60": 12
+    },
+    {
+     "id": 3,
+     "at": [
+      1454,
+      2091
+     ],
+     "near": "농촌5",
+     "rank60": 14
+    }
+   ]
+  },
+  {
+   "seed": 42,
+   "from": {
+    "T1404_DEN_ROUTE": "1",
+    "T1404_GANG_FORAGE": "1",
+    "T1404_GANG_SIZE": "1",
+    "T1404_RAID_LURK": "1",
+    "T1404_ROOT": "/home/user/t1460run"
+   },
+   "top": {
+    "60": [
+     [
+      "임업3",
+      1112
+     ],
+     [
+      "임업2",
+      1031
+     ],
+     [
+      "어촌2",
+      1023
+     ]
+    ],
+    "365": [
+     [
+      "어촌2",
+      5458
+     ],
+     [
+      "임업1",
+      5416
+     ],
+     [
+      "농촌1",
+      5262
+     ]
+    ]
+   },
+   "dens": [
+    {
+     "id": 1,
+     "at": [
+      1682,
+      2893
+     ],
+     "near": "어촌11",
+     "rank60": 23
+    },
+    {
+     "id": 2,
+     "at": [
+      157,
+      530
+     ],
+     "near": "농촌4",
+     "rank60": 15
+    },
+    {
+     "id": 3,
+     "at": [
+      1454,
+      2091
+     ],
+     "near": "농촌5",
+     "rank60": 38
+    }
+   ]
+  }
+ ]
+}

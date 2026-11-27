@@ -1002,11 +1002,13 @@
           c.bridges.add(k);
           _bridgeAbs.add(((msg.zone.worldOffsetX / CL_BUILDING_SIZE) + msg.bridges[i]) + ',' + (((msg.zone.worldOffsetY || 0) / CL_BUILDING_SIZE) + msg.bridges[i + 1]));
         }
+        if (msg.t1441) _t1441P.on = true;   // ★[T1441 ①] 짓기 미리보기가 서버에 남의 마을 땅을 묻는다(켬인 존만)
         if (msg.t1440) _t1440P.on = true;   // ★[T1440] 짓기 미리보기가 서버에 길을 묻는다(켬인 존만)
         if (msg.t1423NoBuild) {   // ★[T1423 ⓐ] 못 놓는 다리 칸 · 다리 머리(서버 ㉮ 칸 줄 — 다리 미러와 같은 셈으로 절대 칸에) · 켬인 존만 보낸다
           _t1423NoAbs.on = true;
           for (let i = 0; i + 1 < msg.t1423NoBuild.length; i += 2) _t1423NoAbs.add(((msg.zone.worldOffsetX / CL_BUILDING_SIZE) + msg.t1423NoBuild[i]) + ',' + (((msg.zone.worldOffsetY || 0) / CL_BUILDING_SIZE) + msg.t1423NoBuild[i + 1]));
         }
+        if (msg.t1455) t1455Recv(c, msg.t1455);   // ★[T1455] 마을 다리 낡음(끊긴 칸 · 걸음 배수)
         // ★[11차 T3 환호] 도랑 셀 flat [cx,cy,…] — 서버 콜라이더 미러 + 타일 렌더 원천(마을 소유 사물, welcome 1회)
         c.ditches = new Set();
         if (msg.ditches) for (let i = 0; i + 1 < msg.ditches.length; i += 2) {
@@ -1330,6 +1332,8 @@
         c.bridges.add(cells[i] + ',' + cells[i + 1]);
         _bridgeAbs.add(((z.worldOffsetX || 0) / CL_BUILDING_SIZE + cells[i]) + ',' + ((z.worldOffsetY || 0) / CL_BUILDING_SIZE + cells[i + 1]));
       }
+    } else if (msg.type === 't1455_bridges') {          // ★[T1455] 마을 다리 — 그날 값 · 끊김 · 되살림(welcome 과 같은 문)
+      t1455Recv(c, msg.list || []);
     } else if (msg.type === 'buildings_removed') {      // 배치 제거 — 청크 비활성화 (서버는 메모리 유지)
       const ids = msg.ids || [];
       for (let i = 0; i < ids.length; i++) c.buildings.delete(ids[i]);
@@ -1342,6 +1346,9 @@
     } else if (msg.type === 'claim_updated') {
       // Phase 4d-16-a: 영토 cell sub-type 변경 (예: NPC personal 분배)
       c.claims.set(msg.claim.id, msg.claim);
+    } else if (msg.type === 't1441_peek') {
+      // ★[T1441 ①] 남의 마을 땅인가(서버 `_t1441Foreign` 그 술어의 답 — 마을 이름 · 아니면 '')
+      _t1441P.vil = msg.vil || ''; _t1441P.vKey = msg.key;
     } else if (msg.type === 't1440_peek') {
       // ★[T1440] 짓기 미리보기의 서버 답(그 조각 열쇠 그대로 — 고스트가 지금 열쇠와 같을 때만 그린다)
       _t1440P.st = msg.st; _t1440P.stKey = msg.key;
@@ -1499,6 +1506,8 @@
     } else if (msg.type === 't1438_wear') {   // ★[T1438] 움집 부위 값(서버가 5% 걸음마다 알린다 · 그림 · 이름표가 읽는다 · 클라 셈 0)
       const b = c.buildings.get(msg.id);
       if (b) b.wear = msg.wear;
+    } else if (msg.type === 't1455_info') {   // ★[T1455] 마을 다리 손질 줄의 답(고르는 줄은 46-h-verbs)
+      if (typeof t1455OnInfo === 'function') t1455OnInfo(msg);
     } else if (msg.type === 't1438_info') {   // ★[T1438] 손질 — 부위별 내구 · 넣을 재료(우클릭 "손질…" 의 답 · 고르는 줄은 46-h-verbs)
       if (typeof t1438OnInfo === 'function') t1438OnInfo(msg);
     } else if (msg.type === 'arrow_spawn') {

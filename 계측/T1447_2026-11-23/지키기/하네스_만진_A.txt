@@ -1,0 +1,8 @@
+##### e2e-audio-probe.js #####
+  ✓ 56b 자명 통과 금지 — 표를 빼면 바닷가에서 `water`(시냇물)가 운다(종전 모습 · 56a 는 표가 가른 값이다)  [amb:water]
+  ✓ ⑫ 자명 통과 금지 — **옛 곡선**을 같은 자로 재면 1 보다 한참 크다(자가 살아 있다)  옛 1.4364 = +3.15 dB
+    (참고 — 소리 밖 오류 113건: 존 서버를 안 띄운 탓이다 · SyntaxError: Failed to execute 'json' on 'Response': Unexpected end of JSON input)
+=== PASS 107 / FAIL 0 ===
+  [소요] 129초
+  ✓ RC=0
+##### e2e-first30.js #####

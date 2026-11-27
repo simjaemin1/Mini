@@ -148,7 +148,7 @@ const TAG = process.env.T577_TAG || Object.keys(process.env).filter((k) => /^(T5
 // ★[T1308] 아이 존 env — 판 자 기본값(T914 · T941 · T959 · T990 · T1013 · T1087 · T864 · T655)을 한 자리에서. 부르는 쪽 env 가 먼저(각 줄 주석 그대로).
 function kidEnv({ seed, port, db, out, days }) {
   const env = Object.assign({}, process.env, {
-      ZONE_ID: 'hanbando', PORT: String(port), DB_PATH: db,
+      ZONE_ID: process.env.T577_ZONE || 'hanbando', PORT: String(port), DB_PATH: db,   // ★[T1471] `T577_ZONE` — 다른 존 판(닛폰 · 끔 = 종전 한반도)
       ENABLE_VILLAGES: '1', CENTRAL_URL: 'http://localhost:1',
       VILLAGE_DAY_MS: process.env.VILLAGE_DAY_MS || '250',
       T315_MAPBEDS: KID_MAPBEDS,   // ★[T914] 집 행위 켬 판 기본 '1'(지은 침상이 묶는다) · 끔 판 기본 '0'(종전)
