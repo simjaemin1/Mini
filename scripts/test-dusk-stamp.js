@@ -46,7 +46,7 @@ console.log('\n=== 해 질 녘 통나무 도장 = T717 ② 셈(T743 ①) ===');
 // ── ① 정적 ──────────────────────────────────────────────────────────────────────────────────────────────
 console.log('\n① 정적');
 {
-  const settle = body('_t720Settle'), gap = body('_t743Gap'), hands = body('_lifeHandsIn'), daily = body('_lifeDailySteps'), ladder = body('_t561Ladder');
+  const settle = body('_t720Settle'), gap = body('_t743Gap'), hands = body('_lifeHandsIn'), daily = body('_lifeDailySteps') + (body('_lifeDailySteps').includes('_lifeWoodDay(') ? body('_lifeWoodDay') : ''), ladder = body('_t561Ladder');
   ok(/const T743_DUSK_STAMP = process\.env\.T743_DUSK_STAMP !== '0';/.test(VC), 'ⓐ 손잡이 `T743_DUSK_STAMP` — 기본 켬(`0` 만 끔 · PM 10-15)');
   ok(/if \(!T743_DUSK_STAMP\) \{ _t325Deliver\(vil, npc\); _t561Walked\(vil, npc, now\); \}/.test(settle),
     'ⓐ ★★끔 = 종전 글자 그대로(`_t325Deliver(vil, npc); _t561Walked(vil, npc, now);` — 손에 통나무가 있으면 도장)');

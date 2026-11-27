@@ -77,7 +77,7 @@ console.log('\n① 잔가지 · 도토리 → 곳간 — 정적');
     'ⓔ ★★econ 이 **도토리 칸**을 안다 — 식량 등가(`FORAGE_FOOD_FACTOR` · 구황 소비) · T86 채집 군 · 플레이어 곳간 표 · v2 썩음(재화 목록 `RESOURCES` 밖 — 특산 품목)', JSON.stringify(acornCensus));
   //   몸 · 헤드리스 · 짐 — 세 자리가 손잡이 뒤 · 입구는 econ 정본 몸통 하나
   const del = body('_t325Deliver'), gran = body('_t733Gran'), hin = body('_t733HandIn'), lin = body('_t733LootIn'), put = body('_t733PackPut'), pin = body('_t733PackIn');
-  const daily = body('_lifeDailySteps'), hands = body('_lifeHandsIn'), settle = body('_t720Settle');
+  const daily = body('_lifeDailySteps') + (body('_lifeDailySteps').includes('_lifeWoodDay(') ? body('_lifeWoodDay') : ''), hands = body('_lifeHandsIn'), settle = body('_t720Settle');
   ok(/^function _t325Deliver\(vil, npc\) \{\n\s*if \(T733_FELL_LOOT\) _t733HandIn\(vil, npc\);/.test(del),
     'ⓐ ★★몸 — `_t325Deliver` 첫 줄(통나무와 같은 문 · 같은 때: 곳간 사다리 · 해 질 녘 정산 · 경계)에서 손의 두 칸도 · 끔 = 옛 줄');
   ok(/const g = _lifeEcon\(\)\.actToGranary\(vil\.econ, k, u, null, null\) \|\| 0;/.test(gran) && !/ToGranary/.test(hin + lin + pin) && /_t733Gran\(vil, k, u\)/.test(hin + lin + pin),
@@ -189,7 +189,7 @@ console.log('\n① 잔가지 · 도토리 → 곳간 — 실행(정본 함수 ·
 // ── ② 정적 ──────────────────────────────────────────────────────────────────────────────────────────────
 console.log('\n② 채집 손 "그날 새로 땄나" — 정적');
 {
-  const nf = body('_t733NewForage'), del = body('_t347Deliver'), hands = body('_lifeHandsIn'), daily = body('_lifeDailySteps'), settle = body('_t720Settle');
+  const nf = body('_t733NewForage'), del = body('_t347Deliver'), hands = body('_lifeHandsIn'), daily = body('_lifeDailySteps') + (body('_lifeDailySteps').includes('_lifeWoodDay(') ? body('_lifeWoodDay') : ''), settle = body('_t720Settle');
   ok(/return T733_FELL_LOOT \? u > \(\(p && p\._t733F\) \|\| 0\) \+ 1e-9 : u > 0;/.test(nf),
     'ⓐ ★술어 — 켬 = 남긴 걷는 몫(`_t733F`)보다 많이 들었나 · 끔 = 손에 걷는 품목이 있나(옛 줄) — 나무꾼 `_t717NewWood` 와 같은 꼴');
   ok(/left \+= npc\.inventory\[h\];/.test(del) && /if \(T733_FELL_LOOT\) npc\._t733F = left;/.test(del),

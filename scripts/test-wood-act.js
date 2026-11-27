@@ -488,7 +488,8 @@ console.log('\n⑩ [T398] 나무꾼의 숲 = 영토 밖 고리');
 console.log('\n⑪ [T491] 일괄 = 몸의 하루 — 명부는 그날 일한 나무꾼 몸 · 한 짐은 단 · 끔 = 옛 줄');
 {
   const VC = codeOf(VSRC);
-  const daily = (VC.match(/function _lifeDaily\(vil\) \{[\s\S]*?\n\}/) || [''])[0];
+  const dayEntry = (VC.match(/function _lifeDaily\(vil\) \{[\s\S]*?\n\}/) || [''])[0];
+  const daily = dayEntry + (dayEntry.includes('_lifeWoodDay(') ? (VC.match(/function _lifeWoodDay\([^)]*\) \{[\s\S]*?\n\}/) || [''])[0] : '');
   ok(/^const T491_BATCH_FROM_BODY = process\.env\.T491_BATCH_FROM_BODY !== '0';$/m.test(VSRC)
      && (VSRC.match(/process\.env\.T491_BATCH_FROM_BODY/g) || []).length === 1,
     '⑪ ★손잡이 `T491_BATCH_FROM_BODY` 는 **한 자리**에서 읽힌다 · `=== \'1\'` 이라야 켜진다(기본 끔)');
@@ -576,7 +577,8 @@ console.log('\n⑪ [T491] 일괄 = 몸의 하루 — 명부는 그날 일한 나
 console.log('\n⑫ [T561] 명부가 몸의 그날을 본다 · 몸이 하루 1그루에서 안 멈춘다 — 끔 = 옛 줄');
 {
   const VC = codeOf(VSRC);
-  const daily = (VC.match(/function _lifeDaily\(vil\) \{[\s\S]*?\n\}/) || [''])[0];
+  const dayEntry = (VC.match(/function _lifeDaily\(vil\) \{[\s\S]*?\n\}/) || [''])[0];
+  const daily = dayEntry + (dayEntry.includes('_lifeWoodDay(') ? (VC.match(/function _lifeWoodDay\([^)]*\) \{[\s\S]*?\n\}/) || [''])[0] : '');
   const fnOf = (n) => (VC.match(new RegExp('function ' + n + '\\([\\s\\S]*?\\n\\}')) || [''])[0];
   //   ① 글자 — 손잡이 한 자리 · 몸의 칸 · 같은 문턱 · 끔 = 옛 줄
   ok((VC.match(/process\.env\.T561_ROSTER_BODY/g) || []).length === 1 && /const T561_ROSTER_BODY = process\.env\.T561_ROSTER_BODY !== '0';/.test(VC),
