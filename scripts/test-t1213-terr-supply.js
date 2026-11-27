@@ -103,7 +103,7 @@ process.stdout.write(JSON.stringify({ a, other: other.econ._t1213Bridge === unde
   ok(b0.a === null, '끔(T1213 끔) — 칸을 안 세운다(종전 비트)', b0.a);
 }
 
-console.log('\n⑥ 글자');   // ★[land1091 · PM] T1419 가 결정층 · 정산 두 자리의 `subs * 30` 을 `subs * _t1419Sub(v, r, 'ref')`(끔 = 30)로 바꿨다 — 두 꼴을 다 센다(부패 자리는 30 그대로 — S2 회부)
+console.log('\n⑥ 글자');   // ★[land1091 · PM] T1419 가 결정층 · 정산 두 자리의 `subs * 30` 을 `subs * _t1419Sub(v, r, 'ref')`(끔 = 30)로 바꿨다 — 두 꼴을 다 센다(부패 자리도 ★T1493 에서 같은 함수로 — 세 자리 다)
 {
   const V2S = rd('sim/economy-sim-v2.js'), ES = rd('sim/economy-sim.js'), VS = rd('server/villages.js');
   ok((V2S.match(/target = _fishTarget\(v,r,Math\.max\(subs \* (?:30|_t1419Sub\(v, r, 'ref'\)), buffer, flowT, derivT\) \+ buildT\);/g) || []).length === 3

@@ -45,7 +45,11 @@ function mk(tag, mode, patch, dbFrom) {
   const X = load(tag, mode, patch, dbFrom); X.unp = []; X.pav = []; X.bc = []; X.wr = [];
   { const D = X.db, up = D.upsertRoadCell, del = D.deleteRoadCell;   // DB 쓰기 차례 · 값을 그대로 적는다(같은 행 · 같은 차례 견줌)
     D.upsertRoadCell = (z, k, v, d) => { X.wr.push(k + ':' + v + ':' + d); return up(z, k, v, d); };
-    D.deleteRoadCell = (z, k) => { X.wr.push(k + ':-'); return del(z, k); }; }
+    D.deleteRoadCell = (z, k) => { X.wr.push(k + ':-'); return del(z, k); };
+    // ★[T1493 · T1448 회부 8] 켬(`T1448_ROAD_GRID=1`) = 구역 행 — 구역 쓰기도 같은 줄에 적는다(구역 · 칸 수 · 덩이 바이트 그대로)
+    if (D.upsertRoadChunk) { const uc = D.upsertRoadChunk, dc = D.deleteRoadChunk;
+      D.upsertRoadChunk = (z, ci, n, data) => { X.wr.push('c' + ci + ':' + n + ':' + Buffer.from(data).toString('base64')); return uc(z, ci, n, data); };
+      D.deleteRoadChunk = (z, ci) => { X.wr.push('c' + ci + ':-'); return dc(z, ci); }; } }
   X.R.init({ zoneId: ZID, cellsW: W, cellsH: H, epoch: EPOCH, dayMs: DAY, broadcast: (m) => X.bc.push(JSON.stringify(m)),
     onPaved: (x, y) => X.pav.push(y * W + x), onUnpaved: (x, y) => X.unp.push(y * W + x) });
   X.R.takeCoarseChanges();   // 바뀐 칸 모으기 시작
@@ -106,7 +110,19 @@ function drive(Xs, ops, day0) {
   }
   return { bad, days, firstBad };
 }
-const rowsOf = (X) => X.db.db.prepare('SELECT cell_key, v, d FROM roads ORDER BY cell_key').all().map((r) => `${r.cell_key}:${r.v}:${r.d}`).join(',');
+// 판 끝 DB 행 — 칸 행(끔) · 구역 행(켬 — 칸으로 풀어 칸 키 오름 · 같은 글자 꼴 `키:값:날`) ★[T1493 · T1448 회부 8] 두 꼴을 같은 자로
+const RGM = require(path.join(ROOT, 'server', 'road-grid.js'));
+const hasTab = (X, t) => !!X.db.db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?").get(t);
+const cellRows = (X) => {
+  const out = X.db.db.prepare('SELECT cell_key, v, d FROM roads ORDER BY cell_key').all().map((r) => [r.cell_key, r.v, r.d]);
+  if (hasTab(X, 'road_chunks')) { const GW = Math.ceil(W / RGM.C);
+    for (const r of X.db.db.prepare('SELECT ck, data FROM road_chunks').all()) { const p = RGM.decodeChunk(r.data), gy = (r.ck / GW) | 0, gx = r.ck - gy * GW;
+      for (let j = 0; j < p.n; j++) out.push([((gy << RGM.SHIFT) + (p.li[j] >> RGM.SHIFT)) * W + (gx << RGM.SHIFT) + (p.li[j] & (RGM.C - 1)), p.v[j], p.d[j]]); }
+    out.sort((a, b) => a[0] - b[0]); }
+  return out;
+};
+const rowsOf = (X) => cellRows(X).map((r) => `${r[0]}:${r[1]}:${r[2]}`).join(',');
+const nRows = (X) => `${cellRows(X).length}${hasTab(X, 'road_chunks') ? '칸(구역 행 ' + X.db.db.prepare('SELECT COUNT(*) n FROM road_chunks').get().n + ')' : ''}`;
 
 console.log('\n① 끔 ↔ 켬 — 같은 연산 줄 · 날마다 견줌');
 const OPS = script(688, 420);
@@ -118,7 +134,7 @@ ok(SA.cells.size > 1000 && SA.stats.graded > 200 && SA.paved.size + 0 >= 0 && SA
 ok(r1.bad === 0, '① ★끔 = 켬 = 견줌 — 날마다 코스 지도 · coarseGen · 바뀐 칸 · 등급 셀 수 · 다져진 길 집합(차례) · 풀림·오름 사건 차례 · 셀 값(차례) · dirty', `어긋난 날 ${r1.bad}${r1.firstBad ? ' · 처음 ' + r1.firstBad : ''}`);
 
 console.log('\n② DB 행 — 묶음을 잘게 나눠도 같은 표');
-ok(rowsOf(A) === rowsOf(B) && rowsOf(A).length > 0, '② ★두 판의 `roads` 표가 같다(키 · v · d)', `${A.db.db.prepare('SELECT COUNT(*) n FROM roads').get().n}행`);
+ok(rowsOf(A) === rowsOf(B) && rowsOf(A).length > 0, '② ★두 판의 `roads` 표가 같다(키 · v · d — 켬은 구역 행을 칸으로 풀어)', `${nRows(A)}행`);
 const PB = B.R.roadDayPerf();
 console.log(`    ↳ 켬 판 묶음 ${PB.flBatches} · 잘림 ${PB.flCapped} · 묶음 최대 ${PB.flMaxRows}행 · 속도 ${PB.flRate}행/ms(이 판 하루 행이 적어 상한 밑일 수 있다 — 아래 좁힌 판이 상한 갈래를 문다)`);
 { // 상한 갈래를 확실히 밟는 판 — 속도를 작게 눌러(하네스만 · 글자 바꾸기) 하루 행을 여러 묶음으로 자른다
@@ -128,7 +144,7 @@ console.log(`    ↳ 켬 판 묶음 ${PB.flBatches} · 잘림 ${PB.flCapped} · 
   const r2 = drive([A2, C2], script(2688, 120));
   const PC = C2.R.roadDayPerf();
   ok(PC.flCapped > 50 && PC.flSnap > 50, '② [전제] 좁힌 판은 묶음을 실제로 잘랐고 · 그 사이 연산이 쓰기 전 복사를 밟았다', `잘림 ${PC.flCapped} · 묶음 ${PC.flBatches} · 최대 ${PC.flMaxRows}행 · 경계 값 적음 ${PC.flSnap}`);
-  ok(r2.bad === 0 && rowsOf(A2) === rowsOf(C2), '② ★묶음 3행씩(행 상한) — 날마다 같은 세계 · 같은 `roads` 표', `어긋난 날 ${r2.bad} · ${A2.db.db.prepare('SELECT COUNT(*) n FROM roads').get().n}행`);
+  ok(r2.bad === 0 && rowsOf(A2) === rowsOf(C2), '② ★묶음 3행씩(행 상한) — 날마다 같은 세계 · 같은 `roads` 표', `어긋난 날 ${r2.bad} · ${nRows(A2)}행`);
 }
 
 console.log('\n③ 견줌 판');
@@ -167,7 +183,8 @@ bait('스탬프 자리에서 등급을 안 고침', '  if (I.ready) _i688Touch(k
     try { return mk(tag, mode, patch); } finally { if (o == null) delete process.env.T713_FLUSH_END; else process.env.T713_FLUSH_END = o; } };
   const sentOf = (X) => [...X.R._S.sent].map((x) => x.join(':')).join(',');
   const rateLine = '  if (budgetMs > 0 && rows > 0 && ms > 0) { const r = rows / ms; _flDayMin = _flDayMin ? Math.min(_flDayMin, r) : r; _flRate = _flDayMin; }';
-  const narrow = (s) => s.replace(rateLine, '  _flRate = 3 / budgetMs;');
+  //   ★[T1493] 켬(구역 행)은 상한 단위가 쓴 구역 행 — 작은 판(구역 80)에서 묶음 30 개를 넘기려면 묶음마다 구역 행 하나로 좁힌다(끔 = 종전 키 셋)
+  const narrow = (s) => s.replace(rateLine, process.env.T1448_ROAD_GRID === '1' ? '  _flRate = 1 / budgetMs;' : '  _flRate = 3 / budgetMs;');
   ok(SRC.includes('const T713 = process.env.T713_FLUSH_END') && SRC.includes(rateLine), '⑦ [전제] 손잡이 · 속도 글자');
   // ⓐ 제품 기본(T688 켬) · 끔(T688 0)에서도 켬은 아무 일 없음
   const A7 = mk713('fe0', '1', false), B7 = mk713('fe1', '1', true), C7 = mk713('fe2', '0', true), D7 = mk713('fe3', '0', false);
@@ -193,14 +210,17 @@ bait('스탬프 자리에서 등급을 안 고침', '  if (I.ready) _i688Touch(k
   const dayOf = () => Math.floor((NOW - EPOCH) / DAY);
   const peek = (s) => s + '\nmodule.exports._t713fl = () => _fl;\n';
   const failAt = (X) => { const D = X.db, up = D.upsertRoadCell; X.fails = 0; X.preChg = 0;
-    D.upsertRoadCell = (z, k, v, d) => {
+    const trip = () => {   // ★[T1493 · T1448 회부 8] 던질 때(칸 행 · 구역 행 같은 문 — 켬은 구역 행 쓰기에서)
       const F = !X.fails && dayOf() >= 10 && X.R._t713fl();
       if (F && F.lazy && F.n >= 30) {
         let c = 0; const S = X.R._S, T1 = 8, T2 = 28;   // 들어간 묶음 속 바뀐 셀(끔 판 = F.out · 켬 판 = F.chg) — 종전 식 그대로
         if (F.chg) c = F.chg.k.length; else for (let j = 0; j < F.out.length; j += 2) { const vv = F.out[j + 1], lv = vv !== null ? (vv >= T2 ? 2 : (vv >= T1 ? 1 : 0)) : 0; if ((S.sent.get(F.out[j]) || 0) !== lv) c++; }
         if (c > 0) { X.fails++; X.preChg = c; X.failDay = dayOf(); X.failN = F.n; throw new Error('T713 미끼 실패'); }
       }
-      return up(z, k, v, d); }; return X; };
+    };
+    D.upsertRoadCell = (z, k, v, d) => { trip(); return up(z, k, v, d); };
+    if (D.upsertRoadChunk) { const uc = D.upsertRoadChunk; D.upsertRoadChunk = (z, ci, n, data) => { trip(); return uc(z, ci, n, data); }; }
+    return X; };
   const failCase = (patchB) => {
     const A = failAt(mk713('ff0_' + (++_bn), '1', false, (s) => peek(narrow(s)))), B = failAt(mk713('ff1_' + _bn, '1', true, patchB ? (s) => peek(patchB(narrow(s))) : (s) => peek(narrow(s))));
     const _e = console.error; console.error = () => {};
@@ -226,6 +246,40 @@ bait('스탬프 자리에서 등급을 안 고침', '  if (I.ready) _i688Touch(k
   const Ab = mk713('fb0', '1', false), Bb = mk713('fb1', '1', true, (s) => s.replace(lastLine, '  if (T713 && !F.end) _t713Diff(F, batch);'));
   const rb = drive([Ab, Bb], script(713, 120));
   ok(rb.bad > 0, '⑦ 미끼: 마지막 묶음을 안 견주면 ⓐ 가 **문다**', `어긋남 ${rb.bad}${rb.firstBad ? ' · 처음 ' + rb.firstBad : ''}`);
+}
+
+// ⑧ ★[T1493 · 정해진 것 3] 켬(구역 행 · `T1448_ROAD_GRID=1`) 쪽에 종전 병이 없나 — 느린 묶음 한 번 뒤 묶음 상한.
+//   종전(끔) 병: 속도 = 그날 가장 느린 묶음의 키 ÷ ms 라 느린 COMMIT 한 번(디스크 멈춤 · WAL 체크포인트) 뒤 상한이 키 하나로 무너져 그날 남은 키가 틱마다 하나씩 돈다
+//   (11-09 사본 하루 3.8만 칸: 51,797 묶음 — 보고 T1448 회부 5 · **끔 쪽은 손대지 않는다**). 켬은 구역 한 줄이 쓰기의 단위라 상한 · 속도를 쓴 구역 행으로 센다
+//   (이미 쓴 구역의 키는 쓰기 0) ⇒ 무너져도 그날 남은 일은 **바뀐 구역 수** 묶음을 넘지 않는다. 둘째 묶음 COMMIT 을 150 ms 로 늦춘 판에서 센다.
+console.log('\n⑧ [T1493] 켬(구역 행) — 느린 묶음 한 번 뒤에도 상한이 키 하나로 안 무너진다(끔 = 종전 병 그대로 · 손대지 않음)');
+{
+  let _sn = 0;
+  const slowRun = (grid, patch) => {
+    const o = process.env.T1448_ROAD_GRID; process.env.T1448_ROAD_GRID = grid ? '1' : '0';
+    try {
+      const X = load('slow' + (grid ? 'G' : 'C') + (++_sn), '1', patch);
+      let commits = 0, armed = false; const ex = X.db.db.exec.bind(X.db.db);   // 날 경계 뒤 첫 묶음(상한 = 속도 모름 → 하나)의 COMMIT 을 150 ms 로(디스크 멈춤 꼴)
+      X.db.db.exec = (sql) => { if (armed && sql === 'COMMIT' && ++commits === 1) { const t = process.hrtime.bigint(); while (process.hrtime.bigint() - t < 150000000n) { } } return ex(sql); };
+      NOW = EPOCH + 3 * DAY + 50;   // 부팅 날 = 밟는 날(그 다음 날 경계에서 얼린다)
+      X.R.init({ zoneId: ZID, cellsW: W, cellsH: H, epoch: EPOCH, dayMs: DAY, broadcast: () => {} });
+      let rs = 1493; const rnd = () => { rs = (Math.imul(rs, 1103515245) + 12345) >>> 0; return rs / 4294967296; };
+      for (let i = 0; i < 4000; i++) X.R.stampCell((rnd() * W) | 0, (rnd() * H) | 0);
+      const keys = X.R._S.dirty.size, chunks = X.R._S.dirty.ch ? X.R._S.dirty.ch.size : null;
+      NOW = EPOCH + 4 * DAY; armed = true; X.R.onGameTick(NOW);
+      let t = 0; for (; t < 20000; t++) { const p = X.R.roadDayPerf(); if (t > 0 && p && !p.flPending) break; X.R.onGameTick(NOW + 1 + t); }
+      return { keys, chunks, batches: X.R.roadDayPerf().flBatches, done: !X.R.roadDayPerf().flPending, rows: rowsOf(X).split(',').length };
+    } finally { if (o == null) delete process.env.T1448_ROAD_GRID; else process.env.T1448_ROAD_GRID = o; }
+  };
+  const C8 = slowRun(false), G8 = slowRun(true);
+  ok(C8.done && G8.done && C8.keys > 3000 && G8.keys === C8.keys && G8.chunks > 50 && G8.rows === C8.rows, '⑧ [전제] 같은 하루(키 · 구역) · 두 판 다 끝까지 썼다 · 같은 표',
+    `키 ${C8.keys} · 구역 ${G8.chunks} · 행 ${C8.rows}`);
+  ok(C8.batches >= C8.keys / 5, '⑧ (기록) 끔 = 종전 병 그대로 — 느린 묶음 뒤 상한이 키 몇 개로 무너져 남은 키를 틱마다 몇 개씩(손대지 않음 · 보고 T1448 회부 5)', `묶음 ${C8.batches} / 키 ${C8.keys}(묶음마다 키 ${(C8.keys / C8.batches).toFixed(1)})`);
+  ok(G8.batches <= G8.chunks + 2, '⑧ ★켬 — 느린 묶음 뒤에도 남은 일 ≤ 바뀐 구역 수 묶음(상한 · 속도 = 쓴 구역 행)', `묶음 ${G8.batches} / 구역 ${G8.chunks} · 키 ${G8.keys}`);
+  const capLine = "      if (cap && (F.grid ? wb : batch.length / 2) >= cap) { _flSt.capped++; break; }";
+  const nCap = SRC.split(capLine).length - 1;
+  const B8 = slowRun(true, (s) => s.replace(capLine, "      if (cap && batch.length / 2 >= cap) { _flSt.capped++; break; }").replace('const ms = _i688Now() - p0, rows = F.grid ? wb : batch.length / 2;', 'const ms = _i688Now() - p0, rows = batch.length / 2;'));
+  ok(nCap === 1 && B8.done && B8.batches > B8.chunks + 2, '⑧ 미끼: 켬도 키로 세는 사본(종전 단위) → 남은 키가 틱마다 하나씩 — ⑧ ★ 가 **문다**', `바꾼 자리 ${nCap} · 묶음 ${B8.batches} / 구역 ${B8.chunks} · 키 ${B8.keys}`);
 }
 
 // ⑥ [선택 · `T688_REAL_DB=<틀 DB>`] 실제 크기 — 틀의 `roads` 표(한반도 · 밟힌 셀 24만)를 그대로 싣고 같은 연산 줄로 날을 넘긴다

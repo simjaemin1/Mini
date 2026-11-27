@@ -145,7 +145,7 @@ const SITES = [
   [V1F, "dailyCons * (T1419_FOOD4[resourceKey] ? t1419Days(v, null, 30, 'ref') : 30)", 1, '값의 기준(v1 유보)'],
   [V1F, "r === 'food' && T1419_FOOD_NEED ? t1419Days(v, null, 0, 'ref') * DAILY_FOOD_CONSUMPTION : RESERVE", 2, '값의 기준(v1 거래소 · 시세)'],
   [V2F, "function _t1419Sub(v, r, tag) { return v1.T1419_FOOD_NEED ? v1.t1419Subs(v, r, tag) : 30; }", 1, '값의 기준 · 출발 문(v2 한 함수)'],
-  [V2F, "Math.max(subs * _t1419Sub(v, r, 'ref'), buffer, flowT, derivT)", 2, '값의 기준(결정층 · 정산)'],
+  [V2F, "Math.max(subs * _t1419Sub(v, r, 'ref'), buffer, flowT, derivT)", 3, '값의 기준(결정층 · 정산 · 부패 — ★T1493 족보 935 맞춤)'],
   [V2F, "v.surplusEMA.food * _t1419Sub(v, 'food', 'ref')", 2, '값의 기준(적자 선반영)'],
   [V2F, "Math.max(subs * _t1419Sub(a.v, r, 'ref'), buffer)", 1, '값의 기준(수출 보유)'],
   [V2F, "N * _t1419Sub(a.v, 'food', 'ref') * 1.2", 1, '값의 기준(T1384 사본)'],
@@ -168,7 +168,6 @@ const ALLOW = [
   [V2F, 'T1152_DEF30 ? 30 : C.H', 2, 'T1152 끔 — 열량 하나의 시장(제 곡선)'],
   [V2F, 'v1.t1419Subs(v, r, tag) : 30;', 1, '끔 = 30(종전 글자)'],
   [V2F, 'v1.T1419_FOOD_NEED ? v1.D : 30', 1, 'T1156 끔 = 30(종전 글자)'],
-  [V2F, 'target = _fishTarget(v,r,Math.max(subs * 30, buffer, flowT, derivT) + buildT);', 1, '부패 목표(`tickDecay`) — 판정 아님(물리 · 다음 거리)'],
   [VSF, 'if (day % 30 === 0) { s.snaps.push(', 1, '한 해 창 표본 간격(T1276) — 판정 아님'],
 ];
 const FOODW = /food|Food|FOOD|식량|[sS]ubs\b|RESERVE_PC|FAMINE|famine|foodEquiv|_fe\b|\bfe\b/;

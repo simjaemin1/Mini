@@ -1323,6 +1323,38 @@ function activeChunkBuildings() {
 const T1453_VIEW_SEND = process.env.T1453_VIEW_SEND === '1';
 //   소켓 하나 되돌림(시험 · 맞대기) — 접속 주소에 `t1453full=1` 이면 그 소켓만 종전 welcome(존 전체 길 · 켜진 청크 건물 전부 · 적바림 0). 하네스가 같은 세계 · 같은 때에 두 꼴을 맞댄다.
 function _t1453On(url) { return T1453_VIEW_SEND && !(url && url.searchParams && url.searchParams.get('t1453full') === '1'); }
+// ★★★[T1493 2026-11-27 · 지시 T1493 · T1448 회부 1] **길은 보이는 구역만 받는다 — 칸 배열(`T1448_ROAD_GRID`) 켬 위에서** — 손잡이 `T1493_ROAD_BOX`(`=== '1'` 만 켬 · **끔 기본** ·
+//   끔 = 종전 글자 · 바이트 그대로 · `T1448_ROAD_GRID` 가 꺼져 있으면 무동작(부팅 로그 한 줄) · 켬은 존을 다시 띄워야 선다).
+//   ⓐ welcome · 둘레 몫 = T1453 의 **길 몫 그대로**(`_t1453WelRoads` · `_t1453ViewTick` — 둘레 청크 5 × 5 · 청크 = 32칸 = T1446 화면 상자 · 틱 쪽지 앞)를 길에만 켠다.
+//      건물 몫은 `T1453_VIEW_SEND` 가 따로 켠다(둘 다 켜면 T1453 그대로 + 아래 ⓑ) — 보내는 길은 하나(사본 0).
+//   ⓑ 하루 방송 `road_cells` — 종전은 존 전체에서 그날 등급이 바뀐 칸을 **모두에게** 보냈다(받은 적 없는 먼 구역 칸까지 — 클라에 쌓인다).
+//      켬은 소켓마다 그 소켓이 받은 청크(`ws._t1453.r` — welcome · 둘레 몫으로 받은 청크)의 칸만 보낸다 · 그 소켓 몫이 0 이면 안 보낸다.
+//      받은 적 없는 청크는 둘레에 들 때 그때 값으로 통째 온다(ⓐ) ⇒ 클라가 든 청크의 칸은 늘 "통째로 받은 소켓"과 같은 값이다(하네스 Ⓔ).
+//      적바림이 없는 소켓(`t1453full=1` — 통째 welcome 을 받은 시험 소켓)은 종전 그대로 다 받는다. 칸 차례 = 종전 방송 차례에서 거른 것.
+//   지도(큰 지도 · 미니맵)는 길을 안 그린다(`80-bigmap` · `44-h-hud` 길 글자 0) — 지도 몫 새 그림 0(정해진 것 2).
+const T1493_ROAD_BOX = process.env.T1493_ROAD_BOX === '1' && !!Roads.T1448;
+if (process.env.T1493_ROAD_BOX === '1' && !Roads.T1448) console.warn('[zone] 🛤️ [T1493] T1493_ROAD_BOX=1 이지만 T1448_ROAD_GRID 가 꺼져 있다 — 무동작(길 칸 배열 켬 위에서만)');
+function _t1493RoadsOn(url) { return (T1453_VIEW_SEND || T1493_ROAD_BOX) && !(url && url.searchParams && url.searchParams.get('t1453full') === '1'); }
+const _t1493St = { casts: 0, cells: 0, sent: 0, sockets: 0, full: 0 };   // 하루 방송 거르기 누계(칸 · 보낸 칸 · 받은 소켓 · 통째 소켓)
+function _t1493Cast(obj) {   // Roads.init 방송 — `road_cells` 만 소켓마다 거른다(그 밖 꼴은 종전 `broadcast`)
+  if (!obj || obj.type !== 'road_cells' || !Array.isArray(obj.cells)) return broadcast(obj);
+  const cells = obj.cells, n = chunkManager.chunkSize / 32, m = cells.length / 3, ck = new Array(m);
+  for (let j = 0; j < m; j++) ck[j] = chunkManager.keyOf((cells[3 * j] / n) | 0, (cells[3 * j + 1] / n) | 0);
+  let full = null; const out = [];
+  const one = (ws) => {
+    if (!ws) return;
+    const V = ws._t1453;
+    if (!V) { if (full === null) full = JSON.stringify(obj); out.push([ws, full]); _t1493St.full++; return; }
+    const c = [];
+    for (let j = 0; j < m; j++) if (V.r.has(ck[j])) c.push(cells[3 * j], cells[3 * j + 1], cells[3 * j + 2]);
+    if (c.length) { out.push([ws, JSON.stringify({ type: 'road_cells', cells: c })]); _t1493St.sent += c.length / 3; _t1493St.sockets++; }
+  };
+  for (const p of players.values()) one(p.ws);
+  for (const ws of observers.keys()) one(ws);
+  _t1493St.casts++; _t1493St.cells += m;
+  const go = () => { for (const [ws, str] of out) rawSend(ws, str); };   // 글자는 부른 때(종전 `broadcast` 와 같이) · 보내기는 같은 늦춤
+  if (LATENCY_MS > 0) setTimeout(go, LATENCY_MS); else go();
+}
 function _t1453Keys(x, y) {   // 그 자리 둘레 청크 [키 · cx · cy] — updateActiveChunks 의 사람 둘레와 같은 식 · 같은 차례
   const { cx: pcx, cy: pcy } = chunkManager.chunkXY(x, y), r = Math.ceil(CHUNK_ACTIVE_RADIUS / chunkManager.chunkSize), out = [];
   for (let dx = -r; dx <= r; dx++) for (let dy = -r; dy <= r; dy++) {
@@ -1338,6 +1370,7 @@ function _t1453WelRoads(ws, x, y) {   // welcome 길 — 둘레 청크만(소켓
   const out = [];
   for (const [k, cx, cy] of keys) { V.r.add(k); _t1453RoadsOf(cx, cy, out); }
   const c0 = chunkManager.chunkXY(x, y); V.ck = c0.cx + '_' + c0.cy;
+  if (!T1453_VIEW_SEND) V.keys = null;   // ★[T1493] 길만 켠 판 — 건물 몫(`_t1453WelBlds`)이 안 읽는다
   if (ws) ws._t1453 = V;
   return out.length ? out : null;
 }
@@ -6591,7 +6624,7 @@ function warTreeCellBlocked(cellX, cellY) {
 // §16 답압 길 4파 — 존 셀 치수·게임일 시계로 독립 부팅(villages와 무관 — 스탬프는 이동 루프 편승).
 //   ★★[T578 ① 2026-10-03] **교역로를 파는 누구보다 먼저** 선다. 종전엔 `Bandits.init()`(도적 교역로 표본 = 유한 쌍 전부 `getRoute`)
 //     뒤에 있어서 1,219쌍이 전부 길이 아직 안 선 세계(`courseCostMul` = 1)에서 파이고 그대로 영속됐다 — 답압 할인(§16)이 한 번도 안 걸렸다(T573 §②).
-Roads.init({ zoneId: ZONE_ID, cellsW: Math.ceil(ZONE.zoneWidth / 32), cellsH: Math.ceil(ZONE.zoneHeight / 32), epoch: WORLD.worldEpoch || 0, dayMs: parseInt(process.env.VILLAGE_DAY_MS || '', 10) || WORLD.dayLengthMs, broadcast,
+Roads.init({ zoneId: ZONE_ID, cellsW: Math.ceil(ZONE.zoneWidth / 32), cellsH: Math.ceil(ZONE.zoneHeight / 32), epoch: WORLD.worldEpoch || 0, dayMs: parseInt(process.env.VILLAGE_DAY_MS || '', 10) || WORLD.dayLengthMs, broadcast: T1493_ROAD_BOX ? _t1493Cast : broadcast,   /* ★[T1493] 켬 = 하루 방송을 소켓마다 받은 청크만 */
   // ★[T566 추신2] 다져진 길의 오름·내림 — 존이 나무를 걷고(그 셀) 리젠을 막고(둘레) 푼다(끔이면 안 넘긴다 = 길은 종전 그대로)
   onPaved: _T566_ON ? _t566OnPaved : null, onUnpaved: _T566_ON ? _t566OnUnpaved : null });
 // ★★[T990 2026-10-28 · T986 회부 2 · 손잡이 `T990_ECON_DAY` — ★T1001 켬 기본(되돌림 `=0` · 끔 = T1001 전 main 글자) · 판 자(t577)도 아이에 `1` 을 싣는다]
@@ -8440,7 +8473,7 @@ async function _acceptConnection(ws, req, C) {
       granStocks: SimVillages.granStocks(),      // ★곳간② 물리 재고 스냅샷(이후 gran_stock 델타) — 사다리 앞 짐더미 연출
       markets: SimVillages.marketVillages(),     // ★[10차 T4] 장마당 스냅샷 flat[ccx,ccy,…](이후 markets 방송) — 캐러밴 체류 중인 마을만
       banditCamps: Bandits.clientCamps(), // §11 도적: 소굴·야영 마커 1종 — 이후 bandit_camps가 변경분 방송
-      roads: _t1453On(url) ? _t1453WelRoads(ws, observers.get(ws).viewerX, observers.get(ws).viewerY) : Roads.clientRoads(), // §16 답압 길: 등급 셀 flat [cx,cy,lv,...] — 이후 road_cells가 변경분 방송 · ★[T1453] 켬 = 보는 자리 둘레 청크만
+      roads: _t1493RoadsOn(url) ? _t1453WelRoads(ws, observers.get(ws).viewerX, observers.get(ws).viewerY) : Roads.clientRoads(), // §16 답압 길: 등급 셀 flat [cx,cy,lv,...] — 이후 road_cells가 변경분 방송 · ★[T1453] 켬 = 보는 자리 둘레 청크만
     soil: Soil.clientSoil(),    // [배치 20 B] 타일 상태: 기준선에서 벗어난 셀 flat [cx,cy,qv,geo,ore,...] — 이후 tile_state가 변경분 방송
       bridges: bridgePayload(), // ★[T527] 지은 다리 포함(0 이면 종전 그대로) · ★[다리 층] 통나무 널다리 셀 flat [cx,cy,...] — 정적(맵 사물)이라 welcome 1회
       ...(T1423_NO_BUILD ? { t1423NoBuild: SimVillages.t1406BridgeCells() } : {}),   // ★[T1423 ⓐ] 못 놓는 다리 칸 · 다리 머리 flat [cx,cy,…](㉮ 정본 칸 줄 · 켬에서만 칸이 선다)
@@ -8983,7 +9016,7 @@ async function _acceptConnection(ws, req, C) {
       granStocks: SimVillages.granStocks(),      // ★곳간② 물리 재고 스냅샷(이후 gran_stock 델타) — 사다리 앞 짐더미 연출
       markets: SimVillages.marketVillages(),     // ★[10차 T4] 장마당 스냅샷 flat[ccx,ccy,…](이후 markets 방송) — 캐러밴 체류 중인 마을만
     banditCamps: Bandits.clientCamps(), // §11 도적: 소굴·야영 마커 1종 — 이후 bandit_camps가 변경분 방송
-    roads: _t1453On(url) ? _t1453WelRoads(ws, player.x, player.y) : Roads.clientRoads(), // §16 답압 길: 등급 셀 flat [cx,cy,lv,...] — 이후 road_cells가 변경분 방송 · ★[T1453] 켬 = 내 자리 둘레 청크만
+    roads: _t1493RoadsOn(url) ? _t1453WelRoads(ws, player.x, player.y) : Roads.clientRoads(), // §16 답압 길: 등급 셀 flat [cx,cy,lv,...] — 이후 road_cells가 변경분 방송 · ★[T1453] 켬 = 내 자리 둘레 청크만
     soil: Soil.clientSoil(),    // [배치 20 B] 타일 상태: 기준선에서 벗어난 셀 flat [cx,cy,qv,geo,ore,...] — 이후 tile_state가 변경분 방송
     bridges: bridgePayload(), // ★[T527] 지은 다리 포함(0 이면 종전 그대로) · ★[다리 층] 통나무 널다리 셀 flat [cx,cy,...] — 정적(맵 사물)이라 welcome 1회
     ...(T1423_NO_BUILD ? { t1423NoBuild: SimVillages.t1406BridgeCells() } : {}),   // ★[T1423 ⓐ] 못 놓는 다리 칸 · 다리 머리 flat [cx,cy,…](㉮ 정본 칸 줄 · 켬에서만 칸이 선다)
@@ -21293,7 +21326,7 @@ setInterval(() => {
     viewerState.seenMobs = newSeen;
     return result;
   }
-  if (T1453_VIEW_SEND) _t1453ViewTick();   // ★[T1453] 켬 — 둘레에 새로 든 청크 몫(길 · 안 보낸 건물)을 틱 쪽지 앞에
+  if (T1453_VIEW_SEND || T1493_ROAD_BOX) _t1453ViewTick();   // ★[T1453] 켬 — 둘레에 새로 든 청크 몫(길 · 안 보낸 건물)을 틱 쪽지 앞에
   for (const p of allPlayers) {
     if (p.isNpc) continue;  // NPC는 클라(ws) 없음 — 시야계산(queryCircle)·tick 송신 불필요. 600 NPC × queryCircle 핫스팟 제거 (러버밴딩 주원인)
     if (!p.viewerState) p.viewerState = { seenPlayers: new Set(), seenMobs: new Set() };

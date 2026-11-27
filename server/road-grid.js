@@ -18,25 +18,32 @@
 //   (화면 상자 · 서버 문 `clientRoadsBox` 는 32칸 단위 그대로 — 구역 넷이 꼭 맞는다 · 저장 구역 크기와 따로)
 const C = 16, CC = C * C;
 const SHIFT = 4;   // log2(C)
+// ★★[T1493 2026-11-27 · T1448 회부 6] **판으로 묶기** — 구역마다 배열(구역 하나에 Float64 · Int32 · Uint8 배열 여럿 = 11-09 사본 1.2만 구역 × 여섯 장부 ≈ 7만 개)을
+//   판(구역 256개 = 칸 65,536) 하나의 배열로 모은다. 구역은 밟힌 차례대로 판 자리 하나(`slot[구역]` — -1 = 배열 없음)를 받고, 칸 자리 = 판 안 (자리 & 255) × 256 + 칸.
+//   구역마다 쥐던 객체 · 배열이 0 개라 가득 청소가 장부를 거의 안 본다(11-09 사본 여섯 장부: 구역 배열 15.6 ms → 판 2.7 ms ≈ 장부 없을 때 — 보고 T1493 §3).
+//   값 · 날 · 차례 · 문 글자는 그대로(그릇 안쪽만) — 판은 꽉 차야 다음 판을 연다(밟힌 적 없는 구역 자리는 판에 안 든다 · 마지막 판만 덜 찬다).
+const PER = 256, PSH = 8, PMK = PER - 1;   // 판 하나 = 구역 256 · 판 번호 = 자리 >> 8 · 판 안 구역 = 자리 & 255
 
 class Grid {
   constructor(W, H) {
     this.W = W | 0; this.H = H | 0;
     this.GW = Math.ceil(this.W / C); this.GH = Math.ceil(this.H / C);
-    this.ch = new Array(this.GW * this.GH).fill(null);
+    this.slot = new Int32Array(this.GW * this.GH).fill(-1);   // 구역 → 판 자리(-1 = 배열 없음)
     this.rowCols = new Array(this.GH).fill(null);   // 구역 줄마다 배열이 선 구역 열(오름)
     this.nCh = 0; this.size = 0;
   }
   _ci(k) { const x = k % this.W, y = (k / this.W) | 0; return (y >> SHIFT) * this.GW + (x >> SHIFT); }
   _li(k) { const x = k % this.W, y = (k / this.W) | 0; return ((y & (C - 1)) << SHIFT) | (x & (C - 1)); }
-  _reg(ci) {   // 새 구역 — 그 줄의 열 목록에 오름으로
+  _reg(ci) {   // 새 구역 — 판 자리 하나(밟힌 차례) · 그 줄의 열 목록에 오름으로 → 자리
+    const s = this.nCh++; this.slot[ci] = s;
+    if ((s >> PSH) >= this._slabN()) this._slabAdd();
     const gy = (ci / this.GW) | 0, gx = ci - gy * this.GW;
     let a = this.rowCols[gy]; if (!a) a = this.rowCols[gy] = [];
     let i = a.length; a.push(gx); while (i > 0 && a[i - 1] > gx) { a[i] = a[i - 1]; i--; } a[i] = gx;
-    this.nCh++;
+    return s;
   }
-  _clearAll() { this.ch.fill(null); this.rowCols.fill(null); this.nCh = 0; this.size = 0; }
-  // 빠른 훑기(읽기만) — 칸 키 오름으로 `each(c, i, k)` · 돌 때 객체 0(차례 = `_walk` 와 같다 — 하네스 ①)
+  _clearAll() { this.slot.fill(-1); this.rowCols.fill(null); this.nCh = 0; this.size = 0; this._slabReset(); }
+  // 빠른 훑기(읽기만) — 칸 키 오름으로 `each(판 자리, 칸, k)` · 돌 때 객체 0(차례 = `_walk` 와 같다 — 하네스 ①)
   _scan(each) {
     const W = this.W, H = this.H;
     for (let gy = 0; gy < this.GH; gy++) {
@@ -45,14 +52,14 @@ class Grid {
         const cy = (gy << SHIFT) + ly; if (cy >= H) break;
         const rb = cy * W, base = ly << SHIFT;
         for (let j = 0; j < cols.length; j++) {
-          const gx = cols[j], c = this.ch[gy * this.GW + gx]; if (!c) continue;
+          const gx = cols[j], s = this.slot[gy * this.GW + gx]; if (s < 0) continue;
           const x0 = gx << SHIFT, xn = Math.min(C, W - x0);
-          for (let lx = 0; lx < xn; lx++) each(c, base | lx, rb + x0 + lx);
+          for (let lx = 0; lx < xn; lx++) each(s, base | lx, rb + x0 + lx);
         }
       }
     }
   }
-  // 키 오름으로 (k, 구역, 칸) — `live(c, i)` 가 참인 칸만
+  // 키 오름으로 (k, 판 자리, 칸) — `live(자리, 칸)` 이 참인 칸만
   *_walk(live) {
     const W = this.W, H = this.H;
     for (let gy = 0; gy < this.GH; gy++) {
@@ -60,25 +67,27 @@ class Grid {
       for (let ly = 0; ly < C; ly++) {
         const cy = (gy << SHIFT) + ly; if (cy >= H) break;
         for (let j = 0; j < cols.length; j++) {
-          const gx = cols[j], c = this.ch[gy * this.GW + gx]; if (!c) continue;
+          const gx = cols[j], s = this.slot[gy * this.GW + gx]; if (s < 0) continue;
           const base = ly << SHIFT, x0 = gx << SHIFT;
-          for (let lx = 0; lx < C; lx++) { const cx = x0 + lx; if (cx >= W) break; const i = base | lx; if (live(c, i)) yield [cy * W + cx, c, i]; }
+          for (let lx = 0; lx < C; lx++) { const cx = x0 + lx; if (cx >= W) break; const i = base | lx; if (live(s, i)) yield [cy * W + cx, s, i]; }
         }
       }
     }
   }
 }
 
-class CellRef {   // 칸 자리 손잡이 — v · d 를 읽고 쓰면 배열 칸(날은 밑 날 차 — 쓰기는 먼저 바꾼 값을 받고 나서 배열에: 바꾸며 그릇이 Float64 로 갈 수 있다)
-  constructor(c, i) { this.c = c; this.i = i; }
-  get v() { return this.c.v[this.i]; } set v(x) { this.c.v[this.i] = x; }
-  get d() { return this.c.g._dDec(this.c.d[this.i]); } set d(x) { const s = this.c.g._dEnc(x); this.c.d[this.i] = s; }
+class CellRef {   // 칸 자리 손잡이 — v · d 를 읽고 쓰면 판 칸(날은 밑 날 차 — 쓰기는 먼저 바꾼 값을 받고 나서 판에: 바꾸며 그릇이 Float64 로 갈 수 있다)
+  constructor(g, b, o) { this.g = g; this.b = b; this.o = o; }   // 그릇 · 판 번호 · 판 안 칸 자리
+  get v() { return this.g.V[this.b][this.o]; } set v(x) { this.g.V[this.b][this.o] = x; }
+  get d() { return this.g._dDec(this.g.D[this.b][this.o]); } set d(x) { const s = this.g._dEnc(x); this.g.D[this.b][this.o] = s; }
 }
-const _cellLive = (c, i) => c.v[i] > 0;
 const I32MAX = 2147483647, I32MIN = -2147483648;
 class CellGrid extends Grid {   // cells — k → {v, d}
-  constructor(W, H) { super(W, H); this.dB = null; this.d64 = false; }
-  _mk(ci) { const c = { v: new Float64Array(CC), d: this.d64 ? new Float64Array(CC) : new Int32Array(CC), n: 0, g: this }; this.ch[ci] = c; this._reg(ci); return c; }
+  constructor(W, H) { super(W, H); this.dB = null; this.d64 = false; this.V = []; this.D = []; this.N = []; }   // 판마다 값 · 날 · 구역마다 칸 수
+  _slabN() { return this.V.length; }
+  _slabAdd() { this.V.push(new Float64Array(PER * CC)); this.D.push(this.d64 ? new Float64Array(PER * CC) : new Int32Array(PER * CC)); this.N.push(new Int32Array(PER)); }
+  _slabReset() { this.V = []; this.D = []; this.N = []; }
+  _mk(ci) { return this._reg(ci); }
   _dEnc(x) {   // 날 → 담을 수(Int32 차 · 그릇이 Float64 면 날 그대로)
     if (this.d64) return x;
     if (this.dB === null) { if (!Number.isInteger(x)) { this._d64(); return x; } this.dB = x; }
@@ -89,23 +98,25 @@ class CellGrid extends Grid {   // cells — k → {v, d}
   _dDec(s) { return this.d64 ? s : s + this.dB; }
   _d64() {   // 그릇 전부 날을 Float64(날 그대로)로 — 값 무변 · 한 번(드문 일)
     const b = this.dB || 0;
-    for (const c of this.ch) if (c) { const a = new Float64Array(CC); for (let i = 0; i < CC; i++) if (c.v[i] > 0) a[i] = c.d[i] + b; c.d = a; }
+    for (let j = 0; j < this.D.length; j++) { const o = this.D[j], v = this.V[j], a = new Float64Array(PER * CC); for (let i = 0; i < a.length; i++) if (v[i] > 0) a[i] = o[i] + b; this.D[j] = a; }
     this.d64 = true;
   }
-  has(k) { const c = this.ch[this._ci(k)]; return !!c && c.v[this._li(k)] > 0; }
-  get(k) { const c = this.ch[this._ci(k)]; if (!c) return undefined; const i = this._li(k); return c.v[i] > 0 ? new CellRef(c, i) : undefined; }
+  has(k) { const s = this.slot[this._ci(k)]; return s >= 0 && this.V[s >> PSH][((s & PMK) << 8) | this._li(k)] > 0; }
+  get(k) { const s = this.slot[this._ci(k)]; if (s < 0) return undefined; const b = s >> PSH, o = ((s & PMK) << 8) | this._li(k); return this.V[b][o] > 0 ? new CellRef(this, b, o) : undefined; }
   set(k, o) {
-    const ci = this._ci(k), i = this._li(k); let c = this.ch[ci]; if (!c) c = this._mk(ci);
-    if (!(c.v[i] > 0)) { c.n++; this.size++; }
-    const s = this._dEnc(o.d);
-    c.v[i] = o.v; c.d[i] = s;
+    const ci = this._ci(k), i = this._li(k); let s = this.slot[ci]; if (s < 0) s = this._mk(ci);
+    const b = s >> PSH, x = ((s & PMK) << 8) | i;
+    if (!(this.V[b][x] > 0)) { this.N[b][s & PMK]++; this.size++; }
+    const e = this._dEnc(o.d);
+    this.V[b][x] = o.v; this.D[b][x] = e;
     return this;
   }
-  delete(k) { const c = this.ch[this._ci(k)]; if (!c) return false; const i = this._li(k); if (!(c.v[i] > 0)) return false; c.v[i] = 0; c.d[i] = 0; c.n--; this.size--; return true; }
+  delete(k) { const s = this.slot[this._ci(k)]; if (s < 0) return false; const b = s >> PSH, x = ((s & PMK) << 8) | this._li(k); if (!(this.V[b][x] > 0)) return false; this.V[b][x] = 0; this.D[b][x] = 0; this.N[b][s & PMK]--; this.size--; return true; }
   clear() { this._clearAll(); }
-  *entries() { for (const [k, c, i] of this._walk(_cellLive)) yield [k, new CellRef(c, i)]; }
-  *keys() { for (const [k] of this._walk(_cellLive)) yield k; }
-  *values() { for (const [, c, i] of this._walk(_cellLive)) yield new CellRef(c, i); }
+  _live(s, i) { return this.V[s >> PSH][((s & PMK) << 8) | i] > 0; }
+  *entries() { const L = (s, i) => this._live(s, i); for (const [k, s, i] of this._walk(L)) yield [k, new CellRef(this, s >> PSH, ((s & PMK) << 8) | i)]; }
+  *keys() { const L = (s, i) => this._live(s, i); for (const [k] of this._walk(L)) yield k; }
+  *values() { const L = (s, i) => this._live(s, i); for (const [, s, i] of this._walk(L)) yield new CellRef(this, s >> PSH, ((s & PMK) << 8) | i); }
   [Symbol.iterator]() { return this.entries(); }
   forEach(f, t) { for (const [k, r] of this.entries()) f.call(t, r, k, this); }
   scan(fn) {   // 읽기만 — fn(k, 값, 날) · 칸 키 오름(`_scan` 과 같은 차례 · 칸마다 부르는 함수 없이 — 웰컴 · 부팅이 68만 칸을 돈다)
@@ -116,72 +127,91 @@ class CellGrid extends Grid {   // cells — k → {v, d}
         const cy = (gy << SHIFT) + ly; if (cy >= H) break;
         const rb = cy * W, base = ly << SHIFT;
         for (let j = 0; j < cols.length; j++) {
-          const gx = cols[j], c = this.ch[gy * this.GW + gx]; if (!c || !c.n) continue;
-          const x0 = gx << SHIFT, xn = Math.min(C, W - x0), v = c.v, d = c.d;
-          for (let lx = 0; lx < xn; lx++) { const i = base | lx, x = v[i]; if (x > 0) fn(rb + x0 + lx, x, d[i] + b); }
+          const gx = cols[j], s = this.slot[gy * this.GW + gx]; if (s < 0 || !this.N[s >> PSH][s & PMK]) continue;
+          const x0 = gx << SHIFT, xn = Math.min(C, W - x0), v = this.V[s >> PSH], d = this.D[s >> PSH], o0 = (s & PMK) << 8;
+          for (let lx = 0; lx < xn; lx++) { const i = o0 | base | lx, x = v[i]; if (x > 0) fn(rb + x0 + lx, x, d[i] + b); }
         }
       }
     }
   }
+  // 구역 하나의 판 칸 보기(roads.js 구역 행 쓰기) — { V, D, o }(칸 = V[o | 칸]) · 배열 없는 구역 null
+  chunkView(ci) { const s = this.slot[ci]; return s < 0 ? null : { V: this.V[s >> PSH], D: this.D[s >> PSH], o: (s & PMK) << 8 }; }
   // 덩이(저장 · 덤프) — 구역마다 [구역 키, 칸 수, 칸 자리(Uint16) · 값(Float64) · 날(날 그대로 — Float64)] (있는 칸만 · 칸 자리 오름)
   packChunk(ci) {
-    const c = this.ch[ci]; if (!c || !c.n) return null;
-    const n = c.n, li = new Uint16Array(n), v = new Float64Array(n), d = new Float64Array(n), b = this.d64 ? 0 : this.dB;
-    let j = 0; for (let i = 0; i < CC; i++) if (c.v[i] > 0) { li[j] = i; v[j] = c.v[i]; d[j] = c.d[i] + b; j++; }
+    const s = this.slot[ci]; if (s < 0) return null;
+    const n = this.N[s >> PSH][s & PMK]; if (!n) return null;
+    const V = this.V[s >> PSH], D = this.D[s >> PSH], o0 = (s & PMK) << 8, li = new Uint16Array(n), v = new Float64Array(n), d = new Float64Array(n), b = this.d64 ? 0 : this.dB;
+    let j = 0; for (let i = 0; i < CC; i++) if (V[o0 | i] > 0) { li[j] = i; v[j] = V[o0 | i]; d[j] = D[o0 | i] + b; j++; }
     return { ci, n, li, v, d };
   }
   unpackChunk(ci, li, v, d) {
-    let c = this.ch[ci]; if (!c) c = this._mk(ci);
-    for (let j = 0; j < li.length; j++) { const i = li[j]; if (!(c.v[i] > 0)) { c.n++; this.size++; } const s = this._dEnc(d[j]); c = this.ch[ci]; c.v[i] = v[j]; c.d[i] = s; }
+    let s = this.slot[ci]; if (s < 0) s = this._mk(ci);
+    const b = s >> PSH, o0 = (s & PMK) << 8;
+    for (let j = 0; j < li.length; j++) { const x = o0 | li[j]; if (!(this.V[b][x] > 0)) { this.N[b][s & PMK]++; this.size++; } const e = this._dEnc(d[j]); this.V[b][x] = v[j]; this.D[b][x] = e; }
   }
-  chunkKeys() { const out = []; for (let ci = 0; ci < this.ch.length; ci++) if (this.ch[ci] && this.ch[ci].n) out.push(ci); return out; }
+  chunkKeys() { const out = []; for (let ci = 0; ci < this.slot.length; ci++) { const s = this.slot[ci]; if (s >= 0 && this.N[s >> PSH][s & PMK]) out.push(ci); } return out; }
   mem() { return this.nCh * CC * (this.d64 ? 16 : 12); }   // 바이트(값 8 + 날 4 — Float64 로 간 그릇은 8) — 구역 하나 3,072
+  memAlloc() { return this.V.length * PER * CC * (this.d64 ? 16 : 12) + this.N.length * PER * 4; }   // ★[T1493] 판 바이트(마지막 판의 빈 자리까지 — 실제로 잡은 것)
 }
 
-const _u8Live = (c, i) => c[i] !== 0;
 class U8Map extends Grid {   // sent · T688 lvl — k → 1 · 2(0 = 없음)
-  _mk(ci) { const c = new Uint8Array(CC); this.ch[ci] = c; this._reg(ci); return c; }
-  has(k) { const c = this.ch[this._ci(k)]; return !!c && c[this._li(k)] !== 0; }
-  get(k) { const c = this.ch[this._ci(k)]; if (!c) return undefined; const x = c[this._li(k)]; return x ? x : undefined; }
+  constructor(W, H) { super(W, H); this.A = []; }
+  _slabT() { return new Uint8Array(PER * CC); }
+  _slabN() { return this.A.length; }
+  _slabAdd() { this.A.push(this._slabT()); }
+  _slabReset() { this.A = []; }
+  _mk(ci) { return this._reg(ci); }
+  has(k) { const s = this.slot[this._ci(k)]; return s >= 0 && this.A[s >> PSH][((s & PMK) << 8) | this._li(k)] !== 0; }
+  get(k) { const s = this.slot[this._ci(k)]; if (s < 0) return undefined; const x = this.A[s >> PSH][((s & PMK) << 8) | this._li(k)]; return x ? x : undefined; }
   set(k, x) {
     if (!x) { this.delete(k); return this; }
-    const ci = this._ci(k), i = this._li(k); let c = this.ch[ci]; if (!c) c = this._mk(ci);
-    if (!c[i]) this.size++;
-    c[i] = x; return this;
+    const ci = this._ci(k); let s = this.slot[ci]; if (s < 0) s = this._mk(ci);
+    const a = this.A[s >> PSH], o = ((s & PMK) << 8) | this._li(k);
+    if (!a[o]) this.size++;
+    a[o] = x; return this;
   }
-  delete(k) { const c = this.ch[this._ci(k)]; if (!c) return false; const i = this._li(k); if (!c[i]) return false; c[i] = 0; this.size--; return true; }
+  delete(k) { const s = this.slot[this._ci(k)]; if (s < 0) return false; const a = this.A[s >> PSH], o = ((s & PMK) << 8) | this._li(k); if (!a[o]) return false; a[o] = 0; this.size--; return true; }
   clear() { this._clearAll(); }
-  *entries() { for (const [k, c, i] of this._walk(_u8Live)) yield [k, c[i]]; }
-  *keys() { for (const [k] of this._walk(_u8Live)) yield k; }
-  *values() { for (const [, c, i] of this._walk(_u8Live)) yield c[i]; }
+  _at(s, i) { return this.A[s >> PSH][((s & PMK) << 8) | i]; }
+  *entries() { const L = (s, i) => this._at(s, i) !== 0; for (const [k, s, i] of this._walk(L)) yield [k, this._at(s, i)]; }
+  *keys() { const L = (s, i) => this._at(s, i) !== 0; for (const [k] of this._walk(L)) yield k; }
+  *values() { const L = (s, i) => this._at(s, i) !== 0; for (const [, s, i] of this._walk(L)) yield this._at(s, i); }
   [Symbol.iterator]() { return this.entries(); }
   forEach(f, t) { for (const [k, x] of this.entries()) f.call(t, x, k, this); }
-  scan(fn) { this._scan((c, i, k) => { const x = c[i]; if (x) fn(k, x); }); }   // 읽기만 — fn(k, 등급) · 칸 키 오름
+  scan(fn) { this._scan((s, i, k) => { const x = this._at(s, i); if (x) fn(k, x); }); }   // 읽기만 — fn(k, 등급) · 칸 키 오름
   mem() { return this.nCh * CC; }
+  memAlloc() { return this.A.length * PER * CC; }
 }
 
 class BitSet extends Grid {   // paved — 칸 키 집합(구역마다 256 비트 = 32 바이트)
-  _mk(ci) { const c = new Uint8Array(CC >> 3); this.ch[ci] = c; this._reg(ci); return c; }
-  has(k) { const c = this.ch[this._ci(k)]; if (!c) return false; const i = this._li(k); return (c[i >> 3] & (1 << (i & 7))) !== 0; }
+  constructor(W, H) { super(W, H); this.A = []; }
+  _slabN() { return this.A.length; }
+  _slabAdd() { this.A.push(new Uint8Array(PER * (CC >> 3))); }
+  _slabReset() { this.A = []; }
+  _mk(ci) { return this._reg(ci); }
+  _bit(s, i) { return (this.A[s >> PSH][((s & PMK) << 5) | (i >> 3)] & (1 << (i & 7))) !== 0; }
+  has(k) { const s = this.slot[this._ci(k)]; return s >= 0 && this._bit(s, this._li(k)); }
   add(k) {
-    const ci = this._ci(k), i = this._li(k); let c = this.ch[ci]; if (!c) c = this._mk(ci);
-    const m = 1 << (i & 7); if (!(c[i >> 3] & m)) { c[i >> 3] |= m; this.size++; }
+    const ci = this._ci(k), i = this._li(k); let s = this.slot[ci]; if (s < 0) s = this._mk(ci);
+    const a = this.A[s >> PSH], o = ((s & PMK) << 5) | (i >> 3), m = 1 << (i & 7); if (!(a[o] & m)) { a[o] |= m; this.size++; }
     return this;
   }
-  delete(k) { const c = this.ch[this._ci(k)]; if (!c) return false; const i = this._li(k), m = 1 << (i & 7); if (!(c[i >> 3] & m)) return false; c[i >> 3] &= ~m; this.size--; return true; }
+  delete(k) { const s = this.slot[this._ci(k)]; if (s < 0) return false; const i = this._li(k), a = this.A[s >> PSH], o = ((s & PMK) << 5) | (i >> 3), m = 1 << (i & 7); if (!(a[o] & m)) return false; a[o] &= ~m; this.size--; return true; }
   clear() { this._clearAll(); }
-  *values() { for (const [k] of this._walk((c, i) => (c[i >> 3] & (1 << (i & 7))) !== 0)) yield k; }
+  *values() { const L = (s, i) => this._bit(s, i); for (const [k] of this._walk(L)) yield k; }
   keys() { return this.values(); }
   *entries() { for (const k of this.values()) yield [k, k]; }
   [Symbol.iterator]() { return this.values(); }
   forEach(f, t) { for (const k of this.values()) f.call(t, k, k, this); }
-  scan(fn) { this._scan((c, i, k) => { if (c[i >> 3] & (1 << (i & 7))) fn(k); }); }   // 읽기만 — fn(k) · 칸 키 오름
+  scan(fn) { this._scan((s, i, k) => { if (this._bit(s, i)) fn(k); }); }   // 읽기만 — fn(k) · 칸 키 오름
   mem() { return this.nCh * (CC >> 3); }
+  memAlloc() { return this.A.length * PER * (CC >> 3); }
 }
 
 class DayMap extends U8Map {   // T688 sched — k → 다음 문턱 날(Float64 — 날 그대로 · 0 = 없음 · 문턱 날 = 마지막 날 + 1 날 넘게 · 날은 0 이상)
-  _mk(ci) { const c = new Float64Array(CC); this.ch[ci] = c; this._reg(ci); return c; }
+  _slabT() { return new Float64Array(PER * CC); }
   mem() { return this.nCh * CC * 8; }
+  memAlloc() { return this.A.length * PER * CC * 8; }
 }
 // T688 due 날 통 — 그날 문턱을 넘는 칸(Set 꼴: add · delete · size · 돌기). 붙이기만 한다 — 다른 날로 다시 잡힌 칸은 옛 통에 남았다가
 //   돌 때 거른다(`sched` 가 정본: 그 칸의 날이 이 통의 날일 때만 산 칸) · 같은 칸이 둘이면 하나만 낸다 · 죽은 자리가 산 칸의 두 배를 넘으면 다진다.
@@ -254,4 +284,4 @@ function decodeChunk(buf) {
   return { n, li, v, d };
 }
 
-module.exports = { C, CC, SHIFT, Grid, CellGrid, CellRef, U8Map, BitSet, DayMap, DueList, DenseU8, encodeChunk, decodeChunk };
+module.exports = { C, CC, SHIFT, PER, PSH, PMK, Grid, CellGrid, CellRef, U8Map, BitSet, DayMap, DueList, DenseU8, encodeChunk, decodeChunk };

@@ -24409,7 +24409,7 @@ function tickDecay(v) {
     const buffer = N * (util * 1.2);
     const derivT = v1.derivedInputTarget ? v1.derivedInputTarget(v, r) : 0;   // ★[2026-08-02f ①-2] 동기 계약
     const buildT = v1.buildInputTarget ? v1.buildInputTarget(v, r) : 0;   // ★[T1213] 동기 계약(결정층 `_targetV2` 와 같은 항)
-    target = _fishTarget(v,r,Math.max(subs * 30, buffer, flowT, derivT) + buildT);
+    target = _fishTarget(v,r,Math.max(subs * _t1419Sub(v, r, 'ref'), buffer, flowT, derivT) + buildT);   // ★[T1493 · 족보 935] 부패 목표도 결정층 · 정산과 같은 한 함수(동기 계약 · 끔 = 30 그대로)
     }
     // excess: target × mult 초과분은 비례 가속(쥐·곰팡이·도둑). 부패성 식량은 mult 낮아 ~60일에서 cap.
     const xm = DECAY_EXCESS_MULT[r] || 10;

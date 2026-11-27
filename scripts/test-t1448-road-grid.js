@@ -40,10 +40,10 @@ const hash = (x) => crypto.createHash('sha1').update(typeof x === 'string' ? x :
 
 // 미끼 — 이름: [파일 · 바꿀 글자(그 파일에 정확히 1곳) · 새 글자]
 const BAITS = {
-  f32: [RGF, '_mk(ci) { const c = { v: new Float64Array(CC)', '_mk(ci) { const c = { v: new Float32Array(CC)'],
-  dead: [RGF, 'c.v[i] = 0; c.d[i] = 0; c.n--; this.size--; return true; }', 'c.n--; this.size--; return true; }'],
-  edge: [RGF, 'for (let lx = 0; lx < xn; lx++) { const i = base | lx, x = v[i]; if (x > 0) fn(rb + x0 + lx, x, d[i] + b); }', 'for (let lx = 0; lx < xn - 1; lx++) { const i = base | lx, x = v[i]; if (x > 0) fn(rb + x0 + lx, x, d[i] + b); }'],   // 구역 끝 열(15 · 31 · …)
-  prealloc: [RGF, 'this.nCh = 0; this.size = 0;\n  }', 'this.nCh = 0; this.size = 0;\n    for (let ci = 0; ci < this.ch.length; ci++) this._mk(ci);\n  }'],
+  f32: [RGF, '_slabAdd() { this.V.push(new Float64Array(PER * CC));', '_slabAdd() { this.V.push(new Float32Array(PER * CC));'],   // ★[T1493] 판 꼴(구역 배열 → 판)
+  dead: [RGF, 'this.V[b][x] = 0; this.D[b][x] = 0; this.N[b][s & PMK]--; this.size--; return true; }', 'this.N[b][s & PMK]--; this.size--; return true; }'],
+  edge: [RGF, 'for (let lx = 0; lx < xn; lx++) { const i = o0 | base | lx, x = v[i]; if (x > 0) fn(rb + x0 + lx, x, d[i] + b); }', 'for (let lx = 0; lx < xn - 1; lx++) { const i = o0 | base | lx, x = v[i]; if (x > 0) fn(rb + x0 + lx, x, d[i] + b); }'],   // 구역 끝 열(15 · 31 · …)
+  prealloc: [RGF, 'this.dB = null; this.d64 = false; this.V = []; this.D = []; this.N = []; }', 'this.dB = null; this.d64 = false; this.V = []; this.D = []; this.N = []; for (let ci = 0; ci < this.slot.length; ci++) this._mk(ci); }'],
   cow: [RDF, 'sn = F.snap.size > 0, db', 'sn = false, db'],
   resume: [RDF, 'if (T1448) S.cells.unpackChunk(ci, p.li, p.v, p.d);', 'if (T1448) S.cells.unpackChunk(ci, p.li, Float64Array.from(p.v, Math.fround), p.d);'],
   order: [RDF, '_fl.written = new Set(); }', '_fl.written = new Set(); _fl.it = [...keys].sort((a, b) => a - b).values(); }'],
@@ -176,7 +176,7 @@ if (CHILD) {
     out.touched = [...touched].sort((a, b) => a - b);
     out.mem = R.t1448Mem ? R.t1448Mem() : null;
     out.end = state(); out.rows = dbRows();
-    if (S.cells.ch) out.chunksNull = S.cells.ch.reduce((n, c) => n + (c ? 0 : 1), 0);
+    if (S.cells.slot) out.chunksNull = S.cells.slot.reduce((n, s) => n + (s < 0 ? 1 : 0), 0);   // ★[T1493] 판 자리 표(-1 = 배열 없음)
     if (process.env.T1448H_DUMP) fs.writeFileSync(process.env.T1448H_DUMP, J(Object.assign(R.t1382Dump(), { _h: { today: [...today] } })));   // `_h` = 하네스 판 상태(길 모듈은 안 읽는다)
     try { DB.db.exec('PRAGMA wal_checkpoint(TRUNCATE)'); } catch (e) { }
     out.log = logs.filter((l) => /T1448|실패/.test(l)).slice(0, 12);
@@ -275,7 +275,7 @@ if (RGC) {
       '날 = 적은 날 그대로 — 큰 날(71억 · 맞춤 몫)은 밑 날 차 Int32(구역 바이트 그대로) · 폭이 Int32 를 넘거나 정수가 아닌 날이 오면 그릇이 Float64 로 · 덩이 글 되읽기도', J({ f1, f2: A2.d64 }));
   }
   const E = new RG.CellGrid(W, H); E.set(5 * W + 5, { v: 1, d: 0 });
-  ok(E.nCh === 1 && E.ch.filter(Boolean).length === 1 && E.mem() === CHB, `빈 구역은 배열 0 — 한 칸 밟으면 그 구역 하나(${GC} × ${GC}칸 · ${CHB.toLocaleString()} 바이트)`, J({ nCh: E.nCh, mem: E.mem() }));
+  ok(E.nCh === 1 && [...E.slot].filter((x) => x >= 0).length === 1 && E.mem() === CHB, `빈 구역은 배열 0 — 한 칸 밟으면 그 구역 하나(${GC} × ${GC}칸 · ${CHB.toLocaleString()} 바이트)`, J({ nCh: E.nCh, mem: E.mem() }));
 }
 
 // ② ③ ⑥ 끔 ↔ 켬 60날

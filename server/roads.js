@@ -506,7 +506,7 @@ function _flushEnd(F, kv) {
 function _flushStepLazy(F, budgetMs) {
   const db = S.db, t0 = Date.now(), p0 = _i688Now();
   const cap = budgetMs > 0 ? (_flRate > 0 ? Math.max(1, Math.floor(_flRate * budgetMs)) : 1) : 0;   // 0 = 상한 없음(정상 종료 때 남은 것 다)
-  const batch = []; let cur = null;   // cur = 쓰던 키(던졌을 때 — ★[T1448] 켬은 그 키도 다음 날로)
+  const batch = []; let cur = null, wb = 0;   // cur = 쓰던 키(던졌을 때 — ★[T1448] 켬은 그 키도 다음 날로) · wb = ★[T1493] 이 묶음이 쓴 구역 행(켬 — 상한 · 속도의 단위)
   try {
     db.db.exec('BEGIN');
     for (;;) {
@@ -514,10 +514,10 @@ function _flushStepLazy(F, budgetMs) {
       const k = nx.value; let v, d; cur = k;
       if (F.snap.has(k)) { const sv = F.snap.get(k); if (sv) { v = sv[0]; d = sv[1]; } else v = null; }
       else { const r = S.cells.get(k); if (r) { v = r.v; d = r.d; } else v = null; }
-      if (F.grid) { const ci = S.cells._ci(k); if (!F.written.has(ci)) { _t1448WriteChunk(F, ci); F.written.add(ci); } }   // ★[T1448] 구역 한 줄(경계 값 · 그 구역 첫 키에서)
+      if (F.grid) { const ci = S.cells._ci(k); if (!F.written.has(ci)) { _t1448WriteChunk(F, ci); F.written.add(ci); wb++; } }   // ★[T1448] 구역 한 줄(경계 값 · 그 구역 첫 키에서)
       else if (v !== null) db.upsertRoadCell(S.zoneId, k, v, d); else db.deleteRoadCell(S.zoneId, k);
       batch.push(k, v); F.i++; cur = null;
-      if (cap && batch.length / 2 >= cap) { _flSt.capped++; break; }
+      if (cap && (F.grid ? wb : batch.length / 2) >= cap) { _flSt.capped++; break; }   // ★[T1493 · 정해진 것 3] 켬 = 쓴 구역 행으로 센다(이미 쓴 구역의 키는 쓰기 0 — 키로 세면 느린 묶음 한 번 뒤 상한이 키 하나로 무너져 그날 남은 키가 틱마다 하나씩 돈다)
       if (budgetMs > 0 && Date.now() - t0 >= budgetMs) break;
     }
     db.db.exec('COMMIT');
@@ -532,7 +532,7 @@ function _flushStepLazy(F, budgetMs) {
     return;
   }
   if (!T713) for (let j = 0; j < batch.length; j++) F.out.push(batch[j]);
-  const ms = _i688Now() - p0, rows = batch.length / 2;
+  const ms = _i688Now() - p0, rows = F.grid ? wb : batch.length / 2;   // ★[T1493] 켬 = 속도도 구역 행 ÷ ms(끔 = 종전 키 ÷ ms)
   if (budgetMs > 0 && rows > 0 && ms > 0) { const r = rows / ms; _flDayMin = _flDayMin ? Math.min(_flDayMin, r) : r; _flRate = _flDayMin; }
   _flSt.n++; if (ms > _flSt.maxMs) _flSt.maxMs = ms; if (rows > _flSt.maxRows) _flSt.maxRows = rows;
   if (T713) _t713Diff(F, batch);   // ★[T713] 이 묶음 키만 견준다(상한을 정한 ms 뒤 — 묶음 경계 그대로)
@@ -544,12 +544,12 @@ function _flushStepLazy(F, budgetMs) {
 }
 // ★[T1448] 구역 ci 를 경계 값으로 한 줄(있는 칸만 · 칸 자리 오름) — 지금 칸 + 쓰기 전 복사(그 사이 바뀐 칸 = 경계 값 · 새로 든 칸 = 없던 칸 · 지운 칸 = 있던 칸)
 function _t1448WriteChunk(F, ci) {
-  const G = S.cells, W = S.cellsW, gy = (ci / G.GW) | 0, gx = ci - gy * G.GW, c = G.ch[ci], sn = F.snap.size > 0, db = G.d64 ? 0 : G.dB;
+  const G = S.cells, W = S.cellsW, gy = (ci / G.GW) | 0, gx = ci - gy * G.GW, cv = G.chunkView(ci), sn = F.snap.size > 0, db = G.d64 ? 0 : G.dB;   // ★[T1493] 판 칸 보기(구역 배열 대신)
   const li = [], vv = [], dd = [];
   for (let i = 0; i < RG.CC; i++) {
     const cx = (gx << RG.SHIFT) + (i & (RG.C - 1)), cy = (gy << RG.SHIFT) + (i >> RG.SHIFT); if (cx >= W || cy >= S.cellsH) continue;
     if (sn) { const k = cy * W + cx; if (F.snap.has(k)) { const sv = F.snap.get(k); if (sv) { li.push(i); vv.push(sv[0]); dd.push(sv[1]); } continue; } }
-    if (c && c.v[i] > 0) { li.push(i); vv.push(c.v[i]); dd.push(c.d[i] + db); }
+    if (cv && cv.V[cv.o | i] > 0) { li.push(i); vv.push(cv.V[cv.o | i]); dd.push(cv.D[cv.o | i] + db); }
   }
   if (!li.length) { S.db.deleteRoadChunk(S.zoneId, ci); return; }
   S.db.upsertRoadChunk(S.zoneId, ci, li.length, RG.encodeChunk({ n: li.length, li, v: vv, d: dd }));
@@ -631,16 +631,9 @@ function t1448Mem() { if (!(T1448 && S.ready)) return null; let due = 0; for (co
   return { cells: S.cells.mem(), sent: S.sent.mem(), paved: S.paved.mem(), lvl: I.lvl.mem(), sched: I.sched.mem ? I.sched.mem() : 0, due, coarse: S.coarse.mem ? S.coarse.mem() : 0, chunks: S.cells.nCh, size: S.cells.size }; }
 // ★[T1448] 보이는 구역만(서버 문 — 회부 1 (가) · 존은 아직 안 부른다) — 구역 상자 [gx0..gx1]×[gy0..gy1](32칸 = 존 청크 1,024 px) 안 등급 칸 flat [cx, cy, lv, …] ·
 //   `clientRoads` 와 같은 값 · 같은 식(그 상자 안만 · 칸 키 오름) · 끔이어도 같은 답
-function clientRoadsBox(gx0, gy0, gx1, gy1) {
+function clientRoadsBox(gx0, gy0, gx1, gy1) {   // ★[T1493] 몸통은 `clientRoadsIn` 하나(T1453 · 같은 식 · 같은 차례 — 상자 전체 행 우선) — 사본 0
   if (!S.ready) return null;
-  const t = dayNow(), out = [];
-  const y0 = Math.max(0, gy0 * 32), y1 = Math.min(S.cellsH - 1, (gy1 + 1) * 32 - 1), x0 = Math.max(0, gx0 * 32), x1 = Math.min(S.cellsW - 1, (gx1 + 1) * 32 - 1);
-  for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) {
-    const r = S.cells.get(cy * S.cellsW + cx); if (!r) continue;
-    const v = (t > r.d) ? r.v * Math.pow(DK, t - r.d) : r.v, lv = v >= T2 ? 2 : (v >= T1 ? 1 : 0);
-    if (lv) out.push(cx, cy, lv);
-  }
-  return out;
+  return clientRoadsIn(gx0 * 32, gy0 * 32, (gx1 - gx0 + 1) * 32, (gy1 - gy0 + 1) * 32, []);
 }
 function init(deps) { // deps: { zoneId, cellsW, cellsH, epoch, dayMs, broadcast }
   if (!ENABLED) { console.log(`[${deps && deps.zoneId || 'zone'}] 🛤️ roads: ENABLE_ROADS=0 — 비활성(no-op)`); return; }

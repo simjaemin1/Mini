@@ -27,7 +27,12 @@ const SEED = require('./t1453-seed');
 const ROOT = path.join(__dirname, '..');
 const CPORT = 3010, ZPORT = 3020;
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
-const ARMS = arg('--arms', 'vs0nat0,vs0nat1,vs1nat1').split(',').map((a) => ({ tag: a, vs: +a.match(/vs(\d)/)[1], nat: +a.match(/nat(\d)/)[1] }));
+const ARMS = arg('--arms', 'vs0nat0,vs0nat1,vs1nat1').split(',').map((a) => ({ tag: a, vs: +a.match(/vs(\d)/)[1], nat: +a.match(/nat(\d)/)[1], rb: /rb(\d)/.test(a) ? +a.match(/rb(\d)/)[1] : -1 }));
+//   ★[T1493] 팔에 `rb0` · `rb1` 을 붙이면 길 칸 배열(`T1448_ROAD_GRID=1`) 위에서 `T1493_ROAD_BOX` 끔 · 켬(존을 다시 띄운다) · 없으면 종전 팔 그대로
+const armEnv = (arm) => (arm.rb >= 0 ? { T1448_ROAD_GRID: '1', T1493_ROAD_BOX: String(arm.rb) } : {});
+const armKey = (arm) => `vs${arm.vs}rb${arm.rb}`;
+//   ★[T1493] `--seed-from <world.db 사본>` — 합성 길 대신 라이브 사본의 `roads` 표(칸 행 그대로 · hanbando)를 심는다(제품 모듈이 표를 짓고 ATTACH 로 옮긴다)
+const SEED_FROM = arg('--seed-from', '');
 const BROWSERS = arg('--browsers', 'webkit').split(',');
 const WALK_CH = +arg('--walk-chunks', 10);
 const BODY = arg('--body', '0');
@@ -56,8 +61,17 @@ async function bootWorld(vs, extraEnv, ports) {
   killAll(); await sleep(1000);
   const cp = (ports && ports.c) || CPORT, zp = (ports && ports.z) || ZPORT;
   const seedDb = path.join(OUT, '_seed.db');
-  if (!fs.existsSync(seedDb)) say('  길 심기 ' + JSON.stringify(SEED.seed(seedDb, 'hanbando')));
-  const db = `/tmp/t1453-repro-${process.pid}-${vs}.db`;
+  if (!fs.existsSync(seedDb)) {
+    if (SEED_FROM) {   // ★[T1493] 라이브 사본 길
+      const att = 'ATTACH DATABASE ' + "'" + SEED_FROM.replace(/'/g, "''") + "'" + ' AS L', ins = "INSERT INTO roads (zone, cell_key, v, d) SELECT zone, cell_key, v, d FROM L.roads WHERE zone = 'hanbando'";
+      const code = `const D = require(${JSON.stringify(path.join(ROOT, 'server', 'zone-local-db.js'))}); const t0 = Date.now();
+        D.db.exec(${JSON.stringify(att)}); D.db.exec(${JSON.stringify(ins)}); D.db.exec('DETACH DATABASE L');
+        console.log(JSON.stringify({ n: D.db.prepare('SELECT COUNT(*) n FROM roads').get().n, ms: Date.now() - t0 }));`;
+      const r = require('child_process').spawnSync(process.execPath, ['-e', code], { env: { ...process.env, DB_PATH: seedDb, ZONE_ID: 'hanbando' }, encoding: 'utf8' });
+      say('  길 심기(라이브 사본) ' + String(r.stdout || r.stderr || '').trim().split('\n').pop());
+    } else say('  길 심기 ' + JSON.stringify(SEED.seed(seedDb, 'hanbando')));
+  }
+  const db = `/tmp/t1453-repro-${process.pid}-${vs}-${Object.values(extraEnv || {}).join('').replace(/[^0-9a-z]/gi, '').slice(-8)}.db`;
   for (const s of ['', '-wal', '-shm']) try { fs.unlinkSync(db + s); } catch (e) {}
   fs.copyFileSync(seedDb, db);
   const c = boot(path.join(ROOT, 'server', 'central.js'), { PORT: String(cp), PUBLIC_HOST: 'localhost', ENABLED_ZONES: 'hanbando' });
@@ -277,19 +291,19 @@ async function memRuns() {
 (async () => {
   if (MEM) { fs.writeFileSync(path.join(OUT, 'mem-log.txt'), ''); say(`=== T1453 존 메모리(뜬 뒤 ${MEM_MIN}분 · T1445 계측기 · 읽기만) — 몸 청크 ${BODY} ===`); await memRuns(); killAll(); say('끝'); process.exit(0); }
   fs.writeFileSync(path.join(OUT, 'repro-log.txt'), '');
-  say(`=== T1453 재현 틀 — 존 DB 길 ${SY.synthRoads({}).flat.length / 3}칸 · 마을 켬 · 몸 청크 ${BODY} · 걷는 줄 (${WALK.x0} → ${WALK.x1}, ${WALK.y}) 청크 ${WALK_CH} · 팔 ${ARMS.map((a) => a.tag).join('·')} · ${BROWSERS.join('·')} · 화면 ${VIEW.width}×${VIEW.height} ×2 ===`);
+  say(`=== T1453 재현 틀 — 존 DB 길 ${SEED_FROM ? '라이브 사본 ' + path.basename(SEED_FROM) : SY.synthRoads({}).flat.length / 3 + '칸'} · 마을 켬 · 몸 청크 ${BODY} · 걷는 줄 (${WALK.x0} → ${WALK.x1}, ${WALK.y}) 청크 ${WALK_CH} · 팔 ${ARMS.map((a) => a.tag).join('·')} · ${BROWSERS.join('·')} · 화면 ${VIEW.width}×${VIEW.height} ×2 ===`);
   const PW = require('playwright');
   const rows = [];
-  let curVs = null, Z = null;
+  let curVs = null, Z = null;   // ★[T1493] 띄운 존의 팔 열쇠(vs · rb)
   for (const arm of ARMS) {
-    if (arm.vs !== curVs) { Z = await bootWorld(arm.vs, { NODE_OPTIONS: `--require ${METER}`, T1453_METER_OUT: path.join(OUT, `meter-vs${arm.vs}.json`) }); curVs = arm.vs;
-      say(`  존 vs${arm.vs} 기동 · ` + ((Z.log().match(/답압 길 준비[^\n]*/) || [''])[0])); }
+    if (armKey(arm) !== curVs) { Z = await bootWorld(arm.vs, { NODE_OPTIONS: `--require ${METER}`, T1453_METER_OUT: path.join(OUT, `meter-${armKey(arm)}.json`), ...armEnv(arm) }); curVs = armKey(arm);
+      say(`  존 ${armKey(arm)} 기동 · ` + ((Z.log().match(/답압 길 준비[^\n]*/) || [''])[0]) + ' · ' + ((Z.log().match(/\[T1448\] 칸 행[^\n]*/) || [''])[0])); }
     for (const bn of BROWSERS) {
       const tag = `${bn}-${arm.tag}`;
       let r = null;
       try { r = await runArm(PW, bn, arm, Z); } catch (e) { r = { err: String(e && e.stack || e) }; }
       await sleep(6000);   // 미터가 마지막 판을 적을 틈
-      if (r && r.t) r.meter = meterSlice(path.join(OUT, `meter-vs${arm.vs}.json`), r.t.arm0, r.t.w1 + 2000);
+      if (r && r.t) r.meter = meterSlice(path.join(OUT, `meter-${armKey(arm)}.json`), r.t.arm0, r.t.w1 + 2000);
       rows.push({ tag, bn, ...arm, ...r });
       fs.writeFileSync(path.join(OUT, 'repro.json'), JSON.stringify({ at: new Date().toISOString(), walk: WALK, view: VIEW, body: BODY, rows }, null, 1));
       if (r.err) { say(`  ✗ ${tag}: ${r.err}`); continue; }
