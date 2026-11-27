@@ -895,6 +895,7 @@
     if (msg.type === 'welcome') {
       // 끊김 측정: promote 보낸 뒤 welcome 도착까지 걸린 시간 + welcome 처리 시간
       const _wStart = performance.now();
+      if (!msg.observer) evBriefedDay.clear();   // ★[T1503 · T1489 회부 3 · T1495 회부 3] 새 몸(다시 접속 · 존 넘김)이면 "오늘 brief 한 마을" 표를 비운다 — 마을 번호는 존마다 1 부터라(닛폰 1 ~ 36 ⊂ 한반도) 옛 존 번호가 새 존 마을 brief 를 막았다
       if (c._t1125W) {   // ★[T1125 ③] 받는 중이 끝났다 — 걸린 때 · 바이트 한 줄(실기 콘솔) · 주 소켓이면 감시 기준을 지금으로(틱 · pong 은 이 welcome 바로 뒤에 줄 서 있다 — T439 승격 규칙과 같은 꼴)
         const w = c._t1125W; c._t1125W = null;
         console.log(`[welcome] ${(w.bytes / 1024).toFixed(0)} KB 받음 — 머리 뒤 ${((_wStart - w.at) / 1000).toFixed(1)}초 · ${c.role}`);

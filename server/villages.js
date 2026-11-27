@@ -4003,6 +4003,7 @@ function foundPlayerVillage(opts) {
     state._distIncrFrom = (world._distMatrix && world._distMatrix.length) ? world._distMatrix.length : -1;
   }
   state.distDirty = true;
+  if (T1503_DIST_KEEP) state._t1503Keep = null;   // ★[T1503] 마을이 섰다 — 사본 일 취소(증분이 센다)
   console.log(`[${state.zoneId}] 🏘️ ★플레이어 마을 건립 — [${name}] 셀(${ccx},${ccy}) 창설자 ${founder} · 인구 0 · 터 ${territory.length}셀 · land(F${lp.fertility}/W${lp.water}/S${lp.stone}/O${lp.ore}) day=${day}`);
   return { ok: true, vil, dbId, name };
 }
@@ -4080,6 +4081,27 @@ const _T598E = T598_ROUTE_EDGE || T1327_ROUTE_FIX;   // 이웃 잇기 규칙이 
 //        (거리행렬 · econ 은 지형 그대로 — 교역 거리는 이 카드 밖). ⓑ 길 표(쌍이 지나는 칸 → 쌍)를 캐시에 두고 구조물이 서거나 헐린 칸을 지나던 쌍만 버린다(전부 버리던 줄은 끔 갈래).
 //      ⓒ 판정 문(`t1440Judge` · `t1440Step` · `t1440Apply`) — 존의 짓기 문과 마을의 터 고르기가 부른다. ⓓ 가는 도중 막히면 그 자리에서 목적 마을까지 다시 구해 잇는다(되돌아오지 않는다).
 const T1440_ROAD_RULE = process.env.T1440_ROAD_RULE === '1';
+// ★★[T1503 2026-11-27 · T1489 회부 1 · T1495 회부 1 · 손잡이 `T1503_DIST_KEEP`('1' 만 켬 · ★기본 끔 = 아래 갈래 하나도 안 닿는다 = main 글자 그대로)] **환호 적재가 거리를 안 바꾸면 거리행렬을 통째로 다시 세지 않는다.**
+//   종전(켬 · 끔 둘 다 `T1327_ROUTE_FIX` 켬 기본): 부팅 직후 환호 적재(`refreshDitchCells` → `_t1327DitchRedig`)가 이웃 잇기 메모(`_t598Edge`)를 통째로 비우고 `distDirty` 를 세워
+//     전쌍 BFS 를 다시 돈다(51마을 12.6초 셈 · 날 경계가 배경 셈보다 먼저 오면 첫 마감이 떠안아 11 ~ 40초 — 보고/T1489 · T1495).
+//   켬: 이웃 잇기 한 칸의 답은 그 두 코스 칸 상자 안 칸 막힘만 본다(`_t598EdgeOk` — 곧은 줄 · 상자 BFS · 몸 칸). 환호 적재가 바꾼 칸은 도랑 칸(새 ∪ 옛)뿐이다
+//     ⇒ 도랑 칸이 든 코스 칸 둘레 3×3 의 이웃 잇기만 지우고(`_t598Forget` 과 같은 둘레) **판정했던 것은 그 자리에서 지금 지형으로 다시 판정**한다.
+//     다시 판정한 답이 하나도 안 바뀌었고 지금 행렬이 지금 메모로 센 그 행렬이면(마지막 주입 사본 · 그 뒤 무효화 · 마을 생김 · 다리 쌍 일 0) BFS 가 같은 칸을 같은 차례로 밟는다 = 같은 행렬
+//     ⇒ BFS 0 · 같은 행렬 사본을 종전과 **같은 자리**(무효화 재계산 일 · 마감 ⑪ 주입)에 주입한다(주입이 하는 일 — econ `_near20` 비움 · 소문 비움 · 바탕 — 종전과 같은 순간).
+//     하나라도 바뀌었으면 종전처럼 전쌍 BFS(조각 · 마감 밖 T968) — 다만 안 바뀐 칸의 메모는 남아 이웃 잇기를 다시 안 잰다(같은 답).
+//   값이 같은 까닭: 메모 칸마다 지금 지형의 답이다(바뀐 칸 둘레는 다시 잼 · 나머지는 상자 안 칸이 그대로) → BFS 는 메모만 보니 같은 메모 = 같은 탐색 = 같은 행렬. 하네스 `test-t1503-day-close`.
+const T1503_DIST_KEEP = process.env.T1503_DIST_KEEP === '1';
+const _t1503 = { keep: 0, redo: 0, nodes: 0, rejudged: 0, changed: 0, ms: 0, why: null, inject: 0, prevD: null, forced: 0, forcedMs: 0, forcedMax: 0, waits: 0 };
+// ★★[T1503 · T1467 회부 4 · 재민 10-05 "하루에 몰아서 처리하는 일이 있으면 안 된다" · 손잡이 `T1503_CLOSE_SLICE`('1' 만 켬 · ★기본 끔 = main 글자 그대로)] **평소 하루 마감도 틱 몫 안으로.**
+//   마감은 이미 조각 줄(`state.tickJobs` · T1 · T513 · T523 · T731)이고 드레인은 조각 **사이**에서만 몫(T687 `TB` · 16ms)을 본다 ⇒ 한 틱 = 몫 + 조각 하나.
+//   켬: ⓐ 통짜 둘(교역 `econ:trade` · 사건 장부 `events`)을 마을 하나씩 — T698 그 갈래 그대로(같은 발생기 · 같은 차례 · 마감 중 마을 몸 결정 얼림 =
+//        닫는 동안 읽는 곳간 · 칸은 닫기 시작한 순간의 것) ⓑ `wx` 조각의 영토 외곽선(`_t1063DayBnd`)을 마을 하나씩(같은 차례 · 같은 칸)
+//      ⓒ 드레인이 다음 조각의 **지난번 CPU**(같은 이름 조각이 마지막으로 쓴 ms)가 이 틱 남은 몫보다 크면 그 조각을 다음 틱 머리로 미룬다(틱 머리 조각은 늘 돈다 — 언제만 · 차례 무변)
+//      ⓓ 다음 날(다음 창 마을 자정)이 왔는데 마감이 남았으면 **그 틱에 남은 것을 다 닫고** 센다(`forced` — 하루를 넘기는 마감 0 · 정해진 것 3).
+//   가상 시계 판(T745)은 몫이 안 닳아 마감이 경계 틱 한 번에 다 돈다 ⇒ 날 지문 = 끔(ⓐ ⓑ 는 같은 차례 · ⓒ ⓓ 는 언제만). 하네스 `test-t1503-day-close`.
+const T1503_CLOSE_SLICE = process.env.T1503_CLOSE_SLICE === '1';
+const _t1503Cost = new Map();   // ★[T1503 ⓒ] 조각 이름 → 지난번 CPU ms(벽시계 차)
+function _t1503Key(j) { return j.s ? j.n + ':' + j.s : j.n; }
 // ★[T1441 2026-11-23] 마을 쪽 규칙 — villages.js 가 읽는 손잡이 셋('1' 만 켬 · ★끔 기본 · 끔 = 아래 줄이 하나도 안 닿는다). 존 쪽 정본 = `zone.js` T1441 머리.
 //   `T1441_DOOR_OWNER`(② 걷는 캐러밴 몸 = 제 마을 문을 지난다) · `T1441_TERR_CLAIM`(⑧ 영토가 넓어지다 사유지를 만나면 — 그 마을 사람 것만 덮는다) · `T1441_PASSAGE`(⑥ 새 통로 — 낸 마을 · 마을의 통로 기억).
 const T1441_DOOR_OWNER = process.env.T1441_DOOR_OWNER === '1';
@@ -4436,6 +4458,7 @@ function* _distMatrixGen(reason, opts) {
     if (yield* _t977Verify(state._distBasis.blk, isBlk, gw, _pr)) _same = state._distBasis.mat;   // 확인 고리는 따로 둔 발생기(BFS 발생기 몸통은 끔과 같게 · 한 몸에 둔 판 N1 ~ N4 는 BFS 노드당 시간이 컸다 · 보고 T977 §3)
     if (_pr) _pr.same = !!_same;
   }
+  if (T1503_DIST_KEEP && opts && opts.t1503 && opts.t1503.length === M && !_prev && !(opts && opts.t1455)) { _same = opts.t1503; _t1503.inject++; }   // ★[T1503] 환호 적재가 답을 안 바꿨다 — 같은 행렬 사본(아래 BFS 0 · 주입 자리 종전 그대로)
   if (_basisOnly && opts.verifyOnly && !_same) {   // ★[T1011] 미룸 — 확인이 갈렸다: BFS 0 · 바탕을 내려놓는다(첫 무효화가 한 번 센다)
     state._distBasis = null;
     _probe.t1011Drop = (_probe.t1011Drop | 0) + 1;
@@ -4518,6 +4541,7 @@ function* _distMatrixGen(reason, opts) {
   if (T977_DIST_SAME) state._distBasis = { coords: villages.map((v) => [v.coord.x, v.coord.y]), mat: mat.map((r) => r.slice()), blk: blk.slice() };   // ★[T977] 바탕(주입 앞 사본)
   // 주입 + 로그(유클리드 대비 증가율 — 강·산 우회가 잡히면 일부 쌍이 1.0×보다 커야 함)
   state.econ.setDistMatrix(world, mat);
+  if (T1503_DIST_KEEP) { state._t1503Mat = mat; if (_t1503.firstMs == null) _t1503.firstMs = Date.now() - t0; }   // ★[T1503] 지금 메모로 센 행렬(환호 적재가 이 행렬일 때만 BFS 를 건넌다) · 첫 BFS 벽시계(부팅 문턱)
   //   ★[T598 자] 거리행렬을 파일로 남긴다(`T598_DIST_DUMP=<경로>` · 재는 판 전용 · 안 주면 이 줄 무동작) — 끔/켬 운송비 바뀐 쌍을 센다.
   if (process.env.T598_DIST_DUMP) { try { require('fs').writeFileSync(process.env.T598_DIST_DUMP, JSON.stringify({ names: villages.map((v) => v.name), mat: mat.map((r) => r.map((d) => (isFinite(d) ? +d.toFixed(3) : null))), ms: Date.now() - t0, t598: _t598Stats() })); } catch (e) {} }
   // ★[T7] 거리가 바뀌면 소문 도달표도 거짓이 된다 — 마을이 하나 늘어도 마찬가지다(행 크기가 바뀐다).
@@ -4818,7 +4842,9 @@ function _t1327DitchRedig() {
   _t1327St.ditchRuns++;
   let f = []; try { f = ditchCells(); } catch (e) {}
   const D = new Set(); for (let i = 0; i + 1 < f.length; i += 2) D.add(f[i] * 65536 + f[i + 1]);
-  if (state._t598Edge) { state._t598Edge.done.fill(0); state._t598Edge.ok.fill(0); }
+  const _k1503 = T1503_DIST_KEEP ? _t1503Rejudge(D) : null;   // ★[T1503] 켬 = 도랑 둘레만 다시 판정(끔 = 아래 통째 비움 그대로)
+  if (_k1503) { /* 메모는 다시 판정한 그대로 */ }
+  else if (state._t598Edge) { state._t598Edge.done.fill(0); state._t598Edge.ok.fill(0); }
   if (state._route) { state._route.blk.fill(0); state._route.openN.fill(-1); }
   if (T1466_ROAD_FAST) _t1466ForgetAll('ditch');   // ★[T1466 ㉱] 방향 바이트 · 칸 값 · 길잡이 표도(도랑이 메워지면 지형이 열린다)
   if (!D.size || !state.routeCache) return 0;
@@ -4829,7 +4855,57 @@ function _t1327DitchRedig() {
   state._routeSig = null;   // 영속 길 서명엔 도랑 지문이 든다(`_routeSig` — 켬) ⇒ 도랑이 바뀌기 전 서명으로 영속된 길은 다음 적재에서 안 물려받는다
   _t1327St.ditchRedig += n;
   if (state.ready) state.distDirty = true;
+  if (_k1503 && state.ready) state._t1503Keep = _k1503.same ? _k1503 : null;   // ★[T1503] 답이 안 바뀌었다 — 다음 다시 세기는 BFS 0(같은 행렬 사본 · 같은 주입 자리)
+  if (_k1503 && state.ready && state.distDirty && !_k1503.same && _t1327St.ditchRuns === 1) _t1503BootPrep();   // ★[T1503] 부팅 적재가 답을 바꿨다 — 첫 마감이 떠안지 않게(아래)
   return n;
+}
+// ★[T1503] 부팅 환호 적재 뒤 다시 세기 — 다음 날 창(가장 동쪽 마을 자정)이 배경 셈(T968)이 넉넉히 끝낼 때보다 가까우면 **지금(부팅 중 · 틱 0 · 손님 0)** 다 세어
+//   주입 앞에서 세워 둔다(`hold` · `'_ready'` — 같은 일 문 `_t957Take` · 같은 발생기 · 같은 메모). 첫 마감 ⑪ 은 주입만 한다 = 주입 자리 · 값 종전 그대로(그 하루 econ 은 옛 행렬).
+//   멀면 종전처럼 마감 밖 조각(T968)이 민다(부팅이 안 길어진다). 문턱 = 이 프로세스 첫 BFS 벽시계 × 2 + 30초(배경 셈은 한 틱 몫 절반 남짓이라 같은 일에 그 두 배 남짓 — 보고/T1495 45 ~ 49초).
+function _t1503BootPrep() {
+  if (!T957_DIST_SLICE || !T968_DIST_BG) { _t1503.boot = 'no-bg'; return; }
+  const now = Date.now(); let next = Infinity;
+  if (T731_ON && state.villages && state.villages.length) { for (const v of state.villages) next = Math.min(next, _t731Due0(v, _t731LD(v, now) + 1)); }
+  else next = state.epoch + (gameDayOf(now) + 1) * state.dayMs;
+  const left = next - now, need = 2 * (_t1503.firstMs || 0) + 30000;
+  _t1503.bootLeft = Math.round(left); _t1503.bootNeed = need;
+  if (!(left < need)) { _t1503.boot = 'bg'; console.log(`[${state.zoneId}] 🏘️ [T1503] 다시 세기는 마감 밖 조각으로 — 다음 날 창까지 ${(left / 1000).toFixed(1)}초 ≥ 문턱 ${(need / 1000).toFixed(1)}초`); return; }
+  const c0 = process.cpuUsage(), t0 = Date.now();
+  _t957Take();
+  const J = _t957Dist; if (!J) { _t1503.boot = 'no-job'; return; }
+  try { for (;;) { const r = J.g.next(); if (r.value === '_ready') { J.ready = true; break; } if (r.done) { _t957Dist = null; break; } } }
+  catch (e) { _t957Dist = null; console.error(`[${state.zoneId}] 🏘️ [T1503] 부팅 다시 세기 실패(기존 행렬 유지):`, e.message); }
+  const u = process.cpuUsage(c0); _t1503.boot = 'sync'; _t1503.bootMs = Date.now() - t0; _t1503.bootCpu = Math.round((u.user + u.system) / 1000);
+  console.log(`[${state.zoneId}] 🏘️ [T1503] 다음 날 창까지 ${(left / 1000).toFixed(1)}초 < 문턱 ${(need / 1000).toFixed(1)}초 — 부팅 중에 다 셈(주입은 첫 마감 ⑪ · 종전 자리) · ${_t1503.bootMs}ms(CPU ${_t1503.bootCpu}ms)`);
+}
+// ★[T1503] 도랑 둘레 이웃 잇기 다시 판정 — 반환 null = 못 쓴다(종전 통째 비움) · { same } = 판정했던 답이 다 같은가(+ 지금 행렬이 지금 메모의 행렬인가)
+function _t1503Rejudge(D) {
+  const t0 = Date.now(), E = state._t598Edge, gw = state._t598Gw | 0, ctx = state._distCtx;
+  const prev = _t1503.prevD || new Set();   // 옛 도랑 칸(이 프로세스 첫 적재 = 빈 집합 — zone.js 도랑 콜라이더가 비어 있었다)
+  _t1503.prevD = D;
+  if (T598_ROUTE_COST || T1440_ROAD_RULE || !_T598E || !E || !gw || !ctx || !ctx.ta) { _t1503.why = 'no-memo'; return null; }
+  const gh = E.done.length / gw, nodes = new Set();
+  const touch = (k) => { const gx = Math.floor(((k / 65536) | 0) / DIST_STEP), gy = Math.floor((k % 65536) / DIST_STEP);
+    for (let y = gy - 1; y <= gy + 1; y++) for (let x = gx - 1; x <= gx + 1; x++) if (x >= 0 && y >= 0 && x < gw && y < gh) nodes.add(y * gw + x); };
+  for (const k of D) if (!prev.has(k)) touch(k);
+  for (const k of prev) if (!D.has(k)) touch(k);
+  let rejudged = 0, changed = 0;
+  for (const i of nodes) {
+    const d0 = E.done[i], k0 = E.ok[i]; E.done[i] = 0; E.ok[i] = 0;
+    if (!d0) continue;
+    const x = i % gw, y = (i / gw) | 0;
+    for (let b = 0; b < 9; b++) { if (!(d0 & (1 << b)) || b === 4) continue;
+      const dx = ((b / 3) | 0) - 1, dy = (b % 3) - 1;
+      const ok = _t598EdgeOk(ctx.ta, x, y, dx, dy, gw); rejudged++;
+      if (ok !== !!(k0 & (1 << b))) changed++; }
+  }
+  const W = state.world, aligned = !!(W && W._distMatrix && W._distMatrix === state._t1503Mat) && !state.distDirty && !_t957Dist && !state._t1455Dist && !(state._distIncrFrom > 0);
+  const same = changed === 0 && aligned;
+  _t1503.nodes += nodes.size; _t1503.rejudged += rejudged; _t1503.changed += changed; _t1503.ms += Date.now() - t0;
+  if (same) _t1503.keep++; else _t1503.redo++;
+  _t1503.why = same ? 'same' : (changed ? 'changed' : 'not-aligned');
+  console.log(`[${state.zoneId}] 🏘️ [T1503] 환호 적재 — 도랑 ${D.size}칸(옛 ${prev.size}) · 둘레 코스 칸 ${nodes.size} · 다시 판정 ${rejudged} · 바뀐 이웃 ${changed} · ${same ? '같은 행렬(BFS 0)' : `다시 셈(${_t1503.why})`} · ${Date.now() - t0}ms`);
+  return { same, mat: W ? W._distMatrix : null };
 }
 // ── 동기 문 — **서명 무변**. 랩·하네스·전쟁·귀환 폴백·감사가 전부 이 문만 안다.
 function computeRoutePts(x0, y0, x1, y1, extraBlk) {
@@ -10180,6 +10256,7 @@ function invalidateTradeDistances(cx, cy) { // eslint-disable-line no-unused-var
   if (T1440_ROAD_RULE && Number.isFinite(cx) && Number.isFinite(cy)) { _t1440ForgetRect(cx - 1, cy - 1, cx + 1, cy + 1); lifeSiteResetAll(); return; }
   if (T1466_ROAD_FAST) _t1466ForgetAll('terrain');   // ★[T1466 ㉱] 칸 없는 무효화(다리 완공 · 마을이 늘었다) — 지형이 열렸을 수 있다 → 방향 바이트 · 칸 값을 비우고 길잡이 표를 내려 다시 굽는다
   state.distDirty = true;
+  if (T1503_DIST_KEEP) state._t1503Keep = null;   // ★[T1503] 지형이 바뀌었다 — 사본 일 취소(전쌍)
   if (state.routeCache) { _probe.routeClear++; state.routeCache.clear(); }
   // ★★[T85] **파던 길도 버린다.** 재개형은 여러 프레임에 걸쳐 파므로, 무효화 순간에 반쯤 판 길이
   //   떠 있을 수 있다 — 그걸 그냥 두면 **바뀌기 전 세계**로 판 길이 무효화 **뒤에** 캐시에 들어앉는다
@@ -12900,6 +12977,8 @@ function probeStats() { return { siteLog: _probe.siteLog.slice(-400), auditN: _p
   t1026: { on: T1026_SLOT_KEEP, start: Object.assign({}, _t1026.start), yield: Object.assign({}, _t1026.yield), drop: Object.assign({}, _t1026.drop), dropFresh: _t1026.dropFresh | 0, held: _pathJob ? (_pathJob.door || '?') : null },   // ★[T1026] 문마다 일 시작 · 기다림 · 버림(셈만)
   t968: { on: T968_DIST_BG, bgSlices: _probe.t968BgSlices | 0, bgMs: _probe.t968BgMs | 0, bgSliceMax: _probe.t968BgSliceMax | 0, ready: _probe.t968Ready | 0, readyClose: _probe.t968ReadyClose | 0, closeSlices: _probe.t968CloseSlices | 0, frozen: _probe.t968Frozen | 0, waitQ: _probe.t968WaitQ | 0 },   // ★[T968] 셈만
   t977: { same: T977_DIST_SAME, probe: T977_PROBE, runs: _t977.runs },
+  ...(T1503_CLOSE_SLICE ? { t1503s: { forced: _t1503.forced, forcedMs: _t1503.forcedMs, forcedMax: _t1503.forcedMax, waits: _t1503.waits } } : {}),   // ★[T1503] 마감 틱 몫(켬일 때만)
+  ...(T1503_DIST_KEEP ? { t1503: { keep: _t1503.keep, redo: _t1503.redo, nodes: _t1503.nodes, rejudged: _t1503.rejudged, changed: _t1503.changed, ms: _t1503.ms, why: _t1503.why, inject: _t1503.inject, firstMs: _t1503.firstMs, boot: _t1503.boot || null, bootLeft: _t1503.bootLeft, bootNeed: _t1503.bootNeed, bootMs: _t1503.bootMs, bootCpu: _t1503.bootCpu } } : {}),   // ★[T1503] 켬일 때만 칸이 선다
   t1011: { lazy: T1011_BASIS_LAZY, drop: _probe.t1011Drop | 0 },   // ★[T1011] 바탕 확인만(셈만)
   t996: { start: _probe.t996Start | 0, done: _probe.t996Done | 0, same: _probe.t996Same | 0, drop: _probe.t996Drop | 0, slices: _probe.t996Slices | 0, work: _probe.t996Work | 0, sliceMax: _probe.t996SliceMax | 0, ms: _probe.t996Ms | 0, busy: !!_t996Job },   // ★[T996] 바탕 다시 세움(셈만)   // ★[T977] 재는 판 전용 셈(끔 = 빈 목록)
   t957: { on: T957_DIST_SLICE, runs: _probe.t957Runs | 0, slices: _probe.t957Slices | 0, sliceMax: _probe.t957SliceMax | 0, workMax: _probe.t957WorkMax | 0, restart: _probe.t957Restart | 0, busy: !!_t957Dist },   // ★[T957] 거리행렬 조각(셈만)   // ★[T929] 도착 경계 귀환 길(두 팔 다 선다 — 셈만)   // ★[T775] 켬일 때만 칸이 선다(끔 = 종전 글자)
@@ -13016,6 +13095,7 @@ function onGameTick(now) {
   //   ★★[T714] **다음 경계가 왔는데 마감이 아직이면 마감이 먼저**(T690 "다음 경계 앞 마무리" 문법 · 손잡이 `T714_DUE_FIRST` 기본 켬 · `=0` = 종전).
   //     하루가 마감보다 짧으면(빠른 시계 · 무거운 날) 결정 몫 · 번갈아 때문에 마감 몫이 한 틱에 수 ms 로 줄어 마감이 하루의 몇 배를 끈다(실측 4초 하루에 15~120초).
   //     ⇒ 밀린 마감은 이 틱 머리 자리에서 공용 몫을 남김없이 먼저 쓴다(몫 남기기 끔 — 결정 문 · 뒤 문은 그 나머지). 마감이 끝나면 다음 날이 열린다(차례 · 값 그대로).
+  if (T1503_CLOSE_SLICE && _t1503DueForce(now)) return;   // ★[T1503 ⓓ] 다음 날이 왔다 — 남은 마감을 이 틱에 다 닫는다(센다)
   if (state.tickJobs) { const _due = T714_DUE_FIRST && TB.DEC_FIRST && (T731_ON ? _t731Due(now) : gameDayOf(now) > state.lastGameDay); if (_due) { TB.lateBegin(); _probe.t714Due = (_probe.t714Due || 0) + 1; }
     if (!_due && T695_LATE()) { state._t695C = true; return; } state._t695Starved = false; if (!TB.out(TICK_SLICE_MS, 'close')) _drainTickJobs(now); return; }
   if (T731_ON) { _t731Tick(now); return; }   // ★[T731] 켬 = 마을마다 현지 00:00 정산(동 → 서 · 아래 `_t731Tick`) · 끔 = 아래 종전 그대로
@@ -13060,7 +13140,7 @@ const T523_LIFE_SLICE = process.env.T523_LIFE_SLICE !== '0';
 //     ② 교역 = econ 정본 발생기(`tickWorldV2Parts().tradeSteps()` — 마을 하나 사이 쉼표) · 사건 장부 = 장부 발생기(`scanDay(…, { steps: true })` —
 //        교역 도착 절 뒤 · 마을 하나 뒤 쉼표). 한 쉼표 = 'retry'(T85 문법 — 같은 자리 맨 앞 · 같은 하루 안의 다음 조각 · 차례 무변).
 //   캐러밴 동기(`_caravanSyncOne`)는 이미 한 대씩 · 몸 A* 는 재개형이다(T85) — 손대지 않는다.
-const T698_BOUNDARY_SLICE = process.env.T698_BOUNDARY_SLICE === '1';
+const T698_BOUNDARY_SLICE = process.env.T698_BOUNDARY_SLICE === '1' || T1503_CLOSE_SLICE;   // ★[T1503 ⓐ] 마감 틱 몫 켬이면 이 갈래도 켠다(끔 = 종전 글자)
 // ══ ★★★[T720 2026-10-13 · 경도 하루 1단계 · 손잡이 `T720_LON_DAY`(기본 **끔** = 아래 갈래를 아무도 안 탄다 · main 바이트)] ═══════════════
 //   T712 설계 위 재민 10-13 판정: ⓐ 원통 경도 · 시계 = 실제 UTC × 60 · 날짜선 = 태평양 이음매. 시각 식은 `zone-config`(`lonPhaseOff` · `phaseAdd`) 하나다.
 //   ① 마을 경도 몫 `_lonOff` = 그 마을 중심 절대 x 의 `lonPhaseOff`(종전 존 안 x × 0.045 상수 자리) — 몸 `simLonOff` 가 그대로 받는다.
@@ -13200,9 +13280,10 @@ function _t731Jobs(now, T) {
       try { const r = _oreMineDaily(vil); if (r) { _oreFeedback(vil, r.oFrac); if (r.consumed > 0) { C.ore.v++; C.ore.c += r.consumed; if (vil._t724CutLast > 0) _t724P().double++; } } } catch (e) { }
     });
     add('ore', () => { if (C.ore.v) console.log(`[${state.zoneId}] ⛏ NPC 채굴: ${C.ore.v}개 마을 · 재고 -${C.ore.c.toFixed(0)}`); });
+    if (T1503_CLOSE_SLICE) { add('wx', () => { C.bnd = null; }); for (const vil of V) add('wx', () => { const b = _t1063DayBnd([vil]); if (b) Object.assign(C.bnd || (C.bnd = {}), b); }, 'wx:bnd'); }   // ★[T1503 ⓑ] 외곽선을 마을 하나씩(같은 차례 · 같은 칸 · 없으면 null)
     add('wx', () => {
       for (const vil of V) C.terr[vil.dbId] = Math.round(Math.sqrt(((vil.econ.land && vil.econ.land.size ? vil.econ.land.size * 25 : 2800)) / Math.PI) * SZ);
-      C.bnd = _t1063DayBnd(V);   // ★[T1063] 켬 = 영토가 바뀐 마을의 지금 외곽선(끔 = null · 방송 글자 무변)
+      if (!T1503_CLOSE_SLICE) C.bnd = _t1063DayBnd(V);   // ★[T1063] 켬 = 영토가 바뀐 마을의 지금 외곽선(끔 = null · 방송 글자 무변)
       for (const vil of V) {
         const w = vil.econ && vil.econ._weather;
         C.wx[vil.dbId] = (w && w.untilDay >= state.world.day) ? [w.name, (w.mult && w.mult.fertility != null) ? w.mult.fertility : 1] : null;
@@ -13453,10 +13534,11 @@ function _openDayJobs(now, T) {
   add('ore', () => { if (C.ore.v) console.log(`[${state.zoneId}] ⛏ NPC 채굴: ${C.ore.v}개 마을 · 재고 -${C.ore.c.toFixed(0)}`); });
 
   // ⑤ 클라 페이로드(영토 반경 · 날씨) — 실측 0ms.
+  if (T1503_CLOSE_SLICE) { add('wx', () => { C.bnd = null; }); for (const vil of C.vils) add('wx', () => { const b = _t1063DayBnd([vil]); if (b) Object.assign(C.bnd || (C.bnd = {}), b); }, 'wx:bnd'); }   // ★[T1503 ⓑ] 외곽선을 마을 하나씩
   add('wx', () => {
     // §19/§2 영토 크립(4파): econ land.size는 매일 자람(1셀 단위 구매) — 등가 반경(px)을 클라에 동기.
     for (const vil of C.vils) C.terr[vil.dbId] = Math.round(Math.sqrt(((vil.econ.land && vil.econ.land.size ? vil.econ.land.size * 25 : 2800)) / Math.PI) * SZ);
-    C.bnd = _t1063DayBnd(C.vils);   // ★[T1063] 켬 = 영토가 바뀐 마을의 지금 외곽선(끔 = null · 방송 글자 무변)
+    if (!T1503_CLOSE_SLICE) C.bnd = _t1063DayBnd(C.vils);   // ★[T1063] 켬 = 영토가 바뀐 마을의 지금 외곽선(끔 = null · 방송 글자 무변)
     // ★★[날씨 축] econ 이 마을마다 돌리는 단기 날씨(가뭄·폭풍·풍요·안개)를 클라에 동기한다.
     //   ★계수를 클라가 다시 적지 않는다. econ 이 실제로 쓰는 `mult.fertility` 를 **그대로 보낸다**.
     for (const vil of C.vils) {
@@ -13545,6 +13627,7 @@ function _t957Take() {   // `distDirty` 를 받아 일을 (다시) 세운다 —
   let _k = state._distIncrFrom; state._distIncrFrom = -1;
   if (_t957Dist) { _probe.t957Restart = (_probe.t957Restart | 0) + 1; if (_t957Dist.full) _k = -1; }
   let _o = (_k > 0) ? { incrementalFrom: _k } : undefined;
+  if (T1503_DIST_KEEP && state._t1503Keep) { const K = state._t1503Keep; state._t1503Keep = null; if (!_o && !_t957Dist && !state._t1455Dist && K.mat && state.world && K.mat === state.world._distMatrix) _o = { t1503: K.mat }; }   // ★[T1503] 환호 적재가 답을 안 바꿨다 — 같은 행렬 사본 일(BFS 0)
   if (!_o && T1455_BRIDGE_DECAY) { const _j = _t1455TakeJob(_t957Dist); if (_j) _o = { t1455: _j }; }   // ★[T1455] 다리 몫 쌍 일(전쌍이 아니면)
   if (_t996Job) { _t996Job = null; _probe.t996Drop = (_probe.t996Drop | 0) + 1; }   // ★[T996] 진짜 다시 세기가 바탕을 세운다
   _t957Dist = { g: _distMatrixGen('무효화 재계산', T968_DIST_BG ? Object.assign({ hold: true }, _o || {}) : _o), full: !(_k > 0) && !(_o && _o.t1455), slices: 0, workMs: 0, ready: false, t55: _o && _o.t1455 ? _o.t1455 : null };
@@ -13610,6 +13693,23 @@ function _t996Step() {
       }
     }
   } catch (e) { _t996Job = null; console.error(`[${state.zoneId}] 🏘️ [T996] 거리행렬 바탕 다시 세움 실패(바탕 그대로):`, e.message); }
+}
+// ★[T1503 ⓒ] 다음 조각의 지난번 CPU 가 남은 몫보다 큰가(처음 보는 이름 = 0 — 종전처럼 담는다)
+function _t1503Late(j, left) { const c = _t1503Cost.get(_t1503Key(j)); if (c != null && c > left) { _t1503.waits++; return true; } return false; }
+// ★[T1503 ⓓ] 다음 날(다음 창 마을 자정)이 왔는데 마감이 남았다 — 이 틱에 남은 것을 다 닫고 센다(하루를 넘기는 마감 0)
+//   T731 — 창 가운데(다음 마을 자정 · `_t731Due`) · 창 꼬리(마을을 다 냈다 · 동쪽 끝 마을이 다음 날로 넘었다 = 다음 창이 와야 한다 — `_t731Due` 는 창이 서 있으면 거짓이라 꼬리를 못 본다)
+function _t1503Due(now) {
+  if (!T731_ON) return gameDayOf(now) > state.lastGameDay;
+  if (_t731Due(now)) return true;
+  const W = state._t731; if (!W || W.list.length) return false;
+  const L = state.villages || []; let hi = L.length ? -Infinity : gameDayOf(now); for (const v of L) { const d = _t731LD(v, now); if (d > hi) hi = d; }
+  return hi > W.D;
+}
+function _t1503DueForce(now) { if (!state.tickJobs || !_t1503Due(now)) return false; _t1503ForceClose(now); return true; }
+function _t1503ForceClose(now) {
+  const t0 = Date.now(); state._t1503Force = true; _t1503.forced++;
+  try { _drainTickJobs(now); } finally { state._t1503Force = false; }
+  const d = Date.now() - t0; _t1503.forcedMs += d; if (d > _t1503.forcedMax) _t1503.forcedMax = d;
 }
 // 마감 — 요약 로그 + 계측 적재 + 대기 큐 방류.
 function _closeDay(C) {
@@ -13721,7 +13821,7 @@ function _t1376FailClose(C) {
 function _drainTickJobs(now) {
   const C = state.tickCtx, J = state.tickJobs;
   if (!C || !J) { state.tickJobs = null; state.tickCtx = null; return; }
-  const f0 = Date.now(), _B = TB.left(TICK_SLICE_MS);   // ★[T687] 끔 = 조각 예산 그대로 · 켬 = 이 틱 남은 몫(문 예산보다 크지 않다)
+  const f0 = Date.now(), _B = (T1503_CLOSE_SLICE && state._t1503Force) ? Infinity : TB.left(TICK_SLICE_MS);   // ★[T687] 끔 = 조각 예산 그대로 · 켬 = 이 틱 남은 몫(문 예산보다 크지 않다) · ★[T1503 ⓓ] 다음 날이 왔다 = 남은 것 다
   C.frames = (C.frames || 0) + 1;
   try {
     do {
@@ -13730,6 +13830,7 @@ function _drainTickJobs(now) {
       state._t714Wait = false;   // ★[T714] 이 조각이 부팅 표본(다른 문)을 기다리며 돌아왔나
       const rv = j.f();
       const d = Date.now() - a;
+      if (T1503_CLOSE_SLICE) _t1503Cost.set(_t1503Key(j), d);   // ★[T1503 ⓒ] 지난번 CPU(다음 날 같은 이름 조각을 담을지 가르는 값)
       C.chunks++; C.work = (C.work || 0) + d;
       if (C.order[C.order.length - 1] !== j.n) C.order.push(j.n);   // ★[T1 §3-④] 단계 순서 — 조각내기가 *언제*만 바꿨는지의 증거
       C.stg[j.n] = (C.stg[j.n] || 0) + d;
@@ -13749,7 +13850,7 @@ function _drainTickJobs(now) {
       //   ⇒ 기다림으로 돌아온 조각은 그 자리에 둔 채 프레임을 닫는다 — 남은 몫은 뒤 차례 문(도적 표본)이 쓴다. 차례 · 값 그대로(언제만).
       //   손잡이 `T714_WAIT_YIELD`(기본 켬 · `=0` = 종전 헛돎).
       if (rv === 'retry' && T714_WAIT_YIELD && state._t714Wait) { _probe.t714Yield = (_probe.t714Yield || 0) + 1; break; }
-    } while (J.length && (TICK_SLICE_MS === 0 || Date.now() - f0 < _B));
+    } while (J.length && (TICK_SLICE_MS === 0 || Date.now() - f0 < _B) && !(T1503_CLOSE_SLICE && _B !== Infinity && _t1503Late(J[0], _B - (Date.now() - f0))));   // ★[T1503 ⓒ] 다음 조각이 남은 몫에 안 들면 다음 틱 머리로
   } catch (e) {
     console.error(`[${state.zoneId}] 🏘️ 마을 econ 틱 실패 (다음 경계에 재시도):`, e.message);
     state.tickJobs = null; state.tickCtx = null; _drainVillageWaitQ();
@@ -19779,6 +19880,7 @@ function _t1455Rebuild(site, why) {
   if (pairs === null) { state._t1455Dist = null; state._distIncrFrom = -1; }
   else if (pairs.length) { const P = state._t1455Dist || (state._t1455Dist = new Map()); for (const [i, j] of pairs) P.set(i < j ? i * 65536 + j : j * 65536 + i, 1); }
   if (pairs === null || pairs.length) state.distDirty = true;
+  if (T1503_DIST_KEEP && (pairs === null || pairs.length)) state._t1503Keep = null;   // ★[T1503] 다리가 섰다 · 끊겼다 — 사본 일 취소(쌍 일 · 전쌍)
   const _u0 = process.cpuUsage(t0), ms = (_u0.user + _u0.system) / 1000;
   _t1455V.rebuild.push({ d: (state.world && state.world.day) | 0, i: site.i, why, ms: +ms.toFixed(2), routes: dropped, pairs: pairs ? pairs.length : null, nodes: N.size });
   _t1455V.legsCut += why === 'cut' ? dropped : 0;
@@ -23760,6 +23862,10 @@ module.exports = { T1471_LAND_FIT, t1471Stat,   // ★[T1471]
   t1406PathCell: (cx, cy, vil) => _t1406PathCell(cx, cy, vil || null), T1406_KEEP_PATHS, artisanPerf,   // ★[T1196] 장인 작업장 관측
   t1461Die, t1461Out, t1461Stat, T1461_BEAST_UNSEEN, __t1461: { st: () => state },   // ★[T1461] 명부 밖 몸 죽음 · 마을 밖 몸(존 손잡이 `T1461_BEAST_UNSEEN` 켬에서만 부른다)
   t1432Die, t1432Stat, t1432Sync: (vil, n) => syncVillagePop(vil, n),   // ★[T1432] 쓰러진 NPC 진짜 죽음(존 손잡이 `T1432_NPC_DEATH` 켬에서만 부른다) · 몸 동기 문(하네스가 운영 그 문을 부른다 · 내보내기만)
+  __t1503: { T1503_DIST_KEEP, T1503_CLOSE_SLICE, T698: T698_BOUNDARY_SLICE, setup: (o) => { for (const k of Object.keys(o || {})) state[k] = o[k]; return state; }, dist: (r, o) => computeAndInjectDistMatrix(r, o), ditch: () => _t1327DitchRedig(),
+    stage: () => { let n = 0; while (_t957DistStage() === 'retry' && n < 1e7) n++; return n; }, bg: () => _t968DistBg(), inval: (cx, cy) => invalidateTradeDistances(cx, cy), drain: (now) => _drainTickJobs(now), due: (now) => T1503_CLOSE_SLICE && _t1503DueForce(now),
+    st: () => { const E = state._t598Edge; let done = 0; if (E) for (let i = 0; i < E.done.length; i++) if (E.done[i]) done++; return { s: Object.assign({}, _t1503, { prevD: _t1503.prevD ? _t1503.prevD.size : null }), keep: !!state._t1503Keep, job: _t957Dist ? { ready: !!_t957Dist.ready, full: !!_t957Dist.full } : null, dirty: !!state.distDirty, edgeNodes: done, cost: _t1503Cost.size, perf: (() => { try { return Object.keys(probeStats()).filter((k) => /^t1503/.test(k)); } catch (e) { return [String(e.message).slice(0, 40)]; } })() }; },
+    edgeAll: () => { const E = state._t598Edge, gw = state._t598Gw | 0, ta = state._distCtx && state._distCtx.ta; if (!E || !gw || !ta) return null; const F = { done: new Uint16Array(E.done.length), ok: new Uint16Array(E.ok.length) }; const T0 = ta._t1440M; ta._t1440M = F; let bad = 0, n = 0; try { for (let i = 0; i < E.done.length; i++) { const d0 = E.done[i]; if (!d0) continue; for (let b = 0; b < 9; b++) { if (!(d0 & (1 << b)) || b === 4) continue; n++; if (_t598EdgeOk(ta, i % gw, (i / gw) | 0, ((b / 3) | 0) - 1, (b % 3) - 1, gw) !== !!(E.ok[i] & (1 << b))) bad++; } } } finally { if (T0 === undefined) delete ta._t1440M; else ta._t1440M = T0; } return { n, bad }; } },   // ★[T1503] 하네스 문(읽기 · 부르기만 — 제품 줄은 안 부른다)
   T1455_BRIDGE_DECAY, t1455OnCut, t1455Donate, t1455VilBridges, t1455Peek, t1455Stat, t1455BridgeWorth, __t1455: { setup: (o) => { for (const k of ['econ', 'econV2', 'villages', 'routeCache', 'walkCache', 'world', '_distCtx', '_distBlk', 'ready', '_t527Sites']) if (k in o) state[k] = o[k]; _t1455Init = null; return state; }, dist: (r, o) => computeAndInjectDistMatrix(r, o), take: () => _t1455TakeJob(null), sites: () => _t527Sites(), complete: (site) => { const day = (state.world && state.world.day) | 0; site.stage = _t527StageCount(site); site.mat = {}; _t527Complete(site, day); _t527Save(site); return site.done; }, clock: (f) => { _t1455Clk = f || null; }, now: () => _t1455Now(), V: _t1455V, x: (s, n) => _t1455X(s, n), own: (s) => _t1455Own(s), worldDay: () => _t1455WorldDay(), vilDay: (v) => _t1455VilDay(v), rebuild: (s, w) => _t1455Rebuild(s, w), pairs: (N, w) => _t1455Pairs(N, w), nodes: (s) => _t1455Nodes(s), job: (P, M) => _t1455DistJob(P, M), revive: (s) => _t1455Revive(s), tryCut: (s) => _t1455TryCut(s) },   // ★[T1455]
   T1439_CALL_CARRY, t1439Stat, _t1439Probe: { call: (vil, npc, now) => _t1439Call(vil, npc, now), step: (vil, npc, now, t) => _t1439Step(vil, npc, now, t) },   // ★[T1439] 마을에서 데려가기(하네스 · 관찰)
   T1438_DECAY, t1438HouseAt, t1438HitHouse, t1438RepairHouse, t1438Stat, __t1438: { villageDay: (v) => _t1438VilDay(v), find: _t1438Find, parts: _t1438Parts, collapse: _t1438Collapse, V: _t1438V, load: (b) => _t1438Load(b), ded: (v) => _t1438Ded(v), fp: (type, cx, cy) => _vbFootprint(type, cx, cy),
