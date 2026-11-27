@@ -16297,6 +16297,50 @@
    "why": "srv",
    "why0": "존 · central · listen · fixture-boot"
   },
+  "test-t1444-side-rest.js": {
+   "cls0": "나",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 3,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.6,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "execFileSync node"
+   ],
+   "cls": "나",
+   "maxSec": 3,
+   "same5": true,
+   "core": true,
+   "why": "core"
+  },
   "test-t1445-boot-flood.js": {
    "cls0": "다",
    "why0": "존 · central · listen · fixture-boot",
@@ -18990,5 +19034,5 @@
    "srv": true
   }
  },
- "at": "2026-11-24"
+ "at": "2026-11-27"
 }
