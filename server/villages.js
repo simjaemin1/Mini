@@ -19119,6 +19119,7 @@ function _t1502ForageStep(vil, npc, now, day) {
   const G = vil._t347Groves, cells = (G && G.list) || [];
   if (!cells.length) return false;                                   // 오늘 색인이 빈 마을 — 종전 갈래
   const h = _pidHash(npc.pid);
+  if (!(_lifeEcon().forageDemandLeft(vil.econ) > 0)) return !!(npc._t1502F && npc._t1502F.n > 0 && _granGo(vil, npc, false));   // 그날 채집 수요가 찼다 — 손에 든 게 있으면 곳간으로, 없으면 종전 차례(돌 캐기 · 퇴근)
   const F = npc._t1502F || (npc._t1502F = { site: null, skip: null, sd: -1, n: 0 });
   if (F.sd !== day) { F.sd = day; F.skip = null; F.site = null; }
   if (!F.site) {
@@ -22116,6 +22117,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   //     멈추는 것이 아니라 **아무 자원이나** 따는 것이다(손에 든 것은 `_lifeDaily` 가 그대로 곳간에 넣는다).
   //   ⚠행위 층이 켜진 마을·그 직업만(`_t374Done` 안) — 안 켜진 마을은 수식이 내고 걸음은 그림이다(무접촉).
   //   끄면 `_t374Done` 이 첫 줄에서 false 다(비트 동일 · 손 합도 안 센다).
+  if (T1502_ACT_FIX && job === 'forager' && vil.econ && _lifeEcon().T347_FORAGE_ACT && _lifeEcon().forageActOn(vil.econ) && _t1502ForageStep(vil, npc, now, day)) return true;   // ★[T1502] 켬 = 채집꾼 몸의 자리는 채집 색인 · 일의 차례: 채집 수요가 남은 동안 돌 캐기(`_physicalStoneWork`)보다 먼저(위 `_t1502ForageStep` 머리말 · 끔 = 이 줄 무동작)
   if (_physicalStoneWork(vil,npc,now,fv,dayR,day,bday)) return true;
   if (_T1422_K && _t374Done(vil, job) && _t1422Side(vil, npc, now, 'quota')) return true;   // ★[T1422] 쉬러 가기 전 문(끔 = 첫 항 거짓 · 아래 퇴근 줄 글자 그대로)
   if (_t374Done(vil, job)) { _lifeGoHome(npc, '휴식'); return true; }
@@ -22197,7 +22199,6 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     P.ns += Number(process.hrtime.bigint() - _t0); P.calls++;
     if (_own) return true;
   }
-  if (T1502_ACT_FIX && job === 'forager' && vil.econ && _lifeEcon().T347_FORAGE_ACT && _lifeEcon().forageActOn(vil.econ) && _t1502ForageStep(vil, npc, now, day)) return true;   // ★[T1502] 켬 = 채집꾼 몸의 자리는 채집 색인(위 `_t1502ForageStep` 머리말 · 끔 = 이 줄 무동작)
   if (job === 'lumberjack' || job === 'miner' || job === 'forager') {   // 벌목·채광·채집=자원 밀집 현장 출근 + 실물 채집(랩 7841·7844·7861 동형)
     const sites = _lifeJobSites(vil, day)[job];
     if (!sites || !sites.length) return false;   // 생활권에 해당 자원 없음 → 레거시 폴스루
