@@ -35,7 +35,7 @@ JS 실행 도중 임시 ctl을 푼 상태나 아직 끝나지 않은 호스트/�
 
 ## 검증의 자와 관측 범위
 
-native matrix는 seed 7/42와 T1445 ON/OFF 각각에서 소집·행군·포위·교전·귀환·함락 직후(정본 항복)를 실제 `warMobilize`/daily/몸 틱으로 만든다. 소집은 아직 body가 서기 전, 행군은 공격 그룹만 선 상태, 포위는 hold 방어의 미소집 상태, 교전은 실제 비행탄이 있는 상태, 귀환과 함락 직후는 정본 정책 전이 뒤 상태다. phase 문자열만 바꾼 fixture가 아니다. 포위/항복 fixture의 식량·직업·무장 입력은 하네스에서 명시적으로 준비한다.
+native matrix는 seed 7/42와 T1445 ON/OFF 각각에서 소집·행군·포위·교전·귀환·함락 직후(정본 항복)를 실제 `warMobilize`/daily/몸 틱으로 만든다. 소집은 아직 body가 서기 전, 행군은 공격 그룹만 선 상태, 포위는 정본 op=siege·form ctx가 있는 상태(이 fixture 후속 BC step은 0), 교전은 실제 비행탄이 있는 상태, 귀환과 함락 직후는 정본 정책 전이 뒤 상태다. phase 문자열만 바꾼 fixture가 아니다. 포위/항복 fixture의 식량·직업·무장 입력은 하네스에서 명시적으로 준비한다.
 
 checkpoint 뒤 각 조건에서 30Hz host tick 900회/일 × 10일 = 9,000회를 호출한다. 하루 길이 30,000ms이며 `_t681Flush → world.day++ → war.daily → _warAfterDaily → _t681Day` 순서다. 실제 battle step 수·dt 합·발사·문 분포는 조건별 protocol에 별도로 남는다. 전투가 끝나면 이후 날에 억지로 전투 step을 만들지 않는다. 이 판은 전쟁 호스트 fixture이며 경제 전체를 10일 똑같이 실행한 판이라고 확대하지 않는다.
 
@@ -63,4 +63,6 @@ NPC 마을 전쟁의 위 계약이 대상이다. 비마을 인간 전투원, 소
 
 검증 마감 중간 근거: 데이터 계약14/14, 기본OFF를 켬으로 바꾼 단일원인 미끼는 `unset must preserve explicit OFF canonical bytes` 단언 빨강(크래시0), 기존 6상태 미끼까지 합7개다. 공식 old-code-red 3/3 단언 빨강·크래시0, 하네스 규약102/102. 800일 경제3seed(1020/7/42)는 기준2502 대비 JSON 전체 바이트가 같다. 관련회귀 route-persist 첫판은55통과/4실패이며 당시 경제장판 CPU경합이 있었으므로 단독 재검증 대상으로 남겼다.
 
-최종 무결성 보완: 개발초기 v1 명부 fallback은 제거했다. bodyIds 누락·중복·records와 대응하지 않는 manifest는 재계산 checksum이 있어도 prepareBodies/restore 모두 `WAR_SNAP_INVALID`다. 최종 제품의 추가 차이는 이 거부 검증이며, 성숙870 판은 불변703 소스로 계속 측정한다. 유효703 snapshot에는 manifest가 있어 그 분기는 사용되지 않는다. 보완 후14/14와24/24를 다시 통과했다. `native-protocols-final.json`은24조건 모두9000 host tick과 실제 단계/body/group/ctx·후속BC step/dt 합을 공개한다.
+최종 무결성 보완: 개발초기 v1 명부 fallback은 제거했다. bodyIds 누락·중복·records와 대응하지 않는 manifest 및 필수 host memory 누락은 재계산 checksum이 있어도 prepareBodies/restore 모두 `WAR_SNAP_INVALID`다. 최종 제품의 추가 차이는 이 거부 검증이며, 성숙870 판은 불변703 소스로 계속 측정한다. 유효703 snapshot에는 manifest가 있어 그 분기는 사용되지 않는다. 보완 후14/14와24/24를 다시 통과했다. `native-protocols-final.json`은24조건 모두9000 host tick과 실제 단계/body/group/ctx·후속BC step/dt 합을 공개한다.
+
+공식 old-code-red의 3종 빨강은 모두 `complete snapshot product API absent` 전제 단언이다. 이것을 3종 각각의 행동 차이 증명으로 확대하지 않는다. 실제 상태 보존/누락 감지는 native 연속-재개 비교와 별도 단일원인 미끼7개가 담당한다.

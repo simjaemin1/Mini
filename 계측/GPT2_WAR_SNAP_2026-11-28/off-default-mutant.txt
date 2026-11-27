@@ -1,0 +1,25 @@
+✗ 미끼 · 바꾼 자리: default OFF and nonliteral flags preserve canonical saved bytes
+/workspace/scratch/war-snap-off-mutant/scripts/test-war-snapshot-data.js:9
+let pass=0;function check(name,fn){try{fn();}catch(e){console.error('✗ '+name);throw e;}pass++;console.log('✓ '+name);}
+                                                                               ^
+
+AssertionError [ERR_ASSERTION]: unset must preserve explicit OFF canonical bytes
+    at /workspace/scratch/war-snap-off-mutant/scripts/test-war-snapshot-data.js:42:3
+    at check (/workspace/scratch/war-snap-off-mutant/scripts/test-war-snapshot-data.js:9:40)
+    at Object.<anonymous> (/workspace/scratch/war-snap-off-mutant/scripts/test-war-snapshot-data.js:34:1)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object..js (node:internal/modules/cjs/loader:2060:10)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v24.22.1

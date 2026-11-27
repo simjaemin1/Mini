@@ -1,10 +1,10 @@
 {
   "server/villages.js": "18cc78ed679d33c00b8e35c1b452fafb08d9f35a9f65d4894bd86e539b8197e6",
-  "server/war-snapshot-host.js": "80fdb2f98b354f782a65991f3dc881b895f63076deab1094705dd2a4fca4e521",
+  "server/war-snapshot-host.js": "33e34cf470a236678b185b1de5da3fa9483a409fe912b204c668ab5a4f582941",
   "server/war-snapshot.js": "699c97f60d15c809665e29b864419a28ac1e8c1902c84acaa515a8cce5051cf4",
   "server/war-live.js": "677899eaced5225af1d69e0b2bc668cebace27b75ef503ec40ebfe4ef35166cf",
   "sim/path-core.js": "c098bbf92ead03838fe4818359210c105887c66a469b25636513f45de2b07975",
   "scripts/test-war-snapshot.js": "ab17cb2d1bdb317187bb739cec4fca4dc976078cc0ea1cce109ca5a551f2ae22",
-  "scripts/test-war-snapshot-data.js": "7a15e470c0cfdc9ab7fd12cfd182e4a568fa81ef212999f2555b9497f5ea886f",
+  "scripts/test-war-snapshot-data.js": "d8b3282ca017d799fe8b98040a7fd077c1a7e3e573c775a7c8574b655d8a4982",
   "scripts/lib-war-snap-fixture.js": "fdd37423cdba33a691e3b53652adf96e1c428f3e89335034d1e4ce55d46284d4"
 }

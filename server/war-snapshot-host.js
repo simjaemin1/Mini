@@ -143,6 +143,7 @@ function restore(snapshot, state, bindings, now) {
   } });
   if (JSON.stringify(root.profile) !== JSON.stringify(bindings.profile())) Graph.fail('incompatible war runtime profile');
   if (root.day !== state.world.day || !Array.isArray(root.wars) || !(root.bodies instanceof Map) || !Array.isArray(root.records) || !root.runtime || (!Number.isSafeInteger(root.runtime.arrowSeq) || root.runtime.arrowSeq < 0)) Graph.fail('inconsistent world boundary');
+  if (!root.memory || MEMORY.some((k) => !Object.prototype.hasOwnProperty.call(root.memory, k)) || !Array.isArray(root.village) || !Array.isArray(root.playerOrder) || !Array.isArray(root.npcOrder) || !Object.prototype.hasOwnProperty.call(root, 'polySeq') || !Object.prototype.hasOwnProperty.call(root, 'nextPid')) Graph.fail('incomplete host state');
   if (!(root.stand && root.stand.m instanceof Map) || !(root.route instanceof Map) || !(root.pref instanceof Map) || !Array.isArray(root.pidTokens) || !root.world || !Array.isArray(root.econPids)) Graph.fail('missing shared state');
   for (const w of root.wars) if (!w || !idx.external.has(w.atk) || !idx.external.has(w.def) || !w.atk.econ || !w.def.econ) Graph.fail('missing attacker/defender');
   validateBodyManifest(root);
