@@ -1,0 +1,117 @@
+{
+ "src": "w1123.db",
+ "at": "2026-11-27T16:52:52.325Z",
+ "orig": {
+  "n": 1066837,
+  "maxD": 1246825,
+  "chunks": 0,
+  "hash": "c7d198f6f62a",
+  "ok": "ok"
+ },
+ "off0": {
+  "initMs": 4108,
+  "cells": 1066837,
+  "graded": 489715,
+  "clientHash": "bf4582f7eb16",
+  "boot": null,
+  "log": [
+   "[hanbando] 🛤️ 답압 길 준비(§16): 복원 1066837셀(등급 489715) · T1=8/T2=28/감쇠 0.995/일 · 4096ms"
+  ]
+ },
+ "on1": {
+  "initMs": 4923,
+  "cells": 1066837,
+  "graded": 489715,
+  "clientHash": "bf4582f7eb16",
+  "boot": {
+   "chunkRows": 0,
+   "cellRows": 1066837,
+   "readMs": 4406,
+   "mig": {
+    "cellRows": 1066837,
+    "chunkRows": 13501,
+    "ms": 1487
+   },
+   "outside": 0
+  },
+  "log": [
+   "[hanbando] 🛤️ [T1448] 칸 행 1066837 → 구역 행 13501(한 거래 · 앞서 있던 구역 행 0 · 1487ms)",
+   "[hanbando] 🛤️ 답압 길 준비(§16): 복원 1066837셀(등급 489715) · T1=8/T2=28/감쇠 0.995/일 · 4912ms"
+  ]
+ },
+ "after1": {
+  "n": 0,
+  "maxD": 0,
+  "chunks": 13501,
+  "hash": "da39a3ee5e6b",
+  "ok": "ok"
+ },
+ "on2": {
+  "initMs": 714,
+  "cells": 1066837,
+  "graded": 489715,
+  "clientHash": "bf4582f7eb16",
+  "boot": {
+   "chunkRows": 13501,
+   "cellRows": 0,
+   "readMs": 223,
+   "mig": null,
+   "outside": 0
+  },
+  "log": [
+   "[hanbando] 🛤️ 답압 길 준비(§16): 복원 1066837셀(등급 489715) · T1=8/T2=28/감쇠 0.995/일 · 681ms"
+  ]
+ },
+ "after2": {
+  "n": 0,
+  "maxD": 0,
+  "chunks": 13501,
+  "hash": "da39a3ee5e6b",
+  "ok": "ok"
+ },
+ "off1": {
+  "initMs": 5892,
+  "cells": 1066837,
+  "graded": 489715,
+  "clientHash": "bf4582f7eb16",
+  "boot": null,
+  "log": [
+   "[hanbando] 🛤️ [T1448] 손잡이 끔 — 구역 행 13501 → 칸 행 1066837(한 거래 · 2322ms)",
+   "[hanbando] 🛤️ 답압 길 준비(§16): 복원 1066837셀(등급 489715) · T1=8/T2=28/감쇠 0.995/일 · 5855ms"
+  ]
+ },
+ "after3": {
+  "n": 1066837,
+  "maxD": 1246825,
+  "chunks": 0,
+  "hash": "c7d198f6f62a",
+  "ok": "ok"
+ },
+ "on3": {
+  "initMs": 3328,
+  "cells": 1066837,
+  "graded": 489715,
+  "clientHash": "bf4582f7eb16",
+  "boot": {
+   "chunkRows": 0,
+   "cellRows": 1066837,
+   "readMs": 2799,
+   "mig": {
+    "cellRows": 1066837,
+    "chunkRows": 13501,
+    "ms": 576
+   },
+   "outside": 0
+  },
+  "log": [
+   "[hanbando] 🛤️ [T1448] 칸 행 1066837 → 구역 행 13501(한 거래 · 앞서 있던 구역 행 0 · 576ms)",
+   "[hanbando] 🛤️ 답압 길 준비(§16): 복원 1066837셀(등급 489715) · T1=8/T2=28/감쇠 0.995/일 · 3273ms"
+  ]
+ },
+ "verdict": {
+  "migrated": true,
+  "rowsBack": true,
+  "sameClient": true,
+  "quick": true
+ }
+}

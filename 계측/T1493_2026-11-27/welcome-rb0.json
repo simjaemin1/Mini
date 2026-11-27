@@ -1,0 +1,80 @@
+{
+ "arm": "rb0",
+ "at": "2026-11-27T16:44:12.231Z",
+ "boot": "[T1448] 칸 행 1066837 → 구역 행 13501(한 거래 · 앞서 있던 구역 행 0 · 576ms)",
+ "welcome": [
+  {
+   "ms": 604,
+   "bytes": 5373997,
+   "roadBytes": 4156261,
+   "roadCells": 378726,
+   "wire": 1027429,
+   "roadWire": 850857
+  },
+  {
+   "ms": 341,
+   "bytes": 5373997,
+   "roadBytes": 4156261,
+   "roadCells": 378726,
+   "wire": 1027443,
+   "roadWire": 850857
+  },
+  {
+   "ms": 289,
+   "bytes": 5373997,
+   "roadBytes": 4156261,
+   "roadCells": 378726,
+   "wire": 1027433,
+   "roadWire": 850857
+  },
+  {
+   "ms": 298,
+   "bytes": 5373997,
+   "roadBytes": 4156261,
+   "roadCells": 378726,
+   "wire": 1027449,
+   "roadWire": 850857
+  },
+  {
+   "ms": 277,
+   "bytes": 5373997,
+   "roadBytes": 4156261,
+   "roadCells": 378726,
+   "wire": 1027442,
+   "roadWire": 850857
+  }
+ ],
+ "wsum": {
+  "bytes": 5373997,
+  "roadBytes": 4156261,
+  "roadCells": 378726,
+  "wire": 1027429,
+  "roadWire": 850857,
+  "msMed": 298,
+  "msMax": 604,
+  "slowSec": 23.6,
+  "slowRoadSec": 19.6
+ },
+ "walk_임업2": {
+  "msgs": 0,
+  "kb": 0,
+  "cells": 0
+ },
+ "walk_농촌22": {
+  "msgs": 0,
+  "kb": 0,
+  "cells": 0
+ },
+ "walk_광산1": {
+  "msgs": 0,
+  "kb": 0,
+  "cells": 0
+ },
+ "perMsg": {
+  "n": 0,
+  "medKB": 0,
+  "p95KB": 0,
+  "maxKB": 0,
+  "crossings": 19
+ }
+}

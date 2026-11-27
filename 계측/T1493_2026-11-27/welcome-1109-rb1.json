@@ -1,0 +1,337 @@
+{
+ "arm": "rb1",
+ "at": "2026-11-27T19:35:57.826Z",
+ "shift": {
+  "today": 1247088,
+  "maxD": 1245985,
+  "by": 1103
+ },
+ "boot": "[T1448] 칸 행 680359 → 구역 행 12297(한 거래 · 앞서 있던 구역 행 0 · 379ms)",
+ "welcome": [
+  {
+   "ms": 437,
+   "bytes": 1266466,
+   "roadBytes": 48274,
+   "roadCells": 4349,
+   "wire": 187656,
+   "roadWire": 9758,
+   "keys": [
+    [
+     "hardcodedTerrain",
+     836535
+    ],
+    [
+     "buildings",
+     149043
+    ],
+    [
+     "simVillages",
+     96701
+    ],
+    [
+     "mobs",
+     59154
+    ],
+    [
+     "roads",
+     48274
+    ],
+    [
+     "resources",
+     19052
+    ],
+    [
+     "crops",
+     11134
+    ],
+    [
+     "itemLabels",
+     9451
+    ],
+    [
+     "bridges",
+     7771
+    ],
+    [
+     "itemWeights",
+     6873
+    ]
+   ]
+  },
+  {
+   "ms": 89,
+   "bytes": 1266466,
+   "roadBytes": 48274,
+   "roadCells": 4349,
+   "wire": 187658,
+   "roadWire": 9758,
+   "keys": [
+    [
+     "hardcodedTerrain",
+     836535
+    ],
+    [
+     "buildings",
+     149043
+    ],
+    [
+     "simVillages",
+     96701
+    ],
+    [
+     "mobs",
+     59154
+    ],
+    [
+     "roads",
+     48274
+    ],
+    [
+     "resources",
+     19052
+    ],
+    [
+     "crops",
+     11134
+    ],
+    [
+     "itemLabels",
+     9451
+    ],
+    [
+     "bridges",
+     7771
+    ],
+    [
+     "itemWeights",
+     6873
+    ]
+   ]
+  },
+  {
+   "ms": 88,
+   "bytes": 1266466,
+   "roadBytes": 48274,
+   "roadCells": 4349,
+   "wire": 187660,
+   "roadWire": 9758,
+   "keys": [
+    [
+     "hardcodedTerrain",
+     836535
+    ],
+    [
+     "buildings",
+     149043
+    ],
+    [
+     "simVillages",
+     96701
+    ],
+    [
+     "mobs",
+     59154
+    ],
+    [
+     "roads",
+     48274
+    ],
+    [
+     "resources",
+     19052
+    ],
+    [
+     "crops",
+     11134
+    ],
+    [
+     "itemLabels",
+     9451
+    ],
+    [
+     "bridges",
+     7771
+    ],
+    [
+     "itemWeights",
+     6873
+    ]
+   ]
+  },
+  {
+   "ms": 109,
+   "bytes": 1266466,
+   "roadBytes": 48274,
+   "roadCells": 4349,
+   "wire": 187658,
+   "roadWire": 9758,
+   "keys": [
+    [
+     "hardcodedTerrain",
+     836535
+    ],
+    [
+     "buildings",
+     149043
+    ],
+    [
+     "simVillages",
+     96701
+    ],
+    [
+     "mobs",
+     59154
+    ],
+    [
+     "roads",
+     48274
+    ],
+    [
+     "resources",
+     19052
+    ],
+    [
+     "crops",
+     11134
+    ],
+    [
+     "itemLabels",
+     9451
+    ],
+    [
+     "bridges",
+     7771
+    ],
+    [
+     "itemWeights",
+     6873
+    ]
+   ]
+  },
+  {
+   "ms": 92,
+   "bytes": 1266466,
+   "roadBytes": 48274,
+   "roadCells": 4349,
+   "wire": 187658,
+   "roadWire": 9758,
+   "keys": [
+    [
+     "hardcodedTerrain",
+     836535
+    ],
+    [
+     "buildings",
+     149043
+    ],
+    [
+     "simVillages",
+     96701
+    ],
+    [
+     "mobs",
+     59154
+    ],
+    [
+     "roads",
+     48274
+    ],
+    [
+     "resources",
+     19052
+    ],
+    [
+     "crops",
+     11134
+    ],
+    [
+     "itemLabels",
+     9451
+    ],
+    [
+     "bridges",
+     7771
+    ],
+    [
+     "itemWeights",
+     6873
+    ]
+   ]
+  }
+ ],
+ "wsum": {
+  "bytes": 1266466,
+  "roadBytes": 48274,
+  "roadCells": 4349,
+  "wire": 187656,
+  "roadWire": 9758,
+  "msMed": 92,
+  "msMax": 437,
+  "slowSec": 4.3,
+  "slowRoadSec": 0.2,
+  "keys": [
+   [
+    "hardcodedTerrain",
+    836535
+   ],
+   [
+    "buildings",
+    149043
+   ],
+   [
+    "simVillages",
+    96701
+   ],
+   [
+    "mobs",
+    59154
+   ],
+   [
+    "roads",
+    48274
+   ],
+   [
+    "resources",
+    19052
+   ],
+   [
+    "crops",
+    11134
+   ],
+   [
+    "itemLabels",
+    9451
+   ],
+   [
+    "bridges",
+    7771
+   ],
+   [
+    "itemWeights",
+    6873
+   ]
+  ]
+ },
+ "walk_임업2": {
+  "msgs": 8,
+  "kb": 98.3,
+  "cells": 8369
+ },
+ "walk_농촌22": {
+  "msgs": 3,
+  "kb": 1.4,
+  "cells": 113
+ },
+ "walk_광산1": {
+  "msgs": 2,
+  "kb": 23.7,
+  "cells": 2021
+ },
+ "perMsg": {
+  "n": 16,
+  "medKB": 3.78,
+  "p95KB": 45.18,
+  "maxKB": 45.18,
+  "crossings": 19
+ }
+}

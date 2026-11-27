@@ -1,0 +1,286 @@
+{
+ "db": "w1123.db",
+ "made": "T1448",
+ "probes": {
+  "full": {
+   "probe": "full",
+   "cellsW": 2188,
+   "cellsH": 4063,
+   "day": 1246825,
+   "rows": 1066837,
+   "heapBase": 4.9,
+   "initMs": 4376,
+   "n": {
+    "cells": 1066837,
+    "paved": 381953,
+    "coarse": 49203,
+    "bootUnpaved": 63963,
+    "g1": 107762,
+    "g2": 381953,
+    "sent": 489715
+   },
+   "heapInit": 171.7,
+   "initMB": 166.8,
+   "initAB": 1.6,
+   "boot": null,
+   "mem": null,
+   "sentMB": 14,
+   "sentAB": 0,
+   "totalMB": 182.4,
+   "gcMs": 71.743404,
+   "clientMs": 118,
+   "clientCells": 489715,
+   "clientJsonMB": 5.1,
+   "dumpMs": 856,
+   "dumpMB": 53.5,
+   "dumpParts": {
+    "cells": 31.5,
+    "coarse": 0.5,
+    "paved": 2.9,
+    "dirty": 0,
+    "lastDay": 0,
+    "coarseGen": 0,
+    "stats": 0,
+    "bootUnpaved": 0.5,
+    "chgOn": 0,
+    "chg": 0,
+    "I": 18.1
+   },
+   "dumpHeldMB": 230.1,
+   "loadMs": 1489,
+   "boxMs": 9,
+   "box": {
+    "gx": 48,
+    "gy": 5,
+    "cells": 8067,
+    "jsonKB": 87
+   },
+   "stampUs": 2.366,
+   "levelUs": 0.583,
+   "levelAcc": 177744,
+   "dayRollMs": 18.54,
+   "day1": {
+    "stamped": 38000,
+    "ticks": 487,
+    "flushMs": 481.6,
+    "maxTickMs": 2.64,
+    "batches": 487,
+    "flMaxMs": 2.62,
+    "flMaxRows": 109,
+    "snap": 0,
+    "incMs": 17.78044199999931,
+    "incMaxMs": 17.78044199999931,
+    "line": "[hanbando] 🛤️ 답압 길 day 1246826: 셀 1066837(등급 489412) · 저장 52876행 · 클라 변경 303셀 · 오늘 스탬프 38000 · 묶음 487"
+   },
+   "dbRows": {
+    "cell": 1066837,
+    "chunk": 0
+   },
+   "parts": [
+    [
+     "sent",
+     14,
+     0
+    ],
+    [
+     "coarse",
+     1.7,
+     0
+    ],
+    [
+     "paved",
+     10,
+     0
+    ],
+    [
+     "dirty",
+     0,
+     0
+    ],
+    [
+     "bootUnpaved",
+     0.5,
+     0
+    ],
+    [
+     "cells",
+     140.5,
+     0
+    ]
+   ],
+   "heapFull": 216,
+   "afterAll": 44.4,
+   "gcMsAfterClear": 9.431127
+  },
+  "gfull": {
+   "probe": "gfull",
+   "cellsW": 2188,
+   "cellsH": 4063,
+   "day": 1246825,
+   "rows": 1066837,
+   "heapBase": 5,
+   "initMs": 4878,
+   "n": {
+    "cells": 1066837,
+    "paved": 381953,
+    "coarse": 49203,
+    "bootUnpaved": 63963,
+    "g1": 107762,
+    "g2": 381953,
+    "sent": 489715
+   },
+   "heapInit": 6.5,
+   "initMB": 1.5,
+   "initAB": 60,
+   "boot": {
+    "chunkRows": 0,
+    "cellRows": 1066837,
+    "readMs": 4412,
+    "mig": {
+     "cellRows": 1066837,
+     "chunkRows": 13501,
+     "ms": 1447
+    },
+    "outside": 0
+   },
+   "mem": {
+    "cells": 41475072,
+    "sent": 0,
+    "paved": 182944,
+    "lvl": 1659648,
+    "sched": 13277184,
+    "due": 2783232,
+    "coarse": 555752,
+    "chunks": 13501,
+    "size": 1066837
+   },
+   "sentMB": 0.1,
+   "sentAB": 1.6,
+   "totalMB": 63.3,
+   "gcMs": 3.742197,
+   "clientMs": 106,
+   "clientCells": 489715,
+   "clientJsonMB": 5.1,
+   "dumpMs": 649,
+   "dumpMB": 41.4,
+   "dumpParts": {
+    "cells": 0,
+    "cellsG": 19.5,
+    "coarse": 0.5,
+    "paved": 2.9,
+    "dirty": 0,
+    "lastDay": 0,
+    "coarseGen": 0,
+    "stats": 0,
+    "bootUnpaved": 0.5,
+    "chgOn": 0,
+    "chg": 0,
+    "I": 18.1
+   },
+   "dumpHeldMB": 157.2,
+   "loadMs": 415,
+   "boxMs": 5,
+   "box": {
+    "gx": 48,
+    "gy": 5,
+    "cells": 8067,
+    "jsonKB": 87
+   },
+   "stampUs": 1.114,
+   "levelUs": 0.246,
+   "levelAcc": 177744,
+   "dayRollMs": 2.58,
+   "day1": {
+    "stamped": 38000,
+    "ticks": 121,
+    "flushMs": 132.5,
+    "maxTickMs": 4.72,
+    "batches": 121,
+    "flMaxMs": 4.47,
+    "flMaxRows": 47,
+    "snap": 0,
+    "incMs": 2.007969999999659,
+    "incMaxMs": 2.007969999999659,
+    "line": "[hanbando] 🛤️ 답압 길 day 1246826: 셀 1066837(등급 489412) · 저장 52876행 · 클라 변경 303셀 · 오늘 스탬프 38000 · 묶음 121"
+   },
+   "dbRows": {
+    "cell": 0,
+    "chunk": 13501,
+    "chunkMB": 14.5
+   },
+   "parts": [
+    [
+     "sent",
+     0.1,
+     1.6
+    ],
+    [
+     "coarse",
+     0,
+     0
+    ],
+    [
+     "paved",
+     0.1,
+     0.2
+    ],
+    [
+     "dirty",
+     0,
+     0
+    ],
+    [
+     "bootUnpaved",
+     0.5,
+     0
+    ],
+    [
+     "cells",
+     0.2,
+     39.8
+    ]
+   ],
+   "heapFull": 12.6,
+   "afterAll": 6.8,
+   "gcMsAfterClear": 4.429511
+  },
+  "gboot2": {
+   "probe": "gboot2",
+   "cellsW": 2188,
+   "cellsH": 4063,
+   "day": 1246825,
+   "rows": 1066837,
+   "heapBase": 5,
+   "initMs": 683,
+   "n": {
+    "cells": 1066837,
+    "paved": 382256,
+    "coarse": 49203,
+    "bootUnpaved": 61559,
+    "g1": 107459,
+    "g2": 382256
+   },
+   "heapInit": 6.5,
+   "initMB": 1.4,
+   "initAB": 59.9,
+   "boot": {
+    "chunkRows": 13501,
+    "cellRows": 0,
+    "readMs": 225,
+    "mig": null,
+    "outside": 0
+   },
+   "mem": {
+    "cells": 41475072,
+    "sent": 0,
+    "paved": 183904,
+    "lvl": 1659648,
+    "sched": 13277184,
+    "due": 2609152,
+    "coarse": 555752,
+    "chunks": 13501,
+    "size": 1066837
+   }
+  }
+ }
+}

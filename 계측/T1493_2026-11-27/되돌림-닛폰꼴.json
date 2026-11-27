@@ -1,0 +1,117 @@
+{
+ "src": "nippon-mirror.db",
+ "at": "2026-11-27T16:53:20.332Z",
+ "orig": {
+  "n": 1066810,
+  "maxD": 1246825,
+  "chunks": 0,
+  "hash": "7a34d0e454f6",
+  "ok": "ok"
+ },
+ "off0": {
+  "initMs": 3421,
+  "cells": 1066810,
+  "graded": 489715,
+  "clientHash": "d7ec78e1c5d4",
+  "boot": null,
+  "log": [
+   "[nippon] 🛤️ 답압 길 준비(§16): 복원 1066810셀(등급 489715) · T1=8/T2=28/감쇠 0.995/일 · 3407ms"
+  ]
+ },
+ "on1": {
+  "initMs": 3080,
+  "cells": 1066810,
+  "graded": 489715,
+  "clientHash": "d7ec78e1c5d4",
+  "boot": {
+   "chunkRows": 0,
+   "cellRows": 1066810,
+   "readMs": 2631,
+   "mig": {
+    "cellRows": 1066810,
+    "chunkRows": 13500,
+    "ms": 552
+   },
+   "outside": 0
+  },
+  "log": [
+   "[nippon] 🛤️ [T1448] 칸 행 1066810 → 구역 행 13500(한 거래 · 앞서 있던 구역 행 0 · 552ms)",
+   "[nippon] 🛤️ 답압 길 준비(§16): 복원 1066810셀(등급 489715) · T1=8/T2=28/감쇠 0.995/일 · 3070ms"
+  ]
+ },
+ "after1": {
+  "n": 0,
+  "maxD": 0,
+  "chunks": 13500,
+  "hash": "da39a3ee5e6b",
+  "ok": "ok"
+ },
+ "on2": {
+  "initMs": 700,
+  "cells": 1066810,
+  "graded": 489715,
+  "clientHash": "d7ec78e1c5d4",
+  "boot": {
+   "chunkRows": 13500,
+   "cellRows": 0,
+   "readMs": 219,
+   "mig": null,
+   "outside": 0
+  },
+  "log": [
+   "[nippon] 🛤️ 답압 길 준비(§16): 복원 1066810셀(등급 489715) · T1=8/T2=28/감쇠 0.995/일 · 668ms"
+  ]
+ },
+ "after2": {
+  "n": 0,
+  "maxD": 0,
+  "chunks": 13500,
+  "hash": "da39a3ee5e6b",
+  "ok": "ok"
+ },
+ "off1": {
+  "initMs": 5986,
+  "cells": 1066810,
+  "graded": 489715,
+  "clientHash": "d7ec78e1c5d4",
+  "boot": null,
+  "log": [
+   "[nippon] 🛤️ [T1448] 손잡이 끔 — 구역 행 13500 → 칸 행 1066810(한 거래 · 2308ms)",
+   "[nippon] 🛤️ 답압 길 준비(§16): 복원 1066810셀(등급 489715) · T1=8/T2=28/감쇠 0.995/일 · 5955ms"
+  ]
+ },
+ "after3": {
+  "n": 1066810,
+  "maxD": 1246825,
+  "chunks": 0,
+  "hash": "7a34d0e454f6",
+  "ok": "ok"
+ },
+ "on3": {
+  "initMs": 3183,
+  "cells": 1066810,
+  "graded": 489715,
+  "clientHash": "d7ec78e1c5d4",
+  "boot": {
+   "chunkRows": 0,
+   "cellRows": 1066810,
+   "readMs": 2675,
+   "mig": {
+    "cellRows": 1066810,
+    "chunkRows": 13500,
+    "ms": 587
+   },
+   "outside": 0
+  },
+  "log": [
+   "[nippon] 🛤️ [T1448] 칸 행 1066810 → 구역 행 13500(한 거래 · 앞서 있던 구역 행 0 · 587ms)",
+   "[nippon] 🛤️ 답압 길 준비(§16): 복원 1066810셀(등급 489715) · T1=8/T2=28/감쇠 0.995/일 · 3130ms"
+  ]
+ },
+ "verdict": {
+  "migrated": true,
+  "rowsBack": true,
+  "sameClient": true,
+  "quick": true
+ }
+}

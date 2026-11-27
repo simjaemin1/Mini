@@ -1,0 +1,337 @@
+{
+ "arm": "rb0",
+ "at": "2026-11-27T19:34:13.678Z",
+ "shift": {
+  "today": 1247088,
+  "maxD": 1245985,
+  "by": 1103
+ },
+ "boot": "[T1448] 칸 행 680359 → 구역 행 12297(한 거래 · 앞서 있던 구역 행 0 · 374ms)",
+ "welcome": [
+  {
+   "ms": 735,
+   "bytes": 4309245,
+   "roadBytes": 3091056,
+   "roadCells": 280558,
+   "wire": 824610,
+   "roadWire": 645881,
+   "keys": [
+    [
+     "roads",
+     3091056
+    ],
+    [
+     "hardcodedTerrain",
+     836535
+    ],
+    [
+     "buildings",
+     149043
+    ],
+    [
+     "simVillages",
+     96701
+    ],
+    [
+     "mobs",
+     59154
+    ],
+    [
+     "resources",
+     19052
+    ],
+    [
+     "crops",
+     11134
+    ],
+    [
+     "itemLabels",
+     9451
+    ],
+    [
+     "bridges",
+     7771
+    ],
+    [
+     "itemWeights",
+     6873
+    ]
+   ]
+  },
+  {
+   "ms": 360,
+   "bytes": 4309245,
+   "roadBytes": 3091056,
+   "roadCells": 280558,
+   "wire": 824616,
+   "roadWire": 645881,
+   "keys": [
+    [
+     "roads",
+     3091056
+    ],
+    [
+     "hardcodedTerrain",
+     836535
+    ],
+    [
+     "buildings",
+     149043
+    ],
+    [
+     "simVillages",
+     96701
+    ],
+    [
+     "mobs",
+     59154
+    ],
+    [
+     "resources",
+     19052
+    ],
+    [
+     "crops",
+     11134
+    ],
+    [
+     "itemLabels",
+     9451
+    ],
+    [
+     "bridges",
+     7771
+    ],
+    [
+     "itemWeights",
+     6873
+    ]
+   ]
+  },
+  {
+   "ms": 278,
+   "bytes": 4309245,
+   "roadBytes": 3091056,
+   "roadCells": 280558,
+   "wire": 824614,
+   "roadWire": 645881,
+   "keys": [
+    [
+     "roads",
+     3091056
+    ],
+    [
+     "hardcodedTerrain",
+     836535
+    ],
+    [
+     "buildings",
+     149043
+    ],
+    [
+     "simVillages",
+     96701
+    ],
+    [
+     "mobs",
+     59154
+    ],
+    [
+     "resources",
+     19052
+    ],
+    [
+     "crops",
+     11134
+    ],
+    [
+     "itemLabels",
+     9451
+    ],
+    [
+     "bridges",
+     7771
+    ],
+    [
+     "itemWeights",
+     6873
+    ]
+   ]
+  },
+  {
+   "ms": 255,
+   "bytes": 4309245,
+   "roadBytes": 3091056,
+   "roadCells": 280558,
+   "wire": 824615,
+   "roadWire": 645881,
+   "keys": [
+    [
+     "roads",
+     3091056
+    ],
+    [
+     "hardcodedTerrain",
+     836535
+    ],
+    [
+     "buildings",
+     149043
+    ],
+    [
+     "simVillages",
+     96701
+    ],
+    [
+     "mobs",
+     59154
+    ],
+    [
+     "resources",
+     19052
+    ],
+    [
+     "crops",
+     11134
+    ],
+    [
+     "itemLabels",
+     9451
+    ],
+    [
+     "bridges",
+     7771
+    ],
+    [
+     "itemWeights",
+     6873
+    ]
+   ]
+  },
+  {
+   "ms": 236,
+   "bytes": 4309244,
+   "roadBytes": 3091056,
+   "roadCells": 280558,
+   "wire": 824617,
+   "roadWire": 645881,
+   "keys": [
+    [
+     "roads",
+     3091056
+    ],
+    [
+     "hardcodedTerrain",
+     836535
+    ],
+    [
+     "buildings",
+     149043
+    ],
+    [
+     "simVillages",
+     96701
+    ],
+    [
+     "mobs",
+     59154
+    ],
+    [
+     "resources",
+     19052
+    ],
+    [
+     "crops",
+     11134
+    ],
+    [
+     "itemLabels",
+     9451
+    ],
+    [
+     "bridges",
+     7771
+    ],
+    [
+     "itemWeights",
+     6873
+    ]
+   ]
+  }
+ ],
+ "wsum": {
+  "bytes": 4309245,
+  "roadBytes": 3091056,
+  "roadCells": 280558,
+  "wire": 824610,
+  "roadWire": 645881,
+  "msMed": 278,
+  "msMax": 735,
+  "slowSec": 18.9,
+  "slowRoadSec": 14.8,
+  "keys": [
+   [
+    "roads",
+    3091056
+   ],
+   [
+    "hardcodedTerrain",
+    836535
+   ],
+   [
+    "buildings",
+    149043
+   ],
+   [
+    "simVillages",
+    96701
+   ],
+   [
+    "mobs",
+    59154
+   ],
+   [
+    "resources",
+    19052
+   ],
+   [
+    "crops",
+    11134
+   ],
+   [
+    "itemLabels",
+    9451
+   ],
+   [
+    "bridges",
+    7771
+   ],
+   [
+    "itemWeights",
+    6873
+   ]
+  ]
+ },
+ "walk_임업2": {
+  "msgs": 0,
+  "kb": 0,
+  "cells": 0
+ },
+ "walk_농촌22": {
+  "msgs": 0,
+  "kb": 0,
+  "cells": 0
+ },
+ "walk_광산1": {
+  "msgs": 0,
+  "kb": 0,
+  "cells": 0
+ },
+ "perMsg": {
+  "n": 0,
+  "medKB": 0,
+  "p95KB": 0,
+  "maxKB": 0,
+  "crossings": 19
+ }
+}
