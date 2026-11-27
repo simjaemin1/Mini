@@ -77,7 +77,7 @@ delete process.env.T896_RESUME_ONE;
       try { const db = new DatabaseSync(S, { readOnly: true }); const d = db.prepare('select max(day) as d from villages').get(); db.close(); if (d && d.d >= 8) break; } catch (e) {} } }
   try { z.kill('SIGTERM'); } catch (e) {}
   await Promise.race([zx, sleep(30000)]); try { z.kill('SIGKILL'); } catch (e) {} await zx;
-  let mc = 0; try { const db = new DatabaseSync(S, { readOnly: true }); const m = db.prepare('select data from world_meta').get(); mc = m ? (JSON.parse(m.data).caravans || []).length : 0; db.close(); } catch (e) {}
+  let mc = 0; try { const db = new DatabaseSync(S, { readOnly: true }); const m = db.prepare("select data from world_meta where zone = 'hanbando'").get(); mc = m ? (JSON.parse(m.data).caravans || []).length : 0; db.close(); } catch (e) {}
   ok(mc >= 10, '[상황] 저장된 세계 — 길 위 캐러밴이 메타에 실렸다', `캐러밴 ${mc}`);
   //   ★[T1267] 부팅 세계 지문(판정 밖) — 저장 DB 에서: 마을 수 · 인구 합 · 저장 날 · 되살릴 줄(캐러밴) 수 · 가는/귀환 · 다른 쌍 수 · 쌍 거리(칸 — 마을 자리 견줌)
   const FP = { villages: 0, pop: 0, day: null, caravans: mc, out: 0, inb: 0, pairs: 0, pairMax: 0, pairMean: 0 };
@@ -85,7 +85,7 @@ delete process.env.T896_RESUME_ONE;
     const db = new DatabaseSync(S, { readOnly: true });
     const vs = db.prepare('select name, cx, cy, population, day from villages').all(); FP.villages = vs.length;
     const at = new Map(vs.map((v) => [v.name, v])); for (const v of vs) { FP.pop += v.population | 0; FP.day = Math.max(FP.day | 0, v.day | 0); }
-    const m = db.prepare('select data from world_meta').get(); const cs = m ? (JSON.parse(m.data).caravans || []) : [];
+    const m = db.prepare("select data from world_meta where zone = 'hanbando'").get(); const cs = m ? (JSON.parse(m.data).caravans || []) : [];
     const pr = new Map();
     for (const c of cs) { if (c.state === 'inbound') FP.inb++; else FP.out++; const k = [c.from, c.to].sort().join('|'); if (!pr.has(k)) { const A = at.get(c.from), B = at.get(c.to); pr.set(k, A && B ? Math.hypot(A.cx - B.cx, A.cy - B.cy) : null); } }
     const ds = [...pr.values()].filter((d) => d != null); FP.pairs = pr.size; FP.pairMax = ds.length ? Math.round(Math.max(...ds)) : 0; FP.pairMean = ds.length ? Math.round(ds.reduce((x, y) => x + y, 0) / ds.length) : 0;
