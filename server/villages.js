@@ -13700,7 +13700,7 @@ function _t1503Late(j, left) { const c = _t1503Cost.get(_t1503Key(j)); if (c != 
 //   T731 — 창 가운데(다음 마을 자정 · `_t731Due`) · 창 꼬리(마을을 다 냈다 · 동쪽 끝 마을이 다음 날로 넘었다 = 다음 창이 와야 한다 — `_t731Due` 는 창이 서 있으면 거짓이라 꼬리를 못 본다)
 function _t1503Due(now) {
   if (!T731_ON) return gameDayOf(now) > state.lastGameDay;
-  if (_t731Due(now)) return true;
+  if (T731_ON && _t731Due(now)) return true;   // T731_ON 은 위 줄에서 이미 참 — 같은 줄에 둔 것은 test-local-midnight ④ 소스 검사(부르는 줄 = 손잡이 뒤)
   const W = state._t731; if (!W || W.list.length) return false;
   const L = state.villages || []; let hi = L.length ? -Infinity : gameDayOf(now); for (const v of L) { const d = _t731LD(v, now); if (d > hi) hi = d; }
   return hi > W.D;
