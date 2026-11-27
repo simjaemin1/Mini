@@ -342,6 +342,8 @@ function build(player, vid, numeraire, memo) {
     gate: { near: true },
   };
   { const A = _assign(vil, me); if (A) view.members.assign = A; }   // ★[T1169] 촌장에게만(없으면 키 없음 — 옛 바이트)
+  //   ★[T1494] 원한 품은 사람 — 존이 칸을 줄 때만(손잡이 `T1447_PERSON_GRUDGE` 켬 · 끔 = 키 없음 · 옛 바이트). 그 마을이 아는 원한만 · 정확한 수 · 토벌은 촌장에게만(존 `_t1494Slot`).
+  if (H.t1494Slot) { let g = null; try { g = H.t1494Slot(player, vil); } catch (e) { g = null; } if (g) view.grudge = g; }
   const key = memo ? pricesKey(src, vil, player, numeraire, board) : null;
   if (memo && memo.key === key && memo.slot) { view.prices = memo.slot; ST.priceReuse++; }
   else { view.prices = _prices(player, vid, numeraire); _trend(vil, view.prices, src.day); if (memo) { memo.key = key; memo.slot = view.prices; } }
@@ -366,6 +368,7 @@ function open(player, vid, numeraire) {
   const prev = OPEN.get(_pidOf(player));
   const o = { player, vid: vid | 0, numeraire: numeraire || undefined, seq: (prev && prev.vid === (vid | 0)) ? prev.seq : 0, last: {}, memo };
   for (const k of SLOTS) o.last[k] = JSON.stringify(r.view[k]);
+  if (r.view.grudge !== undefined) o.last.grudge = JSON.stringify(r.view.grudge);   // ★[T1494] 켬 칸(끔 = 이 줄 무동작)
   o.seq++;
   OPEN.set(_pidOf(player), o);
   ST.open++; ST.full++;

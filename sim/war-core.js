@@ -1280,7 +1280,7 @@ function createWar(opts) {
       if (e._warTrauma) for (const k in e._warTrauma) { const nv = e._warTrauma[k] * WAR_TRAUMA_DK; if (nv < 0.01) delete e._warTrauma[k]; else e._warTrauma[k] = nv; }
       if (e._warCaution) e._warCaution *= 0.99;
       if (e._warFatigue) e._warFatigue *= WAR_FAT_DK;
-      let mx = 0; if (e._grudge) for (const k in e._grudge) if (e._grudge[k] > mx) mx = e._grudge[k]; e._grudgeMax = mx;
+      let mx = 0, mv = 0; if (e._grudge) for (const k in e._grudge) { const g = e._grudge[k]; if (g > mx) mx = g; if (g > mv && k.charCodeAt(0) !== 1) mv = g; } e._grudgeMax = mv;   // ★[T1494 · T1447 회부 7] 호전 가중(T1187)은 마을끼리 원한만 — 사람 열쇠(U+0001 · server/grudge.js)는 안 센다(사람 원한이 없으면 mv = mx · 종전 값) · 목책은 종전 그대로(mx)
       if (Math.max(e._banditRisk || 0, mx) > 0.35 && (e.storage.wood || 0) > WAR_PAL_WOOD && (e._palisade || 0) < WAR_PAL_MAX) { e.storage.wood -= WAR_PAL_WOOD; e._palisade = Math.min(WAR_PAL_MAX, (e._palisade || 0) + 0.12); st.palisade++; log(day, vil.name + ' 목책 증축(방어+' + ((e._palisade * 100) | 0) + '%)'); }
     }
     // 2) 조공 징수(90일마다 곳간 8%)

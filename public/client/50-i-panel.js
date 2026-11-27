@@ -554,12 +554,36 @@ function itemKo(k) {
     panel.classList.toggle('hidden', !tribeOpen);
     if (tribeOpen) renderTribePanel();
   }
+  // ★★[T1494 · T1447 회부 11] 내 창 — 나를 미워하는 마을. 서버 `grudge_me`(손잡이 `T1447_PERSON_GRUDGE` 켬에서만 온다 · 끔 = 이 칸 없음 = 종전 판 그대로).
+  //   서버가 **내가 알 수 있는 것**만 싣는다(그 마을 사람이 내 앞에서 본 일 · 가입 · 거래 거절 · 촌장 말 · 그 마을에 가 봄 · 소문이 닿음) — 클라 셈 0.
+  //   한 줄: 마을 · 단계 말(강조색 하나) · 어떻게 알았나 · 언제 · 까닭 · 푸는 길.
+  let myGrudge = null;
+  function grudgeMeOnMessage(m) {
+    myGrudge = (m && Array.isArray(m.rows)) ? m.rows : [];
+    window.__grudgeMe = myGrudge;
+    if (activeSide === 'tribe') renderSide('tribe');
+  }
+  function grudgeMeHtml() {
+    if (!myGrudge) return '';
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    let h = '<div class="bd-sec" id="grudgeMe">나를 미워하는 마을</div>';
+    if (!myGrudge.length) return h + '<div class="bd-none" id="grudgeMeNone">아는 것이 없습니다. 마을 사람이 보았거나 소문이 닿으면 여기에 적힙니다.</div>';
+    for (const r of myGrudge) {
+      const when = (r.ago | 0) <= 0 ? '오늘' : `${r.ago | 0}일 전`;
+      h += `<div class="craft-row grudge-me" data-vid="${esc(r.vid)}"><div class="craft-info">`
+        + `<div class="craft-name">${esc(r.name)} <b style="color:var(--accent)">${esc(r.stageKo)}</b></div>`
+        + `<div class="craft-cost">${esc([r.how, when].filter(Boolean).join(' · '))}${r.why ? ` · ${esc(r.why)}` : ''}</div>`
+        + (r.fix ? `<div class="craft-cost">푸는 길 — ${esc(r.fix)}</div>` : '')
+        + '</div></div>';
+    }
+    return h;
+  }
   async function renderTribePanel() {
     const body = document.getElementById('tribeBody');
     if (!body) return;
     body.innerHTML = '<div class="hint">로딩 중...</div>';
     if (!myUsername || myUsername.startsWith('anon_')) {
-      body.innerHTML = '<div class="hint">손님은 마을 일을 할 수 없습니다. 로그인하십시오.</div>';
+      body.innerHTML = grudgeMeHtml() + '<div class="hint">손님은 마을 일을 할 수 없습니다. 로그인하십시오.</div>';   // ★[T1494] 손님도 미움은 산다(켬이면 맨 위 · 끔 = 빈 글자)
       return;
     }
     // ★★[T787 2026-10-18 · 길드 = 마을] 서버가 켬(`uiCfg.villageOnly`)이면 이 패널은 **마을 패널**이다 —
@@ -576,7 +600,7 @@ function itemKo(k) {
         ['/마을 초대제 · /마을 공개', '촌장 — 가입 문'], ['/전쟁 마을 · /종전 마을', '촌장 — 마을 사이 전쟁'],
         ['/t 메시지', '마을 채팅'], ['/탈퇴', '마을에서 나오기'],
       ];
-      body.innerHTML = `<div class="hint">소속 마을: <b>${myTribeName ? `[${esc(myTribeName)}]` : '(아직 없음)'}</b></div>`
+      body.innerHTML = grudgeMeHtml() + `<div class="hint">소속 마을: <b>${myTribeName ? `[${esc(myTribeName)}]` : '(아직 없음)'}</b></div>`   // ★[T1494] 켬이면 맨 위에 "나를 미워하는 마을"(끔 = 빈 글자)
         + `<button class="craft-btn" id="villageLookBtn" style="margin:6px 0 8px">내 마을 보기</button>`
         + ROWS.map(([c, d]) => `<div class="craft-row"><div class="craft-info"><div class="craft-name">${esc(c)}</div><div class="craft-cost">${esc(d)}</div></div></div>`).join('');
       const lb = document.getElementById('villageLookBtn');

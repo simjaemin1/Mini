@@ -20,6 +20,7 @@
 
 let vvData = null, vvVid = null, vvTab = 'dash', vvMemAll = false, vvWired = false;
 let vvRaw = null, vvSeq = 0, vvNum = null;
+let vvRaidAsk = null;   // ★[T1494] 촌장이 「토벌」을 누른 사람(pid) — 무엇이 일어나는지 한 줄 묻는 동안만
 let vvAsgPick = {};   // ★[T1169] 「일 맡기기」에서 고른 일(econ 사람 id → 직업) — 명부 칸이 5초 박자로 다시 지어져도 고른 것을 잃지 않게   // ★[T1103] 서버 칸 덩어리(바뀐 칸만 오면 그 칸만 갈아 끼운다) · 마지막 seq · 고른 시세 기준(res id)
 
 function vvKnobOn() { try { return new URLSearchParams(location.search).get('T1070_VILLAGE_VIEW') !== '0'; } catch (e) { return true; } }   // ★[T1137] 켬 기본(`=0` 만 끔)
@@ -99,6 +100,11 @@ function vvAdapt(raw) {
         jobs: (mem.assign.jobs || []).map((j) => ({ job: j.job, ko: j.ko || j.job, open: !!j.open })),
         rows: mem.assign.rows.map((r) => ({ id: String(r.id), job: r.job, jobKo: r.jobKo || r.job, age: num(r.age), left: r.left | 0, away: !!r.away, chief: !!r.chief })) } : null },
     store: S,
+    //   ★[T1494] 원한 품은 사람 — 서버 `grudge` 칸이 있을 때만(손잡이 `T1447_PERSON_GRUDGE` 켬 · 끔 = 칸 없음 = 그리지 않는다). 그 마을이 아는 원한만 · 수 · 토벌은 촌장에게만(서버가 그렇게 싣는다)
+    grudge: (raw.grudge && Array.isArray(raw.grudge.rows)) ? { chief: !!raw.grudge.chief, rows: raw.grudge.rows.map((r) => ({ pid: String(r.pid), name: vvNm(r.name), stage: r.stage | 0, stageKo: r.stageKo || '',
+      why: r.why || '', now: r.now || '', last: r.last ? `${ago(r.last.ago)} · ${r.last.line || ''}` : null,
+      nums: (num(r.harm) != null || num(r.n) != null) ? [num(r.harm) != null && r.harm > 0 ? `해코지 ${Math.round(r.harm * 100)}%` : null, num(r.n) != null && r.n > 0 ? `막힌 칸 ${r.n}${num(r.need) != null ? `/${r.need}` : ''}` : null].filter(Boolean).join(' · ') : null,
+      raid: r.raid || null })) } : null,
   };
 }
 
@@ -107,7 +113,7 @@ function vvAdapt(raw) {
 // ★[T1103] 바뀐 칸 → 다시 지을 판(머리 · 탭 넷). 열린 동안 서버는 5초 박자로 바뀐 칸만 보낸다 — 칸 하나(예: 몸의 행동 줄)에 판 전부를 다시 그리면
 //   판 글자(캔버스)를 다 다시 그려 박자마다 멈칫한다. 그 칸을 읽는 판만 낡았다고 표시하고, 낡은 탭은 보일 때 짓는다.
 const VV_ALL = ['head', 'dash', 'proj', 'mem', 'store'];
-const VV_SLOT_PANES = { head: ['head', 'dash'], me: ['head', 'dash'], dash: ['dash'], requests: ['dash'], news: ['dash'], projects: ['proj'], members: ['mem'], store: ['store'], prices: ['store'], gate: ['store'] };
+const VV_SLOT_PANES = { head: ['head', 'dash'], me: ['head', 'dash'], dash: ['dash'], requests: ['dash'], news: ['dash'], projects: ['proj'], members: ['mem'], store: ['store'], prices: ['store'], gate: ['store'], grudge: ['mem'] };   // ★[T1494] grudge → 구성원 판
 let vvDirty = new Set(VV_ALL);
 function villageViewOnMessage(msg) {
   if (!msg || typeof msg !== 'object') return;
@@ -284,7 +290,7 @@ function vvRender() {
   for (const b of head.querySelectorAll('.vv-tab')) b.classList.toggle('on', b.dataset.k === vvTab);
   //   탭 판: 지어 둔 것을 보이기만 — 처음 볼 때 · 자료가 바뀐 뒤 · 그 탭의 꼴을 바꾸는 상태(창고 먼/가까움 · 구성원 더 보기)가 바뀌었을 때만 짓는다.
   //   ⚠보이게 한 **뒤에** 짓는다 — 판 · 막대 · 선의 크기는 보이는 칸에서만 잰다.
-  const sig = vvTab === 'store' ? `s${vvFar() ? 1 : 0}` : vvTab === 'mem' ? `m${vvMemAll ? 1 : 0}` : '';
+  const sig = vvTab === 'store' ? `s${vvFar() ? 1 : 0}` : vvTab === 'mem' ? `m${vvMemAll ? 1 : 0}${vvRaidAsk != null ? `r${vvRaidAsk}` : ''}` : '';   // ★[T1494] 토벌 묻는 줄이 열리면 다시 짓는다
   for (const tb of body.querySelectorAll('.vv-tabbody')) tb.style.display = tb.dataset.k === vvTab ? 'contents' : 'none';
   const cur = body.querySelector(`.vv-tabbody[data-k="${vvTab}"]`);
   if (cur && cur._vvSig !== sig) {
@@ -376,7 +382,39 @@ function vvMem(D) {
     + `<div class="vv-col">${vvT(p.name, 28, 'serif')}${vvT([p.chief ? '촌장' : null, p.job].filter(Boolean).join(' · '), 18)}</div></div>`
     + `${p.act ? `<div style="margin-top:14px">${vvT(p.act, 18)}</div>` : ''}</div>`).join('')}</div>`;
   if (more > 0) h += `<div class="vv-line" style="margin-top:auto;padding-top:20px"><span></span>${vvBtn(`${more}명 더 보기`, 'data-vv="more"')}</div>`;
-  return h + '</div>' + vvAssign(M.assign);
+  return h + '</div>' + vvGrudge(D.grudge) + vvAssign(M.assign);
+}
+
+// ★★[T1494 · T1447 회부 11] 원한 품은 사람 — 그 마을이 아는 원한만(서버 `grudge` 칸 그대로 · 클라 셈 0). 한 줄: 이름 · 단계 말 · 까닭 한 줄 · 마지막 일.
+//   촌장에게만 서버가 정확한 수(해코지 몫 · 막힌 칸)와 토벌 줄(`raid`)을 싣는다 — 단추는 명분이 섰을 때만 켜지고, 누르면 무엇이 일어나는지 한 줄 묻는다.
+//   보냄 = 채팅 `/토벌 <사람> 확인`(T1447 이 세운 그 문 — 서버가 누르는 순간 명분을 다시 센다 · 새 동작 0). 휴대폰 폭에서도 줄이 접힌다(flex-wrap).
+//   판 글자 한 칸은 한 줄 캔버스라 안 접힌다 — 긴 줄은 낱말마다 칸을 나눠 좁은 화면(휴대폰 폭)에서 접히게(넓은 화면은 띄어 쓴 그대로)
+const vvTw = (s, sz, f) => `<span class="vv-tw" style="display:flex;flex-wrap:wrap;column-gap:.3em;row-gap:2px">${String(s == null ? '' : s).split(/\s+/).filter(Boolean).map((w) => vvT(w, sz, f)).join('')}</span>`;
+function vvGrudge(G) {
+  if (!G) return '';
+  let h = `<div class="vv-plate" id="vvGrudge" style="margin-top:16px">${vvT('원한 품은 사람', 32, 'serif')}`;
+  h += vvRows((G.rows || []).map((r) => {
+    const R = r.raid;
+    let act = '';
+    if (G.chief && R) {
+      if (R.busy) act = vvT(R.busy === 'home' ? '토벌대가 돌아오고 있습니다' : '토벌대가 가고 있습니다', 18, 'sansm', 'vvRaidBusy');
+      else if (R.ok && R.fighters > 0) act = vvBtn('토벌', `data-vv="raid" data-pid="${vvEsc(r.pid)}" id="vvRaid_${vvEsc(r.pid)}"`, true);
+      else act = `<span class="vv-col" style="gap:4px">${vvBtn('토벌', `data-vv="raid-off" disabled style="opacity:.45;cursor:default" id="vvRaid_${vvEsc(r.pid)}"`)}${vvTw(R.ok ? '나설 사람이 없습니다.' : '명분이 아직 서지 않았습니다.', 18)}</span>`;
+    }
+    let ask = '';
+    if (G.chief && R && R.ok && vvRaidAsk === r.pid) {
+      ask = `<div class="vv-card" id="vvRaidAsk" style="flex:1 1 100%;margin-top:8px">${vvFr}<div class="vv-col">`
+        + vvTw(`${r.name}의 땅으로 마을 사람 ${R.fighters}명이 걸어갑니다. 가는 데 ${R.walkDays}일이 걸립니다.`, 20, 'sansm')
+        + vvTw(`닿으면 ${R.bld > 0 ? `건물 ${R.bld}채를 부수고 ` : ''}땅 ${R.freed}칸을 풉니다. 그동안 일손 ${R.labor}사람-날이 빠집니다. 보내시겠습니까?`, 18)
+        + `</div><div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:flex-end;margin-top:12px">${vvBtn('보냄', `data-vv="raidgo" data-pid="${vvEsc(r.pid)}" id="vvRaidGo"`, true)}${vvBtn('그만둠', 'data-vv="raidno" id="vvRaidNo"')}</div></div>`;
+    }
+    return `<div class="vv-row vv-grudge" data-pid="${vvEsc(r.pid)}" style="display:flex;flex-wrap:wrap;gap:8px 24px;align-items:center">`
+      + `<span class="vv-col" style="flex:1 1 200px;gap:2px">${vvT(r.name, 26, 'serif')}${vvT(r.stageKo, 22, 'sans')}</span>`
+      + `<span class="vv-col" style="flex:2 1 240px;gap:4px;min-width:0">${r.why ? vvTw(r.why, 18) : ''}${r.now ? vvTw(r.now, 18) : ''}${r.last ? vvTw(r.last, 18) : ''}${r.nums ? vvTw(r.nums, 18) : ''}</span>`
+      + `${act ? `<span style="flex:0 0 auto">${act}</span>` : ''}${ask}</div>`;
+  })) || vvEmpty('이 마을이 원한을 품은 사람이 없습니다.');
+  h += `<div style="margin-top:12px">${vvTw('이 마을 사람이 보았거나 소문으로 들은 것만 적습니다.', 18)}</div>`;
+  return h + '</div>';
 }
 
 // ★[T1169 · K18 · T1115 회부 2] 촌장 「일 맡기기」 — 게시판 판(T1085 `boardMembersHtml`)과 같은 줄 · 같은 문(`assign_job`). 새 동작 0.
@@ -438,6 +476,9 @@ function vvOnClick(e) {
   if (a === 'close') closeVillageView();
   else if (a === 'tab') { vvTab = b.dataset.k; vvRender(); }
   else if (a === 'more') { vvMemAll = true; vvRender(); }
+  else if (a === 'raid') { vvRaidAsk = b.dataset.pid; vvRender(); }   // ★[T1494] 토벌 — 먼저 한 줄 묻는다
+  else if (a === 'raidno') { vvRaidAsk = null; vvRender(); }
+  else if (a === 'raidgo') { vvSend({ type: 'chat', text: `/토벌 ${b.dataset.pid} 확인` }); vvRaidAsk = null; vvRender(); }   // ★[T1494] T1447 문 그대로(서버가 명분을 다시 센다)
   else if (a === 'req') { vvTab = 'dash'; vvRender(); const r = document.getElementById('vvReq'); if (r) r.scrollIntoView({ block: 'start' }); }
   else if (a === 'claim') vvSend({ type: 'claim', kind: 'personal' });   // 개인 사유지 — C 키와 같은 문(T45)
   else if (a === 'join') vvSend({ type: 'chat', text: '/가입' });   // ★[T1137] 가입 — 채팅 명령과 같은 문(앞에 선 마을 · 서버가 판정)

@@ -147,5 +147,51 @@ function unclaimPick(cells, terr, ccx, ccy) {
 }
 const CARRY_KG = 25;   // 한 몸이 질 수 있는 kg(`carry.js CAP_KG` 기본 — 존이 몸마다 `capKg` 로 다시 잰다)
 
+// ═══ ★★[T1494 2026-11-27 · T1447 회부 7 · 9 · 11 · 13] 원한을 보이게 — 단계(말 넷) · 마을이 아는 까닭 · 소문 ═══
+//   수는 안 건드린다(문턱 · 감쇠 · N 그대로) — 이 칸들은 **읽는 쪽**이다. 손잡이 `T1447_PERSON_GRUDGE` 안(끔이면 아무도 안 부른다).
+//   ① 단계 — 문턱까지의 몫 f = max(해코지 ÷ 문턱 `TH`, 막힌 칸 ÷ 명분 문턱 `need`). 문턱 밑을 셋으로 나누고(⅓ · ⅔) 문턱 넘음이 넷째.
+//      말은 PM 시작값(보고 T1494 — 후보 셋 · 재민 판정). 정확한 수는 촌장 화면만 싣는다(존 `_t1494Slot`).
+const STAGE_KO = ['', '눈총', '미움', '앙심', '원수'];
+function stageOf(f) { return !(f > 0) ? 0 : (f >= 1 ? 4 : (f >= 2 / 3 ? 3 : (f >= 1 / 3 ? 2 : 1))); }
+function fracOf(harm, n, need) {
+  const fh = harm > 0 ? harm / TH : 0, fl = (n > 0 && need > 0 && Number.isFinite(need)) ? n / need : 0;
+  return Math.max(fh, fl);
+}
+//   ② 마을이 아는 까닭 — 마을 장부 곁 칸 `econ._grudgeNote[pid]` = { w(마지막 까닭) · d(마지막 날) · k({까닭: 번}) · it(마지막에 거둔 · 친 것) · s(지난 단계) · e([[날, 단계, 까닭, 일감]…] 소문) }.
+//      쌓는 자리는 원한이 실제로 오른 자리뿐(해코지 `t1447Harm` · 막힌 칸 `_t1447Blocked` · 토벌) — 마을이 본 것 · 들은 것만 이 칸에 선다.
+//      소문(`e`)은 단계가 **오른** 날 · 토벌대가 떠난 날 · 친 날만 — 내리는 것(감쇠)은 소문이 아니다(가 보면 안다 — 존 `_t1494Learn` 'here').
+const NEWS_MAX = 8;
+function noteOf(econ, pid) { const N = econ && econ._grudgeNote; return (N && N[String(pid)]) || null; }
+function noteTouch(econ, pid, why, day, stage, it) {
+  if (!econ) return null;
+  const N = econ._grudgeNote || (econ._grudgeNote = {}), id = String(pid);
+  const n = N[id] || (N[id] = { w: why, d: day | 0, k: {}, s: 0, e: [] });
+  n.w = why; n.d = day | 0; n.k[why] = (n.k[why] || 0) + 1; if (it) n.it = it; else delete n.it;
+  if (stage > (n.s | 0)) { n.e.push([day | 0, stage, why, null]); if (n.e.length > NEWS_MAX) n.e.splice(0, n.e.length - NEWS_MAX); }
+  n.s = stage | 0;
+  return n;
+}
+function newsAdd(econ, pid, day, stage, why, job) {   // 토벌 소문(떠남 'raid' · 친 날 'done') — 단계와 무관하게 선다
+  if (!econ) return null;
+  const N = econ._grudgeNote || (econ._grudgeNote = {}), id = String(pid);
+  const n = N[id] || (N[id] = { w: why, d: day | 0, k: {}, s: stage | 0, e: [] });
+  n.w = why; n.d = day | 0; delete n.it;   // 마지막 일 = 토벌(까닭 셈 `k` 은 안 건드린다 — 토벌은 까닭이 아니다)
+  n.e.push([day | 0, stage | 0, why, job || null]); if (n.e.length > NEWS_MAX) n.e.splice(0, n.e.length - NEWS_MAX);
+  return n;
+}
+function noteSet(econ, pid, stage) { const n = noteOf(econ, pid); if (n) n.s = stage | 0; return n; }   // 감쇠 · 풂 — 소문 없이 단계만 내린다
+function noteDrop(econ, pid) { const N = econ && econ._grudgeNote; if (!N || !N[String(pid)]) return false; delete N[String(pid)]; if (!Object.keys(N).length) delete econ._grudgeNote; return true; }
+//   ③ 까닭 한 줄 — 까닭 낱말 → 화면 글(하십시오체 · 명사 끝) · 마지막 일(그 마을이 본 · 들은 마지막 것)
+const WHY_KO = { block: '길을 막은 것', blockFree: '길 위에 세운 것', gather: '마을 땅에서 거둔 것', crop: '마을 밭을 거둔 것', bld: '마을 건물을 친 것', land: '땅이 마을이 넓어지는 길을 막는 것', raid: '토벌대를 보낸 것', done: '토벌한 것' };
+const LAST_KO = { block: '길을 막은 것을 들었습니다', blockFree: '길 위에 세운 것을 들었습니다', gather: '마을 땅에서 거두는 것을 보았습니다', crop: '마을 밭을 거두는 것을 보았습니다', bld: '마을 건물을 치는 것을 보았습니다', land: '넓히려다 그 땅에 막혔습니다', raid: '토벌대가 떠났습니다', done: '토벌대가 그 땅을 쳤습니다' };
+function whyLine(note) {
+  if (!note || !note.k) return '';
+  const order = ['land', 'block', 'blockFree', 'gather', 'crop', 'bld'];
+  const L = order.filter((w) => note.k[w] > 0).map((w) => (w === 'land' ? WHY_KO[w] : `${WHY_KO[w]} ${note.k[w]}번`));
+  return L.join(' · ');
+}
+function lastLine(note) { if (!note) return ''; const t = LAST_KO[note.w] || ''; return note.it && (note.w === 'gather' || note.w === 'crop' || note.w === 'bld') ? `${t}(${note.it})` : t; }
+
 module.exports = { ON, PK, pkey, isPKey, pidOf, CI, ciBuild, ciAt, ciCellsOf, landOf, landAdd, landCount, landClear, pickBlocked,
-  TH, BLOCK_G, FREE_MUL, VALUE_DAYS, harmOf, harmAdd, harmPay, harmShut, gOfValue, LAND_HALF, LAND_N, casus, UNCLAIM_FRAC, unclaimPick, CARRY_KG };
+  TH, BLOCK_G, FREE_MUL, VALUE_DAYS, harmOf, harmAdd, harmPay, harmShut, gOfValue, LAND_HALF, LAND_N, casus, UNCLAIM_FRAC, unclaimPick, CARRY_KG,
+  STAGE_KO, stageOf, fracOf, NEWS_MAX, noteOf, noteTouch, newsAdd, noteSet, noteDrop, WHY_KO, LAST_KO, whyLine, lastLine };

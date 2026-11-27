@@ -1603,6 +1603,7 @@ function serializeBody(p) {
   if (p.t1441g || p.t1441c || p.t1441x || p.t1441n) o.t1441 = Object.assign({}, p.t1441g ? { g: Object.assign({}, p.t1441g) } : {}, p.t1441c ? { c: p.t1441c.slice() } : {}, p.t1441x ? { x: 1 } : {}, p.t1441n ? { n: 1 } : {});   // ★[T1441] 말미 · 길 막기 기록 · NPC 추방 · 알림 — 있을 때만(끔 = 칸 없음)
   if (Number(p.memberCool) > 0) o.memberCool = +p.memberCool;   // ★[T1137] 다시 들 수 있는 때(epoch ms · 탈퇴 · 추방 뒤에만 선다 — 없으면 종전 바이트)
   if (p.feeOwe && typeof p.feeOwe === 'object' && Object.keys(p.feeOwe).length) o.feeOwe = Object.assign({}, p.feeOwe);   // ★[T1151] 수수료 끝수 장부(마을 id → 끝수 · 있을 때만)
+  if (p.t1494k && typeof p.t1494k === 'object' && Object.keys(p.t1494k).length) o.t1494 = JSON.parse(JSON.stringify(p.t1494k));   // ★[T1494] 아는 원한(마을 id → 단계 · 안 날 · 어떻게 — 켬에서만 선다 · 없으면 칸 없음 = 종전 바이트)
   if (Deeds.ON && Deeds.bodyOf(p)) o.deeds = { z: Object.assign({}, p.deeds.z), ...(p.deeds.d && typeof p.deeds.d === 'object' ? { d: Object.assign({}, p.deeds.d) } : {}), ...(p.deeds.h && typeof p.deeds.h === 'object' ? { h: Object.assign({}, p.deeds.h) } : {}) };   // ★[T1386] 존마다 빚(`d`)   // ★[T1305] 주인이 접속한 날 수(사유지 낡음의 시계 · 켬 판 · 있을 때만)
   return o;
 }
@@ -1633,6 +1634,7 @@ function parseBody(raw, opts) {
   if (Number.isFinite(o.sv)) out.sv = o.sv;   // ★[T927] 몸 버전 — 없으면(옛 행 · 끔 존) 칸도 없다
   if (Number.isFinite(o.memberCool) && o.memberCool > 0) out.memberCool = o.memberCool;
   if (o.t1441 && typeof o.t1441 === 'object') out.t1441 = o.t1441;   // ★[T1441]   // ★[T1137] 다시 들기 시각
+  if (o.t1494 && typeof o.t1494 === 'object') out.t1494 = o.t1494;   // ★[T1494] 아는 원한(몸에 실려 왔을 때만)
   if (o.deeds && typeof o.deeds === 'object' && o.deeds.z && typeof o.deeds.z === 'object') { const z = {}; for (const [k, v] of Object.entries(o.deeds.z)) if (Number.isFinite(+v) && +v >= 0) z[String(k)] = +v | 0; out.deeds = { z }; if (o.deeds.d && typeof o.deeds.d === 'object') { const d = {}; for (const [k, v] of Object.entries(o.deeds.d)) if (Number.isFinite(+v) && +v >= 0) d[String(k)] = +v; out.deeds.d = d; } }   // ★[T1305] · ★[T1386] 빚 `d` 접속한 날 수
   if (o.feeOwe && typeof o.feeOwe === 'object') { const f = {}; for (const [k, v] of Object.entries(o.feeOwe)) { const x = Number(v); if (Number.isFinite(x) && x > 0 && x < 1) f[k] = x; } if (Object.keys(f).length) out.feeOwe = f; }   // ★[T1151] 끝수 장부
   // 14.53: 옛 tools (object 또는 number 형식) → 새 toolItems list 변환
@@ -1645,7 +1647,7 @@ function parseBody(raw, opts) {
     for (const [tn, val] of Object.entries(o)) {
       if (['hotkey1', 'toolItems', 'equipped', 'equipment', 'equipSlots', 'craftSkill', 'craftLog',
            'oreLedger', 'oreCarry', 'fishStats', 'body', 'kgLedger', 'lots', 'vital',
-           'lastSeenDay', 'member', 'sv', 'memberCool', 'feeOwe', 't1441'].includes(tn)) continue;   // ★[T11] 'member' 추가 — 옛 도구 형식으로 오독되면 안 된다
+           'lastSeenDay', 'member', 'sv', 'memberCool', 'feeOwe', 't1441', 't1494'].includes(tn)) continue;   // ★[T11] 'member' 추가 — 옛 도구 형식으로 오독되면 안 된다
       const mx = TOOL_MAX_DURABILITY[tn] || 100;
       let d = mx;
       if (typeof val === 'number' && val > 0) d = mx;
@@ -1710,6 +1712,7 @@ function _bodyInto(p, B, equipped) {
   if (B.memberCool) p.memberCool = B.memberCool;
   if (B.t1441) { const _q = B.t1441; if (_q.g && _q.g.vid != null) p.t1441g = Object.assign({}, _q.g); if (Array.isArray(_q.c) && _q.c.length) p.t1441c = _q.c.slice(); if (_q.x) p.t1441x = 1; if (_q.n) p.t1441n = 1; }   // ★[T1441] 몸에 실려 왔을 때만   // ★[T1137] 다시 들기 시각 — 몸에 실려 왔을 때만(없으면 칸도 없다)
   if (B.feeOwe) p.feeOwe = B.feeOwe;               // ★[T1151] 수수료 끝수 장부 — 몸에 실려 왔을 때만
+  if (B.t1494) p.t1494k = JSON.parse(JSON.stringify(B.t1494));   // ★[T1494] 아는 원한 — 몸에 실려 왔을 때만(켬 판)
   if (Deeds.ON && B.deeds) p.deeds = B.deeds;      // ★[T1305] 접속한 날 수 — 몸에 실려 왔을 때만(켬 판)
   return p;
 }
@@ -7038,7 +7041,7 @@ function _t1440Break(id, by, W) {
   if (tc && tc.why === 'passCell') { /* 먼저 선 것(그 칸이 나중에 길이 지나는 칸이 됐다) — 세운 사람 벌점 없음 */ }
   else if (own && !_t1440VilOwner(own) && own !== 'public' && !own.startsWith('bandit')) {
     const _txt = r.mark ? `길을 막은 것을 ${vn} 캐러밴이 부수고 지나갔습니다.` : `길 위에 세운 것을 ${vn} 캐러밴이 부수고 지나갔습니다.`;
-    if (T1447_PERSON_GRUDGE && w && w.vid != null) { _t1447Hostile(own, r.ownerName, +w.vid, _t1447OnClaim(own, e.cx, e.cy), _txt + ` ${vn}이(가) 당신을 미워합니다.`); }   // ★[T1447] 피해자가 마을 — 그 마을의 해코지 원한(벌점 0 · 주인 없는 땅의 것은 조금만 — 판정 61)
+    if (T1447_PERSON_GRUDGE && w && w.vid != null) { _t1447Hostile(own, r.ownerName, +w.vid, _t1447OnClaim(own, e.cx, e.cy), _txt); }   // ★[T1447] 피해자가 마을 — 그 마을의 해코지 원한(벌점 0 · 주인 없는 땅의 것은 조금만 — 판정 61)
     else {
     const h = _t1423Hostile(own, r.ownerName, vn, _txt, (r.mark && w && w.vid != null) ? +w.vid : null);   // ★[T1441 ⑤] 그 캐러밴 마을의 길을 닫는 조각
     if (h === 'online') _t1440Zs.vpOn += VP_BREAK_FENCE; else _t1440Zs.vpOff += VP_BREAK_FENCE;
@@ -7402,7 +7405,8 @@ Membership.init({ SimVillages, ZONE_ID, send, players, gameDay: gameDayNow,
   ...((process.env.T1441_NPC_EXPEL === '1' || process.env.T1441_EXIT_GRACE === '1' || process.env.T1441_TERR_CLAIM === '1') ? { t1441Seat: (p) => _t1441AfterSeat(p), t1441Leave: (p, r) => _t1441AfterLeave(p, r) } : {}),
   ...(process.env.T1441_EXIT_GRACE === '1' ? { t1441Grace: true } : {}) });
 // ★[T1072] 마을 화면 자료 — 직업 이름표는 **함수 뒤에서** 읽는다(`JOB_KR_NPC` 가 이 줄보다 뒤에서 선다 · 위 이름표 선례).
-VillageView.init({ SimVillages, Membership, VillageKin, send, players, get jobKo() { return JOB_KR_NPC; } });
+VillageView.init({ SimVillages, Membership, VillageKin, send, players, get jobKo() { return JOB_KR_NPC; }, ...(T1447_PERSON_GRUDGE ? { t1494Slot: (pl, v) => _t1494Slot(pl, v) } : {}) });   // ★[T1494] 켬만 — 마을 창 "원한 품은 사람" 칸(끔 = 칸 없음 · 종전 바이트)
+if (T1447_PERSON_GRUDGE) { const _t1494T = setInterval(_t1494Tick, VillageView.TICK_MS); if (_t1494T.unref) _t1494T.unref(); }   // ★[T1494] 그 땅에 섬 · 소문 닿음 — 마을 화면 박자(끔 = 타이머 0)
 
 // ★[T45 2026-09-02] 사유지 v2 — **이미 있는 것만 넘긴다**(사본 금지).
 //   ⚠`gameDay` 를 일부러 안 넘긴다 — 부재 시계는 **실시간**이고 세계의 시간이 아니다(claims.js 제3 규약).
@@ -8850,6 +8854,7 @@ async function _acceptConnection(ws, req, C) {
   };
   if ((T1423_BLOCK_REACT || T1440_ROAD_RULE) && _t1423Owe.size) _t1423Collect(player);   // ★[T1440] 길을 닫는 조각 벌점도 같은 소식 줄   // ★[T1423 ⓑ] 자리를 비운 사이 쌓인 적대감(그 마을 사람들이 치우러 나섰다)
   if (T1447_PERSON_GRUDGE && (_t1447Owe.size || _t1447OfferQ.size)) _t1447Collect(player);   // ★[T1447] 자리를 비운 사이의 원한 알림 · 미뤄 둔 추방 · 권유(그 자리면)
+  if (T1447_PERSON_GRUDGE) _t1494Login(player);   // ★[T1494] 내 창(아는 원한) — 들어온 자리에서 그 땅 · 소문을 보고 한 통(끔 = 무동작)
   if (_T1441_MEM) { _t1441MemSync(player); if (T1441_NPC_EXPEL) _t1441ExpelCheck(player); }   // ★[T1441 ⑤ ⑥ ⑧] 소속 사본 · 들어오는 순간 벌점 50 이면 그 자리에서
   // ★[T732] 하네스 초기 인벤(`ZONE_TEST_INV` · 운영 0)의 로트 품목 — 받은 순간에 적는다(쓸개의 근사 0). 끄면 이 줄 무동작.
   if (T732_MOMENT) for (const k of Object.keys(_testInv)) if (Lots.isLot(k)) { const need = Math.floor(+inventory[k] || 0) - Math.floor(Lots.sum(player, k) + 1e-6); if (need > 0) Lots.note(player, k, need, zoneGameDay()); }
@@ -9481,6 +9486,52 @@ function handlePlayerInput(player, raw) {
     const vil = SimVillages.villageByDbId && SimVillages.villageByDbId(msg.vid | 0);
     if (vil && vil.econ) { vil.econ.founder = player.playerId; if (vil._kin) vil._kin = Object.assign({}, vil._kin, { chief: player.playerId }); }
     send(player.ws, { type: 'notice', text: vil ? `시험: ${vil.name} 촌장이 되었습니다.` : '시험: 그런 마을이 없습니다.' });
+  }
+  else if (E2E_GIVE && T1447_PERSON_GRUDGE && msg.type === '__e2e_t1494') {
+    // ★[T1494] 테스트 전용(E2E_GIVE=1 · 손잡이 켬일 때만 분기 존재) — 판 꾸밈 · 읽기: 자리(그 마을 땅 안 · 그 마을 몸이 보는 나무 · 땅 바로 밖 칸) ·
+    //   막힌 칸(넓힘 길은 T1447 이 잰다 — 이 판은 장부에 바로) · 본 사람 없는 해코지(소식 꼴) · 소문 줄 · 도달 날 · 장부(판정 대조용).
+    const vil = SimVillages.villageByDbId ? SimVillages.villageByDbId(msg.vid | 0) : null, SZ = BUILDING_SIZE, op = msg.op, pid = player.playerId, out = { type: '__e2e_t1494', op, vid: msg.vid | 0 };
+    const cellVil = (x, y) => (SimVillages.villageOfCell ? SimVillages.villageOfCell(Math.floor(x / SZ), Math.floor(y / SZ)) : null);
+    if (op === 'spot' && vil) {
+      out.center = { x: vil.ccx * SZ + SZ / 2, y: vil.ccy * SZ + SZ / 2 };
+      let best = null, bd = Infinity, inT = 0, seen = 0; out.types = {};
+      for (const r of resources.values()) {
+        if (!(r.hp > 0)) continue;
+        const v2 = cellVil(r.x, r.y); if (!v2 || v2.dbId !== vil.dbId) continue; out.types[r.type] = (out.types[r.type] || 0) + 1;
+        if (msg.kind === 'any' ? !['tree', 'rock', 'berry_bush', 'herb'].includes(r.type) : r.type !== (msg.kind || 'tree')) continue; inT++;
+        if (!_t1447Witness(vil.dbId, r.x, r.y)) continue; seen++;
+        const d = Math.hypot(r.x - out.center.x, r.y - out.center.y); if (d < bd) { bd = d; best = { id: r.id, x: r.x, y: r.y, type: r.type }; }
+      }
+      out.tree = best; out.trees = [...resources.values()].filter((r) => r.type === 'tree').length; out.inTerr = inT; out.seen = seen;
+      out.bodies = [...players.values()].filter((q) => q && q.simVillageId === vil.dbId).length; out.terr = vil._terrSet ? vil._terrSet.size : 0;
+      let wb = null, wd = Infinity; out.bld = 0;   // 마을 것(벽 · 울 · 문 · 상자 — 친 몫만큼 원한) 가운데 그 마을 몸이 보는 것
+      for (const b of buildings.values()) { const v3 = _t1447VilOfB(b); if (!v3 || v3.dbId !== vil.dbId || !BUILDING_TYPE_TO_ITEM[b.type]) continue; out.bld++; if (!_t1447Witness(vil.dbId, b.x, b.y)) continue; const d = Math.hypot(b.x - out.center.x, b.y - out.center.y); if (d < wd) { wd = d; wb = { id: b.id, x: b.x, y: b.y, type: b.type }; } }
+      out.wall = wb;
+      const T = vil._terrSet; let bb = null, b2 = Infinity;
+      if (T) for (const k of T) { const i = k.indexOf(','), x = +k.slice(0, i), y = +k.slice(i + 1);
+        for (const [nx, ny] of [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]]) { if (T.has(nx + ',' + ny)) continue; const px = nx * SZ + SZ / 2, py = ny * SZ + SZ / 2; if (isTerrainBlockedLocal(px, py) || cellVil(px, py)) continue; const d = Math.hypot(nx - vil.ccx, ny - vil.ccy); if (d < b2) { b2 = d; bb = { x: px, y: py, cx: nx, cy: ny }; } } }
+      out.border = bb;
+    } else if (op === 'block' && vil) {
+      _t1447ClaimIdx(); const S = Grudge.ciCellsOf(pid), T = vil._terrSet || new Set(), want = Math.max(1, msg.n | 0); let n = 0;
+      if (S) for (const k of S) { if (n >= want) break; const i = k.indexOf(','), x = +k.slice(0, i), y = +k.slice(i + 1); if ([[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]].some(([a, c]) => T.has(a + ',' + c)) && Grudge.landAdd(vil.econ, pid, k, _t1494D())) n++; }
+      if (S) for (const k of S) { if (n >= want) break; if (Grudge.landAdd(vil.econ, pid, k, _t1494D())) n++; }
+      if (SimVillages.__t1494) SimVillages.__t1494.touch(vil, pid, 'land');
+      _t1494Name(vil, pid, player.name);
+      Object.assign(out, SimVillages.t1494Live ? SimVillages.t1494Live(vil, pid) : {}, { added: n, cells: S ? S.size : 0 });
+    } else if (op === 'harm' && vil) {
+      out.d = SimVillages.t1447Harm ? SimVillages.t1447Harm(vil, msg.pid ? String(msg.pid) : pid, +msg.g || 0, 'block') : 0;
+      _t1494Name(vil, msg.pid ? String(msg.pid) : pid, msg.name || player.name);
+      Object.assign(out, SimVillages.t1494Live ? SimVillages.t1494Live(vil, msg.pid ? String(msg.pid) : pid) : {});
+    } else if (op === 'news' && vil) {
+      const n = Grudge.noteOf(vil.econ, msg.pid ? String(msg.pid) : pid), h = cellVil(player.x, player.y);
+      out.e = n && n.e ? n.e : []; out.here = h ? h.dbId : null; out.delay = h && SimVillages.t1494Delay ? SimVillages.t1494Delay(vil.dbId, h.dbId) : null;
+    } else if (op === 'state') {
+      out.day = _t1494D(); const h = cellVil(player.x, player.y); out.here = h ? h.dbId : null; out.rows = [];
+      for (const v of (SimVillages.t1447Villages ? SimVillages.t1447Villages() : [])) { const L = SimVillages.t1494Live ? SimVillages.t1494Live(v, msg.pid ? String(msg.pid) : pid) : null; const B = SimVillages.t1494Busy ? SimVillages.t1494Busy(v.dbId, msg.pid ? String(msg.pid) : pid) : null; if (L && (L.stage > 0 || B)) out.rows.push({ vid: v.dbId, stage: L.stage, harm: +L.harm.toFixed(4), n: L.n, need: Number.isFinite(L.need) ? L.need : null, casus: L.casus, busy: B }); }
+      out.me = _t1494MeRows(player);
+    } else if (op === 'delay') out.delay = SimVillages.t1494Delay ? SimVillages.t1494Delay(msg.a | 0, msg.b | 0) : null;
+    else out.err = vil ? '모르는 일' : '그런 마을이 없습니다';
+    send(player.ws, out);
   }
   else if (E2E_GIVE && msg.type === '__e2e_beast') {
     // ★[T1321] 테스트 전용(E2E_GIVE=1 일 때만 분기 존재) — 짐승을 세운다(판 꾸밈: 이음매 곁 야생 몸 · 이 사람의 길든 짐승). 자리 = 준 자리(존 로컬) 또는 이 사람 곁 ·
@@ -15439,6 +15490,7 @@ function _t1447ExpelIf(p, vid) {
   const r = Membership.leave(p, 'expel'); if (!r || !r.ok) return false;
   _t1447Z.expel++; try { savePlayer(p); } catch (e) {}
   send(p.ws, { type: 'notice', text: `🧓 ${vil.name} 촌장 — 자네가 우리 마을에 한 짓을 다 들었네. 자네는 이제 우리 마을 사람이 아닐세.` });
+  _t1494Learn(p, vil, 'expel');   // ★[T1494] 쫓겨난 일 — 내 창
   return true;
 }
 function _t1447AfterHarm(pid, vid) {   // 원한이 오른 뒤 — 그 마을 사람이면 추방(접속 안 했으면 들어올 때)
@@ -15461,7 +15513,10 @@ function _t1447Hostile(ownerId, ownerName, vid, onClaim, text) {
   const g = Grudge.BLOCK_G * (onClaim ? 1 : Grudge.FREE_MUL);
   const d = SimVillages.t1447Harm ? SimVillages.t1447Harm(vil, ownerId, g, onClaim ? 'block' : 'blockFree') : 0;
   _t1447Z.harm++; _t1447Z.harmG += d; if (onClaim) _t1447Z.block++; else _t1447Z.blockFree++;
-  const h = _t1447Say(ownerId, text || `길을 막고 있습니다 — ${vil.name} 사람들이 치우려 합니다. ${vil.name}이(가) 당신을 미워하기 시작했습니다.`);
+  _t1494Name(vil, ownerId, ownerName);   // ★[T1494] 소식에 실린 주인 이름(마을 창 줄)
+  //   ★[T1494 · 정해진 것 2] 길 막기 원한은 그 마을이 **소식으로** 안 것이다 — 주인 앞에서 본 사람이 없다. 그 자리 한 줄은 일어난 일(캐러밴이 부숨 — T1440 글)만 ·
+  //     "미워합니다"는 그 마을 소문이 주인에게 닿을 때(내 창 · `_t1494Check`) — 종전 "미워하기 시작했습니다" 즉시 줄(접속 안 했으면 들어올 때)은 새어 보임이었다.
+  const h = text ? _t1447Say(ownerId, text) : (_t1447Player(ownerId) ? 'online' : 'offline');
   _t1447AfterHarm(ownerId, vil.dbId);
   return h;
 }
@@ -15490,11 +15545,14 @@ function _t1447Steal(player, vil, items, why, x, y) {
   if (!_t1447Witness(vil.dbId, x, y)) { _t1447Z.unseen++; return 0; }
   _t1447Z.witness++;
   const raw = {}; for (const [it, n] of Object.entries(items || {})) _t1447Raw(it, n, raw);
-  const d = SimVillages.t1447HarmValue ? SimVillages.t1447HarmValue(vil, player.playerId, raw, why) : 0;
+  const d = SimVillages.t1447HarmValue ? SimVillages.t1447HarmValue(vil, player.playerId, raw, why, _t1494Ko(Object.keys(items || {})[0])) : 0;
   _t1447Z.harm++; _t1447Z.harmG += d; _t1447Z[why] = (_t1447Z[why] || 0) + 1;
   if (d > 0) {   // 알림은 그 마을마다 게임 하루 한 번 · 문턱을 넘는 순간 한 번 더(친 타마다 쏟지 않는다)
+    _t1494Name(vil, player.playerId, player.name);   // ★[T1494] 마을이 본 사람의 이름(마을 창 줄)
     const tk = player.playerId + '|' + vil.dbId, day = gameDayNow() | 0, shut = Grudge.harmShut(vil.econ, player.playerId), was = _t1447Told.get(tk);
-    if (!was || was.d !== day || (shut && !was.shut)) { _t1447Told.set(tk, { d: day, shut }); send(player.ws, { type: 'notice', text: shut ? `${vil.name} 사람이 보았습니다 — ${vil.name}은(는) 이제 당신과 거래하지 않고 받아들이지도 않습니다.` : `${vil.name} 사람이 보았습니다 — ${vil.name}이(가) 당신을 미워합니다.` }); }
+    const _sk = _t1494StageKo(vil, player.playerId);   // ★[T1494] 쌓인 순간의 한 줄에 단계 말(본 사람이 있을 때만 — 이 갈래가 목격 뒤다)
+    if (!was || was.d !== day || (shut && !was.shut)) { _t1447Told.set(tk, { d: day, shut }); send(player.ws, { type: 'notice', text: shut ? `${vil.name} 사람이 보았습니다 — ${vil.name}은(는) 이제 당신과 거래하지 않고 받아들이지도 않습니다.` : `${vil.name} 사람이 보았습니다 — ${vil.name}이(가) 당신을 미워합니다${_sk ? `(${_sk})` : ''}.` }); }
+    _t1494Learn(player, vil, 'seen');   // ★[T1494] 그 마을 사람이 내 앞에서 본 일 — 내 창
   }
   _t1447AfterHarm(player.playerId, vil.dbId);
   return d;
@@ -15608,13 +15666,13 @@ function _t1447Loot(pid, cells, vil, valueCap, bodies) {
 //   주인이 아는 때(할 일 8 · 추상 금지) — 그 자리(제 사유지 · 그 마을 땅)에 있을 때만 바로 · 아니면 들어올 때 "자리를 비운 사이"
 function _t1447Depart(pid, vil, job) {
   const p = _t1447Player(pid);
-  if (p && _t1447InPlace(p, vil.dbId)) send(p.ws, { type: 'notice', text: `⚔️ ${vil.name} 사람 ${job.pids.length}명이 당신 땅으로 오고 있습니다 — 당신 땅이 ${vil.name}이(가) 넓어지는 길을 막고 있었습니다.` });
+  if (p && _t1447InPlace(p, vil.dbId)) { send(p.ws, { type: 'notice', text: `⚔️ ${vil.name} 사람 ${job.pids.length}명이 당신 땅으로 오고 있습니다 — 당신 땅이 ${vil.name}이(가) 넓어지는 길을 막고 있었습니다.` }); _t1494Told(p, vil.dbId, 'raid:' + job.id); _t1494Learn(p, vil, 'raid'); }   // ★[T1494] 그 자리에서 본 토벌대 — 내 창 · 소문 줄은 안 겹친다
 }
 function _t1447Done(pid, vil, job) {
   const t = `⚔️ ${vil ? vil.name : '이웃 마을'} 토벌대가 당신 땅의 건물 ${job.razed}채를 부수고 땅 ${job.unclaimed}칸을 풀었습니다${job.carry && Object.keys(job.carry).length ? ' · 바닥에 있던 짐도 가져갔습니다' : ''}.`;
   const p = _t1447Player(pid);
-  if (p && (_t1447InPlace(p, vil ? vil.dbId : -1))) { send(p.ws, { type: 'notice', text: t }); return; }
-  const o = _t1447Owe.get(pid) || { lines: [], expel: [] }; if (o.lines.length < 12) o.lines.push('자리를 비운 사이 — ' + t); _t1447Owe.set(pid, o);
+  if (p && (_t1447InPlace(p, vil ? vil.dbId : -1))) { send(p.ws, { type: 'notice', text: t }); if (vil) { _t1494Told(p, vil.dbId, 'done:' + job.id); _t1494Learn(p, vil, 'raid'); } return; }
+  //   ★[T1494 · 정해진 것 2] 그 자리에 없었다 — 종전엔 들어올 때(어디서든) 한 줄이었다(새어 보임). 이제 그 땅에 가거나(그 자리 줄) 소문이 닿을 때(`_t1494Check`).
 }
 //   ⑥ 문 — 거래 끊김 · 가입 거절(해코지 원한만 · 땅 원한은 가입을 안 막는다 — 판정 56)
 function _t1447TradeErr(player, vid) {
@@ -15622,6 +15680,7 @@ function _t1447TradeErr(player, vid) {
   const vil = SimVillages.villageByDbId ? SimVillages.villageByDbId(vid | 0) : null;
   if (!vil || !vil.econ || !Grudge.harmShut(vil.econ, player.playerId)) return null;
   _t1447Z.trade++;
+  _t1494Learn(player, vil, 'trade');   // ★[T1494] 거래를 원한으로 거절당한 일 — 내 창
   return `${vil.name} 사람들은 당신과 거래하지 않습니다. 당신이 이 마을에 한 짓을 기억합니다.`;
 }
 function _t1447JoinErr(player, vid) {
@@ -15629,6 +15688,7 @@ function _t1447JoinErr(player, vid) {
   const vil = SimVillages.villageByDbId ? SimVillages.villageByDbId(vid | 0) : null;
   if (!vil || !vil.econ || !Grudge.harmShut(vil.econ, player.playerId)) return null;
   _t1447Z.join++;
+  _t1494Learn(player, vil, 'join');   // ★[T1494] 가입이 원한으로 거절된 일 — 내 창
   return `${vil.name}은(는) 당신을 받지 않습니다. 당신이 이 마을에 한 짓을 기억합니다.`;
 }
 //   ⑦ 들면 땅 원한은 그 자리에서 지운다(덮이니 원인이 사라진다 — 판정 56) · 해코지 원한은 그대로
@@ -15637,6 +15697,7 @@ function _t1447OnSeat(player, vid) {
   const vil = SimVillages.villageByDbId ? SimVillages.villageByDbId(vid | 0) : null;
   if (vil && vil.econ && Grudge.landClear(vil.econ, player.playerId)) _t1447Z.clear++;
   Grudge.CI.stamp = null;   // 소속이 바뀌었다 — 사유지 칸 표의 주인 마을을 다시 읽는다(다음 넓힘이 덮는다)
+  if (vil && vil.econ && SimVillages.t1494Settle) { SimVillages.t1494Settle(vil, player.playerId); _t1494Learn(player, vil, 'here'); }   // ★[T1494] 들었다 — 땅 원한이 지워진 단계를 그 자리에서 안다
 }
 //   ⑧ 권유 — 넓히려다 처음 막힌 마을이 그 주인에게 가입을 권한다(있는 권유 칸 `_memberOfferVid` · 마을당 한 번 · 앵무새 금지 규약 그대로)
 //      말이 닿는 때 = 주인이 그 마을 땅 · 그 사유지에 있을 때(그 자리) — 아니면 들어올 때 · 다음 그 자리까지 미룬다
@@ -15648,6 +15709,7 @@ function _t1447OfferSend(p, vid) {
   p._memberOfferVid = vid | 0; p._memberOfferAt = Date.now();
   _t1447Z.offer++;
   send(p.ws, { type: 'notice', text: `🧓 ${vil.name} 촌장 — 자네 땅이 우리 마을이 넓어지는 길을 막고 있네. 우리 마을 사람이 되면 그 땅도 함께 쓰세. 들겠거든 마을 가까이에서 "/가입"이라 적게.` });
+  _t1494Learn(p, vil, 'told');   // ★[T1494] 촌장이 그 자리에서 말해 준 일 — 내 창
   return true;
 }
 const _t1447OfferQ = new Map();   // 주인 → Set(마을 id) — 아직 말이 안 닿은 권유
@@ -15677,6 +15739,133 @@ function _t1447OfferTick(only) {   // 하루 한 번 · 들어올 때 · 처음 
     if (!q.size) _t1447OfferQ.delete(pid);
   }
 }
+// ═══ ★★[T1494 2026-11-27 · T1447 회부 7 · 9 · 11 · 13 · 14] 원한을 플레이어가 볼 수 있게 — 존 쪽(손잡이 `T1447_PERSON_GRUDGE` 안 · 끔 = 새 칸 · 새 메시지 0) ═══
+//   ① 마을 창 칸(`_t1494Slot` → village-view `grudge`) — 그 마을 장부에 있는 사람만(그 마을이 아는 원한) · 이름 · 단계 말 · 까닭 한 줄 · 마지막 일.
+//      정확한 수(해코지 몫 · 막힌 칸 n/문턱)와 토벌 단추(명분이 섰을 때만 켜짐 · 비용 줄)는 그 마을 촌장에게만(`/토벌` 과 같은 술어 — 누르면 그 채팅 줄을 보낸다 · 서버가 다시 센다).
+//   ② 내 창(`grudge_me`) — 그 사람이 **알 수 있는 것**만(정해진 것 2). 몸이 아는 기록 `p.t1494k[vid]` = { s 단계 · w 까닭 · d 안 날 · e 일 난 날 · src · h 해코지 · l 땅 · t 들은 토벌 }.
+//      아는 때: 그 마을 사람이 내 앞에서 봄(seen) · 가입 · 거래가 원한으로 거절(join · trade) · 촌장 권유(told) · 추방(expel) · 토벌대를 그 자리에서 봄(raid) ·
+//      그 마을 땅에 섬(here — 가 보면 안다 · 풀린 것도) · 소문이 닿음(rumor — 그 마을 소문(오른 날 · 토벌)이 내가 선 마을에 닿은 날 = 일 난 날 + T7 도달 날).
+//      모르는 원한은 안 보인다 — 그 마을 장부가 올라도 위 때가 오기 전엔 내 창은 아는 그대로다(단계 0 도 "안 날"로 남긴다 — 옛 소문이 새 앎을 덮지 않게).
+//   ③ 그때 뜨는 한 줄 — 본 사람이 있을 때 쌓인 순간(T1447 그 줄 + 단계 말) · 가입 거절(T1447 그 줄) · 토벌대가 떠났다는 소문이 닿을 때(새 줄) · 그 자리를 비운 사이의 토벌(그 땅에 왔을 때).
+const _t1494Z = { learn: 0, drop: 0, here: 0, rumor: 0, lines: 0, sends: 0, ticks: 0 };
+const _t1494D = () => { const d = SimVillages.econDay ? SimVillages.econDay() : null; return d == null ? (gameDayNow() | 0) : (d | 0); };
+function _t1494Vil(vid) { return SimVillages.villageByDbId ? SimVillages.villageByDbId(vid | 0) : null; }
+function _t1494Ko(it) { if (!it) return null; const s = ItemLabel.koOfLabel(ITEM_LABEL_SERVER[it] || (BUILDING_RECIPES[it] && BUILDING_RECIPES[it].label) || ''); return s || null; }
+function _t1494Name(vil, pid, nm) { const n = vil && vil.econ ? Grudge.noteOf(vil.econ, pid) : null; if (n && nm) n.nm = String(nm); }
+function _t1494StageKo(vil, pid) { const L = SimVillages.t1494Live ? SimVillages.t1494Live(vil, pid) : null; return L && L.stage > 0 ? Grudge.STAGE_KO[L.stage] : ''; }
+function _t1494Human(p) { return !!(p && p.ws && p.playerId && !npcs.has(p.pid)); }
+//   촌장 술어 — `/토벌` 과 같은 것(그 마을 사람 · 사람이 세운 마을 · 세운 사람이거나 촌장 · `_t1447Chat` 의 `chief` 줄 그대로)
+function _t1447IsChief(player, vil) {
+  if (!player || !vil || !vil.econ || !vil.econ.founder) return false;
+  if (!(player.member && (player.member.vid | 0) === vil.dbId && (!player.member.zone || player.member.zone === ZONE_ID))) return false;
+  return vil.econ.founder === player.playerId || !!(VillageKin.ON && VillageKin.isChief && VillageKin.isChief(player, vil));
+}
+//   이름 — 접속 중이면 몸 이름 · 아니면 그 마을이 적어 둔 이름 · 사유지 주인 이름(`_t1447Who`)
+function _t1494Who(vil, pid) { const p = _t1447Player(pid); if (p && p.name) return p.name; const n = vil && vil.econ ? Grudge.noteOf(vil.econ, pid) : null; if (n && n.nm) return n.nm; const w = _t1447Who(pid); return w && w !== String(pid) ? w : '이름 모를 사람'; }
+// ── ① 마을 창 칸 ──
+function _t1494Slot(player, vil) {
+  if (!T1447_PERSON_GRUDGE || !vil || !vil.econ || !SimVillages.t1494Rows) return null;
+  _t1447ClaimIdx();
+  const chief = _t1447IsChief(player, vil), d = _t1494D();
+  const rows = SimVillages.t1494Rows(vil).map((r) => {
+    const n = r.note, shut = r.harm >= Grudge.TH;
+    const o = { pid: String(r.pid), name: _t1494Who(vil, r.pid), stage: r.stage, stageKo: Grudge.STAGE_KO[r.stage],
+      why: (n && Grudge.whyLine(n)) || (r.n > 0 ? Grudge.WHY_KO.land : ''),
+      now: shut && r.casus ? '거래 · 가입을 끊었습니다 · 토벌 명분이 섰습니다' : shut ? '거래 · 가입을 끊었습니다' : r.casus ? '토벌 명분이 섰습니다' : '' };
+    if (n) o.last = { ago: Math.max(0, d - (n.d | 0)), line: Grudge.lastLine(n) };
+    if (chief) {   // 정확한 수 · 토벌(그 마을 촌장에게만)
+      o.harm = +(r.harm / Grudge.TH).toFixed(3); o.n = r.n; if (Number.isFinite(r.need)) o.need = r.need;
+      const busy = SimVillages.t1494Busy ? SimVillages.t1494Busy(vil.dbId, r.pid) : null;
+      if (busy) o.raid = { busy: busy.st, bodies: busy.bodies };
+      else if (r.casus && SimVillages.t1447Plan) { const P = SimVillages.t1447Plan(vil, String(r.pid)); o.raid = { ok: !!P.casus, fighters: P.fighters | 0, walkDays: P.walkDays | 0, bld: P.bld | 0, freed: P.freed | 0, food: +P.food || 0, labor: P.labor | 0 }; }
+      else o.raid = { ok: false };
+    }
+    return o;
+  });
+  return chief ? { rows, chief: true } : { rows };
+}
+// ── ② 내 창 — 아는 것 ──
+const _T1494_SRC = { seen: '그 마을 사람이 보았습니다', join: '가입을 거절당했습니다', trade: '거래를 거절당했습니다', told: '촌장이 직접 말했습니다', expel: '마을에서 쫓겨났습니다', raid: '토벌대를 보았습니다', here: '그 마을에서 보았습니다', rumor: '소문으로 들었습니다' };
+function _t1494Learn(p, vil, src, st) {   // st = 소문으로 아는 것({ s, w, e, h, l }) · 없으면 지금 그 마을 장부(그 순간 그 마을이 말해 준 것)
+  if (!T1447_PERSON_GRUDGE || !_t1494Human(p) || !vil || !vil.econ || !SimVillages.t1494Live) return false;
+  const d = _t1494D(), K = p.t1494k || (p.t1494k = {}), k = String(vil.dbId), o = K[k];
+  let nw;
+  if (st) nw = { s: st.s | 0, w: st.w || null, e: st.e | 0, h: st.h ? 1 : 0, l: st.l ? 1 : 0 };
+  else { const L = SimVillages.t1494Live(vil, p.playerId), n = Grudge.noteOf(vil.econ, p.playerId); nw = { s: L ? L.stage : 0, w: (n && n.w) || null, e: d, h: L && L.harm >= 0.01 ? 1 : 0, l: L && L.n > 0 ? 1 : 0 }; }
+  if (src === 'here') _t1494Z.here++; else if (src === 'rumor') _t1494Z.rumor++;
+  if (o && o.s === nw.s && o.h === nw.h && o.l === nw.l) {   // 같은 앎 — 어떻게 · 언제만 고친다(소문은 안 덮는다 · 그 자리(here)는 그날 겪은 일(본 일 · 거절 …)을 안 덮는다)
+    o.e = Math.max(o.e | 0, nw.e);
+    if (nw.s > 0 && src !== 'rumor' && !(src === 'here' && o.src !== 'rumor' && o.src !== 'here' && (o.d | 0) === d) && (o.src !== src || o.d !== d)) { o.src = src; o.d = d; _t1494Soon(p); }
+    return false;
+  }
+  if (!o && !(nw.s > 0) && !(src === 'here' && Grudge.noteOf(vil.econ, p.playerId))) return false;   // 모르던 마을이 미워하지 않는다 — 적을 것이 없다(그 마을에 소문이 남았으면 "안 날"만 적는다 — 옛 소문이 덮지 않게)
+  K[k] = Object.assign({ s: nw.s, w: nw.w, d, e: nw.e, src, h: nw.h, l: nw.l }, o && o.t ? { t: o.t } : {});
+  if (!(nw.s > 0)) _t1494Z.drop++; else _t1494Z.learn++;
+  _t1494Soon(p);
+  return true;
+}
+//   내 창 한 통은 그 일을 처리한 뒤에(같은 차례의 알림 줄 — 거절 · 본 일 — 이 먼저 가게) · 같은 차례에 여럿이면 한 통
+function _t1494Soon(p) { if (p._t1494Q) return; p._t1494Q = 1; setImmediate(() => { p._t1494Q = 0; try { _t1494Send(p); } catch (e) {} }); }
+function _t1494Told(p, vid, key) { const K = p.t1494k || (p.t1494k = {}), k = String(vid), o = K[k] || (K[k] = { s: 0, w: null, d: _t1494D(), e: 0, src: 'raid', h: 0, l: 0 }); o.t = (o.t || []).filter((x) => x !== key).concat([key]).slice(-8); }
+function _t1494Fix(o) {   // 푸는 길 한 줄(있는 규칙 — 시간 · 갚기 · 들기 · 내놓기). 갚기는 땅 명분으로 온 토벌대가 바닥 짐을 지고 갈 때뿐이다(T1447 — 해코지만으론 토벌이 없다)
+  const L = [];
+  if (o.h) L.push('날이 갈수록 옅어집니다');
+  if (o.h && o.l) L.push('토벌대가 오면 바닥의 짐을 그 값만큼 가져가 갚습니다');
+  if (o.l) L.push('땅을 내놓거나 그 마을에 들면 땅 원한은 지워집니다');
+  return L.join(' · ');
+}
+function _t1494MeRows(p) {
+  const K = (p && p.t1494k) || {}, d = _t1494D(), out = [];
+  for (const k of Object.keys(K)) {
+    const o = K[k], v = _t1494Vil(+k); if (!v || !(o.s > 0)) continue;
+    out.push({ vid: +k, name: v.name, stage: o.s, stageKo: Grudge.STAGE_KO[o.s], src: o.src, how: _T1494_SRC[o.src] || '', ago: Math.max(0, d - (o.d | 0)), why: o.w ? (Grudge.WHY_KO[o.w] || '') : '', fix: _t1494Fix(o) });
+  }
+  out.sort((a, b) => (b.stage - a.stage) || (a.ago - b.ago) || (a.vid - b.vid));
+  return out;
+}
+function _t1494Send(p) {
+  if (!_t1494Human(p)) return false;
+  const rows = _t1494MeRows(p), j = JSON.stringify(rows);
+  if (p._t1494Sent === j) return false;
+  p._t1494Sent = j; _t1494Z.sends++;
+  send(p.ws, { type: 'grudge_me', rows });
+  return true;
+}
+// ── ③ 그 땅에 섬 · 소문 — 접속한 사람마다 몇 초에 한 번(마을 화면 박자) · 들어올 때 ──
+function _t1494Check(p) {
+  if (!T1447_PERSON_GRUDGE || !_t1494Human(p)) return 0;
+  const d = _t1494D(), cx = Math.floor(p.x / BUILDING_SIZE), cy = Math.floor(p.y / BUILDING_SIZE);
+  const here = SimVillages.villageOfCell ? SimVillages.villageOfCell(cx, cy) : null, K = p.t1494k || null;
+  let n = 0;
+  if (here && here.econ && ((K && K[here.dbId]) || Grudge.noteOf(here.econ, p.playerId) || Grudge.landOf(here.econ, p.playerId) || Grudge.harmOf(here.econ, p.playerId) >= 0.01)) { if (_t1494Learn(p, here, 'here')) n++; }
+  const V = SimVillages.t1447Villages ? SimVillages.t1447Villages() : [];
+  for (const X of V) {
+    const note = X && X.econ ? Grudge.noteOf(X.econ, p.playerId) : null; if (!note || !note.e || !note.e.length) continue;
+    const lag = here ? (SimVillages.t1494Delay ? SimVillages.t1494Delay(X.dbId, here.dbId) : Infinity) : Infinity;
+    const inPlace = _t1447InPlace(p, X.dbId);
+    let last = null;   // 닿은 소문 가운데 마지막 것(단계 · 날) — 같은 날 둘이 올라도 마지막 단계 하나로 안다
+    for (const ev of note.e) {
+      const [eday, es, ew, job] = ev;
+      const heard = here ? eday + lag : Infinity, kk = String(X.dbId), o = (p.t1494k || {})[kk];
+      if (heard <= d) last = ev;
+      const told = (k2) => !!(o && o.t && o.t.includes(k2));
+      if ((ew === 'raid' || ew === 'done') && job) {   // 토벌 소문 — 떠남 · 친 날(그 자리를 비운 사이 친 것은 그 땅에 오면 그 자리 줄)
+        const key = ew + ':' + job;
+        if (!told(key) && ew === 'done' && inPlace) { _t1494Told(p, X.dbId, key); send(p.ws, { type: 'notice', text: `자리를 비운 사이 — ${X.name} 토벌대가 당신 땅을 쳤습니다.` }); _t1494Z.lines++; _t1494Learn(p, X, 'raid'); n++; continue; }
+        if (!told(key) && heard <= d) { _t1494Told(p, X.dbId, key); send(p.ws, { type: 'notice', text: ew === 'raid' ? `${X.name} 토벌대가 당신 땅으로 떠났다는 소문이 들립니다.` : `${X.name} 토벌대가 당신 땅을 쳤다는 소문이 들립니다.` }); _t1494Z.lines++; n++; }
+      }
+    }
+    if (last) {   // 소문으로 안다 — 내가 아는 것보다 새 날 것 · 같은 날이면 소문끼리만(본 일 · 그 자리는 소문이 안 덮는다)
+      const [eday, es, ew] = last, o = (p.t1494k || {})[String(X.dbId)];
+      if (!o || eday > (o.e | 0) || (eday === (o.e | 0) && o.src === 'rumor' && es !== o.s)) { if (_t1494Learn(p, X, 'rumor', { s: es, w: ew, e: eday, h: ew !== 'land' && ew !== 'raid' && ew !== 'done' ? 1 : (o ? o.h : 0), l: ew === 'land' || ew === 'raid' || ew === 'done' ? 1 : (o ? o.l : 0) })) n++; }
+    }
+  }
+  //   안 날 표지(단계 0) — 그 마을에 그 사람 곁 칸이 없으면(더 닿을 소문 없음) 지운다
+  if (p.t1494k) { for (const k of Object.keys(p.t1494k)) { const o = p.t1494k[k], X = _t1494Vil(+k); if (!(o.s > 0) && !(X && X.econ && Grudge.noteOf(X.econ, p.playerId))) delete p.t1494k[k]; } if (!Object.keys(p.t1494k).length) delete p.t1494k; }
+  return n;
+}
+function _t1494Tick() { if (!T1447_PERSON_GRUDGE) return; _t1494Z.ticks++; for (const p of players.values()) { if (_t1494Human(p)) { try { _t1494Check(p); } catch (e) {} } } }
+function _t1494Login(p) { if (!T1447_PERSON_GRUDGE || !p) return; try { _t1494Check(p); } catch (e) {} p._t1494Sent = null; _t1494Send(p); }
 function _tryBuildAt(player, type, floor = 0, side = null, dir = null, opts = null) {
   // 14.51: opts.skipCost = 인벤 차감 없이 빌드만 (place_building에서 사용). atX/atY = 위치 override.
   const skipCost = !!(opts && opts.skipCost);
@@ -16580,13 +16769,10 @@ function _t1447Chat(player, text) {
   const mine = (player.member && (!player.member.zone || player.member.zone === ZONE_ID)) ? (SimVillages.villageByDbId ? SimVillages.villageByDbId(player.member.vid | 0) : null) : null;
   const chief = !!(mine && mine.econ && mine.econ.founder && (mine.econ.founder === player.playerId || (VillageKin.ON && VillageKin.isChief && VillageKin.isChief(player, mine))));
   if (cmd === '/원한') {
-    const lines = [];
-    for (const v of (SimVillages.t1447Villages ? SimVillages.t1447Villages() : [])) {
-      if (!v || !v.econ) continue;
-      const h = Grudge.harmOf(v.econ, player.playerId), n = Grudge.landCount(v.econ, player.playerId);
-      if (h >= 0.01 || n > 0) lines.push(`${v.name} — ${h >= Grudge.TH ? '거래도 받아들임도 끊음' : (h >= 0.01 ? '미워함' : '')}${n > 0 ? `${h >= 0.01 ? ' · ' : ''}내 땅이 넓힘을 막은 칸 ${n}` : ''}`);
-    }
-    send(player.ws, { type: 'notice', text: lines.length ? `나를 미워하는 마을 — ${lines.join(' / ')}` : '나를 미워하는 마을이 없습니다.' });
+    //   ★[T1494 · 정해진 것 2] 사람 쪽 줄은 **내가 아는 것**(내 창과 같은 줄 — `_t1494MeRows`)만 — 종전엔 마을 장부를 그대로 읽어(모르는 원한까지 · 막힌 칸 수까지) 보였다.
+    _t1494Check(player);
+    const lines = _t1494MeRows(player).map((r) => `${r.name} — ${r.stageKo}(${r.how}${r.ago > 0 ? ` · ${r.ago}일 전` : ''})`);
+    send(player.ws, { type: 'notice', text: lines.length ? `나를 미워하는 마을 — ${lines.join(' / ')}` : '나를 미워하는 마을을 아는 것이 없습니다.' });
     if (chief) {
       const L = mine.econ._grudgeLand || {}, G = mine.econ._grudge || {}, rows = new Map();
       for (const pid of Object.keys(L)) rows.set(pid, 1);
@@ -17827,7 +18013,8 @@ function __testBind() {
     T1423_NO_BUILD, T1423_BLOCK_REACT, _t1423NoBuild, _t1423NoBuildRect, _t1423A, _tryBuildAt, tryHutStart, _siteStart, tryShelterStart, tryRequestVillageHouse, _t1392Cells, _t1392Check,
     _t1423Idx, _t1423Z, _t1423Owe, _t1423IdxAdd, _t1423IdxDel, _t1423Has, _t1423StepHit, _t1423Info, _t1423Break, _t1423Hostile, _t1423Collect, _t1423Mine, isBlockedByWall, groundItems, isWaterTileLocal, isBridgeTileLocal, claims, players, npcs,
     T1447_PERSON_GRUDGE, Grudge, Membership, SimVillages, handlePlayerInput, _liveBuildRow, _t1447ClaimIdx, _t1447Hostile, _t1447OnClaim, _t1447Steal, _t1447LandTake, _t1447Witness, _t1447Raw, _t1447TradeErr, _t1447JoinErr, _t1447OnSeat, _t1447Offer, _t1447OfferTick, _t1447Collect,
-    _t1447Raze, _t1447Unclaim, _t1447Loot, _t1447Survey, _t1447BldHit, _t1447VilOfB, _t1447Chat, _t1447ChiefSay, _t1447Say, _t1447Z, _t1447Owe, _t1447OfferQ, _t1238StealCheck, _t1238StealApply, _t1238FenceCost, tryAttack, gatherResource, _t1440Break: (id, by, W) => (T1440_ROAD_RULE ? _t1440Break(id, by, W) : null),   // ★[T1447] 원한 — 하네스가 진짜 문을 부른다
+    _t1447Raze, _t1447Unclaim, _t1447Loot, _t1447Survey, _t1447BldHit, _t1447VilOfB, _t1447Chat, _t1447ChiefSay, _t1447Say, _t1447Z, _t1447Owe, _t1447OfferQ,
+    _t1494Slot, _t1494Learn, _t1494Check, _t1494Tick, _t1494Login, _t1494MeRows, _t1494Send, _t1494Z, _t1447IsChief, _t1447Depart, _t1447Done, serializeBody, parseBody, _bodyInto, _t1238StealCheck, _t1238StealApply, _t1238FenceCost, tryAttack, gatherResource, _t1440Break: (id, by, W) => (T1440_ROAD_RULE ? _t1440Break(id, by, W) : null),   // ★[T1447] 원한 — 하네스가 진짜 문을 부른다
     // ★[T1440] 처음 길 — 구조물 표 · 짓기 문 · 표시 · 캐러밴이 친다 · 미리보기 · 틱(하네스가 정본 함수를 그대로 부른다)
     T1440_ROAD_RULE, RoadRule, _t1440Zs, _t1440Row, _t1440Mk, _t1440Q, _t1440Jc, _t1440Gate, _t1440Build, _t1440Done, _t1440MarkHit, _t1440Break, _t1440Tick, _t1440PeekMsg, _t1440Piece, _t1440Sig, _t1440PassClaim, _t1440FreeToBreak, _t1440VilLand, _t1440VilOf, _t1440Member, _t1440Reclass, _t1440ClaimP, _t1440ClaimChanged, _t1440Info, _t1440VBreak, _t1440VJ, _t1440CPv, handlePlayerInput, isRockTileLocal, tryBuildGuildGranary, findEdgeWall,
     // ★[T1438] 구조물 낡음 존 몫 — 하네스(`test-t1438-decay`)가 정본 함수를 그대로 부른다

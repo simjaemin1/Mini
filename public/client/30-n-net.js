@@ -1714,6 +1714,8 @@
       //   ⇒ 그 문자열 조립은 통째로 지웠다(토스트 경로 0 — 판이 정본이다).
       //     그리기는 `47-s-board.js` 하나다. 여기서는 넘기기만 한다(연대기와 같은 접점 문법).
       boardOnMessage(bd);
+    } else if (msg.type === 'grudge_me') {
+      grudgeMeOnMessage(msg);   // ★[T1494] 나를 미워하는 마을(켬에서만 온다 · 그리기는 50-i-panel.js 마을 판)
     } else if (msg.type === 'village_view') {
       villageViewOnMessage(msg);   // ★[T1070 · T1103] 마을 화면 자료(T1072 `villageView` — 통째 `view` · 바뀐 칸만 `slots` 둘 다 메시지째 넘긴다 · 그리기는 52-v-village-view.js)
     } else if (msg.type === 'onboarding_state' || msg.type === 'onboarding_quest' || msg.type === 'onboarding_fx' || msg.type === 'onboarding_day') {

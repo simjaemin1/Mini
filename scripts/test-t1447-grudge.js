@@ -411,8 +411,9 @@ function main() {
   const z = run('zone');
   if (z.err) ok(false, '③ 존 아이', z.err);
   else {
-    ok(z.on && z.a.g1 === 0.072 && z.a.g2 === 0 && z.a.vp === 0 && z.a.note === 1 && z.a.free === 0.036 && z.a.queued && z.a.collected === 1 && !z.a.oweAfter,
-      '③a 길 막기 → 소식이 닿은 마을만 해코지 원한(0.072 · 이웃 0) · 벌점 0 · 주인 없는 땅의 것 ½(0.036) · 접속 안 한 주인은 들어올 때 한 줄', JSON.stringify(z.a));
+    //   ★[T1494] 장부 — 길 막기 원한은 그 마을이 소식으로 안 것(주인 앞에서 본 사람 0) → 그 자리 줄 0 · 접속 안 한 주인도 들어올 때 0(종전 한 줄은 새어 보임 — 소문 · 그 땅에서 안다 · test-t1494-grudge-ui)
+    ok(z.on && z.a.g1 === 0.072 && z.a.g2 === 0 && z.a.vp === 0 && z.a.note === 0 && z.a.free === 0.036 && z.a.queued && z.a.collected === 0 && !z.a.oweAfter,
+      '③a 길 막기 → 소식이 닿은 마을만 해코지 원한(0.072 · 이웃 0) · 벌점 0 · 주인 없는 땅의 것 ½(0.036) · ★[T1494] 본 사람이 없으니 그 자리 줄 0 · 들어올 때도 줄 0(미뤄 둔 추방 셈만 선다)', JSON.stringify(z.a));
     ok(z.b.seen > 0 && Math.abs(z.b.seen - 3 / z.b.unit) < 1e-4 && z.b.unseen === 0 && z.b.harmC2 === 0 && z.b.wild === 0,
       '③b 마을 땅에서 거두기 — 그 마을 몸이 보면(AOI 안) 값 ÷ 원한 1 의 값 · 안 보면 0 · 마을 땅 밖 0', `본 ${z.b.seen} · 안 본 ${z.b.unseen}(몸에서 ${z.b.far}px) · 밖 ${z.b.wild}`);
     ok(z.c.vp === 0 && z.c.kind === 'terr' && z.c.g && z.c.vpAfter === 0 && z.c.harmC > z.b.harmC, '③c 마을 밭 작물 — 벌점 0 · 원한이 오른다', JSON.stringify(z.c));
