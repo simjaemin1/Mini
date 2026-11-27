@@ -26,5 +26,5 @@
   "errors": []
  },
  "default": "OFF",
- "remoteCI": "not verified"
+ "remoteCI": "query Forbidden; not verified"
 }
