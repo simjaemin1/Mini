@@ -66,3 +66,5 @@ NPC 마을 전쟁의 위 계약이 대상이다. 비마을 인간 전투원, 소
 최종 무결성 보완: 개발초기 v1 명부 fallback은 제거했다. bodyIds 누락·중복·records와 대응하지 않는 manifest 및 필수 host memory 누락은 재계산 checksum이 있어도 prepareBodies/restore 모두 `WAR_SNAP_INVALID`다. 최종 제품의 추가 차이는 이 거부 검증이며, 성숙870 판은 불변703 소스로 계속 측정한다. 유효703 snapshot에는 manifest가 있어 그 분기는 사용되지 않는다. 보완 후14/14와24/24를 다시 통과했다. `native-protocols-final.json`은24조건 모두9000 host tick과 실제 단계/body/group/ctx·후속BC step/dt 합을 공개한다.
 
 공식 old-code-red의 3종 빨강은 모두 `complete snapshot product API absent` 전제 단언이다. 이것을 3종 각각의 행동 차이 증명으로 확대하지 않는다. 실제 상태 보존/누락 감지는 native 연속-재개 비교와 별도 단일원인 미끼7개가 담당한다.
+
+CI 1bd4 제품 검증 중 기존 정적 하네스의 문자열 연동3개가 실패했다. T1167은 주석까지 포함해 찾던 rebuildFromEcon 위치를 실제 호출 문자열로 찾도록 고쳤고, war-nosnap은 원래 return 조건을 그대로 유지하면서 단일 관측gate 블록 및 tickWarBodies→_tickWarBodies wrapper의 OFF direct call-through/ON finally를 함께 검사한다. 제품 수정0. 이후 war-nosnap62/62·T1167 14/14, 두 하네스 각5회 green이다.

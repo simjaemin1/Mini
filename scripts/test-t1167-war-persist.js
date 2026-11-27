@@ -111,7 +111,7 @@ function sub(ph, extra, inObj) {
 console.log('\n=== 진행 중 전쟁 영속 — T1167_WAR_PERSIST ===');
 {
   const Vs = fs.readFileSync(SV('villages.js'), 'utf8');
-  const iE = Vs.indexOf('_t1167Early(); } catch'), iR = Vs.indexOf('state.war.rebuildFromEcon();   // 재부팅 복원'), iB = Vs.indexOf('_t1167Bind(); } catch'), iT = Vs.indexOf('if (T747_BODY) { try { _t747Restore(); }');
+  const iE = Vs.indexOf('_t1167Early(); } catch'), iR = Vs.indexOf('state.war.rebuildFromEcon();'), iB = Vs.indexOf('_t1167Bind(); } catch'), iT = Vs.indexOf('if (T747_BODY) { try { _t747Restore(); }');
   ok(/const T1167_WAR = process\.env\.T1167_WAR_PERSIST !== '0';/.test(Vs) && (Vs.match(/process\.env\.T1167_WAR_PERSIST/g) || []).length === 1
     && (Vs.match(/\{ t1167: P \}/g) || []).length === 1 && iE > 0 && iR > iE && iT > iR && iB > iT,
     "⓪ 손잡이 한 줄(`!== '0'`) · 메타 칸 한 줄 · 이른 되살림 → 거울 정산 → T747 몸 → 몸 쪽 되살림 차례");

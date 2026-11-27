@@ -1,0 +1,18 @@
+
+=== 진행 중 전쟁 영속 — T1167_WAR_PERSIST ===
+  ✓ ⓪ 손잡이 한 줄(`!== '0'`) · 메타 칸 한 줄 · 이른 되살림 → 거울 정산 → T747 몸 → 몸 쪽 되살림 차례
+  ✓ [상황] 판 1 — 행군 중 전쟁 하나가 메타 칸으로 나왔다  [{"atk":"공격","def":"방어","id":7,"casus":"trade","force":2,"warriors":1,"composition":{"dagger":1,"spear":1},"phase":"march","op":"march","eta":403,"marchDays":3,"born":399,"_packRem":4.5,"_packOnBodies":2,"_packKeys":["food"],"_packShare":1,"_arms":{"out":3,"weapon":3,"militia":0},"_armsOnBodies":2,"_rationBook":{"load":9,"days":[{"day":400,"eaten":1}]},"_vetRoster":[{"id":101,"wtype":"spear"}],"_armsPack":{"$T1167":[[[1,0],2],[[1,1],1]]},"_debt":{"$T1167":[[[1,1],0.5]]},"_t1167Sol":[[[1,0],"dagger"],[[1,1],"spear"]]}]
+  ✓ ⑦ 진행 중 전쟁이 없으면 칸 0(`_t1167Pack` → null — 메타 글자 종전 그대로)  null
+  ✓ ① 저장 꼴 — 마을 = 이름 · pid = 몸 자리(dbId · 명부 자리) · 병사 명부(병종째) · econ 주민 = 번호 · 결판 인계 칸 안 실음  531 B
+  ✓ ★① 켬 — 같은 번호 · 같은 마을 객체 · 단계 · 도착 날 · 팩 · 짐 장부 그대로 · 번호 계수기 앞으로  {"atkSame":true,"defSame":true,"phase":"march","op":"march","eta":403,"packRem":4.5,"arms":{"out":3,"weapon":3,"militia":0},"armsPack":[["na0",2],["na1",1]],"debt":[["na1",0.5]],"vet":[[1,"spear"]],"book":{"load":9,"days":[{"day":400,"eaten":1}]},"cap":"none","re":false}
+  ✓ ★① 켬 — pid 표가 같은 자리 몸의 **새 pid** 로(무기 몸 짐 · 군량 빚) · 노병 명부가 같은 econ 주민  {"armsPack":[["na0",2],["na1",1]],"debt":[["na1",0.5]],"vet":[[1,"spear"]]}
+  ✓ ★① 켬 — 징발 표는 그대로 · 이전 프로세스의 pid(`_warPid`)는 지웠다  {"warPid":[null,null,null,null,null,null],"marks":[7,7,0,0,0,0]}
+  ✓ ★② 켬 — 무기 거울 정산이 원정 짐 몫을 곳간에 안 낸다(곳간 0 + 장부 3 = 저장 순간 3 · 거울 3)  {"weapon":0,"armsOut":3,"arms":{"out":3,"weapon":3,"militia":0}}
+  ✓ [대조 · ②] 되살림 없음(종전 꼴) — 전쟁 0 · 거울 전부 곳간(3) — 이른 되살림이 거울 앞이어야 하는 까닭  {"n":0,"weapon":3}
+  ✓ ★③ 켬 — 다시 징발이 그 병사 몸을 같은 병종으로 먼저 뽑는다(전사 직업 몸이 옆에 있어도) · 징발 표를 다시 묶는다  {"draft":[["na0","dagger"],["na1","spear"]],"bound":["na0","na1",null,null,null,null]}
+  ✓ [끔 · `=0` 종전] 몸 쪽 되살림 문이 안 불린다 — 낡은 pid 그대로(운영 부팅은 이른 되살림도 안 부른다 · 이 판은 메타 칸이 있어도)  {"n":0,"warPid":["oa0","oa1",null,null,null,null]}
+  ✓ ⑥ 다른 날 메타 — 안 되살린다(이미 끝난 전쟁을 되살리지 않는다 · 생성 금지)  메타 날 399 ≠ econ 날 400 — 전쟁을 안 되살린다(생성 금지)
+  ✓ ★④ 켬 — 귀환 중 전쟁(몸 없음) — 장부 귀환이 그 병사 명부 몸 짐을 모은다(표식 든 둘 · 명부 밖 몸 손은 그대로)  {"collect":{"food":4},"left":[0,0,2]}
+  ✓ ⑤ 교전 중 전쟁 — 다시 개전 표(`_t1167Re` — 다음 몸 틱에 같은 개전 문 `_warEngage`)  {"atkSame":true,"defSame":true,"phase":"battle","op":"march","eta":403,"packRem":4.5,"arms":{"out":3,"weapon":3,"militia":0},"armsPack":[["na0",2],["na1",1]],"debt":[["na1",0.5]],"vet":[[1,"spear"]],"book":{"load":9,"days":[{"day":400,"eaten":1}]},"cap":"none","re":true}
+
+=== PASS 14 / FAIL 0 ===

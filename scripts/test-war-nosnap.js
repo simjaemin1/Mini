@@ -139,7 +139,7 @@ console.log('\n[ⓓ] T804 — 걷는 몸의 길 · 전진 풀기 걸음(아이 �
   ok(/PathCore\.localPathBegin\(/.test(loc) && !/PathCore\.|_search|new Map|new Set/.test(way + road) && !/routePath|_search/.test(loc) && loc.indexOf('_warClearLine') < loc.indexOf('PathCore.localPathBegin(') && loc.indexOf('mem._t804f === key') < loc.indexOf('PathCore.localPathBegin(')
     && way.indexOf('_t804Local(') < way.lastIndexOf('_t804Road(') && /_t804Local\(R, /.test(road),
     'ⓓ 정적 — 길은 경로 정본 path-core 걸음 프리셋(★T821 재개형 문 `localPathBegin` · 탐색 사본 0) · 묻기 앞에 곧은 줄 · 곧은 한 걸음이 열렸나를 본다(막혔을 때만 묻는다) · 길이 없던 목표 칸은 되묻지 않는다 · 못 찾으면 행군로 점을 하나씩(점 사이도 같은 걸음 프리셋 · 새 탐색 0)');
-  ok(/T790_NO_SNAP && d > cap && g\._t790Walk > 0/.test(wgt) && /T790_NO_SNAP && g && g\.units && g\._t790Walk > 0 && _t804WalkOut\(g\)\) return;/.test(rel) && /Math\.min\(g\._t790Walk, d\)/.test(wout),
+  ok(/T790_NO_SNAP && d > cap && g\._t790Walk > 0/.test(wgt) && /T790_NO_SNAP && g && g\.units && g\._t790Walk > 0 && _t804WalkOut\(g\)\) \{ _warSnapGate\('release-walkout', f\); return; \}/.test(rel) && /Math\.min\(g\._t790Walk, d\)/.test(wout),
     'ⓓ 정적 — 주둔 원점 · 전진 풀기도 켬 · 몸 걸음 칸이 있을 때만(끔 = 종전 글자) · 풀기 걸음 = 몸 걸음');
   const added = [way, loc, road, fnBody(CV, '_t804RoadPts'), fnBody(CV, '_t804Nearest'), wout].join(' ').replace(/\[[01]\]/g, '[]');
   ok(!/[^\w.'D](?:[2-9]|\d{2,})(?:\.\d+)?(?![\w'])/.test(added.replace(/\+ 2\)/g, '+ _)').replace(/0\.5/g, '_').replace(/length < 2\)/g, 'length < _)').replace(/\* 65536 \+/g, '* _ +')) && !/Date\.now|setTimeout|Math\.random/.test(added),
@@ -294,7 +294,9 @@ const child821 = (knob) => {
 //     ⓖ 첫 줄이 두 아이 판을 `JSON.stringify` 로 통째 견주므로 그 한 칸이 빨강을 냈다. 세운 시계면 끊지 않는 판은 늘 한 번에 끝난다(`fr` 0) — 견줌은 그대로 통째.
 console.log('\n[ⓕ] T832 — 켬 판 결정론: 귀환 몸도 그날 몫(아이 프로세스 켬/끔)');
 {
-  const tk = fnBody(CV, 'tickWarBodies'), fl = fnBody(CV, '_t681Flush');
+  // WAR_SNAP adds a safe-boundary wrapper; inspect its call-through and the original tick separately.
+  const wrapper = fnBody(CV, 'tickWarBodies'), tk = fnBody(CV, '_tickWarBodies'), fl = fnBody(CV, '_t681Flush');
+  ok(/if \(\!T1497_WAR_SNAP\) return _tickWarBodies\(now\);/.test(wrapper) && /try \{ return _tickWarBodies\(now\); \} finally \{ _warSnapBusy--; \}/.test(wrapper), 'ⓕ 정적 — OFF direct call-through와 ON finally가 같은 정본 tick을 한 번 부른다');
   ok(/if \(body\.phase === 'return'\) \{ if \(_RET_QUOTA && T681_ON && body\._t681 && !_t681Take\(body\)\) continue; _warPaceReturn\(body, now, dtMs\); continue; \}/.test(tk)
     && /if \(_RET_QUOTA && state\.warBodies\) for \(const body of state\.warBodies\.values\(\)\) \{/.test(fl) && fl.indexOf('_warPaceReturn(body, now, dtMs);') > fl.indexOf('_RET_QUOTA && state.warBodies')
     && /body\._t681q\.left--;\s*_warPaceReturn\(body, now, dtMs\);/.test(fl),
