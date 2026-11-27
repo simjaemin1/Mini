@@ -19105,6 +19105,83 @@ function _t720Step(vil, npc, now, fv, dayR, day, fullFish = false) {
   return false;
 }
 // 곳간행 실행 — 이번 틱 소유권을 가지면 true. (랩 toGran/gran 2상태를 서버 _lifeTask 대신 _granTask로 표현)
+// ★★[T1502 2026-11-27 · 덧붙임 ③] 손잡이 `T1502_ACT_FIX`(끔 기본 · `=1` 켬) — **채집꾼 몸이 설 자리를 채집 색인에서.**
+//   왜: `T347_FORAGE_ACT` 켬 판에서 채집꾼 몸의 현장은 `_lifeJobSites().forager`(= `qtResources` 밀집 버킷)였다 — 헤드리스 판 자에선 그 목록이 비어
+//     몸은 레거시 폴스루(아무 자원이나)로 흘렀다(T1502 깔때기: 채집꾼 몸-날 닿음 0.5 %). 일괄(`_lifeDaily` T347 절)은 이미 색인(`_t347Scan` 셀)에서 딴다.
+//   고침(자리 · 일의 차례만 · 새 수 0): 몸이 그 색인 셀 가운데 가장 가까운 셀로 **걸어가**(나무꾼 T325 몸 절과 같은 44 px · 같은 시작점 흘림) ·
+//     닿으면 **일괄과 같은 따기 문**(`t495PickAt` · 끄면 `t347PickAt` · 같은 수요 문 `forageDemandLeft`)으로 **손에** 딴다 ·
+//     한 짐(`_t347PerLoad(w̄)` — 일괄 한도식의 그 수)이 차면 곳간으로 가서 **닿는 순간 넣는다**(`_t347Deliver` · 걸은 몸 도장은 `_t720Settle` 의 그 줄).
+//     페이싱은 종전 채집 갈래의 그 수(`6000 + (h % 5) · 1000` ÷ `t1295S`) · 다 딴 셀은 그날 건너뛴다.
+//   몸 XOR 일괄: 걸은 몸 도장(`_t347PreWalked`)이 일괄 명부(`_t1202Roster`)에서 그 몸을 뺀다 — 종전 계약 그대로(두 번 0).
+//   끄면 `T1502_ACT_FIX` 가 거짓이라 두 호출부(채집꾼 갈래 · 곳간 도착)가 한 줄도 안 돈다(바이트 같음 — `scripts/test-t1502-funnel.js`).
+const T1502_ACT_FIX = process.env.T1502_ACT_FIX === '1';
+function _t1502ForageStep(vil, npc, now, day) {
+  const G = vil._t347Groves, cells = (G && G.list) || [];
+  if (!cells.length) return false;                                   // 오늘 색인이 빈 마을 — 종전 갈래
+  const h = _pidHash(npc.pid);
+  const F = npc._t1502F || (npc._t1502F = { site: null, skip: null, sd: -1, n: 0 });
+  if (F.sd !== day) { F.sd = day; F.skip = null; F.site = null; }
+  if (!F.site) {
+    let best = null, bd = Infinity;
+    for (let i = 0; i < cells.length; i++) {
+      const c = cells[(i + h) % cells.length];
+      if (F.skip && F.skip.has(c.cx + ',' + c.cy)) continue;
+      const d2 = (c.x - npc.x) * (c.x - npc.x) + (c.y - npc.y) * (c.y - npc.y);
+      if (d2 < bd) { bd = d2; best = c; }
+    }
+    if (!best) { _lifeGoHome(npc, '휴식'); return true; }           // 그날 색인을 다 돌았다 — 퇴근(T374 의 그 한 줄)
+    F.site = { cx: best.cx, cy: best.cy, x: best.x, y: best.y, ext: best.ext ? 1 : 0 };
+  }
+  const s = F.site;
+  const skip = () => { (F.skip || (F.skip = new Set())).add(s.cx + ',' + s.cy); F.site = null; return true; };
+  if (Math.hypot(npc.x - s.x, npc.y - s.y) > 44) { npc.behavior = 'wander'; npc.targetX = s.x; npc.targetY = s.y; npc.gatherTarget = null; _lifeAct(npc, '출근'); return true; }
+  if (npc._jobT && now < npc._jobT) return true;
+  npc._jobT = now + (6000 + (h % 5) * 1000) / t1295S(npc);
+  let peek = null; try { peek = state.deps.t347GrovesAtCell ? state.deps.t347GrovesAtCell(s.cx, s.cy) : null; } catch (e) { peek = null; }
+  if (!peek || !peek.length) return skip();
+  const keep = _t347KeepOf(vil) || [];
+  if (!keep.length) return false;
+  const inv = npc.inventory || (npc.inventory = {});
+  const put = (o) => { if (o) for (const k in o) if (o[k] > 0) inv[k] = (inv[k] || 0) + o[k]; };
+  if (_t495On() && state.deps.t495PickAt) {
+    const order = []; for (const it of keep) for (const k of _t347HandsOf(it)) order.push(k);
+    const worth = []; for (const it of (_t347ActItems() || [])) for (const k of _t347HandsOf(it)) worth.push(k);
+    let rest = null; try { rest = state.deps.t495RestOf ? state.deps.t495RestOf(peek[0]) : null; } catch (e) { rest = null; }
+    let have = 0; if (rest) for (const k of order) { const a = rest[k]; if (a > 0) have += a; }
+    if (!(have > 0)) return skip();
+    const left = _lifeEcon().forageDemandLeft(vil.econ);
+    const want = (left === Infinity) ? have : Math.min(have, Math.ceil(left - 1e-9));
+    if (!(want > 0)) { _lifeGoHome(npc, '휴식'); return true; }
+    let res = null; try { res = state.deps.t495PickAt(s.cx, s.cy, order, want, worth); } catch (e) { res = null; }
+    if (!res || !(res.n > 0 || res.whole)) return skip();
+    if (T1238_TERR_V2) _t1238Use(vil, s.cx, s.cy);
+    if (res.emptied && res.seedKey && !s.ext) (vil._t347Cut || (vil._t347Cut = [])).push(res.seedKey);
+    put(res.took); put(res.extra);
+  } else {
+    if (!(_lifeLootForage(peek[0]) > 0)) return skip();
+    const sk = peek[0].seedKey || null;
+    let loot = null; try { loot = state.deps.t347PickAt ? state.deps.t347PickAt(s.cx, s.cy) : null; } catch (e) { loot = null; }
+    if (!loot) return skip();
+    if (T1238_TERR_V2) _t1238Use(vil, s.cx, s.cy);
+    if (sk && !s.ext) (vil._t347Cut || (vil._t347Cut = [])).push(sk);
+    put(loot);
+  }
+  F.n++;
+  _lifeAct(npc, '채집');
+  if (F.n >= _t347PerLoad((G.wBar > 0) ? G.wBar : 1) && _granGo(vil, npc, false)) npc._jobT = 0;   // 한 짐 — 곳간으로(닿는 순간 `_t1502ForageIn`)
+  return true;
+}
+//   곳간 사다리에 닿은 채집꾼 몸의 손 → 곳간(그 입구 그대로 · 걸은 몸 도장은 `_t720Settle` 의 T347 줄과 같은 글자 · 같은 칸 `npc._t720.fw`)
+function _t1502ForageIn(vil, npc, now) {
+  const E = _lifeEcon();
+  if (!(E.T347_FORAGE_ACT && E.forageActOn(vil.econ) && npc.inventory)) return;
+  let u = 0; for (const k of (_t347KeepOf(vil) || [])) for (const h of _t347HandsOf(k)) u += npc.inventory[h] || 0;
+  if (npc._t1502F) npc._t1502F.n = 0;
+  if (!(u > 0)) return;
+  const S = npc._t720 || (npc._t720 = { k: 0, tx: 0, ty: 0, at: 0, aw: 0, last: now, d0: -1, dd: -1, fw: -1 });
+  const nf = _t733NewForage(npc, u); _t347Deliver(vil, npc); const d = _bodyDay(npc, now);
+  if (S.fw !== d) { if (T733_FELL_LOOT) vil._t733PreO = (vil._t733PreO | 0) + 1; if (nf) { S.fw = d; vil._t347PreWalked = (vil._t347PreWalked | 0) + 1; } }
+}
 function _lifeGranStep(vil, npc, now) {
   const t = npc._granTask; if (!t) return false;
   const g = (vil._granList || []).find((x) => x.cx === t.cx && x.cy === t.cy);
@@ -19125,7 +19202,7 @@ function _lifeGranStep(vil, npc, now) {
   //   서버는 상태가 없고 스케줄 게이트를 매 틱 재평가하므로, 도장이 없으면
   //   퇴근 훅이 저장(짐>0)↔인출(빈손)을 무한 왕복시킨다 — 집에 못 간다.
   if (t.draw) { const q = Math.min(G_DRAW, _granStockOf(vil, g)); _granStockAdd(vil, g, -q); _handAdd(npc, q); npc._granD = state.dayMs ? _bodyDay(npc, now) : 0; }
-  else { _granStockAdd(vil, g, _handOf(npc)); _handSet(npc, 0); if (npc._t368H) _t368Deliver(vil, npc, 'gran'); if (npc.inventory && (npc.inventory.wood || 0) > 0) _t561Ladder(vil, npc, now); if (npc.inventory && npc.inventory.ore_chunk > 0) _t724Deliver(vil, npc, 'gran', now); if (npc.inventory && (npc.inventory.stone > 0 || npc.inventory.pebble > 0) && _stoneHandInOn(vil)) _t1146HandIn(vil, npc); }   // ★[T1146 ③] 손의 돌 · 자갈도(손에 있을 때만 묻는다 — 옆 갈래들과 같은 꼴 · 끔 = 손에) · ★[T724 ②] 켠 팔은 원석도(끄면 몸 손에 원석이 없다 · `_t724Deliver` 첫 줄도 손잡이) · ③ 정산(물리 장부만 — econ 무접촉 · ★[T316] 손은 `inventory`) · ★[T368] 켠 팔은 **이 귀환이 곳간 입고**다(손의 작물 → `_farmGranary`) · ★[T561 ②ⓑ] 켠 팔은 통나무도(끄면 `_t561Ladder` 첫 줄에서 돌아간다)
+  else { _granStockAdd(vil, g, _handOf(npc)); _handSet(npc, 0); if (T1502_ACT_FIX && npc._t1502F) _t1502ForageIn(vil, npc, now); if (npc._t368H) _t368Deliver(vil, npc, 'gran'); if (npc.inventory && (npc.inventory.wood || 0) > 0) _t561Ladder(vil, npc, now); if (npc.inventory && npc.inventory.ore_chunk > 0) _t724Deliver(vil, npc, 'gran', now); if (npc.inventory && (npc.inventory.stone > 0 || npc.inventory.pebble > 0) && _stoneHandInOn(vil)) _t1146HandIn(vil, npc); }   // ★[T1146 ③] 손의 돌 · 자갈도(손에 있을 때만 묻는다 — 옆 갈래들과 같은 꼴 · 끔 = 손에) · ★[T724 ②] 켠 팔은 원석도(끄면 몸 손에 원석이 없다 · `_t724Deliver` 첫 줄도 손잡이) · ③ 정산(물리 장부만 — econ 무접촉 · ★[T316] 손은 `inventory`) · ★[T368] 켠 팔은 **이 귀환이 곳간 입고**다(손의 작물 → `_farmGranary`) · ★[T561 ②ⓑ] 켠 팔은 통나무도(끄면 `_t561Ladder` 첫 줄에서 돌아간다)
   npc._granTask = null;
   return false;                                                      // 소유권 반납 → 이번 틱부터 평소 일과
 }
@@ -22120,6 +22197,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
     P.ns += Number(process.hrtime.bigint() - _t0); P.calls++;
     if (_own) return true;
   }
+  if (T1502_ACT_FIX && job === 'forager' && vil.econ && _lifeEcon().T347_FORAGE_ACT && _lifeEcon().forageActOn(vil.econ) && _t1502ForageStep(vil, npc, now, day)) return true;   // ★[T1502] 켬 = 채집꾼 몸의 자리는 채집 색인(위 `_t1502ForageStep` 머리말 · 끔 = 이 줄 무동작)
   if (job === 'lumberjack' || job === 'miner' || job === 'forager') {   // 벌목·채광·채집=자원 밀집 현장 출근 + 실물 채집(랩 7841·7844·7861 동형)
     const sites = _lifeJobSites(vil, day)[job];
     if (!sites || !sites.length) return false;   // 생활권에 해당 자원 없음 → 레거시 폴스루
