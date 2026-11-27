@@ -16394,7 +16394,8 @@
    "same5": true,
    "srv": true,
    "core": false,
-   "why": "srv"
+   "why": "srv",
+   "why0": "존 · central · listen · fixture-boot"
   },
   "test-t1448-road-grid.js": {
    "cls0": "다",
@@ -16672,6 +16673,52 @@
    "child": [
     "spawnSync node"
    ]
+  },
+  "test-t1494-grudge-ui.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "다",
+   "maxSec": 21.1,
+   "same5": true,
+   "core": false,
+   "why": "srv",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 20.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 20.5,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 19.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 19.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 21.1,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "다",
+   "child": [
+    "spawnSync node"
+   ],
+   "srv": true
   },
   "test-t721-apply.js": {
    "cls0": "나",
@@ -18990,5 +19037,5 @@
    "srv": true
   }
  },
- "at": "2026-11-24"
+ "at": "2026-11-27"
 }

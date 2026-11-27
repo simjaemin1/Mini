@@ -1,0 +1,18 @@
+# 서버 잡 중 만진 밖 10 — `node scripts/ci-class.js --srv`(51) 에서 만진 것을 뺀 것 · `bash scripts/run-regress.sh -j 1 <10>`(TMPDIR 없음)
+test-doors.js
+test-fixture-reap.js
+test-guest-identity.js
+test-guest-rejoin.js
+test-jungwon-boot.js
+test-reset-world.js
+test-t1125-welcome.js
+test-t1163-welcome-sig.js
+test-t1405-leave-rare.js
+test-xhost-env.js
+
+=== 러너 요약 ===
+  통과 10: test-doors.js test-fixture-reap.js test-guest-identity.js test-guest-rejoin.js test-jungwon-boot.js test-reset-world.js test-t1125-welcome.js test-t1163-welcome-sig.js test-t1405-leave-rare.js test-xhost-env.js
+  실패 0: 없음
+  걸린 시간 상위(초): test-t1405-leave-rare.js 33 · test-guest-rejoin.js 29 · test-jungwon-boot.js 28 · test-reset-world.js 28 · test-guest-identity.js 16 · test-t1125-welcome.js 12 · test-t1163-welcome-sig.js 8 · test-xhost-env.js 5 · test-doors.js 4 · test-fixture-reap.js 2
+  걸린 시간 합: 하네스 165초 · 러너 전체 230초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 8번 × 8초 · 건넘 3번(앞 판이 남긴 아이 없음)

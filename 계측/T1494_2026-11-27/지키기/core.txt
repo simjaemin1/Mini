@@ -1,0 +1,91 @@
+# core 중 만진 밖 258 — `node scripts/ci-class.js --core`(337) 에서 만진 목록(160)을 뺀 것 · 25 개씩 덩이로 `bash scripts/run-regress.sh -j 1 <덩이>`(TMPDIR 없음)
+#   덩이 00 ~ 07 = post1 의 chunkrun(앞에서부터) · 08 ~ 10 = coreback(뒤에서부터 · 같은 때 무거운 일 둘까지) — 같은 목록 · 같은 러너
+
+## core_out_part_00.log
+=== 러너 요약 ===
+  통과 25: test-alloy.js test-armor-cap.js test-assay.js test-audio.js test-backup-live.js test-bandit-all.js test-bandit-body.js test-bandit-camp.js test-bandit-walk.js test-bgm-phrase.js test-body-chunks.js test-body-seed-other.js test-body-seed-restart.js test-bridge-path.js test-bridge-sprite.js test-building-anchor.js test-calendar.js test-cand-walk.js test-cell-memo.js test-charsheet.js test-chron-icons.js test-chunk-gates.js test-ci-changes.js test-ci-list.js test-client-globals.js
+  실패 0: 없음
+  걸린 시간 상위(초): test-backup-live.js 12 · test-charsheet.js 10 · test-chunk-gates.js 7 · test-bandit-walk.js 5 · test-cell-memo.js 5 · test-bandit-body.js 3 · test-bandit-camp.js 3 · test-bridge-path.js 3 · test-audio.js 2 · test-bandit-all.js 2
+  걸린 시간 합: 하네스 56초 · 러너 전체 65초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 1번 × 8초 · 건넘 25번(앞 판이 남긴 아이 없음)
+
+## core_out_part_01.log
+=== 러너 요약 ===
+  통과 25: test-clothes-tiers.js test-crop-memo.js test-crops-world.js test-day-deaths.js test-deforest-game.js test-disk-check.js test-ditch.js test-draft-famine.js test-dusk-stamp.js test-e2e-src.js test-econ-diet.js test-econ-fieldyield.js test-econ-rawgrain.js test-farm-act.js test-farm-life.js test-fell-loot.js test-fish-act.js test-floor-stone.js test-food-floor.js test-food-hunger.js test-food-keep.js test-frontier-iron.js test-gap-ruler.js test-ghost-band.js test-granary-add.js
+  실패 0: 없음
+  걸린 시간 상위(초): test-econ-fieldyield.js 30 · test-floor-stone.js 16 · test-farm-act.js 14 · test-food-keep.js 9 · test-food-hunger.js 7 · test-draft-famine.js 6 · test-food-floor.js 6 · test-disk-check.js 4 · test-fell-loot.js 3 · test-dusk-stamp.js 2
+  걸린 시간 합: 하네스 105초 · 러너 전체 115초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 1번 × 8초 · 건넘 25번(앞 판이 남긴 아이 없음)
+
+## core_out_part_02.log
+=== 러너 요약 ===
+  통과 25: test-granary-haul.js test-guild-treasury.js test-hall-door-path.js test-happy-converge.js test-harness-bite.js test-headless-parity.js test-hist.js test-hunt-vis.js test-icons.js test-imsu.js test-indoor-on.js test-lab-happywork.js test-lab-hunt.js test-lab-wood.js test-land-elev.js test-lint-harness-words.js test-live-lag-net.js test-local-clocks.js test-local-midnight.js test-model-intake.js test-move.js test-msy.js test-nightly.js test-no-shield.js test-notice-mark.js
+  실패 0: 없음
+  걸린 시간 상위(초): test-live-lag-net.js 51 · test-hunt-vis.js 41 · test-lab-happywork.js 28 · test-local-clocks.js 25 · test-nightly.js 14 · test-icons.js 9 · test-local-midnight.js 6 · test-imsu.js 2 · test-harness-bite.js 1 · test-hist.js 1
+  걸린 시간 합: 하네스 183초 · 러너 전체 202초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 2번 × 8초 · 건넘 24번(앞 판이 남긴 아이 없음)
+
+## core_out_part_03.log
+=== 러너 요약 ===
+  통과 25: test-notice.js test-npc-clothes.js test-npc-hp-door.js test-npc-label.js test-one-clock.js test-one-decay.js test-one-target.js test-oremix.js test-path-core.js test-physical-forage-plan.js test-physical-stone-return.js test-picker-tables.js test-props.js test-reanchor.js test-reap-scope.js test-redeploy-light.js test-region-profiles.js test-relic.js test-render-common.js test-resource-index.js test-rock-los.js test-seam-walk.js test-seam.js test-seed-reserve.js test-segindex.js
+  실패 0: 없음
+  걸린 시간 상위(초): test-seam-walk.js 31 · test-one-target.js 11 · test-seed-reserve.js 6 · test-path-core.js 3 · test-segindex.js 3 · test-seam.js 2 · test-notice.js 1 · test-npc-hp-door.js 1 · test-one-decay.js 1 · test-reap-scope.js 1
+  걸린 시간 합: 하네스 64초 · 러너 전체 82초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 2번 × 8초 · 건넘 24번(앞 판이 남긴 아이 없음)
+
+## core_out_part_04.log
+=== 러너 요약 ===
+  통과 25: test-smelt-return.js test-snow.js test-stone-consumption-flow.js test-stone-independent-budget.js test-stone-planning.js test-stone-real.js test-t1001-econ-day.js test-t1019-untrap.js test-t1046-wood-share.js test-t1054-decay-wood.js test-t1063-terr-draw.js test-t1074-food-debt.js test-t1075-happy-eq.js test-t1087-crew-cap.js test-t1095-mine-demand.js test-t1107-regrow.js test-t1135-fuel-eq.js test-t1136-basket.js test-t1143-no-dissolve.js test-t1147-emig-pick.js test-t1148-fuel-job.js test-t1149-winter.js test-t1152-market.js test-t1156-specialty-job.js test-t1157-pay-power.js
+  실패 0: 없음
+  걸린 시간 상위(초): test-t1147-emig-pick.js 32 · test-stone-real.js 9 · test-t1136-basket.js 9 · test-t1152-market.js 6 · test-t1001-econ-day.js 2 · test-t1019-untrap.js 2 · test-t1107-regrow.js 2 · test-snow.js 1 · test-t1046-wood-share.js 1 · test-t1063-terr-draw.js 1
+  걸린 시간 합: 하네스 71초 · 러너 전체 80초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 1번 × 8초 · 건넘 25번(앞 판이 남긴 아이 없음)
+
+## core_out_part_05.log
+=== 러너 요약 ===
+  통과 25: test-t1159-home-n.js test-t1160-promote-key.js test-t1161-two-prices.js test-t1166-npc-lot-persist.js test-t1170-lab-clock.js test-t1170-route-audit.js test-t1179-crop-season.js test-t1180-produce-defaults.js test-t1181-build-defaults.js test-t1182-caravan-body.js test-t1183-physical-war.js test-t1184-war-owner.js test-t1187-names.js test-t1188-ore-split.js test-t1192-fish-species.js test-t1195-hunt-real.js test-t1196-artisan.js test-t1197-meal-body.js test-t1198-birth-body.js test-t1200-kg-fast.js test-t1201-bronze-crops.js test-t1202-produce-live.js test-t1205-happy.js test-t1206-natural-death.js test-t1207-terr-real.js
+  실패 0: 없음
+  걸린 시간 상위(초): test-t1161-two-prices.js 32 · test-t1196-artisan.js 18 · test-t1207-terr-real.js 6 · test-t1202-produce-live.js 4 · test-t1180-produce-defaults.js 3 · test-t1198-birth-body.js 3 · test-t1188-ore-split.js 2 · test-t1192-fish-species.js 2 · test-t1195-hunt-real.js 2 · test-t1200-kg-fast.js 2
+  걸린 시간 합: 하네스 81초 · 러너 전체 90초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 1번 × 8초 · 건넘 25번(앞 판이 남긴 아이 없음)
+
+## core_out_part_06.log
+=== 러너 요약 ===
+  통과 25: test-t1209-meal-triage.js test-t1212-farm-clock.js test-t1213-terr-supply.js test-t1214-step-fast.js test-t1215-field-area.js test-t1217-margin.js test-t1218-fish-canon.js test-t1219-step-fast.js test-t1221-farm-labor.js test-t1224-econ-farm.js test-t1225-fish-capital.js test-t1226-job-flex.js test-t1229-field-grow.js test-t1235-nearest.js test-t1240-kill-once.js test-t1241-des.js test-t1245-lot-clock.js test-t1246-food-price.js test-t1249-ore-fix.js test-t1257-seed-handoff.js test-t1259-wood-cap.js test-t1266-ore-body.js test-t1268-econ-clock.js test-t1273-clock-rest.js test-t1278-perf.js
+  실패 0: 없음
+  걸린 시간 상위(초): test-t1273-clock-rest.js 53 · test-t1241-des.js 26 · test-t1235-nearest.js 20 · test-t1240-kill-once.js 9 · test-t1266-ore-body.js 6 · test-t1268-econ-clock.js 4 · test-t1214-step-fast.js 3 · test-t1217-margin.js 3 · test-t1218-fish-canon.js 2 · test-t1226-job-flex.js 2
+  걸린 시간 합: 하네스 139초 · 러너 전체 148초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 1번 × 8초 · 건넘 25번(앞 판이 남긴 아이 없음)
+
+## core_out_part_07.log
+=== 러너 요약 ===
+  통과 25: test-t1290-perf.js test-t1292-t952-axis.js test-t1292-xz-esc.js test-t1292-xz-hide.js test-t1294-perf.js test-t1314-cols.js test-t1315-war-corpse.js test-t1321-xz-beast.js test-t1321-xz-drain.js test-t1321-xz-keep.js test-t1322-prefilter.js test-t1324-xz-migrate.js test-t1325-one-rot.js test-t1328-ore-zero.js test-t1330-war-path.js test-t1331-beast-body.js test-t1333-alloy-order.js test-t1336-crop-eq.js test-t1337-wake.js test-t1339-wait-day.js test-t1344-bronze-mix.js test-t1352-xz-hold.js test-t1352-xz-news.js test-t1358-terr-stake.js test-t1359-hunt-body.js
+  실패 0: 없음
+  걸린 시간 상위(초): test-t1331-beast-body.js 33 · test-t1337-wake.js 32 · test-t1344-bronze-mix.js 23 · test-t1322-prefilter.js 18 · test-t1330-war-path.js 12 · test-t1333-alloy-order.js 8 · test-t1328-ore-zero.js 7 · test-t1339-wait-day.js 6 · test-t1294-perf.js 3 · test-t1324-xz-migrate.js 3
+  걸린 시간 합: 하네스 158초 · 러너 전체 176초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 2번 × 8초 · 건넘 24번(앞 판이 남긴 아이 없음)
+
+## core_out_part_08.mine.log
+=== 러너 요약 ===
+  통과 25: test-t1363-famine-tools.js test-t1368-onb-newbie.js test-t1376-tick-fail.js test-t1376-xz-market.js test-t1384-mine-food.js test-t1385-bronze-nocap.js test-t1388-farm-gap.js test-t1391-unhappy-bandit.js test-t1393-hunt-chase.js test-t1395-lab-diff.js test-t1396-hunt-lab.js test-t1398-bronze-band.js test-t1404-bandit-live.js test-t1407-tin-world.js test-t1408-farm-4000.js test-t1409-shared-rules.js test-t1413-hunt-year.js test-t1419-food-need.js test-t1421-farm-4000b.js test-t1425-ruler.js test-t1437-food-buffer.js test-t1445-boot-flood.js test-t1448-road-grid.js test-t1451-farm-side-wood.js test-t1452-food-ahead.js
+  실패 0: 없음
+  걸린 시간 상위(초): test-t1413-hunt-year.js 66 · test-t1396-hunt-lab.js 60 · test-t1448-road-grid.js 32 · test-t1395-lab-diff.js 25 · test-t1437-food-buffer.js 22 · test-t1445-boot-flood.js 17 · test-t1419-food-need.js 16 · test-t1452-food-ahead.js 13 · test-t1368-onb-newbie.js 11 · test-t1404-bandit-live.js 11
+  걸린 시간 합: 하네스 312초 · 러너 전체 326초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 1번 × 8초 · 건넘 25번(앞 판이 남긴 아이 없음)
+
+## core_out_part_09.mine.log
+=== 러너 요약 ===
+  통과 25: test-t1467-us-all.js test-t721-apply.js test-t740-side.js test-t742-zone.js test-t762-sync.js test-t766-dissolve.js test-t772-leg.js test-t807-quote-exec.js test-t835-quote-weight.js test-t860-catch-dry.js test-t877-dry-fix.js test-t924-debt-cap.js test-t931-slotk-ema.js test-t941-ruler.js test-t958-house-real.js test-t965-want-start.js test-t995-dry-dance.js test-terr-backfill.js test-terr-overlap.js test-terrain-memo.js test-trees.js test-update-snap.js test-valuechain.js test-vein-batch.js test-vern-num.js
+  실패 0: 없음
+  걸린 시간 상위(초): test-t807-quote-exec.js 46 · test-update-snap.js 38 · test-t877-dry-fix.js 37 · test-t924-debt-cap.js 26 · test-t931-slotk-ema.js 22 · test-t860-catch-dry.js 18 · test-t835-quote-weight.js 14 · test-t965-want-start.js 13 · test-terr-overlap.js 12 · test-t941-ruler.js 6
+  걸린 시간 합: 하네스 259초 · 러너 전체 282초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 2번 × 8초 · 건넘 24번(앞 판이 남긴 아이 없음)
+
+## core_out_part_10.mine.log
+=== 러너 요약 ===
+  통과 8: test-village-found.js test-villager-stuck.js test-war-nosnap.js test-weather.js test-winter-fx.js test-winter.js test-wood-flow.js test-wood-step1.js
+  실패 0: 없음
+  걸린 시간 상위(초): test-winter.js 24 · test-village-found.js 3 · test-war-nosnap.js 3 · test-wood-step1.js 2 · test-weather.js 1 · test-winter-fx.js 1 · test-villager-stuck.js 0 · test-wood-flow.js 0
+  걸린 시간 합: 하네스 34초 · 러너 전체 42초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 1번 × 8초 · 건넘 8번(앞 판이 남긴 아이 없음)
+

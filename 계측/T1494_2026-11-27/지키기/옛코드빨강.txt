@@ -1,0 +1,3 @@
+# 옛 코드 빨강 — 하네스 = 19057ce1d · 제품(server sim public lab) = 2502f2825 · 시한 600초
+빨강 ○ | test-t1494-grudge-ui.js | RC=1 · ✓ 0 · ✗ 15 |   ✗ ① 셈 아이 — TypeError: G.stageOf is not a function
+# 합: 빨강 1 · 크래시 0 · 초록 0 · 모름 0 · 제품 무관 0

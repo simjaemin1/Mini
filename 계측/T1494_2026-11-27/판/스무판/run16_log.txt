@@ -1,0 +1,2 @@
+[t1494 판 16] 한 바퀴 ○ · 새어 보임 0 · {"heap":true,"seen":true,"refuse":true,"chief":true,"reconnect":true,"landUnknown":true,"raid":true,"rumor":true,"razed":true,"eased":true,"leaks":true} · 77.5초
+rc=0

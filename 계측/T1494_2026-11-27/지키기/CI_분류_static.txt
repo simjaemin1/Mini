@@ -1,0 +1,2 @@
+--static — 이 가지가 바꾼 하네스 2종만(test-t1447-grudge.js test-t1494-grudge-ui.js) · 전부는 --all
+글자 분류 2종 · 가 95 · 나 279 · 다 109 · 라 12

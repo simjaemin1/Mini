@@ -1,0 +1,51 @@
+
+=== T511 첫 30분 실기 자 — spring-day (계절 spring = 게임일 46 · 시작 day · 상한 30분 · 문 260px/지킴 324px) ===
+(node:5660) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+  기동 — central 331ms · zone 22382ms
+  마을 농촌1(vid 1) · 도착점→중심 1045px · 쉼터→중심 없음(아직)
+  낮밤 맞추기 — 지금 phase 0.319 → 0 까지 16.4분 기다림
+  도착 19:12:02 · 농촌1(vid 1) · phase 0.0018 (낮) · 도착점과 0px · 허기 56 갈증 91 · 달력 봄 2일 · 바깥 {"cold":0.4685,"ko":"쌀쌀함","emo":"🌬","night":false,"tempC":18,"shelter":0.7764,"
+  ◆  0.91분  물  {"thirst":"79→100","how":"map"}
+  ◆  1.59분  첫 열매  {"how":"berry_bush","berry":2}
+  ◆  1.59분  첫 섬유  {"how":"berry_bush"}
+  ◆   1.6분  첫 밥  {"how":"berry","hunger":"52→57"}
+  ◆  7.49분  첫 도구  {"tool":"crude_axe","cost":{"pebble":2,"twig":1,"fiber":2}}
+  ◆  7.64분  첫 통나무  {"how":"tree","wood":4}
+  ◆  7.64분  첫 불  {"how":"J 모닥불(통나무 3)"}
+  ◆ 11.65분  조잡한 돌괭이(손 제작 · stone)
+  ◆ 11.75분  첫 돌  {"how":"rock"}
+  ◆ 11.92분  곡괭이(손 제작)
+  ◆ 11.93분  움집터(① 굴착)
+  ◆ 12.03분  도끼(손 제작)
+  ◆ 16.13분  첫 잠자리  {"how":"공용 쉼터(보고 찾음 · 촌장 문 밖)","try":2}
+  ◆ 24.71분  움집 ② 단계
+  ◆ 26.37분  첫 갈대  {"fiber":1}
+  ◆ 26.99분  움집 ③ 단계
+
+  ── spring-day 요약 ──
+     0.91분  물
+     1.59분  첫 열매
+     1.59분  첫 섬유
+      1.6분  첫 밥
+     7.49분  첫 도구
+     7.64분  첫 통나무
+     7.64분  첫 불
+    11.65분  조잡한 돌괭이(손 제작 · stone)
+    11.75분  첫 돌
+    11.92분  곡괭이(손 제작)
+    11.93분  움집터(① 굴착)
+    12.03분  도끼(손 제작)
+    16.13분  첫 잠자리
+    24.71분  움집 ② 단계
+    26.37분  첫 갈대
+    26.99분  움집 ③ 단계
+   몸 hunger: 1단계 첫 넘김 10.7분 · 최고 1단계 · 풀림 11.5분
+   몸 thirst: 1단계 첫 넘김 5.2분 · 최고 1단계 · 풀림 5.4분
+   몸 cold: 1단계 첫 넘김 없음 · 최고 0단계
+   몸 fatigue: 1단계 첫 넘김 없음 · 최고 0단계
+   몸 injury: 1단계 첫 넘김 없음 · 최고 0단계
+   렌더 fps(창 320×200 · 눈 1280×800) 최저 48 · 하위10% 57.4 · 중앙 59.8 · 20 밑 0/360표본
+   걸음 76220px / 1664.4s = 45.8px/s · 탐색 49다리 536s · 문 침범 0 · 문에서 최소 368px · 오류 0
+   → /tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1494/gate/first30_out.json
+RC=0 · 2819초

@@ -1,0 +1,130 @@
+[lib-port] 고정 포트 3010,3020 를 기다린다 — 쥔 것: 장부 pid 8463
+
+=== 통일 목록 · 비네트 원인 축 · 유령 클라 실클라 E2E (Chromium) ===
+  [central] [central] 🏛️ central server up on :3010  publicHost=localhost  db=/tmp/e2e-inv-central-8505.db
+  ✓ central 기동  368ms · 아이가 제 입으로 말했다
+  [zone] [hanbando] 🏘️ 마을 시딩 완료 — 후보 51 → 선별 2 → **시딩 2**
+  [zone] [hanbando] 🌏 zone server up on :3020  latency=0ms (RTT≈0ms)  [netcode=K19 입력1개=1스텝]
+  ✓ zone 기동
+  ✓ 로비에 입장 버튼(`#enter` · 「나루터로 가기」 — T84 개명 · T1190 명사형)
+  ✓ 존 입장 — 내 좌표 수신
+  ✓ ★⓪ 클라 손잡이가 **서버 env** 에서 왔다(클라 상수 아님)  {"vignetteTint":true,"moodleShowMax":3,"ghostStallMs":3000,"ghostReconnectMs":6000,"charSprite":true,"charWalkMin":4,"charRunMin":102,"charMocap2":false,"coast588":"b","t1310":true,"waterDeer":true,"t507Verbs":true,"wdAwake":true,"natBudget":true,"waterHalf":true,"mtReadPx":true,"cellNear":true,"mtBand":true,"rmbPress":true,"cellBox":true,"pickTop":true,"stopMenu":true,"nextStep":true,"firstJoin":{"cost":{"wood":3,"stone":2}},"firstLot":{"side":3,"cost":{"wood":12,"stone":8},"stages":{"small":[{"need":{},"tool":"pickaxe","label":"① 수혈 굴착(터파기)"},{"need":{"pillar":2},"tool":null,"label":"② 굴립주 기둥 세우기(기둥 2)"},{"need":{"rafter":5,"fiber":3},"tool":null,"label":"③ 도리·서까래 골조(서까래 5·풀 3)"},{"need":{"thatch":3},"tool":null,"label":"④ 이엉 지붕 잇기(이엉 3)"}],"big":[{"need":{},"tool":"pickaxe","label":"① 수혈 굴착(터파기)"},{"need":{"pillar":6},"tool":null,"label":"② 굴립주 기둥 세우기(기둥 6)"},{"need":{"rafter":8,"fiber":6},"tool":null,"label":"③ 도리·서까래 골조(서까래 8·풀 6)"},{"need":{"thatch":8},"tool":null,"label":"④ 이엉 지붕 잇기(이엉 8)"}]},"recipes":{"pillar":{"from":{"wood":3},"to":{"pillar":1},"tool":"axe"},"rafter":{"from":{"wood":1},"to":{"rafter":2},"tool":"axe"},"thatch":{"from":{"fiber":4},"to":{"thatch":1},"tool":null}}},"nowWords":{"cell":32,"near":10},"nextTool":{"gate":true,"verbs":{"chop":{"ok":["axe","crude_axe"],"make":"crude_axe","act":"나무를 벨","slot":"tool"},"quarry":{"ok":["pickaxe","crude_pick"],"make":"crude_pick","act":"돌을 캘","slot":"tool","hint":"자갈은 바위 곁에서 맨손으로 주울 수 있습니다."},"attack":{"ok":["axe","pickaxe","sword","saw","hammer","crude_axe","crude_pick","crude_blade"],"make":"crude_blade","act":"싸울","slot":"weapon"},"fish":{"ok":["crude_rod"],"make":"crude_rod","act":"낚시를 할"}},"via":{"wood":{"verb":"chop","res":"tree"},"stone":{"verb":"quarry","res":"rock"},"ore":{"verb":"quarry","res":"ore"},"meteoric_iron":{"verb":"quarry","res":"meteorite"}}},"rockYield":{"n":236},"cutNear":true,"mtNear":true,"streams":"596c92ac065954c8","streamSlow":0.5,"deeds":{"chunk":4,"d0":15,"n0":40,"pt":100,"score":"b","dwellS":20,"idle":0,"split":1,"work":2},"villageOnly":true,"siteExit":true,"wellAct":true,"keepPred":true}
+
+① 좀보이드 문법 — 기본 접힘 · 펼칠 것이 둘 이상일 때만 ▶
+  ✓ (상황) 원장이 물고기 3개를 실어 왔다  [{"id":1,"kg":2,"d":1247079},{"id":2,"kg":0.4,"d":1247079},{"id":3,"kg":1.1,"d":1247079}]
+  ✓ (상황) 잔가지는 원장이 없다 — 벌크가 맞다
+  ✓ ★① 물고기가 **한 줄로 접혀** 나온다  생선 ×3 3.5kg
+  ✓ ★① 접힌 줄이 **총 무게**를 말한다(2.0+0.4+1.1)  생선 ×3 3.5kg
+  ✓ ★① 펼칠 것이 셋이라 ▶ 가 있다  kids=3
+  ✓ ★① 기본은 **접힘**
+  ✓ ★① 무기한 벌크는 ▶ 가 **없다**(3층 캐논)  잔가지 ×8 3.2kg
+  ✓ ★① 하위 줄은 접힌 동안 숨어 있다  3줄
+
+② 펼침 — 낱개마다 제 무게
+  ✓ ▶ 클릭
+  ✓ ★② 하위 3줄이 펼쳐졌다
+  ✓ ★★② 낱개마다 **제 kg** 이 적혀 있다 — 인벤이 더는 스칼라가 아니다  2.00kg · 0.40kg · 1.10kg
+  ✓ ★② 하위 줄마다 **제 주소(원장 id)** 를 들고 있다  [1,2,3]
+
+③ 하위 줄 개별 드롭 — 한 마리만 버린다
+  ✓ (상황) 바닥이 비어 있다  0덩이
+  ✓ (상황) 2.00kg 줄을 찾았다
+  ✓ ★③ 인벤 물고기 2마리  2
+  ✓ ★★③ **그 개체만** 빠졌다 (2.0kg 가 없어지고 0.4·1.1 이 남았다)  [{"id":2,"kg":0.4,"d":1247079},{"id":3,"kg":1.1,"d":1247079}]
+  ✓ ★★③ 바닥에 **그 kg 그대로** 놓였다  2kg
+
+④ 통일 — 바닥과 인벤이 같은 컴포넌트를 쓰는가
+  ✓ ★④ 바닥도 **한 줄로 접혀** 나온다(옛 화면은 2줄이었다)  생선 ×2 2.4kg
+  ✓ ★④ 바닥 줄도 ▶ 로 펼쳐진다  kids=2
+  ✓ 두 컬럼 지문을 읽었다  mine=ul-row ground=ul-row,ul-sub
+  ✓ ★★④ 접힌 줄(`ul-row`)의 **칸 구성이 같다** — 두 컬럼이 같은 컴포넌트다(두 벌 금지)  mine=[it-icon|it-name|it-cat|it-action] ground=[it-icon|it-name|it-cat|it-action]
+  ✓ (상황) 바닥 하위 줄이 펼쳐졌다  it-icon|it-name ul-subname|it-cat|it-action
+  ✓ ★④ 하위 줄(`ul-sub`)도 컴포넌트가 정한 한 가지 모양이다  it-icon|it-name ul-subname|it-cat|it-action
+
+⑤ 부모 = 전량 · 왕복 보존
+  ✓ ★⑤ 접힌 부모가 **덩이 전부**를 들고 있다  ["g1","g2"]
+  ✓ ★⑤ 바닥이 비었다 — 부모 한 번에 전량이 움직였다  0덩이
+  ✓ ★⑤ 인벤 3마리 복귀  3
+  ✓ ★★⑤ **kg 이 왕복해도 그대로** — 2.0 은 2.0 으로 돌아왔다  바닥 2.40 + 손에 있던 1.10 = 3.50kg
+  ✓ ★⑤ 2.0kg 개체가 원장에 있다  [{"id":3,"kg":1.1,"d":1247079},{"id":4,"kg":2,"d":1247079},{"id":5,"kg":0.4,"d":1247079}]
+
+⑥ 로트 — 같은 베리라도 딴 날 딴 몫
+  ✓ ★⑥ 베리가 한 줄로 접혀 ×5  베리 ×5 2.5kg
+  ✓ ★⑥ 로트가 둘이라 ▶ 가 있다  kids=2
+  ✓ ★⑥ 로트 2줄 펼침
+  ✓ ★★⑥ 하위 줄이 **취득일(나이)** 를 말한다 — 부패 곡선이 앉을 자리  3개 6일 전 상함 · 2개 1일 전 시듦 40%
+  ✓ ★⑥ 로트 줄이 제 주소(취득일)를 들고 있다
+  ✓ ★⑥ 지목한 로트만큼 줄었다  2
+  ✓ ★★⑥ **지목한 그 로트가** 빠졌다 (FIFO 였다면 반대가 나갔다)  [{"day":1247078,"k":1795792320000,"n":2,"ageDays":1,"coalesced":false,"fresh":0.40048,"stage":"wilt"}]
+
+⑥-b 인벤 마무리 — 빈 행 · 도구 개체 · 상자 왕복 · 달력
+  ✓ ★★⑥-b 인벤 페이로드에 **수량 0 품목이 없다**  []
+  ✓ ★⑥-b 화면에도 ×0 줄이 없다  베리 ×2 1.0kg / 생선 ×3 3.5kg / 잔가지 ×8 3.2kg
+  ✓ ★⑥-b 달력을 받았다  1년 봄 2일
+  ✓ ★★⑥-b HUD 배지가 **서버가 준 그대로** 그린다(클라 매핑 사본 없음)  1년 3월 2일 (봄)
+  ✓ ★⑥-b 계절 안 날짜가 범위 안  2/92
+  ✓ ★★⑥-b 도구가 **통일 목록에** 선다(옛 도구 전용 표는 삭제됐다)  도끼 ×2 2.4kg
+  ✓ ★⑥-b 도끼 2자루라 ▶ 로 펼쳐진다  kids=2
+  ✓ ★⑥-b 도구 줄이 **인스턴스 id** 를 들고 있다
+  ✓ ★★⑥-b 도구가 바닥에 떨어진다(종전엔 버릴 방법이 없었다)  {"id":"g4","item":"axe","count":1,"kg":1.2,"led":null,"tool":{"type":"axe","d":100,"max":100}}
+  ✓ ★★⑥-b 바닥템이 **정체(내구도)** 를 싣고 있다  {"type":"axe","d":100,"max":100}
+  ✓ ★★⑥-b 주우면 **도구로** 돌아온다(수량이 아니라 개체로)  kids=2
+  ✓ ★★⑥-b **내구도가 그대로** 돌아왔다  버릴 때 100 · 지금 내구 100/100 / 내구 100/100
+  ✓ ★⑥-b 바닥에서 도끼가 사라졌다
+  ✓ ★★⑥-b 도구가 **인벤 수량으로 새지 않았다**(개체로만 산다)
+
+⑦ 비네트 원인 축 — 갈증 3단계
+  ✓ (상황) 지금은 비네트가 꺼져 있다  {"on":false,"axes":[],"axis":""}
+  ✓ ★⑦ 비네트가 켜졌다  [{"axis":"thirst","stage":3}]
+  ✓ ★★⑦ **원인 축(갈증) 아이콘이 화면에 크게** 떠 있다 — 옛 화면은 붉기만 했다  [{"axis":"thirst","stage":3,"emo":""}]
+  ✓ ★⑦ 비네트가 제 원인을 안다  thirst
+  ✓ ★⑦ 색조가 **갈증 계열(청)** 이다 — 붉기만 하지 않다  90,150,220
+  ✓ ★⑦ §7 동시 표시 상한(3) 준수  1개
+
+⑧ 유령 클라 — 서버 틱 스톨
+  ✓ (상황) 지금은 정상 연결이다
+  ✓ (상황) 틱 차단을 주입했다 — 소켓은 살아 있고 틱만 안 온다  ok
+    [상황] 딱지가 선 순간: 틈 3766ms · 문턱 3000ms · 직전 틈 3580ms · (참고 · 판정 아님) 하네스 벽시계로 3.6초
+  ✓ ★★⑧ 클라가 **스스로** 틱 미수신을 알아챘다(옛 감시는 못 잡던 사각지대)  틈 3766ms
+  ✓ ★★⑧ 화면에 **"연결 끊김"** 이 떠 있었다 — 판정이 오염되지 않는다
+  ✓ ★⑧ 손잡이를 **지킨 뒤에** 말했다 — 딱지가 선 순간의 틈 ≥ 클라 제 문턱  틈 3766ms ≥ 문턱 3000ms (둘 다 제품의 수)
+  ✓ ★⑧ 자명 통과 금지 — 문턱 **아래**인데 "끊겼다"고 한 판이 0이다(늘 참인 부등식이 아니다)  15판 중 어긴 판 0 · 딱지 직전에 본 틈 3580ms
+  ✓ (상황) 틱이 실제로 막혀 있었다 — 안 막혔으면 위 판정이 거짓 통과다  163개 차단
+  ✓ ★★⑧ 재연결로 **스스로 회복**했다 — 표시가 걷혔다
+  ✓ ★⑧ "연결 끊김" 딱지가 사라졌다
+  ✓ ★⑧ 같은 토큰 재접속 = 같은 몸(B-6 규약) — 인벤이 그대로  {"twig":8,"fish":3,"berry":2}
+
+⑧-b 지게 — HUD 의 용량이 서버 상한을 따라오는가
+  ✓ ★⑧-b (상황) HUD 에 용량 숫자가 떠 있다  25
+  ✓ ★★⑧-b HUD 가 **서버가 보낸 그 수**를 찍는다  25 vs 25
+  ✓ ★★⑧-b 지게가 **등 슬롯에** 들어갔다  {"back":"emwz5wtiy1"}
+  ✓ ★⑧-b 그 지게가 적재 값을 갖고 있다  {"load":20}
+  ✓ ★★⑧-b **HUD 의 용량이 올랐다** — 사본이면 25 에 멈춰 있었을 자리다  25 → 45kg (지게 +20)
+  ✓ ★★⑧-b 오른 만큼이 **화면에 적힌 적재 값 그대로**다  25 + 20 = 45
+  ✓ ★⑧-b 그리고 여전히 서버 값과 같다
+
+⑩ 이름표 — 서버 정본이 화면 함수까지 도달했나 (T55)
+  ✓ ★⑩ (상황) welcome 이 이름표 정본을 실어 보냈다 — `welcome.itemLabels`  396키
+  ✓ ★⑩ (상황) 그 표가 실제로 크다(빈 표면 아래가 자명 통과다)  396키
+  ✓ ★★⑩ **서버 108키 ∖ 클라가 찍는 키 = ∅** — 화면에 영문 키가 남지 않았다  396키 전부 한글
+  ✓ ★⑩ `oyster` 가 한글로 뜬다  굴
+  ✓ ★⑩ `seaweed` 가 한글로 뜬다  해조
+  ✓ ★⑩ `abalone` 가 한글로 뜬다  전복
+  ✓ ★⑩ `brine` 가 한글로 뜬다  짠물
+  ✓ ★⑩ `item_salt_kiln` 가 한글로 뜬다  소금가마
+  ✓ ★⑩ `wood` 가 한글로 뜬다  나무
+  ✓ ★⑩ `stone` 가 한글로 뜬다  돌
+  ✓ ★⑩ `meteoric_iron` 가 한글로 뜬다  운철(隕鐵)
+  ✓ ★⑩ `plank` 가 한글로 뜬다  판자
+  ✓ ★⑩ 자명 통과 금지 — 모르는 키는 그대로 돌아온다(무조건 한글이 아니다)  __t55_no_such_item__
+  ✓ ★⑩ (상황) 인벤에 굴 행이 있다  굴 ×3 0.6kg기타
+  ✓ ★★⑩ **인벤 행이 `굴` 이라고 적혀 있다**(영문 키가 아니다)  굴 ×3 0.6kg기타
+  ✓ ★★⑩ 짠물 행도 영문 키가 아니다  짠물 ×2 2.0kg기타
+
+⑨ 위생
+  ✓ ★⑨ 페이지 오류 없음
+  ✓ ★⑨ 자산 404 없음
+
+  스크린샷 10장 → /tmp/e2e-inv-shots
+
+=== 통과 95 · 실패 0 ===

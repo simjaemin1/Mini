@@ -2,7 +2,7 @@
 // (@regress 없음 — 러너 밖 · T1494 판 계측기 · 제품 무변 · central + 존을 띄우고 봇 넷이 사람 문으로 논다)
 // === scripts/t1494-cycle-run.js — 원한 한 바퀴: 쌓임 → 보임 → 가입 거절 → 토벌 → 풀림 (봇 넷 · 손잡이 `T1447_PERSON_GRUDGE=1`) ==========
 //   봇(게임 문 그대로 — ws · 이름 · 비밀번호 계정):
-//     H 해치는 봇 — 마을 B 땅의 나무를 B 사람 앞에서 벤다(쌓임 · 한 줄마다 단계 말) → B 에 `/가입`(거절) → 마을 A 땅 바로 밖에 임시 사유지(T) → B 로 돌아가 기다린다
+//     H 해치는 봇 — 마을 B 땅의 것(그 마을 몸이 보는 나무 · 바위 · 풀 · 열매 — 판에서는 늘 바위 둘)을 B 사람 앞에서 거둔다(쌓임 · 한 줄마다 단계 말) → B 에 `/가입`(거절) → 마을 A 땅 바로 밖에 임시 사유지(T) → B 로 돌아가 기다린다
 //     C 촌장 봇 — A 를 사람이 세운 마을로(`__e2e_chief` — 판 꾸밈) · `/가입` · A 마을 창을 열어 둔다 → 명분이 서면 「토벌」(= `/토벌 <H> 확인` — 단추가 보내는 그 줄)
 //     S 구경 봇 — B 마을 창을 열어 둔다(H 의 줄이 단계 말로만 보이나 · 수 · 단추 0)
 //     R 다시 접속하는 봇 — B 사람 앞에서 한 번 거두고(안다) 마을 밖에서 나간다 → 그동안 B 가 소식으로 더 미워한다(판 꾸밈 — 본 사람 0) → 마을 밖에서 다시 들어온다(옛 단계 그대로여야)
@@ -114,7 +114,7 @@ const step = (k, v) => { rec.steps[k] = Object.assign({ at: el() }, v); save(); 
     const V = info.villages.map((v) => ({ vid: v.vid, name: v.name, x: v.cx * 32 + 16, y: v.cy * 32 + 16 }));
     for (const v of V) VN[v.vid] = v.name;
     step('boot', { villages: V.map((v) => v.name) });
-    const tag = `${RUN}${(process.pid % 997)}`;
+    const tag = `${RUN}${require('crypto').randomBytes(2).toString('hex')}`;   // 계정 이름 꼬리(판마다 새 계정)
     let C = await connect('C', 'tc' + tag), H = await connect('H', 'th' + tag), S = await connect('S', 'ts' + tag);
     let R = await connect('R', 'tr' + tag);
     for (const Bt of [H, R]) tx(Bt, { type: '__e2e_give', tools: ['pickaxe', 'axe'] });   // 판 꾸밈 — 바위 · 나무를 캘 연장(마을 땅의 것을 거두는 길이 맨손 열매 · 풀뿐이면 너무 더디다)

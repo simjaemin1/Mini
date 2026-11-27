@@ -1,0 +1,133 @@
+[lib-port] 고정 포트 3010,3020 를 기다린다 — 쥔 것: 장부 pid 8606
+
+=== 통일 목록 · 비네트 원인 축 · 유령 클라 실클라 E2E (Chromium) ===
+  [central] [central] 🏛️ central server up on :3010  publicHost=localhost  db=/tmp/e2e-inv-central-8778.db
+  ✓ central 기동  354ms · 아이가 제 입으로 말했다
+  [zone] [hanbando] 🏘️ 마을 시딩 완료 — 후보 51 → 선별 2 → **시딩 2**
+  [zone] [hanbando] 🌏 zone server up on :3020  latency=0ms (RTT≈0ms)  [netcode=K19 입력1개=1스텝]
+  ✓ zone 기동
+하네스 크래시: browserType.launch: Target page, context or browser has been closed
+Browser logs:
+
+<launching> /opt/pw-browsers/chromium-1243/chrome-linux64/chrome --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,BlockOriginHeaderModificationOnRedirect,Translate,AutoDeElevate,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --disable-updater-scheduler --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --headless --hide-scrollbars --mute-audio --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --no-sandbox --user-data-dir=/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1494/tmp/playwright_chromiumdev_profile-kMtfQ7 --remote-debugging-pipe --no-startup-window
+<launched> pid=8891
+[pid=8891][err] [8891:8891:1127/155544.120110:FATAL:chrome/browser/process_singleton_posix.cc:313] Socket path too long: /tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1494/tmp/org.chromium.Chromium.9v29sG/SingletonSocket.
+[pid=8891][err] [1127/155544.166623:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:145] open /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq: No such file or directory (2)
+[pid=8891][err] [1127/155544.166663:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:145] open /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq: No such file or directory (2)
+[pid=8891][err] Received signal 6
+[pid=8891][err] #0 0x564a16b4dbc3 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x6a9abc2)
+[pid=8891][err] #1 0x564a1b813494 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0xb760493)
+[pid=8891][err] #2 0x7f481b645330 (/usr/lib/x86_64-linux-gnu/libc.so.6+0x4532f)
+[pid=8891][err] #3 0x7f481b64527e (/usr/lib/x86_64-linux-gnu/libc.so.6+0x4527d)
+[pid=8891][err] #4 0x7f481b6288ff (/usr/lib/x86_64-linux-gnu/libc.so.6+0x288fe)
+[pid=8891][err] #5 0x564a1b80a385 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0xb757384)
+[pid=8891][err] #6 0x564a1b7ca14d (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0xb71714c)
+[pid=8891][err] #7 0x564a1b7ca0de (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0xb7170dd)
+[pid=8891][err] #8 0x564a16914603 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x6861602)
+[pid=8891][err] #9 0x564a155ad1f9 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x54fa1f8)
+[pid=8891][err] #10 0x564a15de8a56 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x5d35a55)
+[pid=8891][err] #11 0x564a15de75af (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x5d345ae)
+[pid=8891][err] #12 0x564a15de7564 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x5d34563)
+[pid=8891][err] #13 0x564a14ec773b (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x4e1473a)
+[pid=8891][err] #14 0x564a14ec6953 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x4e13952)
+[pid=8891][err] #15 0x564a16082106 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x5fcf105)
+[pid=8891][err] #16 0x564a160817a9 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x5fce7a8)
+[pid=8891][err] #17 0x564a16080b00 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x5fcdaff)
+[pid=8891][err] #18 0x7f481b62a1ca (/usr/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9)
+[pid=8891][err] #19 0x7f481b62a28b (/usr/lib/x86_64-linux-gnu/libc.so.6+0x2a28a)
+[pid=8891][err] #20 0x564a16e1035a (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x6d5d359)
+[pid=8891][err]   r8: 00002a88000081db  r9: 0000000000000001 r10: 0000000000000008 r11: 0000000000000246
+[pid=8891][err]  r12: 0000000000000006 r13: 00002a88000080f0 r14: 0000000000000016 r15: 00007fff012e64f0
+[pid=8891][err]   di: 00000000000022bb  si: 00000000000022bb  bp: 00007fff012e5e70  bx: 00000000000022bb
+[pid=8891][err]   dx: 0000000000000006  ax: 0000000000000000  cx: 00007f481b69ec0c  sp: 00007fff012e5e30
+[pid=8891][err]   ip: 00007f481b69ec0c efl: 0000000000000246 cgf: 002b000000000033 erf: 0000000000000000
+[pid=8891][err]  trp: 0000000000000000 msk: 0000000000000000 cr2: 0000000000000000
+[pid=8891][err] [end of stack trace]
+Call log:
+[2m  - <launching> /opt/pw-browsers/chromium-1243/chrome-linux64/chrome --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,BlockOriginHeaderModificationOnRedirect,Translate,AutoDeElevate,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --disable-updater-scheduler --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --headless --hide-scrollbars --mute-audio --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --no-sandbox --user-data-dir=/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1494/tmp/playwright_chromiumdev_profile-kMtfQ7 --remote-debugging-pipe --no-startup-window[22m
+[2m  - <launched> pid=8891[22m
+[2m  - [pid=8891][err] [8891:8891:1127/155544.120110:FATAL:chrome/browser/process_singleton_posix.cc:313] Socket path too long: /tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1494/tmp/org.chromium.Chromium.9v29sG/SingletonSocket.[22m
+[2m  - [pid=8891][err] [1127/155544.166623:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:145] open /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq: No such file or directory (2)[22m
+[2m  - [pid=8891][err] [1127/155544.166663:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:145] open /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq: No such file or directory (2)[22m
+[2m  - [pid=8891][err] Received signal 6[22m
+[2m  - [pid=8891][err] #0 0x564a16b4dbc3 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x6a9abc2)[22m
+[2m  - [pid=8891][err] #1 0x564a1b813494 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0xb760493)[22m
+[2m  - [pid=8891][err] #2 0x7f481b645330 (/usr/lib/x86_64-linux-gnu/libc.so.6+0x4532f)[22m
+[2m  - [pid=8891][err] #3 0x7f481b64527e (/usr/lib/x86_64-linux-gnu/libc.so.6+0x4527d)[22m
+[2m  - [pid=8891][err] #4 0x7f481b6288ff (/usr/lib/x86_64-linux-gnu/libc.so.6+0x288fe)[22m
+[2m  - [pid=8891][err] #5 0x564a1b80a385 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0xb757384)[22m
+[2m  - [pid=8891][err] #6 0x564a1b7ca14d (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0xb71714c)[22m
+[2m  - [pid=8891][err] #7 0x564a1b7ca0de (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0xb7170dd)[22m
+[2m  - [pid=8891][err] #8 0x564a16914603 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x6861602)[22m
+[2m  - [pid=8891][err] #9 0x564a155ad1f9 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x54fa1f8)[22m
+[2m  - [pid=8891][err] #10 0x564a15de8a56 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x5d35a55)[22m
+[2m  - [pid=8891][err] #11 0x564a15de75af (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x5d345ae)[22m
+[2m  - [pid=8891][err] #12 0x564a15de7564 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x5d34563)[22m
+[2m  - [pid=8891][err] #13 0x564a14ec773b (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x4e1473a)[22m
+[2m  - [pid=8891][err] #14 0x564a14ec6953 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x4e13952)[22m
+[2m  - [pid=8891][err] #15 0x564a16082106 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x5fcf105)[22m
+[2m  - [pid=8891][err] #16 0x564a160817a9 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x5fce7a8)[22m
+[2m  - [pid=8891][err] #17 0x564a16080b00 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x5fcdaff)[22m
+[2m  - [pid=8891][err] #18 0x7f481b62a1ca (/usr/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9)[22m
+[2m  - [pid=8891][err] #19 0x7f481b62a28b (/usr/lib/x86_64-linux-gnu/libc.so.6+0x2a28a)[22m
+[2m  - [pid=8891][err] #20 0x564a16e1035a (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x6d5d359)[22m
+[2m  - [pid=8891][err]   r8: 00002a88000081db  r9: 0000000000000001 r10: 0000000000000008 r11: 0000000000000246[22m
+[2m  - [pid=8891][err]  r12: 0000000000000006 r13: 00002a88000080f0 r14: 0000000000000016 r15: 00007fff012e64f0[22m
+[2m  - [pid=8891][err]   di: 00000000000022bb  si: 00000000000022bb  bp: 00007fff012e5e70  bx: 00000000000022bb[22m
+[2m  - [pid=8891][err]   dx: 0000000000000006  ax: 0000000000000000  cx: 00007f481b69ec0c  sp: 00007fff012e5e30[22m
+[2m  - [pid=8891][err]   ip: 00007f481b69ec0c efl: 0000000000000246 cgf: 002b000000000033 erf: 0000000000000000[22m
+[2m  - [pid=8891][err]  trp: 0000000000000000 msk: 0000000000000000 cr2: 0000000000000000[22m
+[2m  - [pid=8891][err] [end of stack trace][22m
+[2m  - [pid=8891] <gracefully close start>[22m
+[2m  - [pid=8891] <kill>[22m
+[2m  - [pid=8891] <will force kill>[22m
+[2m  - [pid=8891] <process did exit: exitCode=null, signal=SIGABRT>[22m
+[2m  - [pid=8891] starting temporary directories cleanup[22m
+[2m  - [pid=8891] finished temporary directories cleanup[22m
+[2m  - [pid=8891] <gracefully close end>[22m
+
+    at /home/claude/t1494/scripts/e2e-inv.js:83:34 {
+  log: [
+    '  - <launching> /opt/pw-browsers/chromium-1243/chrome-linux64/chrome --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,BlockOriginHeaderModificationOnRedirect,Translate,AutoDeElevate,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --disable-updater-scheduler --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --headless --hide-scrollbars --mute-audio --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --no-sandbox --user-data-dir=/tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1494/tmp/playwright_chromiumdev_profile-kMtfQ7 --remote-debugging-pipe --no-startup-window',
+    '  - <launched> pid=8891',
+    '  - [pid=8891][err] [8891:8891:1127/155544.120110:FATAL:chrome/browser/process_singleton_posix.cc:313] Socket path too long: /tmp/claude-0/-home-claude/cfe6cf25-46e1-5300-98ba-fce9e6ec0ae5/scratchpad/t1494/tmp/org.chromium.Chromium.9v29sG/SingletonSocket.',
+    '  - [pid=8891][err] [1127/155544.166623:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:145] open /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq: No such file or directory (2)',
+    '  - [pid=8891][err] [1127/155544.166663:ERROR:third_party/crashpad/crashpad/util/file/file_io_posix.cc:145] open /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq: No such file or directory (2)',
+    '  - [pid=8891][err] Received signal 6',
+    '  - [pid=8891][err] #0 0x564a16b4dbc3 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x6a9abc2)',
+    '  - [pid=8891][err] #1 0x564a1b813494 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0xb760493)',
+    '  - [pid=8891][err] #2 0x7f481b645330 (/usr/lib/x86_64-linux-gnu/libc.so.6+0x4532f)',
+    '  - [pid=8891][err] #3 0x7f481b64527e (/usr/lib/x86_64-linux-gnu/libc.so.6+0x4527d)',
+    '  - [pid=8891][err] #4 0x7f481b6288ff (/usr/lib/x86_64-linux-gnu/libc.so.6+0x288fe)',
+    '  - [pid=8891][err] #5 0x564a1b80a385 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0xb757384)',
+    '  - [pid=8891][err] #6 0x564a1b7ca14d (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0xb71714c)',
+    '  - [pid=8891][err] #7 0x564a1b7ca0de (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0xb7170dd)',
+    '  - [pid=8891][err] #8 0x564a16914603 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x6861602)',
+    '  - [pid=8891][err] #9 0x564a155ad1f9 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x54fa1f8)',
+    '  - [pid=8891][err] #10 0x564a15de8a56 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x5d35a55)',
+    '  - [pid=8891][err] #11 0x564a15de75af (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x5d345ae)',
+    '  - [pid=8891][err] #12 0x564a15de7564 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x5d34563)',
+    '  - [pid=8891][err] #13 0x564a14ec773b (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x4e1473a)',
+    '  - [pid=8891][err] #14 0x564a14ec6953 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x4e13952)',
+    '  - [pid=8891][err] #15 0x564a16082106 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x5fcf105)',
+    '  - [pid=8891][err] #16 0x564a160817a9 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x5fce7a8)',
+    '  - [pid=8891][err] #17 0x564a16080b00 (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x5fcdaff)',
+    '  - [pid=8891][err] #18 0x7f481b62a1ca (/usr/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9)',
+    '  - [pid=8891][err] #19 0x7f481b62a28b (/usr/lib/x86_64-linux-gnu/libc.so.6+0x2a28a)',
+    '  - [pid=8891][err] #20 0x564a16e1035a (/opt/pw-browsers/chromium-1243/chrome-linux64/chrome+0x6d5d359)',
+    '  - [pid=8891][err]   r8: 00002a88000081db  r9: 0000000000000001 r10: 0000000000000008 r11: 0000000000000246',
+    '  - [pid=8891][err]  r12: 0000000000000006 r13: 00002a88000080f0 r14: 0000000000000016 r15: 00007fff012e64f0',
+    '  - [pid=8891][err]   di: 00000000000022bb  si: 00000000000022bb  bp: 00007fff012e5e70  bx: 00000000000022bb',
+    '  - [pid=8891][err]   dx: 0000000000000006  ax: 0000000000000000  cx: 00007f481b69ec0c  sp: 00007fff012e5e30',
+    '  - [pid=8891][err]   ip: 00007f481b69ec0c efl: 0000000000000246 cgf: 002b000000000033 erf: 0000000000000000',
+    '  - [pid=8891][err]  trp: 0000000000000000 msk: 0000000000000000 cr2: 0000000000000000',
+    '  - [pid=8891][err] [end of stack trace]',
+    '  - [pid=8891] <gracefully close start>',
+    '  - [pid=8891] <kill>',
+    '  - [pid=8891] <will force kill>',
+    '  - [pid=8891] <process did exit: exitCode=null, signal=SIGABRT>',
+    '  - [pid=8891] starting temporary directories cleanup',
+    '  - [pid=8891] finished temporary directories cleanup',
+    '  - [pid=8891] <gracefully close end>'
+  ]
+}

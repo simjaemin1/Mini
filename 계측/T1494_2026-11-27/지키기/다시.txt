@@ -1,0 +1,23 @@
+# 만진 하네스 줄 A 빨강 14 — TMPDIR(긴 스크래치 길) 없이 혼자 다시(bash scripts/run-regress.sh -j 1 <14>) · 줄 A 에선 크롬이 "Socket path too long" 으로 SIGABRT(e2e 13 — `다시_e2e-inv_TMPDIR긴길.txt` 가 같은 하네스를 TMPDIR 만 두고 직접 돌린 것 · `다시_e2e-inv_TMPDIR없음.txt` 는 95/0) · test-lab-market 은 크롬이 닫힘(RC=2 · 결과줄 0)
+e2e-craft.js
+e2e-forage-village.js
+e2e-inv.js
+e2e-metallurgy.js
+e2e-next-step.js
+e2e-preserve.js
+e2e-rumor.js
+e2e-salt.js
+e2e-spoil2.js
+e2e-t1341-own-house.js
+e2e-tidal.js
+e2e-ui.js
+e2e-verbs.js
+test-lab-market.js
+
+## 러너 요약
+=== 러너 요약 ===
+  통과 14: e2e-craft.js e2e-forage-village.js e2e-inv.js e2e-metallurgy.js e2e-next-step.js e2e-preserve.js e2e-rumor.js e2e-salt.js e2e-spoil2.js e2e-t1341-own-house.js e2e-tidal.js e2e-ui.js e2e-verbs.js test-lab-market.js
+  실패 0: 없음
+  걸린 시간 상위(초): e2e-inv.js 254 · e2e-verbs.js 237 · test-lab-market.js 212 · e2e-rumor.js 130 · e2e-tidal.js 127 · e2e-ui.js 122 · e2e-preserve.js 120 · e2e-metallurgy.js 112 · e2e-forage-village.js 91 · e2e-salt.js 71
+  걸린 시간 합: 하네스 1708초 · 러너 전체 1821초(그 사이 = 배수 · 정리 기다림 · 머리)
+  배수(T1161): 쉼 14번 × 8초 · 건넘 1번(앞 판이 남긴 아이 없음)
