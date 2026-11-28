@@ -10,6 +10,9 @@ assert subprocess.run(['git', 'diff', '--quiet', BASE, '--', 'sim/economy-sim.js
 CANDIDATES = json.loads(gzip.decompress((OUT/'decision-candidates.json.gz').read_bytes()))['rows']
 PROV = json.loads(gzip.decompress((OUT/'line-provenance.json.gz').read_bytes()))
 assert PROV['base'] == BASE
+origins=json.loads((OUT/'name-origin-candidates.json').read_text()) if (OUT/'name-origin-candidates.json').exists() else None
+if origins:
+    assert origins['base']==BASE and not origins['shallow'] and not origins['missing']
 ROWS = []
 with (OUT/'named-policy-queue.tsv').open('w') as f:
     w=csv.writer(f,delimiter='\t'); w.writerow(['file','line','scope','kind','name','source'])
@@ -19,7 +22,7 @@ with (OUT/'named-policy-queue.tsv').open('w') as f:
 E, V, W, S = 'sim/economy-sim.js', 'sim/economy-sim-v2.js', 'sim/war-core.js', 'server/villages.js'
 
 def add(name, file, category, meaning, removal, state='기본 경로', note='', owner='GPT 1'):
-    hits = [x for x in CANDIDATES if x['file'] == file and x['name'] == name and x['kind'] in ('constant', 'policy-map-entry')]
+    hits = [x for x in CANDIDATES if x['file'] == file and x['name'] == name and x['kind'] in ('constant', 'policy-map-entry', 'numeric-variable')]
     assert len(hits) == 1, (file, name, len(hits))
     x = hits[0]
     lines = (ROOT/file).read_text().splitlines()
@@ -34,6 +37,9 @@ def add(name, file, category, meaning, removal, state='기본 경로', note='', 
         lineAttribution=dict(commit=blame[1], dateUTC=blame[2], meaning='현행 줄의 귀속. 숫자 최초 도입 증거가 아님'),
         review='선언과 아래 의미를 읽음. 전 사용처·하네스·최초 도입 추적은 미완',
         measuredCurrentWorld=False, liftImplemented=False, experiment=None))
+    if origins and file+'#'+name.split('.')[0] in origins['found']:
+        ROWS[-1]['namedDeclarationFirstSeen']=origins['found'][file+'#'+name.split('.')[0]]
+        ROWS[-1]['numberOriginStatus']='이 파일·이 이름의 첫 추가 줄. 이전 익명 숫자·다른 파일·비축 지도 개별 품목의 최초 수치는 별도 추적 필요.'
 
 # Card seeds: weapons are listed but their lift experiments belong to S3.
 for name, meaning in [
@@ -75,6 +81,25 @@ for name, meaning, removal, note in [
 
 add('COPPER_DERIV_DAYS',E,'ⓑ','구리 파생수요를 대장장이 30날 조업 재고로 환산한다',
     '이미 꺼진 COPPER_DERIV 경로는 해제 실험 제외',state='COPPER_DERIV=1에서만; 기본 끔',note='사용처의 catchup 분모까지 0·∞로 바꾸지 않음')
+
+for name, meaning, removal, note in [
+    ('WAR_FOOD_CRISIS','식량 18날 미만인 마을에 교역 약탈 명분을 허용한다','공격 명분의 식량 부족 경계만 제거하는 실험 뜻을 분리','상대 45날 부유 경계와 결합. 식량 소모율 아님'),
+    ('WAR_FOOD_RICH','식량 45날로 약탈 상대·위신전·조공 거절의 여유를 가른다','세 사용처를 나눠 각각 해제','1354·1356·1289줄을 같은 수 전체 치환으로 섞지 않음'),
+    ('WAR_RANGE','개전 상대 후보를 중심 거리 520 안에서만 고른다','상대 선택 거리 문만 ∞. 실제 행군 거리·군량·길은 유지','행군 속도 WAR_MARCH와 다름. 실제 서버 길 범위도 대조 필요'),
+    ('WAR_LEVY','기본 원정 전력 계산에서 비전사 인원의 35%를 민병으로 본다','원정 계획 주입 여부와 기본 계산 사용처를 가른 뒤 정의','NPC의 새 _warNpcMobPlan과 옛 기본 전력 추정이 다름'),
+    ('WAR_MAX_ARMY','옛 군대 최대 60이라는 선언·수출을 남긴다','실사용 참조를 전수 확인한 뒤 해제','현행 war-core 내부는 선언·export만 검색됨. 외부 참조·랩 사본 대조 전 가) 죽은 수 확정 금지'),
+    ('WAR_ENGAGE_MAX','원정 동원·교전 편성을 최대 44명으로 자른다','동원 한도와 전투 편성 한도를 나눈 뒤 해제','battle-core 편성 규격의 물리·계산량 제약 여부는 추가 대조. 실제 인구·군량 존재 문과 분리'),
+    ('WAR_HOME_KEEP_FRAC','원정 뒤 자유 성인의 25%를 집에 남긴다','maxByHome에서 성인 잔류 몫만 0. 다른 잔류·군량 조건 유지','전사 절반 잔류와 max로 결합'),
+    ('WAR_HOME_KEEP_WAR','원정 뒤 전사 절반을 집에 남긴다','maxByHome에서 전사 잔류 몫만 0. 다른 조건 유지','성인 25% 잔류와 별도 해제'),
+    ('WAR_SUPPLY_DIST_K','행군 날마다 0.06을 더한 분모로 동원 인원을 줄인다','거리당 추가 동원 감산만 0. 실제 왕복 군량은 유지','maxByFood의 실제 식량 제약과 별도'),
+    ('WAR_MOB_ODDS_MIN','승산 0.42 기준으로 원정·축소 습격을 가른다','기본·0.9배·0.8배 문을 나눠 해제 정의','실제 전투 승리율 계산과 출정 판단 문턱은 다름'),
+    ('WAR_UTIL_TH','최선 원정 기대효용이 1.5를 넘어야 출정한다','기대효용 비교의 수기 양의 문턱만 0. 기대효용 계산 유지','원정 이익·사상 위험을 계산한다는 것과 문턱 1.5의 출처를 구분'),
+]: add(name,W,'ⓑ',meaning,removal,note=note)
+add('WAR_RATION',W,'ⓓ','군대 한 사람이 하루 식량 환산 한 단위를 먹는다','물리 소모율. 해제 실험 없음',note='실제 왕복 군량 cap과 장부 적재가 읽는다')
+for name in ('_warBRONZE_TIN_MIN_PC','_warBRONZE_TIN_MIN_ABS'):
+    add(name,W,'ⓑ','전쟁 편성의 청동 자격에 econ과 같은 주석 재고 문턱을 따로 둔다',
+        'S3 T1449 소관. 중복 선언 표에 두고 걷기 실험 제외',owner='S3 T1449',
+        note='econ BRONZE_TIN_MIN_PC=0.95·ABS=13과 별도 이름의 사본. 한쪽만 걷고 전부 걷었다고 할 수 없음')
 
 for x in [x for x in CANDIDATES if x['file']==E and x['kind']=='policy-map-entry' and x['name'].startswith('RESERVE_PC.')]:
     resource=x['name'].split('.',1)[1]
@@ -222,6 +247,7 @@ lines+=['', '## 이름 없는 문·공유 사용처: 확인한 범위', '',
     '- 사용처 해제 정의·초기 출처·현재 손잡이 경로를 확정한 후에 `T1450_LIFT`를 구현한다. 이미 끔·물리·S3 무기는 해제에서 제외한다.',
     '- 서버 전용 문을 랩이 부르지 않았다는 이유로 가) 죽은 수로 판정하지 않는다. 실제 문을 지난 증거 없이는 미검증이다.',
     '- 실제 라이브 환경변수는 이 조사에서 읽지 않았다. 기본값이나 배포 문서를 라이브 실측으로 쓰지 않는다.', '',
+    '이름 첫 선언도 Git에서 추적했다(`name-origin-candidates.json`). 0.72는 `120158ca3`(UTC 2026-07-10)의 시드19 교역 생존 하한이라는 주석을 찾았지만, 현행 밭·몸·달력에서의 생존 하한으로 재검증한 것은 아니다. 돌 0.2는 T180의 2026-09-12 이름 붙이기보다 먼저 존재했다는 소스 설명이 있어, 이름 첫 추가를 숫자 최초 도입으로 보고하지 않는다. 비축 지도 개별 품목도 지도 이름의 최초 선언과 구분한다.', '',
     '경제층 직접 문과 ⓪~⑤의 부분 대조 메모는 `계측/T1450_2026-11-28/economic-reading-notes.md`다. 배합 score의 순위와 손해 생산 차단을 구분한다.', '',
     '재현 자료: `계측/T1450_2026-11-28/README.md`. 모든 초안은 조사 시점 소스에만 대응하며 착수 때 main 변화를 다시 대조한다.', '']
 (ROOT/'설계/조사_손으로적은목표_T1450.md').write_text('\n'.join(lines))

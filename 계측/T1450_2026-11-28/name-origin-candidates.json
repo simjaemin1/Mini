@@ -1,0 +1,675 @@
+{
+ "base": "0e2ae3916acdb7380b7eb615a0f3c85d2b41f61d",
+ "shallow": false,
+ "scope": "Find earliest added declarations with these names in this base's file history.\n\nThis is a search aid, not proof of the first semantic introduction of a number.\nRenames, earlier anonymous literals and copies in other files still need review.",
+ "command": [
+  "git",
+  "log",
+  "0e2ae3916acdb7380b7eb615a0f3c85d2b41f61d",
+  "--reverse",
+  "--format=@@COMMIT@@%H%x09%aI%x09%s",
+  "--no-ext-diff",
+  "--unified=0",
+  "-p",
+  "-G",
+  "^[[:space:]]*(const|let|var)[[:space:]].*(BRONZE_ARMORY_FRAC|BRONZE_TIN_MIN_ABS|BRONZE_TIN_MIN_PC|CLOTH_TARGET_PC|CLOTH_WEAR_PC|COPPER_DERIV_DAYS|CRISIS_TRADE_PC|EXPAND_CELLS_PER_DAY|EXPAND_PAYBACK_DAYS|FIREWOOD_PC|G_CAP|G_MAX|G_STOCK_CAP|HERB_DAILY_PC|HOUSE_BUFFER|HOUSE_BUILD_MAX|HOUSE_DECAY|HOUSE_STONE|HOUSE_WOOD|IRON_WEAPON_MIN_ABS|IRON_WEAPON_MIN_PC|JOB_SWITCH_COOLDOWN|LEATHER_GOODS_TARGET|LUX_TARGET_PC|MELEE_ARMORY_PC|MELEE_ARMORY_SECF|MELEE_COV_BUFFER|ORE_STOCK_PC|POP_MAX|POP_MAX_DELTA_PCT|PRESTIGE_MOD_CAP|PRICE_ADJ_MAX|PRICE_ADJ_MIN|PROD_STAT_CAP|RAMIE_BOOT_PC|RAMIE_MIN_POP|RESERVE_PC|RITE_KEEP_PC|SALT_DAILY_PC|SMELT_LABOR_CAP_PC|STONE_NET_STOCK|TAN_HIDE_MIN|TAN_TRADE_PC|TERR_GROW_MAX_PER_DAY|TIN_EXPORT_KEEP_PC|TIN_EXPORT_SURPLUS_PC|TOOL_GLUT_RAMP|TOOL_GLUT_X|VARIETY_TARGET_PC|WAR_ENGAGE_MAX|WAR_FOOD_CRISIS|WAR_FOOD_RICH|WAR_HOME_KEEP_FRAC|WAR_HOME_KEEP_WAR|WAR_LEVY|WAR_MAX_ARMY|WAR_MOB_ODDS_MIN|WAR_RANGE|WAR_RATION|WAR_SUPPLY_DIST_K|WAR_UTIL_TH|WEAPON_RETURN_GLUT_MULT|WEAPON_RITE_KEEP|_warBRONZE_TIN_MIN_ABS|_warBRONZE_TIN_MIN_PC)",
+  "--",
+  "sim/economy-sim.js",
+  "sim/war-core.js",
+  "sim/economy-sim-v2.js",
+  "server/villages.js"
+ ],
+ "found": {
+  "sim/economy-sim.js#POP_MAX_DELTA_PCT": {
+   "file": "sim/economy-sim.js",
+   "name": "POP_MAX_DELTA_PCT",
+   "commit": "96e7c64544f50d8cf9a965f9e1f730b2dabd4854",
+   "authorISO": "2026-06-02T22:14:23+09:00",
+   "authorDateUTC": "2026-06-02",
+   "subject": "14.55: economy 시뮬 + canadia 통합 prototype (Phase 1~4c)",
+   "addedLine": "const POP_MAX_DELTA_PCT = 0.02;           // 일일 변화 상한 (안정화)",
+   "addedLineSha256": "91ba510fdefffce27f7ee6223974ceed6a63994205d2f54fc3c58bd5d83587d1"
+  },
+  "sim/economy-sim.js#POP_MAX": {
+   "file": "sim/economy-sim.js",
+   "name": "POP_MAX",
+   "commit": "96e7c64544f50d8cf9a965f9e1f730b2dabd4854",
+   "authorISO": "2026-06-02T22:14:23+09:00",
+   "authorDateUTC": "2026-06-02",
+   "subject": "14.55: economy 시뮬 + canadia 통합 prototype (Phase 1~4c)",
+   "addedLine": "const POP_MAX = 1000;                      // 마을당 인구 상한 (N² 폭발 방지)",
+   "addedLineSha256": "b130d283f6186a482048d550aaa3aeb7741315ae383292e87ac69765973b8c99"
+  },
+  "sim/economy-sim-v2.js#PRICE_ADJ_MIN": {
+   "file": "sim/economy-sim-v2.js",
+   "name": "PRICE_ADJ_MIN",
+   "commit": "9227a11b862d56cc372fb7c88a5ed8ce926ec3a7",
+   "authorISO": "2026-06-03T20:11:55+09:00",
+   "authorDateUTC": "2026-06-03",
+   "subject": "Phase 4d-13: economy-sim-v2 zone 통합 — 진짜 부분균형 시장 모델 (Lewis·Heckscher-Ohlin·Solow)",
+   "addedLine": "const PRICE_ADJ_MIN = 0.01;   // 100배까지 싸짐 (잉여 신호)",
+   "addedLineSha256": "ec312ec9076b9e86cf0073c9663a0697e6116aef8931e0af94ea8597ec1dd233"
+  },
+  "sim/economy-sim-v2.js#PRICE_ADJ_MAX": {
+   "file": "sim/economy-sim-v2.js",
+   "name": "PRICE_ADJ_MAX",
+   "commit": "9227a11b862d56cc372fb7c88a5ed8ce926ec3a7",
+   "authorISO": "2026-06-03T20:11:55+09:00",
+   "authorDateUTC": "2026-06-03",
+   "subject": "Phase 4d-13: economy-sim-v2 zone 통합 — 진짜 부분균형 시장 모델 (Lewis·Heckscher-Ohlin·Solow)",
+   "addedLine": "const PRICE_ADJ_MAX = 1000;   // 사실상 풀림 (부족 신호 자유)",
+   "addedLineSha256": "587e896e666f2077eb46652e103c01333b603cfee0b0864b6674fc3d6439b191"
+  },
+  "sim/economy-sim.js#HOUSE_WOOD": {
+   "file": "sim/economy-sim.js",
+   "name": "HOUSE_WOOD",
+   "commit": "6771239d0cee08adaa455af8718bf40f27f09ccb",
+   "authorISO": "2026-06-29T07:21:22Z",
+   "authorDateUTC": "2026-06-29",
+   "subject": "주거가 인구 성장을 게이트: 집 수용력 = 인구 상한, 집은 목재(필수)·석재(연성)로 건축·노후화",
+   "addedLine": "const HOUSE_WOOD = 1.5;        // 수용력 1인당 목재(한옥=목조)",
+   "addedLineSha256": "a24ff0817a060dec5161eeaeedc77746f1c79334cdbc5a57af57dae0a65f36ca"
+  },
+  "sim/economy-sim.js#HOUSE_STONE": {
+   "file": "sim/economy-sim.js",
+   "name": "HOUSE_STONE",
+   "commit": "6771239d0cee08adaa455af8718bf40f27f09ccb",
+   "authorISO": "2026-06-29T07:21:22Z",
+   "authorDateUTC": "2026-06-29",
+   "subject": "주거가 인구 성장을 게이트: 집 수용력 = 인구 상한, 집은 목재(필수)·석재(연성)로 건축·노후화",
+   "addedLine": "const HOUSE_STONE = 0.6;       // 수용력 1인당 석재(주춧돌·구들, 있으면 씀)",
+   "addedLineSha256": "d3cc19dced9e01e7bcbf34c59e9bad6f4bdc0c625b957401f6f7c1c347958bc4"
+  },
+  "sim/economy-sim.js#HOUSE_DECAY": {
+   "file": "sim/economy-sim.js",
+   "name": "HOUSE_DECAY",
+   "commit": "6771239d0cee08adaa455af8718bf40f27f09ccb",
+   "authorISO": "2026-06-29T07:21:22Z",
+   "authorDateUTC": "2026-06-29",
+   "subject": "주거가 인구 성장을 게이트: 집 수용력 = 인구 상한, 집은 목재(필수)·석재(연성)로 건축·노후화",
+   "addedLine": "const HOUSE_DECAY = 0.0015;    // 일일 노후화(완만 — 나무꾼 1명이면 유지 가능)",
+   "addedLineSha256": "45bd9c1fa174a5b948e8d36a77157e2d50032093acbdeb152ee94721ca8c966d"
+  },
+  "sim/economy-sim.js#HOUSE_BUFFER": {
+   "file": "sim/economy-sim.js",
+   "name": "HOUSE_BUFFER",
+   "commit": "6771239d0cee08adaa455af8718bf40f27f09ccb",
+   "authorISO": "2026-06-29T07:21:22Z",
+   "authorDateUTC": "2026-06-29",
+   "subject": "주거가 인구 성장을 게이트: 집 수용력 = 인구 상한, 집은 목재(필수)·석재(연성)로 건축·노후화",
+   "addedLine": "const HOUSE_BUFFER = 1.15;     // 인구보다 약간 여유 있게(성장 여지)",
+   "addedLineSha256": "ddc4ff31b51b3e4fa1e9fa9894aa799a714ad8da53689fa84322cbb97739e59f"
+  },
+  "sim/economy-sim.js#HOUSE_BUILD_MAX": {
+   "file": "sim/economy-sim.js",
+   "name": "HOUSE_BUILD_MAX",
+   "commit": "6771239d0cee08adaa455af8718bf40f27f09ccb",
+   "authorISO": "2026-06-29T07:21:22Z",
+   "authorDateUTC": "2026-06-29",
+   "subject": "주거가 인구 성장을 게이트: 집 수용력 = 인구 상한, 집은 목재(필수)·석재(연성)로 건축·노후화",
+   "addedLine": "const HOUSE_BUILD_MAX = 0.06;  // 하루 최대 증축률(인구 대비)",
+   "addedLineSha256": "18908204968d1782d9fdd9f3ec3dfc4771e6a2942da6e0cb8086b8ad89aa0695"
+  },
+  "sim/economy-sim-v2.js#LUX_TARGET_PC": {
+   "file": "sim/economy-sim-v2.js",
+   "name": "LUX_TARGET_PC",
+   "commit": "1be5ee59d99d0116da739ad4019b1bcd9c9ef11b",
+   "authorISO": "2026-07-01T11:23:07Z",
+   "authorDateUTC": "2026-07-01",
+   "subject": "행복 최소판: 위신재(사치) 수요 + prestige→인구",
+   "addedLine": "const LUX_TARGET_PC = 0.08;   // 1인당 위신재 목표(각 장식재). 이 근처서 만족(체감), 광산촌은 훨씬 위라 수출.",
+   "addedLineSha256": "3a009eba00bd0c0fc18bcd1576959301844336997060a455dbbb779db790a650"
+  },
+  "sim/economy-sim.js#PRESTIGE_MOD_CAP": {
+   "file": "sim/economy-sim.js",
+   "name": "PRESTIGE_MOD_CAP",
+   "commit": "1be5ee59d99d0116da739ad4019b1bcd9c9ef11b",
+   "authorISO": "2026-07-01T11:23:07Z",
+   "authorDateUTC": "2026-07-01",
+   "subject": "행복 최소판: 위신재(사치) 수요 + prestige→인구",
+   "addedLine": "const PRESTIGE_MOD_CAP = 0.25;           // 보너스 상한(happyMod ~0.8 대비 작게 — 사치는 부차)",
+   "addedLineSha256": "1768dc0879fca61f68fcfe6d4af6d423e5f5ac6cfbf5d4da2bdaaa4886338a63"
+  },
+  "sim/economy-sim-v2.js#VARIETY_TARGET_PC": {
+   "file": "sim/economy-sim-v2.js",
+   "name": "VARIETY_TARGET_PC",
+   "commit": "49e46f94a80a6fabf67006f7c49359665755b18f",
+   "authorISO": "2026-07-01T14:19:16Z",
+   "authorDateUTC": "2026-07-01",
+   "subject": "다양성 지표 소비기반화 + 결핍군 교역수요 + 부패는 유지",
+   "addedLine": "const VARIETY_TARGET_PC = 0.6;   // 자체생산 못 하는 식품군의 1인당 수입 목표(다양성 문턱 0.4 위 — 소비로 깎여도 유지)",
+   "addedLineSha256": "aa916ff6f816b0564b7720987456ba54562c649e3fefb2ab16c6cac5ab66128c"
+  },
+  "sim/economy-sim.js#FIREWOOD_PC": {
+   "file": "sim/economy-sim.js",
+   "name": "FIREWOOD_PC",
+   "commit": "e41712d4b08c2e5067e55340fbfb9154e580a977",
+   "authorISO": "2026-07-02T01:18:18Z",
+   "authorDateUTC": "2026-07-02",
+   "subject": "땔감(연료) 시스템: 숲→인구 상한의 진짜 고리",
+   "addedLine": "const FIREWOOD_PC = 0.1;       // 1인당 일일 땔감(목재). 인구비례 수요 → 숲 규모가 부양 인구 상한 결정(리비히: 식량 vs 연료)",
+   "addedLineSha256": "57f29cdb428fb7f2a561d215a0ff1b0256a5895cbae39479003b289cfeeec22b"
+  },
+  "sim/economy-sim.js#PROD_STAT_CAP": {
+   "file": "sim/economy-sim.js",
+   "name": "PROD_STAT_CAP",
+   "commit": "d9268655899163bb088801d03ec73fb2798695cb",
+   "authorISO": "2026-07-02T05:13:41Z",
+   "authorDateUTC": "2026-07-02",
+   "subject": "감사 Wave4: 죽은 스탯 커플링 연결",
+   "addedLine": "const PROD_STAT_CAP = 0.15;              // 상한 +15%(스노볼 방지 — 최후의 보루 클램프)",
+   "addedLineSha256": "100f4c192e7a05f7b78b72c382388c7022ace0af4cbd12391dcadcf6b75afcd7"
+  },
+  "sim/economy-sim.js#EXPAND_PAYBACK_DAYS": {
+   "file": "sim/economy-sim.js",
+   "name": "EXPAND_PAYBACK_DAYS",
+   "commit": "db63f5b3668470c77971d0808e74389ee2c1ff8d",
+   "authorISO": "2026-07-03T07:56:35+09:00",
+   "authorDateUTC": "2026-07-02",
+   "subject": "근본수술(fuelK) + 고증 정정: 목화 제거 + 카탈로그 92종 정리",
+   "addedLine": "const EXPAND_PAYBACK_DAYS = 365;          // ★확장 투자 회수기간(할인율 역수) — 개간 투자는 ~1년 내 회수돼야 실행(보즈럽: 개간=노동투자).",
+   "addedLineSha256": "e1515b8a9c887ef5d6621be95f67cb3f313ca950004d35d20cb8db2fb4c79f23"
+  },
+  "sim/economy-sim.js#HERB_DAILY_PC": {
+   "file": "sim/economy-sim.js",
+   "name": "HERB_DAILY_PC",
+   "commit": "36770b46cf497c5072a1219ac1bfdbe5fed07f31",
+   "authorISO": "2026-07-07T15:06:32+09:00",
+   "authorDateUTC": "2026-07-07",
+   "subject": "herb 3사본+v2(가격4·탄력0.9·효용0.3) + forager 한계가치 신설(0.6×herb, MSY 포화 곱) + 하네스 약재 감시 칼럼 + DESIGN_DOC 전사·사냥꾼 역할론(§5.6)",
+   "addedLine": "const HERB_DAILY_PC = 0.01;              // 일상 복용 소모(인구 비례 흐름) — 재고가 있어야 유지되는 흐름",
+   "addedLineSha256": "d2863ea4fc1e0331f83e5cf526491ff5dd78c3d0a17763a53d858981b0742c73"
+  },
+  "sim/economy-sim-v2.js#TIN_EXPORT_KEEP_PC": {
+   "file": "sim/economy-sim-v2.js",
+   "name": "TIN_EXPORT_KEEP_PC",
+   "commit": "120158ca3b7ab2487f5799db126432be17a731f0",
+   "authorISO": "2026-07-10T21:21:20+09:00",
+   "authorDateUTC": "2026-07-10",
+   "subject": "청동 희소성 3사본: 주석 전략 비축(keep 1.2/잉여 0.3)·무기 품질(청동>철>석)·자가도구·흑요석·옥 + 무기 과잉수입 차단(글럿캡 1.3) + regression 청동→석기 전환 계측(추가 칼럼·불변식) + _war-probe 결정론·시드당 단일 프로세스(45초 준수, 프레임 ≤850 권장)",
+   "addedLine": "const TIN_EXPORT_KEEP_PC = 1.2;      // 산지 마을 주석 비축(1인당) — 이만큼 쥐고(자체 청동 병기고 + 위세) 잉여만 수출. 높게=산지 청동 안정+수출 억제(교역 편중 변동↓).",
+   "addedLineSha256": "eb657dddba3e267ba68fce6737008f343282e1786c189a2055e13c09bfd0b41a"
+  },
+  "sim/economy-sim-v2.js#TIN_EXPORT_SURPLUS_PC": {
+   "file": "sim/economy-sim-v2.js",
+   "name": "TIN_EXPORT_SURPLUS_PC",
+   "commit": "120158ca3b7ab2487f5799db126432be17a731f0",
+   "authorISO": "2026-07-10T21:21:20+09:00",
+   "authorDateUTC": "2026-07-10",
+   "subject": "청동 희소성 3사본: 주석 전략 비축(keep 1.2/잉여 0.3)·무기 품질(청동>철>석)·자가도구·흑요석·옥 + 무기 과잉수입 차단(글럿캡 1.3) + regression 청동→석기 전환 계측(추가 칼럼·불변식) + _war-probe 결정론·시드당 단일 프로세스(45초 준수, 프레임 ≤850 권장)",
+   "addedLine": "const TIN_EXPORT_SURPLUS_PC = 0.3;   // 이 초과분(1인당)만 수출 후보 — 얇게(전략재 소량 유통). 산지 편차(지리·연결)로 인한 청동 홍수 변동을 억제 → 소수 허브만 청동.",
+   "addedLineSha256": "cda24a6e55fe5f40e6bfb16902fc5b6b67b2d866491c072ef5a4b5ff5f3c187c"
+  },
+  "sim/economy-sim-v2.js#WEAPON_RETURN_GLUT_MULT": {
+   "file": "sim/economy-sim-v2.js",
+   "name": "WEAPON_RETURN_GLUT_MULT",
+   "commit": "120158ca3b7ab2487f5799db126432be17a731f0",
+   "authorISO": "2026-07-10T21:21:20+09:00",
+   "authorDateUTC": "2026-07-10",
+   "subject": "청동 희소성 3사본: 주석 전략 비축(keep 1.2/잉여 0.3)·무기 품질(청동>철>석)·자가도구·흑요석·옥 + 무기 과잉수입 차단(글럿캡 1.3) + regression 청동→석기 전환 계측(추가 칼럼·불변식) + _war-probe 결정론·시드당 단일 프로세스(45초 준수, 프레임 ≤850 권장)",
+   "addedLine": "const WEAPON_RETURN_GLUT_MULT = 1.3;   // 무기/일반재 공통. 1.3 = 목표(사용자×1.3 등)의 1.3배까지만 허용 → 청동검 소수 수입, 과잉 시 자국 석기로 자급 유도",
+   "addedLineSha256": "909384b8684a114d7085bb07bff72746f34b979e132ed2ee091b1e6f02c0422c"
+  },
+  "sim/economy-sim.js#BRONZE_TIN_MIN_PC": {
+   "file": "sim/economy-sim.js",
+   "name": "BRONZE_TIN_MIN_PC",
+   "commit": "120158ca3b7ab2487f5799db126432be17a731f0",
+   "authorISO": "2026-07-10T21:21:20+09:00",
+   "authorDateUTC": "2026-07-10",
+   "subject": "청동 희소성 3사본: 주석 전략 비축(keep 1.2/잉여 0.3)·무기 품질(청동>철>석)·자가도구·흑요석·옥 + 무기 과잉수입 차단(글럿캡 1.3) + regression 청동→석기 전환 계측(추가 칼럼·불변식) + _war-probe 결정론·시드당 단일 프로세스(45초 준수, 프레임 ≤850 권장)",
+   "addedLine": "const BRONZE_TIN_MIN_PC = 0.95;        // 교역 허브 자격 문턱(1인당 주석 재고) — 이 이상 *지속* 비축해야 청동 상비. 주석 희소로 소수 교역 허브만 도달(간헐 수입은 미달 → 석기 유지).",
+   "addedLineSha256": "a4ea033af6f39487d9ecc29d8b9e8d6a6b1dbd6053549039106ffd40c961c32a"
+  },
+  "sim/economy-sim.js#BRONZE_TIN_MIN_ABS": {
+   "file": "sim/economy-sim.js",
+   "name": "BRONZE_TIN_MIN_ABS",
+   "commit": "120158ca3b7ab2487f5799db126432be17a731f0",
+   "authorISO": "2026-07-10T21:21:20+09:00",
+   "authorDateUTC": "2026-07-10",
+   "subject": "청동 희소성 3사본: 주석 전략 비축(keep 1.2/잉여 0.3)·무기 품질(청동>철>석)·자가도구·흑요석·옥 + 무기 과잉수입 차단(글럿캡 1.3) + regression 청동→석기 전환 계측(추가 칼럼·불변식) + _war-probe 결정론·시드당 단일 프로세스(45초 준수, 프레임 ≤850 권장)",
+   "addedLine": "const BRONZE_TIN_MIN_ABS = 13;         // 절대 하한(소형 마을 보호 — N 작아도 최소 이만큼은 있어야 청동 상비)",
+   "addedLineSha256": "6ddfc6ded72b4d10be95570ae67b0934f84bee344707a48b30c6339bd7cd57f4"
+  },
+  "sim/economy-sim.js#IRON_WEAPON_MIN_PC": {
+   "file": "sim/economy-sim.js",
+   "name": "IRON_WEAPON_MIN_PC",
+   "commit": "120158ca3b7ab2487f5799db126432be17a731f0",
+   "authorISO": "2026-07-10T21:21:20+09:00",
+   "authorDateUTC": "2026-07-10",
+   "subject": "청동 희소성 3사본: 주석 전략 비축(keep 1.2/잉여 0.3)·무기 품질(청동>철>석)·자가도구·흑요석·옥 + 무기 과잉수입 차단(글럿캡 1.3) + regression 청동→석기 전환 계측(추가 칼럼·불변식) + _war-probe 결정론·시드당 단일 프로세스(45초 준수, 프레임 ≤850 권장)",
+   "addedLine": "const IRON_WEAPON_MIN_PC = 1.5;        // 철검 자격 문턱(1인당 철 재고) — 청동보다 높게(철=최희소). 이 이상이라야 철검 상비.",
+   "addedLineSha256": "ca666b6f7dcc631e802bdaaf4f3dbea05ffda1d8471c5bc402469ca5c2527fb6"
+  },
+  "sim/economy-sim.js#IRON_WEAPON_MIN_ABS": {
+   "file": "sim/economy-sim.js",
+   "name": "IRON_WEAPON_MIN_ABS",
+   "commit": "120158ca3b7ab2487f5799db126432be17a731f0",
+   "authorISO": "2026-07-10T21:21:20+09:00",
+   "authorDateUTC": "2026-07-10",
+   "subject": "청동 희소성 3사본: 주석 전략 비축(keep 1.2/잉여 0.3)·무기 품질(청동>철>석)·자가도구·흑요석·옥 + 무기 과잉수입 차단(글럿캡 1.3) + regression 청동→석기 전환 계측(추가 칼럼·불변식) + _war-probe 결정론·시드당 단일 프로세스(45초 준수, 프레임 ≤850 권장)",
+   "addedLine": "const IRON_WEAPON_MIN_ABS = 20;        // 절대 하한(소형 마을 보호)",
+   "addedLineSha256": "5db417687ab3970b311b4c67d730f27ddb9e413263f39fc8ce98e384aeb44a0b"
+  },
+  "sim/economy-sim.js#MELEE_COV_BUFFER": {
+   "file": "sim/economy-sim.js",
+   "name": "MELEE_COV_BUFFER",
+   "commit": "120158ca3b7ab2487f5799db126432be17a731f0",
+   "authorISO": "2026-07-10T21:21:20+09:00",
+   "authorDateUTC": "2026-07-10",
+   "subject": "청동 희소성 3사본: 주석 전략 비축(keep 1.2/잉여 0.3)·무기 품질(청동>철>석)·자가도구·흑요석·옥 + 무기 과잉수입 차단(글럿캡 1.3) + regression 청동→석기 전환 계측(추가 칼럼·불변식) + _war-probe 결정론·시드당 단일 프로세스(45초 준수, 프레임 ≤850 권장)",
+   "addedLine": "const MELEE_COV_BUFFER = 1.2;          // 전사 1인 근접검 최소 커버리지(하한 — 전사 무장 게이트).",
+   "addedLineSha256": "97bf782228da4a6c07d97a1d0dbe4d63ed2d5cb995bf1142f857fdd49c84956d"
+  },
+  "sim/economy-sim.js#MELEE_ARMORY_PC": {
+   "file": "sim/economy-sim.js",
+   "name": "MELEE_ARMORY_PC",
+   "commit": "120158ca3b7ab2487f5799db126432be17a731f0",
+   "authorISO": "2026-07-10T21:21:20+09:00",
+   "authorDateUTC": "2026-07-10",
+   "subject": "청동 희소성 3사본: 주석 전략 비축(keep 1.2/잉여 0.3)·무기 품질(청동>철>석)·자가도구·흑요석·옥 + 무기 과잉수입 차단(글럿캡 1.3) + regression 청동→석기 전환 계측(추가 칼럼·불변식) + _war-probe 결정론·시드당 단일 프로세스(45초 준수, 프레임 ≤850 권장)",
+   "addedLine": "const MELEE_ARMORY_PC = 0.72;          // 근접검 병기고 목표(1인당). 석기마을은 전량 마제석검, 청동마을은 아래 FRAC까지만 청동+나머지 석기. (≥0.72 필수: 무기 재고=교역 호위·전사 무장 공급원 — 취약 교역의존 시드[19]는 이 미만서 호위 부족→교역붕괴→아사. 측정으로 확정된 생존 하한.)",
+   "addedLineSha256": "e884b5b5e7629fbe62f6d91c60f2f589c5be722d3c0d2efa5912eff24b70ef7a"
+  },
+  "sim/economy-sim.js#MELEE_ARMORY_SECF": {
+   "file": "sim/economy-sim.js",
+   "name": "MELEE_ARMORY_SECF",
+   "commit": "120158ca3b7ab2487f5799db126432be17a731f0",
+   "authorISO": "2026-07-10T21:21:20+09:00",
+   "authorDateUTC": "2026-07-10",
+   "subject": "청동 희소성 3사본: 주석 전략 비축(keep 1.2/잉여 0.3)·무기 품질(청동>철>석)·자가도구·흑요석·옥 + 무기 과잉수입 차단(글럿캡 1.3) + regression 청동→석기 전환 계측(추가 칼럼·불변식) + _war-probe 결정론·시드당 단일 프로세스(45초 준수, 프레임 ≤850 권장)",
+   "addedLine": "const MELEE_ARMORY_SECF = 0.45;        // 병기고(비긴급 비축) 축적 최소 식량안보(secF) — 이 이상 *잘 먹는* 마을만 병기고 확충. 취약·기근 마을은 식량·도구 우선(인구 유지 — 낮추면 취약 시드[19·8] 붕괴). 긴급 전사무장은 secF 무관.",
+   "addedLineSha256": "b7c0d4ad3f38342535652f4f8cc32212b47e063440f1991352fbba99b9d54644"
+  },
+  "sim/economy-sim.js#BRONZE_ARMORY_FRAC": {
+   "file": "sim/economy-sim.js",
+   "name": "BRONZE_ARMORY_FRAC",
+   "commit": "120158ca3b7ab2487f5799db126432be17a731f0",
+   "authorISO": "2026-07-10T21:21:20+09:00",
+   "authorDateUTC": "2026-07-10",
+   "subject": "청동 희소성 3사본: 주석 전략 비축(keep 1.2/잉여 0.3)·무기 품질(청동>철>석)·자가도구·흑요석·옥 + 무기 과잉수입 차단(글럿캡 1.3) + regression 청동→석기 전환 계측(추가 칼럼·불변식) + _war-probe 결정론·시드당 단일 프로세스(45초 준수, 프레임 ≤850 권장)",
+   "addedLine": "const BRONZE_ARMORY_FRAC = 0.45;       // 청동 자격 마을 병기고 중 청동 최대 비중(나머지 ≥55%는 석기). 청동마을도 석기 다수 — 청동 위세 엘리트 표지, 석기 다수 보장. (병기고 총량 MELEE_ARMORY_PC와 독립 — 생존 무관, 청동:석기 비율만 결정. 청동/명 미세조정 레버.)",
+   "addedLineSha256": "9ca5c71acb42e094aded93239d2887264ba8e259c423e00226b0af2e52660dd1"
+  },
+  "sim/economy-sim.js#TOOL_GLUT_X": {
+   "file": "sim/economy-sim.js",
+   "name": "TOOL_GLUT_X",
+   "commit": "120158ca3b7ab2487f5799db126432be17a731f0",
+   "authorISO": "2026-07-10T21:21:20+09:00",
+   "authorDateUTC": "2026-07-10",
+   "subject": "청동 희소성 3사본: 주석 전략 비축(keep 1.2/잉여 0.3)·무기 품질(청동>철>석)·자가도구·흑요석·옥 + 무기 과잉수입 차단(글럿캡 1.3) + regression 청동→석기 전환 계측(추가 칼럼·불변식) + _war-probe 결정론·시드당 단일 프로세스(45초 준수, 프레임 ≤850 권장)",
+   "addedLine": "const TOOL_GLUT_X = 2.5;",
+   "addedLineSha256": "6336ba372f497ce884c01001d498cc2b7c86417f2671d60c67a663b24a560a62"
+  },
+  "sim/economy-sim.js#TOOL_GLUT_RAMP": {
+   "file": "sim/economy-sim.js",
+   "name": "TOOL_GLUT_RAMP",
+   "commit": "120158ca3b7ab2487f5799db126432be17a731f0",
+   "authorISO": "2026-07-10T21:21:20+09:00",
+   "authorDateUTC": "2026-07-10",
+   "subject": "청동 희소성 3사본: 주석 전략 비축(keep 1.2/잉여 0.3)·무기 품질(청동>철>석)·자가도구·흑요석·옥 + 무기 과잉수입 차단(글럿캡 1.3) + regression 청동→석기 전환 계측(추가 칼럼·불변식) + _war-probe 결정론·시드당 단일 프로세스(45초 준수, 프레임 ≤850 권장)",
+   "addedLine": "const TOOL_GLUT_RAMP = 1.0;",
+   "addedLineSha256": "3b9a93bbb945b0c18e018ad7fac9213d29764861228d88929f72cfa0920e7aa7"
+  },
+  "sim/economy-sim.js#EXPAND_CELLS_PER_DAY": {
+   "file": "sim/economy-sim.js",
+   "name": "EXPAND_CELLS_PER_DAY",
+   "commit": "36f78602272519d95601e54f04a0805562bae414",
+   "authorISO": "2026-07-12T03:02:34+09:00",
+   "authorDateUTC": "2026-07-11",
+   "subject": "영토 지불 1셀 단위화(사용자 설계): 주1슬롯→일일 최대 4셀 구매 루프(셀당 슬롯비/25·소수 size에서 ^1.3 연속 체증·MB/MC 셀마다 재평가) — 금고 스파이크 소멸(주 −80 뭉텅→일 −1.5~2.3 스며듦, 실페이스 세수 제약 ~1셀/2-3일), 소수 정지점(size 69.32 — 25셀 양자화 제거), A/B ±15% 내·불변식 #19 유지·FP 드리프트 1e-10, 정수 가정 감사(로직 보정 0·표시 2) + _cellbuy-probe + CHECKLIST(_siege a 선재 결함 수리 대상)",
+   "addedLine": "const EXPAND_CELLS_PER_DAY = 4;           // 일일 최대 구매 셀 — 맵 크립 6시간/1셀=4셀/일과 정합(≈구 25셀/주 페이스)",
+   "addedLineSha256": "669817c6d74b214ec2823e0d530d4ac8741ab1d90988d6987dbecbbb317416dc"
+  },
+  "sim/war-core.js#WAR_UTIL_TH": {
+   "file": "sim/war-core.js",
+   "name": "WAR_UTIL_TH",
+   "commit": "048d69b24ebc8e70c3a4cc9a6bad3b202a4ac57d",
+   "authorISO": "2026-07-12T12:47:15+09:00",
+   "authorDateUTC": "2026-07-12",
+   "subject": "본체 이식 2~4파 완주(계획서 §6~8 기록): [2파] war-core 재동기+작전층(자동 개전 폐지·상태기계·봉쇄 훅 siege 상태 이동·공성팩·방어 3택·절박 항복·무저항 함락, WAR_OPS 게이트 OFF=바이트 동일)+긴급 소집+도적 실체 최소+병사→야생 위협(블록 무수정 어댑터 16줄) [3파] 포로 전량(35%·J상한·호송·동화/탈출/몸값·재큐 보강, WAR_CAPTIVES 게이트)+벌점 karmaOf 인터페이스 예약 [4파] 움집 단층 8명(기존 다층 유지 마이그레이션 증명)+답압 길 roads.js(DB 왕복·A* 할인·클라 틴트, ENABLE_ROADS)+물가 K/d²+영토 등가반경 동기+경도 _lonOff+절대 시계 설계 상수 — _p3-war-probe 25/25·존 스모크·재부팅 왕복·실DB 무접촉",
+   "addedLine": "const WAR_CAS_W = 0.12, WAR_UTIL_TH = 1.5, WAR_TRAUMA_UP = 0.5, WAR_TRAUMA_DK = 0.99;",
+   "addedLineSha256": "8bc414bff7dcab1d620c5feb14691ca4a2ab9370ee1a5c911b142295b48e335a"
+  },
+  "sim/war-core.js#WAR_FOOD_RICH": {
+   "file": "sim/war-core.js",
+   "name": "WAR_FOOD_RICH",
+   "commit": "048d69b24ebc8e70c3a4cc9a6bad3b202a4ac57d",
+   "authorISO": "2026-07-12T12:47:15+09:00",
+   "authorDateUTC": "2026-07-12",
+   "subject": "본체 이식 2~4파 완주(계획서 §6~8 기록): [2파] war-core 재동기+작전층(자동 개전 폐지·상태기계·봉쇄 훅 siege 상태 이동·공성팩·방어 3택·절박 항복·무저항 함락, WAR_OPS 게이트 OFF=바이트 동일)+긴급 소집+도적 실체 최소+병사→야생 위협(블록 무수정 어댑터 16줄) [3파] 포로 전량(35%·J상한·호송·동화/탈출/몸값·재큐 보강, WAR_CAPTIVES 게이트)+벌점 karmaOf 인터페이스 예약 [4파] 움집 단층 8명(기존 다층 유지 마이그레이션 증명)+답압 길 roads.js(DB 왕복·A* 할인·클라 틴트, ENABLE_ROADS)+물가 K/d²+영토 등가반경 동기+경도 _lonOff+절대 시계 설계 상수 — _p3-war-probe 25/25·존 스모크·재부팅 왕복·실DB 무접촉",
+   "addedLine": "const WAR_FOOD_CRISIS = 18, WAR_FOOD_RICH = 45, WAR_RANGE = 520, WAR_LEVY = 0.35, WAR_RAID_MIN = 2, WAR_RATION = 1.0;",
+   "addedLineSha256": "3ad79238b1f22afb9e9ab99066c08ce47d176d47a8bc1977266d365d9998fdf6"
+  },
+  "sim/war-core.js#WAR_RANGE": {
+   "file": "sim/war-core.js",
+   "name": "WAR_RANGE",
+   "commit": "048d69b24ebc8e70c3a4cc9a6bad3b202a4ac57d",
+   "authorISO": "2026-07-12T12:47:15+09:00",
+   "authorDateUTC": "2026-07-12",
+   "subject": "본체 이식 2~4파 완주(계획서 §6~8 기록): [2파] war-core 재동기+작전층(자동 개전 폐지·상태기계·봉쇄 훅 siege 상태 이동·공성팩·방어 3택·절박 항복·무저항 함락, WAR_OPS 게이트 OFF=바이트 동일)+긴급 소집+도적 실체 최소+병사→야생 위협(블록 무수정 어댑터 16줄) [3파] 포로 전량(35%·J상한·호송·동화/탈출/몸값·재큐 보강, WAR_CAPTIVES 게이트)+벌점 karmaOf 인터페이스 예약 [4파] 움집 단층 8명(기존 다층 유지 마이그레이션 증명)+답압 길 roads.js(DB 왕복·A* 할인·클라 틴트, ENABLE_ROADS)+물가 K/d²+영토 등가반경 동기+경도 _lonOff+절대 시계 설계 상수 — _p3-war-probe 25/25·존 스모크·재부팅 왕복·실DB 무접촉",
+   "addedLine": "const WAR_FOOD_CRISIS = 18, WAR_FOOD_RICH = 45, WAR_RANGE = 520, WAR_LEVY = 0.35, WAR_RAID_MIN = 2, WAR_RATION = 1.0;",
+   "addedLineSha256": "3ad79238b1f22afb9e9ab99066c08ce47d176d47a8bc1977266d365d9998fdf6"
+  },
+  "sim/war-core.js#WAR_RATION": {
+   "file": "sim/war-core.js",
+   "name": "WAR_RATION",
+   "commit": "048d69b24ebc8e70c3a4cc9a6bad3b202a4ac57d",
+   "authorISO": "2026-07-12T12:47:15+09:00",
+   "authorDateUTC": "2026-07-12",
+   "subject": "본체 이식 2~4파 완주(계획서 §6~8 기록): [2파] war-core 재동기+작전층(자동 개전 폐지·상태기계·봉쇄 훅 siege 상태 이동·공성팩·방어 3택·절박 항복·무저항 함락, WAR_OPS 게이트 OFF=바이트 동일)+긴급 소집+도적 실체 최소+병사→야생 위협(블록 무수정 어댑터 16줄) [3파] 포로 전량(35%·J상한·호송·동화/탈출/몸값·재큐 보강, WAR_CAPTIVES 게이트)+벌점 karmaOf 인터페이스 예약 [4파] 움집 단층 8명(기존 다층 유지 마이그레이션 증명)+답압 길 roads.js(DB 왕복·A* 할인·클라 틴트, ENABLE_ROADS)+물가 K/d²+영토 등가반경 동기+경도 _lonOff+절대 시계 설계 상수 — _p3-war-probe 25/25·존 스모크·재부팅 왕복·실DB 무접촉",
+   "addedLine": "const WAR_FOOD_CRISIS = 18, WAR_FOOD_RICH = 45, WAR_RANGE = 520, WAR_LEVY = 0.35, WAR_RAID_MIN = 2, WAR_RATION = 1.0;",
+   "addedLineSha256": "3ad79238b1f22afb9e9ab99066c08ce47d176d47a8bc1977266d365d9998fdf6"
+  },
+  "sim/war-core.js#WAR_FOOD_CRISIS": {
+   "file": "sim/war-core.js",
+   "name": "WAR_FOOD_CRISIS",
+   "commit": "048d69b24ebc8e70c3a4cc9a6bad3b202a4ac57d",
+   "authorISO": "2026-07-12T12:47:15+09:00",
+   "authorDateUTC": "2026-07-12",
+   "subject": "본체 이식 2~4파 완주(계획서 §6~8 기록): [2파] war-core 재동기+작전층(자동 개전 폐지·상태기계·봉쇄 훅 siege 상태 이동·공성팩·방어 3택·절박 항복·무저항 함락, WAR_OPS 게이트 OFF=바이트 동일)+긴급 소집+도적 실체 최소+병사→야생 위협(블록 무수정 어댑터 16줄) [3파] 포로 전량(35%·J상한·호송·동화/탈출/몸값·재큐 보강, WAR_CAPTIVES 게이트)+벌점 karmaOf 인터페이스 예약 [4파] 움집 단층 8명(기존 다층 유지 마이그레이션 증명)+답압 길 roads.js(DB 왕복·A* 할인·클라 틴트, ENABLE_ROADS)+물가 K/d²+영토 등가반경 동기+경도 _lonOff+절대 시계 설계 상수 — _p3-war-probe 25/25·존 스모크·재부팅 왕복·실DB 무접촉",
+   "addedLine": "const WAR_FOOD_CRISIS = 18, WAR_FOOD_RICH = 45, WAR_RANGE = 520, WAR_LEVY = 0.35, WAR_RAID_MIN = 2, WAR_RATION = 1.0;",
+   "addedLineSha256": "3ad79238b1f22afb9e9ab99066c08ce47d176d47a8bc1977266d365d9998fdf6"
+  },
+  "sim/war-core.js#WAR_LEVY": {
+   "file": "sim/war-core.js",
+   "name": "WAR_LEVY",
+   "commit": "048d69b24ebc8e70c3a4cc9a6bad3b202a4ac57d",
+   "authorISO": "2026-07-12T12:47:15+09:00",
+   "authorDateUTC": "2026-07-12",
+   "subject": "본체 이식 2~4파 완주(계획서 §6~8 기록): [2파] war-core 재동기+작전층(자동 개전 폐지·상태기계·봉쇄 훅 siege 상태 이동·공성팩·방어 3택·절박 항복·무저항 함락, WAR_OPS 게이트 OFF=바이트 동일)+긴급 소집+도적 실체 최소+병사→야생 위협(블록 무수정 어댑터 16줄) [3파] 포로 전량(35%·J상한·호송·동화/탈출/몸값·재큐 보강, WAR_CAPTIVES 게이트)+벌점 karmaOf 인터페이스 예약 [4파] 움집 단층 8명(기존 다층 유지 마이그레이션 증명)+답압 길 roads.js(DB 왕복·A* 할인·클라 틴트, ENABLE_ROADS)+물가 K/d²+영토 등가반경 동기+경도 _lonOff+절대 시계 설계 상수 — _p3-war-probe 25/25·존 스모크·재부팅 왕복·실DB 무접촉",
+   "addedLine": "const WAR_FOOD_CRISIS = 18, WAR_FOOD_RICH = 45, WAR_RANGE = 520, WAR_LEVY = 0.35, WAR_RAID_MIN = 2, WAR_RATION = 1.0;",
+   "addedLineSha256": "3ad79238b1f22afb9e9ab99066c08ce47d176d47a8bc1977266d365d9998fdf6"
+  },
+  "sim/war-core.js#_warBRONZE_TIN_MIN_ABS": {
+   "file": "sim/war-core.js",
+   "name": "_warBRONZE_TIN_MIN_ABS",
+   "commit": "048d69b24ebc8e70c3a4cc9a6bad3b202a4ac57d",
+   "authorISO": "2026-07-12T12:47:15+09:00",
+   "authorDateUTC": "2026-07-12",
+   "subject": "본체 이식 2~4파 완주(계획서 §6~8 기록): [2파] war-core 재동기+작전층(자동 개전 폐지·상태기계·봉쇄 훅 siege 상태 이동·공성팩·방어 3택·절박 항복·무저항 함락, WAR_OPS 게이트 OFF=바이트 동일)+긴급 소집+도적 실체 최소+병사→야생 위협(블록 무수정 어댑터 16줄) [3파] 포로 전량(35%·J상한·호송·동화/탈출/몸값·재큐 보강, WAR_CAPTIVES 게이트)+벌점 karmaOf 인터페이스 예약 [4파] 움집 단층 8명(기존 다층 유지 마이그레이션 증명)+답압 길 roads.js(DB 왕복·A* 할인·클라 틴트, ENABLE_ROADS)+물가 K/d²+영토 등가반경 동기+경도 _lonOff+절대 시계 설계 상수 — _p3-war-probe 25/25·존 스모크·재부팅 왕복·실DB 무접촉",
+   "addedLine": "const _warBRONZE_TIN_MIN_ABS = 13, _warBRONZE_TIN_MIN_PC = 0.95;",
+   "addedLineSha256": "c1ac2d75efe28014f0c8b7daec5444bba58918dc62a46baa659af9ccec64539f"
+  },
+  "sim/war-core.js#_warBRONZE_TIN_MIN_PC": {
+   "file": "sim/war-core.js",
+   "name": "_warBRONZE_TIN_MIN_PC",
+   "commit": "048d69b24ebc8e70c3a4cc9a6bad3b202a4ac57d",
+   "authorISO": "2026-07-12T12:47:15+09:00",
+   "authorDateUTC": "2026-07-12",
+   "subject": "본체 이식 2~4파 완주(계획서 §6~8 기록): [2파] war-core 재동기+작전층(자동 개전 폐지·상태기계·봉쇄 훅 siege 상태 이동·공성팩·방어 3택·절박 항복·무저항 함락, WAR_OPS 게이트 OFF=바이트 동일)+긴급 소집+도적 실체 최소+병사→야생 위협(블록 무수정 어댑터 16줄) [3파] 포로 전량(35%·J상한·호송·동화/탈출/몸값·재큐 보강, WAR_CAPTIVES 게이트)+벌점 karmaOf 인터페이스 예약 [4파] 움집 단층 8명(기존 다층 유지 마이그레이션 증명)+답압 길 roads.js(DB 왕복·A* 할인·클라 틴트, ENABLE_ROADS)+물가 K/d²+영토 등가반경 동기+경도 _lonOff+절대 시계 설계 상수 — _p3-war-probe 25/25·존 스모크·재부팅 왕복·실DB 무접촉",
+   "addedLine": "const _warBRONZE_TIN_MIN_ABS = 13, _warBRONZE_TIN_MIN_PC = 0.95;",
+   "addedLineSha256": "c1ac2d75efe28014f0c8b7daec5444bba58918dc62a46baa659af9ccec64539f"
+  },
+  "sim/war-core.js#WAR_ENGAGE_MAX": {
+   "file": "sim/war-core.js",
+   "name": "WAR_ENGAGE_MAX",
+   "commit": "048d69b24ebc8e70c3a4cc9a6bad3b202a4ac57d",
+   "authorISO": "2026-07-12T12:47:15+09:00",
+   "authorDateUTC": "2026-07-12",
+   "subject": "본체 이식 2~4파 완주(계획서 §6~8 기록): [2파] war-core 재동기+작전층(자동 개전 폐지·상태기계·봉쇄 훅 siege 상태 이동·공성팩·방어 3택·절박 항복·무저항 함락, WAR_OPS 게이트 OFF=바이트 동일)+긴급 소집+도적 실체 최소+병사→야생 위협(블록 무수정 어댑터 16줄) [3파] 포로 전량(35%·J상한·호송·동화/탈출/몸값·재큐 보강, WAR_CAPTIVES 게이트)+벌점 karmaOf 인터페이스 예약 [4파] 움집 단층 8명(기존 다층 유지 마이그레이션 증명)+답압 길 roads.js(DB 왕복·A* 할인·클라 틴트, ENABLE_ROADS)+물가 K/d²+영토 등가반경 동기+경도 _lonOff+절대 시계 설계 상수 — _p3-war-probe 25/25·존 스모크·재부팅 왕복·실DB 무접촉",
+   "addedLine": "const WAR_MAX_ARMY = 60, WAR_ENGAGE_MAX = 44, WAR_DEF_ENGAGE_RATIO = 1.6, WAR_DEF_ENGAGE_MIN = 1.15;",
+   "addedLineSha256": "af7194e8b2c1fdff3c8261c9b31bfd56a5afc7e68be04f034d1815a63754b2ba"
+  },
+  "sim/war-core.js#WAR_MAX_ARMY": {
+   "file": "sim/war-core.js",
+   "name": "WAR_MAX_ARMY",
+   "commit": "048d69b24ebc8e70c3a4cc9a6bad3b202a4ac57d",
+   "authorISO": "2026-07-12T12:47:15+09:00",
+   "authorDateUTC": "2026-07-12",
+   "subject": "본체 이식 2~4파 완주(계획서 §6~8 기록): [2파] war-core 재동기+작전층(자동 개전 폐지·상태기계·봉쇄 훅 siege 상태 이동·공성팩·방어 3택·절박 항복·무저항 함락, WAR_OPS 게이트 OFF=바이트 동일)+긴급 소집+도적 실체 최소+병사→야생 위협(블록 무수정 어댑터 16줄) [3파] 포로 전량(35%·J상한·호송·동화/탈출/몸값·재큐 보강, WAR_CAPTIVES 게이트)+벌점 karmaOf 인터페이스 예약 [4파] 움집 단층 8명(기존 다층 유지 마이그레이션 증명)+답압 길 roads.js(DB 왕복·A* 할인·클라 틴트, ENABLE_ROADS)+물가 K/d²+영토 등가반경 동기+경도 _lonOff+절대 시계 설계 상수 — _p3-war-probe 25/25·존 스모크·재부팅 왕복·실DB 무접촉",
+   "addedLine": "const WAR_MAX_ARMY = 60, WAR_ENGAGE_MAX = 44, WAR_DEF_ENGAGE_RATIO = 1.6, WAR_DEF_ENGAGE_MIN = 1.15;",
+   "addedLineSha256": "af7194e8b2c1fdff3c8261c9b31bfd56a5afc7e68be04f034d1815a63754b2ba"
+  },
+  "sim/war-core.js#WAR_HOME_KEEP_FRAC": {
+   "file": "sim/war-core.js",
+   "name": "WAR_HOME_KEEP_FRAC",
+   "commit": "048d69b24ebc8e70c3a4cc9a6bad3b202a4ac57d",
+   "authorISO": "2026-07-12T12:47:15+09:00",
+   "authorDateUTC": "2026-07-12",
+   "subject": "본체 이식 2~4파 완주(계획서 §6~8 기록): [2파] war-core 재동기+작전층(자동 개전 폐지·상태기계·봉쇄 훅 siege 상태 이동·공성팩·방어 3택·절박 항복·무저항 함락, WAR_OPS 게이트 OFF=바이트 동일)+긴급 소집+도적 실체 최소+병사→야생 위협(블록 무수정 어댑터 16줄) [3파] 포로 전량(35%·J상한·호송·동화/탈출/몸값·재큐 보강, WAR_CAPTIVES 게이트)+벌점 karmaOf 인터페이스 예약 [4파] 움집 단층 8명(기존 다층 유지 마이그레이션 증명)+답압 길 roads.js(DB 왕복·A* 할인·클라 틴트, ENABLE_ROADS)+물가 K/d²+영토 등가반경 동기+경도 _lonOff+절대 시계 설계 상수 — _p3-war-probe 25/25·존 스모크·재부팅 왕복·실DB 무접촉",
+   "addedLine": "const WAR_HOME_KEEP_FRAC = 0.25, WAR_HOME_KEEP_WAR = 0.5, WAR_SUPPLY_DIST_K = 0.06, WAR_MOB_ODDS_MIN = 0.42;",
+   "addedLineSha256": "6411019b651d2f36c0330bbe484301056f3772c9c958008d9474b79b9e8e6de0"
+  },
+  "sim/war-core.js#WAR_HOME_KEEP_WAR": {
+   "file": "sim/war-core.js",
+   "name": "WAR_HOME_KEEP_WAR",
+   "commit": "048d69b24ebc8e70c3a4cc9a6bad3b202a4ac57d",
+   "authorISO": "2026-07-12T12:47:15+09:00",
+   "authorDateUTC": "2026-07-12",
+   "subject": "본체 이식 2~4파 완주(계획서 §6~8 기록): [2파] war-core 재동기+작전층(자동 개전 폐지·상태기계·봉쇄 훅 siege 상태 이동·공성팩·방어 3택·절박 항복·무저항 함락, WAR_OPS 게이트 OFF=바이트 동일)+긴급 소집+도적 실체 최소+병사→야생 위협(블록 무수정 어댑터 16줄) [3파] 포로 전량(35%·J상한·호송·동화/탈출/몸값·재큐 보강, WAR_CAPTIVES 게이트)+벌점 karmaOf 인터페이스 예약 [4파] 움집 단층 8명(기존 다층 유지 마이그레이션 증명)+답압 길 roads.js(DB 왕복·A* 할인·클라 틴트, ENABLE_ROADS)+물가 K/d²+영토 등가반경 동기+경도 _lonOff+절대 시계 설계 상수 — _p3-war-probe 25/25·존 스모크·재부팅 왕복·실DB 무접촉",
+   "addedLine": "const WAR_HOME_KEEP_FRAC = 0.25, WAR_HOME_KEEP_WAR = 0.5, WAR_SUPPLY_DIST_K = 0.06, WAR_MOB_ODDS_MIN = 0.42;",
+   "addedLineSha256": "6411019b651d2f36c0330bbe484301056f3772c9c958008d9474b79b9e8e6de0"
+  },
+  "sim/war-core.js#WAR_SUPPLY_DIST_K": {
+   "file": "sim/war-core.js",
+   "name": "WAR_SUPPLY_DIST_K",
+   "commit": "048d69b24ebc8e70c3a4cc9a6bad3b202a4ac57d",
+   "authorISO": "2026-07-12T12:47:15+09:00",
+   "authorDateUTC": "2026-07-12",
+   "subject": "본체 이식 2~4파 완주(계획서 §6~8 기록): [2파] war-core 재동기+작전층(자동 개전 폐지·상태기계·봉쇄 훅 siege 상태 이동·공성팩·방어 3택·절박 항복·무저항 함락, WAR_OPS 게이트 OFF=바이트 동일)+긴급 소집+도적 실체 최소+병사→야생 위협(블록 무수정 어댑터 16줄) [3파] 포로 전량(35%·J상한·호송·동화/탈출/몸값·재큐 보강, WAR_CAPTIVES 게이트)+벌점 karmaOf 인터페이스 예약 [4파] 움집 단층 8명(기존 다층 유지 마이그레이션 증명)+답압 길 roads.js(DB 왕복·A* 할인·클라 틴트, ENABLE_ROADS)+물가 K/d²+영토 등가반경 동기+경도 _lonOff+절대 시계 설계 상수 — _p3-war-probe 25/25·존 스모크·재부팅 왕복·실DB 무접촉",
+   "addedLine": "const WAR_HOME_KEEP_FRAC = 0.25, WAR_HOME_KEEP_WAR = 0.5, WAR_SUPPLY_DIST_K = 0.06, WAR_MOB_ODDS_MIN = 0.42;",
+   "addedLineSha256": "6411019b651d2f36c0330bbe484301056f3772c9c958008d9474b79b9e8e6de0"
+  },
+  "sim/war-core.js#WAR_MOB_ODDS_MIN": {
+   "file": "sim/war-core.js",
+   "name": "WAR_MOB_ODDS_MIN",
+   "commit": "048d69b24ebc8e70c3a4cc9a6bad3b202a4ac57d",
+   "authorISO": "2026-07-12T12:47:15+09:00",
+   "authorDateUTC": "2026-07-12",
+   "subject": "본체 이식 2~4파 완주(계획서 §6~8 기록): [2파] war-core 재동기+작전층(자동 개전 폐지·상태기계·봉쇄 훅 siege 상태 이동·공성팩·방어 3택·절박 항복·무저항 함락, WAR_OPS 게이트 OFF=바이트 동일)+긴급 소집+도적 실체 최소+병사→야생 위협(블록 무수정 어댑터 16줄) [3파] 포로 전량(35%·J상한·호송·동화/탈출/몸값·재큐 보강, WAR_CAPTIVES 게이트)+벌점 karmaOf 인터페이스 예약 [4파] 움집 단층 8명(기존 다층 유지 마이그레이션 증명)+답압 길 roads.js(DB 왕복·A* 할인·클라 틴트, ENABLE_ROADS)+물가 K/d²+영토 등가반경 동기+경도 _lonOff+절대 시계 설계 상수 — _p3-war-probe 25/25·존 스모크·재부팅 왕복·실DB 무접촉",
+   "addedLine": "const WAR_HOME_KEEP_FRAC = 0.25, WAR_HOME_KEEP_WAR = 0.5, WAR_SUPPLY_DIST_K = 0.06, WAR_MOB_ODDS_MIN = 0.42;",
+   "addedLineSha256": "6411019b651d2f36c0330bbe484301056f3772c9c958008d9474b79b9e8e6de0"
+  },
+  "sim/economy-sim.js#CLOTH_WEAR_PC": {
+   "file": "sim/economy-sim.js",
+   "name": "CLOTH_WEAR_PC",
+   "commit": "f46416a642171d41cfb5320fafb5cb4e3da92fdf",
+   "authorISO": "2026-07-12T18:27:25+09:00",
+   "authorDateUTC": "2026-07-12",
+   "subject": "econ: 의복·기온·감산 자연화 — 재봉사+옷(1인1벌 자본재)·사계 기온 모델(고도 감률·존 위도 상수)·한랭 건강/연료 가중·식량/돌 직접감산 제거+건축 유지 실소비",
+   "addedLine": "const CLOTH_WEAR_PC = 0.004;        // 1인 일 마모(온화 ~250일 수명, 한랭 ×3 → ~80일)",
+   "addedLineSha256": "f9ee97bc54961f9a850dac4bea4bd0b45d0c115f566abb1af349d2da53f83bfd"
+  },
+  "sim/economy-sim.js#CLOTH_TARGET_PC": {
+   "file": "sim/economy-sim.js",
+   "name": "CLOTH_TARGET_PC",
+   "commit": "f46416a642171d41cfb5320fafb5cb4e3da92fdf",
+   "authorISO": "2026-07-12T18:27:25+09:00",
+   "authorDateUTC": "2026-07-12",
+   "subject": "econ: 의복·기온·감산 자연화 — 재봉사+옷(1인1벌 자본재)·사계 기온 모델(고도 감률·존 위도 상수)·한랭 건강/연료 가중·식량/돌 직접감산 제거+건축 유지 실소비",
+   "addedLine": "const CLOTH_TARGET_PC = 1.2;        // 목표 보유(1인 1벌 + 여벌 0.2) — v2 CAP_TARGET·CAPITAL keep과 동기",
+   "addedLineSha256": "038ec2311ae40384c609a1c879a1f31b82a071c0e97252d89c51dcf818e6eb61"
+  },
+  "sim/economy-sim.js#RITE_KEEP_PC": {
+   "file": "sim/economy-sim.js",
+   "name": "RITE_KEEP_PC",
+   "commit": "b95555c00ed8970ddd53d0143da935cd71e8239a",
+   "authorISO": "2026-07-12T19:19:47+09:00",
+   "authorDateUTC": "2026-07-12",
+   "subject": "econ: 제례·부장 봉헌 v2 — 위세재(옥·금은·보석·호박·흑요석) 반복 실수요(매납·부장 고증). 식량여유 비례+수출자본 유보(빈곤 마을 불가침)로 v1 결함(자기 수출자본 소각) 해소",
+   "addedLine": "const RITE_KEEP_PC = 0.15;          // 수출 자본 유보(1인당) — 이 아래로는 안 태움(빈곤·산지 마을 교역 자본 불가침)",
+   "addedLineSha256": "127f20771dcc621f3865fe25a8d4491cc747848a6ec2d9b531abe58946cf8676"
+  },
+  "sim/economy-sim.js#RAMIE_BOOT_PC": {
+   "file": "sim/economy-sim.js",
+   "name": "RAMIE_BOOT_PC",
+   "commit": "78a59471c7818257f09a7189269b53f1fcc26789",
+   "authorISO": "2026-07-13T01:12:24+09:00",
+   "authorDateUTC": "2026-07-12",
+   "subject": "econ: 모시(ramie) 생산 경로 채택 — 옷감 다양화 1탄(flow-EMA 첫 수혜). flax/cotton 고증 제외 존치→모시(저마) 확장, v2 명시정의(specialty.js 불변). ★신선 짝비교가 초안(고정 byproduct)의 505 knife-edge 605→19 붕괴 검출→수요-캡 공급(잉여0·addProduce 스킵)+성숙 게이트(pop≥40 대촌·고증)+util 0.05. 505 577/8 붕괴해소·303 base동일·스위트 21/22@1000·siege 6종·LT19·양 랩 790d8c18. @1500 로컬 확정 요망",
+   "addedLine": "const RAMIE_BOOT_PC = 0.1;   // ★모시 수요-캡 부트스트랩 floor(/인) — 소비EMA가 0인 초기에 재봉이 쓸 최소 재고만 확보(잉여 아님). 이후 수요(flowT=소비EMA×30)가 상한을 견인",
+   "addedLineSha256": "04412826f84f09a67f87c1d8e3833528ec203d1ca1f6d28374427be5e94d7db9"
+  },
+  "sim/economy-sim.js#RAMIE_MIN_POP": {
+   "file": "sim/economy-sim.js",
+   "name": "RAMIE_MIN_POP",
+   "commit": "78a59471c7818257f09a7189269b53f1fcc26789",
+   "authorISO": "2026-07-13T01:12:24+09:00",
+   "authorDateUTC": "2026-07-12",
+   "subject": "econ: 모시(ramie) 생산 경로 채택 — 옷감 다양화 1탄(flow-EMA 첫 수혜). flax/cotton 고증 제외 존치→모시(저마) 확장, v2 명시정의(specialty.js 불변). ★신선 짝비교가 초안(고정 byproduct)의 505 knife-edge 605→19 붕괴 검출→수요-캡 공급(잉여0·addProduce 스킵)+성숙 게이트(pop≥40 대촌·고증)+util 0.05. 505 577/8 붕괴해소·303 base동일·스위트 21/22@1000·siege 6종·LT19·양 랩 790d8c18. @1500 로컬 확정 요망",
+   "addedLine": "const RAMIE_MIN_POP = 40;    // ★모시 성숙 게이트 — 고급 직물은 정착 완료·잉여 공동체가 짠다(개척기 프론티어는 식량 사활). 개척 취약 궤적(콜로니 250~450f) 무교란 = 505 knife-edge 보호(고증: 잉여사회 고급 직물). ※60 시도는 202 chaos로 오히려 −(571→527) 기각",
+   "addedLineSha256": "cd011c9c6ec420b489fab9f088c57714897a3ed1ec7827dc71f183ae125b4674"
+  },
+  "sim/economy-sim.js#LEATHER_GOODS_TARGET": {
+   "file": "sim/economy-sim.js",
+   "name": "LEATHER_GOODS_TARGET",
+   "commit": "b3fead9ca9a6672e226e127a0a20fd5a375adb80",
+   "authorISO": "2026-07-13T01:51:32+09:00",
+   "authorDateUTC": "2026-07-12",
+   "subject": "econ: 가죽 제품(leather goods) comfort 산업 채택 — hide 글럿 진짜 sink(감사 v2). ★hide→leather 무두질은 form 전환(순소비 불변·202 571→48 붕괴)이라 기각 → 의류·갑옷 밖 ADDITIVE 소비=가죽제품(신·용기·침구·끈) 실사용. 마을 필드(비교역 comfort)라 knife-edge 수입드레인 없음(모시·무두질 붕괴 진범=교역성 실증). 잉여 hide→제품→건강/행복 comfort, 성숙+잉여 게이트. 고증: hide 글럿=realistic 사냥잉여(소멸 아닌 USE가 처방). 스위트 21/22@1000 소멸0·siege 6종·LT19·양 랩. @1500 로컬 확정 요망",
+   "addedLine": "const LEATHER_GOODS_TARGET = 0.8;   // 1인 가죽제품 목표 스톡(신발·주머니·깔개·끈 — 생활 필수품 커버리지)",
+   "addedLineSha256": "d0a9bafe166b7c043989fb668989c28a61ab6879e61291de564cad23fb252167"
+  },
+  "sim/economy-sim.js#TAN_HIDE_MIN": {
+   "file": "sim/economy-sim.js",
+   "name": "TAN_HIDE_MIN",
+   "commit": "b3fead9ca9a6672e226e127a0a20fd5a375adb80",
+   "authorISO": "2026-07-13T01:51:32+09:00",
+   "authorDateUTC": "2026-07-12",
+   "subject": "econ: 가죽 제품(leather goods) comfort 산업 채택 — hide 글럿 진짜 sink(감사 v2). ★hide→leather 무두질은 form 전환(순소비 불변·202 571→48 붕괴)이라 기각 → 의류·갑옷 밖 ADDITIVE 소비=가죽제품(신·용기·침구·끈) 실사용. 마을 필드(비교역 comfort)라 knife-edge 수입드레인 없음(모시·무두질 붕괴 진범=교역성 실증). 잉여 hide→제품→건강/행복 comfort, 성숙+잉여 게이트. 고증: hide 글럿=realistic 사냥잉여(소멸 아닌 USE가 처방). 스위트 21/22@1000 소멸0·siege 6종·LT19·양 랩. @1500 로컬 확정 요망",
+   "addedLine": "const TAN_HIDE_MIN = 3.0;           // 무두질 하한 hide(/인) — 이 아래는 안 태움(505 'hide-저축 맵' 수출자본·갑옷재[armorsmith hide 0.4] 보존, 명백한 잉여만 제품화). 글럿(~4/N)을 이 선까지 sink",
+   "addedLineSha256": "a577511ed3f1810742e9f93e84c64424fd57f7d441ed87197cb365b2e607da24"
+  },
+  "sim/economy-sim.js#WEAPON_RITE_KEEP": {
+   "file": "sim/economy-sim.js",
+   "name": "WEAPON_RITE_KEEP",
+   "commit": "27e7a3d1b36ea81f70774cb61c8a82d3d6da7c27",
+   "authorISO": "2026-07-13T03:33:23+09:00",
+   "authorDateUTC": "2026-07-12",
+   "subject": "econ: 호전 마을 성격 + 봉헌검 채택(candidate A·전쟁층) — 해시 결정론 호전 마을(~28%, warriorTarget ×1.6 위협 시만·평시 무비). 봉헌검=호전 마을 잉여 청동검 매납(고증 동검 부장/매납). 잉여(전사+3)+식량여유 게이트로 병기고 드레인(s8 붕괴 선례) 회피 — 봉헌 v2 미룬 무기수요를 호전 성격 세트로 실현. 505 625/8·스위트 21/22@1000 weapShort0·siege 6종·LT19·양 랩. @1500 로컬 확정 요망",
+   "addedLine": "const WEAPON_RITE_KEEP = 3;         // 봉헌검 유보 — 전사 수 + 이 버퍼 초과 *잉여*만 매납(병기고 불가침 = 무장해제 방지)",
+   "addedLineSha256": "9a638cb4ecfb99e0ee59b8995690e7eb712c2dfb996dce022dcaa6bf50698819"
+  },
+  "sim/economy-sim-v2.js#CRISIS_TRADE_PC": {
+   "file": "sim/economy-sim-v2.js",
+   "name": "CRISIS_TRADE_PC",
+   "commit": "79655d48e9fa3decb160578ab8f1f0b42455c5c7",
+   "authorISO": "2026-07-13T18:02:05+09:00",
+   "authorDateUTC": "2026-07-13",
+   "subject": "위기 교역 동원(candidate K): 적자 마을(surplusEMA.food<0)은 유휴노동 밖 노동 소폭 동원(CRISIS_TRADE_PC=0.015) — 묶인 자산→식량 자기-차익거래(빠진 시장청산력 주입). 기회비용 게이트가 지역흉작시 헛원정 자동차단. @1500 캐논 22/22(마을38/40[base37 대비 +1]·총인구3782[+20%]·장식교역23354·누적53/명·LT19정지1). build8/8·siege6종·해시대조 econ-v2만.",
+   "addedLine": "const CRISIS_TRADE_PC = 0.015;   // 적자 마을 위기 동원 상한 = N×0.015 캐러밴(0.03서 하향 — 과동원 제로섬 마을사망 억제 시도)",
+   "addedLineSha256": "7503d782e4ea64a634135412acceeff7ac79865a9002708dcaec13180b43243c"
+  },
+  "sim/economy-sim.js#TAN_TRADE_PC": {
+   "file": "sim/economy-sim.js",
+   "name": "TAN_TRADE_PC",
+   "commit": "a9733d81124a7cee3a24804f57c2de9ec43bcb3a",
+   "authorISO": "2026-07-14T07:51:35+09:00",
+   "authorDateUTC": "2026-07-13",
+   "subject": "식량 pull·무두질 웨이브: 위기 마을 국소 구속으로 신규 교역재 흡수",
+   "addedLine": "const TAN_TRADE_PC = 0.06;          // ★무두질 저축(2026-07-13): 가죽제품 충족 후 잔여 잉여 hide→leather(저장·교역형 저축) 전환 상한(/인/일) — hide 수요-캡(candidate N)의 고증 정밀형 대체(사냥꾼은 가죽을 챙긴다·재산은 무두질 가죽으로·초과 생가죽은 부패)",
+   "addedLineSha256": "2156a9448c5ceb8ac114893dbc965e0b9981467550cbfd61e463105e6b27cffa"
+  },
+  "server/villages.js#G_CAP": {
+   "file": "server/villages.js",
+   "name": "G_CAP",
+   "commit": "a9cb5f3bbf11cd6f1069f703b2c63e7b6d108924",
+   "authorISO": "2026-07-27T17:07:22Z",
+   "authorDateUTC": "2026-07-27",
+   "subject": "T4 곳간 증설 런타임(_granAdd 링) — 재고 비례로 마을이 곳간을 실제로 더 짓는다",
+   "addedLine": "const G_CAP = 2500, G_MAX = 8, G_BUILDD = 6;",
+   "addedLineSha256": "7e7e01372ae7bdacc92704d48a678534ada19d0a71ebedc314f3d67e312837dc"
+  },
+  "server/villages.js#G_MAX": {
+   "file": "server/villages.js",
+   "name": "G_MAX",
+   "commit": "a9cb5f3bbf11cd6f1069f703b2c63e7b6d108924",
+   "authorISO": "2026-07-27T17:07:22Z",
+   "authorDateUTC": "2026-07-27",
+   "subject": "T4 곳간 증설 런타임(_granAdd 링) — 재고 비례로 마을이 곳간을 실제로 더 짓는다",
+   "addedLine": "const G_CAP = 2500, G_MAX = 8, G_BUILDD = 6;",
+   "addedLineSha256": "7e7e01372ae7bdacc92704d48a678534ada19d0a71ebedc314f3d67e312837dc"
+  },
+  "server/villages.js#G_STOCK_CAP": {
+   "file": "server/villages.js",
+   "name": "G_STOCK_CAP",
+   "commit": "6fc20c1089686577e3ecdfb1a0a4e32ecd8b89bb",
+   "authorISO": "2026-07-28T05:53:19Z",
+   "authorDateUTC": "2026-07-28",
+   "subject": "T2 곳간② 서버 이식 — NPC 물리 저장·인출(랩 verbatim) + 저장↔인출 무한왕복 회귀 수정",
+   "addedLine": "const G_STOCK_CAP = 60;       // 곳간 1동 물리 수용(칸 수 기준) — 넘으면 다음 곳간",
+   "addedLineSha256": "acbdcd5a8514f8ef11f5b4355a24f27ed10acaccdb1827b3fffee9c84d8767ba"
+  },
+  "server/villages.js#TERR_GROW_MAX_PER_DAY": {
+   "file": "server/villages.js",
+   "name": "TERR_GROW_MAX_PER_DAY",
+   "commit": "6412516ae5477afaf808d2d19e2785c1de8520e9",
+   "authorISO": "2026-07-30T11:22:26Z",
+   "authorDateUTC": "2026-07-30",
+   "subject": "영토 확장 실동 — econ이 산 땅만큼 실제로 넓히고 바로 개간한다 [재민 지적]",
+   "addedLine": "const TERR_GROW_MAX_PER_DAY = 60;   // 마을당 하루 최대 확장 셀 — econ 구매 속도보다 넉넉하되 폭주는 막는다",
+   "addedLineSha256": "7c0c4720440252d2eda8a1b59742f41e3faefe971c80bd109179b4ed11b33f7f"
+  },
+  "sim/economy-sim.js#SMELT_LABOR_CAP_PC": {
+   "file": "sim/economy-sim.js",
+   "name": "SMELT_LABOR_CAP_PC",
+   "commit": "1486755fea872d8f32b0be1dc6ad947a491ecdc0",
+   "authorISO": "2026-07-31T19:30:03Z",
+   "authorDateUTC": "2026-07-31",
+   "subject": "가치 사슬 정합 — 가공할수록 값이 오르게 [재민 지시]",
+   "addedLine": "const SMELT_LABOR_CAP_PC = 0.05;   // 제련에 쓸 노동 상한(인구 비율) — 야금은 마을 노동의 일부일 뿐",
+   "addedLineSha256": "fce44abc4085305ba74477997e82477ada8771b8fe73200bdfbdc04f6a0b802e"
+  },
+  "sim/economy-sim.js#RESERVE_PC": {
+   "file": "sim/economy-sim.js",
+   "name": "RESERVE_PC",
+   "commit": "1486755fea872d8f32b0be1dc6ad947a491ecdc0",
+   "authorISO": "2026-07-31T19:30:03Z",
+   "authorDateUTC": "2026-07-31",
+   "subject": "가치 사슬 정합 — 가공할수록 값이 오르게 [재민 지시]",
+   "addedLine": "const RESERVE_PC = {",
+   "addedLineSha256": "634794f511c95809f84bc12e940765eee7682784a862a222d46a89ff1ab67c8b"
+  },
+  "sim/economy-sim.js#ORE_STOCK_PC": {
+   "file": "sim/economy-sim.js",
+   "name": "ORE_STOCK_PC",
+   "commit": "39bd28fbd2c998c42815afac3467c8f7bcbb1f3c",
+   "authorISO": "2026-08-01T01:19:51Z",
+   "authorDateUTC": "2026-08-01",
+   "subject": "★회귀 하네스가 거짓 통과를 내고 있었다 + 광부 파생수요 [재민 질문]",
+   "addedLine": "const ORE_STOCK_PC = 0.5;   // 1인당 원석 재고 목표 — 이 아래면 광부를 뽑는다(제련 원료 파생수요)",
+   "addedLineSha256": "ae52c41f252483ffe9b91e2048dcf37cf4aedbefab9515144e78142c4a5f32e6"
+  },
+  "sim/economy-sim.js#COPPER_DERIV_DAYS": {
+   "file": "sim/economy-sim.js",
+   "name": "COPPER_DERIV_DAYS",
+   "commit": "fec2658b3403457ef6180901ea7c02497de27649",
+   "authorISO": "2026-08-02T11:16:58Z",
+   "authorDateUTC": "2026-08-02",
+   "subject": "배치 7 ①②③ — 구리 축 3건 전건 실측(셋 다 기각) · 노 페이싱 실측 · 1,600일 소멸 0 · 지표 하나 수리",
+   "addedLine": "const COPPER_DERIV_DAYS = (typeof process !== 'undefined' && process.env && process.env.COPPER_DERIV_DAYS != null)",
+   "addedLineSha256": "e9afcfb1b3d26fa871f1936cf6f95ac22873e7e08cb31b1afbbbeb3a6d4ec9aa"
+  },
+  "sim/economy-sim.js#SALT_DAILY_PC": {
+   "file": "sim/economy-sim.js",
+   "name": "SALT_DAILY_PC",
+   "commit": "e1bbff0082d1b4c9c2d377ee16424a91ab3fd7c2",
+   "authorISO": "2026-09-02T17:52:18Z",
+   "authorDateUTC": "2026-09-02",
+   "subject": "ECON 수술 1 — 도구 흐름 · 보존식 편입 · 자염 · 캐러밴 시계 [재민 확정 2026-09-02 · T17]",
+   "addedLine": "const SALT_DAILY_PC = 0.01;",
+   "addedLineSha256": "e67d68e9d20c8e0fc5ba0082a41518a042f7aee5f132d095ddb7181ec940468b"
+  },
+  "sim/economy-sim.js#STONE_NET_STOCK": {
+   "file": "sim/economy-sim.js",
+   "name": "STONE_NET_STOCK",
+   "commit": "484946876b520eff10ccde597006f000893b0706",
+   "authorISO": "2026-09-12T00:43:53Z",
+   "authorDateUTC": "2026-09-12",
+   "subject": "[재민 확정 2026-09-12 · T180] 도구 수명이 답이다 — 그리고 돌<0.2 는 톱니의 골짜기 수였다",
+   "addedLine": "const STONE_NET_STOCK = 0.2;",
+   "addedLineSha256": "651007abcc5841eb7f7a84362b3f514134195d917726097378b0c65c13de1280"
+  },
+  "sim/economy-sim.js#JOB_SWITCH_COOLDOWN": {
+   "file": "sim/economy-sim.js",
+   "name": "JOB_SWITCH_COOLDOWN",
+   "commit": "40072389b1c4e24379dfe2079a1ce79475f3b0ec",
+   "authorISO": "2026-11-02T13:16:34Z",
+   "authorDateUTC": "2026-11-02",
+   "subject": "[승인 대기 · T1085] 촌장이 구성원에게 일을 맡긴다 — 동사 assign_job(곳간 촌장 술어 · econ 자리 · 쿨다운 규칙 그대로) · 굶으면 식량 전환이 지정보다 앞 · 게시판 구성원 칸(일 맡기기)",
+   "addedLine": "const JOB_SWITCH_COOLDOWN = 30;",
+   "addedLineSha256": "4a2ba310ae6c56273d2b7cbc2e3b4da3e2c330f5f5ca094b6ca6f5e211338693"
+  }
+ },
+ "missing": []
+}
