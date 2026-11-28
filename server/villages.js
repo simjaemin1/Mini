@@ -23895,6 +23895,7 @@ function __rumorProbe() {
 }
 
 module.exports = { T1471_LAND_FIT, t1471Stat,   // ★[T1471]
+  T1502_ACT_FIX,   // ★[T1502] 채집꾼 몸 손잡이(zone.js `_t671Shape` 가 받는다 — env 읽는 자리는 위 한 줄뿐)
   T1451_SITES, T1451_CREW_FREE, T1451_FARM_CALL, t1451Stat: () => JSON.parse(JSON.stringify(_t1451St)),   // ★[T1451]
   t1406PathCell: (cx, cy, vil) => _t1406PathCell(cx, cy, vil || null), T1406_KEEP_PATHS, artisanPerf,   // ★[T1196] 장인 작업장 관측
   t1461Die, t1461Out, t1461Stat, T1461_BEAST_UNSEEN, __t1461: { st: () => state },   // ★[T1461] 명부 밖 몸 죽음 · 마을 밖 몸(존 손잡이 `T1461_BEAST_UNSEEN` 켬에서만 부른다)

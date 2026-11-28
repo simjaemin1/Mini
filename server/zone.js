@@ -4152,7 +4152,7 @@ const T806_HOT_INOBJ = process.env.T806_HOT_INOBJ !== '0';   // ★[T806 ③] �
 const T671_SHAPE = process.env.T671_SHAPE !== '0';   // ★PM 10-07 켬 기본(바이트 같음 · 되돌림 =0)
 const T1422_SIDE = !!(process.env.T1422_SIDE_WORK && process.env.T1422_SIDE_WORK !== '0');   // ★[T1422] villages `_T1422_K` 와 같은 env(몸 칸 규약 — 아래 한 줄)
 const T1451_SITES_Z = process.env.T1451_SITES === '1';   // ★[T1451] villages `T1451_SITES` 와 같은 env(몸 칸 규약 — `_t671Shape` 한 줄)
-const T1502_ACT_FIX_Z = process.env.T1502_ACT_FIX === '1';   // ★[T1502] villages `T1502_ACT_FIX` 와 같은 env(몸 칸 규약 — `_t671Shape` 한 줄)
+const T1502_ACT_FIX_Z = !!SimVillages.T1502_ACT_FIX;   // ★[T1502] villages.js 가 정한 손잡이를 받는다(env 읽는 자리 하나 — test-t1502-funnel ① · 몸 칸 규약 — `_t671Shape` 한 줄)
 function _t671Shape(p) {
   p.simJob = undefined; p._dOff = undefined; p._half = undefined; p._hd = undefined; p._huntOn = undefined; p._huntSpd = undefined; p._lifeAct = undefined;
   p._lifeActAt = undefined; p._pathAt = undefined; p._pathFor = undefined; p._rdK = undefined; p._rdMul = undefined; p._sh = undefined; p._simCloth = undefined;
