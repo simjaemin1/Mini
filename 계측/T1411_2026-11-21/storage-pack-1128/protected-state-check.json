@@ -1,0 +1,32 @@
+{
+ "ON-1020": {
+  "checkpoint": 680,
+  "matchesPreResume680": {
+   "state.json": true,
+   "w.db-wal": true,
+   "w.db": true,
+   "day": true,
+   "stop-680.json": true,
+   "w.db-shm": true,
+   "phase-680.json": true,
+   "keep-680.json": true
+  }
+ },
+ "OFF-1020": {
+  "checkpoint": 680,
+  "matchesPreResume680": {
+   "state.json": true,
+   "w.db-wal": true,
+   "w.db": true,
+   "day": true,
+   "stop-680.json": true,
+   "w.db-shm": true,
+   "phase-680.json": true,
+   "keep-680.json": true
+  }
+ },
+ "productMatchesFixedBranch": {
+  "server/villages.js": "ce4d8c7f1f157d64297e93f3b69df3cc7773a62c16bc0e9139d1ff56a589477e",
+  "server/zone.js": "fb89408587a5d2291e9783b203e4c56bf938a8df31153c4821e186d68c523d81"
+ }
+}

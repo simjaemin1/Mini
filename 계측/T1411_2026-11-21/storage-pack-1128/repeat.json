@@ -1,0 +1,1 @@
+[{"case": "ON-1020", "checkpointBoundary": 680, "packed": 0, "sourceBytesRemoved": 0, "gzipBytesAdded": 0, "manifest": "/workspace/scratch/t1411/old-stop-dumps/ON-1020/manifest.json"}, {"case": "OFF-1020", "checkpointBoundary": 680, "packed": 0, "sourceBytesRemoved": 0, "gzipBytesAdded": 0, "manifest": "/workspace/scratch/t1411/old-stop-dumps/OFF-1020/manifest.json"}]
