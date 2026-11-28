@@ -1,0 +1,105 @@
+{
+ "kind": "daily-observation-replay-check",
+ "complete": true,
+ "scope": "All retained daily observation fields except the three named CPU/uptime fields; not a full-state fingerprint or an independent world.",
+ "cases": {
+  "ON-1020/t1274-days": {
+   "expectedDays": [
+    681,
+    682,
+    683,
+    684
+   ],
+   "matchedDays": [
+    681,
+    682,
+    683,
+    684
+   ],
+   "excludedTimingFields": [
+    "cpuSeconds",
+    "processCPUSeconds",
+    "uptimeSeconds"
+   ],
+   "differences": [],
+   "archivedFileSha256": "003caa5e0b4e1a645dcd63043e9c9b3b26287b8e19db0fdf128f831f0b43503c"
+  },
+  "ON-1020/t1302-days": {
+   "expectedDays": [
+    681,
+    682,
+    683,
+    684
+   ],
+   "matchedDays": [
+    681,
+    682,
+    683,
+    684
+   ],
+   "excludedTimingFields": [],
+   "differences": [],
+   "archivedFileSha256": "7391f047a38a513f57b09c67aff14ed0939bb76f45f9a7c048e37b4e0827e7df"
+  },
+  "ON-1020/t1411-census": {
+   "expectedDays": [
+    681,
+    682,
+    683,
+    684
+   ],
+   "matchedDays": [
+    681,
+    682,
+    683,
+    684
+   ],
+   "excludedTimingFields": [],
+   "differences": [],
+   "archivedFileSha256": "b00782702594d2381b798f4a1449ea6876933d80e1d7909c0b35cefee7192f93"
+  },
+  "OFF-1020/t1274-days": {
+   "expectedDays": [
+    681,
+    682
+   ],
+   "matchedDays": [
+    681,
+    682
+   ],
+   "excludedTimingFields": [
+    "cpuSeconds",
+    "processCPUSeconds",
+    "uptimeSeconds"
+   ],
+   "differences": [],
+   "archivedFileSha256": "26af5e2b8afb946b1285280a8887182a0abdda38fd8d472e7a86c031267ca19a"
+  },
+  "OFF-1020/t1302-days": {
+   "expectedDays": [
+    681,
+    682
+   ],
+   "matchedDays": [
+    681,
+    682
+   ],
+   "excludedTimingFields": [],
+   "differences": [],
+   "archivedFileSha256": "c26412ffefb1805c298cca086751dc0b7d07743ae0826077018959441b5ecdf5"
+  },
+  "OFF-1020/t1411-census": {
+   "expectedDays": [
+    681,
+    682
+   ],
+   "matchedDays": [
+    681,
+    682
+   ],
+   "excludedTimingFields": [],
+   "differences": [],
+   "archivedFileSha256": "586c4ea5683fb3cc93a4579469aa869ff7a88ceb699e79a50248d41a4db263b3"
+  }
+ }
+}
