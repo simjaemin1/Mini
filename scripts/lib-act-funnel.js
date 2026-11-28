@@ -134,7 +134,11 @@ function B(npc, J) {
     b = { J, pid: npc.pid, day: last, step: 0, life: 0, out: 0, reach: 0, work: 0, harv: 0, carry: 0, gran: 0, harvU: 0, walk: 0, walkOut: 0, d0: null, dmin: Infinity, lx, ly, lh, lab: null, noReachHarv: 0 };
     bodies.set(npc.pid, b);
   }
-  if (pJ !== J) b.lh = null;   // 직업이 바뀌면 손 칸 자(`H.hand`)가 바뀐다 — 기준을 새로 잡는다(자가 바뀐 차를 거둠으로 세지 않는다 · 탐침 고침 ①)
+  if (pJ !== J) {   // 탐침 고침 ⑥: 바뀌기 전 자로 본 손 차(직업이 바뀌기 직전 걸음에 거두고 아직 못 본 손)는 앞 직업 거둠 · 앞 직업 손 몫으로 둔다
+    if (b.lh != null && pJ !== 'farmer' && pJ !== 'hunter') { const d = H.hand(npc, pJ) - b.lh; if (d > 1e-9) { for (const R of [rec.rows[pJ], winRows[pJ]]) R.harvU += d; holdAdd({ pid: npc.pid, J: pJ }, d); } }
+    b.lh = null;
+  }
+  // 직업이 바뀌면 손 칸 자(`H.hand`)가 바뀐다 — 기준을 새로 잡는다(자가 바뀐 차를 거둠으로 세지 않는다 · 탐침 고침 ①)
   b.J = J;
   return b;
 }
@@ -199,7 +203,7 @@ H.work = (npc, n) => { rec.hooked.work = 1; const J = H.J(npc); if (!J) return; 
 H.harvFarm = (npc, u) => { rec.hooked.hold = 1; const J = H.J(npc); if (!J) return; const b = B(npc, J); observe(npc, J, b); addHarv(b, u); };
 H.gather = (npc, J, h0) => {
   rec.hooked.gather = 1; const b = B(npc, J); b.work++;
-  if (J !== 'farmer' && J !== 'hunter') { const h = H.hand(npc, J); if (h > h0 + 1e-9) { if (b.out) b.reach = 1; addHarv(b, h - h0); } b.lh = h; }   // 존 채집은 자원 곁(`GATHER_RANGE` — 존이 재고 부른다)에서만 — 그 몸은 일터에 닿았다(탐침 고침 ②)
+  if (J !== 'farmer' && J !== 'hunter') { const h = H.hand(npc, J); if (h > h0 + 1e-9) { b.out = 1; b.reach = 1; addHarv(b, h - h0); } b.lh = h; }   // 존 채집은 자원 곁(`GATHER_RANGE` — 존이 재고 부른다)에서만 — 그 몸은 일터에 나서 닿았다(탐침 고침 ② · ⑤: 자리를 아직 안 잡은 몸도 — 나섬 없이 닿음만 서면 거둠이 "닿지 않고 거둠"으로 샌다 · 첫 px 는 모름으로 둔다)
 };
 function feOf(v) { try { return +V1.totalFoodEquivalent(v) || 0; } catch (e) { return 0; } }
 H.del = (vil, npc, u, call) => {
@@ -244,7 +248,7 @@ function flush() {
       if (!cur || !cur.step) { R.why.noTick++; if (cur && cur.lab) R.lab[cur.lab] = (R.lab[cur.lab] || 0) + 1; continue; }
       R.tick++; R.stepN += cur.step; R.lifeN += cur.life; R.walkPx += cur.walk;
       if (!cur.out) { R.why.noSite++; const l = cur.lab || '-'; R.lab[l] = (R.lab[l] || 0) + 1; continue; }
-      R.out++; R.d0Sum += cur.d0 || 0; R.d0N++; R.walkOutPx += cur.walkOut;
+      R.out++; if (cur.d0 != null) { R.d0Sum += cur.d0; R.d0N++; } R.walkOutPx += cur.walkOut;
       if (cur.noReachHarv) R.harvNoReach++;
       if (!cur.reach) { R.why.far++; const r = (cur.d0 || 0) / Math.max(1, cur.walk); R.farHist[r < 1 ? 0 : r < 2 ? 1 : r < 5 ? 2 : r < 20 ? 3 : r < 100 ? 4 : 5]++; continue; }
       R.reach++;
