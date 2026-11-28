@@ -1,0 +1,6 @@
+  ✓ 아이 판 T1259_WOOD_CAP=(없음 · 끔 기본) — 단언 다 섬
+  ✓ 아이 판 T1259_WOOD_CAP=0 — 단언 다 섬
+  ✓ 아이 판 T1259_WOOD_CAP=1 — 단언 다 섬
+  ✓ 미끼(정본 나무를 안 읽는 사본 · 바꾼 자리 1)는 tree0 단언에서 빨갛다
+T1259 child configurations 5/0; real tree0 assertion rejects the deliberately broken copy.
+=== test-t1259-wood-cap 결과: 5 통과 / 0 실패 ===

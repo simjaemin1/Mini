@@ -1,0 +1,85 @@
+[
+  {
+    "name": "test-body-fields",
+    "initial_rc": "0",
+    "final_rc": "0"
+  },
+  {
+    "name": "test-ci-list",
+    "initial_rc": "1",
+    "final_rc": "0",
+    "resolved_by": "restore original server shard count 2; test-ci-list.final.log 16/0"
+  },
+  {
+    "name": "test-coll-grid",
+    "initial_rc": "0",
+    "final_rc": "0"
+  },
+  {
+    "name": "test-donate",
+    "initial_rc": "0",
+    "final_rc": "0"
+  },
+  {
+    "name": "test-downed",
+    "initial_rc": "0",
+    "final_rc": "0"
+  },
+  {
+    "name": "test-harness-bite",
+    "initial_rc": "0",
+    "final_rc": "0"
+  },
+  {
+    "name": "test-hp-src",
+    "initial_rc": "0",
+    "final_rc": "0"
+  },
+  {
+    "name": "test-lon-day",
+    "initial_rc": "0",
+    "final_rc": "0"
+  },
+  {
+    "name": "test-member-open",
+    "initial_rc": "0",
+    "final_rc": "0"
+  },
+  {
+    "name": "test-membership",
+    "initial_rc": "0",
+    "final_rc": "0"
+  },
+  {
+    "name": "test-newcomers",
+    "initial_rc": "0",
+    "final_rc": "0"
+  },
+  {
+    "name": "test-t1086-first-join",
+    "initial_rc": "0",
+    "final_rc": "0"
+  },
+  {
+    "name": "test-t1132-hall-view",
+    "initial_rc": "0",
+    "final_rc": "0"
+  },
+  {
+    "name": "test-t1490-near-now",
+    "initial_rc": "0",
+    "final_rc": "0"
+  },
+  {
+    "name": "ui",
+    "final_rc": "0"
+  },
+  {
+    "name": "guild",
+    "final_rc": "0"
+  },
+  {
+    "name": "lint",
+    "final_rc": "0"
+  }
+]

@@ -1,0 +1,44 @@
+{
+  "kind": "synthetic information-loss witness; actual T1167 + T747/T1340 product serializers and war-live step",
+  "cases": [
+    {
+      "sha256": "8db8bf9041466a7e387c88ee0214319a2285382295effff24527bbeec20422ed",
+      "bytes": 578,
+      "beforeCd": -1,
+      "warmupSteps": 35,
+      "after": {
+        "state": "shoot",
+        "cd": 8,
+        "arrows": 1,
+        "ammo": 18,
+        "x": 0,
+        "event": {
+          "contact": true,
+          "standoff": false,
+          "rout": null
+        }
+      }
+    },
+    {
+      "sha256": "8db8bf9041466a7e387c88ee0214319a2285382295effff24527bbeec20422ed",
+      "bytes": 578,
+      "beforeCd": 4,
+      "warmupSteps": 35,
+      "after": {
+        "state": "shoot",
+        "cd": 3.966666666666667,
+        "arrows": 0,
+        "ammo": 19,
+        "x": 0,
+        "event": {
+          "contact": true,
+          "standoff": false,
+          "rout": null
+        }
+      }
+    }
+  ],
+  "sameStoredBytes": true,
+  "differentNextStep": true,
+  "conclusion": "a restorer receiving only these bytes cannot recover both original fights"
+}

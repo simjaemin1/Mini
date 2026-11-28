@@ -1,0 +1,3 @@
+# 다시 겨눔 셈 값 — node 한 줄(이 상자 · 2코어 · 자 판 하나가 같이 돌던 때 · 어림)
+#   몸 1024 개를 돌며 (dx, dy) → Math.hypot → vx = dx/dd*64 · vy = dy/dd*64 를 2천만 번 vs 같은 고리에서 dx, dy 만
+re-aim ns 34.6 bare ns 4.2 diff 30.5

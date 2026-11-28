@@ -1,0 +1,30 @@
+{
+ "card": "T1496",
+ "sourceSha256": "693e98ab4a9f5f8fbdb64e81d403721169a3f4d459f7a520faf08c5d078dcaa1",
+ "harness": {
+  "passCount": 18,
+  "failCount": 0,
+  "baits": 2,
+  "oldCodeAssertionRed": 1,
+  "oldCodeCrash": 0
+ },
+ "selected": {
+  "passed": 21,
+  "failed": 0,
+  "additionalPassed": 7,
+  "additionalFailed": 0
+ },
+ "officialOffDays": 400,
+ "woodActOffMatchedDays": 30,
+ "bodyOnDays": 30,
+ "observerInvariantDays": 30,
+ "bodyObservation": {
+  "bodyTicks": 353453,
+  "bodyWood": 433,
+  "woodClosures": 1530,
+  "batchTrees": 0,
+  "errors": []
+ },
+ "default": "OFF",
+ "remoteCI": "query Forbidden; not verified"
+}
