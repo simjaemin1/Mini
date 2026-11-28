@@ -1,0 +1,254 @@
+file	line	scope	kind	name	source
+sim/economy-sim.js	220	(module)	constant	JOBS	{   farmer: {     field: 'farming', output: 'food', base: 1.5,     landBoost: (v) => farmLandBoost(v), toolDependent: true, inputs: {},   // ★[T100] 밭 밑변 — `T100_FIELD_YIELD=0` 이면 `v.land.fertility` 그 자체(비트 동일)     // 곡물 다양화 + 섬유(삼밭·모시밭). ★목화(cotton)·아마(flax) 제거 유지 — 목화는 1363년 문익점 도입(청동기 부재), 아마(flax)도 한국 전통 아님(서구 bast).     //   고대 한반도 섬유 = 삼(대마/hemp=삼베) + 모시(저마/ramie — 한국 전통 bast, 삼국~ 실증이나 flax/cotton과 범주 다름). ★유령 박멸(§9): hemp 0.19→0.06 —     //   삼은 전용 삼밭 소출이지 전 곡물의 부산물이 아님(0.19 = 실수요의 30배 유령 산출). ★삼밭·모시밭 복원(2026-07-13): hemp 0.06→0.08(전용재배)·ramie 0.05 신설.     //   둘 다 addProduce의 satMul(자기 그림자가격) 게이트로 *수요응답* 산출(글럿이면 taper=여가) → 고정 부산물의 글럿 병리 없음(flow-EMA가 target 관리, 유령 0.19의 재발 아님).     byproduct: { wheat: 0.25, rice: 0.20, barley: 0.15, hemp: 0.06, ramie: 0.05 },   // ★ramie는 byproduct 루프에서 수요-캡(짜는 만큼만) — rate는 충전속도만, 상한은 수요(아래 루프)   },   fisher: {     field: 'fishing', output: 'fish', base: 1.2,     landBoost: (v) => v.land.water, toolDependent: true, inputs: {},     // Phase 5-5-econ-b: 어종 다양화 부산물 (salmon·shrimp·crab·oyster·seaweed)     // ★★[T17 ③ 2026-09-02 · 재민 확정 · 자염 갈래 ①(해안선 확장 없음)] **자염을 어부 부산물로.**     //   비율 0.05 는 **새 수가 아니다** — 이 파일이 이미 쓰는 소금 부산물 비율 그대로다     //   (광부: `addProduce('salt', oAmt * 0.05)`). 캐는 소금이든 굽는 소금이든 같은 부산물 비율로 둔다.     //   ⚠**해안 마을만** 낸다(아래 byproduct 루프의 `land.coastal` 게이트). 바다는 남쪽 하나뿐이고     //     닿는 마을은 실측 3곳이다(`회부_자염_다음층.md` §C) — 그래서 소금길이 선다.     byproduct: { salmon: 0.15, shrimp: 0.10, crab: 0.08, oyster: 0.06, seaweed: 0.12, salt: 0.05 },   },   hunter: {                 // 사냥꾼 — meat + hide + 새 자원 부산물     field: 'hunting', output: 'meat', base: 0.7,     landBoost: (v) => v.land.game, toolDependent: true,     inputs: {},     // Phase 5-5-econ-b: specialty.js hunting 부산물 추가     // ★유령 박멸(§9): 부산물 채집률을 실수요 스케일로 정렬 — 사냥꾼은 팔리지 않는 것
+sim/economy-sim.js	336	(module)	constant	CAPTIVE_WORK_MUL	0.6
+sim/economy-sim.js	337	(module)	constant	CAPTIVE_JOB_BAN	{ warrior: 1, hunter: 1 }
+sim/economy-sim.js	344	(module)	constant	RESERVE_PC	{   food: 30, fish: 10, meat: 8, cooked_food: 5,   wood: 5, stone: 3, ore: 1, tool: 1.5,   weapon: 0.5, armor: 0.5,   fruit: 2, vegetable: 2, mushroom: 1, twig: 2, pebble: 1, hide: 1, herb: 0.5,   // ★약재(§9)   bone: 1, tigerhide: 0.03,   // ★§9 3차 — 뼈 · 호피   // ★★[재민 지시] 금속·특수재도 교역재. 자본재라 목표가 작다. 주석이 가장 작다(전략재).   copper: 0.30, tin: 0.06, iron: 0.20, lead: 0.05, silver: 0.03, gold: 0.02,   jade: 0.05, obsidian: 0.10, }
+sim/economy-sim.js	345	(module)	policy-map-entry	RESERVE_PC.food	30
+sim/economy-sim.js	345	(module)	policy-map-entry	RESERVE_PC.fish	10
+sim/economy-sim.js	345	(module)	policy-map-entry	RESERVE_PC.meat	8
+sim/economy-sim.js	345	(module)	policy-map-entry	RESERVE_PC.cooked_food	5
+sim/economy-sim.js	346	(module)	policy-map-entry	RESERVE_PC.wood	5
+sim/economy-sim.js	346	(module)	policy-map-entry	RESERVE_PC.stone	3
+sim/economy-sim.js	346	(module)	policy-map-entry	RESERVE_PC.ore	1
+sim/economy-sim.js	346	(module)	policy-map-entry	RESERVE_PC.tool	1.5
+sim/economy-sim.js	347	(module)	policy-map-entry	RESERVE_PC.weapon	0.5
+sim/economy-sim.js	347	(module)	policy-map-entry	RESERVE_PC.armor	0.5
+sim/economy-sim.js	348	(module)	policy-map-entry	RESERVE_PC.fruit	2
+sim/economy-sim.js	348	(module)	policy-map-entry	RESERVE_PC.vegetable	2
+sim/economy-sim.js	348	(module)	policy-map-entry	RESERVE_PC.mushroom	1
+sim/economy-sim.js	348	(module)	policy-map-entry	RESERVE_PC.twig	2
+sim/economy-sim.js	348	(module)	policy-map-entry	RESERVE_PC.pebble	1
+sim/economy-sim.js	348	(module)	policy-map-entry	RESERVE_PC.hide	1
+sim/economy-sim.js	348	(module)	policy-map-entry	RESERVE_PC.herb	0.5
+sim/economy-sim.js	349	(module)	policy-map-entry	RESERVE_PC.bone	1
+sim/economy-sim.js	349	(module)	policy-map-entry	RESERVE_PC.tigerhide	0.03
+sim/economy-sim.js	351	(module)	policy-map-entry	RESERVE_PC.copper	0.30
+sim/economy-sim.js	351	(module)	policy-map-entry	RESERVE_PC.tin	0.06
+sim/economy-sim.js	351	(module)	policy-map-entry	RESERVE_PC.iron	0.20
+sim/economy-sim.js	351	(module)	policy-map-entry	RESERVE_PC.lead	0.05
+sim/economy-sim.js	351	(module)	policy-map-entry	RESERVE_PC.silver	0.03
+sim/economy-sim.js	351	(module)	policy-map-entry	RESERVE_PC.gold	0.02
+sim/economy-sim.js	352	(module)	policy-map-entry	RESERVE_PC.jade	0.05
+sim/economy-sim.js	352	(module)	policy-map-entry	RESERVE_PC.obsidian	0.10
+sim/economy-sim.js	355	(module)	constant	LUX_V1_ADJ_MAX	3.0
+sim/economy-sim.js	359	(module)	constant	BASE_VALUE	"{   food:        1.0,    // 농부 1.5/day → 1단위에 0.67일   fish:        1.25,   // 어부 1.2/day   meat:        2.14,   // 사냥꾼 0.7/day   cooked_food: 2.0,    // 요리 + 부재료. 영양 풍부.   hide:        2.5,    // 사냥 부산물이지만 도구/방어구 재료   herb:        4.0,    // ★약재(§9 2차): 희소·노동집약(채집 산출 15%·호골 12). 요양일수 단축 = 회수 노동일이 가격 근거   bone:        1.5,    // ★뼈(§9 3차): 사냥 부산물(0.2/고기)+시각층 대물 도축(+1) — 풍부한 저가재. 가치는 무기장 보조 투입(활 티어)이 매김(수요 하드코딩 없음)   tigerhide:   40,     // ★호피(§9 3차): 호랑이 도축 +1 — 최고가 위신재(교역 전용 외생 수요+위신 스탯). ""호랑이는 고기가 아니라 명예와 돈""(§8)   wood:        1.67,   // 벌목 0.9/day   // ★★[재민 지시 ""경제학적 원리에 입각해 한 치의 오차도 없이""] 노동가치 앵커 재정합.   //   이 표는 원래 노동가치설로 매겨졌다(주석의 ""농부 1.5/day"" 등 = 1단위에 드는 노동일의 비).   //   그런데 그 뒤로 **산출량이 바뀌었는데 가격을 안 고쳤다**. 실측한 어긋남:   //     ore   3.00 ← 정합 1.00 (광부는 이제 0.5/day 가 아니라 1.5/day 캔다)   //     stone 2.14 ← 정합 1.67 (돌은 광부가 아니라 채집꾼이 0.9/day 캔다)   //     weapon 8.00 ← 정합 23.20 (무기 노동 3배 + 금속 원료가 반영이 안 돼 있었다)   //   그 결과 사슬이 뒤집혀 있었다: 원석 그대로 3.0 → 제련 1.32 → 무기 0.94.   //   **가공할수록 가치가 주는** 경제였다. 제련도 주조도 석기무기도 전부 부가가치가 음수였고,   //   그런데도 마을이 그 일을 한 건 장인 정원이 가격이 아니라 스톡-플로우 목표로 굴러가서다.   //   ⇒ scripts/test-valuechain.js 가 이 항등식을 매번 검사한다.   stone:       1.67,   // 채집꾼 0.9/day   ore:         1.0,    // 광부 1.5/day (원석은 제련 전이라 저가치 — 값은 제련이 만든다)   tool:        5.0,    // 0.4/day + wood/stone 투입 (정합 4.82 — 유지)   //   ⚠weapon 은 **안 올린다.** 노동가치 정합가는 14.7(MELT_TOTAL 0.15 기준)이지만,   //     8 → 14 로 올려 실측했더니 v2 인구 −5.8% · 식량 −29% 로 나빠졌다(무기 교역 쏠림 —   //     코드 주석에 남은 옛 실측 ""무기 희소폭등 → 캐러밴이 식량 대신 무기 쏠림 → 인구 −36%"" 와 같은 현상).   //     원인: econ 의 직업 유틸리티는 **산출량 × 가격**이지 부가가치가 아니다(원료비를 안 뺀다).   //     그래서 가격을 정합시켜도 노동 배분이 그걸 못 읽고, 교역 쏠림만 남는다.   //     ⇒ 사슬이 **단조 증가**하기만 하면 ""뭘 팔지""는 정확히 계산된다. 그 최소 조건만 만족시킨다:   //       제련 양수  ⇔ P(ore) < SMELT_YIELD × P(금속) = 1.32   → ore 1.0 ✔   //       주조 양수  ⇔ P(weapon"
+sim/economy-sim.js	517	(module)	constant	PRESERVE_FOOD_FACTOR	1 / PRESERVE_YIELD
+sim/economy-sim.js	564	preservedFactor	derived-bound-return		T1192_FISH_SPECIES&&FishGoods.isItem(r)?FishGoods.factor(r):PRESERVE_FOOD_FACTOR
+sim/economy-sim.js	629	_t1286Cook	constant	C	v._t1286C || (v._t1286C = { n: 0, s: 0, cooked: 0, days: 0, lastD: -1 })
+sim/economy-sim.js	632	(module)	constant	SALT_DAILY_PC	0.01
+sim/economy-sim.js	656	(module)	constant	MSY_EMA_LOCK_DAYS	(() => { const C = require('../server/calendar'); return C.ON ? C.seasonLen(0) : 90; })()
+sim/economy-sim.js	686	(module)	constant	T1243_GRAIN_STATE	{   rice:   { harvest: '현미(T1221 범위 — 야요이 현미 10a 당 100 kg 이하 · 寺沢)', kcal: '쌀 낟알 3,500 kcal/kg(kcal.js 앵커 · xlsx)', ratio: 1, st: '확인' },   wheat:  { harvest: '겉밀 명목(R02 — 껍질 포함 여부 표기 없음)', kcal: '밀 낟알(xlsx)', ratio: 1, st: '미확인' },   barley: { harvest: '보리 낟알(R02 북터키 실험 — 겉보리 껍질 몫 표기 없음)', kcal: '보리 낟알(xlsx)', ratio: 1, st: '미확인' }, }
+sim/economy-sim.js	988	(module)	constant	POP_GROWTH_RATE	0.04
+sim/economy-sim.js	989	(module)	constant	POP_MAX_DELTA_PCT	0.06
+sim/economy-sim.js	998	(module)	constant	EXPAND_PAYBACK_DAYS	365
+sim/economy-sim.js	1053	(module)	constant	PRESTIGE_MOD_CAP	0.25
+sim/economy-sim.js	1068	(module)	constant	HERB_HEALTH_CAP	0.15
+sim/economy-sim.js	1069	(module)	constant	HERB_DAILY_PC	0.01
+sim/economy-sim.js	1077	(module)	constant	BOW_R_MAX	1.4
+sim/economy-sim.js	1102	(module)	constant	SELF_TOOL_RATE	0.02
+sim/economy-sim.js	1108	(module)	constant	SELF_BOW_RATE	0.04
+sim/economy-sim.js	1128	(module)	constant	BRONZE_TIN_MIN_PC	0.95
+sim/economy-sim.js	1129	(module)	constant	BRONZE_TIN_MIN_ABS	13
+sim/economy-sim.js	1132	(module)	constant	IRON_WEAPON_MIN_PC	1.5
+sim/economy-sim.js	1133	(module)	constant	IRON_WEAPON_MIN_ABS	20
+sim/economy-sim.js	1137	(module)	constant	SWORD_FRAC_EMA	0.04
+sim/economy-sim.js	1138	(module)	constant	SWORD_FRAC_INIT	0.5
+sim/economy-sim.js	1139	(module)	constant	MELEE_COV_BUFFER	1.2
+sim/economy-sim.js	1143	(module)	constant	MELEE_ARMORY_PC	0.72
+sim/economy-sim.js	1145	(module)	constant	MELEE_ARMORY_SECF	0.45
+sim/economy-sim.js	1149	(module)	constant	BRONZE_ARMORY_FRAC	0.45
+sim/economy-sim.js	1167	(module)	constant	T1385_FRAC	T1385_ARMORY ? 1 : BRONZE_ARMORY_FRAC
+sim/economy-sim.js	1209	(module)	constant	MASTER_INHERIT_RATE	0.45
+sim/economy-sim.js	1212	(module)	constant	TIGERHIDE_PRESTIGE_CAP	0.1
+sim/economy-sim.js	1256	(module)	constant	PROD_STAT_CAP	0.15
+sim/economy-sim.js	1264	(module)	constant	FOOD_GLUT_SAT	{ food: 1, cooked_food: 1, wheat: 1, rice: 1, barley: 1 }
+sim/economy-sim.js	1586	(module)	constant	FD_ADAPT_MAX	T1117_FD_EVID ? 0.155 : 0.40
+sim/economy-sim.js	1586	(module)	constant	FD_ADAPT_DOWN_DAYS	24 * 7
+sim/economy-sim.js	1586	(module)	constant	FD_ADAPT_UP_DAYS	20 * 7
+sim/economy-sim.js	1586	(module)	constant	FD_DEATH_DAYS	14
+sim/economy-sim.js	1649	(module)	constant	NPC_HP_DAY	{ rest: 18, work: 6 }
+sim/economy-sim.js	1673	_t1197	constant	M	{ B, HS: B.CFG.HUNGER_SEC, RATE: B.CFG.EXTREME_HP_HUNGER, DAY_S: K.DAY_MS_DEFAULT / 1000, DH: K.dayHunger(), R,               AT: 100 * (1 - B.extremeAt('hunger')), STEP: 60, fed: [100, 100], dieDays: FD_DEATH_DAYS }
+sim/economy-sim.js	1941	(module)	constant	HAPPY_EQ_HALF_DAYS	30
+sim/economy-sim.js	1983	(module)	constant	T1205_E_MIN	-0.2
+sim/economy-sim.js	1983	(module)	constant	T1205_E_MAX	1
+sim/economy-sim.js	1984	(module)	constant	T1205_LUX_MAX	1
+sim/economy-sim.js	1985	(module)	constant	T1205_DEF	{ C: 0.003, A: 2, B: 0.5, LUX_W: 0.15, K2: POP_MAX_DELTA_PCT / T1134_EMIG_H }
+sim/economy-sim.js	2116	(module)	constant	FIREWOOD_PC_SRC	10000000 / 21526374 * 663 / 365 / 3
+sim/economy-sim.js	2453	t1373Hcap	derived-bound-return		T1373_HOME_CAP ? Math.min(h, t1373HomeCap(v)) : h
+sim/economy-sim.js	2601	(module)	constant	T1297_FAMINE_DAYS	30
+sim/economy-sim.js	2894	(module)	constant	_T1437_CAP	366
+sim/economy-sim.js	2962	(module)	constant	_T1452_CAP	366
+sim/economy-sim.js	3682	(module)	constant	SEED_FOOD_DAYS_D0	55
+sim/economy-sim.js	3683	(module)	constant	SEED_FOOD_DAYS_LEGACY	45
+sim/economy-sim.js	3771	(module)	constant	TOOL_GLUT_X	2.5
+sim/economy-sim.js	3772	(module)	constant	TOOL_GLUT_RAMP	1.0
+sim/economy-sim.js	3773	(module)	constant	POP_MIN	0
+sim/economy-sim.js	3774	(module)	constant	POP_MAX	1000
+sim/economy-sim.js	3777	(module)	constant	TAX_RATE	0.03
+sim/economy-sim.js	3792	(module)	constant	HOUSE_BUFFER	1.15
+sim/economy-sim.js	3793	(module)	constant	HOUSE_BUILD_MAX	0.06
+sim/economy-sim.js	3805	(module)	constant	SHIELD_DAYS	365
+sim/economy-sim.js	3906	(module)	constant	STONE_NET_STOCK	0.2
+sim/economy-sim.js	3910	(module)	constant	STONE_FLOOR_LAND	0.25
+sim/economy-sim.js	3917	(module)	constant	BOOM_FOOD_MAX	1.2
+sim/economy-sim.js	3918	(module)	constant	BOOM_VEIN_MIN	1.0
+sim/economy-sim.js	3931	(module)	constant	FIREWOOD_PC	0.085
+sim/economy-sim.js	3945	(module)	constant	RAMIE_BOOT_PC	0.1
+sim/economy-sim.js	3946	(module)	constant	RAMIE_MIN_POP	40
+sim/economy-sim.js	3950	(module)	constant	LEATHER_GOODS_TARGET	0.8
+sim/economy-sim.js	3954	(module)	constant	TAN_HIDE_MIN	3.0
+sim/economy-sim.js	3955	(module)	constant	TAN_DAILY_PC	0.06
+sim/economy-sim.js	3957	(module)	constant	TAN_TRADE_PC	0.06
+sim/economy-sim.js	3970	(module)	constant	CLOTH_WEAR_PC	0.004
+sim/economy-sim.js	3971	(module)	constant	CLOTH_TARGET_PC	1.2
+sim/economy-sim.js	4009	(module)	constant	STONE_MAINT_PC	STONE_MAINT_UNIFY ? 0   : ((typeof process !== 'undefined' && process.env && process.env.STONE_MAINT != null)     ? Number(process.env.STONE_MAINT) : 0.02)
+sim/economy-sim.js	4014	(module)	constant	RITE_PC	{ jade: 0.0012, gold: 0.0006, silver: 0.0008, gem: 0.0004, amber: 0.0004, obsidian: 0.0008 }
+sim/economy-sim.js	4014	(module)	policy-map-entry	RITE_PC.jade	0.0012
+sim/economy-sim.js	4014	(module)	policy-map-entry	RITE_PC.gold	0.0006
+sim/economy-sim.js	4014	(module)	policy-map-entry	RITE_PC.silver	0.0008
+sim/economy-sim.js	4014	(module)	policy-map-entry	RITE_PC.gem	0.0004
+sim/economy-sim.js	4014	(module)	policy-map-entry	RITE_PC.amber	0.0004
+sim/economy-sim.js	4014	(module)	policy-map-entry	RITE_PC.obsidian	0.0008
+sim/economy-sim.js	4015	(module)	constant	RITE_KEEP_PC	0.15
+sim/economy-sim.js	4020	(module)	constant	WEAPON_RITE_PC	0.0008
+sim/economy-sim.js	4021	(module)	constant	WEAPON_RITE_KEEP	3
+sim/economy-sim.js	4042	(module)	constant	DECAY_RATES	{   food: 0.003,        // 농작물 0.3%/일 (~연 67% 보존)   fish: 0.005,        // 신선 어류 0.5%/일   meat: 0.005,   cooked_food: 0.004, // 요리 0.4%/일   fruit: 0.008,       // 과일 0.8%   vegetable: 0.006,   mushroom: 0.004, }
+sim/economy-sim.js	4062	(module)	constant	RAID_MAX	0.5
+sim/economy-sim.js	4064	(module)	constant	CARAVAN_SPEED	50
+sim/economy-sim.js	4110	(module)	constant	UNCAPPED	1e9
+sim/economy-sim.js	4402	(module)	constant	JOB_SWITCH_COOLDOWN	30
+sim/economy-sim.js	4569	(module)	constant	SMELT_MIN_ORE	0.5
+sim/economy-sim.js	4768	(module)	constant	CAST_OUT_MAX	1.8
+sim/economy-sim.js	6796	(module)	constant	ORE_STOCK_PC	0.5
+sim/economy-sim.js	6800	(module)	constant	SMELT_LABOR_CAP_PC	(typeof process !== 'undefined' && process.env && process.env.SMELT_CAP != null)   ? Number(process.env.SMELT_CAP) : 0.05
+sim/economy-sim.js	6819	(module)	constant	COPPER_DERIV_DAYS	(typeof process !== 'undefined' && process.env && process.env.COPPER_DERIV_DAYS != null)   ? Number(process.env.COPPER_DERIV_DAYS) : 30
+sim/economy-sim.js	6917	derivedInputTarget	derived-bound-return		furnaceCharcoalTarget(v)
+sim/economy-sim.js	7041	smithTarget	derived-bound-return		Math.max(local, exportSmiths, _t1344L) + smeltTarget(v)
+sim/economy-sim.js	7057	warriorTarget	constant	PEACE_WARRIOR_PC	process.env.PEACE_W != null ? Number(process.env.PEACE_W) : 0.03
+sim/economy-sim.js	7170	buildCapOf	derived-bound-return		_t300Caps
+sim/economy-sim.js	7612	(module)	constant	T1226_SWITCH_DAYS	1
+sim/economy-sim.js	8237	main	constant	TOTAL_DAYS	parseInt(args[0]) || 1000
+sim/economy-sim-v2.js	24	_fishTarget	derived-bound-return		target
+sim/economy-sim-v2.js	25	_fishTarget	derived-bound-return		Math.max(target,split)
+sim/economy-sim-v2.js	27	_fishTarget	derived-bound-return		target
+sim/economy-sim-v2.js	84	(module)	constant	ELASTICITY	{   // 생존필수 — 부족시 폭등, 그러나 너무 가파르지 않게   food: 1.2, fish: 1.2, meat: 1.2, cooked_food: 1.2,   // 중간재   wood: 0.9, stone: 0.9, ore: 0.9, hide: 0.9, herb: 0.9,   // ★약재(§9 2차) — 치료·복용재(중간 탄력)   bone: 0.9,   // ★뼈(§9 3차) — 무기장 투입재(중간 탄력, specialty livestock 1.1을 명시 정의로 대체)   // 사치/생산수단 — 완만   tool: 0.7, weapon: 0.6, armor: 0.6,   clothes: 0.7,   // ★의복(2026-07-12) — 내구 자본재(도구 동형 탄력). 1인 1벌 커버리지·한랭 수요는 v1 스탯/마모가 처리   ramie: 0.9,   // ★모시(저마·苧麻, 2026-07-13) — 고급 식물섬유(재봉 CLOTH_MATS). flax(아마)·cotton(목화)은 고증 제외(economy-sim.js:156 — 서구/조선 도입) → 한국 전통 bast 섬유 모시로 대체. subs 미등재 = flowT 수요(flow-EMA 첫 수혜: 재봉 _cons가 수요 자동 등록). bone/tigerhide 선례로 v2 명시 정의(specialty.js 불변)   obsidian: 0.9, jade: 0.6,   // ★S5 흑요석(광물 탄력) · 옥(위세재 완만 탄력)   bronze_tool: 0.7, iron_tool: 0.7,   // ★도구 대체재(청동·철) — tool과 동일 탄력. 누락 시 satiation taper 미발동 → 글럿에도 대장장이 무한 생산(인구당 무한↑) 버그.   tigerhide: 0.6,   // ★호피(§9 3차) — 위신재(사치 완만 — 부족해도 폭등 대신 프리미엄)   // 채집물 — 자체 가치 낮음   fruit: 1.0, vegetable: 1.0, mushroom: 1.0, twig: 0.7, pebble: 0.7, }
+sim/economy-sim-v2.js	120	(module)	constant	SUBSISTENCE_PER_NPC	"{   food: 1.0,   cooked_food: 0.05,   tool: 0.005,   // ★무기·갑옷은 *인구당이 아니라 전사(사용자)당* 마모 — tickSubsistence에서 전사 비례 처리.   //   (옛 weapon/armor 0.002/명: 280명 마을이 0.56/일 소비 > 무기장 생산 → 전사 무장해제 버그)   // ★주거 수요: 집(한옥)의 건축·보수에 목재·석재 소비. 인구↑(새 집)·유지보수로 지속 수요.   //   효과: ① 숲 마을 → 나무꾼 수요 ② 석재 시장 형성 → 산골 마을이 석재 수출로 식량 구입(채광 자립).   wood: 0.05,   // ★[2026-08-02e ①] 이 0.04 는 **주거 본체**(집·구들·바닥) 몫이다. 담장·숫돌 등 부대 시설 0.02 는   //   v1 `STONE_MAINT_PC` 가 따로 적는다 — 총 실물 소비 0.06/인/일. **분할 기재이지 이중 기재가 아니다.**   //   합치는 실험(STONE_MAINT_UNIFY=1 → 여기 0.06 · v1 0)은 3시드 실측이 **기각**했다(인구 −11%):   //   총 소비는 같은데 가격·부패 목표(subs×30)가 50% 뛰어 노동이 석재로 쏠린다. 손잡이는 남긴다.   stone: (typeof process !== 'undefined' && process.env && process.env.STONE_MAINT_UNIFY === '1') ? 0.06 : 0.04,   // ★의류 소비계층(H): 가죽·모피·직물을 마모분 소비 → 이 재화들이 *진짜 수요*(의류)를 가짐.   //   기존엔 사냥 부산물이 ""대리수요""로만 거래됐는데, 이제 명시적 소비 니즈가 demand를 근거지음.   hide: 0.012, leather: 0.008, fur: 0.005, cotton: 0.006, flax: 0.005, hemp: 0.004, }"
+sim/economy-sim-v2.js	177	(module)	constant	PRICE_ADJ_MIN	0.01
+sim/economy-sim-v2.js	178	(module)	constant	PRICE_ADJ_MAX	1000
+sim/economy-sim-v2.js	184	(module)	constant	UTILITY_WEIGHT	{   food: 1.5, cooked_food: 0.4, fish: 0.6, meat: 0.6,   // 유용재 효용(원래값). 철은 야금투입이라 적당히. (부산물 fur·cotton·통나무 등은 의류·직물·건축 대리수요로 정당 → 유지)   tool: 0.5, weapon: 0.3, armor: 0.3, hide: 0.2, herb: 0.3,   // ★약재: 실수요(요양 단축+일상 복용) — target ~0.5/인, maxAdj ~40   bone: 0.25, tigerhide: 0.3,   // ★§9 3차: 뼈=저효용 투입재(specialty 0.4를 명시 대체 — 풍부재 과대 target 방지) · 호피=위신 실수요(maxAdj ~40)   ramie: 0.05,   // ★모시(2026-07-13) — 순수 flow-EMA 수요재: buffer=N×util×1.2를 최소화(0.24N→0.06N). util 0.2는 전 마을에 0.24N 보유수요→비생산 마을이 모시를 *수입*(식량 구매력 소모)→신선 짝비교 s505 605→19 붕괴(식량 드레인)의 진범. 모시는 잉여 산지가 짜서 *수출*하는 고급 직물이지 만인이 쟁여두는 재화 아님 — 수요는 재봉 _cons(flowT)만   wood: 0.9, stone: 0.7, ore: 0.3, iron: 0.4, iron_tool: 0.5,   copper: 0.45, tin: 0.55, bronze_tool: 0.6,   // ★청동 투입재(구리·주석)에 실수요. 주석이 희소해 더 높게.   fruit: 0.1, vegetable: 0.1, mushroom: 0.1, twig: 0.05, pebble: 0.05,   obsidian: 0.35, jade: 0.4,   // ★S5 흑요석(화살촉·소형칼날 실수요) · 옥(위세재 — ORNAMENTAL LUX_TARGET_PC가 수요 부여) }
+sim/economy-sim-v2.js	318	(module)	constant	NPC_SPEED	500
+sim/economy-sim-v2.js	396	(module)	constant	TRAVEL_DAY_MIN	3
+sim/economy-sim-v2.js	397	(module)	constant	TRAVEL_DAY_MAX	7
+sim/economy-sim-v2.js	567	(module)	constant	CRISIS_TRADE_PC	0.015
+sim/economy-sim-v2.js	581	(module)	constant	LUX_ADJ_MAX	3.0
+sim/economy-sim-v2.js	606	(module)	constant	LUX_TARGET_PC	0.08
+sim/economy-sim-v2.js	608	(module)	constant	TIGERHIDE_KEEP_PC	1.2 * ((v1.TIGERHIDE_PRESTIGE_CAP && v1.TIGERHIDE_PRESTIGE_W) ? v1.TIGERHIDE_PRESTIGE_CAP / v1.TIGERHIDE_PRESTIGE_W : 0.025)
+sim/economy-sim-v2.js	612	(module)	constant	VARIETY_TARGET_PC	0.6
+sim/economy-sim-v2.js	615	(module)	constant	TIN_EXPORT_KEEP_PC	1.2
+sim/economy-sim-v2.js	616	(module)	constant	TIN_EXPORT_SURPLUS_PC	0.3
+sim/economy-sim-v2.js	618	(module)	constant	WEAPON_RETURN_GLUT_MULT	1.3
+sim/economy-sim-v2.js	625	(module)	constant	RAID_MAX	0.5
+sim/economy-sim-v2.js	754	_t1152KeepHalf	derived-bound-return		_t1152Keep
+sim/economy-sim-v2.js	759	_t1152KeepHalf	derived-bound-return		_t1152Keep
+sim/economy-sim-v2.js	804	_t1152Cal	constant	H	Math.max(1, Math.min(K.keep, next != null && next > 0 ? next : K.keep))
+sim/economy-sim-v2.js	861	_targetCtxV2	constant	CAP_TARGET	{     tool: Math.max(1, toolDeps), bronze_tool: Math.max(1, toolDeps), iron_tool: Math.max(1, toolDeps),     weapon: Math.max(2, warN * 1.2), armor: Math.max(1, warN),   // 무기 바닥2 = 약탈위협 선제비축 시드. (★§9 3차 실측: 사냥꾼 포함 시 t=0 전 마을 무기 희소폭등 → 캐러밴이 식량 대신 무기 쏠림 → 시드7 인구 -36%·마을 소멸 — 활 조달은 가격 신호 아닌 마을 내 무기장 노동(weaponsmithTarget)+시드 재고로)     clothes: Math.max(2, N * 1.2),   // ★의복(2026-07-12): 1인 1벌+여벌 — 자본재 커버리지(도구 동형)   }
+sim/economy-sim-v2.js	862	_targetCtxV2	policy-map-entry	CAP_TARGET.tool	Math.max(1, toolDeps)
+sim/economy-sim-v2.js	862	_targetCtxV2	policy-map-entry	CAP_TARGET.bronze_tool	Math.max(1, toolDeps)
+sim/economy-sim-v2.js	862	_targetCtxV2	policy-map-entry	CAP_TARGET.iron_tool	Math.max(1, toolDeps)
+sim/economy-sim-v2.js	863	_targetCtxV2	policy-map-entry	CAP_TARGET.weapon	Math.max(2, warN * 1.2)
+sim/economy-sim-v2.js	863	_targetCtxV2	policy-map-entry	CAP_TARGET.armor	Math.max(1, warN)
+sim/economy-sim-v2.js	864	_targetCtxV2	policy-map-entry	CAP_TARGET.clothes	Math.max(2, N * 1.2)
+sim/economy-sim-v2.js	1342	(module)	constant	EXPORT_CAPITAL	{ tool: 1, bronze_tool: 1, iron_tool: 1, clothes: 1 }
+sim/economy-sim-v2.js	1422	(module)	constant	ARRIVE_BAIL_FRAC	0.5
+sim/economy-sim-v2.js	1435	_t1136CapKg	derived-bound-return		_t1136M().C.CFG.CAP_KG
+sim/economy-sim-v2.js	1690	_t1136Plan	constant	PB	sMax > 0 ? one(_t1136Fill(outItems, ctx.capKg, null, 'cr', sMax)) : null
+sim/economy-sim-v2.js	1851	_t1136Arrive	constant	L	c.basket.map((it) => {     const q = it.amt * (1 - lossOut), f = _t1136F(it.res, c.departDay, t, _elevKmOf(B));     const n = Math.floor(q + 1e-9), cum = [0];     for (let j = 1; j <= n; j++) cum.push(_impactSellV2(_t1157View(B), it.res, j) * f);     if (q - n > 1e-9) cum.push(_impactSellV2(_t1157View(B), it.res, q) * f);   // 약탈로 남은 끝 조각(낱개 밑)     const pA = (_priceNowV2(A, it.res) || 0) * _t1136F(it.res, t, t + tBack, _elevKmOf(A));   // 집에 되가져가면 내 값(지금 값 × 귀로 신선도)     return { it, q, n, cum, pA, sold: 0 };   })
+sim/economy-sim-v2.js	1912	_t1136Arrive	constant	F	sold.length ? _t1136Fill(items, capKg, credit, 'kg', null) : { k: items.map(() => 0) }
+sim/economy-sim-v2.js	2796	settleMarketsV2	constant	S	world._t707Stat || (world._t707Stat = { settled: 0, days: 0 })
+sim/economy-sim-v2.js	3059	(module)	constant	CLAY_DAILY_PC	0.02
+sim/economy-sim-v2.js	3118	(module)	constant	WEATHER_KINDS	[   { name: '🌵가뭄', mult: { fertility: 0.65, water: 0.7 }, days: [7, 14] },   { name: '⛈️폭풍', mult: { fertility: 0.85, water: 1.2, game: 0.75, wood: 0.7 }, days: [3, 7] },   { name: '🌈풍요', mult: { fertility: 1.25, game: 1.2 }, days: [5, 10] },   { name: '🌫️안개', mult: { game: 0.7, water: 1.1 }, days: [4, 8] }, ]
+sim/economy-sim-v2.js	3188	tickWorldV2Parts	constant	P	{     head() {       world.day += 1;       if (_t707On(world)) settleMarketsV2(world);   // ★[T707] 어제 선 장의 떠날 때 정산 — 날을 올린 **바로 뒤**(마을 틱 앞 · 교역 기록의 날 = 장부에 든 날 · 끔 = 이 줄 무동작)       basketFlush(world, world.day, false);   // ★[T1136] 지난 하루 사이(날 경계 앞) 몸이 닿은 바구니 사건을 시각 차례로 — 바구니 캐러밴이 없으면 훑기만 한다(끔 = 무동작 · 서버 호스트는 몸 시계로 미리 치르고 남은 것만 여기)       v1.processEvents(world, world.day);       // DEBUG flags — 각 효과 on/off       if (world._dbg?.weather !== false && !T761_WX) tickWeather(world, world.day);   // ★[T761] 켬(wx) = 마을 조각에서       if (world._dbg?.yearShock !== false && !T761_WX) tickYearShock(world, world.day);   // ★[T792] 켬(wx) = 마을 조각에서(날씨 굴림 뒤)       season = seasonOf(world.day);       useSeason = world._dbg?.season !== false;       // ★[PM land1049 · T1188] 세계 공급 캐시(`_worldStockOf`)를 **머리에서** 세운다 — 원석 광물별 켬이면 마을 조각 안에서 값표를 묻는 길이 생겨,       //   그날 처음 묻는 마을이 캐시를 세우면 앞 마을들이 이미 돈 재고로 서서 마을 차례가 값을 바꿨다(test-local-clocks 차례 뒤집기 · 13일 평원 무기 · 구리 · 납).       //   손잡이 `T1188_HEAD_CACHE`(원석 광물별 켬일 때만 · 켬 기본 · `=0` 끔 = 이 줄 무동작 = 종전 바이트 — 끈 판 증명용).       if (T1188_HEAD_CACHE && TRADABLE.length && Array.isArray(world.villages) && world.villages[0]) { world._effDemCache = null; _worldStockOf(world.villages[0], TRADABLE[0]);         //   순수취 캐시(`netExportValue` · 이웃 값표)도 같은 까닭 — 이웃 값표를 그날 처음 묻는 순간이 마을 차례를 따라 갈렸다 → 머리에서 모든 마을 값표를 세운다(켬만).         const C = world._nevCache = { day: world.day || 0, px: new Map(), val: new Map() };         for (const b of world.villages) if (b && b.npcs && b.npcs.length >= 2) C.px.set(b, computeShadowPrices(b)); }     },     village(v) {       if (T761_WX && world._dbg?.weather !== false) _weatherRollOne(v, world.day);   // ★[T761] 켬(wx) = 그 마을 조각에서 그 마을 날씨를 굴린다(씨 = T731 마을 흐름 · 끔 = 무동작)       if (T761_WX && world._dbg?.yearShock !== false && _yearShockDay(
+sim/war-core.js	65	(module)/<callback>	constant	WAR_MIN_DAY	(typeof process !== 'undefined' && process.env && parseInt(process.env.WAR_MINDAY || '', 10)) || 365
+sim/war-core.js	71	(module)/<callback>	constant	WAR_FOOD_CRISIS	18
+sim/war-core.js	71	(module)/<callback>	constant	WAR_FOOD_RICH	45
+sim/war-core.js	71	(module)/<callback>	constant	WAR_RAID_MIN	2
+sim/war-core.js	71	(module)/<callback>	constant	WAR_RATION	1.0
+sim/war-core.js	72	(module)/<callback>	constant	WAR_TRIB_RATE	0.08
+sim/war-core.js	72	(module)/<callback>	constant	WAR_PAL_MAX	0.35
+sim/war-core.js	87	(module)/<callback>	constant	WAR_BRONZE_WEAPQ_CAP	0.55
+sim/war-core.js	88	(module)/<callback>	constant	LEVY_SPEAR_FRAC	0.55
+sim/war-core.js	88	(module)/<callback>	constant	LEVY_PIKE_FRAC	0.15
+sim/war-core.js	89	(module)/<callback>	constant	WAR_MAX_ARMY	60
+sim/war-core.js	89	(module)/<callback>	constant	WAR_ENGAGE_MAX	44
+sim/war-core.js	89	(module)/<callback>	constant	WAR_DEF_ENGAGE_RATIO	1.6
+sim/war-core.js	89	(module)/<callback>	constant	WAR_DEF_ENGAGE_MIN	1.15
+sim/war-core.js	90	(module)/<callback>	constant	WAR_BATTLE_MAXTICK	4000
+sim/war-core.js	93	(module)/<callback>	constant	WAR_HOME_KEEP_FRAC	0.25
+sim/war-core.js	93	(module)/<callback>	constant	WAR_HOME_KEEP_WAR	0.5
+sim/war-core.js	93	(module)/<callback>	constant	WAR_MOB_ODDS_MIN	0.42
+sim/war-core.js	99	(module)/<callback>	constant	WAR_CAP_FRAC	0.35
+sim/war-core.js	100	(module)/<callback>	constant	WAR_CAP_ESCORT	0.5
+sim/war-core.js	101	(module)/<callback>	constant	WAR_CAP_ASSIM	1080
+sim/war-core.js	102	(module)/<callback>	constant	WAR_CAP_ESC0	0.002
+sim/war-core.js	102	(module)/<callback>	constant	WAR_CAP_ESC1	0.004
+sim/war-core.js	102	(module)/<callback>	constant	WAR_CAP_ESC_D	500
+sim/war-core.js	103	(module)/<callback>	constant	WAR_CAP_RANSOM_INT	30
+sim/war-core.js	103	(module)/<callback>	constant	WAR_CAP_RANSOM_P	0.15
+sim/war-core.js	103	(module)/<callback>	constant	WAR_CAP_RANSOM_FOOD	40
+sim/war-core.js	103	(module)/<callback>	constant	WAR_CAP_RANSOM_FD	60
+sim/war-core.js	103	(module)/<callback>	constant	WAR_CAP_RANSOM_GR	0.4
+sim/war-core.js	106	(module)/<callback>	constant	WAR_CAP_EU	WAR_CAP_ON ? 8 : 0
+sim/war-core.js	139	(module)/<callback>	constant	WAR_WSKILL_MAX	10
+sim/war-core.js	204	warSlingerCapByStone	derived-bound-return		Math.floor(stone / per)
+server/villages.js	193	(module)	constant	VILLAGE_MAX	Math.max(1, parseInt(process.env.VILLAGE_MAX || '20', 10))
+server/villages.js	214	(module)	constant	NPC_CAP_PER_VILLAGE	process.env.VILLAGE_NPC_CAP ? Math.max(1, parseInt(process.env.VILLAGE_NPC_CAP, 10) || 40) : Infinity
+server/villages.js	244	(module)	constant	CARAVAN_BODY_MAX	Math.max(0, parseInt(process.env.VILLAGE_CARAVAN_MAX || '60', 10))
+server/villages.js	245	(module)	constant	CARAVAN_LINGER_DAY_FRAC	parseFloat(process.env.VILLAGE_LINGER_FRAC || '') || 1 / 24
+server/villages.js	247	(module)	constant	CARAVAN_REPAIR_COOLDOWN_MS	2000
+server/villages.js	1362	pickSeedVillages	constant	VMAX	_envMaxSet ? VILLAGE_MAX : ((opts && opts.max > 0) ? opts.max : VILLAGE_MAX)
+server/villages.js	1377	pickSeedVillages	constant	FOOD_FLOOR	2.0
+server/villages.js	1394	pickSeedVillages	constant	BOOMTOWN_MAX	(typeof process !== 'undefined' && process.env && process.env.BOOMTOWN != null)     ? Number(process.env.BOOMTOWN) : 0
+server/villages.js	1405	pickSeedVillages	constant	VEINSLOT_MAX	(typeof process !== 'undefined' && process.env && process.env.VEINSLOT != null)     ? Number(process.env.VEINSLOT) : 0
+server/villages.js	1414	pickSeedVillages	constant	VEIN_FLOOR	_E.BOOM_VEIN_MIN != null ? _E.BOOM_VEIN_MIN : 1.0
+server/villages.js	1723	_t1340EconIn	constant	R	{ eff: 0, nev: 0, near: 0, nearMiss: 0, cap: 0, capMiss: 0 }
+server/villages.js	2528	_bxDest	constant	R	vil._maxRPx || Math.round((PV_TERR_R + 3) * SZ)
+server/villages.js	3548	(module)	constant	RELIC_PAY_KEEP	{ food: 20 }
+server/villages.js	3548	(module)	policy-map-entry	RELIC_PAY_KEEP.food	20
+server/villages.js	3866	(module)	constant	PV_MAX	Math.max(0, parseInt(process.env.PVILLAGE_MAX || String(VILLAGE_MAX), 10))
+server/villages.js	7306	(module)	constant	ORE_CELL_CAP	6000
+server/villages.js	7307	(module)	constant	ORE_FLOOR	0.4
+server/villages.js	7413	_oreMineDaily	constant	PER	dep.NPC_MINE_PER_DAY || 14.73
+server/villages.js	7668	_t1266Keep	derived-bound-return		keep
+server/villages.js	7699	(module)	constant	TERR_GROW_MAX_PER_DAY	60
+server/villages.js	7733	_terrCap	derived-bound-return		Math.ceil(pop / (VL.HOUSE_CAP_PER_FLOOR * VL.HOUSE_MAX_FLOORS)) * VL.TERR_PER_LOT + VL.TERR_CORE
+server/villages.js	7743	_terrCapBound	derived-bound-return		cap < target && vil._terrSet.size >= cap
+server/villages.js	8404	(module)	constant	T1423_RATIO	3
+server/villages.js	9136	(module)	constant	T1447_FIGHT_MIN	3
+server/villages.js	9136	(module)	constant	T1447_FIGHT_MAX	6
+server/villages.js	9170	t1447Plan	constant	R	(K && K.WAR_RATION) || 1
+server/villages.js	9170	t1447Plan	constant	CR	(K && K.WAR_FOOD_CRISIS) || 18
+server/villages.js	9305	_terrGrowTarget	derived-bound-return		target
+server/villages.js	10977	_t804Local	constant	CAP	Math.max(1, Math.floor(WL.MU.FOLLOW_CAP))
+server/villages.js	11113	(module)	constant	_T1349_NEAR_CAP	4096
+server/villages.js	13111	_t731Boot	constant	B	{ at: now, base, days: cnt, east: e ? [e.name, +(e._lonMid).toFixed(4), iso(_t731Due0(e, base + 1))] : null, west: w ? [w.name, +(w._lonMid).toFixed(4), iso(_t731Due0(w, base + 1))] : null,     spreadS: (e && w) ? +(((e._lonMid - w._lonMid) * state.dayMs) / 1000).toFixed(3) : 0, econDay: state.world ? state.world.day : null }
+server/villages.js	13640	(module)	constant	WAITQ_MAX	400
+server/villages.js	14671	_physicalStoneWork	constant	R	Math.max(vil._maxRPx || 800,800)+400
+server/villages.js	14987	(module)	constant	DITCH_PILOT_MAX	Math.max(0, parseInt(process.env.VILLAGE_DITCH_MAX || '2', 10))
+server/villages.js	16377	_t1245SeedTarget	derived-bound-return		Math.max(target, standing)
+server/villages.js	17527	_lifeJobSites	constant	R	Math.max(vil._maxRPx || 800, 800) + 400
+server/villages.js	17991	(module)	constant	PV_DEPOSIT_RATE	(() => { const x = parseFloat(process.env.VILLAGE_DEPOSIT_RATE || '1'); return (isFinite(x) && x > 0) ? x : 1; })()
+server/villages.js	18472	(module)	constant	LIFE_SITE_RESCAN_DAYS	(() => { const v = parseInt(process.env.LIFE_SITE_RESCAN_DAYS || '', 10); return Number.isFinite(v) && v > 0 ? v : 7; })()
+server/villages.js	18644	_t400BuildDay	constant	S	vil._t400Sum || (vil._t400Sum = { days: 0, crewDays: 0, walkS: 0, dayS: 0, trips: 0, took: 0, adv: 0, stallDays: 0, jobs: {} })
+server/villages.js	18741	(module)	constant	G_STOCK_CAP	60
+server/villages.js	19334	_t435GranaryDay	constant	S	vil._t435Sum || (vil._t435Sum = { days: 0, crewDays: 0, trips: 0, took: 0, walkS: 0, stallDays: 0, built: 0, jobs: {} })
+server/villages.js	19647	_t527BridgeDay	constant	S	vil._t527Sum || (vil._t527Sum = { days: 0, crewDays: 0, trips: 0, took: 0, walkS: 0, stallDays: 0, built: 0, jobs: {} })
+server/villages.js	19652	_t527BridgeDay	constant	T	site.sum || (site.sum = { days: 0, crewDays: 0, trips: 0, took: 0, walkS: 0, stallDays: 0 })
+server/villages.js	19957	t1455BridgeWorth	constant	W	{ legs: 0, tradeDay: null, walkDay: null, value: null, costPer: null, daysPer: null, dNow: null, dCut: null, none: [] }
+server/villages.js	20014	t1455BridgeWorth	constant	B0	vn != null ? _t1455Bfs([Math.floor(vn / Bc.B.gw) * 65536 + vn % Bc.B.gw], null, ends) : null
+server/villages.js	20127	_t1181Step	constant	S	()=>{const k=t?.kind==='bridge'?'_t527Sum':t?.kind==='terr'?'_t1207Sum':'_t435Sum';return vil[k]||(vil[k]={days:0,crewDays:0,trips:0,took:0,placed:0,adv:0,stallDays:0,built:0,jobs:{}});}
+server/villages.js	20140	(module)	constant	G_CAP	2500
+server/villages.js	20140	(module)	constant	G_MAX	8
+server/villages.js	21198	_t1217BodyKeep	constant	KPS0	(F.CFG && F.CFG.KG_PER_STOCK) || 1
+server/villages.js	21327	_t1217FishDay	constant	KPS	(F.CFG && F.CFG.KG_PER_STOCK) || 1
+server/villages.js	21564	_lifeWoodDay	constant	D	vil._t1135Dbg = { a: _t1135DenseArea(vil), in: +_in.toFixed(4), fg: _fg, cap: 0, got: 0, pool: 0 }
+server/villages.js	23110	shelterAt	constant	R	Math.max(200, vil._maxRPx || 800)
