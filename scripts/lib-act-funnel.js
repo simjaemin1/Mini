@@ -87,13 +87,17 @@ const SNIP_V = `
 ;(function(){ var H = global.__T1502; if (!H) return; try {
   var v1 = _lifeDoTask; _lifeDoTask = function(vil, npc, k, day){ var r = v1.apply(this, arguments); try { if (npc && r) H.work(npc, 1); } catch (e) { H.err(e); } return r; };
   var v2 = _t368Hold; _t368Hold = function(npc, it){ var r = v2.apply(this, arguments); try { if (npc && it) H.harvFarm(npc, +it.u || 0); } catch (e) { H.err(e); } return r; };
-  var v3 = _t368Deliver; _t368Deliver = function(vil, npc, why){ var u = 0; try { var Hh = npc && npc._t368H; if (Hh) for (var c in Hh) u += Math.min(Hh[c] || 0, (npc.inventory && npc.inventory[c]) || 0); } catch (e) {} return H.del(vil, npc, u, function(){ return v3.apply(this, arguments); }.bind(this, vil, npc, why)); };
-  var v4 = _t347Deliver; _t347Deliver = function(vil, npc){ var u = 0; try { u = H.handOf(npc, vil); } catch (e) {} return H.del(vil, npc, u, function(){ return v4.call(this, vil, npc); }.bind(this)); };
-  var v5 = _t325Deliver; _t325Deliver = function(vil, npc){ var u = (npc && npc.inventory && npc.inventory.wood) || 0; return H.del(vil, npc, u, function(){ return v5.call(this, vil, npc); }.bind(this)); };
-  var v6 = _t312Deliver; _t312Deliver = function(vil, npc){ var u = (npc && npc._t312U) || 0; return H.del(vil, npc, u, function(){ return v6.call(this, vil, npc); }.bind(this)); };
+  var u3 = function(vil, npc){ var u = 0; try { var Hh = npc && npc._t368H; if (Hh) for (var c in Hh) u += Math.min(Hh[c] || 0, (npc.inventory && npc.inventory[c]) || 0); } catch (e) {} return u; };
+  var u4 = function(vil, npc){ try { return H.handOf(npc, vil); } catch (e) { return 0; } };
+  var u5 = function(vil, npc){ return (npc && npc.inventory && npc.inventory.wood) || 0; };
+  var u6 = function(vil, npc){ return (npc && npc._t312U) || 0; };
+  var v3 = _t368Deliver; _t368Deliver = function(vil, npc, why){ return H.del(vil, npc, u3, function(){ return v3.apply(this, arguments); }.bind(this, vil, npc, why)); };
+  var v4 = _t347Deliver; _t347Deliver = function(vil, npc){ return H.del(vil, npc, u4, function(){ return v4.call(this, vil, npc); }.bind(this)); };
+  var v5 = _t325Deliver; _t325Deliver = function(vil, npc){ return H.del(vil, npc, u5, function(){ return v5.call(this, vil, npc); }.bind(this)); };
+  var v6 = _t312Deliver; _t312Deliver = function(vil, npc){ return H.del(vil, npc, u6, function(){ return v6.call(this, vil, npc); }.bind(this)); };
   var m = module.exports, lt = m.npcLifeTick;
   if (lt) m.npcLifeTick = function(npc, now){ H.cur = npc; var r; try { r = lt.apply(this, arguments); } finally { H.cur = null; } try { H.life(npc); } catch (e) { H.err(e); } return r; };
-  H.vint = { state: state, keepOf: _t347KeepOf, handsOf: _t347HandsOf };
+  H.vint = { state: state, keepOf: _t347KeepOf, handsOf: _t347HandsOf, actItems: _t347ActItems };
 } catch (e) { H.err(e); } })();
 `;
 const SNIP_Z = `
@@ -157,10 +161,17 @@ function siteOf(npc, J) {
 // 그 직업의 손(거둔 것이 처음 드는 칸) — 농부는 `_t368Hold` 껍질이 직접 센다(손 칸 = 작물 이름들)
 H.hand = (npc, J) => {
   const inv = npc.inventory; if (!inv) return 0;
-  if (J === 'forager') { const vil = vilOf(npc); return vil ? H.handOf(npc, vil) : 0; }
+  if (J === 'forager') return H.handAll(npc);   // 탐침 고침 ⑧: 거둠 자는 세계 목록(고정) — 마을 목록(`_t347KeepOf`)은 그날 선 종에 따라 날마다 바뀌어 손이 그대로여도 자가 뛴다(나물 2 줌이 들었다 빠졌다 = "닿지 않고 거둠" 거짓)
   if (J === 'lumberjack') return inv.wood || 0;
   if (J === 'fisher') return npc._t312U || 0;
   return 0;
+};
+H.handAll = (npc) => {
+  const V = H.vint; if (!V || !npc || !npc.inventory) return 0;
+  let all = null; try { all = V.actItems && V.actItems(); } catch (e) { all = null; }
+  if (!all) { const vil = vilOf(npc); return vil ? H.handOf(npc, vil) : 0; }
+  let u = 0; for (const k of all) for (const h of V.handsOf(k)) u += npc.inventory[h] || 0;
+  return u;
 };
 H.handOf = (npc, vil) => {
   const V = H.vint; if (!V || !npc || !npc.inventory) return 0;
@@ -206,16 +217,19 @@ H.gather = (npc, J, h0) => {
   if (J !== 'farmer' && J !== 'hunter') { const h = H.hand(npc, J); if (h > h0 + 1e-9) { b.out = 1; b.reach = 1; addHarv(b, h - h0); } b.lh = h; }   // 존 채집은 자원 곁(`GATHER_RANGE` — 존이 재고 부른다)에서만 — 그 몸은 일터에 나서 닿았다(탐침 고침 ② · ⑤: 자리를 아직 안 잡은 몸도 — 나섬 없이 닿음만 서면 거둠이 "닿지 않고 거둠"으로 샌다 · 첫 px 는 모름으로 둔다)
 };
 function feOf(v) { try { return +V1.totalFoodEquivalent(v) || 0; } catch (e) { return 0; } }
-H.del = (vil, npc, u, call) => {
+H.del = (vil, npc, uf, call) => {   // uf(vil, npc) = 그 다리가 곳간에 들이밀 손(단위) — 부르기 전 · 뒤 두 번 잰다
   rec.hooked.del = 1;
+  let u = 0; try { u = +uf(vil, npc) || 0; } catch (x) { u = 0; }
   const J = npc ? H.J(npc) : null, inLife = H.cur === npc, e = vil && vil.econ;
   const fe0 = (J && e) ? feOf(e) : 0;
   if (J) { try { observe(npc, J, B(npc, J)); } catch (x) { H.err(x); } }   // 넣기 전 손을 한 번 본다 — 한 걸음 안에서 거두고 바로 넣은 손(어부 짐 한도)도 거둠에 든다(탐침 고침 ④)
   H.inDel++; let g; try { g = call(); } finally { H.inDel--; }
+  let u1 = 0; try { u1 = +uf(vil, npc) || 0; } catch (x) { u1 = u; }
+  const used = Math.max(0, Math.min(u, u - u1));   // 손에서 실제로 나간 단위(곳간이 돌려보낸 나머지는 손에 남는다 — 다음 걸음에 또 들이민다)
   try {
     if (J) {
       const b = B(npc, J), gg = +g || 0, fe = e ? feOf(e) - fe0 : 0;
-      const xu = u > 1e-9 ? holdTake(npc.pid, J, u) : 0, gx = xu > 0 ? gg * xu / u : 0;   // 앞 직업 때 거둔 손의 몫
+      const xu = used > 1e-9 ? holdTake(npc.pid, J, used) : 0, gx = xu > 0 ? gg * xu / used : 0;   // 앞 직업 때 거둔 손의 몫(탐침 고침 ⑦: 실제로 나간 손만 장부에서 덜어 낸다 — 들이밀었다 돌려받은 손까지 덜면 그 몸이 직업을 바꾼 뒤 넣는 앞 직업 손이 출처 없는 손이 된다)
       if (u > 1e-9) { b.carry = 1; b.carryU = (b.carryU || 0) + u; }
       if (gg > 1e-9) { b.gran = 1; b.granU = (b.granU || 0) + gg - gx; b.granFE = (b.granFE || 0) + fe; }
       if (gx > 0) b.granX = (b.granX || 0) + gx;
