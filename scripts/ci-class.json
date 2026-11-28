@@ -16673,6 +16673,52 @@
     "spawnSync node"
    ]
   },
+  "test-t1490-near-now.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": 1,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 0.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.8,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "execFileSync git",
+    "spawnSync node"
+   ]
+  },
   "test-t721-apply.js": {
    "cls0": "나",
    "why0": "child_process",
@@ -18988,7 +19034,52 @@
     "spawnSync node"
    ],
    "srv": true
+  },
+  "test-t1516-body-first.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": 2.8,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 2.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.7,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawnSync node"
+   ]
   }
  },
- "at": "2026-11-24"
+ "at": "2026-11-25"
 }

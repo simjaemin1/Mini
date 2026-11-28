@@ -1,0 +1,9 @@
+import pathlib,time,json
+p=pathlib.Path('/var/tmp/t1490')
+for tag in ['re-off-01','re-on-01']:
+ while not (p/'done'/(tag+'.done')).exists():time.sleep(10)
+ for f in list((p/'raw').glob(tag+'.*'))+[p/'done'/(tag+'.done')]:
+  target=f.with_name(f.name.replace(tag+'.',tag+'r1.',1))
+  assert not target.exists(),target
+  f.rename(target)
+(p/'REPLACEMENT_IDS.done').write_text(json.dumps({'re-off-01r1':'re-off-01','re-on-01r1':'re-on-01'}))

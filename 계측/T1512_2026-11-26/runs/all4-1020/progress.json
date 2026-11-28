@@ -1,0 +1,76 @@
+{
+ "v": 1,
+ "tag": "sbc",
+ "seed": 1020,
+ "days": 800,
+ "every": 50,
+ "dir": "/home/user/t1492-out/runs/all4-1020",
+ "ck": 650,
+ "segs": [
+  {
+   "from": 0,
+   "to": 100,
+   "sec": 1658.6,
+   "code": 0,
+   "at": "2026-11-26T18:38:58.574Z"
+  },
+  {
+   "from": 100,
+   "to": 200,
+   "sec": 1635.3,
+   "code": 0,
+   "at": "2026-11-26T19:06:14.603Z"
+  },
+  {
+   "from": 200,
+   "to": 300,
+   "sec": 1674.9,
+   "code": 0,
+   "at": "2026-11-26T19:34:10.321Z"
+  },
+  {
+   "from": 300,
+   "to": 400,
+   "sec": 2797.8,
+   "code": 0,
+   "at": "2026-11-26T20:20:49.194Z"
+  },
+  {
+   "from": 400,
+   "to": 500,
+   "sec": 4922,
+   "code": 0,
+   "at": "2026-11-26T21:42:52.324Z"
+  },
+  {
+   "from": 500,
+   "to": 600,
+   "sec": 6054.7,
+   "code": 0,
+   "at": "2026-11-26T23:23:48.701Z"
+  },
+  {
+   "from": 600,
+   "to": 650,
+   "sec": 5493.5,
+   "code": 0,
+   "at": "2026-11-27T01:59:10.301Z"
+  }
+ ],
+ "done": false,
+ "env": {
+  "NODE_OPTIONS": "--max-old-space-size=4608 --require /home/user/t1492/scripts/t1492-bots.js",
+  "T745_VCLOCK": "1",
+  "VILLAGE_DAY_MS": "1440000",
+  "T699_ROUTE_CACHE": "/home/user/t1492-out/route-cache",
+  "T1486_BOTS": "8",
+  "T1423_NO_BUILD": "1",
+  "T1423_BLOCK_REACT": "1",
+  "T1432_NPC_DEATH": "1",
+  "T1433_TERR_SEQ": "1",
+  "T577_TAG": "sbc",
+  "T1492_SEG": "1"
+ },
+ "started": "2026-11-26T18:11:19.408Z",
+ "tries": 1
+}

@@ -1,0 +1,52 @@
+{
+ "v": 1,
+ "tag": "sbc",
+ "seed": 1020,
+ "days": 300,
+ "every": 50,
+ "dir": "/home/user/t1492-out/runs/nobuild-1020",
+ "ck": 200,
+ "segs": [
+  {
+   "from": 0,
+   "to": 50,
+   "sec": 1034.1,
+   "code": 0,
+   "at": "2026-11-27T09:46:11.920Z"
+  },
+  {
+   "from": 50,
+   "to": 100,
+   "sec": 1157.3,
+   "code": 0,
+   "at": "2026-11-27T10:05:30.036Z"
+  },
+  {
+   "from": 100,
+   "to": 150,
+   "sec": 1092.4,
+   "code": 0,
+   "at": "2026-11-27T10:23:43.073Z"
+  },
+  {
+   "from": 150,
+   "to": 200,
+   "sec": 1149.2,
+   "code": 0,
+   "at": "2026-11-27T10:42:53.390Z"
+  }
+ ],
+ "done": false,
+ "env": {
+  "NODE_OPTIONS": "--max-old-space-size=4608 --require /home/user/t1492/scripts/t1492-bots.js",
+  "T745_VCLOCK": "1",
+  "VILLAGE_DAY_MS": "1440000",
+  "T699_ROUTE_CACHE": "/home/user/t1492-out/route-cache",
+  "T1486_BOTS": "8",
+  "T1423_NO_BUILD": "1",
+  "T577_TAG": "sbc",
+  "T1492_SEG": "1"
+ },
+ "started": "2026-11-27T09:28:57.460Z",
+ "tries": 1
+}

@@ -1,0 +1,14 @@
+11548 --- SIGBUS {si_signo=SIGBUS, si_code=BUS_ADRERR, si_addr=0x7fa18feee000} ---
+11618 +++ killed by SIGBUS +++
+11553 +++ killed by SIGBUS +++
+11551 +++ killed by SIGBUS +++
+11619 +++ killed by SIGBUS +++
+11617 +++ killed by SIGBUS +++
+11616 +++ killed by SIGBUS +++
+11558 +++ killed by SIGBUS +++
+11552 +++ killed by SIGBUS +++
+11549 +++ killed by SIGBUS +++
+11550 +++ killed by SIGBUS +++
+11548 +++ killed by SIGBUS +++
+11556 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_KILLED, si_pid=11548, si_uid=0, si_status=SIGBUS, si_utime=17757 /* 177.57 s */, si_stime=531 /* 5.31 s */} ---
+11541 exit_group(3)                     = ?

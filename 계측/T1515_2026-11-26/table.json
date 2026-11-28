@@ -1,0 +1,4525 @@
+{
+ "runs": 150,
+ "boot": [
+  {
+   "world": "fresh-hanbando",
+   "off": 60,
+   "arm": "on",
+   "runs": 3,
+   "withClose": 3,
+   "offReal": [
+    64.5,
+    60.5,
+    59.8
+   ],
+   "wall": [
+    688,
+    642,
+    742
+   ],
+   "dist": [
+    0,
+    0,
+    0
+   ],
+   "qN": [
+    2,
+    3,
+    8
+   ],
+   "qMax": [
+    366,
+    466,
+    564
+   ],
+   "took": 0,
+   "bgVsTail": [
+    -18.9,
+    -11.4,
+    -15.2
+   ],
+   "bgVsBoot": [
+    45.6,
+    49.2,
+    44.6
+   ],
+   "villages": 51
+  },
+  {
+   "world": "fresh-hanbando",
+   "off": 60,
+   "arm": "off",
+   "runs": 3,
+   "withClose": 3,
+   "offReal": [
+    80.8,
+    59.4,
+    59.9
+   ],
+   "wall": [
+    932,
+    1312,
+    1231
+   ],
+   "dist": [
+    0,
+    0,
+    0
+   ],
+   "qN": [
+    7,
+    9,
+    9
+   ],
+   "qMax": [
+    785,
+    1133,
+    1084
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "fresh-hanbando",
+   "off": 30,
+   "arm": "on",
+   "runs": 3,
+   "withClose": 3,
+   "offReal": [
+    33.4,
+    28.7,
+    30.7
+   ],
+   "wall": [
+    8935,
+    11248,
+    9542
+   ],
+   "dist": [
+    3074,
+    4179,
+    3454
+   ],
+   "qN": [
+    10,
+    10,
+    10
+   ],
+   "qMax": [
+    8661,
+    11045,
+    9523
+   ],
+   "took": 3,
+   "bgVsTail": [
+    null,
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "fresh-hanbando",
+   "off": 30,
+   "arm": "off",
+   "runs": 3,
+   "withClose": 3,
+   "offReal": [
+    50.1,
+    29.3,
+    29.4
+   ],
+   "wall": [
+    1805,
+    5021,
+    4651
+   ],
+   "dist": [
+    0,
+    0,
+    0
+   ],
+   "qN": [
+    10,
+    10,
+    10
+   ],
+   "qMax": [
+    1488,
+    4733,
+    4466
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "fresh-hanbando",
+   "off": 10,
+   "arm": "on",
+   "runs": 3,
+   "withClose": 3,
+   "offReal": [
+    10.9,
+    9.4,
+    9.5
+   ],
+   "wall": [
+    30693,
+    33970,
+    33394
+   ],
+   "dist": [
+    12606,
+    14011,
+    13569
+   ],
+   "qN": [
+    10,
+    10,
+    10
+   ],
+   "qMax": [
+    30523,
+    33644,
+    33048
+   ],
+   "took": 3,
+   "bgVsTail": [
+    null,
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "fresh-hanbando",
+   "off": 10,
+   "arm": "off",
+   "runs": 3,
+   "withClose": 3,
+   "offReal": [
+    9.8,
+    9.6,
+    9.3
+   ],
+   "wall": [
+    5601,
+    6590,
+    6207
+   ],
+   "dist": [
+    0,
+    0,
+    0
+   ],
+   "qN": [
+    10,
+    10,
+    10
+   ],
+   "qMax": [
+    5376,
+    6355,
+    5749
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "fresh-hanbando",
+   "off": 5,
+   "arm": "on",
+   "runs": 3,
+   "withClose": 3,
+   "offReal": [
+    7.1,
+    5.1,
+    4.4
+   ],
+   "wall": [
+    36082,
+    36285,
+    36339
+   ],
+   "dist": [
+    14592,
+    14437,
+    14447
+   ],
+   "qN": [
+    13,
+    9,
+    10
+   ],
+   "qMax": [
+    35308,
+    33909,
+    34042
+   ],
+   "took": 3,
+   "bgVsTail": [
+    null,
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "fresh-hanbando",
+   "off": 5,
+   "arm": "off",
+   "runs": 3,
+   "withClose": 3,
+   "offReal": [
+    2.5,
+    4.8,
+    4.4
+   ],
+   "wall": [
+    6777,
+    6641,
+    6815
+   ],
+   "dist": [
+    0,
+    0,
+    0
+   ],
+   "qN": [
+    10,
+    10,
+    10
+   ],
+   "qMax": [
+    4655,
+    4478,
+    4052
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "fresh-hanbando",
+   "off": 2,
+   "arm": "on",
+   "runs": 3,
+   "withClose": 3,
+   "offReal": [
+    3,
+    3.1,
+    3.4
+   ],
+   "wall": [
+    33822,
+    39968,
+    36089
+   ],
+   "dist": [
+    13256,
+    15635,
+    13994
+   ],
+   "qN": [
+    10,
+    10,
+    10
+   ],
+   "qMax": [
+    31228,
+    37775,
+    33586
+   ],
+   "took": 3,
+   "bgVsTail": [
+    null,
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "fresh-hanbando",
+   "off": 2,
+   "arm": "off",
+   "runs": 3,
+   "withClose": 3,
+   "offReal": [
+    2.5,
+    2.3,
+    2.1
+   ],
+   "wall": [
+    6362,
+    7278,
+    7184
+   ],
+   "dist": [
+    0,
+    0,
+    0
+   ],
+   "qN": [
+    10,
+    10,
+    10
+   ],
+   "qMax": [
+    3963,
+    4903,
+    5111
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "fresh-hanbando",
+   "off": 1,
+   "arm": "on",
+   "runs": 3,
+   "withClose": 3,
+   "offReal": [
+    3.6,
+    1.4,
+    1.5
+   ],
+   "wall": [
+    29433,
+    35847,
+    36833
+   ],
+   "dist": [
+    11582,
+    13994,
+    14368
+   ],
+   "qN": [
+    10,
+    10,
+    10
+   ],
+   "qMax": [
+    27487,
+    33609,
+    34266
+   ],
+   "took": 3,
+   "bgVsTail": [
+    null,
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "fresh-hanbando",
+   "off": 1,
+   "arm": "off",
+   "runs": 3,
+   "withClose": 1,
+   "offReal": [
+    1.9,
+    -1.3,
+    0.1
+   ],
+   "wall": [
+    6168
+   ],
+   "dist": [
+    0
+   ],
+   "qN": [
+    10
+   ],
+   "qMax": [
+    4025
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "fresh-nippon",
+   "off": 60,
+   "arm": "on",
+   "runs": 3,
+   "withClose": 3,
+   "offReal": [
+    64.4,
+    58.7,
+    56.8
+   ],
+   "wall": [
+    448,
+    516,
+    577
+   ],
+   "dist": [
+    0,
+    0,
+    0
+   ],
+   "qN": [
+    5,
+    2,
+    2
+   ],
+   "qMax": [
+    295,
+    321,
+    390
+   ],
+   "took": 0,
+   "bgVsTail": [
+    -36.2,
+    -22.3,
+    -17.2
+   ],
+   "bgVsBoot": [
+    28.3,
+    36.4,
+    39.6
+   ],
+   "villages": 36
+  },
+  {
+   "world": "fresh-nippon",
+   "off": 60,
+   "arm": "off",
+   "runs": 3,
+   "withClose": 3,
+   "offReal": [
+    87.9,
+    57.7,
+    58.1
+   ],
+   "wall": [
+    607,
+    1405,
+    1601
+   ],
+   "dist": [
+    0,
+    0,
+    0
+   ],
+   "qN": [
+    3,
+    9,
+    10
+   ],
+   "qMax": [
+    318,
+    1006,
+    1434
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null,
+    null
+   ],
+   "villages": 36
+  },
+  {
+   "world": "fresh-nippon",
+   "off": 30,
+   "arm": "on",
+   "runs": 3,
+   "withClose": 3,
+   "offReal": [
+    32.2,
+    30.2,
+    25.9
+   ],
+   "wall": [
+    2820,
+    2357,
+    7779
+   ],
+   "dist": [
+    687,
+    395,
+    2536
+   ],
+   "qN": [
+    10,
+    10,
+    10
+   ],
+   "qMax": [
+    2604,
+    1912,
+    7760
+   ],
+   "took": 3,
+   "bgVsTail": [
+    null,
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null,
+    null
+   ],
+   "villages": 36
+  },
+  {
+   "world": "fresh-nippon",
+   "off": 30,
+   "arm": "off",
+   "runs": 3,
+   "withClose": 3,
+   "offReal": [
+    57.6,
+    29.7,
+    28.5
+   ],
+   "wall": [
+    1353,
+    4071,
+    4380
+   ],
+   "dist": [
+    0,
+    0,
+    0
+   ],
+   "qN": [
+    9,
+    10,
+    10
+   ],
+   "qMax": [
+    1135,
+    3894,
+    4048
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null,
+    null
+   ],
+   "villages": 36
+  },
+  {
+   "world": "fresh-nippon",
+   "off": 10,
+   "arm": "on",
+   "runs": 3,
+   "withClose": 3,
+   "offReal": [
+    12.3,
+    6.8,
+    12.1
+   ],
+   "wall": [
+    19443,
+    28639,
+    18592
+   ],
+   "dist": [
+    7926,
+    11776,
+    7522
+   ],
+   "qN": [
+    10,
+    12,
+    10
+   ],
+   "qMax": [
+    19241,
+    28316,
+    18536
+   ],
+   "took": 3,
+   "bgVsTail": [
+    null,
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null,
+    null
+   ],
+   "villages": 36
+  },
+  {
+   "world": "fresh-nippon",
+   "off": 10,
+   "arm": "off",
+   "runs": 3,
+   "withClose": 3,
+   "offReal": [
+    9.8,
+    9,
+    10.8
+   ],
+   "wall": [
+    5159,
+    5480,
+    4526
+   ],
+   "dist": [
+    0,
+    0,
+    0
+   ],
+   "qN": [
+    5,
+    10,
+    10
+   ],
+   "qMax": [
+    4892,
+    5079,
+    4475
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null,
+    null
+   ],
+   "villages": 36
+  },
+  {
+   "world": "fresh-nippon",
+   "off": 5,
+   "arm": "on",
+   "runs": 3,
+   "withClose": 3,
+   "offReal": [
+    5.3,
+    2.5,
+    7.6
+   ],
+   "wall": [
+    26379,
+    34902,
+    23921
+   ],
+   "dist": [
+    10778,
+    13578,
+    9841
+   ],
+   "qN": [
+    10,
+    7,
+    10
+   ],
+   "qMax": [
+    25350,
+    31052,
+    23571
+   ],
+   "took": 3,
+   "bgVsTail": [
+    null,
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null,
+    null
+   ],
+   "villages": 36
+  },
+  {
+   "world": "fresh-nippon",
+   "off": 5,
+   "arm": "off",
+   "runs": 3,
+   "withClose": 3,
+   "offReal": [
+    5.5,
+    3.4,
+    5.4
+   ],
+   "wall": [
+    5520,
+    8581,
+    5815
+   ],
+   "dist": [
+    0,
+    0,
+    0
+   ],
+   "qN": [
+    11,
+    10,
+    10
+   ],
+   "qMax": [
+    4650,
+    4899,
+    4965
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null,
+    null
+   ],
+   "villages": 36
+  },
+  {
+   "world": "fresh-nippon",
+   "off": 2,
+   "arm": "on",
+   "runs": 3,
+   "withClose": 3,
+   "offReal": [
+    2.4,
+    0.6,
+    2.5
+   ],
+   "wall": [
+    29277,
+    34117,
+    29311
+   ],
+   "dist": [
+    11441,
+    12282,
+    11507
+   ],
+   "qN": [
+    10,
+    10,
+    10
+   ],
+   "qMax": [
+    25720,
+    28026,
+    25860
+   ],
+   "took": 3,
+   "bgVsTail": [
+    null,
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null,
+    null
+   ],
+   "villages": 36
+  },
+  {
+   "world": "fresh-nippon",
+   "off": 2,
+   "arm": "off",
+   "runs": 3,
+   "withClose": 3,
+   "offReal": [
+    1.7,
+    1.4,
+    1.4
+   ],
+   "wall": [
+    6488,
+    6971,
+    6495
+   ],
+   "dist": [
+    0,
+    0,
+    0
+   ],
+   "qN": [
+    10,
+    10,
+    7
+   ],
+   "qMax": [
+    2907,
+    3383,
+    3066
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null,
+    null
+   ],
+   "villages": 36
+  },
+  {
+   "world": "fresh-nippon",
+   "off": 1,
+   "arm": "on",
+   "runs": 3,
+   "withClose": 2,
+   "offReal": [
+    -1,
+    2,
+    1.7
+   ],
+   "wall": [
+    31275,
+    30781
+   ],
+   "dist": [
+    12272,
+    12078
+   ],
+   "qN": [
+    10,
+    10
+   ],
+   "qMax": [
+    27637,
+    26882
+   ],
+   "took": 2,
+   "bgVsTail": [
+    null,
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null,
+    null
+   ],
+   "villages": 36
+  },
+  {
+   "world": "fresh-nippon",
+   "off": 1,
+   "arm": "off",
+   "runs": 3,
+   "withClose": 2,
+   "offReal": [
+    1,
+    -0.3,
+    0.9
+   ],
+   "wall": [
+    6610,
+    6708
+   ],
+   "dist": [
+    0,
+    0
+   ],
+   "qN": [
+    10,
+    10
+   ],
+   "qMax": [
+    3007,
+    3234
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null,
+    null
+   ],
+   "villages": 36
+  }
+ ],
+ "age": [
+  {
+   "world": "fresh-hanbando-lr",
+   "off": 5,
+   "arm": "on",
+   "runs": 2,
+   "withClose": 2,
+   "offReal": [
+    7.5,
+    7.4
+   ],
+   "wall": [
+    35926,
+    35884
+   ],
+   "dist": [
+    13446,
+    13165
+   ],
+   "qN": [
+    9,
+    10
+   ],
+   "qMax": [
+    35557,
+    35444
+   ],
+   "took": 2,
+   "bgVsTail": [
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "fresh-hanbando-lr",
+   "off": 5,
+   "arm": "off",
+   "runs": 1,
+   "withClose": 1,
+   "offReal": [
+    24.3
+   ],
+   "wall": [
+    8472
+   ],
+   "dist": [
+    0
+   ],
+   "qN": [
+    5
+   ],
+   "qMax": [
+    8184
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null
+   ],
+   "bgVsBoot": [
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "ck700",
+   "off": 60,
+   "arm": "on",
+   "runs": 2,
+   "withClose": 2,
+   "offReal": [
+    60.2,
+    59.2
+   ],
+   "wall": [
+    560,
+    668
+   ],
+   "dist": [
+    0,
+    0
+   ],
+   "qN": [
+    1,
+    3
+   ],
+   "qMax": [
+    335,
+    341
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "ck700",
+   "off": 60,
+   "arm": "off",
+   "runs": 2,
+   "withClose": 2,
+   "offReal": [
+    58.5,
+    59.1
+   ],
+   "wall": [
+    898,
+    960
+   ],
+   "dist": [
+    0,
+    0
+   ],
+   "qN": [
+    2,
+    2
+   ],
+   "qMax": [
+    571,
+    480
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "ck700",
+   "off": 30,
+   "arm": "on",
+   "runs": 2,
+   "withClose": 2,
+   "offReal": [
+    30.5,
+    27.8
+   ],
+   "wall": [
+    592,
+    582
+   ],
+   "dist": [
+    0,
+    0
+   ],
+   "qN": [
+    1,
+    2
+   ],
+   "qMax": [
+    320,
+    351
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "ck700",
+   "off": 30,
+   "arm": "off",
+   "runs": 2,
+   "withClose": 2,
+   "offReal": [
+    29.1,
+    29.6
+   ],
+   "wall": [
+    931,
+    897
+   ],
+   "dist": [
+    0,
+    0
+   ],
+   "qN": [
+    4,
+    3
+   ],
+   "qMax": [
+    632,
+    569
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "ck700",
+   "off": 10,
+   "arm": "on",
+   "runs": 2,
+   "withClose": 2,
+   "offReal": [
+    8.7,
+    9.6
+   ],
+   "wall": [
+    641,
+    682
+   ],
+   "dist": [
+    0,
+    0
+   ],
+   "qN": [
+    0,
+    0
+   ],
+   "qMax": [
+    null,
+    null
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "ck700",
+   "off": 10,
+   "arm": "off",
+   "runs": 2,
+   "withClose": 2,
+   "offReal": [
+    9.8,
+    9.9
+   ],
+   "wall": [
+    869,
+    864
+   ],
+   "dist": [
+    0,
+    0
+   ],
+   "qN": [
+    0,
+    3
+   ],
+   "qMax": [
+    null,
+    561
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "ck700",
+   "off": 5,
+   "arm": "on",
+   "runs": 2,
+   "withClose": 2,
+   "offReal": [
+    3.7,
+    4.5
+   ],
+   "wall": [
+    660,
+    725
+   ],
+   "dist": [
+    0,
+    0
+   ],
+   "qN": [
+    0,
+    0
+   ],
+   "qMax": [
+    null,
+    null
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "ck700",
+   "off": 5,
+   "arm": "off",
+   "runs": 2,
+   "withClose": 2,
+   "offReal": [
+    4.7,
+    3.9
+   ],
+   "wall": [
+    1125,
+    1147
+   ],
+   "dist": [
+    0,
+    0
+   ],
+   "qN": [
+    0,
+    0
+   ],
+   "qMax": [
+    null,
+    null
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "ck700",
+   "off": 2,
+   "arm": "on",
+   "runs": 2,
+   "withClose": 2,
+   "offReal": [
+    -0.3,
+    0.7
+   ],
+   "wall": [
+    2795,
+    2692
+   ],
+   "dist": [
+    0,
+    0
+   ],
+   "qN": [
+    0,
+    0
+   ],
+   "qMax": [
+    null,
+    null
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "ck700",
+   "off": 2,
+   "arm": "off",
+   "runs": 2,
+   "withClose": 2,
+   "offReal": [
+    1.8,
+    -0.4
+   ],
+   "wall": [
+    3505,
+    3976
+   ],
+   "dist": [
+    0,
+    0
+   ],
+   "qN": [
+    0,
+    0
+   ],
+   "qMax": [
+    null,
+    null
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "ck700",
+   "off": 1,
+   "arm": "on",
+   "runs": 2,
+   "withClose": 2,
+   "offReal": [
+    -1.4,
+    -1.7
+   ],
+   "wall": [
+    2832,
+    3217
+   ],
+   "dist": [
+    0,
+    0
+   ],
+   "qN": [
+    0,
+    0
+   ],
+   "qMax": [
+    null,
+    null
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "ck700",
+   "off": 1,
+   "arm": "off",
+   "runs": 2,
+   "withClose": 2,
+   "offReal": [
+    -0.9,
+    -1
+   ],
+   "wall": [
+    3480,
+    3914
+   ],
+   "dist": [
+    0,
+    0
+   ],
+   "qN": [
+    0,
+    0
+   ],
+   "qMax": [
+    null,
+    null
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "ck1200",
+   "off": 60,
+   "arm": "on",
+   "runs": 2,
+   "withClose": 2,
+   "offReal": [
+    53.7,
+    54.3
+   ],
+   "wall": [
+    706,
+    643
+   ],
+   "dist": [
+    0,
+    0
+   ],
+   "qN": [
+    0,
+    0
+   ],
+   "qMax": [
+    null,
+    null
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "ck1200",
+   "off": 60,
+   "arm": "off",
+   "runs": 2,
+   "withClose": 2,
+   "offReal": [
+    57.8,
+    58.9
+   ],
+   "wall": [
+    680,
+    600
+   ],
+   "dist": [
+    0,
+    0
+   ],
+   "qN": [
+    0,
+    0
+   ],
+   "qMax": [
+    null,
+    null
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "ck1200",
+   "off": 30,
+   "arm": "on",
+   "runs": 2,
+   "withClose": 2,
+   "offReal": [
+    32.4,
+    28.6
+   ],
+   "wall": [
+    790,
+    690
+   ],
+   "dist": [
+    0,
+    0
+   ],
+   "qN": [
+    1,
+    3
+   ],
+   "qMax": [
+    612,
+    63
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "ck1200",
+   "off": 30,
+   "arm": "off",
+   "runs": 2,
+   "withClose": 2,
+   "offReal": [
+    27.7,
+    28.7
+   ],
+   "wall": [
+    595,
+    638
+   ],
+   "dist": [
+    0,
+    0
+   ],
+   "qN": [
+    2,
+    1
+   ],
+   "qMax": [
+    336,
+    362
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "ck1200",
+   "off": 10,
+   "arm": "on",
+   "runs": 2,
+   "withClose": 2,
+   "offReal": [
+    10.7,
+    6.2
+   ],
+   "wall": [
+    827,
+    906
+   ],
+   "dist": [
+    0,
+    0
+   ],
+   "qN": [
+    0,
+    0
+   ],
+   "qMax": [
+    null,
+    null
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "ck1200",
+   "off": 10,
+   "arm": "off",
+   "runs": 2,
+   "withClose": 2,
+   "offReal": [
+    11.5,
+    8.8
+   ],
+   "wall": [
+    842,
+    695
+   ],
+   "dist": [
+    0,
+    0
+   ],
+   "qN": [
+    3,
+    0
+   ],
+   "qMax": [
+    404,
+    null
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "ck1200",
+   "off": 5,
+   "arm": "on",
+   "runs": 2,
+   "withClose": 2,
+   "offReal": [
+    6.6,
+    4
+   ],
+   "wall": [
+    1324,
+    968
+   ],
+   "dist": [
+    0,
+    0
+   ],
+   "qN": [
+    0,
+    0
+   ],
+   "qMax": [
+    null,
+    null
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "ck1200",
+   "off": 5,
+   "arm": "off",
+   "runs": 2,
+   "withClose": 2,
+   "offReal": [
+    5.6,
+    4.5
+   ],
+   "wall": [
+    1056,
+    711
+   ],
+   "dist": [
+    0,
+    0
+   ],
+   "qN": [
+    0,
+    0
+   ],
+   "qMax": [
+    null,
+    null
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "ck1200",
+   "off": 2,
+   "arm": "on",
+   "runs": 2,
+   "withClose": 2,
+   "offReal": [
+    3.7,
+    0.2
+   ],
+   "wall": [
+    855,
+    5511
+   ],
+   "dist": [
+    0,
+    0
+   ],
+   "qN": [
+    0,
+    0
+   ],
+   "qMax": [
+    null,
+    null
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "ck1200",
+   "off": 2,
+   "arm": "off",
+   "runs": 2,
+   "withClose": 2,
+   "offReal": [
+    2.6,
+    2.4
+   ],
+   "wall": [
+    3682,
+    3973
+   ],
+   "dist": [
+    0,
+    0
+   ],
+   "qN": [
+    0,
+    0
+   ],
+   "qMax": [
+    null,
+    null
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "ck1200",
+   "off": 1,
+   "arm": "on",
+   "runs": 2,
+   "withClose": 2,
+   "offReal": [
+    1.9,
+    0.1
+   ],
+   "wall": [
+    5056,
+    4865
+   ],
+   "dist": [
+    0,
+    0
+   ],
+   "qN": [
+    0,
+    0
+   ],
+   "qMax": [
+    null,
+    null
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null
+   ],
+   "villages": 51
+  },
+  {
+   "world": "ck1200",
+   "off": 1,
+   "arm": "off",
+   "runs": 2,
+   "withClose": 2,
+   "offReal": [
+    2.7,
+    1.1
+   ],
+   "wall": [
+    3469,
+    3764
+   ],
+   "dist": [
+    0,
+    0
+   ],
+   "qN": [
+    0,
+    0
+   ],
+   "qMax": [
+    null,
+    null
+   ],
+   "took": 0,
+   "bgVsTail": [
+    null,
+    null
+   ],
+   "bgVsBoot": [
+    null,
+    null
+   ],
+   "villages": 51
+  }
+ ],
+ "head": {
+  "firstMaxOn": 39968,
+  "firstMaxOnOff": 3.1,
+  "firstMaxOnWorld": "fresh-hanbando",
+  "firstMaxOff": 8581,
+  "firstMaxOffOff": 3.4,
+  "agedMaxOn": 5511,
+  "agedMaxOnOff": 0.2,
+  "agedMaxOff": 3976,
+  "thrTook": 33.4,
+  "thrNot": 56.8,
+  "qMaxN": 13,
+  "discN": 0,
+  "tookOn": 29,
+  "freshOn": 35
+ },
+ "guests": [
+  {
+   "group": "떠안은 마감(켬 · dist > 1초)",
+   "runs": 29,
+   "closeMed": 31275,
+   "reqIn": 209,
+   "p50": 25056,
+   "p90": 34258,
+   "p99": 37376,
+   "max": 37820,
+   "lost": 0,
+   "closingSeen": 147,
+   "byType": {
+    "chat": {
+     "n": 34,
+     "p50": 27,
+     "max": 204
+    },
+    "donate": {
+     "n": 56,
+     "p50": 28332,
+     "max": 37820
+    },
+    "trade": {
+     "n": 30,
+     "p50": 28057,
+     "max": 37376
+    },
+    "view": {
+     "n": 60,
+     "p50": 28365,
+     "max": 37790
+    },
+    "withdraw": {
+     "n": 29,
+     "p50": 47,
+     "max": 258
+    }
+   },
+   "disc": 0,
+   "rubberIn": 0,
+   "rubberAll": 0,
+   "walkers": 87,
+   "maxDef": 0,
+   "tickGapMax": 1375,
+   "pingInMax": 471,
+   "pingInP99": 169,
+   "pingLost": 0
+  },
+  {
+   "group": "안 떠안은 마감 · 켬",
+   "runs": 32,
+   "closeMed": 742,
+   "reqIn": 94,
+   "p50": 304,
+   "p90": 1377,
+   "p99": 2664,
+   "max": 2664,
+   "lost": 0,
+   "closingSeen": 36,
+   "byType": {
+    "chat": {
+     "n": 11,
+     "p50": 77,
+     "max": 273
+    },
+    "donate": {
+     "n": 30,
+     "p50": 385,
+     "max": 2664
+    },
+    "trade": {
+     "n": 14,
+     "p50": 342,
+     "max": 2316
+    },
+    "view": {
+     "n": 20,
+     "p50": 457,
+     "max": 1895
+    },
+    "withdraw": {
+     "n": 19,
+     "p50": 229,
+     "max": 614
+    }
+   },
+   "disc": 0,
+   "rubberIn": 0,
+   "rubberAll": 0,
+   "walkers": 96,
+   "maxDef": 0,
+   "tickGapMax": 1517,
+   "pingInMax": 863,
+   "pingInP99": 267,
+   "pingLost": 0
+  },
+  {
+   "group": "끔",
+   "runs": 58,
+   "closeMed": 3914,
+   "reqIn": 295,
+   "p50": 725,
+   "p90": 4868,
+   "p99": 7846,
+   "max": 8279,
+   "lost": 0,
+   "closingSeen": 179,
+   "byType": {
+    "chat": {
+     "n": 47,
+     "p50": 37,
+     "max": 440
+    },
+    "donate": {
+     "n": 79,
+     "p50": 3591,
+     "max": 8279
+    },
+    "trade": {
+     "n": 46,
+     "p50": 2800,
+     "max": 8076
+    },
+    "view": {
+     "n": 74,
+     "p50": 3520,
+     "max": 6590
+    },
+    "withdraw": {
+     "n": 49,
+     "p50": 23,
+     "max": 424
+    }
+   },
+   "disc": 0,
+   "rubberIn": 0,
+   "rubberAll": 0,
+   "walkers": 174,
+   "maxDef": 0,
+   "tickGapMax": 1418,
+   "pingInMax": 699,
+   "pingInP99": 322,
+   "pingLost": 0
+  }
+ ],
+ "cross": [
+  {
+   "tag": "x-main",
+   "arm": "main",
+   "tailS": -30,
+   "trials": 30,
+   "valid": 30,
+   "errs": [],
+   "refused": 15,
+   "client": 15,
+   "server": 0,
+   "far": 15,
+   "stale": 0,
+   "npc": 15,
+   "collide": 15,
+   "collideRef": 15,
+   "withheld": 15,
+   "inClose": 0,
+   "refInClose": 0,
+   "connMed": 72,
+   "connMax": 356,
+   "vidOverlap": 36,
+   "vh": 51,
+   "vn": 36,
+   "offH": 1416.8
+  },
+  {
+   "tag": "x-near",
+   "arm": "near",
+   "tailS": -30,
+   "trials": 30,
+   "valid": 30,
+   "errs": [],
+   "refused": 0,
+   "client": 0,
+   "server": 0,
+   "far": 0,
+   "stale": 0,
+   "npc": 30,
+   "collide": 15,
+   "collideRef": 0,
+   "withheld": 15,
+   "inClose": 0,
+   "refInClose": 0,
+   "connMed": 73,
+   "connMax": 365,
+   "vidOverlap": 36,
+   "vh": 51,
+   "vn": 36,
+   "offH": 1418
+  },
+  {
+   "tag": "xc-main",
+   "arm": "main",
+   "tailS": 25,
+   "trials": 8,
+   "valid": 8,
+   "errs": [],
+   "refused": 4,
+   "client": 4,
+   "server": 0,
+   "far": 4,
+   "stale": 0,
+   "npc": 4,
+   "collide": 4,
+   "collideRef": 4,
+   "withheld": 4,
+   "inClose": 1,
+   "refInClose": 0,
+   "connMed": 78,
+   "connMax": 348,
+   "vidOverlap": 36,
+   "vh": 51,
+   "vn": 36,
+   "offH": 34.5
+  },
+  {
+   "tag": "xc-near",
+   "arm": "near",
+   "tailS": 25,
+   "trials": 8,
+   "valid": 8,
+   "errs": [],
+   "refused": 0,
+   "client": 0,
+   "server": 0,
+   "far": 0,
+   "stale": 0,
+   "npc": 8,
+   "collide": 4,
+   "collideRef": 0,
+   "withheld": 4,
+   "inClose": 1,
+   "refInClose": 0,
+   "connMed": 82,
+   "connMax": 315,
+   "vidOverlap": 36,
+   "vh": 51,
+   "vn": 36,
+   "offH": 34.1
+  },
+  {
+   "tag": "xc2-main",
+   "arm": "main",
+   "tailS": 10,
+   "trials": 6,
+   "valid": 6,
+   "errs": [],
+   "refused": 3,
+   "client": 3,
+   "server": 0,
+   "far": 3,
+   "stale": 0,
+   "npc": 3,
+   "collide": 3,
+   "collideRef": 3,
+   "withheld": 3,
+   "inClose": 2,
+   "refInClose": 1,
+   "connMed": 95,
+   "connMax": 432,
+   "vidOverlap": 36,
+   "vh": 51,
+   "vn": 36,
+   "offH": 17
+  },
+  {
+   "tag": "xc2-near",
+   "arm": "near",
+   "tailS": 10,
+   "trials": 6,
+   "valid": 6,
+   "errs": [],
+   "refused": 0,
+   "client": 0,
+   "server": 0,
+   "far": 0,
+   "stale": 0,
+   "npc": 6,
+   "collide": 3,
+   "collideRef": 0,
+   "withheld": 3,
+   "inClose": 2,
+   "refInClose": 0,
+   "connMed": 98,
+   "connMax": 408,
+   "vidOverlap": 36,
+   "vh": 51,
+   "vn": 36,
+   "offH": 13.8
+  },
+  {
+   "tag": "xcn-main",
+   "arm": "main",
+   "tailS": 25,
+   "trials": 8,
+   "valid": 8,
+   "errs": [],
+   "refused": 4,
+   "client": 4,
+   "server": 0,
+   "far": 4,
+   "stale": 0,
+   "npc": 4,
+   "collide": 4,
+   "collideRef": 4,
+   "withheld": 4,
+   "inClose": 1,
+   "refInClose": 0,
+   "connMed": 93,
+   "connMax": 324,
+   "vidOverlap": 36,
+   "vh": 51,
+   "vn": 36,
+   "offH": 205.1
+  },
+  {
+   "tag": "xcn-near",
+   "arm": "near",
+   "tailS": 25,
+   "trials": 8,
+   "valid": 8,
+   "errs": [],
+   "refused": 0,
+   "client": 0,
+   "server": 0,
+   "far": 0,
+   "stale": 0,
+   "npc": 8,
+   "collide": 4,
+   "collideRef": 0,
+   "withheld": 4,
+   "inClose": 1,
+   "refInClose": 0,
+   "connMed": 95,
+   "connMax": 346,
+   "vidOverlap": 36,
+   "vh": 51,
+   "vn": 36,
+   "offH": 204.8
+  },
+  {
+   "tag": "xcn2-main",
+   "arm": "main",
+   "tailS": 10,
+   "trials": 6,
+   "valid": 6,
+   "errs": [],
+   "refused": 4,
+   "client": 3,
+   "server": 1,
+   "far": 4,
+   "stale": 0,
+   "npc": 2,
+   "collide": 3,
+   "collideRef": 3,
+   "withheld": 3,
+   "inClose": 3,
+   "refInClose": 3,
+   "connMed": 86,
+   "connMax": 414,
+   "vidOverlap": 36,
+   "vh": 51,
+   "vn": 36,
+   "offH": 187.8
+  },
+  {
+   "tag": "xcn2-near",
+   "arm": "near",
+   "tailS": 10,
+   "trials": 6,
+   "valid": 6,
+   "errs": [],
+   "refused": 0,
+   "client": 0,
+   "server": 0,
+   "far": 0,
+   "stale": 0,
+   "npc": 6,
+   "collide": 3,
+   "collideRef": 0,
+   "withheld": 3,
+   "inClose": 2,
+   "refInClose": 0,
+   "connMed": 128,
+   "connMax": 370,
+   "vidOverlap": 36,
+   "vh": 51,
+   "vn": 36,
+   "offH": 183.8
+  }
+ ],
+ "adj": [
+  {
+   "tag": "a-main",
+   "arm": "main",
+   "tailS": 40,
+   "pairD": 5204,
+   "trials": 40,
+   "valid": 40,
+   "refused": 0,
+   "far": 0,
+   "stale": 0,
+   "npc": 40,
+   "inClose": 5,
+   "refInClose": 0,
+   "refOut": 0,
+   "stuck": 40,
+   "dDoorMax": 113,
+   "briefAmed": 2616
+  },
+  {
+   "tag": "a-near",
+   "arm": "near",
+   "tailS": 40,
+   "pairD": 5204,
+   "trials": 40,
+   "valid": 40,
+   "refused": 0,
+   "far": 0,
+   "stale": 0,
+   "npc": 40,
+   "inClose": 5,
+   "refInClose": 0,
+   "refOut": 0,
+   "stuck": 40,
+   "dDoorMax": 113,
+   "briefAmed": 2502
+  },
+  {
+   "tag": "a2-main",
+   "arm": "main",
+   "tailS": 8,
+   "pairD": 5204,
+   "trials": 40,
+   "valid": 40,
+   "refused": 12,
+   "far": 10,
+   "stale": 2,
+   "npc": 28,
+   "inClose": 20,
+   "refInClose": 12,
+   "refOut": 0,
+   "stuck": 40,
+   "dDoorMax": 113,
+   "briefAmed": 2596
+  },
+  {
+   "tag": "a2-near",
+   "arm": "near",
+   "tailS": 8,
+   "pairD": 5204,
+   "trials": 40,
+   "valid": 40,
+   "refused": 0,
+   "far": 0,
+   "stale": 0,
+   "npc": 40,
+   "inClose": 21,
+   "refInClose": 0,
+   "refOut": 0,
+   "stuck": 40,
+   "dDoorMax": 113,
+   "briefAmed": 2578
+  }
+ ],
+ "ear": [
+  {
+   "key": "fresh-hanbando|5|on",
+   "ear": "있음",
+   "runs": 3,
+   "offReal": [
+    7.1,
+    5.1,
+    4.4
+   ],
+   "work": [
+    18338,
+    18334,
+    18310
+   ],
+   "dist": [
+    14592,
+    14437,
+    14447
+   ],
+   "queued": [
+    13,
+    10,
+    10
+   ],
+   "botMax": [
+    35477,
+    33957,
+    34058
+   ],
+   "bgVsBoot": [
+    "마감",
+    "마감",
+    "마감"
+   ]
+  },
+  {
+   "key": "fresh-hanbando|5|on",
+   "ear": "없음",
+   "runs": 3,
+   "offReal": [
+    6.3,
+    4.1,
+    4.5
+   ],
+   "work": [
+    18455,
+    18272,
+    20058
+   ],
+   "dist": [
+    14371,
+    14265,
+    15465
+   ],
+   "queued": [
+    11,
+    10,
+    10
+   ],
+   "botMax": [
+    34975,
+    33585,
+    37416
+   ],
+   "bgVsBoot": [
+    "마감",
+    "마감",
+    "마감"
+   ]
+  }
+ ],
+ "real": [
+  [
+   "b-han-5-on-1-real",
+   0,
+   3.6,
+   "35.0",
+   "13.9",
+   "마감",
+   "36.1(7.1) · 36.3(5.1) · 36.3(4.4)"
+  ]
+ ],
+ "list": [
+  [
+   "a-main",
+   0,
+   188,
+   "adj",
+   "fresh-hanbando",
+   "main",
+   821037,
+   "",
+   41,
+   51,
+   ""
+  ],
+  [
+   "a-near",
+   0,
+   192,
+   "adj",
+   "fresh-hanbando",
+   "near",
+   502808,
+   "",
+   38.5,
+   51,
+   ""
+  ],
+  [
+   "a2-main",
+   0,
+   128,
+   "adj",
+   "fresh-hanbando",
+   "main",
+   458732,
+   "",
+   8.3,
+   51,
+   ""
+  ],
+  [
+   "a2-near",
+   0,
+   129,
+   "adj",
+   "fresh-hanbando",
+   "near",
+   337699,
+   "",
+   8.2,
+   51,
+   ""
+  ],
+  [
+   "b-ck1200-1-off-1",
+   0,
+   53,
+   "boot",
+   "ck1200-off",
+   "off",
+   360330,
+   17646,
+   2.7,
+   51,
+   ""
+  ],
+  [
+   "b-ck1200-1-off-2",
+   0,
+   55,
+   "boot",
+   "ck1200-off",
+   "off",
+   591116,
+   19190,
+   1.1,
+   51,
+   ""
+  ],
+  [
+   "b-ck1200-1-on-1",
+   0,
+   72,
+   "boot",
+   "ck1200-on",
+   "on",
+   357779,
+   37049,
+   1.9,
+   51,
+   ""
+  ],
+  [
+   "b-ck1200-1-on-2",
+   0,
+   76,
+   "boot",
+   "ck1200-on",
+   "on",
+   572455,
+   39938,
+   0.1,
+   51,
+   ""
+  ],
+  [
+   "b-ck1200-10-off-1",
+   0,
+   58,
+   "boot",
+   "ck1200-off",
+   "off",
+   566061,
+   19308,
+   11.5,
+   51,
+   ""
+  ],
+  [
+   "b-ck1200-10-off-2",
+   0,
+   57,
+   "boot",
+   "ck1200-off",
+   "off",
+   798349,
+   20290,
+   8.8,
+   51,
+   ""
+  ],
+  [
+   "b-ck1200-10-on-1",
+   0,
+   78,
+   "boot",
+   "ck1200-on",
+   "on",
+   563845,
+   38327,
+   10.7,
+   51,
+   ""
+  ],
+  [
+   "b-ck1200-10-on-2",
+   0,
+   78,
+   "boot",
+   "ck1200-on",
+   "on",
+   779862,
+   42633,
+   6.2,
+   51,
+   ""
+  ],
+  [
+   "b-ck1200-2-off-1",
+   0,
+   54,
+   "boot",
+   "ck1200-off",
+   "off",
+   436346,
+   18501,
+   2.6,
+   51,
+   ""
+  ],
+  [
+   "b-ck1200-2-off-2",
+   0,
+   55,
+   "boot",
+   "ck1200-off",
+   "off",
+   652180,
+   18836,
+   2.4,
+   51,
+   ""
+  ],
+  [
+   "b-ck1200-2-on-1",
+   0,
+   72,
+   "boot",
+   "ck1200-on",
+   "on",
+   417722,
+   37279,
+   3.7,
+   51,
+   ""
+  ],
+  [
+   "b-ck1200-2-on-2",
+   0,
+   77,
+   "boot",
+   "ck1200-on",
+   "on",
+   648513,
+   40808,
+   0.2,
+   51,
+   ""
+  ],
+  [
+   "b-ck1200-30-off-1",
+   0,
+   77,
+   "boot",
+   "ck1200-off",
+   "off",
+   639608,
+   21679,
+   27.7,
+   51,
+   ""
+  ],
+  [
+   "b-ck1200-30-off-2",
+   0,
+   77,
+   "boot",
+   "ck1200-off",
+   "off",
+   870434,
+   20621,
+   28.7,
+   51,
+   ""
+  ],
+  [
+   "b-ck1200-30-on-1",
+   0,
+   96,
+   "boot",
+   "ck1200-on",
+   "on",
+   650934,
+   36693,
+   32.4,
+   51,
+   ""
+  ],
+  [
+   "b-ck1200-30-on-2",
+   0,
+   93,
+   "boot",
+   "ck1200-on",
+   "on",
+   867880,
+   39271,
+   28.6,
+   51,
+   ""
+  ],
+  [
+   "b-ck1200-5-off-1",
+   0,
+   55,
+   "boot",
+   "ck1200-off",
+   "off",
+   495456,
+   18721,
+   5.6,
+   51,
+   ""
+  ],
+  [
+   "b-ck1200-5-off-2",
+   0,
+   55,
+   "boot",
+   "ck1200-off",
+   "off",
+   711239,
+   19748,
+   4.5,
+   51,
+   ""
+  ],
+  [
+   "b-ck1200-5-on-1",
+   0,
+   75,
+   "boot",
+   "ck1200-on",
+   "on",
+   491790,
+   37483,
+   6.6,
+   51,
+   ""
+  ],
+  [
+   "b-ck1200-5-on-2",
+   0,
+   76,
+   "boot",
+   "ck1200-on",
+   "on",
+   722759,
+   39898,
+   4,
+   51,
+   ""
+  ],
+  [
+   "b-ck1200-60-off-1",
+   0,
+   105,
+   "boot",
+   "ck1200-off",
+   "off",
+   746702,
+   21232,
+   57.8,
+   51,
+   ""
+  ],
+  [
+   "b-ck1200-60-off-2",
+   0,
+   107,
+   "boot",
+   "ck1200-off",
+   "off",
+   977536,
+   20164,
+   58.9,
+   51,
+   ""
+  ],
+  [
+   "b-ck1200-60-on-1",
+   0,
+   125,
+   "boot",
+   "ck1200-on",
+   "on",
+   728037,
+   45338,
+   53.7,
+   51,
+   ""
+  ],
+  [
+   "b-ck1200-60-on-2",
+   0,
+   124,
+   "boot",
+   "ck1200-on",
+   "on",
+   959944,
+   43556,
+   54.3,
+   51,
+   ""
+  ],
+  [
+   "b-ck700-1-off-1",
+   0,
+   52,
+   "boot",
+   "ck700-off",
+   "off",
+   736153,
+   17976,
+   -0.9,
+   51,
+   ""
+  ],
+  [
+   "b-ck700-1-off-2",
+   0,
+   53,
+   "boot",
+   "ck700-off",
+   "off",
+   1101842,
+   18032,
+   -1,
+   51,
+   ""
+  ],
+  [
+   "b-ck700-1-on-1",
+   0,
+   69,
+   "boot",
+   "ck700-on",
+   "on",
+   764116,
+   36601,
+   -1.4,
+   51,
+   ""
+  ],
+  [
+   "b-ck700-1-on-2",
+   0,
+   71,
+   "boot",
+   "ck700-on",
+   "on",
+   1098890,
+   37863,
+   -1.7,
+   51,
+   ""
+  ],
+  [
+   "b-ck700-10-off-1",
+   0,
+   55,
+   "boot",
+   "ck700-off",
+   "off",
+   988148,
+   16460,
+   9.8,
+   51,
+   ""
+  ],
+  [
+   "b-ck700-10-off-2",
+   0,
+   54,
+   "boot",
+   "ck700-off",
+   "off",
+   1279022,
+   16276,
+   9.9,
+   51,
+   ""
+  ],
+  [
+   "b-ck700-10-on-1",
+   0,
+   71,
+   "boot",
+   "ck700-on",
+   "on",
+   1046313,
+   35473,
+   8.7,
+   51,
+   ""
+  ],
+  [
+   "b-ck700-10-on-2",
+   0,
+   71,
+   "boot",
+   "ck700-on",
+   "on",
+   1321097,
+   35584,
+   9.6,
+   51,
+   ""
+  ],
+  [
+   "b-ck700-2-off-1",
+   0,
+   51,
+   "boot",
+   "ck700-off",
+   "off",
+   797167,
+   16179,
+   1.8,
+   51,
+   ""
+  ],
+  [
+   "b-ck700-2-off-2",
+   0,
+   54,
+   "boot",
+   "ck700-off",
+   "off",
+   1162874,
+   18594,
+   -0.4,
+   51,
+   ""
+  ],
+  [
+   "b-ck700-2-on-1",
+   0,
+   69,
+   "boot",
+   "ck700-on",
+   "on",
+   840173,
+   36280,
+   -0.3,
+   51,
+   ""
+  ],
+  [
+   "b-ck700-2-on-2",
+   0,
+   70,
+   "boot",
+   "ck700-on",
+   "on",
+   1174948,
+   36490,
+   0.7,
+   51,
+   ""
+  ],
+  [
+   "b-ck700-30-off-1",
+   0,
+   74,
+   "boot",
+   "ck700-off",
+   "off",
+   1120877,
+   16616,
+   29.1,
+   51,
+   ""
+  ],
+  [
+   "b-ck700-30-off-2",
+   0,
+   74,
+   "boot",
+   "ck700-off",
+   "off",
+   1336166,
+   16510,
+   29.6,
+   51,
+   ""
+  ],
+  [
+   "b-ck700-30-on-1",
+   0,
+   89,
+   "boot",
+   "ck700-on",
+   "on",
+   1193410,
+   33639,
+   30.5,
+   51,
+   ""
+  ],
+  [
+   "b-ck700-30-on-2",
+   0,
+   93,
+   "boot",
+   "ck700-on",
+   "on",
+   1423185,
+   37200,
+   27.8,
+   51,
+   ""
+  ],
+  [
+   "b-ck700-5-off-1",
+   0,
+   51,
+   "boot",
+   "ck700-off",
+   "off",
+   856225,
+   16425,
+   4.7,
+   51,
+   ""
+  ],
+  [
+   "b-ck700-5-off-2",
+   0,
+   51,
+   "boot",
+   "ck700-off",
+   "off",
+   1221996,
+   17183,
+   3.9,
+   51,
+   ""
+  ],
+  [
+   "b-ck700-5-on-1",
+   0,
+   68,
+   "boot",
+   "ck700-on",
+   "on",
+   914232,
+   35466,
+   3.7,
+   51,
+   ""
+  ],
+  [
+   "b-ck700-5-on-2",
+   0,
+   68,
+   "boot",
+   "ck700-on",
+   "on",
+   1249033,
+   35476,
+   4.5,
+   51,
+   ""
+  ],
+  [
+   "b-ck700-60-off-1",
+   0,
+   102,
+   "boot",
+   "ck700-off",
+   "off",
+   1287968,
+   17140,
+   58.5,
+   51,
+   ""
+  ],
+  [
+   "b-ck700-60-off-2",
+   0,
+   102,
+   "boot",
+   "ck700-off",
+   "off",
+   78273,
+   16934,
+   59.1,
+   51,
+   ""
+  ],
+  [
+   "b-ck700-60-on-1",
+   0,
+   121,
+   "boot",
+   "ck700-on",
+   "on",
+   1405587,
+   33922,
+   60.2,
+   51,
+   ""
+  ],
+  [
+   "b-ck700-60-on-2",
+   0,
+   120,
+   "boot",
+   "ck700-on",
+   "on",
+   180380,
+   35822,
+   59.2,
+   51,
+   ""
+  ],
+  [
+   "b-han-1-off-1",
+   0,
+   56,
+   "boot",
+   "fresh-hanbando",
+   "off",
+   86202,
+   17688,
+   1.9,
+   51,
+   ""
+  ],
+  [
+   "b-han-1-off-2",
+   0,
+   22,
+   "boot",
+   "fresh-hanbando",
+   "off",
+   196204,
+   21119,
+   -1.3,
+   "",
+   ""
+  ],
+  [
+   "b-han-1-off-3",
+   0,
+   21,
+   "boot",
+   "fresh-hanbando",
+   "off",
+   900371,
+   19716,
+   0.1,
+   "",
+   ""
+  ],
+  [
+   "b-han-1-on-1",
+   0,
+   92,
+   "boot",
+   "fresh-hanbando",
+   "on",
+   174319,
+   33938,
+   3.6,
+   51,
+   ""
+  ],
+  [
+   "b-han-1-on-2",
+   0,
+   103,
+   "boot",
+   "fresh-hanbando",
+   "on",
+   209760,
+   35717,
+   1.4,
+   51,
+   ""
+  ],
+  [
+   "b-han-1-on-3",
+   0,
+   103,
+   "boot",
+   "fresh-hanbando",
+   "on",
+   913932,
+   35716,
+   1.5,
+   51,
+   ""
+  ],
+  [
+   "b-han-10-off-1",
+   0,
+   62,
+   "boot",
+   "fresh-hanbando",
+   "off",
+   593509,
+   18786,
+   9.8,
+   51,
+   ""
+  ],
+  [
+   "b-han-10-off-2",
+   0,
+   59,
+   "boot",
+   "fresh-hanbando",
+   "off",
+   448529,
+   18976,
+   9.6,
+   51,
+   ""
+  ],
+  [
+   "b-han-10-off-3",
+   0,
+   60,
+   "boot",
+   "fresh-hanbando",
+   "off",
+   1122578,
+   19500,
+   9.3,
+   51,
+   ""
+  ],
+  [
+   "b-han-10-on-1",
+   0,
+   105,
+   "boot",
+   "fresh-hanbando",
+   "on",
+   325864,
+   37977,
+   10.9,
+   51,
+   ""
+  ],
+  [
+   "b-han-10-on-2",
+   0,
+   105,
+   "boot",
+   "fresh-hanbando",
+   "on",
+   446624,
+   37142,
+   9.4,
+   51,
+   ""
+  ],
+  [
+   "b-han-10-on-3",
+   0,
+   104,
+   "boot",
+   "fresh-hanbando",
+   "on",
+   1181153,
+   36725,
+   9.5,
+   51,
+   ""
+  ],
+  [
+   "b-han-2-off-1",
+   0,
+   57,
+   "boot",
+   "fresh-hanbando",
+   "off",
+   252290,
+   18173,
+   2.5,
+   51,
+   ""
+  ],
+  [
+   "b-han-2-off-2",
+   0,
+   58,
+   "boot",
+   "fresh-hanbando",
+   "off",
+   287266,
+   18420,
+   2.3,
+   51,
+   ""
+  ],
+  [
+   "b-han-2-off-3",
+   0,
+   58,
+   "boot",
+   "fresh-hanbando",
+   "off",
+   991440,
+   18690,
+   2.1,
+   51,
+   ""
+  ],
+  [
+   "b-han-2-on-1",
+   0,
+   100,
+   "boot",
+   "fresh-hanbando",
+   "on",
+   339184,
+   36759,
+   3,
+   51,
+   ""
+  ],
+  [
+   "b-han-2-on-2",
+   0,
+   107,
+   "boot",
+   "fresh-hanbando",
+   "on",
+   285474,
+   35510,
+   3.1,
+   51,
+   ""
+  ],
+  [
+   "b-han-2-on-3",
+   0,
+   103,
+   "boot",
+   "fresh-hanbando",
+   "on",
+   990000,
+   34867,
+   3.4,
+   51,
+   ""
+  ],
+  [
+   "b-han-30-off-1",
+   0,
+   97,
+   "boot",
+   "fresh-hanbando",
+   "off",
+   659252,
+   18815,
+   50.1,
+   51,
+   ""
+  ],
+  [
+   "b-han-30-off-2",
+   0,
+   79,
+   "boot",
+   "fresh-hanbando",
+   "off",
+   535587,
+   19307,
+   29.3,
+   51,
+   ""
+  ],
+  [
+   "b-han-30-off-3",
+   0,
+   80,
+   "boot",
+   "fresh-hanbando",
+   "off",
+   1194634,
+   19318,
+   29.4,
+   51,
+   ""
+  ],
+  [
+   "b-han-30-on-1",
+   0,
+   103,
+   "boot",
+   "fresh-hanbando",
+   "on",
+   765325,
+   35592,
+   33.4,
+   51,
+   ""
+  ],
+  [
+   "b-han-30-on-2",
+   0,
+   105,
+   "boot",
+   "fresh-hanbando",
+   "on",
+   519435,
+   37060,
+   28.7,
+   51,
+   ""
+  ],
+  [
+   "b-han-30-on-3",
+   0,
+   103,
+   "boot",
+   "fresh-hanbando",
+   "on",
+   1268209,
+   35551,
+   30.7,
+   51,
+   ""
+  ],
+  [
+   "b-han-5-off-1",
+   0,
+   61,
+   "boot",
+   "fresh-hanbando",
+   "off",
+   416392,
+   21091,
+   2.5,
+   51,
+   ""
+  ],
+  [
+   "b-han-5-off-2",
+   0,
+   58,
+   "boot",
+   "fresh-hanbando",
+   "off",
+   361293,
+   18956,
+   4.8,
+   51,
+   ""
+  ],
+  [
+   "b-han-5-off-3",
+   0,
+   59,
+   "boot",
+   "fresh-hanbando",
+   "off",
+   1065486,
+   19347,
+   4.4,
+   51,
+   ""
+  ],
+  [
+   "b-han-5-on-1",
+   0,
+   103,
+   "boot",
+   "fresh-hanbando",
+   "on",
+   503310,
+   35709,
+   7.1,
+   51,
+   ""
+  ],
+  [
+   "b-han-5-on-1-noear",
+   0,
+   102,
+   "boot",
+   "fresh-hanbando",
+   "on",
+   278611,
+   34907,
+   6.3,
+   51,
+   ""
+  ],
+  [
+   "b-han-5-on-1-real",
+   0,
+   355,
+   "boot",
+   "fresh-hanbando",
+   "on",
+   0,
+   37381,
+   3.6,
+   51,
+   ""
+  ],
+  [
+   "b-han-5-on-2",
+   0,
+   103,
+   "boot",
+   "fresh-hanbando",
+   "on",
+   374505,
+   36405,
+   5.1,
+   51,
+   ""
+  ],
+  [
+   "b-han-5-on-2-noear",
+   0,
+   103,
+   "boot",
+   "fresh-hanbando",
+   "on",
+   277611,
+   37156,
+   4.1,
+   51,
+   ""
+  ],
+  [
+   "b-han-5-on-3",
+   0,
+   105,
+   "boot",
+   "fresh-hanbando",
+   "on",
+   1079051,
+   36798,
+   4.4,
+   51,
+   ""
+  ],
+  [
+   "b-han-5-on-3-noear",
+   0,
+   109,
+   "boot",
+   "fresh-hanbando",
+   "on",
+   171552,
+   36669,
+   4.5,
+   51,
+   ""
+  ],
+  [
+   "b-han-60-off-1",
+   0,
+   125,
+   "boot",
+   "fresh-hanbando",
+   "off",
+   871383,
+   18126,
+   80.8,
+   51,
+   ""
+  ],
+  [
+   "b-han-60-off-2",
+   0,
+   107,
+   "boot",
+   "fresh-hanbando",
+   "off",
+   612717,
+   19187,
+   59.4,
+   51,
+   ""
+  ],
+  [
+   "b-han-60-off-3",
+   0,
+   106,
+   "boot",
+   "fresh-hanbando",
+   "off",
+   1271696,
+   18859,
+   59.9,
+   51,
+   ""
+  ],
+  [
+   "b-han-60-on-1",
+   0,
+   125,
+   "boot",
+   "fresh-hanbando",
+   "on",
+   1007488,
+   34480,
+   64.5,
+   51,
+   ""
+  ],
+  [
+   "b-han-60-on-2",
+   0,
+   124,
+   "boot",
+   "fresh-hanbando",
+   "on",
+   625797,
+   36009,
+   60.5,
+   51,
+   ""
+  ],
+  [
+   "b-han-60-on-3",
+   0,
+   123,
+   "boot",
+   "fresh-hanbando",
+   "on",
+   269685,
+   36439,
+   59.8,
+   51,
+   ""
+  ],
+  [
+   "b-hanlr-5-off-1",
+   0,
+   79,
+   "boot",
+   "fresh-hanbando-lr",
+   "off",
+   876367,
+   19574,
+   24.3,
+   51,
+   ""
+  ],
+  [
+   "b-hanlr-5-on-1",
+   0,
+   104,
+   "boot",
+   "fresh-hanbando-lr",
+   "on",
+   983507,
+   36487,
+   7.5,
+   51,
+   ""
+  ],
+  [
+   "b-hanlr-5-on-2",
+   0,
+   105,
+   "boot",
+   "fresh-hanbando-lr",
+   "on",
+   967476,
+   36569,
+   7.4,
+   51,
+   ""
+  ],
+  [
+   "b-nip-1-off-1",
+   0,
+   55,
+   "boot",
+   "fresh-nippon",
+   "off",
+   14178,
+   20505,
+   1,
+   36,
+   ""
+  ],
+  [
+   "b-nip-1-off-2",
+   0,
+   23,
+   "boot",
+   "fresh-nippon",
+   "off",
+   874597,
+   21923,
+   -0.3,
+   "",
+   ""
+  ],
+  [
+   "b-nip-1-off-3",
+   0,
+   55,
+   "boot",
+   "fresh-nippon",
+   "off",
+   168425,
+   21046,
+   0.9,
+   36,
+   ""
+  ],
+  [
+   "b-nip-1-on-1",
+   137,
+   1009,
+   "boot",
+   "fresh-nippon",
+   "on",
+   245106,
+   49190,
+   1437.5,
+   36,
+   ""
+  ],
+  [
+   "b-nip-1-on-1r",
+   0,
+   49,
+   "boot",
+   "fresh-nippon",
+   "on",
+   341120,
+   48165,
+   -1,
+   "",
+   ""
+  ],
+  [
+   "b-nip-1-on-2",
+   0,
+   105,
+   "boot",
+   "fresh-nippon",
+   "on",
+   909256,
+   45873,
+   2,
+   36,
+   ""
+  ],
+  [
+   "b-nip-1-on-3",
+   0,
+   104,
+   "boot",
+   "fresh-nippon",
+   "on",
+   174262,
+   45500,
+   1.7,
+   36,
+   ""
+  ],
+  [
+   "b-nip-10-off-1",
+   0,
+   63,
+   "boot",
+   "fresh-nippon",
+   "off",
+   671628,
+   20693,
+   9.8,
+   36,
+   ""
+  ],
+  [
+   "b-nip-10-off-2",
+   0,
+   60,
+   "boot",
+   "fresh-nippon",
+   "off",
+   1171873,
+   21538,
+   9,
+   36,
+   ""
+  ],
+  [
+   "b-nip-10-off-3",
+   0,
+   62,
+   "boot",
+   "fresh-nippon",
+   "off",
+   435688,
+   20227,
+   10.8,
+   36,
+   ""
+  ],
+  [
+   "b-nip-10-on-1",
+   0,
+   104,
+   "boot",
+   "fresh-nippon",
+   "on",
+   749882,
+   45916,
+   12.3,
+   36,
+   ""
+  ],
+  [
+   "b-nip-10-on-2",
+   0,
+   111,
+   "boot",
+   "fresh-nippon",
+   "on",
+   1162553,
+   49089,
+   6.8,
+   36,
+   ""
+  ],
+  [
+   "b-nip-10-on-3",
+   0,
+   103,
+   "boot",
+   "fresh-nippon",
+   "on",
+   409525,
+   45990,
+   12.1,
+   36,
+   ""
+  ],
+  [
+   "b-nip-2-off-1",
+   0,
+   55,
+   "boot",
+   "fresh-nippon",
+   "off",
+   330373,
+   20802,
+   1.7,
+   36,
+   ""
+  ],
+  [
+   "b-nip-2-off-2",
+   0,
+   56,
+   "boot",
+   "fresh-nippon",
+   "off",
+   995711,
+   21161,
+   1.4,
+   36,
+   ""
+  ],
+  [
+   "b-nip-2-off-3",
+   0,
+   55,
+   "boot",
+   "fresh-nippon",
+   "off",
+   259881,
+   21166,
+   1.4,
+   36,
+   ""
+  ],
+  [
+   "b-nip-2-on-1",
+   0,
+   104,
+   "boot",
+   "fresh-nippon",
+   "on",
+   411042,
+   45565,
+   2.4,
+   36,
+   ""
+  ],
+  [
+   "b-nip-2-on-2",
+   0,
+   111,
+   "boot",
+   "fresh-nippon",
+   "on",
+   970343,
+   48318,
+   0.6,
+   36,
+   ""
+  ],
+  [
+   "b-nip-2-on-3",
+   0,
+   104,
+   "boot",
+   "fresh-nippon",
+   "on",
+   249548,
+   46390,
+   2.5,
+   36,
+   ""
+  ],
+  [
+   "b-nip-30-off-1",
+   0,
+   107,
+   "boot",
+   "fresh-nippon",
+   "off",
+   850954,
+   20702,
+   57.6,
+   36,
+   ""
+  ],
+  [
+   "b-nip-30-off-2",
+   0,
+   82,
+   "boot",
+   "fresh-nippon",
+   "off",
+   1244013,
+   20787,
+   29.7,
+   36,
+   ""
+  ],
+  [
+   "b-nip-30-off-3",
+   0,
+   80,
+   "boot",
+   "fresh-nippon",
+   "off",
+   507721,
+   22433,
+   28.5,
+   36,
+   ""
+  ],
+  [
+   "b-nip-30-on-1",
+   0,
+   108,
+   "boot",
+   "fresh-nippon",
+   "on",
+   972021,
+   46107,
+   32.2,
+   36,
+   ""
+  ],
+  [
+   "b-nip-30-on-2",
+   0,
+   103,
+   "boot",
+   "fresh-nippon",
+   "on",
+   1249598,
+   45651,
+   30.2,
+   36,
+   ""
+  ],
+  [
+   "b-nip-30-on-3",
+   0,
+   109,
+   "boot",
+   "fresh-nippon",
+   "on",
+   512761,
+   51075,
+   25.9,
+   36,
+   ""
+  ],
+  [
+   "b-nip-5-off-1",
+   0,
+   58,
+   "boot",
+   "fresh-nippon",
+   "off",
+   494522,
+   19998,
+   5.5,
+   36,
+   ""
+  ],
+  [
+   "b-nip-5-off-2",
+   0,
+   61,
+   "boot",
+   "fresh-nippon",
+   "off",
+   1069773,
+   22183,
+   3.4,
+   36,
+   ""
+  ],
+  [
+   "b-nip-5-off-3",
+   0,
+   58,
+   "boot",
+   "fresh-nippon",
+   "off",
+   333549,
+   20509,
+   5.4,
+   36,
+   ""
+  ],
+  [
+   "b-nip-5-on-1",
+   0,
+   104,
+   "boot",
+   "fresh-nippon",
+   "on",
+   575176,
+   45641,
+   5.3,
+   36,
+   ""
+  ],
+  [
+   "b-nip-5-on-2",
+   0,
+   111,
+   "boot",
+   "fresh-nippon",
+   "on",
+   1090474,
+   48341,
+   2.5,
+   36,
+   ""
+  ],
+  [
+   "b-nip-5-on-3",
+   0,
+   102,
+   "boot",
+   "fresh-nippon",
+   "on",
+   338629,
+   44389,
+   7.6,
+   36,
+   ""
+  ],
+  [
+   "b-nip-60-off-1",
+   0,
+   134,
+   "boot",
+   "fresh-nippon",
+   "off",
+   1078119,
+   20429,
+   87.9,
+   36,
+   ""
+  ],
+  [
+   "b-nip-60-off-2",
+   0,
+   109,
+   "boot",
+   "fresh-nippon",
+   "off",
+   1336092,
+   22805,
+   57.7,
+   36,
+   ""
+  ],
+  [
+   "b-nip-60-off-3",
+   0,
+   108,
+   "boot",
+   "fresh-nippon",
+   "off",
+   600171,
+   22526,
+   58.1,
+   36,
+   ""
+  ],
+  [
+   "b-nip-60-on-1",
+   0,
+   133,
+   "boot",
+   "fresh-nippon",
+   "on",
+   1214166,
+   43858,
+   64.4,
+   36,
+   ""
+  ],
+  [
+   "b-nip-60-on-2",
+   0,
+   133,
+   "boot",
+   "fresh-nippon",
+   "on",
+   1356665,
+   47147,
+   58.7,
+   36,
+   ""
+  ],
+  [
+   "b-nip-60-on-3",
+   0,
+   131,
+   "boot",
+   "fresh-nippon",
+   "on",
+   619864,
+   50197,
+   56.8,
+   36,
+   ""
+  ],
+  [
+   "lrx1200-off",
+   0,
+   3030,
+   "lrx",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "1201/1201날 · 마디 700→800 606s 800→900 572s 900→1000 639s 1000→1100 2043s 1100→1200 530s 1200→1201 37s"
+  ],
+  [
+   "lrx1200-on",
+   0,
+   594,
+   "lrx",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "1201/1201날 · 마디 700→800 457s 800→900 546s 900→1000 594s 1000→1100 626s 1100→1200 540s 1200→1201 52s"
+  ],
+  [
+   "scout-ck1200-off",
+   0,
+   25,
+   "boot",
+   "ck1200-off",
+   "off",
+   "",
+   19750,
+   838.4,
+   51,
+   ""
+  ],
+  [
+   "scout-ck1200-on",
+   0,
+   46,
+   "boot",
+   "ck1200-on",
+   "on",
+   "",
+   39437,
+   864.5,
+   51,
+   ""
+  ],
+  [
+   "scout-ck700-off",
+   0,
+   20,
+   "boot",
+   "ck700-off",
+   "off",
+   "",
+   16008,
+   74.7,
+   51,
+   ""
+  ],
+  [
+   "scout-ck700-on",
+   0,
+   37,
+   "boot",
+   "ck700-on",
+   "on",
+   "",
+   34495,
+   102.3,
+   51,
+   ""
+  ],
+  [
+   "scout-fresh-hanbando",
+   0,
+   41,
+   "boot",
+   "fresh-hanbando",
+   "on",
+   "",
+   39146,
+   382.6,
+   51,
+   ""
+  ],
+  [
+   "scout-fresh-nippon",
+   0,
+   50,
+   "boot",
+   "fresh-nippon",
+   "on",
+   "",
+   48503,
+   210.1,
+   36,
+   ""
+  ],
+  [
+   "x-main",
+   0,
+   551,
+   "cross",
+   "fresh-two",
+   "main",
+   197506,
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "x-near",
+   0,
+   553,
+   "cross",
+   "fresh-two",
+   "near",
+   76427,
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "xc-main",
+   0,
+   184,
+   "cross",
+   "fresh-two",
+   "main",
+   1025200,
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "xc-near",
+   0,
+   186,
+   "cross",
+   "fresh-two",
+   "near",
+   904107,
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "xc2-main",
+   0,
+   158,
+   "cross",
+   "fresh-two",
+   "main",
+   190532,
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "xc2-near",
+   0,
+   161,
+   "cross",
+   "fresh-two",
+   "near",
+   174512,
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "xcn-main",
+   0,
+   186,
+   "cross",
+   "fresh-two",
+   "main",
+   533925,
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "xcn-near",
+   0,
+   187,
+   "cross",
+   "fresh-two",
+   "near",
+   457873,
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "xcn2-main",
+   0,
+   159,
+   "cross",
+   "fresh-two",
+   "main",
+   1290410,
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "xcn2-near",
+   0,
+   159,
+   "cross",
+   "fresh-two",
+   "near",
+   1274383,
+   "",
+   "",
+   "",
+   ""
+  ]
+ ]
+}

@@ -1,0 +1,6 @@
+[econ-sim-v2] specialty.js 통합: 276종 → 총 296 TRADABLE
+  ✓ 미끼 표시 빔 거절 → EMPTY_CACHE 빨강 바꾼 자리 1
+  ✓ 미끼 먼 곳 허용 → FAR_BODY 빨강 바꾼 자리 1
+  ✓ 미끼 맞닿은 다른 주인 → OWNER_CANONICAL 빨강 바꾼 자리 1
+  ✓ 미끼 끔 변경 → OFF_BYTES 빨강 바꾼 자리 1
+통과 T1490 handler · 코너 · 판정 동일 8 · OFF 바이트 40 · 미끼 4/4 (crash 0)

@@ -1,0 +1,107 @@
+[
+ {
+  "name": "wood-off-base",
+  "command": [
+   "node",
+   "scripts/server-baseline-check.js",
+   "--make",
+   "/workspace/Mini-t1496/\uacc4\uce21/T1496_2026-11-27/wood-off-base.json",
+   "--days",
+   "30",
+   "--seeds",
+   "1020",
+   "--par",
+   "1",
+   "--vclock"
+  ],
+  "env": {
+   "T325_WOOD_ACT": "1",
+   "T1496_BODY_FIRST": "0",
+   "NODE_OPTIONS": "--require /tmp/t1496/base-hook.cjs"
+  },
+  "sourceSha256": "693e98ab4a9f5f8fbdb64e81d403721169a3f4d459f7a520faf08c5d078dcaa1",
+  "baseSourceSha256": "9b7adda7d10ddbcfe208d97eb36375ddc2f6e68e9a63b7fdebddf18821f45862",
+  "state": "finished",
+  "exit": 0,
+  "seconds": 100.576
+ },
+ {
+  "name": "wood-off-compare",
+  "command": [
+   "node",
+   "scripts/server-baseline-check.js",
+   "/workspace/Mini-t1496/\uacc4\uce21/T1496_2026-11-27/wood-off-base.json",
+   "--days",
+   "30",
+   "--seeds",
+   "1020",
+   "--par",
+   "1",
+   "--vclock"
+  ],
+  "env": {
+   "T325_WOOD_ACT": "1",
+   "T1496_BODY_FIRST": "0"
+  },
+  "sourceSha256": "693e98ab4a9f5f8fbdb64e81d403721169a3f4d459f7a520faf08c5d078dcaa1",
+  "baseSourceSha256": "9b7adda7d10ddbcfe208d97eb36375ddc2f6e68e9a63b7fdebddf18821f45862",
+  "state": "finished",
+  "exit": 0,
+  "seconds": 102.431
+ },
+ {
+  "name": "body-on-plain",
+  "command": [
+   "node",
+   "scripts/server-baseline-check.js",
+   "--make",
+   "/workspace/Mini-t1496/\uacc4\uce21/T1496_2026-11-27/body-on-plain.json",
+   "--days",
+   "3",
+   "--seeds",
+   "1020",
+   "--par",
+   "1",
+   "--vclock",
+   "--body-day",
+   "--bodies"
+  ],
+  "env": {
+   "T325_WOOD_ACT": "1",
+   "T1496_BODY_FIRST": "1"
+  },
+  "sourceSha256": "693e98ab4a9f5f8fbdb64e81d403721169a3f4d459f7a520faf08c5d078dcaa1",
+  "baseSourceSha256": "9b7adda7d10ddbcfe208d97eb36375ddc2f6e68e9a63b7fdebddf18821f45862",
+  "state": "finished",
+  "exit": 0,
+  "seconds": 101.617
+ },
+ {
+  "name": "body-on-observed",
+  "command": [
+   "node",
+   "scripts/server-baseline-check.js",
+   "/workspace/Mini-t1496/\uacc4\uce21/T1496_2026-11-27/body-on-plain.json",
+   "--days",
+   "3",
+   "--seeds",
+   "1020",
+   "--par",
+   "1",
+   "--vclock",
+   "--body-day",
+   "--bodies"
+  ],
+  "env": {
+   "T325_WOOD_ACT": "1",
+   "T1496_BODY_FIRST": "1",
+   "NODE_OPTIONS": "--require /tmp/t1496/observe.cjs",
+   "T1496_OBS_OUT": "/workspace/Mini-t1496/\uacc4\uce21/T1496_2026-11-27/body-on-observed.json"
+  },
+  "sourceSha256": "693e98ab4a9f5f8fbdb64e81d403721169a3f4d459f7a520faf08c5d078dcaa1",
+  "baseSourceSha256": "9b7adda7d10ddbcfe208d97eb36375ddc2f6e68e9a63b7fdebddf18821f45862",
+  "state": "finished",
+  "exit": 0,
+  "seconds": 112.38
+ }
+]
