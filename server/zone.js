@@ -4152,6 +4152,7 @@ const T806_HOT_INOBJ = process.env.T806_HOT_INOBJ !== '0';   // ★[T806 ③] �
 const T671_SHAPE = process.env.T671_SHAPE !== '0';   // ★PM 10-07 켬 기본(바이트 같음 · 되돌림 =0)
 const T1422_SIDE = !!(process.env.T1422_SIDE_WORK && process.env.T1422_SIDE_WORK !== '0');   // ★[T1422] villages `_T1422_K` 와 같은 env(몸 칸 규약 — 아래 한 줄)
 const T1451_SITES_Z = process.env.T1451_SITES === '1';   // ★[T1451] villages `T1451_SITES` 와 같은 env(몸 칸 규약 — `_t671Shape` 한 줄)
+const T1502_ACT_FIX_Z = process.env.T1502_ACT_FIX === '1';   // ★[T1502] villages `T1502_ACT_FIX` 와 같은 env(몸 칸 규약 — `_t671Shape` 한 줄)
 function _t671Shape(p) {
   p.simJob = undefined; p._dOff = undefined; p._half = undefined; p._hd = undefined; p._huntOn = undefined; p._huntSpd = undefined; p._lifeAct = undefined;
   p._lifeActAt = undefined; p._pathAt = undefined; p._pathFor = undefined; p._rdK = undefined; p._rdMul = undefined; p._sh = undefined; p._simCloth = undefined;
@@ -4175,6 +4176,7 @@ function _t671Shape(p) {
   if (T1393_HUNT_CHASE && process.env.T1416_CARRY_HOME === '1' && process.env.T1439_CALL_CARRY === '1') p._t1439H = undefined;   // ★[T1439] 불려 온 몸의 고기 손(villages `_t1439Step` — 켬일 때만 서는 칸 · test-body-fields 규약)
   p.oreLedger = undefined; p._t1180FullFish = undefined; p._t1181Haul = undefined; p._t1197M1 = undefined; p._t1197M0 = undefined; p._t1195At = undefined; p._t1212N = undefined; p._t1217H = undefined; p._t1217Stop = undefined;   /* ★[PM land1052 · T1220-K3] T1212 · T1217 몸 칸 셋 */   /* ★[PM land1050 · T1208-K4 회부 2] land1049 가 연 몸 칸 셋(T1197 끼니 · T1195 사냥) */   // ★[PM land1048 · T1188 · T1180 · T1181] 가지들이 보탠 몸 칸 셋 — 스폰 꼴에 미리(test-body-fields · 숨은 클래스 한 벌)
   if (T1451_SITES_Z) p._t1451Cut = undefined;   // ★[T1451] 벤 그루 사이 시간 표(villages T325 갈래 — 켬일 때만 서는 칸 · test-body-fields 규약)
+  if (T1502_ACT_FIX_Z) p._t1502F = undefined;   // ★[T1502] 채집꾼 몸의 채집 칸 · 손 몫(villages `_t1502ForageStep` — 손잡이 `T1502_ACT_FIX` 켬일 때만 서는 칸 · 끔 = 이 줄 무동작 · test-body-fields 규약)
   if (T1422_SIDE) { p._t1422J = undefined; p._t1422D = undefined; p._t1422T = undefined; p._t1422At = undefined; }   // ★[T1422] 남는 시간 일 몸 칸 넷(villages `_t1422Side` — 손잡이 `T1422_SIDE_WORK` 켬일 때만 서는 칸 · 끔 = 이 줄 무동작 · test-body-fields 규약)
   if (T1144_LIFE_EVENT) p._t1144Sp = undefined;   // ★[T1144 ② · T1154] 어부 던짐 종의 지난 답(villages.js `_t1144SpGet` — 손잡이 켬일 때만 서는 칸 · 끔 = 이 줄 무동작)
   if (T1241_DES) p._des = undefined;   // ★[T1252] T1241 몸 토막(`_desBegin` · `_desEnd` — 손잡이 `T1241_DES` 켬일 때만 서는 칸 · 끔 = 이 줄 무동작 · test-body-fields 규약)
