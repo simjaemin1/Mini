@@ -9,17 +9,14 @@ let pass=0;function check(name,fn){try{fn();}catch(e){console.error('✗ '+name)
 const dir=process.env.T1517_CONTRACT_OUT||require('./lib-tmp').dir('war_snapshot_contract');fs.mkdirSync(dir,{recursive:true});
 function mutant(file,arg,expect){const r=cp.spawnSync(process.execPath,[path.join(__dirname,file),String(arg)],{env:process.env,encoding:'utf8',timeout:60000,maxBuffer:2e6});fs.writeFileSync(path.join(dir,file+'-'+arg+'.txt'),r.stdout+r.stderr);assert.strictEqual(r.status,1,'assertion-red exit');assert(r.stderr.includes('AssertionError [ERR_ASSERTION]')&&r.stderr.includes(expect),r.stderr);assert(!/(TypeError:|ReferenceError:|RangeError:|FATAL ERROR)/.test(r.stderr),'no nonassert crash');}
 try{
- const bundleNames=[
-  '미끼 · 바꾼 자리1: 전쟁 몸/명부',
-  '미끼 · 바꾼 자리2: 대형/포진',
-  '미끼 · 바꾼 자리3: 걸음/탐색',
-  '미끼 · 바꾼 자리4: battle units',
-  '미끼 · 바꾼 자리5: ctx 탄/적용상태',
-  '미끼 · 바꾼 자리6: 비행탄',
-  '미끼 · 바꾼 자리7: RNG 현재값',
-  '미끼 · 바꾼 자리8: fight 제어/시각'
- ];
- for(let k=1;k<=8;k++)check(bundleNames[k-1],()=>mutant('war-snapshot-bundle-child.js',k,'missing bundle '+k));
+ check('미끼 · 바꾼 자리1: 전쟁 몸/명부',()=>mutant('war-snapshot-bundle-child.js',1,'missing bundle 1'));
+ check('미끼 · 바꾼 자리2: 대형/포진',()=>mutant('war-snapshot-bundle-child.js',2,'missing bundle 2'));
+ check('미끼 · 바꾼 자리3: 걸음/탐색',()=>mutant('war-snapshot-bundle-child.js',3,'missing bundle 3'));
+ check('미끼 · 바꾼 자리4: battle units',()=>mutant('war-snapshot-bundle-child.js',4,'missing bundle 4'));
+ check('미끼 · 바꾼 자리5: ctx 탄/적용상태',()=>mutant('war-snapshot-bundle-child.js',5,'missing bundle 5'));
+ check('미끼 · 바꾼 자리6: 비행탄',()=>mutant('war-snapshot-bundle-child.js',6,'missing bundle 6'));
+ check('미끼 · 바꾼 자리7: RNG 현재값',()=>mutant('war-snapshot-bundle-child.js',7,'missing bundle 7'));
+ check('미끼 · 바꾼 자리8: fight 제어/시각',()=>mutant('war-snapshot-bundle-child.js',8,'missing bundle 8'));
  check('미끼 · 바꾼 자리9: 도장없는 옛 저장을 통째 저장으로 오독',()=>mutant('war-snapshot-policy-child.js','legacy','unsealed legacy bytes must retain legacy behavior'));
  check('미끼 · 바꾼 자리10: OFF 한 칸 변조',()=>mutant('war-snapshot-policy-child.js','off-cell','one OFF save cell changed'));
  check('미끼 · 바꾼 자리11: 실제 저장중 SIGKILL의 미완 WAL은 옛 완전 checkpoint를 유지한다',()=>{
