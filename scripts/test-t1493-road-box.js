@@ -173,7 +173,11 @@ function sock(q, opts) {
   ws.on('error', () => {});
   S.ready = (async () => { for (let k = 0; k < 400 && !(S.wel && (S.obs || S.pos)); k++) await sleep(50); return !!S.wel; })();
   S.send = (o) => { try { ws.send(J(o)); } catch (e) {} };
-  S.close = () => { try { ws.close(); } catch (e) {} };
+  //   살아 있음 쪽지 — 존은 30초 동안 입력 · ping 이 없는 소켓을 좀비로 끊는다(`STALE_WS_MS` · 순간 이동은 안 센다). 진짜 클라처럼 5초마다 ping
+  //   (없으면 남이 줄을 걷는 동안 서 있던 B 가 끊겨 Ⓓ 의 순간 이동이 안 선다 — 상자가 느릴 때만 · 흔들림)
+  const iv = setInterval(() => S.send({ type: 'ping', t: Date.now() }), 5000);
+  ws.on('close', () => clearInterval(iv));
+  S.close = () => { clearInterval(iv); try { ws.close(); } catch (e) {} };
   return S;
 }
 const ringOf = (px, py) => { const [cx, cy] = ckOf(px, py), out = []; for (let dx = -RR; dx <= RR; dx++) for (let dy = -RR; dy <= RR; dy++) out.push([cx + dx, cy + dy]); return out; };
