@@ -11,6 +11,7 @@
 // 판 이름: g-<off|keep|on>(날 지문 400날) · br-<off|on>(다리 서고 끊기는 판 200날) · b-<han|nip>-3-<off|on>-<n>(갓 뜬 세계 · 경계 3초 앞) ·
 //          f3 · f51-<off|on>-<n>(하루 0.6초 · 마을 3 · 51 — T1489 rl3 · rl51 꼴) · s- · o-han-3-<off|on>-<n>(저장에서 뜸 · 옛 저장본 꼴 T1340 끔) ·
 //          d60-<off|on>(하루 60초 실시계 · 평소 마감 틱) · x-<near|main>-fix(두 존 넘김 · 클라 고침 흉내) · scout-* · s-scout · lr-save
+//          ★[덧붙임 11-28] fh-<off|on>-<n> · fn-<off|on>-<n>(울타리 판 — T1512 꼴 22날 · 한반도 · 닛폰 · `t1503-fence-probe` 날 줄 · 주입 행렬 통째) · g2-<off|on>(날 지문 400날 — 덧붙임 코드)
 // =============================================================================
 const fs = require('fs'), path = require('path'), zlib = require('zlib');
 const A = process.argv.slice(2);
@@ -49,7 +50,18 @@ function pack(RAW, DIR) {
     if (!fs.existsSync(dn)) continue;
     const [rc, sec] = fs.readFileSync(dn, 'utf8').trim().split(/\s+/).map(Number);
     const rec = { tag, rc, sec };
-    if (/^(g|br)-/.test(tag)) {
+    if (/^f[hn]-/.test(tag)) {   // ★[덧붙임] 울타리 판
+      rec.kind = 'fence';
+      rec.days = readJsonl(path.join(D, 'fp.days.jsonl')).map((r) => ({ d: r.d, wall: r.wall, cpu: r.cpu, gen: r.gen, invXY: r.invXY, inv0: r.inv0, inj: (r.inj || []).map((x) => [x.d, x.why, x.h]), h: r.h, fence: r.fence }));
+      rec.mats = {}; for (const m of readJsonl(path.join(D, 'fp.mats.jsonl'))) rec.mats[m.h] = m.mat;
+      const sb = readJson(path.join(D, 'sbc.json')); if (sb) { delete sb.env; rec.sbc = sb; }
+      const bj = readJson(path.join(D, 'bots.json')); if (bj) { rec.botsG = bj.g; rec.botsDays = (bj.days || []).map((x) => ({ d: x.d, pop: x.pop, vills: x.vills, empty: x.empty, fd: x.fd, dead: x.dead, emig: x.emig, terr: x.terr })); }
+      const zl = (() => { try { return zlib.gunzipSync(fs.readFileSync(path.join(D, 'zone.log.gz'))).toString('utf8').split('\n'); } catch (e) { return []; } })();
+      rec.t1503 = zl.filter((l) => /\[T1503\]/.test(l)).map((l) => l.replace(/^\[[^\]]*\] /, '').slice(0, 200)).slice(0, 8);
+      rec.distLines = zl.filter((l) => /교역 BFS 거리행렬\(무효화 재계산\)/.test(l)).map((l) => { const m = /지형판정 (\d+)/.exec(l); return [/T1503 소스만 (\d+)/.test(l) ? '소스만 ' + /T1503 소스만 (\d+)/.exec(l)[1] : /T977 같은 격자/.test(l) ? '사본' : '전쌍', m ? +m[1] : null]; });   // 가상 시계라 로그 ms 는 가상 — 대신 코스 칸 판정 수
+      rec.meta = readJsonl(path.join(D, 'fp.meta.jsonl'))[0] || null;
+      rec.closes = readJsonl(path.join(D, 'probe.jsonl')).filter((r) => r.kind === 'tail').map((r) => [r.d, R(r.sumMs), R(((r.top || []).find((t) => t[0] === 'dist') || [0, 0])[1])]);   // 꼬리 마감 조각 CPU 합 · 그 안 거리 조각
+    } else if (/^(g|br|g2)-/.test(tag)) {
       rec.kind = 'sbc';
       rec.gate = gateLines(readTxt(path.join(D, 'run.log')));
       const P = readJsonl(path.join(D, 'probe.jsonl'));
@@ -100,7 +112,7 @@ function pack(RAW, DIR) {
     out.push(rec);
   }
   const tests = {};
-  try { for (const f of fs.readdirSync(path.join(RAW, 'tests')).filter((x) => /\.rc$/.test(x)).sort()) { const [rc, s] = readTxt(path.join(RAW, 'tests', f)).trim().split(/\s+/).map(Number); const lg = readTxt(path.join(RAW, 'tests', f.replace(/\.rc$/, '.log'))).split('\n').filter((l) => /결과|PASS|FAIL|통과|건 중/.test(l)).slice(-1)[0] || ''; tests[f.replace(/\.rc$/, '')] = { rc, s, last: lg.trim().slice(0, 160) }; } } catch (e) { /* */ }
+  try { for (const f of fs.readdirSync(path.join(RAW, 'tests')).filter((x) => /\.rc$/.test(x)).sort()) { const [rc, s] = readTxt(path.join(RAW, 'tests', f)).trim().split(/\s+/).map(Number); const lg = readTxt(path.join(RAW, 'tests', f.replace(/\.rc$/, '.log'))).split('\n').filter((l) => /결과|PASS|FAIL|통과|건 중|\d+\/\d+ ✓/.test(l)).slice(-1)[0] || ''; tests[f.replace(/\.rc$/, '')] = { rc, s, last: lg.trim().slice(0, 160) }; } } catch (e) { /* */ }
   out.push({ tag: '~tests', tests });
   fs.mkdirSync(DIR, { recursive: true });
   fs.writeFileSync(path.join(DIR, 'packed.jsonl.gz'), zlib.gzipSync(out.map((o) => JSON.stringify(o)).join('\n') + '\n', { level: 9 }));
@@ -126,11 +138,31 @@ function table(DIR, mdOut, jsonOut) {
   const d60 = (tag) => { const r = T.get(tag); const z = r && r.z && r.z.hanbando; return z && z.jobs ? Object.assign({ tails: z.tails }, z.jobs) : null; };
   const D60 = { off: d60('d60-off'), on: d60('d60-on') };
   const gate = (tag) => { const r = T.get(tag); return r ? { rc: r.rc, sec: r.sec, gate: r.gate, t1503: r.t1503, dist: r.distRuns, jobs: r.jobs ? { atomMax: r.jobs.atomMax, atomTop: r.jobs.atomTop, tailSumMed: r.jobs.tailSumMed, top: r.jobs.jobs.slice(0, 10) } : null, bridge: r.bridge || null } : null; };
-  const G = { off: gate('g-off'), keep: gate('g-keep'), on: gate('g-on'), broff: gate('br-off'), bron: gate('br-on') };
+  const G = { off: gate('g-off'), keep: gate('g-keep'), on: gate('g-on'), broff: gate('br-off'), bron: gate('br-on'), off2: gate('g2-off'), on2: gate('g2-on') };
   const cross = (tag) => { const r = T.get(tag); if (!r || !r.trials) return null; const t = r.trials.filter((x) => !x.err); return { n: t.length, err: r.trials.length - t.length, refused: t.filter((x) => x.refused).length, client: t.filter((x) => x.part === 'client').length, server: t.filter((x) => x.part === 'server').length, collide: t.filter((x) => x.n === x.h).length, briefCollide: t.filter((x) => x.n === x.h && x.briefN).length, refusedCollide: t.filter((x) => x.n === x.h && x.refused).length, withheld: t.reduce((s, x) => s + x.withheld, 0), overlap: r.meta.vidOverlap }; };
   const X = { near: cross('x-near-fix'), main: cross('x-main-fix') };
   const tests = (T.get('~tests') || {}).tests || {};
-  const H = { S, Q, D60, G, X, tests, runs: rows.filter((r) => r.tag[0] !== '~').map((r) => [r.tag, r.rc, r.sec]) };
+  //   ★[덧붙임] 울타리 판 — 끔 ↔ 켬 맞대기(날마다 행렬 sha1 · 주입마다 행렬 통째 칸마다 · 판 자 지문 · 울타리 날 이튿날 하루 걸린 초 · 거리 발생기 CPU)
+  const fencePair = (offTag, onTag) => {
+    const a = T.get(offTag), b = T.get(onTag); if (!a || !b || a.kind !== 'fence' || b.kind !== 'fence') return null;
+    const byD = (r) => new Map(r.days.map((x) => [x.d, x]));
+    const A = byD(a), B = byD(b), ds = [...A.keys()].filter((d) => B.has(d)).sort((x, y) => x - y);
+    const ev = ds.filter((d) => A.get(d).invXY > 0);
+    const plain = ds.filter((d) => d >= 2 && !ev.includes(d) && !ev.includes(d - 1));
+    const injA = a.days.flatMap((x) => x.inj), injB = b.days.flatMap((x) => x.inj);
+    let cells = 0, diff = 0, pairs = 0;
+    for (let i = 0; i < Math.min(injA.length, injB.length); i++) { const ma = a.mats[injA[i][2]], mb = b.mats[injB[i][2]]; if (!ma || !mb) { diff++; continue; } pairs++; for (let r = 0; r < ma.length; r++) for (let c = 0; c < ma.length; c++) { cells++; if (ma[r][c] !== (mb[r] || [])[c]) diff++; } }
+    const rows = ev.map((d, k) => { const x = A.get(d), y = B.get(d), nx = A.get(d + 1), ny = B.get(d + 1); const cl = (r, dd) => (r.closes || []).filter((c) => c[0] === dd); const g0 = (x) => String(Math.round(x)).replace(/\B(?=(\d{3})+(?!\d))/g, ','), sc = (r, dd) => { const c = cl(r, dd); return c.length ? `${g0(c.reduce((t, q) => t + q[1], 0))}(거리 ${g0(c.reduce((t, q) => t + q[2], 0))})` : '—'; };
+      return { d, kind: k === 0 ? '놓음(+길막기)' : (k % 2 ? '헒' : '놓음'), inv: x.invXY, offClose: sc(a, d + 1), onClose: sc(b, d + 1), offWall: nx ? R1(nx.wall) : null, onWall: ny ? R1(ny.wall) : null, offGen: nx ? nx.gen : null, onGen: ny ? ny.gen : null, offInj: nx ? nx.inj.map((q) => q[2].slice(0, 8)).join(',') : '', onInj: ny ? ny.inj.map((q) => q[2].slice(0, 8)).join(',') : '', fence: ny && ny.fence ? ny.fence : null }; });
+    const medW = (M) => R1(med(plain.map((d) => M.get(d).wall)));
+    for (const e of rows) { e.offPlus = e.offWall == null ? null : R1(e.offWall - medW(A)); e.onPlus = e.onWall == null ? null : R1(e.onWall - medW(B)); }   // 이튿날 − 고른 날 가운데(판마다 상자 짐이 달라 날 초를 그대로 못 맞댄다)
+    const fp = (r) => JSON.stringify(r.sbc || null), bd = (r) => JSON.stringify(r.botsDays || null);
+    const sum = (M, k) => R1(ds.filter((d) => d >= 1).reduce((t, d) => t + (M.get(d)[k] || 0), 0));
+    return { offTag, onTag, days: ds.length, ev: rows, genOff: sum(A, 'gen'), genOn: sum(B, 'gen'), wallOff: sum(A, 'wall'), wallOn: sum(B, 'wall'), plainOff: medW(A), plainOn: medW(B), hashDays: ds.filter((d) => A.get(d).h === B.get(d).h).length, injOff: injA.length, injOn: injB.length, injSame: injA.length === injB.length && injA.every((x, i) => x[2] === injB[i][2]), cells, diff, pairs, sbcSame: fp(a) === fp(b) && !!a.sbc, botsSame: bd(a) === bd(b) && !!a.botsDays, onLast: b.days.length ? b.days[b.days.length - 1].fence : null, distOff: a.distLines, distOn: b.distLines, t1503: b.t1503, rc: [a.rc, b.rc], sec: [a.sec, b.sec], acts: a.botsG ? { block: a.botsG.block, bridge: a.botsG.bridge } : null };
+  };
+  const latest = (re) => rows.filter((r) => re.test(r.tag)).map((r) => r.tag).sort().pop();
+  const FN = { han: fencePair(latest(/^fh-off-/), latest(/^fh-on-/)), nip: fencePair(latest(/^fn-off-/), latest(/^fn-on-/)) };
+  const H = { S, Q, D60, G, X, FN, tests, runs: rows.filter((r) => r.tag[0] !== '~').map((r) => [r.tag, r.rc, r.sec]) };
   if (jsonOut) fs.writeFileSync(jsonOut, JSON.stringify(H, null, 1) + '\n');
   const f0 = (x) => (x == null ? '—' : String(Math.round(x)).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
   const s1 = (x) => (x == null ? '—' : (x / 1000).toFixed(1));
@@ -152,6 +184,10 @@ function table(DIR, mdOut, jsonOut) {
   const gl = (g) => (g ? (g.gate || []).filter((l) => /같음|다름|실패/.test(l)).slice(-1)[0] || `rc ${g.rc}` : '—');
   L.push(`| 날 지문 400날 1020(서버기준선_2026-11-18 · 가상 시계) | ${gl(G.off)} | 거리만 켬 ${gl(G.keep)} · 둘 다 ${gl(G.on)} | g-* |`);
   L.push(`| 다리 서고 끊기는 판(T1455 · 200날 · 끔 판을 기준선으로) | 기준선 만들기 rc ${G.broff ? G.broff.rc : '—'} | ${gl(G.bron)} | br-* |`);
+  for (const [z, f] of Object.entries(FN)) if (f) { const ev = f.ev.filter((e) => e.kind !== '헒'), rz = f.ev.filter((e) => e.kind === '헒'); const span = (es, k) => { const v = es.map((e) => e[k]).filter((x) => x != null); return v.length ? `${Math.min(...v)} ~ ${Math.max(...v)}` : '—'; }; const gs = (es, k) => { const v = es.map((e) => e[k]).filter((x) => x != null); return v.length ? `${f0(Math.min(...v))} ~ ${f0(Math.max(...v))}` : '—'; };
+    L.push(`| 울타리 · 벽 날 이튿날 하루 걸린 초(${z === 'han' ? '한반도 51' : '닛폰 36'} · T1512 꼴 22날 · 놓은 날 ${ev.length} · 헌 날 ${rz.length} · 고른 날 가운데 끔 ${f.plainOff} · 켬 ${f.plainOn}) | 놓음 ${span(ev, 'offWall')} · 헒 ${span(rz, 'offWall')}초(고른 날 위로 +${span(f.ev, 'offPlus')} · 거리 CPU ${gs(f.ev, 'offGen')} ms) | 놓음 ${span(ev, 'onWall')} · 헒 ${span(rz, 'onWall')}초(+${span(f.ev, 'onPlus')} · 거리 CPU ${gs(f.ev, 'onGen')} ms) | ${f.offTag} ↔ ${f.onTag} §8 |`);
+    L.push(`| 〃 행렬 · 지문(${z}) | 주입 ${f.injOff}번 | 주입 sha1 차례 ${f.injSame ? '같음' : '다름'} · 칸 ${f0(f.cells)} 중 다름 ${f.diff} · 판 자 지문 ${f.sbcSame ? '같음' : '다름'} · 봇 귀 ${f.botsSame ? '같음' : '다름'} | §8 |`); }
+  L.push(`| 날 지문 400날 1020(덧붙임 코드) | ${gl(G.off2)} | ${gl(G.on2)} | g2-* |`);
   L.push(`| 두 존 넘김 \`/인출\` 거절(클라 고침 흉내) | main + 고침 ${X.main ? `${X.main.refused}/${X.main.n}` : '—'} | T1490 + 고침 ${X.near ? `${X.near.refused}/${X.near.n}` : '—'} | x-*-fix |`);
   L.push('');
   L.push('## §1 첫 마감 판마다 (판 · 경계 앞 실제 초 · 첫 꼬리 마감 ms · 그 마감 dist 단계 ms · 부팅 ms · 그 마감 가장 긴 드레인 틱 ms — 하루 0.6초 판 켬은 마감이 하루보다 길어 다음 창에 그 틱에 다 닫은 틱)', '');
@@ -172,6 +208,19 @@ function table(DIR, mdOut, jsonOut) {
   L.push('## §5 두 존 넘김 `/인출`(한반도 → 닛폰 걸어 넘김 · 클라 고침 흉내 = 새 몸 welcome 에 brief 표 비움)', '');
   for (const [k, x] of Object.entries(X)) if (x) L.push(`- **${k}**: 거절 ${x.refused}/${x.n}(클라 몫 ${x.client} · 서버 몫 ${x.server}) · 같은 번호 판(닛폰 N = 한반도 H 번호) ${x.collide}(그 판 닛폰 brief 보냄 ${x.briefCollide} · 거절 ${x.refusedCollide}) · 클라가 막은 brief ${x.withheld} · 겹치는 번호 ${x.overlap} · 판 실패 ${x.err}`);
   L.push('');
+  L.push('## §8 [덧붙임 11-28] 울타리 · 벽이 서거나 헐린 날(T1512 꼴 — t577 판 자 22날 · 시드 1020 · 봇 8 · 가상 시계 하루 24분)', '');
+  for (const [z, f] of Object.entries(FN)) {
+    if (!f) { L.push(`- **${z}** — 판 없음`, ''); continue; }
+    L.push(`- **${z}** 끔 \`${f.offTag}\` ↔ 켬 \`${f.onTag}\`(T1503_DIST_KEEP=1 · T1503_CLOSE_SLICE=1) · 판 끝 코드 ${f.rc.join(' · ')} · ${f.sec.join(' · ')}초 · 봇 손짓 길막기 ${f.acts ? `${f.acts.block.placed}/${f.acts.block.want}` : '—'} · 다리 머리 ${f.acts ? `놓음 ${f.acts.bridge.ok} · 헒 ${f.acts.bridge.removed}` : '—'}`, '');
+    L.push('| 울타리 날(손짓이 든 날) | 꼴 | 칸 준 무효화 | 이튿날 하루 걸린 초 끔 → 켬(고른 날 가운데 위로 + 초) | 이튿날 거리 발생기 CPU ms 끔 → 켬 | 이튿날 꼬리 마감 조각 CPU 합 ms(그 안 거리) 끔 → 켬 | 주입 행렬 sha1 끔 · 켬 | 켬 울타리 셈(누계: 사본 · 소스만 · 전쌍 · 그림자 바탕 · 다시 센 소스) |', '|---|---|---|---|---|---|---|---|');
+    for (const e of f.ev) L.push(`| ${e.d} | ${e.kind} | ${e.inv} | ${e.offWall}(+${e.offPlus}) → ${e.onWall}(+${e.onPlus}) | ${f0(e.offGen)} → ${f0(e.onGen)} | ${e.offClose} → ${e.onClose} | ${e.offInj || '—'} · ${e.onInj || '—'} | ${e.fence ? `${e.fence.same} · ${e.fence.pair} · ${e.fence.full} · ${e.fence.spec} · ${e.fence.src}` : '—'} |`);
+    L.push('', `- 울타리 없는 날(이튿날도 아닌 · 2날~) 하루 걸린 초 가운데: 끔 ${f.plainOff} · 켬 ${f.plainOn}`);
+    L.push(`- 판 전체(1날~) 거리 발생기 CPU 합 끔 ${f0(f.genOff)} ↔ 켬 ${f0(f.genOn)} ms(켬은 그림자 표 셈 포함 — 마감 밖 남은 몫) · 하루 걸린 초 합 끔 ${f.wallOff} ↔ 켬 ${f.wallOn}`);
+    L.push(`- 날 머리 행렬 sha1 같은 날 ${f.hashDays}/${f.days} · 주입 ${f.injOff} ↔ ${f.injOn}번 차례 · sha1 ${f.injSame ? '다 같음' : '다름'} · 주입 행렬 통째 칸마다 맞댐 ${f.pairs}쌍 ${f0(f.cells)}칸 중 다름 ${f.diff}`);
+    L.push(`- 판 자 지문(sbc.json — 여덟 수 · 날마다 줄 · 해체 · 도적 · 몸 나감 — env 뺌) ${f.sbcSame ? '같음' : '다름'} · 봇 귀 날마다 인구 · 빈 마을 · 죽음 · 떠남 · 영토 칸 ${f.botsSame ? '같음' : '다름'}`);
+    L.push(`- 거리 다시 세기 줄(까닭 · 코스 칸 지형 판정 수 — 가상 시계라 로그 ms 는 안 씀): 끔 ${f.distOff.map((x) => `${x[0]} ${x[1]}`).join(' · ') || '—'} / 켬 ${f.distOn.map((x) => `${x[0]} ${x[1]}`).join(' · ') || '—'}`);
+    L.push(`- 켬 [T1503] 존 로그: ${(f.t1503 || []).join(' ‖ ') || '—'}`, '');
+  }
   L.push('## §6 하네스(이 상자 · RAW/tests)', '');
   for (const [k, t] of Object.entries(tests)) L.push(`- ${k}: rc ${t.rc}${t.s == null ? '' : ` · ${t.s}초`} · ${t.last}`);
   L.push('');

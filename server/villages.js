@@ -4003,7 +4003,7 @@ function foundPlayerVillage(opts) {
     state._distIncrFrom = (world._distMatrix && world._distMatrix.length) ? world._distMatrix.length : -1;
   }
   state.distDirty = true;
-  if (T1503_DIST_KEEP) state._t1503Keep = null;   // ★[T1503] 마을이 섰다 — 사본 일 취소(증분이 센다)
+  if (T1503_DIST_KEEP) { state._t1503Keep = null; _t1503Ep++; }   // ★[T1503] 마을이 섰다 — 사본 일 취소(증분이 센다) · ★[덧붙임] 그림자 표 버림
   console.log(`[${state.zoneId}] 🏘️ ★플레이어 마을 건립 — [${name}] 셀(${ccx},${ccy}) 창설자 ${founder} · 인구 0 · 터 ${territory.length}셀 · land(F${lp.fertility}/W${lp.water}/S${lp.stone}/O${lp.ore}) day=${day}`);
   return { ok: true, vil, dbId, name };
 }
@@ -4090,8 +4090,22 @@ const T1440_ROAD_RULE = process.env.T1440_ROAD_RULE === '1';
 //     ⇒ BFS 0 · 같은 행렬 사본을 종전과 **같은 자리**(무효화 재계산 일 · 마감 ⑪ 주입)에 주입한다(주입이 하는 일 — econ `_near20` 비움 · 소문 비움 · 바탕 — 종전과 같은 순간).
 //     하나라도 바뀌었으면 종전처럼 전쌍 BFS(조각 · 마감 밖 T968) — 다만 안 바뀐 칸의 메모는 남아 이웃 잇기를 다시 안 잰다(같은 답).
 //   값이 같은 까닭: 메모 칸마다 지금 지형의 답이다(바뀐 칸 둘레는 다시 잼 · 나머지는 상자 안 칸이 그대로) → BFS 는 메모만 보니 같은 메모 = 같은 탐색 = 같은 행렬. 하네스 `test-t1503-day-close`.
+//   ★[T1503 덧붙임 11-28 · T1512 회부 1] **울타리 · 벽이 서거나 헐린 날(칸을 준 `invalidateTradeDistances`)도 같은 규칙 — 그날 전쌍을 통째로 다시 세던 것(+31초)을 바뀐 곳만.**
+//     울타리 · 벽은 거리행렬 술어(`_distCtx.ta` = 바위 · 도랑 · 물 − 다리)에 안 든다 — 종전 전쌍 다시 세기가 답을 바꾸는 길은 둘뿐이다:
+//       ① 그 칸 둘레 3×3 이웃 잇기를 지우고 다시 잼(`_t598Forget`) ② 코스 칸 메모(`_distBlk`)를 통째로 비워 다시 잼 — 도랑 적재는 이 메모를 안 비우니(종전 그대로)
+//          도랑이 바뀐 뒤 이 메모는 그 칸에서 옛 답이다(울타리 날 다시 세면 그 칸이 막혀 답이 바뀔 수 있다).
+//     켬: ① 판정했던 이웃 잇기만 그 자리에서 다시 판정 · ② 도랑이 바뀐 코스 칸(`_t1503Stale` — 도랑 적재마다 쌓고 통째 비움에 지운다) + 그 칸의 코스 칸만 다시 판정 →
+//       바뀐 노드 X. X 가 없고 지금 행렬이 지금 메모로 센 행렬이면 같은 행렬 사본(BFS 0) · X 가 있으면 **그 소스만** 다시 센다(`t1503p` — 전쌍과 같은 소스 · 같은 표적 · 같은 탐색 =
+//       그 행 값이 전쌍과 비트 같다). 소스 s 를 고르는 규칙: 옛 행렬에서 s 의 BFS 가 멈춘 값 c(뒤 표적 가장 먼 거리)와 X 의 팔방 거리(직 10 · 대각 14 — 실제 거리의 아래 끝)가
+//       c + 14 안이면 그 BFS 가 X 를 물었을 수 있다 → 다시 센다. 밖이면 옛 BFS 는 X 를 안 물었고 나머지 답이 같으니 그 행이 그대로다. 도달 못 한 표적이 있으면(다 훑음) 다시 센다.
+//       마을 스냅 노드가 바뀌면 · 행렬이 지금 메모 것이 아니면(다리 몫 쌍 일 · 증분 · 다른 무효화가 서 있음) 종전 전쌍(조각 · 마감 밖 T968). 주입 자리 · 주입 값 종전 그대로.
+//     ★그림자 표(`_t1503Spec`): 지금 행렬이 지금 그래프 것이 아닐 때(도랑이 바꾼 코스 칸이 남음 · 저장에서 되살린 행렬) 마감 밖 남은 몫(T968 자리 · 진짜 일이 없을 때)에서
+//       지금 그래프로 전쌍을 **미리** 세어 둔다(제 코스 칸 메모 · 주입 0 · 세계 값 무접촉). 그 뒤 그래프가 안 바뀌었으면(`_t1503Ep`) 울타리 날 그 표를 바탕으로 위 규칙(사본 · 소스만)을 쓴다
+//       — 첫 울타리 날(도랑 코스 칸이 막혀 끔 답이 바뀌는 날)도 그날 BFS 0. 값 = 지금 그래프 전쌍 = 그날 끔이 통째로 다시 센 표. 주입 자리 종전 그대로.
 const T1503_DIST_KEEP = process.env.T1503_DIST_KEEP === '1';
-const _t1503 = { keep: 0, redo: 0, nodes: 0, rejudged: 0, changed: 0, ms: 0, why: null, inject: 0, prevD: null, forced: 0, forcedMs: 0, forcedMax: 0, waits: 0 };
+const _t1503 = { keep: 0, redo: 0, nodes: 0, rejudged: 0, changed: 0, ms: 0, why: null, inject: 0, prevD: null, forced: 0, forcedMs: 0, forcedMax: 0, waits: 0,
+  fence: { n: 0, same: 0, pair: 0, full: 0, x: 0, src: 0, stale: 0, ms: 0, why: null, spec: 0 }, spec: { runs: 0, done: 0, drop: 0, ms: 0, slices: 0 } };   // ★[T1503 덧붙임] 울타리 · 벽 무효화(칸을 준 부름) — 사본 · 소스만 · 전쌍 · 바뀐 노드 · 다시 센 소스 · 다시 본 도랑 코스 칸 · 그림자 바탕 / 그림자 표 셈
+let _t1503Ep = 0;   // ★[T1503 덧붙임] 거리 그래프 · 마을이 바뀐 차례(무효화 · 도랑 적재 · 다리 몫 · 마을 생김) — 그림자 표가 아직 지금 그래프의 것인가
 // ★★[T1503 · T1467 회부 4 · 재민 10-05 "하루에 몰아서 처리하는 일이 있으면 안 된다" · 손잡이 `T1503_CLOSE_SLICE`('1' 만 켬 · ★기본 끔 = main 글자 그대로)] **평소 하루 마감도 틱 몫 안으로.**
 //   마감은 이미 조각 줄(`state.tickJobs` · T1 · T513 · T523 · T731)이고 드레인은 조각 **사이**에서만 몫(T687 `TB` · 16ms)을 본다 ⇒ 한 틱 = 몫 + 조각 하나.
 //   켬: ⓐ 통짜 둘(교역 `econ:trade` · 사건 장부 `events`)을 마을 하나씩 — T698 그 갈래 그대로(같은 발생기 · 같은 차례 · 마감 중 마을 몸 결정 얼림 =
@@ -4437,8 +4451,9 @@ function* _distMatrixGen(reason, opts) {
   //     그 훅은 zone.js 의 벽·울타리 설치/철거/파괴 네 지점이 전부 부르고 있다(코스 격자를 바꾸는 건 그것뿐).
   //   ★부팅 때 전쌍 계산이 이 격자를 이미 채우므로, 건립 시엔 BFS 만 남는다.
   const _basisOnly = !!(opts && opts.basisOnly);   // ★[T996] 바탕만 — 메모는 제 것(공유 메모 무접촉)
-  if (!_basisOnly && (!state._distBlk || state._distBlk.length !== gw * gh)) state._distBlk = new Int8Array(gw * gh);
-  const blk = _basisOnly ? new Int8Array(gw * gh) : state._distBlk;
+  const _spec = (T1503_DIST_KEEP && opts && opts.t1503spec && opts.t1503spec.blk.length === gw * gh) ? opts.t1503spec : null;   // ★[T1503 덧붙임] 그림자 표 — 제 코스 칸 메모 · 주입 0
+  if (!_basisOnly && !_spec && (!state._distBlk || state._distBlk.length !== gw * gh)) state._distBlk = new Int8Array(gw * gh);
+  const blk = _basisOnly ? new Int8Array(gw * gh) : (_spec ? _spec.blk : state._distBlk);
   let sampled = 0, bridgeSaved = 0;
   const isBlk = (gx, gy) => {
     if (gx < 0 || gy < 0 || gx >= gw || gy >= gh) return true;
@@ -4474,13 +4489,16 @@ function* _distMatrixGen(reason, opts) {
   if (_t55) { const W0 = world._distMatrix; for (let i = 0; i < M; i++) for (let j = 0; j < M; j++) mat[i][j] = W0[i][j]; for (const [s0, T] of _t55.want) for (const j of T) mat[s0][j] = mat[j][s0] = Infinity; }
   if (_prev) for (let i = 0; i < INCR; i++) for (let j = 0; j < INCR; j++) mat[i][j] = _prev[i][j];
   if (_same) for (let i = 0; i < M; i++) for (let j = 0; j < M; j++) mat[i][j] = _same[i][j];   // ★[T977] 같은 격자 — 바탕 행렬 사본(아래 BFS 0)
+  const _b03 = (opts && opts.base) || world._distMatrix;   // ★[T1503 덧붙임] 소스만 일의 바탕(그림자 표 · 아니면 지금 행렬)
+  const _p03 = (T1503_DIST_KEEP && opts && opts.t1503p && !_same && !_prev && !_t55 && !_spec && _b03 && _b03.length === M) ? opts.t1503p : null;   // ★[T1503 덧붙임] 울타리 날 — 고른 소스만(옛 행렬 사본 · 그 소스의 뒤 표적만 비워 아래 BFS 가 전쌍과 같은 탐색으로 채운다)
+  if (_p03) { const W0 = _b03; for (let i = 0; i < M; i++) for (let j = 0; j < M; j++) mat[i][j] = W0[i][j]; for (const s0 of _p03) for (let j = s0 + 1; j < M; j++) mat[s0][j] = mat[j][s0] = Infinity; _t1503.inject++; }
   const dist = new Int32Array(gw * gh);
   if (T598_ROUTE_COST || _T598E) _t598Arrays(gw, gh);
   const DIRS = [[1, 0, 10], [-1, 0, 10], [0, 1, 10], [0, -1, 10], [1, 1, 14], [1, -1, 14], [-1, 1, 14], [-1, -1, 14]];
   let _srcRuns = 0, _pops = 0;   // ★[T957] 양보 알갱이 셈(노드 `PATH_STEP_NODES` 개마다 한 번)
-  const _s0 = (_same ? M : (_prev ? INCR : 0)), _sN = _t55 ? _t55.src.length : M - _s0;   // ★[T1455] 쌍 일 = 고른 소스만(끔 = 종전 차례 그대로)
+  const _s0 = (_same ? M : (_prev ? INCR : 0)), _sN = _t55 ? _t55.src.length : (_p03 ? _p03.length : M - _s0);   // ★[T1455] 쌍 일 = 고른 소스만(끔 = 종전 차례 그대로)
   for (let _si = 0; _si < _sN; _si++) {
-    const s = _t55 ? _t55.src[_si] : _s0 + _si;
+    const s = _t55 ? _t55.src[_si] : (_p03 ? _p03[_si] : _s0 + _si);
     if (_pr) _t977Seg(_pr);
     yield;   // ★[T957] 소스 사이
     if (_pr) _t977Go(_pr);
@@ -4528,6 +4546,7 @@ function* _distMatrixGen(reason, opts) {
       buckets[c] = null; // 처리한 버킷 해제(메모리)
     }
   }
+  if (_spec) { _spec.mat = mat; _spec.node = srcNode; if (_pr) _t977End(_pr); return; }   // ★[T1503 덧붙임] 그림자 표 — 여기서 끝(주입 · 바탕 · 소문 · 덤프 0)
   // ★[T968] 다 셌다 — `hold` 면 주입 앞에서 한 번 더 선다(`'_ready'` · 하루 마감 ⑪ 이 이어 주입한다 · 주입 자리가 종전과 같다)
   if (_pr) _pr.hash = _t977Hash(mat);
   if (_basisOnly) {   // ★[T996] 바탕만 바꾸고 끝(주입 · 덤프 · 소문 캐시 · 세계 행렬 무접촉)
@@ -4541,7 +4560,7 @@ function* _distMatrixGen(reason, opts) {
   if (T977_DIST_SAME) state._distBasis = { coords: villages.map((v) => [v.coord.x, v.coord.y]), mat: mat.map((r) => r.slice()), blk: blk.slice() };   // ★[T977] 바탕(주입 앞 사본)
   // 주입 + 로그(유클리드 대비 증가율 — 강·산 우회가 잡히면 일부 쌍이 1.0×보다 커야 함)
   state.econ.setDistMatrix(world, mat);
-  if (T1503_DIST_KEEP) { state._t1503Mat = mat; if (_t1503.firstMs == null) _t1503.firstMs = Date.now() - t0; }   // ★[T1503] 지금 메모로 센 행렬(환호 적재가 이 행렬일 때만 BFS 를 건넌다) · 첫 BFS 벽시계(부팅 문턱)
+  if (T1503_DIST_KEEP) { state._t1503Mat = _t55 ? null : mat; state._t1503Node = srcNode; if (_t1503.firstMs == null) _t1503.firstMs = Date.now() - t0; }   // ★[T1503] 지금 메모로 센 행렬(환호 적재가 이 행렬일 때만 BFS 를 건넌다) · 첫 BFS 벽시계(부팅 문턱)
   //   ★[T598 자] 거리행렬을 파일로 남긴다(`T598_DIST_DUMP=<경로>` · 재는 판 전용 · 안 주면 이 줄 무동작) — 끔/켬 운송비 바뀐 쌍을 센다.
   if (process.env.T598_DIST_DUMP) { try { require('fs').writeFileSync(process.env.T598_DIST_DUMP, JSON.stringify({ names: villages.map((v) => v.name), mat: mat.map((r) => r.map((d) => (isFinite(d) ? +d.toFixed(3) : null))), ms: Date.now() - t0, t598: _t598Stats() })); } catch (e) {} }
   // ★[T7] 거리가 바뀌면 소문 도달표도 거짓이 된다 — 마을이 하나 늘어도 마찬가지다(행 크기가 바뀐다).
@@ -4556,7 +4575,7 @@ function* _distMatrixGen(reason, opts) {
     pairs++; sumR += r; if (r > maxR) maxR = r; if (r > 1.02) longer++; if (d > maxD) maxD = d;
   }
   if (_t55) { _t1455V.distJobs = (_t1455V.distJobs | 0) + 1; _t1455V.distMs = (_t1455V.distMs || 0) + (Date.now() - t0); _t1455V.distRuns = (_t1455V.distRuns | 0) + _srcRuns; _t1455V.distCpuMs = +((_t1455V.distCpuMs || 0) + (_t55.cpu0 ? (process.cpuUsage(_t55.cpu0).user + process.cpuUsage(_t55.cpu0).system) / 1000 : 0)).toFixed(2); }   // ★[T1455]
-  console.log(`[${state.zoneId}] 🏘️ 교역 BFS 거리행렬${reason ? `(${reason})` : ''}${_prev ? `[증분 ${INCR}→${M} · 소스 ${_srcRuns}회]` : ''}${_t55 ? `[★T1455 다리 몫 ${_t55.pairs}쌍 · 소스 ${_srcRuns}회]` : ''}${_same ? '[★T977 같은 격자 · BFS 0]' : ''}: ${M}마을 ${pairs + unreach}쌍 ${Date.now() - t0}ms (그리드 ${gw}×${gh}·step ${DIST_STEP}셀·지형판정 ${sampled}·다리구제 ${bridgeSaved}) — 유클리드 대비 평균 ×${pairs ? (sumR / pairs).toFixed(2) : '-'} 최대 ×${maxR.toFixed(2)} 우회쌍(>1.02배) ${longer} · 최장 ${maxD.toFixed(0)} · 도달불능 ${unreach}쌍`);
+  console.log(`[${state.zoneId}] 🏘️ 교역 BFS 거리행렬${reason ? `(${reason})` : ''}${_prev ? `[증분 ${INCR}→${M} · 소스 ${_srcRuns}회]` : ''}${_t55 ? `[★T1455 다리 몫 ${_t55.pairs}쌍 · 소스 ${_srcRuns}회]` : ''}${_same ? '[★T977 같은 격자 · BFS 0]' : ''}${_p03 ? `[★T1503 소스만 ${_p03.length}]` : ''}: ${M}마을 ${pairs + unreach}쌍 ${Date.now() - t0}ms (그리드 ${gw}×${gh}·step ${DIST_STEP}셀·지형판정 ${sampled}·다리구제 ${bridgeSaved}) — 유클리드 대비 평균 ×${pairs ? (sumR / pairs).toFixed(2) : '-'} 최대 ×${maxR.toFixed(2)} 우회쌍(>1.02배) ${longer} · 최장 ${maxD.toFixed(0)} · 도달불능 ${unreach}쌍`);
   if (M > 1 && pairs === 0) console.warn(`[${state.zoneId}] 🏘️ ⚠ 전 마을 상호 고립(BFS 도달 불능) — 지형 병리: 교역 전무 예상`);
   if (_pr) _t977End(_pr);   // ★[T977] 재는 판 전용
 }
@@ -4842,6 +4861,7 @@ function _t1327DitchRedig() {
   _t1327St.ditchRuns++;
   let f = []; try { f = ditchCells(); } catch (e) {}
   const D = new Set(); for (let i = 0; i + 1 < f.length; i += 2) D.add(f[i] * 65536 + f[i + 1]);
+  if (T1503_DIST_KEEP) _t1503Ep++;   // ★[T1503 덧붙임] 그래프가 바뀌었을 수 있다(그림자 표 버림)
   const _k1503 = T1503_DIST_KEEP ? _t1503Rejudge(D) : null;   // ★[T1503] 켬 = 도랑 둘레만 다시 판정(끔 = 아래 통째 비움 그대로)
   if (_k1503) { /* 메모는 다시 판정한 그대로 */ }
   else if (state._t598Edge) { state._t598Edge.done.fill(0); state._t598Edge.ok.fill(0); }
@@ -4883,6 +4903,9 @@ function _t1503Rejudge(D) {
   const t0 = Date.now(), E = state._t598Edge, gw = state._t598Gw | 0, ctx = state._distCtx;
   const prev = _t1503.prevD || new Set();   // 옛 도랑 칸(이 프로세스 첫 적재 = 빈 집합 — zone.js 도랑 콜라이더가 비어 있었다)
   _t1503.prevD = D;
+  { const S = state._t1503Stale || (state._t1503Stale = new Set());   // ★[T1503 덧붙임] 도랑이 바뀐 코스 칸 — 코스 칸 메모(`_distBlk`)는 도랑 적재가 안 비운다(종전) · 울타리 날 그 칸만 다시 판정
+    for (const k of D) if (!prev.has(k)) S.add(Math.floor(((k / 65536) | 0) / DIST_STEP) * 65536 + Math.floor((k % 65536) / DIST_STEP));
+    for (const k of prev) if (!D.has(k)) S.add(Math.floor(((k / 65536) | 0) / DIST_STEP) * 65536 + Math.floor((k % 65536) / DIST_STEP)); }
   if (T598_ROUTE_COST || T1440_ROAD_RULE || !_T598E || !E || !gw || !ctx || !ctx.ta) { _t1503.why = 'no-memo'; return null; }
   const gh = E.done.length / gw, nodes = new Set();
   const touch = (k) => { const gx = Math.floor(((k / 65536) | 0) / DIST_STEP), gy = Math.floor((k % 65536) / DIST_STEP);
@@ -4906,6 +4929,92 @@ function _t1503Rejudge(D) {
   _t1503.why = same ? 'same' : (changed ? 'changed' : 'not-aligned');
   console.log(`[${state.zoneId}] 🏘️ [T1503] 환호 적재 — 도랑 ${D.size}칸(옛 ${prev.size}) · 둘레 코스 칸 ${nodes.size} · 다시 판정 ${rejudged} · 바뀐 이웃 ${changed} · ${same ? '같은 행렬(BFS 0)' : `다시 셈(${_t1503.why})`} · ${Date.now() - t0}ms`);
   return { same, mat: W ? W._distMatrix : null };
+}
+// ★[T1503 덧붙임] 울타리 · 벽 무효화(칸을 준 부름) — 앞: 지우기 전 둘레 3×3 이웃 잇기 메모 · 지금 행렬이 지금 메모 것인가(서 있는 일이 사본 · 소스만 일뿐인가)
+function _t1503FencePre(cx, cy) {
+  const ep0 = _t1503Ep++;   // 그래프가 바뀌었을 수 있다 — 그림자 표는 아래에서 이번 한 번만 바탕이 된다(뒤로는 다시 세운다)
+  const F0 = _t1503.fence, E = state._t598Edge, gw = state._t598Gw | 0, ctx = state._distCtx;
+  if (E && gw && !state._distBlk && state._t1503Spec && state._t1503Spec.mat) state._distBlk = new Int8Array(E.done.length);   // 되살린 세계(행렬만 되살고 코스 칸 메모는 빈) — 그림자 표가 있으면 메모를 지금 세운다(빈 메모 = 묻는 칸마다 지금 지형 · 값 무변)
+  const blk = state._distBlk;
+  if (T598_ROUTE_COST || T1440_ROAD_RULE || !_T598E || !E || !gw || !ctx || !ctx.ta || !blk || blk.length !== E.done.length || !(Number.isFinite(cx) && Number.isFinite(cy))) return null;
+  const gh = E.done.length / gw, gx = Math.floor(cx / DIST_STEP), gy = Math.floor(cy / DIST_STEP), old = [];
+  for (let y = gy - 1; y <= gy + 1; y++) for (let x = gx - 1; x <= gx + 1; x++) if (x >= 0 && y >= 0 && x < gw && y < gh) { const i = y * gw + x; old.push([i, E.done[i], E.ok[i]]); }
+  const W = state.world, M = W && W._distMatrix, Sp = state._t1503Spec;
+  //   바탕 고르기 — 서 있는 사본 · 소스만 일이 있으면 그 바탕 · 없으면 그림자 표(지금 그래프 것) · 아니면 지금 행렬(지금 메모 것일 때)
+  let pend = null, base = null, node = null, ref = null;
+  if (M && W.villages && M.length === W.villages.length && !(state._distIncrFrom > 0) && !state._t1455Dist) {
+    if (state.distDirty) { const K = state._t1503Keep; if (K && K.same && K.mat === M && (!_t957Dist || _t957Dist.t1503) && (K.base ? K.node : M === state._t1503Mat)) { pend = K.src || []; base = K.base || M; node = K.base ? K.node : state._t1503Node; ref = K.base ? K.ref : blk; } }
+    else if (_t957Dist) { if (_t957Dist.t1503 && _t957Dist.k && _t957Dist.k.mat === M && (_t957Dist.k.base ? _t957Dist.k.node : M === state._t1503Mat)) { const K = _t957Dist.k; pend = K.src || []; base = K.base || M; node = K.base ? K.node : state._t1503Node; ref = K.base ? K.ref : blk; } }
+    else if (Sp && Sp.mat && Sp.ep === ep0 && Sp.mat.length === M.length) { pend = []; base = Sp.mat; node = Sp.node; ref = Sp.blk; F0.spec++; }
+    else if (M === state._t1503Mat) { pend = []; base = M; node = state._t1503Node; ref = blk; }
+  }
+  if (node && node.length !== (M && M.length)) pend = null;
+  return { t0: Date.now(), gx, gy, gw, gh, old, pend, M, base, node, ref };
+}
+//   뒤(종전 줄이 다 돈 다음): 판정했던 이웃 잇기 다시 판정 · 도랑이 바뀐 코스 칸 + 그 칸의 코스 칸 다시 판정 → 바뀐 노드 X → 사본 · 소스만 · 전쌍
+function _t1503FencePost(P) {
+  const F = _t1503.fence, E = state._t598Edge, ta = state._distCtx.ta, blk = state._distBlk, gw = P.gw, gh = P.gh;
+  F.n++;
+  const X = new Set();
+  for (const [i, d0, k0] of P.old) {
+    if (!d0) continue;
+    const x = i % gw, y = (i / gw) | 0;
+    for (let b = 0; b < 9; b++) { if (!(d0 & (1 << b)) || b === 4) continue;
+      const ok = _t598EdgeOk(ta, x, y, ((b / 3) | 0) - 1, (b % 3) - 1, gw);
+      if (ok !== !!(k0 & (1 << b))) X.add(i); }
+  }
+  const S = state._t1503Stale || new Set(); S.add(P.gx * 65536 + P.gy);
+  const ref = P.ref || blk;   // 바탕 표가 본 코스 칸 메모(지금 행렬 = 공유 메모 · 그림자 표 = 제 메모)
+  for (const k of S) { const x = (k / 65536) | 0, y = k % 65536; if (x < 0 || y < 0 || x >= gw || y >= gh) continue;
+    const i = y * gw + x; if (!blk[i] && !ref[i]) continue; F.stale++;
+    const v = coarseOpen(ta, x, y) ? 1 : 2; if (ref[i] && v !== ref[i]) X.add(i); if (blk[i] && v !== blk[i]) blk[i] = v; }
+  state._t1503Stale = null;   // 코스 칸 메모가 다시 지금 지형이다
+  F.x += X.size;
+  const done = (why, K) => { F.why = why; F[why]++; state._t1503Keep = K; F.ms += Date.now() - P.t0; return !!K; };   // 참 = 코스 칸 메모를 그대로 둔다(지금 지형) · 거짓 = 종전대로 통째 비움 · 전쌍
+  if (!P.pend) return done('full', null);
+  const W = state.world, M = P.M, B = P.base, V = W.villages, N0 = P.node, n = M.length;
+  const mk = (src) => (B === M ? { same: true, mat: M, src } : { same: true, mat: M, src, base: B, node: N0, ref });   // 바탕이 그림자 표면 그 표 · 노드 · 메모를 들고 간다
+  if (!X.size) return done('same', mk(P.pend.length ? P.pend.slice() : null));
+  //   마을 스냅 노드(지금 칸 메모로) — 하나라도 바뀌면 전쌍
+  const isBlk = (x, y) => { if (x < 0 || y < 0 || x >= gw || y >= gh) return true; const i = y * gw + x; if (blk[i] === 0) blk[i] = coarseOpen(ta, x, y) ? 1 : 2; return blk[i] === 2; };
+  for (let s = 0; s < n; s++) if (_distSnap(V[s], isBlk, gw, gh) !== N0[s]) return done('full', null);
+  const unit = DIST_STEP * 2.5 / 10, Xs = [...X].map((i) => [i % gw, (i / gw) | 0]), A = new Set(P.pend);
+  for (let s = 0; s < n; s++) {
+    if (A.has(s) || N0[s] < 0) continue;
+    let cMax = -1, all = false;
+    for (let j = s + 1; j < n; j++) { if (N0[j] < 0) continue; const d = B[s][j]; if (!isFinite(d)) { all = true; break; } const c = Math.round(d / unit); if (c > cMax) cMax = c; }
+    if (cMax < 0 && !all) continue;   // 뒤 표적 없음 — BFS 를 안 돈다
+    if (all) { A.add(s); continue; }
+    const sx = N0[s] % gw, sy = (N0[s] / gw) | 0, lim = cMax + 15;
+    for (const [x, y] of Xs) { const dx = Math.abs(x - sx), dy = Math.abs(y - sy); if (10 * Math.max(dx, dy) + 4 * Math.min(dx, dy) <= lim) { A.add(s); break; } }
+  }
+  F.src += A.size - P.pend.length;
+  return done(A.size ? 'pair' : 'same', mk(A.size ? [...A].sort((a, b) => a - b) : null));
+}
+//   그림자 표 한 걸음(마감 밖 · 진짜 거리 일이 없을 때 · 몫 `budget` ms) — 지금 행렬이 지금 그래프 것이 아니면(도랑 코스 칸이 남음 · 되살린 행렬) 지금 그래프로 전쌍을 미리 센다
+function _t1503SpecStep(budget) {
+  if (!T1503_DIST_KEEP || !state.ready || !(budget > 0) || state.distDirty || _t957Dist || state._t1455Dist || state._distIncrFrom > 0 || T598_ROUTE_COST || T1440_ROAD_RULE || !_T598E) return;
+  const W = state.world, M = W && W._distMatrix, blk = state._distBlk, St = _t1503.spec;
+  if (!M || !W.villages || M.length !== W.villages.length || !state._distCtx || !state._distCtx.ta) return;
+  let Sp = state._t1503Spec;
+  if (Sp && (Sp.ep !== _t1503Ep || Sp.n !== M.length)) { if (!Sp.mat) St.drop++; Sp = state._t1503Spec = null; }
+  if (Sp && Sp.mat) return;   // 다 셌다(그래프가 그대로인 동안)
+  if (!Sp) {
+    const st = state._t1503Stale;
+    if (M === state._t1503Mat && !(st && st.size)) return;   // 지금 행렬이 지금 그래프 것 — 그림자 0
+    const Z = state._distCtx.ZONE, gw0 = Math.ceil(Math.ceil(Z.zoneWidth / SZ) / DIST_STEP), gh0 = Math.ceil(Math.ceil(Z.zoneHeight / SZ) / DIST_STEP);
+    const gw = state._t598Gw | 0, b = blk && blk.length === gw0 * gh0 ? blk.slice() : new Int8Array(gw0 * gh0);   // 되살린 세계 = 빈 메모(지금 지형으로 판정)
+    if (st && gw) for (const k of st) { const x = (k / 65536) | 0, y = k % 65536, i = y * gw + x; if (x < gw && i < b.length) b[i] = 0; }   // 도랑이 바꾼 칸은 지금 지형으로 다시 판정
+    const o = { blk: b, mat: null, node: null };
+    Sp = state._t1503Spec = { ep: _t1503Ep, n: M.length, o, g: _distMatrixGen('그림자', { t1503spec: o }), mat: null, node: null, blk: b };
+    St.runs++;
+  }
+  const t0 = Date.now();
+  try {
+    for (;;) { const r = Sp.g.next(); if (r.done) { Sp.mat = Sp.o.mat; Sp.node = Sp.o.node; Sp.g = null; St.done++; break; } if (Date.now() - t0 >= budget) break; }
+  } catch (e) { state._t1503Spec = null; St.drop++; console.error(`[${state.zoneId}] 🏘️ [T1503] 그림자 표 실패(무시 — 울타리 날 종전 규칙):`, e.message); }
+  St.ms += Date.now() - t0; St.slices++;
+  if (Sp.mat) console.log(`[${state.zoneId}] 🏘️ [T1503] 그림자 표 다 셈 — ${Sp.n}마을 · ${St.slices}조각 · 누계 ${St.ms}ms(울타리 · 벽 날 이 표가 바탕)`);
 }
 // ── 동기 문 — **서명 무변**. 랩·하네스·전쟁·귀환 폴백·감사가 전부 이 문만 안다.
 function computeRoutePts(x0, y0, x1, y1, extraBlk) {
@@ -10255,6 +10364,7 @@ function invalidateTradeDistances(cx, cy) { // eslint-disable-line no-unused-var
   //     거리행렬(econ)은 지형만 보니 안 바뀐다. 칸 없는 부름(다리 완공 · 마을이 늘었다 · 감사)은 아래 종전 줄 그대로(전부 버린다).
   if (T1440_ROAD_RULE && Number.isFinite(cx) && Number.isFinite(cy)) { _t1440ForgetRect(cx - 1, cy - 1, cx + 1, cy + 1); lifeSiteResetAll(); return; }
   if (T1466_ROAD_FAST) _t1466ForgetAll('terrain');   // ★[T1466 ㉱] 칸 없는 무효화(다리 완공 · 마을이 늘었다) — 지형이 열렸을 수 있다 → 방향 바이트 · 칸 값을 비우고 길잡이 표를 내려 다시 굽는다
+  const _f03 = T1503_DIST_KEEP ? _t1503FencePre(cx, cy) : null;   // ★[T1503 덧붙임] 켬 · 칸을 준 부름(울타리 · 벽) — 지우기 전 둘레 메모 · 행렬이 지금 메모 것인가(끔 = null = 종전 줄 그대로)
   state.distDirty = true;
   if (T1503_DIST_KEEP) state._t1503Keep = null;   // ★[T1503] 지형이 바뀌었다 — 사본 일 취소(전쌍)
   if (state.routeCache) { _probe.routeClear++; state.routeCache.clear(); }
@@ -10270,7 +10380,7 @@ function invalidateTradeDistances(cx, cy) { // eslint-disable-line no-unused-var
   if (state._route) { state._route.blk.fill(0); if (state._route.openN) state._route.openN.fill(-1); }   // ★[T578 ③] 칸 안 열린 수 메모도
   if (state._walkSegFar) state._walkSegFar.clear();
   _t598Forget(cx, cy);   // ★[T598] 칸 배수 · 이웃 잇기 메모도(벽이 서면 바뀐다 — 벽 칸을 주면 그 코스 칸 둘레만 · 손잡이 끔이면 배열이 없어 무동작)
-  if (state._distBlk) state._distBlk.fill(0);   // ★[배치 12] 교역 거리행렬 코스 격자도 같은 훅에서 비운다(캐러밴 A* 격자와 동형)
+  if (state._distBlk && !(_f03 && _t1503FencePost(_f03))) { state._distBlk.fill(0); if (T1503_DIST_KEEP) state._t1503Stale = null; }   // ★[배치 12] 교역 거리행렬 코스 격자도 같은 훅에서 비운다(캐러밴 A* 격자와 동형) · ★[T1503 덧붙임] 켬 = 바뀐 곳만 다시 판정 · 사본 · 소스만(못 쓰면 종전 통째)
   state._distIncrFrom = -1;   // ★[배치 12] 지형이 바뀌면 **옛 쌍도 썩는다** — 증분 취소, 다음 재계산은 전쌍
   if (state._t1455Dist) state._t1455Dist = null;   // ★[T1455] 다리 몫 쌍 일 — 전쌍이 덮는다
 }
@@ -13627,10 +13737,12 @@ function _t957Take() {   // `distDirty` 를 받아 일을 (다시) 세운다 —
   let _k = state._distIncrFrom; state._distIncrFrom = -1;
   if (_t957Dist) { _probe.t957Restart = (_probe.t957Restart | 0) + 1; if (_t957Dist.full) _k = -1; }
   let _o = (_k > 0) ? { incrementalFrom: _k } : undefined;
-  if (T1503_DIST_KEEP && state._t1503Keep) { const K = state._t1503Keep; state._t1503Keep = null; if (!_o && !_t957Dist && !state._t1455Dist && K.mat && state.world && K.mat === state.world._distMatrix) _o = { t1503: K.mat }; }   // ★[T1503] 환호 적재가 답을 안 바꿨다 — 같은 행렬 사본 일(BFS 0)
+  let _K03 = null;
+  if (T1503_DIST_KEEP && state._t1503Keep) { const K = _K03 = state._t1503Keep; state._t1503Keep = null; if (!_o && (!_t957Dist || _t957Dist.t1503) && !state._t1455Dist && K.mat && state.world && K.mat === state.world._distMatrix) _o = K.src ? { t1503p: K.src, base: K.base || K.mat } : { t1503: K.base || K.mat }; }   // ★[T1503] 환호 적재가 답을 안 바꿨다 — 같은 행렬 사본 일(BFS 0)
   if (!_o && T1455_BRIDGE_DECAY) { const _j = _t1455TakeJob(_t957Dist); if (_j) _o = { t1455: _j }; }   // ★[T1455] 다리 몫 쌍 일(전쌍이 아니면)
   if (_t996Job) { _t996Job = null; _probe.t996Drop = (_probe.t996Drop | 0) + 1; }   // ★[T996] 진짜 다시 세기가 바탕을 세운다
   _t957Dist = { g: _distMatrixGen('무효화 재계산', T968_DIST_BG ? Object.assign({ hold: true }, _o || {}) : _o), full: !(_k > 0) && !(_o && _o.t1455), slices: 0, workMs: 0, ready: false, t55: _o && _o.t1455 ? _o.t1455 : null };
+  if (T1503_DIST_KEEP && _o && (_o.t1503 || _o.t1503p)) { _t957Dist.t1503 = true; _t957Dist.k = _K03; }   // ★[T1503] 사본 · 소스만 일(울타리가 또 서면 같은 옛 행렬에서 소스를 합쳐 다시 세운다)
 }
 function _t957DistStage() {
   _t957Take();
@@ -13658,7 +13770,7 @@ function _t968DistBg() {
   if (!T957_DIST_SLICE || !T968_DIST_BG || state.tickJobs) return;
   _t957Take();
   const J = _t957Dist;
-  if (!J) { if (_t996Job) _t996Step(); return; }   // ★[T996] 진짜 일이 없을 때만 바탕 일
+  if (!J) { if (_t996Job) _t996Step(); else if (T1503_DIST_KEEP) _t1503SpecStep(TB.slice(TICK_SLICE_MS)); return; }   // ★[T996] 진짜 일이 없을 때만 바탕 일 · ★[T1503 덧붙임] 그 다음 그림자 표
   if (J.ready) return;
   const B = TB.slice(TICK_SLICE_MS); if (!(B > 0)) return;
   const t0 = Date.now();
@@ -19895,6 +20007,7 @@ function _t1455Rebuild(site, why) {
   else if (pairs.length) { const P = state._t1455Dist || (state._t1455Dist = new Map()); for (const [i, j] of pairs) P.set(i < j ? i * 65536 + j : j * 65536 + i, 1); }
   if (pairs === null || pairs.length) state.distDirty = true;
   if (T1503_DIST_KEEP && (pairs === null || pairs.length)) state._t1503Keep = null;   // ★[T1503] 다리가 섰다 · 끊겼다 — 사본 일 취소(쌍 일 · 전쌍)
+  if (T1503_DIST_KEEP) { state._t1503Mat = null; _t1503Ep++; }   // ★[T1503 덧붙임] 다리 몫 메모를 비교 없이 지웠다 — 다음 전쌍까지 지금 행렬은 바탕이 아니다 · 그림자 표 버림
   const _u0 = process.cpuUsage(t0), ms = (_u0.user + _u0.system) / 1000;
   _t1455V.rebuild.push({ d: (state.world && state.world.day) | 0, i: site.i, why, ms: +ms.toFixed(2), routes: dropped, pairs: pairs ? pairs.length : null, nodes: N.size });
   _t1455V.legsCut += why === 'cut' ? dropped : 0;
@@ -23887,8 +24000,8 @@ module.exports = { T1471_LAND_FIT, t1471Stat,   // ★[T1471]
   t1461Die, t1461Out, t1461Stat, T1461_BEAST_UNSEEN, __t1461: { st: () => state },   // ★[T1461] 명부 밖 몸 죽음 · 마을 밖 몸(존 손잡이 `T1461_BEAST_UNSEEN` 켬에서만 부른다)
   t1432Die, t1432Stat, t1432Sync: (vil, n) => syncVillagePop(vil, n),   // ★[T1432] 쓰러진 NPC 진짜 죽음(존 손잡이 `T1432_NPC_DEATH` 켬에서만 부른다) · 몸 동기 문(하네스가 운영 그 문을 부른다 · 내보내기만)
   __t1503: { T1503_DIST_KEEP, T1503_CLOSE_SLICE, T698: T698_BOUNDARY_SLICE, setup: (o) => { for (const k of Object.keys(o || {})) state[k] = o[k]; return state; }, dist: (r, o) => computeAndInjectDistMatrix(r, o), ditch: () => _t1327DitchRedig(),
-    stage: () => { let n = 0; while (_t957DistStage() === 'retry' && n < 1e7) n++; return n; }, bg: () => _t968DistBg(), inval: (cx, cy) => invalidateTradeDistances(cx, cy), drain: (now) => _drainTickJobs(now), due: (now) => T1503_CLOSE_SLICE && _t1503DueForce(now),
-    st: () => { const E = state._t598Edge; let done = 0; if (E) for (let i = 0; i < E.done.length; i++) if (E.done[i]) done++; return { s: Object.assign({}, _t1503, { prevD: _t1503.prevD ? _t1503.prevD.size : null }), keep: !!state._t1503Keep, job: _t957Dist ? { ready: !!_t957Dist.ready, full: !!_t957Dist.full } : null, dirty: !!state.distDirty, edgeNodes: done, cost: _t1503Cost.size, perf: (() => { try { return Object.keys(probeStats()).filter((k) => /^t1503/.test(k)); } catch (e) { return [String(e.message).slice(0, 40)]; } })() }; },
+    stage: () => { let n = 0; while (_t957DistStage() === 'retry' && n < 1e7) n++; return n; }, bg: () => _t968DistBg(), inval: (cx, cy) => invalidateTradeDistances(cx, cy), specStep: (b) => _t1503SpecStep(b), spec: () => { let n = 0; do { _t1503SpecStep(1e9); n++; } while (state._t1503Spec && !state._t1503Spec.mat && n < 1e6); return !!(state._t1503Spec && state._t1503Spec.mat); }, drain: (now) => _drainTickJobs(now), due: (now) => T1503_CLOSE_SLICE && _t1503DueForce(now),
+    st: () => { const E = state._t598Edge; let done = 0; if (E) for (let i = 0; i < E.done.length; i++) if (E.done[i]) done++; return { s: Object.assign({}, _t1503, { prevD: _t1503.prevD ? _t1503.prevD.size : null, fence: Object.assign({}, _t1503.fence), spec: Object.assign({}, _t1503.spec) }), specReady: !!(state._t1503Spec && state._t1503Spec.mat), stale: state._t1503Stale ? state._t1503Stale.size : 0, keep: !!state._t1503Keep, job: _t957Dist ? { ready: !!_t957Dist.ready, full: !!_t957Dist.full } : null, dirty: !!state.distDirty, edgeNodes: done, cost: _t1503Cost.size, perf: (() => { try { return Object.keys(probeStats()).filter((k) => /^t1503/.test(k)); } catch (e) { return [String(e.message).slice(0, 40)]; } })() }; },
     edgeAll: () => { const E = state._t598Edge, gw = state._t598Gw | 0, ta = state._distCtx && state._distCtx.ta; if (!E || !gw || !ta) return null; const F = { done: new Uint16Array(E.done.length), ok: new Uint16Array(E.ok.length) }; const T0 = ta._t1440M; ta._t1440M = F; let bad = 0, n = 0; try { for (let i = 0; i < E.done.length; i++) { const d0 = E.done[i]; if (!d0) continue; for (let b = 0; b < 9; b++) { if (!(d0 & (1 << b)) || b === 4) continue; n++; if (_t598EdgeOk(ta, i % gw, (i / gw) | 0, ((b / 3) | 0) - 1, (b % 3) - 1, gw) !== !!(E.ok[i] & (1 << b))) bad++; } } } finally { if (T0 === undefined) delete ta._t1440M; else ta._t1440M = T0; } return { n, bad }; } },   // ★[T1503] 하네스 문(읽기 · 부르기만 — 제품 줄은 안 부른다)
   T1455_BRIDGE_DECAY, t1455OnCut, t1455Donate, t1455VilBridges, t1455Peek, t1455Stat, t1455BridgeWorth, __t1455: { setup: (o) => { for (const k of ['econ', 'econV2', 'villages', 'routeCache', 'walkCache', 'world', '_distCtx', '_distBlk', 'ready', '_t527Sites']) if (k in o) state[k] = o[k]; _t1455Init = null; return state; }, dist: (r, o) => computeAndInjectDistMatrix(r, o), take: () => _t1455TakeJob(null), sites: () => _t527Sites(), complete: (site) => { const day = (state.world && state.world.day) | 0; site.stage = _t527StageCount(site); site.mat = {}; _t527Complete(site, day); _t527Save(site); return site.done; }, clock: (f) => { _t1455Clk = f || null; }, now: () => _t1455Now(), V: _t1455V, x: (s, n) => _t1455X(s, n), own: (s) => _t1455Own(s), worldDay: () => _t1455WorldDay(), vilDay: (v) => _t1455VilDay(v), rebuild: (s, w) => _t1455Rebuild(s, w), pairs: (N, w) => _t1455Pairs(N, w), nodes: (s) => _t1455Nodes(s), job: (P, M) => _t1455DistJob(P, M), revive: (s) => _t1455Revive(s), tryCut: (s) => _t1455TryCut(s) },   // ★[T1455]
   T1439_CALL_CARRY, t1439Stat, _t1439Probe: { call: (vil, npc, now) => _t1439Call(vil, npc, now), step: (vil, npc, now, t) => _t1439Step(vil, npc, now, t) },   // ★[T1439] 마을에서 데려가기(하네스 · 관찰)
