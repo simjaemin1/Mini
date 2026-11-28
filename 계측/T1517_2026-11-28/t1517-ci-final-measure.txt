@@ -1,0 +1,2 @@
+[1/2] test-war-snapshot-data.js 나 초2.7 초2.3 초2.3 초2.2 초2.1 → core
+[2/2] test-war-snapshot-corners.js 가 초0.2 초0.2 초0.2 초0.3 초0.2 → core

@@ -26073,7 +26073,7 @@ const DIRS8 = [[1, 0, ORTHO], [-1, 0, ORTHO], [0, 1, ORTHO], [0, -1, ORTHO], [1,
 //   꺼낸 값은 힙의 칸 넷(`tf`·`tg`·`tx`·`ty`)에 둔다(객체 0). `size` · `pop()` 문은 그대로(하네스 ⑦ 이 재개 사이에 하나 뺀다).
 // WAR_SNAP exposes closure storage without changing the search or heap ordering.
 const _snapshotHeaps = new WeakMap(), _snapshotMaps = new WeakMap();
-const _snapshotOn = () => typeof process !== 'undefined' && process.env.T1497_WAR_SNAP === '1';
+const _snapshotOn = () => typeof process !== 'undefined' && process.env.T1517_WAR_SNAP === '1';
 function _mkHeap() {   // 이진 최소힙 (f,g,x,y) — 랩·서버 기존 구현 동형
   let cap = 1024, n = 0;
   let F = new Float64Array(cap), G = new Float64Array(cap), X = new Int32Array(cap), Y = new Int32Array(cap);

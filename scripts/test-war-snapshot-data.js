@@ -2,7 +2,7 @@
 // @regress unit
 // @bait 3
 'use strict';
-process.env.T1497_WAR_SNAP='1';
+process.env.T1517_WAR_SNAP='1';
 const assert=require('assert'),cp=require('child_process');
 try{assert.strictEqual(typeof require('../server/villages').__p3Bind({})._warSnapPack,'function','complete snapshot product API');}catch(e){console.error('✗ complete snapshot product API absent');throw e;}
 const G=require('../server/war-snapshot'),P=require('../sim/path-core');
@@ -35,11 +35,18 @@ check('미끼 · 바꾼 자리: default OFF and nonliteral flags preserve canoni
  const fs=require('fs'),path=require('path'),dir=require('./lib-tmp').dir('war_snapshot_off');
  try {
   const bytes=[];for(const flag of [undefined,'0','true','1']){
-   const env={...process.env};if(flag===undefined)delete env.T1497_WAR_SNAP;else env.T1497_WAR_SNAP=flag;
+   const env={...process.env};if(flag===undefined)delete env.T1517_WAR_SNAP;else env.T1517_WAR_SNAP=flag;
    const file=path.join(dir,String(bytes.length)+'.json'),r=cp.spawnSync(process.execPath,[path.join(__dirname,'war-snapshot-off-child.js'),file],{env,encoding:'utf8',timeout:30000});
    assert.strictEqual(r.status,0,r.stderr);bytes.push(fs.readFileSync(file));
   }
+  const legacyEnv={...process.env,T1497_WAR_SNAP:'1'};delete legacyEnv.T1517_WAR_SNAP;const aliasFile=path.join(dir,'ignored-old-flag.json');const alias=cp.spawnSync(process.execPath,[path.join(__dirname,'war-snapshot-off-child.js'),aliasFile],{env:legacyEnv,encoding:'utf8',timeout:30000});assert.strictEqual(alias.status,0,alias.stderr);assert(fs.readFileSync(aliasFile).equals(bytes[1]),'T1497_WAR_SNAP must not be an alias');
   assert(bytes[0].equals(bytes[1]),'unset must preserve explicit OFF canonical bytes');assert(bytes[2].equals(bytes[1]),'true is not literal 1');assert(!bytes[3].equals(bytes[1]),'active native war must expose an ON checkpoint');
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
+check('no-war 10-day native host fixture has identical OFF/ON saved bytes',()=>{
+ const fs=require('fs'),path=require('path'),dir=require('./lib-tmp').dir('war_snapshot_peace');try{
+  const bytes=[];for(const flag of ['0','1']){const file=path.join(dir,flag+'.json'),r=cp.spawnSync(process.execPath,[path.join(__dirname,'war-snapshot-off-child.js'),file],{env:{...process.env,T1517_WAR_SNAP:flag,WAR_SNAP_NO_WAR:'1'},encoding:'utf8',timeout:30000});assert.strictEqual(r.status,0,r.stderr);bytes.push(fs.readFileSync(file));}
+  assert(bytes[0].equals(bytes[1]));assert(!JSON.parse(JSON.parse(bytes[1]).meta).t1517WarSnap);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 check('cycles, external refs, Map/Set order, sparse arrays and all numeric atoms',()=>{
@@ -65,11 +72,11 @@ for(const bound of ['0','1'])check('native pending heap + shared worker aliases,
 check('atomic body rows + metadata share one boundary; corrupt metadata and legacy are explicit',()=>{
  const f=require('./lib-war-snap-fixture').create(42);f.mobilize();f.tick();let stored,writes=0;
  f.H.state.db.saveVillagesAndMeta=(rows,zone,meta,day)=>{stored={rows,zone,meta,day};writes++;};
- f.at(()=>f.H._warSnapAtomicSave());assert.strictEqual(writes,1);const meta=JSON.parse(stored.meta);assert(meta.t1497WarSnap,'native metadata must contain the graph, not only a direct pack helper');G.validate(meta.t1497WarSnap);assert.strictEqual(meta.anchor.at,f.now());
+ f.at(()=>f.H._warSnapAtomicSave());assert.strictEqual(writes,1);const meta=JSON.parse(stored.meta);assert(meta.t1517WarSnap,'native metadata must contain the graph, not only a direct pack helper');G.validate(meta.t1517WarSnap);assert.strictEqual(meta.anchor.at,f.now());
  for(const r of stored.rows){const v=f.villages.find(v=>v.dbId===r.id),body=JSON.parse(r.econ)._t747Body;for(let i=0;i<body.rows.length;i++)if(body.rows[i]){const p=f.deps.players.get(v.npcPids[i]);assert.strictEqual(body.rows[i].x,p.x);assert.strictEqual(body.rows[i].y,p.y);}}
- f.H.state.db.getWorldMeta=()=>({data:JSON.stringify({...meta,t1497WarSnap:{...meta.t1497WarSnap,version:99}})});assert.throws(()=>f.H._warSnapEarly(),e=>e.code==='WAR_SNAP_INVALID');
- f.H.state.db.getWorldMeta=()=>({data:'{"t1497WarSnap":'});assert.throws(()=>f.H._warSnapEarly(),e=>e.code==='WAR_SNAP_INVALID');f.H.state.db.getWorldMeta=()=>({data:'{legacy:'});assert.doesNotThrow(()=>f.H._warSnapEarly());
- delete meta.t1497WarSnap;f.H.state.db.getWorldMeta=()=>({data:JSON.stringify(meta)});assert.doesNotThrow(()=>f.H._warSnapEarly());assert.strictEqual(writes,1);
+ f.H.state.db.getWorldMeta=()=>({data:JSON.stringify({...meta,t1517WarSnap:{...meta.t1517WarSnap,version:99}})});assert.throws(()=>f.H._warSnapEarly(),e=>e.code==='WAR_SNAP_INVALID');
+ f.H.state.db.getWorldMeta=()=>({data:'{"t1517WarSnap":'});assert.throws(()=>f.H._warSnapEarly(),e=>e.code==='WAR_SNAP_INVALID');f.H.state.db.getWorldMeta=()=>({data:'{legacy:'});assert.doesNotThrow(()=>f.H._warSnapEarly());
+ delete meta.t1517WarSnap;f.H.state.db.getWorldMeta=()=>({data:JSON.stringify(meta)});assert.doesNotThrow(()=>f.H._warSnapEarly());assert.strictEqual(writes,1);
  f.war.WARS.splice(0);f.H.state.warBodies.clear();assert.strictEqual(f.H._warSnapNeedsAtomic(),false,'new/legacy no-war save scheduling stays unchanged');
 });
 check('unfinished physical step cannot write a snapshot during temporary ctl release',()=>{
@@ -80,11 +87,11 @@ check('unfinished physical step cannot write a snapshot during temporary ctl rel
 check('normal donation row-save advances the same complete war checkpoint',()=>{
  const f=require('./lib-war-snap-fixture').create(42),V=require('../server/villages');f.mobilize();f.tick();let stored,writes=0;
  f.H.state.db.updateVillageState=()=>assert.fail('individual row must not mix with an older war snapshot');f.H.state.db.saveVillagesAndMeta=(rows,z,meta)=>{stored={rows,meta:JSON.parse(meta)};writes++;};
- f.at(()=>f.H._warSnapAtomicSave());const old=stored.meta.t1497WarSnap.sha256;for(let i=0;i<20;i++)f.tick();
+ f.at(()=>f.H._warSnapAtomicSave());const old=stored.meta.t1517WarSnap.sha256;for(let i=0;i<20;i++)f.tick();
  const bag={wood:3};const r=V.playerVillageDeposit(f.villages[0],bag,{wood:3});assert(r.ok);assert.strictEqual(f.at(()=>V.t983Save(f.villages[0])),true);assert.strictEqual(writes,2);
- assert.notStrictEqual(stored.meta.t1497WarSnap.sha256,old,'current combat state accompanies the donation');
+ assert.notStrictEqual(stored.meta.t1517WarSnap.sha256,old,'current combat state accompanies the donation');
  assert.strictEqual(JSON.parse(stored.rows.find(r=>r.id===1).econ).storage.wood,f.villages[0].econ.storage.wood);
- const semantic=require('./test-war-snapshot').semantic;assert(require('util').isDeepStrictEqual(semantic(stored.meta.t1497WarSnap),semantic(f.at(()=>f.H._warSnapPack()))));
+ const semantic=require('./test-war-snapshot').semantic;assert(require('util').isDeepStrictEqual(semantic(stored.meta.t1517WarSnap),semantic(f.at(()=>f.H._warSnapPack()))));
 });
 check('cold boot reconstructs every saved body above the visibility cap without spawn/RNG draws',()=>{
  const F=require('./lib-war-snap-fixture'),f=F.create(42);f.mobilize();f.day();for(let i=0;i<100;i++)f.tick();
@@ -96,4 +103,4 @@ check('cold boot reconstructs every saved body above the visibility cap without 
  const E=require('../sim/economy-sim'),before=E.rngState();r.at(()=>require('../server/war-snapshot-host').prepareBodies(snapshot,r.H.state));assert.deepStrictEqual(E.rngState(),before);assert.strictEqual(calls,0);assert.deepStrictEqual([...r.deps.players.keys()],ids);r.at(()=>r.H._warSnapRestore(snapshot));
  const semantic=require('./test-war-snapshot').semantic;assert(require('util').isDeepStrictEqual(semantic(snapshot),semantic(r.at(()=>r.H._warSnapPack()))));
 });
-console.log(`WAR_SNAP data contracts ${pass}/14`);
+console.log(`WAR_SNAP data contracts ${pass}/15`);

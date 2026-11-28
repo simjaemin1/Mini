@@ -1,0 +1,16 @@
+✓ 미끼 · 바꾼 자리1: 전쟁 몸/명부
+✓ 미끼 · 바꾼 자리2: 대형/포진
+✓ 미끼 · 바꾼 자리3: 걸음/탐색
+✓ 미끼 · 바꾼 자리4: battle units
+✓ 미끼 · 바꾼 자리5: ctx 탄/적용상태
+✓ 미끼 · 바꾼 자리6: 비행탄
+✓ 미끼 · 바꾼 자리7: RNG 현재값
+✓ 미끼 · 바꾼 자리8: fight 제어/시각
+✓ 미끼 · 바꾼 자리9: 도장없는 옛 저장을 통째 저장으로 오독
+✓ 미끼 · 바꾼 자리10: OFF 한 칸 변조
+✓ 미끼 · 바꾼 자리11: 실제 저장중 SIGKILL의 미완 WAL은 옛 완전 checkpoint를 유지한다
+[war-snap-fixture] 🐂 교역로 A* 실패: snap1↔snap2 — 실체 생략(econ은 그대로 진행)
+{"defenders":146,"savedCandidates":1,"restoredCandidates":1,"nextDraftBoth":1}
+✓ 수비146: 저장시/복원직후/정본 다음소집 후보와 소속이 같다
+✓ 저장 중 정본 종전: old checkpoint와 다음 clearing checkpoint가 섞이지 않는다
+T1517 formal contracts 13/13

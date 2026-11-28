@@ -296,7 +296,7 @@ console.log('\n[ⓕ] T832 — 켬 판 결정론: 귀환 몸도 그날 몫(아이
 {
   // WAR_SNAP adds a safe-boundary wrapper; inspect its call-through and the original tick separately.
   const wrapper = fnBody(CV, 'tickWarBodies'), tk = fnBody(CV, '_tickWarBodies'), fl = fnBody(CV, '_t681Flush');
-  ok(/if \(\!T1497_WAR_SNAP\) return _tickWarBodies\(now\);/.test(wrapper) && /try \{ return _tickWarBodies\(now\); \} finally \{ _warSnapBusy--; \}/.test(wrapper), 'ⓕ 정적 — OFF direct call-through와 ON finally가 같은 정본 tick을 한 번 부른다');
+  ok(/if \(\!T1517_WAR_SNAP\) return _tickWarBodies\(now\);/.test(wrapper) && /try \{ return _tickWarBodies\(now\); \} finally \{ _warSnapBusy--; \}/.test(wrapper), 'ⓕ 정적 — OFF direct call-through와 ON finally가 같은 정본 tick을 한 번 부른다');
   ok(/if \(body\.phase === 'return'\) \{ if \(_RET_QUOTA && T681_ON && body\._t681 && !_t681Take\(body\)\) continue; _warPaceReturn\(body, now, dtMs\); continue; \}/.test(tk)
     && /if \(_RET_QUOTA && state\.warBodies\) for \(const body of state\.warBodies\.values\(\)\) \{/.test(fl) && fl.indexOf('_warPaceReturn(body, now, dtMs);') > fl.indexOf('_RET_QUOTA && state.warBodies')
     && /body\._t681q\.left--;\s*_warPaceReturn\(body, now, dtMs\);/.test(fl),

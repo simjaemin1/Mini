@@ -7,7 +7,7 @@ function create(seed = 42, opts = {}) {
   let villages;
   try {
     villages = [1, 2].map((id) => {
-      let e = Econ.createVillage({ fertility: 1, water: 1, stone: 1, ore: 1, wood: 1, game: 1, size: 60, arable: 1, initialPop: id === 1 ? 24 : 18, name: 'snap' + id });
+      let e = Econ.createVillage({ fertility: 1, water: 1, stone: 1, ore: 1, wood: 1, game: 1, size: 60, arable: 1, initialPop: id === 1 ? (opts.attackers || 24) : (opts.defenders || 18), name: 'snap' + id });
       e.storage.food = 10000; e.storage.weapon = 100; e.storage.armor = 50; e.storage.stone = 1000;
       if (opts.saved) e = V.__p3Bind({}).restoreEcon(opts.saved.econs[id - 1], Econ);
       return { dbId: id, name: 'snap' + id, ccx: 100 + (id - 1) * 160, ccy: 100, econ: e, npcPids: [], housesPx: [] };

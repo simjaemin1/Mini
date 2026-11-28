@@ -18415,18 +18415,75 @@
     "execFileSync node"
    ]
   },
-  "test-war-snapshot-corners.js": {
+  "test-war-snapshot-contract.js": {
    "cls0": "나",
    "why0": "child_process",
-   "cls": "가",
-   "maxSec": 0.4,
+   "cls": "나",
+   "maxSec": 4.1,
    "same5": true,
    "core": true,
    "why": "core",
    "runs": [
     {
      "rc": 0,
-     "secs": 0.3,
+     "secs": 4.1,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 3.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 3.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 3.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 3.7,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawnSync node"
+   ]
+  },
+  "test-war-snapshot-corners.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "가",
+   "maxSec": 0.3,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 0.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 0.2,
      "green": true,
      "fails": []
     },
@@ -18438,19 +18495,7 @@
     },
     {
      "rc": 0,
-     "secs": 0.3,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 0.3,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 0.4,
+     "secs": 0.2,
      "green": true,
      "fails": []
     }
@@ -18461,14 +18506,14 @@
    "cls0": "나",
    "why0": "child_process",
    "cls": "나",
-   "maxSec": 2.4,
+   "maxSec": 2.7,
    "same5": true,
    "core": true,
    "why": "core",
    "runs": [
     {
      "rc": 0,
-     "secs": 2.2,
+     "secs": 2.7,
      "green": true,
      "fails": []
     },
@@ -18480,13 +18525,13 @@
     },
     {
      "rc": 0,
-     "secs": 2.4,
+     "secs": 2.3,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 2.1,
+     "secs": 2.2,
      "green": true,
      "fails": []
     },
@@ -18506,38 +18551,38 @@
    "cls0": "나",
    "why0": "child_process",
    "cls": "나",
-   "maxSec": 18,
+   "maxSec": 16.4,
    "same5": true,
    "core": true,
    "why": "core",
    "runs": [
     {
      "rc": 0,
-     "secs": 17.3,
+     "secs": 16.3,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 16.6,
+     "secs": 16.2,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 16.9,
+     "secs": 16.4,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 18,
+     "secs": 15.4,
      "green": true,
      "fails": []
     },
     {
      "rc": 0,
-     "secs": 17,
+     "secs": 16,
      "green": true,
      "fails": []
     }
@@ -19122,5 +19167,5 @@
    "srv": true
   }
  },
- "at": "2026-11-27"
+ "at": "2026-11-28"
 }

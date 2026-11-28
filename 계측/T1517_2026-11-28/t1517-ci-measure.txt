@@ -1,0 +1,4 @@
+[1/4] test-war-snapshot-contract.js 나 초4.1 초3.8 초3.6 초3.7 초3.7 → core
+[2/4] test-war-snapshot-data.js 나 초2.1 초2 초2 초2.1 초2.2 → core
+[3/4] test-war-snapshot-corners.js 가 초0.3 초0.3 초0.3 초0.3 초0.3 → core
+[4/4] test-war-snapshot.js 나 초16.3 초16.2 초16.4 초15.4 초16 → core

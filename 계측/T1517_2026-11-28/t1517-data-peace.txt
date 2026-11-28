@@ -1,0 +1,19 @@
+✓ 미끼 · 바꾼 자리: default OFF and nonliteral flags preserve canonical saved bytes
+✓ no-war 10-day native host fixture has identical OFF/ON saved bytes
+✓ cycles, external refs, Map/Set order, sparse arrays and all numeric atoms
+✓ 미끼 · 바꾼 자리: unregistered closure field fails without eval
+✓ 미끼 · 바꾼 자리: corrupt/partial/version fields and missing registry fail closed
+✓ path closure/frontier exact stepwise false/false
+✓ path closure/frontier exact stepwise false/true
+✓ path closure/frontier exact stepwise true/false
+✓ path closure/frontier exact stepwise true/true
+{"pending":true,"typed":false,"ghost":false,"heapNodes":261,"initialPops":16385,"continuationCalls":1012}
+✓ native pending heap + shared worker aliases, T1445=0
+{"pending":true,"typed":true,"ghost":true,"heapNodes":261,"initialPops":16385,"continuationCalls":1012}
+✓ native pending heap + shared worker aliases, T1445=1
+[war-snap-fixture] 🐂 교역로 A* 실패: snap1↔snap2 — 실체 생략(econ은 그대로 진행)
+✓ atomic body rows + metadata share one boundary; corrupt metadata and legacy are explicit
+✓ unfinished physical step cannot write a snapshot during temporary ctl release
+✓ normal donation row-save advances the same complete war checkpoint
+✓ cold boot reconstructs every saved body above the visibility cap without spawn/RNG draws
+WAR_SNAP data contracts 15/15

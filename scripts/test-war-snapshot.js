@@ -19,9 +19,12 @@ function semantic(snapshot) {
     if (x instanceof Map) return ['map', [...x].map(([k,v])=>[walk(k),walk(v)])];
     if (x instanceof Set) return ['set', [...x].map(walk)];
     if (Array.isArray(x)) return x.map(walk);
-    return Object.fromEntries(Object.keys(x).filter(k=>k!=='_stepMs'&&k!=='at'&&k!=='nextPid'&&k!=='bodyIds').sort().map(k=>[k,walk(x[k])]));
+    return Object.fromEntries(Object.keys(x).filter(k=>k!=='_stepMs' && (x!==data || !['at','nextPid','bodyIds'].includes(k))).sort().map(k=>[k,walk(x[k])]));
   }
   return walk(data);
+}
+function defenderAudit(f) {
+ return f.villages.map(v=>({village:v.dbId,residents:v.econ.npcs.length,bodies:v.npcPids.length,candidates:f.H._warDraftPool(v).length,mustered:v.npcPids.filter(pid=>f.deps.players.get(pid)?._muster).length,defGroups:[...f.H.state.warBodies.values()].filter(b=>b.w.def===v).map(b=>({roster:(b.defPids||[]).length,formation:b.defGroup?.units.length||0,alive:(b.defGroup?.units||[]).filter(u=>!u.dead&&!(u.bu&&u.bu.hp<=0)).length}))}));
 }
 function fingerprint(f) {
   return f.at(() => semantic(f.H._warSnapPack()) || { wars: f.war.WARS.length, bodies: f.H.state.warBodies.size, stats: f.world._warStats,
@@ -62,19 +65,20 @@ if (process.argv[2] === '--child') {
     saved={day:f.world.day,now:f.now(),snapshot:f.at(()=>f.H._warSnapPack()), econs:f.villages.map(v=>f.H.serializeEcon(v.econ))};
     assert(saved.snapshot,'checkpoint requires a real active war/body');
     saved.exposure={nativeWarPhase:w.phase,nativeOp:w.op,bodies:f.H.state.warBodies.size,groups:[...f.H.state.warBodies.values()].map(b=>[b.atkGroup?.units.length||0,b.defGroup?.units.length||0,b.retGroup?.units.length||0]),contexts:[...f.H.state.warBodies.values()].map(b=>b.fight?{units:b.fight.ctx.units.length,arrows:b.fight.ctx.arrows.length,state:b.fight.state,physical:b.fight.physical}:null)};
-    saved.immediate=fingerprint(f); fs.writeFileSync(file,JSON.stringify(saved));
+    saved.defenderAudit=defenderAudit(f);saved.immediate=fingerprint(f); fs.writeFileSync(file,JSON.stringify(saved));
   }
   assert.deepStrictEqual(fingerprint(f),saved.immediate,'immediate whole-state fingerprint');
+  assert.deepStrictEqual(defenderAudit(f),saved.defenderAudit,'same defender heads, assigned roster and canonical draft pool');
   const days=[];
   for(let d=0;d<10;d++){for(let i=0;i<900;i++)f.tick(); f.day();days.push(fingerprint(f));}
-  fs.writeFileSync(file+'.'+mode+'.json',JSON.stringify({days,protocol:{hostTicksAfterCheckpoint:9000,hostDtMs:1000/30,gameDays:10,dayMs:30000,dailyOrder:'_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day',battleSteps,dtSum,shots,temporaryRanged,gates,exposure:saved.exposure}, events:f.events.filter(e=>e.type==='arrow_spawn').length, logs:logs.slice(-3)}));
+  fs.writeFileSync(file+'.'+mode+'.json',JSON.stringify({days,protocol:{hostTicksAfterCheckpoint:9000,hostDtMs:1000/30,gameDays:10,dayMs:30000,dailyOrder:'_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day',battleSteps,dtSum,shots,temporaryRanged,gates,exposure:saved.exposure,defenderAudit:saved.defenderAudit}, events:f.events.filter(e=>e.type==='arrow_spawn').length, logs:logs.slice(-3)}));
   console.log=log;console.log(JSON.stringify({mode,stage,seed,day:saved.day,complete:true}));
   process.exit(0);
 }
 function run() {
-  process.env.T1497_WAR_SNAP='1';
+  process.env.T1517_WAR_SNAP='1';
   try{assert.strictEqual(typeof require('../server/villages').__p3Bind({})._warSnapPack,'function','complete snapshot product API');}catch(e){console.error('✗ complete snapshot product API absent');throw e;}
-  process.env.T1497_WAR_SNAP='1';
+  process.env.T1517_WAR_SNAP='1';
   const dir=process.env.WAR_SNAP_TEST_OUT || require('./lib-tmp').dir('war_snapshot');fs.mkdirSync(dir,{recursive:true});
   const results=[];
   for(const bound of ['1','0'])for(const seed of [7,42])for(const stage of ['muster','march','siege','fight','return','capture']){
@@ -90,7 +94,7 @@ function run() {
   }
   const mutants=[];
   for(const name of ['defender','formations-only','teleport','cd','rng','ignore-corruption']){
-    const r=cp.spawnSync(process.execPath,[path.join(__dirname,'war-snapshot-mutation-child.js'),name],{cwd:ROOT,env:{...process.env,T1497_WAR_SNAP:'1'},encoding:'utf8',timeout:30000,maxBuffer:1e6});
+    const r=cp.spawnSync(process.execPath,[path.join(__dirname,'war-snapshot-mutation-child.js'),name],{cwd:ROOT,env:{...process.env,T1517_WAR_SNAP:'1'},encoding:'utf8',timeout:30000,maxBuffer:1e6});
     const red=r.status===1&&/AssertionError \[ERR_ASSERTION\]/.test(r.stderr)&&!/(TypeError:|ReferenceError:|RangeError:|FATAL ERROR)/.test(r.stderr);
     fs.writeFileSync(path.join(dir,'mutant-'+name+'.log'),r.stdout+r.stderr);mutants.push({name,assertRed:red,crash:!red,status:r.status});
     assert(red,'미끼 · 바꾼 자리: '+name+' must fail the independent native-state assertion');
@@ -99,4 +103,4 @@ function run() {
   fs.writeFileSync(path.join(dir,'matrix.json'),JSON.stringify(results,null,2));
   console.log(`✓ WAR_SNAP native phase matrix ${results.length}/24; immediate and 10 daily fingerprints equal. ${dir}`);
 }
-if(require.main===module)run();module.exports={semantic,fingerprint};
+if(require.main===module)run();module.exports={semantic,fingerprint,defenderAudit};

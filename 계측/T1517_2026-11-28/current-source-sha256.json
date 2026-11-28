@@ -1,0 +1,20 @@
+{
+  "server/villages.js": "1933c986ad41acc0506bf5e59632fab7fb27ef430632345ef8b875ca5ba77eb2",
+  "server/war-live.js": "d8708976a66213e4c655e09c5b51fc94ed6d4cf3c0c7ab0f470d180772f8efb7",
+  "server/war-snapshot-host.js": "33e34cf470a236678b185b1de5da3fa9483a409fe912b204c668ab5a4f582941",
+  "server/war-snapshot.js": "699c97f60d15c809665e29b864419a28ac1e8c1902c84acaa515a8cce5051cf4",
+  "sim/path-core.js": "79e6968f412f8f7b0a9f5ed73dfd26e2ce22dbed3ab6274caa961a2a813eabcd",
+  "scripts/test-war-snapshot.js": "44c054c0c5a0292c3fd73c18a9129c260b1de5d98f742ddfabf285c7ef61c965",
+  "scripts/test-war-snapshot-data.js": "e8e2494c76584ce6ad69b394e99769ffc6a566ab8b3995f12b96009819320317",
+  "scripts/test-war-snapshot-corners.js": "236430c12f1428acc476ac6acb2d5b811f8e065a803269a2e920a70c346fc651",
+  "scripts/war-snapshot-mutation-child.js": "883e0086cd9cf3c761ff2cf6accc47b7a987dadcec4cb6463b0520af19ad3592",
+  "scripts/war-snapshot-mature-hook.js": "b69d6a79d889060b88758e237dd9b36e61f92ee350649b18615f39ff5c2463af",
+  "scripts/war-snapshot-save-cost.js": "9ece1f895f172bc5b27dec1d0e1855e67b1a4568961c41a6782a6354b91d9469",
+  "scripts/war-snapshot-zone-hook.js": "468812bb00dc097e984eec2a92aef980db010d1592a3e6e0814a0b931df6c410",
+  "scripts/war-snapshot-off-child.js": "9f72c7e8f26b08465d95c25704c74aa04fe2ecd96ab1097b4e14d8b6b95d93a2",
+  "scripts/war-snapshot-atomic-child.js": "8bc6fe88d25cdf510bb3bdd9f33081d96bbbcc0dcebbf9069fb6f8075ce164f5",
+  "scripts/test-war-snapshot-contract.js": "14f3f330aa8bf0cca7932b81e87e65f0e2b6d257bbddc1f33848b9b193042da3",
+  "scripts/war-snapshot-bundle-child.js": "0e1b9ef5ef2436e7de8e51080166f35bdc81f7aaab232abcef99b537c11b929b",
+  "scripts/war-snapshot-policy-child.js": "12f462ba5e88d323ca6975e9b4bf19d9cfb3cea234a3238b6e4f9be5919d8e6d",
+  "scripts/lib-war-snap-fixture.js": "3e377eecc29e345236792aca837e4552652d58ff26c16e8faf212124c48db738"
+}

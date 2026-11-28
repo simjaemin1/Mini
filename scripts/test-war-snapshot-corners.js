@@ -2,7 +2,7 @@
 // @regress unit
 // @bait 1
 'use strict';
-process.env.T1497_WAR_SNAP='1';
+process.env.T1517_WAR_SNAP='1';
 const assert=require('assert'),F=require('./lib-war-snap-fixture'),BC=require('../sim/battle-core'),{semantic}=require('./test-war-snapshot'),u=require('util');
 try{assert.strictEqual(typeof require('../server/villages').__p3Bind({})._warSnapPack,'function','complete snapshot product API');}catch(e){console.error('✗ complete snapshot product API absent');throw e;}
 let pass=0;function check(name,fn){try{fn();}catch(e){console.error('✗ '+name);throw e;}pass++;console.log('✓ '+name);}
@@ -11,7 +11,7 @@ check('wounded soldier and dead commander through native damage door',()=>{
  const f=F.create(42);f.mobilize();f.day();for(let i=0;i<100;i++)f.tick();const b=[...f.H.state.warBodies.values()][0],ctx=b.fight.ctx;
  const leader=b.atkGroup.commander.bu,other=ctx.units.find(x=>x.side==='A'&&x!==leader);assert(leader&&other);
  BC._hurt(ctx,other,10,other.x+1,other.y,'melee',0);assert(other.hp>0&&other.hp<other.maxHp);
- BC._hurt(ctx,leader,1e6,leader.x+1,leader.y,'melee',0);assert(leader.hp<=0);f.tick();roundtrip(f);
+ let deathTick=null;const step=BC._stepBattle;BC._stepBattle=function(c,dt){if(c===ctx&&deathTick===null){BC._hurt(ctx,leader,1e6,leader.x+1,leader.y,'melee',0);deathTick=f.now();}return step.apply(this,arguments);};try{f.tick();}finally{BC._stepBattle=step;}assert(leader.hp<=0);assert.strictEqual(deathTick,f.now(),'save at the completed host tick that actually killed the commander');roundtrip(f);
 });
 check('two native mobilizations from one village keep distinct war/unit identities',()=>{
  const f=F.create(7);f.mobilize();f.mobilize();f.tick();assert.strictEqual(f.war.WARS.length,2);assert.strictEqual(f.H.state.warBodies.size,2);roundtrip(f);

@@ -542,7 +542,7 @@ function createWarLive(opts) {
     Object.defineProperty(u, 'y', group ? _T874.D.gy : _T874.D.uy);
   }
   let snapshotStepping = 0;
-  const snapshotOn = typeof process !== 'undefined' && process.env.T1497_WAR_SNAP === '1';
+  const snapshotOn = typeof process !== 'undefined' && process.env.T1517_WAR_SNAP === '1';
   const snapshotStep = (f) => { snapshotStepping++; try { return stepFight(f); } finally { snapshotStepping--; } };
   function snapshotRuntime(value) {
     if (snapshotStepping) throw new Error('WAR_SNAP: save inside unfinished battle step');

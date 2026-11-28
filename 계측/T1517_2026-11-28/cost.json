@@ -1,0 +1,337 @@
+{
+  "rows": [
+    {
+      "flag": "0",
+      "seed": 7,
+      "profile": "native 24+147 resident fixture, canonical shutdown, SQLite WAL",
+      "defenders": 146,
+      "day": 400,
+      "bytes": {
+        "meta": 5571,
+        "rows": 219324,
+        "snapshot": 0,
+        "total": 224895
+      },
+      "totalMs": 32.535518999999994,
+      "sqlMs": 0.38942699999998354,
+      "shutdown": {
+        "why": "경계",
+        "waitMs": 0,
+        "saveMs": 0,
+        "villages": 2,
+        "day": 400,
+        "err": null
+      },
+      "rep": 0
+    },
+    {
+      "flag": "1",
+      "seed": 7,
+      "profile": "native 24+147 resident fixture, canonical shutdown, SQLite WAL",
+      "defenders": 146,
+      "day": 400,
+      "bytes": {
+        "meta": 331088,
+        "rows": 219324,
+        "snapshot": 325501,
+        "total": 550412
+      },
+      "totalMs": 53.883767999999975,
+      "sqlMs": 2.2372749999999826,
+      "shutdown": {
+        "why": "경계",
+        "waitMs": 0,
+        "saveMs": 0,
+        "villages": 2,
+        "day": 400,
+        "err": null
+      },
+      "rep": 0
+    },
+    {
+      "flag": "0",
+      "seed": 7,
+      "profile": "native 24+147 resident fixture, canonical shutdown, SQLite WAL",
+      "defenders": 146,
+      "day": 400,
+      "bytes": {
+        "meta": 5571,
+        "rows": 219324,
+        "snapshot": 0,
+        "total": 224895
+      },
+      "totalMs": 22.887288000000012,
+      "sqlMs": 0.35097999999999274,
+      "shutdown": {
+        "why": "경계",
+        "waitMs": 0,
+        "saveMs": 0,
+        "villages": 2,
+        "day": 400,
+        "err": null
+      },
+      "rep": 1
+    },
+    {
+      "flag": "1",
+      "seed": 7,
+      "profile": "native 24+147 resident fixture, canonical shutdown, SQLite WAL",
+      "defenders": 146,
+      "day": 400,
+      "bytes": {
+        "meta": 331088,
+        "rows": 219324,
+        "snapshot": 325501,
+        "total": 550412
+      },
+      "totalMs": 42.971956000000006,
+      "sqlMs": 1.033169000000015,
+      "shutdown": {
+        "why": "경계",
+        "waitMs": 0,
+        "saveMs": 0,
+        "villages": 2,
+        "day": 400,
+        "err": null
+      },
+      "rep": 1
+    },
+    {
+      "flag": "0",
+      "seed": 7,
+      "profile": "native 24+147 resident fixture, canonical shutdown, SQLite WAL",
+      "defenders": 146,
+      "day": 400,
+      "bytes": {
+        "meta": 5571,
+        "rows": 219324,
+        "snapshot": 0,
+        "total": 224895
+      },
+      "totalMs": 21.192341,
+      "sqlMs": 0.3623369999999966,
+      "shutdown": {
+        "why": "경계",
+        "waitMs": 0,
+        "saveMs": 0,
+        "villages": 2,
+        "day": 400,
+        "err": null
+      },
+      "rep": 2
+    },
+    {
+      "flag": "1",
+      "seed": 7,
+      "profile": "native 24+147 resident fixture, canonical shutdown, SQLite WAL",
+      "defenders": 146,
+      "day": 400,
+      "bytes": {
+        "meta": 331088,
+        "rows": 219324,
+        "snapshot": 325501,
+        "total": 550412
+      },
+      "totalMs": 43.081733000000014,
+      "sqlMs": 2.142662999999999,
+      "shutdown": {
+        "why": "경계",
+        "waitMs": 0,
+        "saveMs": 0,
+        "villages": 2,
+        "day": 400,
+        "err": null
+      },
+      "rep": 2
+    },
+    {
+      "flag": "0",
+      "seed": 42,
+      "profile": "native 24+147 resident fixture, canonical shutdown, SQLite WAL",
+      "defenders": 146,
+      "day": 400,
+      "bytes": {
+        "meta": 5571,
+        "rows": 219324,
+        "snapshot": 0,
+        "total": 224895
+      },
+      "totalMs": 30.29845900000001,
+      "sqlMs": 0.3938540000000046,
+      "shutdown": {
+        "why": "경계",
+        "waitMs": 0,
+        "saveMs": 0,
+        "villages": 2,
+        "day": 400,
+        "err": null
+      },
+      "rep": 0
+    },
+    {
+      "flag": "1",
+      "seed": 42,
+      "profile": "native 24+147 resident fixture, canonical shutdown, SQLite WAL",
+      "defenders": 146,
+      "day": 400,
+      "bytes": {
+        "meta": 331088,
+        "rows": 219324,
+        "snapshot": 325501,
+        "total": 550412
+      },
+      "totalMs": 46.68213900000001,
+      "sqlMs": 2.27385000000001,
+      "shutdown": {
+        "why": "경계",
+        "waitMs": 0,
+        "saveMs": 0,
+        "villages": 2,
+        "day": 400,
+        "err": null
+      },
+      "rep": 0
+    },
+    {
+      "flag": "0",
+      "seed": 42,
+      "profile": "native 24+147 resident fixture, canonical shutdown, SQLite WAL",
+      "defenders": 146,
+      "day": 400,
+      "bytes": {
+        "meta": 5571,
+        "rows": 219324,
+        "snapshot": 0,
+        "total": 224895
+      },
+      "totalMs": 25.117451999999986,
+      "sqlMs": 0.45745999999999754,
+      "shutdown": {
+        "why": "경계",
+        "waitMs": 0,
+        "saveMs": 0,
+        "villages": 2,
+        "day": 400,
+        "err": null
+      },
+      "rep": 1
+    },
+    {
+      "flag": "1",
+      "seed": 42,
+      "profile": "native 24+147 resident fixture, canonical shutdown, SQLite WAL",
+      "defenders": 146,
+      "day": 400,
+      "bytes": {
+        "meta": 331088,
+        "rows": 219324,
+        "snapshot": 325501,
+        "total": 550412
+      },
+      "totalMs": 36.46678299999999,
+      "sqlMs": 0.9473889999999869,
+      "shutdown": {
+        "why": "경계",
+        "waitMs": 0,
+        "saveMs": 0,
+        "villages": 2,
+        "day": 400,
+        "err": null
+      },
+      "rep": 1
+    },
+    {
+      "flag": "0",
+      "seed": 42,
+      "profile": "native 24+147 resident fixture, canonical shutdown, SQLite WAL",
+      "defenders": 146,
+      "day": 400,
+      "bytes": {
+        "meta": 5571,
+        "rows": 219324,
+        "snapshot": 0,
+        "total": 224895
+      },
+      "totalMs": 21.393565999999993,
+      "sqlMs": 0.3728619999999978,
+      "shutdown": {
+        "why": "경계",
+        "waitMs": 0,
+        "saveMs": 0,
+        "villages": 2,
+        "day": 400,
+        "err": null
+      },
+      "rep": 2
+    },
+    {
+      "flag": "1",
+      "seed": 42,
+      "profile": "native 24+147 resident fixture, canonical shutdown, SQLite WAL",
+      "defenders": 146,
+      "day": 400,
+      "bytes": {
+        "meta": 331088,
+        "rows": 219324,
+        "snapshot": 325501,
+        "total": 550412
+      },
+      "totalMs": 44.55265499999999,
+      "sqlMs": 1.0455879999999809,
+      "shutdown": {
+        "why": "경계",
+        "waitMs": 0,
+        "saveMs": 0,
+        "villages": 2,
+        "day": 400,
+        "err": null
+      },
+      "rep": 2
+    }
+  ],
+  "deltas": [
+    {
+      "seed": 7,
+      "rep": 0,
+      "bytes": 325517,
+      "totalMs": 21.34824899999998,
+      "sqlMs": 1.847847999999999
+    },
+    {
+      "seed": 7,
+      "rep": 1,
+      "bytes": 325517,
+      "totalMs": 20.084667999999994,
+      "sqlMs": 0.6821890000000224
+    },
+    {
+      "seed": 7,
+      "rep": 2,
+      "bytes": 325517,
+      "totalMs": 21.889392000000015,
+      "sqlMs": 1.7803260000000023
+    },
+    {
+      "seed": 42,
+      "rep": 0,
+      "bytes": 325517,
+      "totalMs": 16.38368,
+      "sqlMs": 1.8799960000000056
+    },
+    {
+      "seed": 42,
+      "rep": 1,
+      "bytes": 325517,
+      "totalMs": 11.349331000000006,
+      "sqlMs": 0.4899289999999894
+    },
+    {
+      "seed": 42,
+      "rep": 2,
+      "bytes": 325517,
+      "totalMs": 23.159088999999994,
+      "sqlMs": 0.6727259999999831
+    }
+  ],
+  "measurement": "real performance.now; no T745 preload; serialization + canonical SQLite commit, not a benchmark conclusion"
+}
