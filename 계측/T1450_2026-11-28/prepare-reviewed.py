@@ -196,6 +196,14 @@ gate('territory.population-cap',S,'_terrCap',7733,'derived-bound-return','ⓑ',
 gate('territory.player-exception',S,'_terrCapBound',7740,'if','ⓒ',
     '촌장이 세운 마을은 NPC 인구 기반 영토 천장 대상에서 뺀다',
     '촌장 예외 유지. 걷기 대상 아님','유효 객체 검사도 같은 조기 반환문에 있으므로 정책 예외와 기술 검사를 최종 표에서 구분')
+gate('price.holding-buffer',V,'_targetV2',914,'numeric-variable','ⓑ',
+    '결정 가격의 사치재 보유 목표만 인구×0.08로 더하고 일반재 기본 버퍼는 0으로 둔다',
+    '사치재 보유 항만 0. 실제 소비·파생수요·재료 사용은 유지',
+    'LUX_TARGET_PC의 사용처. 정산 경로의 일반재 버퍼와 같다고 가정하지 않음')
+gate('settlement.holding-buffer',V,'_priceParamsV2',1170,'numeric-variable','ⓑ',
+    'T726 끔 정산은 사치재 외 일반재에도 인구×효용가중치×1.2 보유 목표를 둔다',
+    '정산의 일반재 보유 항만 0. 사치재·소비·파생수요는 유지',
+    '결정 경로에서 이미 0인 버퍼와 다름. T726 켬은 다른 함수로 우회. 출발 직후·부패 사본도 추가 대조')
 
 # Render only evidence already read. No completion totals or grades are invented.
 result=dict(status='진행 중: 씨앗 선언 부분 검토. 전수·사용처 분할·초기 출처·실험 미완',

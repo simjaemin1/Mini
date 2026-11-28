@@ -11,7 +11,7 @@
 - `scan-summary.json`, `named-policy-queue.tsv`: 후보 종류·파일별 크기와 우선 읽을 목록. 정책 총계가 아니다.
 - `line-provenance.py`, `line-provenance.json.gz`: 고정 바탕의 줄별 `git blame` 귀속. **숫자 최초 도입·측정 근거의 증명은 아니다.**
 - `find-name-origins.py`, `name-origin-candidates.json`: 선택한 선언 이름 65개가 같은 파일의 바탕 역사에서 처음 추가된 줄을 찾았다(얕은 저장소 아님·누락 0). 비축 지도 27품목은 지도 이름 하나를 공유한다. 이전 익명 숫자·다른 파일에서의 도입과 지도 개별 품목의 첫 수치는 별도이므로 숫자 최초 도입으로 쓰지 않는다.
-- `prepare-reviewed.py`, `reviewed-policy-rows.json`: 읽은 선언 91개와 익명·공유 사용처 15개의 분류·의미·걷을 자리·주의·줄 귀속을 기록하고 부분표를 만든다. 선언과 사용처가 중복되므로 더해서 문 총계로 쓰지 않는다. 모든 사용처·첫 도입·핀 하네스 추적은 아직 남았다.
+- `prepare-reviewed.py`, `reviewed-policy-rows.json`: 읽은 선언 91개와 익명·공유 사용처 17개의 분류·의미·걷을 자리·주의·줄 귀속을 기록하고 부분표를 만든다. 선언과 사용처가 중복되므로 더해서 문 총계로 쓰지 않는다. 모든 사용처·첫 도입·핀 하네스 추적은 아직 남았다.
 - `recipe-crosswalk.py`, `recipe-crosswalk-draft.json`: T718 원래 레시피 E28/S54/L1, 합 83줄의 정체성을 보존한 초안. 뒤의 비용 표에 반복된 ID는 중복 세지 않는다. 플레이어 직접 진입 50줄을 읽었고, 나머지 33줄은 판정 중이다.
 - `manual-recipes.cjs`, `manual-recipes-evidence.json`: 직접 플레이어 제작 함수·줄·전체 함수 해시와 읽기 판정을 고정한다. 재료 개수 검사와 경제적 비용·쓰임 판단을 구분한다. 사람이 레시피를 고르는 50줄을 NPC 생산 알고리즘 누락으로 세지 않는다. 혼합 행과 NPC 경로는 미검토다.
 - `economic-reading-notes.md`: 제련·주조·갈무리·숯가마의 직접 문과 T718 ⓪~⑤의 부분 대조 메모. 배합 순위에 비용을 쓴다는 것과 손해 생산을 막는다는 것을 구분한다. 최종 완료 수는 미확정이다.

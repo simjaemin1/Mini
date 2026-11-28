@@ -3552,6 +3552,42 @@
    },
    "liftImplemented": false,
    "experiment": null
+  },
+  {
+   "id": "price.holding-buffer",
+   "file": "sim/economy-sim-v2.js",
+   "line": 914,
+   "scope": "_targetV2",
+   "expression": "ORNAMENTAL[r] ? N * LUX_TARGET_PC : 0",
+   "sourceSha256": "61cfa39a679e4ae2fe3654d93edb0b34d4ac831d3673ec304f642b0b01c9b861",
+   "classification": "ⓑ",
+   "meaning": "결정 가격의 사치재 보유 목표만 인구×0.08로 더하고 일반재 기본 버퍼는 0으로 둔다",
+   "proposedLift": "사치재 보유 항만 0. 실제 소비·파생수요·재료 사용은 유지",
+   "note": "LUX_TARGET_PC의 사용처. 정산 경로의 일반재 버퍼와 같다고 가정하지 않음",
+   "lineAttribution": {
+    "commit": "0ac65d7a14b04446547980e833d4bd0e856655c1",
+    "dateUTC": "2026-10-13"
+   },
+   "liftImplemented": false,
+   "experiment": null
+  },
+  {
+   "id": "settlement.holding-buffer",
+   "file": "sim/economy-sim-v2.js",
+   "line": 1170,
+   "scope": "_priceParamsV2",
+   "expression": "ORNAMENTAL[r] ? N * LUX_TARGET_PC : N * (util * 1.2)",
+   "sourceSha256": "8a7d0e6ea8d387bd5a56c3b85fc0650b38b93df22e7b17f59d498684b367f5a4",
+   "classification": "ⓑ",
+   "meaning": "T726 끔 정산은 사치재 외 일반재에도 인구×효용가중치×1.2 보유 목표를 둔다",
+   "proposedLift": "정산의 일반재 보유 항만 0. 사치재·소비·파생수요는 유지",
+   "note": "결정 경로에서 이미 0인 버퍼와 다름. T726 켬은 다른 함수로 우회. 출발 직후·부패 사본도 추가 대조",
+   "lineAttribution": {
+    "commit": "26d941b7695415300f38c3114f2be68cee4f3179",
+    "dateUTC": "2026-07-12"
+   },
+   "liftImplemented": false,
+   "experiment": null
   }
  ]
 }
