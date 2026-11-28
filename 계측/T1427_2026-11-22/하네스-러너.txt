@@ -1,0 +1,40 @@
+# T1427 하네스 판 — 트리 cd11127f3(지도 굽기 7166dd987 뒤) · 상자 2코어(판 둘과 나란히)
+## 지도 · 광맥 하네스(광맥 · 마을 땅 · 지형 json 을 읽는 @regress 스물둘 — touched 는 데이터 파일을 안 보므로 손으로 고름)
+test-mining PASS(저장 pk ≡ 공식 0 불일치 · 청동기 광종 여섯 끔 판 · 켬 판 다섯 · 주요 철 0)
+test-region-profiles 74/0(ⓘ 정본 = 굽기 · 규칙 셋 · 끔 되돌림 171)
+test-oremix rc=0 0s === 유효 제련 조성 하네스: PASS ✅ ===
+test-alloy rc=0 0s 결과: PASS
+test-frontier-iron rc=0 2s === 프런티어 철 하네스: 11 통과 / 0 실패 ✅ ===
+test-lab-mining rc=124 900s 
+test-one-target rc=0 45s === 결과: 24 PASS / 0 FAIL ===
+test-smelt-return rc=0 2s === 17건 중 PASS 17 · FAIL 0 ===
+test-stone-real rc=0 29s 
+test-t1188-ore-split rc=0 5s PASS 29 / FAIL 0
+test-t1249-ore-fix rc=0 4s 결과: 7 통과 / 0 실패
+test-t1266-ore-body rc=0 11s === 63 통과 / 0 실패 ===
+test-t1333-alloy-order rc=0 15s 
+test-t1344-bronze-mix rc=0 61s 
+test-t1347-fetch rc=0 101s 
+test-t1385-bronze-nocap rc=0 5s 
+test-t1407-tin-world rc=0 7s 결과: 59 통과 · 0 실패
+test-village-label rc=0 141s === 결과: 34 PASS / 0 FAIL ===
+test-t1187-names rc=0 1s === 27건 중 PASS 27 · FAIL 0 ===
+test-static-cache rc=0 23s 
+test-route-sig rc=0 382s === 10 통과 / 0 실패 ===
+test-map-editor rc=0 48s === 66건 중 PASS 66 · FAIL 0 ===
+  └ test-stone-real 끝 줄: === 67/67 ✓ ===
+  └ test-t1333-alloy-order 끝 줄: === 69/69 ✓ (미끼 8/8) ===
+  └ test-t1344-bronze-mix 끝 줄: === 37/37 ✓ (미끼 7/7) ===
+  └ test-t1347-fetch 끝 줄: === 30/30 ✓ (미끼 10/10) ===
+  └ test-t1385-bronze-nocap 끝 줄: === 15/15 ✓ (미끼 5/5) ===
+  └ test-static-cache 끝 줄: === 46/0 ===
+  └ test-lab-mining rc=124 = 900초 시한(브라우저 랩 · 판 둘과 나란히) → 판 끝난 뒤 혼자 다시: rc=1 1296초 · 결과 FAIL 2건(광부가 광맥 셀에 배치됨 · 광맥 재고가 실제로 줄어든다 — 랩 광산촌 90날 광부 0) = 알려진 야간 빨강(지시 T1240 · T1203 회부) · 랩 html 은 지형 json 을 안 읽는다 · lab/전쟁실험실.html 무변
+## 새 하네스 · 규약 다섯 · 번들
+test-t1427-tin-map 9/0 · 미끼 3/3 · ci-class --measure 다섯 판 1.6 ~ 2.1초 → core · test-ci-list 16/0
+test-body-fields rc=0 1s === 14 통과 / 0 실패 ===
+test-coll-grid rc=0 22s === 결과: 20 PASS / 0 FAIL ===
+test-hp-src rc=0 3s === 54 통과 / 0 실패 ===
+test-lon-day rc=0 1s === 22건 중 PASS 22 · FAIL 0 ===
+test-harness-lint rc=0 162s === 102건 중 PASS 102 · FAIL 0 ===
+bundle-check rc=0 382s [check] 회귀검증 16 일치 / 0 불일치 ✅
+harness-lint(마지막 트리 다시) 102/0

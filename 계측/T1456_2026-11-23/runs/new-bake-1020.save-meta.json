@@ -1,0 +1,23 @@
+{
+ "v": 1,
+ "card": "T1420",
+ "sig": "d5d10aa30298ab1e",
+ "day": 1900,
+ "knobs": {
+  "ENABLE_VILLAGES": "0"
+ },
+ "fns": [
+  "priceFn",
+  "netExportFn",
+  "forageTakeFn"
+ ],
+ "node": "v22.23.4",
+ "zone": "hanbando",
+ "seed": 1020,
+ "made": "t17-metrics",
+ "loadedFrom": null,
+ "bytes": 691096,
+ "raw": 7903454,
+ "sha": "f8c33a84810842ee",
+ "makeSec": 774.2
+}
