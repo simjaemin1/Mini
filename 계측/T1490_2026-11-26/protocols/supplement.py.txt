@@ -1,0 +1,19 @@
+import pathlib,os,subprocess,json,time,signal,shutil
+root='/workspace/Mini-T1490'; p=pathlib.Path('/var/tmp/t1490'); out=p/'invalid-movement-attempts';out.mkdir(exist_ok=True)
+plan=[('re-off-04','re-off-04r1','0'),('re-on-01r1','re-on-01r2','1'),('re-on-24','re-on-24r1','1')]
+for old,tag,arm in plan:
+ for f in list((p/'raw').glob(old+'.*'))+[p/'done'/(old+'.done')]:
+  if f.exists():shutil.move(str(f),str(out/f.name))
+ env={**os.environ,'T1490_NEAR_NOW':arm,'TIDE_FREEZE_MS':'372603','LAB_SEED':'1020','T1485_START_DIR':'0','T1485_RECONN':'2','T1485_LOG':str(p/'raw'/f'{tag}.obs.jsonl'),'NODE_OPTIONS':f'--require {root}/scripts/t1485-observer.js'}
+ t=time.time();rc=None
+ try:
+  with open(p/'raw'/f'{tag}.log','w') as f:
+   child=subprocess.Popen(['node','scripts/t1485-walkbot.js'],cwd=root,env=env,stdout=f,stderr=subprocess.STDOUT,start_new_session=True)
+   (p/'supplement-active.json').write_text(json.dumps({'tag':tag,'pid':child.pid,'started':t}))
+   try:rc=child.wait(timeout=2400)
+   except subprocess.TimeoutExpired:os.killpg(child.pid,signal.SIGKILL);child.wait();rc=124
+  w=pathlib.Path('/tmp/t1485-walk.json')
+  if w.exists():(p/'raw'/f'{tag}.walk.json').write_bytes(w.read_bytes());w.unlink()
+ except BaseException as e:rc=str(e)
+ finally:(p/'done'/f'{tag}.done').write_text(json.dumps({'rc':rc,'seconds':round(time.time()-t,3)}))
+(p/'SUPPLEMENT.done').write_text('done')

@@ -1,0 +1,15 @@
+{
+  "observed_runner": {
+    "tag": "re-on-18",
+    "pid": 88648,
+    "started": 1795634155.332167
+  },
+  "selected_env": {
+    "T1490_NEAR_NOW": "1",
+    "TIDE_FREEZE_MS": "372603",
+    "LAB_SEED": "1020",
+    "T1485_START_DIR": "0",
+    "NODE_OPTIONS": "--require /workspace/Mini-T1490/scripts/t1485-observer.js",
+    "T1485_RECONN": "2"
+  }
+}

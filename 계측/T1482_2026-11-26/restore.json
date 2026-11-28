@@ -1,0 +1,65 @@
+{
+  "scope": "actual restore gates on extracted checkpoint rows; no running zone",
+  "restored": {
+    "villages": 2,
+    "bodies": 369,
+    "jobMiss": 0,
+    "hands": 45,
+    "extraHands": 0,
+    "task": 0,
+    "taskDrop": 0,
+    "moved": 369,
+    "hpLow": 0
+  },
+  "pref": 190,
+  "summary": [
+    {
+      "village": "임업2",
+      "physical": 223,
+      "muster": 44,
+      "simWar": 44,
+      "dead": 0,
+      "sameCoordinates": true,
+      "atHomeExact": 0,
+      "battleLabels": 44,
+      "commanded": 1,
+      "types": {
+        "archer": 37,
+        "dagger": 7,
+        "undefined": 179
+      },
+      "eligible": 179,
+      "draftReturnedNull": false,
+      "homeDistancePx": [
+        16.22288571856877,
+        5362.649260931941
+      ]
+    },
+    {
+      "village": "광산5",
+      "physical": 146,
+      "muster": 146,
+      "simWar": 146,
+      "dead": 0,
+      "sameCoordinates": true,
+      "atHomeExact": 0,
+      "battleLabels": 146,
+      "commanded": 1,
+      "types": {
+        "archer": 43,
+        "slinger": 43,
+        "dagger": 6,
+        "greataxe": 25,
+        "spear": 23,
+        "pike": 4,
+        "militia": 2
+      },
+      "eligible": 0,
+      "draftReturnedNull": true,
+      "homeDistancePx": [
+        53.49756689846786,
+        3742.746802495793
+      ]
+    }
+  ]
+}

@@ -313,7 +313,8 @@ console.log('\n⑪ 접점 심볼');
 //   ★실행 절은 정본 `_lifeDaily` 를 그대로 돈다(`__labProbe._t449Probe` · 존 술어는 zone.js 글자 그대로 — 사본 0).
 console.log('\n⑫ [T449] 결산 문 — 켬이면 관측 마을은 팔 켜진 직업을 **몸이** 한다 · 끔 = 종전(늘 거짓) 비트 동일');
 {
-  const daily = bodyOf(VC, '_lifeDaily');
+  const dayEntry = bodyOf(VC, '_lifeDaily');
+  const daily = dayEntry + (dayEntry.includes('_lifeWoodDay(') ? bodyOf(VC, '_lifeWoodDay') : '');
   ok(/^const T449_BODY_DAY = process\.env\.T449_BODY_DAY !== '0';$/m.test(VC) && (VC.match(/process\.env\.T449_BODY_DAY/g) || []).length === 1,
     '⑫ ★손잡이 `T449_BODY_DAY` 는 **한 자리**에서 읽힌다 · `!== \'0\'`(켬 기본)');
   //   ★점과 반경은 옛 줄의 두 식 **그대로**다(새 술어 0 · 새 수 0) — 옛 줄은 끈 팔을 위해 남는다

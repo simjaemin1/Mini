@@ -1,0 +1,10 @@
+# run
+start 2026-11-26T16:58:20Z cc2520553 plan=plan-main.txt jobs=2
+start 2026-11-26T18:12:46Z 84231d192 plan=plan-cen.txt jobs=1
+done 2026-11-26T18:45:20Z plan=plan-cen.txt
+done 2026-11-26T19:32:10Z plan=plan-main.txt
+# inv
+start 2026-11-26T16:49:19Z 88a9ed68d plan=plan-inv.txt jobs=3
+done 2026-11-26T16:57:52Z plan=plan-inv.txt
+start 2026-11-26T18:08:14Z 3aab92276 plan=plan-inv2.txt jobs=1
+done 2026-11-26T18:11:50Z plan=plan-inv2.txt

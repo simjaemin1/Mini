@@ -1,0 +1,20 @@
+{
+ "command": [
+  "node",
+  "scripts/server-baseline-check.js",
+  "\uacc4\uce21/\uc11c\ubc84\uae30\uc900\uc120_2026-11-18.json",
+  "--plan",
+  "1020:400",
+  "--par",
+  "1",
+  "--vclock",
+  "--side"
+ ],
+ "env": {
+  "T1496_BODY_FIRST": "0"
+ },
+ "sourceSha256": "693e98ab4a9f5f8fbdb64e81d403721169a3f4d459f7a520faf08c5d078dcaa1",
+ "sourceUnchanged": true,
+ "exit": 0,
+ "seconds": 618.481
+}

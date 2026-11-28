@@ -1,0 +1,6 @@
+import subprocess,pathlib,time
+p=pathlib.Path('/var/tmp/t1490/done/mem-off-01.done')
+while not p.exists(): time.sleep(5)
+try:
+ with open('/var/tmp/t1490/controller.log','w') as f: r=subprocess.run(['python3','scripts/t1490-measure.py'],cwd='/workspace/Mini-T1490',stdout=f,stderr=subprocess.STDOUT)
+finally: pathlib.Path('/var/tmp/t1490/controller.done').write_text(str(r.returncode))
