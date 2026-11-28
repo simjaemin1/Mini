@@ -32,7 +32,7 @@ for(const file of FILES){
   }
   if(n.type==='IfStatement'||n.type==='ConditionalExpression')record(n.type==='IfStatement'?'if':'ternary',n,n.test,scope);
   if(n.type==='ReturnStatement'&&n.argument&&['LogicalExpression','BinaryExpression'].includes(n.argument.type)&&/[<>]|===|!==/.test(text(n.argument)))record('return-predicate',n,n.argument,scope);
-  if(n.type==='ReturnStatement'&&n.argument&&numeric(n.argument)&&(/cap|target|terr|floor|room|keep|reserve|plan|desired|limit|crew|stock|price|buy|sell|expand|job/i.test(scope)||/npcs\.length|\b(?:N|_pop|population|people)\b/.test(text(n.argument))))record('numeric-return',n,n.argument,scope);
+  if(n.type==='ReturnStatement'&&n.argument&&numeric(n.argument)&&(/cap|target|terr|floor|room|keep|reserve|plan|desired|limit|crew|stock|price|buy|sell|expand|job|cost|value|worth|wage|labor|utility|income/i.test(scope)||/npcs\.length|\b(?:N|_pop|population|people)\b/.test(text(n.argument))))record('numeric-return',n,n.argument,scope);
   if(n.type==='ReturnStatement'&&n.argument&&!numeric(n.argument)&&/cap|target|floor|keep|reserve|desired|limit/i.test(scope)&&!['FunctionExpression','ArrowFunctionExpression','ObjectExpression','ArrayExpression','Literal'].includes(n.argument.type))record('derived-bound-return',n,n.argument,scope);
   if(n.type==='CallExpression'&&/^(?:Math\.(?:min|max)|clamp|clamp01)$/.test(text(n.callee)))record('clamp',n,n,scope);
   if(['ForStatement','WhileStatement','DoWhileStatement'].includes(n.type)&&n.test)record(numeric(n.test)?'bounded-loop':'symbolic-loop',n,n.test,scope);

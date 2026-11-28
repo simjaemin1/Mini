@@ -16,6 +16,7 @@
 - `manual-recipes.cjs`, `manual-recipes-evidence.json`: 직접 플레이어 제작 함수·줄·전체 함수 해시와 읽기 판정을 고정한다. 재료 개수 검사와 경제적 비용·쓰임 판단을 구분한다. 사람이 레시피를 고르는 50줄을 NPC 생산 알고리즘 누락으로 세지 않는다. 혼합 행과 NPC 경로는 미검토다.
 - `economic-reading-notes.md`: 제련·주조·갈무리·숯가마의 직접 문과 T718 ⓪~⑤의 부분 대조 메모. 배합 순위에 비용을 쓴다는 것과 손해 생산을 막는다는 것을 구분한다. 최종 완료 수는 미확정이다.
 - `read-functions.cjs`: 함수 선언을 AST로 찾아 원래 줄 번호를 유지하고 주석을 뺀 읽기 보조 도구. 제품 함수는 실행하지 않는다.
+- `harness-files.txt`, `index-harness-references.cjs`, `harness-reference-index.json.gz`: 고정 바탕의 scripts 직하 JS 계열 하네스 507개에 대해 이름·관련 함수 언급과 단언 후보를 모았다. `harness-pin-notes.md`는 그중 읽은 숫자·소스 꼴·파생 경계 핀의 부분 대조다. 실제 테스트는 실행하지 않았으며 후보 수를 통과 수나 숫자 핀 수로 세지 않는다.
 
 재현(소스 네 파일이 위 바탕과 같을 때):
 
@@ -26,6 +27,8 @@ python3 계측/T1450_2026-11-28/line-provenance.py > 계측/T1450_2026-11-28/pro
 node 계측/T1450_2026-11-28/manual-recipes.cjs
 python3 계측/T1450_2026-11-28/recipe-crosswalk.py
 python3 계측/T1450_2026-11-28/prepare-reviewed.py
+git ls-tree -r --name-only 0e2ae3916acdb7380b7eb615a0f3c85d2b41f61d -- scripts | rg '^scripts/test-[^/]+\.(js|cjs|mjs)$' > 계측/T1450_2026-11-28/harness-files.txt
+node 계측/T1450_2026-11-28/index-harness-references.cjs > 계측/T1450_2026-11-28/harness-reference-summary.json
 python3 계측/T1450_2026-11-28/find-name-origins.py > 계측/T1450_2026-11-28/name-origin-summary.json
 python3 계측/T1450_2026-11-28/prepare-reviewed.py
 ```
