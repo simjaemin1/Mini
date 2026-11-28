@@ -1,0 +1,31 @@
+{
+ "v": 1,
+ "tag": "on",
+ "seed": 1020,
+ "days": 700,
+ "every": 700,
+ "dir": "/home/user/t1500-out/fp-on700",
+ "ck": 700,
+ "segs": [
+  {
+   "from": 0,
+   "to": 700,
+   "sec": 3588.3,
+   "code": 0,
+   "at": "2026-11-27T17:19:09.670Z"
+  }
+ ],
+ "done": true,
+ "env": {
+  "NODE_OPTIONS": "-r /home/user/t1500/scripts/t650-print.js -r /home/user/t1500/scripts/t1308-bodyprint.js -r /home/user/t1500/계측/T1500_2026-11-27/t1500-observe.js",
+  "T1500_HEAP_TRIM": "1",
+  "T400_BUILD_ACT": "0",
+  "VILLAGE_CARAVAN_MAX": "0",
+  "T745_VCLOCK": "1",
+  "T1500_OBS": "/home/user/t1500-out/fp-on700/obs",
+  "T1500_CENSUS": "50"
+ },
+ "started": "2026-11-27T16:19:21.340Z",
+ "tries": 0,
+ "ended": "2026-11-27T17:19:15.702Z"
+}

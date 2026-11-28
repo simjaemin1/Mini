@@ -161,6 +161,15 @@ function qBegin(tn, now, cpt, P, S) {
   if (T.length > 4 * Q.parked + 4096) { const t = [], a = [], gg = []; for (let j = 0; j < T.length; j++) { const s = Q.hS[j]; if (Q.P[s] && Q.G[s] === Q.hG[j]) { t.push(T[j]); a.push(s); gg.push(Q.hG[j]); } }
     Q.hT = t; Q.hS = a; Q.hG = gg; for (let j = (t.length >> 1) - 1; j >= 0; j--) _hDown(j); }
 }
+// ★★[T1500 2026-11-27] 칸 비우기 — 몸이 `players` 에서 빠진 뒤(죽어 거둔 몸 · 걸어 나간 몸 · 다른 몸으로 바뀐 pid) 칸이 그 몸을 잡고 있었다(`own` · 길 배열 `WPA` · `WQS` · `slotOf`).
+//   몸은 다시 안 돌아온다(마을 몸은 존 `spawnNpc` 하나로만 들고 · 같은 pid 로 다시 낳으면 `install` 이 옛 칸을 비운다) — 존이 날이 바뀐 첫 틱에 부른다(손잡이 `T1500_HEAP_TRIM` · 끔 = 안 부른다).
+//   칸 번호는 다시 쓰지 않는다(`n` 그대로 — 칸 차례 · 열 크기는 종전 그대로) · 표(`TK` · `DS`)는 부르는 쪽이 미룬 도장을 내린 뒤다(`_t1322Wake`).
+function release(s) {
+  const p = own[s]; if (!p) return false;
+  if (slotOf.get(p.pid) === s) slotOf.delete(p.pid);
+  own[s] = null; WPA[s] = null; WQS[s] = null; A.TK[s] = 0; A.DS[s] = 0;
+  return true;
+}
 // 고리 끝 — 끊겼으면(예산) 주차 몸 전부 꺼냄(끊긴 자리 앞 = 이번 틱 거름 · 뒤 = 못 거름 → 다음 첫 거름이 '빠짐'으로 깨운다 = 종전)
 function qEnd(tn, now, cutAt) { if (cutAt >= 0 && Q.parked) { Q.at = cutAt; qAll('brk'); } Q.at = -1; Q.lastN = tn; Q.lastNow = now; }
-module.exports = { ON, VERIFY, MODE, WAKE_ON, WAKE_VERIFY, WMODE, LOOP, LMODE, WALK_ON, WALK_VERIFY, KMODE, WORK_ON, WORK_VERIFY, FMODE, WORK2_ON, WORK2_VERIFY, XMODE, TOK_ON, TOK_VERIFY, TMODE, QMODE, WQ_ON, WQ_VERIFY, Q, qPark, qWake, qAll, qBegin, qEnd, qMat, qDrop, A, own, WPA, WQS, install, slot, count, stat, OrdSet, PMap, newPlayers, newNpcs };
+module.exports = { ON, VERIFY, MODE, WAKE_ON, WAKE_VERIFY, WMODE, LOOP, LMODE, WALK_ON, WALK_VERIFY, KMODE, WORK_ON, WORK_VERIFY, FMODE, WORK2_ON, WORK2_VERIFY, XMODE, TOK_ON, TOK_VERIFY, TMODE, QMODE, WQ_ON, WQ_VERIFY, Q, qPark, qWake, qAll, qBegin, qEnd, qMat, qDrop, A, own, WPA, WQS, install, release, slot, count, stat, OrdSet, PMap, newPlayers, newNpcs };

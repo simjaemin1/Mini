@@ -384,12 +384,40 @@ function _ringBuild(qx, qy, ledger, day) {
   _ringStat.us += Number(process.hrtime.bigint() - t0) / 1000;
   return cells;
 }
+// ★★[T1500 2026-11-27 · T1434 회부 3] **오래 켠 서버의 힙 — 다시 읽을 일이 없는 판은 날이 지나면 버린다** — 손잡이 `T1500_HEAP_TRIM`(★끔 기본 · `=1` 켬 · 끔 = 종전 글자 그대로).
+//   T1500 스냅숏(끔 세계 · 시드 1020 · 100 · 300 · 500 · 690날)에서 저장에 안 드는데 날마다 느는 그릇 둘이 이 두 판이었다(보고 T1500 §1):
+//   ⓐ 장부 판(`_ringCache`) — 청크마다 { 날, 판 } 하나. 날이 어긋난 판은 **읽히지 않는다**(아래 `hit.day === day` 아니면 다시 낳는다 · `_ringBump` · `_t566CellChanged` 도 날이 어긋나면 버린다) —
+//      그런데 다시 묻지 않는 청크의 옛 날 판은 버리는 자리가 없어 프로세스가 사는 동안 남았다. 켬 = 날이 바뀐 첫 틱에 오늘 날이 아닌 판을 버린다(답 0 — 읽혔다면 다시 낳았을 판).
+//   ⓑ 원시 판(`_ringCacheRaw`) — 세계 씨만의 함수(장부 · 날 없음)라 "버리지 않는다"였다. 주인은 그 판을 부른 길 일(다져진 길 오름 · 풀림 둘레 · 씨 자리)과
+//      내일 경계 풀림을 위해 미리 지은 판(T696)이다. 켬 = 오늘 · 어제 안 쓴 판을 버린다(어제 미리 지은 판은 오늘 경계가 쓴다) · 다시 부르면 같은 함수로 다시 낳는다(답 같음 · 다시 짓는 값을 `_t1500` 이 잰다).
+//   새 수 0 — "어제"는 T696 미리 짓기의 지평(내일 경계) 그대로다.
+//   ⓒ 첫 거름 칸(`stand-skip.js` T1322 — 켬 기본) — 몸을 낳을 때마다 새 칸을 받고(`install`) 몸이 `players` 에서 빠져도 칸이 그 몸 · 그 몸 길 배열을 쥐었다
+//      (스냅숏 500날: 살아 있는 몸 수천에 칸 21,055 — 죽은 사람 · 나간 사람이 메모리에만 남는다 · 다시 띄우면 산 몸만 다시 받는다). 켬 = 같은 훑기에서 빠진 몸의 칸을 비운다.
+const T1500_HEAP_TRIM = process.env.T1500_HEAP_TRIM === '1';
+const _t1500 = { day: null, sweeps: 0, ringDrop: 0, rawDrop: 0, rawBuild: 0, rawRebuild: 0, rawRebuildUs: 0, sweepUs: 0, ssRel: 0, use: new Map(), gone: new Set() };
+function _t1500Day() { if (_t1500.day != null) return _t1500.day; try { const d = gameDayNow(); return Number.isFinite(d) ? d : null; } catch (e) { return null; } }
+function _t1500Sweep() {   // 틱마다 한 번(평시 날 비교 1회) — 날이 바뀐 첫 틱에만 훑는다
+  let day; try { day = gameDayNow(); } catch (e) { return; }
+  if (!Number.isFinite(day) || day === _t1500.day) return;
+  const t0 = process.hrtime.bigint();
+  _t1500.day = day; _t1500.sweeps++;
+  for (const [k, h] of _ringCache) if (!(h.day >= day)) { _ringCache.delete(k); _t1500.ringDrop++; }   // ⓐ 오늘 날이 아닌 판(앞으로 갈 날 판은 시계를 되돌린 판 — 종전처럼 둔다)
+  for (const k of _ringCacheRaw.keys()) { const u = _t1500.use.get(k); if (!(u >= day - 1)) { _ringCacheRaw.delete(k); _t1500.use.delete(k); _t1500.gone.add(k); _t1500.rawDrop++; } }   // ⓑ 오늘 · 어제 안 쓴 원시 판
+  //   ⓒ 첫 거름 칸(`stand-skip` · T1322) — 몸이 `players` 에서 빠졌는데 칸이 그 몸을 쥐고 있었다(죽은 몸 · 나간 몸 · 낳을 때마다 새 칸).
+  //      미룬 도장이 있으면 종전 `_t1322FlushAll` 이 할 그 일(`_t1322Wake` — 빠진 몸에만 쓴다)을 먼저 하고 칸을 비운다(`SS.release` · 칸 번호 다시 안 씀).
+  if (T1322_PF) { const n = SS.count(); for (let s = 0; s < n; s++) { const p = SS.own[s]; if (!p || players.get(p.pid) === p || (s < SS.Q.cap && SS.Q.P[s])) continue;
+    if (SS.A.TK[s] || SS.A.DS[s]) { try { _t1322Wake(s); } catch (e) {} } if (SS.release(s)) _t1500.ssRel++; } }
+  _t1500.sweepUs += Number(process.hrtime.bigint() - t0) / 1000;
+}
 function _ringTable(qx, qy, raw, day) {
   const key = chunkManager.keyOf(qx, qy);
   if (raw) {
     let t = _ringCacheRaw.get(key);
+    if (T1500_HEAP_TRIM) _t1500.use.set(key, _t1500Day());
     if (t) { _ringStat.hit++; return t; }
+    const t0 = T1500_HEAP_TRIM ? process.hrtime.bigint() : 0n;
     t = _ringBuild(qx, qy, undefined, undefined);
+    if (T1500_HEAP_TRIM) { _t1500.rawBuild++; if (_t1500.gone.delete(key)) { _t1500.rawRebuild++; _t1500.rawRebuildUs += Number(process.hrtime.bigint() - t0) / 1000; } }
     _ringCacheRaw.set(key, t);
     return t;
   }
@@ -591,7 +619,7 @@ function _t696Prebuild() {
   if (TB.out(1000 / TICK_HZ / 2, 't696')) { P.skip++; return; }   // ★[T687] 이 틱 몫이 없다 — 다음 틱
   const t0 = Date.now(), budget = TB.left(1000 / TICK_HZ / 2), W = _t566W(), R = _T566_R, cs = chunkManager.chunkSize;
   while (Date.now() - t0 < budget) {
-    if (P.q.length) { const [qx, qy] = P.q.pop(); if (!_ringCacheRaw.has(chunkManager.keyOf(qx, qy))) { _ringTable(qx, qy, true); P.built++; break; } continue; }   // 판 짓기는 틱에 하나(한 판 ≤ ≈12 ms)
+    if (P.q.length) { const [qx, qy] = P.q.pop(); if (!_ringCacheRaw.has(chunkManager.keyOf(qx, qy))) { _ringTable(qx, qy, true); P.built++; break; } if (T1500_HEAP_TRIM) _t1500.use.set(chunkManager.keyOf(qx, qy), _t1500Day()); continue; }   // 판 짓기는 틱에 하나(한 판 ≤ ≈12 ms)
     if (!P.keys || P.i >= P.keys.length) break;
     const k = P.keys[P.i++], cx = k % W, cy = (k / W) | 0;
     //   둘레(체비쇼프 R) 상자의 네 귀 셀이 닿는 청크 = 상자 안 어느 셀에 닿는 청크 전부(청크 폭 ≫ 상자 폭 · `cellChunksOf` 넘침 그대로)
@@ -17789,6 +17817,7 @@ function __testBind() {
     // ★[T566] 재생 술어 — 자(`test-regrow-block`)가 **그 술어·그 문**을 그대로 묻고 두드린다(길 오름은 `Roads.stampCell` 그대로 · 사본 0)
     regrowBlockedAt, _t566Stat, _t566On: _T566_ON, _t566R: _T566_R, _t566SeedCell, _t566FlushRel, _t566RelPend, Roads,
     T696, _t696Blocked, _t696Prebuild, _t696Pre, _ringCacheRaw, _ringBuild,   // ★[T696] 술어 차례 · 원시 판 미리 짓기(하네스가 같은 값을 잰다)
+    T1500_HEAP_TRIM, _t1500, _t1500Sweep, _ringTable,   // ★[T1500] 판 버리기(하네스가 그 문 · 그 판을 그대로 본다)
     // ★[T495] 부분 수확 — 하네스가 **문 그대로** 두드린다(단위로 따기 · 남은 전리품 · 장부 · 군락 색인 · 통째 따기 · 플레이어 채집)
     _t495PickAt, _t495RestOf, _t495Rest, pickedSeeds, _t347GrovesAtCell, _t347PickAt, gatherResource,
     // ★[T978] 덜 벤 시드 자연물 장부 — 하네스(`test-seed-hp`)가 **문 그대로** 본다
@@ -20173,6 +20202,7 @@ setInterval(() => {
   Roads.onGameTick(now);
   if (_t566RelPend.length) _t566FlushRel();   // ★[T566] 날을 모른 채 풀린 길(부팅 · 꺼진 사이) — 시계가 선 첫 틱에 둘레를 푼다(평시 길이 0 비교 1회)
   if (T696) _t696Prebuild();   // ★[T696 ⓑ] 원시 판 미리 짓기(공용 몫 · 다 지으면 길 하루에 한 바퀴 거른다)
+  if (T1500_HEAP_TRIM) _t1500Sweep();   // ★[T1500] 날이 바뀐 첫 틱 — 다시 읽을 일이 없는 판을 버린다(평시 날 비교 1회 · 끔 = 이 줄 무동작)
   if (T696) db.walTick();   // ★[T696 ②] WAL — 옮기지 않은 프레임이 종전 문턱을 넘었으면 일꾼 스레드가 체크포인트(COMMIT 밖)
   Soil.onGameTick(now);   // [배치 20 B] 토양치 게임일 1회 플러시 + tile_state 변경분 방송
   _fruitSeasonSweep();    // ★[T170] 철이 바뀌는 날 한 번 — 열매 비트 뒤집힘 방송(평시 낱말 비교 1회)

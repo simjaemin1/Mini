@@ -1,0 +1,18 @@
+2026-11-27T15:39:15Z launch A pid 2117
+2026-11-27T15:39:15Z launch B pid 2122
+2026-11-27T15:51:47Z launch C pid 6053
+2026-11-27T15:52:42Z launch-cmp off 1300 pid 6182 head c976f40ef dirty 0
+2026-11-27T15:53:27Z launch C pid 6320
+2026-11-27T15:53:27Z launch-cmp off 1300 pid 6330 head c976f40ef dirty 0
+2026-11-27T16:08:31Z launch-cmp on 1300 pid 8651 head c976f40ef dirty 2
+2026-11-27T16:09:01Z launch-cmp heap off 1300 pid 8749 head c976f40ef dirty 2 diff 7bc721df
+2026-11-27T16:09:01Z launch-cmp fp off 700 pid 8819 head c976f40ef dirty 2 diff 7bc721df
+2026-11-27T16:09:02Z launch-cmp heap on 1300 pid 8890 head c976f40ef dirty 2 diff 7bc721df
+2026-11-27T16:09:02Z launch-cmp fp on 700 pid 8950 head c976f40ef dirty 2 diff 7bc721df
+2026-11-27T16:19:20Z launch-cmp heap off 1300 pid 11260 head bf9853a34 dirty 0 diff d41d8cd9
+2026-11-27T16:19:20Z launch-cmp fp off 700 pid 11329 head bf9853a34 dirty 0 diff d41d8cd9
+2026-11-27T16:19:20Z launch-cmp heap on 1300 pid 11401 head bf9853a34 dirty 0 diff d41d8cd9
+2026-11-27T16:19:21Z launch-cmp fp on 700 pid 11472 head bf9853a34 dirty 0 diff d41d8cd9
+2026-11-27T16:25:26Z launch fp main 200 (worktree c976f40ef · nice 5) pid 12352
+2026-11-27T17:06:10Z launch-cmp fp off 700 pid 15272 head f0d275638 dirty 0 diff d41d8cd9
+2026-11-27T17:19:22Z launch snapD(끔 · 700 · 스냅 690 · 6 GB — snapA 대신)
