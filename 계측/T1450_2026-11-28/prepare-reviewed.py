@@ -22,6 +22,13 @@ with (OUT/'named-policy-queue.tsv').open('w') as f:
 E, V, W, S = 'sim/economy-sim.js', 'sim/economy-sim-v2.js', 'sim/war-core.js', 'server/villages.js'
 
 def add(name, file, category, meaning, removal, state='기본 경로', note='', owner='GPT 1'):
+    if file==E and state=='기본 경로':
+        if name in ('HOUSE_WOOD','HOUSE_STONE'):
+            state='T400_BUILD_ACT=0인 옛 경로. 켬은 hut-stages 단가 정본'
+        elif name=='ORE_STOCK_PC':
+            state='옛 피커 경로. rational 피커에서 이 우선 충원 문은 미호출'
+        elif name in ('EXPAND_CELLS_PER_DAY','EXPAND_PAYBACK_DAYS'):
+            state='econ 금고 구매. v._t1238Land가 있으면 이 경로는 우회'
     hits = [x for x in CANDIDATES if x['file'] == file and x['name'] == name and x['kind'] in ('constant', 'policy-map-entry', 'numeric-variable')]
     assert len(hits) == 1, (file, name, len(hits))
     x = hits[0]
@@ -80,7 +87,7 @@ for name, meaning, removal, note in [
 ]: add(name,E,'ⓑ',meaning,removal,note=note)
 
 add('COPPER_DERIV_DAYS',E,'ⓑ','구리 파생수요를 대장장이 30날 조업 재고로 환산한다',
-    '이미 꺼진 COPPER_DERIV 경로는 해제 실험 제외',state='COPPER_DERIV=1에서만; 기본 끔',note='사용처의 catchup 분모까지 0·∞로 바꾸지 않음')
+    '이미 꺼진 COPPER_DERIV 경로는 해제 실험 제외',state='COPPER_DERIV=1 또는 T1333_ALLOY_ORDER=1; 둘 다 기본 끔',note='_alloyDeriv의 30날을 공유함. 사용처의 catchup 분모까지 0·∞로 바꾸지 않음')
 
 for name, meaning, removal, note in [
     ('WAR_FOOD_CRISIS','식량 18날 미만인 마을에 교역 약탈 명분을 허용한다','공격 명분의 식량 부족 경계만 제거하는 실험 뜻을 분리','상대 45날 부유 경계와 결합. 식량 소모율 아님'),
@@ -103,9 +110,16 @@ for name in ('_warBRONZE_TIN_MIN_PC','_warBRONZE_TIN_MIN_ABS'):
 
 for x in [x for x in CANDIDATES if x['file']==E and x['kind']=='policy-map-entry' and x['name'].startswith('RESERVE_PC.')]:
     resource=x['name'].split('.',1)[1]
+    state='초기 비축 지도'
+    extra=''
+    if resource=='ore':
+        state='T1188 기본 켬에서 광종별 목표로 복사한 뒤 ore 키 삭제'
+        extra='414–415줄 초기화 변환·oreReserveTotal을 함께 추적. 삭제된 키만 0으로 써도 기존 광종별 목표는 남음. '
+    elif resource=='jade':
+        extra='T635를 켜면 shell_bangle에 이 목표를 복사한다(1341줄). 별도 품목 사본을 기록. '
     add(x['name'],E,'ⓑ',f'{resource} 기본 비축량을 인구에 곱한다',
         '비축 목표의 이 품목 바닥만 0. 소비 흐름·재료·값 비교 유지',
-        note='RESERVE_PC[id] || 0.1 대체값도 고려해야 완전 해제. 식량 30날은 T1419 46줄 표를 인용하고 재계수하지 않음',
+        state=state,note=extra+'사용처의 || 대체값도 고려: 금속 0.1·갈무리 food 30 등. 식량 30날은 T1419 46줄 표를 인용하고 재계수하지 않음',
         owner='S3 T1449' if resource in ('weapon','armor') else 'GPT 1')
 
 for name, meaning, removal, owner in [
@@ -125,7 +139,7 @@ for name, meaning, removal in [
 ]: add(name,S,'ⓑ',meaning,removal,state='서버 생활층; 랩 800날에서 호출되지 않는 경로',note='랩 무변화를 가) 죽은 수로 판정하지 않는다. 서버에서 실제 문을 지난 검증 필요')
 
 add('G_STOCK_CAP',S,'ⓓ','곳간 한 동의 물리 저장 수용 칸을 60으로 둔다','물리 공간 수용. 해제 실험 제외',state='서버 생활층',note='18952줄에서 저장 가능한 곳간을 고름. 곳간 최대 개수 G_MAX와 분리')
-add('G_CAP',S,'ⓓ','곳간 한 동의 식량 수용을 2500으로 환산한다','물리 수용으로 분류. 개수 상한 G_MAX와 분리',state='서버 생활층',note='20156줄에서 식량량을 건물 수요로 환산. 랩 사본과 대조 필요')
+add('G_CAP',S,'ⓑ','식량 재고 2500인일마다 곳간 한 동을 건설 목표로 둔다','식량/2500 계단 문을 우회하고 기존 개수 상한 G_MAX만 목표로 둔다. 실제 물리 수용 60은 유지',state='서버 건설 목표 사용처. 랩의 같은 수 물리 수용 사용은 별도 유지',note='같은 2500도 쓰임을 나눈다: 서버 20156줄 건설 목표 / 랩 전쟁 27152줄 실제 수용. 서버 수확칸 물리 장부는 G_STOCK_CAP=60. 상수 전체 변경·0/0 NaN 치환 금지')
 
 for name, meaning in [
     ('CLOTH_WEAR_PC','하루 사람당 옷 0.004벌이 닳는다'),
