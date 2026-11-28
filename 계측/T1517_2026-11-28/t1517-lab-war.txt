@@ -1,0 +1,8 @@
+
+=== 전쟁실험실.html 헤드리스 스모크 (200일) ===
+  엔진 노출: EconEngine✅ createWorldV2✅ tickWorldV2✅ createVillage✅ tickVillage✅ computeVillagePrices✅ setSeed✅
+  day=200 인구=351 생존마을=6 거래=665 · 갑옷=27.4 옷=371
+  재고: food 26673 · stone 3463 · wood 1929 · rice 1806 · wheat 1696 · charcoal 1175 · barley 1137 · herb 888 · hide 486 · hemp 465 · tool 441 · resin 418
+  직업: farmer 106 · forager 67 · lumberjack 48 · hunter 40 · fisher 35 · mason 24 · warrior 11 · miner 10 · tailor 6 · smith 3 · armorsmith 1
+  콘솔 에러 0건 ✅
+  → 통과 ✅

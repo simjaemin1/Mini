@@ -5,3 +5,5 @@
 `historical-precard/`는 정식 카드가 늦게 확인되기 전 실제로 실행한 원자료다. 그 안의 T1497_WAR_SNAP·t1497WarSnap·GPT2 경로·원래 commit/hash/실행문은 원문 그대로이며 T1517 실행으로 치환하거나 통과로 세지 않는다. 과거 원본 보고도 report-original.md로 동결했다. 원래 파일은 3d8944bc의 옛 경로에서 찾을 수 있다.
 
 현재 요구 대조는 requirements.json, 정식 실행은 run-zone.py, 공식 보강 하네스는 scripts/test-war-snapshot-contract.js다. 새 1246일 장판은 실행하지 않는다.
+
+정식 최신 증거: `phase-protocols.json`(24조건·각팔 시간창/수비후보·날지문SHA), `contract-raw/`(8묶음/무도장/OFF 사본과실제SQLite강제종료), `official-zone/`(b063bd80불변소스·실제새process·정식도장/globalRNG), `historical-provenance-audit.json`(과거tracked69파일원blob동일). phase의연속BC누계는checkpoint전부터시작하므로재개팔누계와단순비교하지않는다. 보고의3미달을참조한다.

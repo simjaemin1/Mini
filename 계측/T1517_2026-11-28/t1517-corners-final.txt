@@ -1,0 +1,6 @@
+[war-snap-fixture] 🐂 교역로 A* 실패: snap1↔snap2 — 실체 생략(econ은 그대로 진행)
+✓ wounded soldier and dead commander through native damage door
+✓ two native mobilizations from one village keep distinct war/unit identities
+✓ detached corpse body is restored with its exit and WeakMap records
+✓ 미끼 · 바꾼 자리: unregistered human/den/cross-zone callbacks must be rejected
+WAR_SNAP corners 4/4

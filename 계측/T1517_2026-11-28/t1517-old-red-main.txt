@@ -1,0 +1,6 @@
+# 옛 코드 빨강 — 하네스 = 87483ba4 · 제품(server sim public lab) = c976f40e · 시한 600초
+빨강 ○ | test-war-snapshot.js | RC=1 · ✓ 0 · ✗ 2 | ✗ complete snapshot product API absent
+빨강 ○ | test-war-snapshot-data.js | RC=1 · ✓ 0 · ✗ 1 | ✗ complete snapshot product API absent
+빨강 ○ | test-war-snapshot-corners.js | RC=1 · ✓ 0 · ✗ 1 | ✗ complete snapshot product API absent
+빨강 ○ | test-war-snapshot-contract.js | RC=1 · ✓ 0 · ✗ 1 | ✗ complete snapshot product API absent
+# 합: 빨강 4 · 크래시 0 · 초록 0 · 모름 0 · 제품 무관 0

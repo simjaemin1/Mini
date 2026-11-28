@@ -1,0 +1,38 @@
+{
+  "controller": 32957,
+  "started": 1795836966.3728156,
+  "cmd": [
+    "node",
+    "scripts/t1308-long-run.js",
+    "4",
+    "42",
+    "--cuts",
+    "2",
+    "--dir",
+    "/workspace/scratch/t1517-zone-smoke/run",
+    "--tag",
+    "t1517-war-snapshot"
+  ],
+  "flags": {
+    "WAR_SNAP_ZONE_DONATE": "1",
+    "WAR_SNAP_CAP": "1",
+    "WAR_SNAP_RUN_DIR": "/workspace/scratch/t1517-zone-smoke",
+    "T1517_SOURCE_ROOT": "/workspace/Mini-T1517-immutable",
+    "T1517_WAR_SNAP": "1",
+    "T1445_BOOT_BOUND": "1",
+    "T577_BODY": "1",
+    "T577_CAND_SEEDPOP": "24",
+    "VILLAGE_DAY_MS": "30000",
+    "T941_BATTLE_DAY": "0",
+    "T627_TRIP_DAY": "0",
+    "VILLAGE_NPC_CAP": "1",
+    "VILLAGE_CARAVAN_MAX": "0",
+    "T745_VCLOCK": "1",
+    "T400_BUILD_ACT": "1",
+    "ENABLE_BANDITS": "0",
+    "WAR_SNAP_ZONE_FIXTURE": "1",
+    "WAR_SNAP_ZONE_OUT": "/workspace/scratch/t1517-zone-smoke/observed"
+  },
+  "rc": 0,
+  "finished": 1795837055.9511511
+}

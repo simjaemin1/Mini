@@ -1,0 +1,2798 @@
+{
+  "counterScope": "continuous instrumentation starts before reaching native checkpoint; resume instrumentation starts after restoration. Therefore lifetime battle counters differ in fight conditions; post-checkpoint 9000 host ticks and ten daily fingerprints are compared separately, not the unadjusted lifetime counters.",
+  "all24DailyFingerprintsEqual": true,
+  "conditions": [
+    {
+      "bound": "1",
+      "seed": 7,
+      "stage": "muster",
+      "immediate": true,
+      "days": 10,
+      "continuous": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 1059,
+        "dtSum": 35.30000000000056,
+        "shots": 6,
+        "temporaryRanged": 1644,
+        "gates": {
+          "form-ready": 1,
+          "advance-far": 511,
+          "advance-move": 511,
+          "advance-clear": 1,
+          "advance-released": 1
+        },
+        "exposure": {
+          "nativeWarPhase": "march",
+          "nativeOp": "march",
+          "bodies": 0,
+          "groups": [],
+          "contexts": []
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 24,
+            "mustered": 0,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 18,
+            "mustered": 0,
+            "defGroups": []
+          }
+        ]
+      },
+      "continuousDaysSha256": "76b9fa99d40b3c019aef812219320979a223ffb493ff67f2213c98abc76789ed",
+      "resume": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 1059,
+        "dtSum": 35.30000000000056,
+        "shots": 6,
+        "temporaryRanged": 1644,
+        "gates": {
+          "form-ready": 1,
+          "advance-far": 511,
+          "advance-move": 511,
+          "advance-clear": 1,
+          "advance-released": 1
+        },
+        "exposure": {
+          "nativeWarPhase": "march",
+          "nativeOp": "march",
+          "bodies": 0,
+          "groups": [],
+          "contexts": []
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 24,
+            "mustered": 0,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 18,
+            "mustered": 0,
+            "defGroups": []
+          }
+        ]
+      },
+      "resumeDaysSha256": "76b9fa99d40b3c019aef812219320979a223ffb493ff67f2213c98abc76789ed"
+    },
+    {
+      "bound": "1",
+      "seed": 7,
+      "stage": "march",
+      "immediate": true,
+      "days": 10,
+      "continuous": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 1059,
+        "dtSum": 35.30000000000056,
+        "shots": 6,
+        "temporaryRanged": 1644,
+        "gates": {
+          "form-ready": 1,
+          "advance-far": 511,
+          "advance-move": 511,
+          "advance-clear": 1,
+          "advance-released": 1
+        },
+        "exposure": {
+          "nativeWarPhase": "march",
+          "nativeOp": "march",
+          "bodies": 1,
+          "groups": [
+            [
+              3,
+              17,
+              0
+            ]
+          ],
+          "contexts": [
+            {
+              "units": 20,
+              "arrows": 0,
+              "state": "form",
+              "physical": true
+            }
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 1,
+            "mustered": 17,
+            "defGroups": [
+              {
+                "roster": 17,
+                "formation": 17,
+                "alive": 17
+              }
+            ]
+          }
+        ]
+      },
+      "continuousDaysSha256": "7c76f1381c8e05fe85284d749a2279eb6b7a7cfa27592e97bff942f75929a9cb",
+      "resume": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 1059,
+        "dtSum": 35.30000000000056,
+        "shots": 6,
+        "temporaryRanged": 1644,
+        "gates": {
+          "form-ready": 1,
+          "advance-far": 511,
+          "advance-move": 511,
+          "advance-clear": 1,
+          "advance-released": 1
+        },
+        "exposure": {
+          "nativeWarPhase": "march",
+          "nativeOp": "march",
+          "bodies": 1,
+          "groups": [
+            [
+              3,
+              17,
+              0
+            ]
+          ],
+          "contexts": [
+            {
+              "units": 20,
+              "arrows": 0,
+              "state": "form",
+              "physical": true
+            }
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 1,
+            "mustered": 17,
+            "defGroups": [
+              {
+                "roster": 17,
+                "formation": 17,
+                "alive": 17
+              }
+            ]
+          }
+        ]
+      },
+      "resumeDaysSha256": "7c76f1381c8e05fe85284d749a2279eb6b7a7cfa27592e97bff942f75929a9cb"
+    },
+    {
+      "bound": "1",
+      "seed": 7,
+      "stage": "siege",
+      "immediate": true,
+      "days": 10,
+      "continuous": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 0,
+        "dtSum": 0,
+        "shots": 0,
+        "temporaryRanged": 0,
+        "gates": {},
+        "exposure": {
+          "nativeWarPhase": "march",
+          "nativeOp": "siege",
+          "bodies": 1,
+          "groups": [
+            [
+              3,
+              17,
+              0
+            ]
+          ],
+          "contexts": [
+            {
+              "units": 20,
+              "arrows": 0,
+              "state": "form",
+              "physical": true
+            }
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 1,
+            "mustered": 17,
+            "defGroups": [
+              {
+                "roster": 17,
+                "formation": 17,
+                "alive": 17
+              }
+            ]
+          }
+        ]
+      },
+      "continuousDaysSha256": "95864423629c4d3bbf42a99106b1217563ba9f35b28e7a69710162bd1b9f3537",
+      "resume": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 0,
+        "dtSum": 0,
+        "shots": 0,
+        "temporaryRanged": 0,
+        "gates": {},
+        "exposure": {
+          "nativeWarPhase": "march",
+          "nativeOp": "siege",
+          "bodies": 1,
+          "groups": [
+            [
+              3,
+              17,
+              0
+            ]
+          ],
+          "contexts": [
+            {
+              "units": 20,
+              "arrows": 0,
+              "state": "form",
+              "physical": true
+            }
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 1,
+            "mustered": 17,
+            "defGroups": [
+              {
+                "roster": 17,
+                "formation": 17,
+                "alive": 17
+              }
+            ]
+          }
+        ]
+      },
+      "resumeDaysSha256": "95864423629c4d3bbf42a99106b1217563ba9f35b28e7a69710162bd1b9f3537"
+    },
+    {
+      "bound": "1",
+      "seed": 7,
+      "stage": "fight",
+      "immediate": true,
+      "days": 10,
+      "continuous": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 1059,
+        "dtSum": 35.30000000000056,
+        "shots": 6,
+        "temporaryRanged": 1644,
+        "gates": {
+          "form-ready": 1,
+          "advance-far": 511,
+          "advance-move": 511,
+          "advance-clear": 1,
+          "advance-released": 1
+        },
+        "exposure": {
+          "nativeWarPhase": "battle",
+          "nativeOp": "camp",
+          "bodies": 1,
+          "groups": [
+            [
+              3,
+              17,
+              0
+            ]
+          ],
+          "contexts": [
+            {
+              "units": 20,
+              "arrows": 1,
+              "state": "engaged",
+              "physical": true
+            }
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 1,
+            "mustered": 17,
+            "defGroups": [
+              {
+                "roster": 17,
+                "formation": 17,
+                "alive": 17
+              }
+            ]
+          }
+        ]
+      },
+      "continuousDaysSha256": "7572ea3ea6acd11fae033589eb4ef5230bd44aa1242970e2e7a3e3824ab8a103",
+      "resume": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 466,
+        "dtSum": 15.533333333333289,
+        "shots": 5,
+        "temporaryRanged": 1398,
+        "gates": {},
+        "exposure": {
+          "nativeWarPhase": "battle",
+          "nativeOp": "camp",
+          "bodies": 1,
+          "groups": [
+            [
+              3,
+              17,
+              0
+            ]
+          ],
+          "contexts": [
+            {
+              "units": 20,
+              "arrows": 1,
+              "state": "engaged",
+              "physical": true
+            }
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 1,
+            "mustered": 17,
+            "defGroups": [
+              {
+                "roster": 17,
+                "formation": 17,
+                "alive": 17
+              }
+            ]
+          }
+        ]
+      },
+      "resumeDaysSha256": "7572ea3ea6acd11fae033589eb4ef5230bd44aa1242970e2e7a3e3824ab8a103"
+    },
+    {
+      "bound": "1",
+      "seed": 7,
+      "stage": "return",
+      "immediate": true,
+      "days": 10,
+      "continuous": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 0,
+        "dtSum": 0,
+        "shots": 0,
+        "temporaryRanged": 0,
+        "gates": {},
+        "exposure": {
+          "nativeWarPhase": "return",
+          "nativeOp": "withdraw",
+          "bodies": 1,
+          "groups": [
+            [
+              0,
+              0,
+              3
+            ]
+          ],
+          "contexts": [
+            null
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 18,
+            "mustered": 0,
+            "defGroups": [
+              {
+                "roster": 0,
+                "formation": 0,
+                "alive": 0
+              }
+            ]
+          }
+        ]
+      },
+      "continuousDaysSha256": "9e9301d6317d58dd91f7fa65bedd50b456aae17eb438a9bf87473f4edc75993a",
+      "resume": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 0,
+        "dtSum": 0,
+        "shots": 0,
+        "temporaryRanged": 0,
+        "gates": {},
+        "exposure": {
+          "nativeWarPhase": "return",
+          "nativeOp": "withdraw",
+          "bodies": 1,
+          "groups": [
+            [
+              0,
+              0,
+              3
+            ]
+          ],
+          "contexts": [
+            null
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 18,
+            "mustered": 0,
+            "defGroups": [
+              {
+                "roster": 0,
+                "formation": 0,
+                "alive": 0
+              }
+            ]
+          }
+        ]
+      },
+      "resumeDaysSha256": "9e9301d6317d58dd91f7fa65bedd50b456aae17eb438a9bf87473f4edc75993a"
+    },
+    {
+      "bound": "1",
+      "seed": 7,
+      "stage": "capture",
+      "immediate": true,
+      "days": 10,
+      "continuous": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 0,
+        "dtSum": 0,
+        "shots": 0,
+        "temporaryRanged": 0,
+        "gates": {},
+        "exposure": {
+          "nativeWarPhase": "return",
+          "nativeOp": "withdraw",
+          "bodies": 1,
+          "groups": [
+            [
+              0,
+              0,
+              3
+            ]
+          ],
+          "contexts": [
+            null
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 18,
+            "mustered": 0,
+            "defGroups": [
+              {
+                "roster": 0,
+                "formation": 0,
+                "alive": 0
+              }
+            ]
+          }
+        ]
+      },
+      "continuousDaysSha256": "35e6668146854ea9bedfb94c5ce7df8b1c743446335094583e0bda5980e7a2bf",
+      "resume": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 0,
+        "dtSum": 0,
+        "shots": 0,
+        "temporaryRanged": 0,
+        "gates": {},
+        "exposure": {
+          "nativeWarPhase": "return",
+          "nativeOp": "withdraw",
+          "bodies": 1,
+          "groups": [
+            [
+              0,
+              0,
+              3
+            ]
+          ],
+          "contexts": [
+            null
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 18,
+            "mustered": 0,
+            "defGroups": [
+              {
+                "roster": 0,
+                "formation": 0,
+                "alive": 0
+              }
+            ]
+          }
+        ]
+      },
+      "resumeDaysSha256": "35e6668146854ea9bedfb94c5ce7df8b1c743446335094583e0bda5980e7a2bf"
+    },
+    {
+      "bound": "1",
+      "seed": 42,
+      "stage": "muster",
+      "immediate": true,
+      "days": 10,
+      "continuous": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 1059,
+        "dtSum": 35.30000000000056,
+        "shots": 6,
+        "temporaryRanged": 1644,
+        "gates": {
+          "form-ready": 1,
+          "advance-far": 511,
+          "advance-move": 511,
+          "advance-clear": 1,
+          "advance-released": 1
+        },
+        "exposure": {
+          "nativeWarPhase": "march",
+          "nativeOp": "march",
+          "bodies": 0,
+          "groups": [],
+          "contexts": []
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 24,
+            "mustered": 0,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 18,
+            "mustered": 0,
+            "defGroups": []
+          }
+        ]
+      },
+      "continuousDaysSha256": "58e84f977e10e162b0538be543cd1fbb90cb7fb43b3ff2dbba8a63015522885d",
+      "resume": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 1059,
+        "dtSum": 35.30000000000056,
+        "shots": 6,
+        "temporaryRanged": 1644,
+        "gates": {
+          "form-ready": 1,
+          "advance-far": 511,
+          "advance-move": 511,
+          "advance-clear": 1,
+          "advance-released": 1
+        },
+        "exposure": {
+          "nativeWarPhase": "march",
+          "nativeOp": "march",
+          "bodies": 0,
+          "groups": [],
+          "contexts": []
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 24,
+            "mustered": 0,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 18,
+            "mustered": 0,
+            "defGroups": []
+          }
+        ]
+      },
+      "resumeDaysSha256": "58e84f977e10e162b0538be543cd1fbb90cb7fb43b3ff2dbba8a63015522885d"
+    },
+    {
+      "bound": "1",
+      "seed": 42,
+      "stage": "march",
+      "immediate": true,
+      "days": 10,
+      "continuous": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 1059,
+        "dtSum": 35.30000000000056,
+        "shots": 6,
+        "temporaryRanged": 1644,
+        "gates": {
+          "form-ready": 1,
+          "advance-far": 511,
+          "advance-move": 511,
+          "advance-clear": 1,
+          "advance-released": 1
+        },
+        "exposure": {
+          "nativeWarPhase": "march",
+          "nativeOp": "march",
+          "bodies": 1,
+          "groups": [
+            [
+              3,
+              17,
+              0
+            ]
+          ],
+          "contexts": [
+            {
+              "units": 20,
+              "arrows": 0,
+              "state": "form",
+              "physical": true
+            }
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 1,
+            "mustered": 17,
+            "defGroups": [
+              {
+                "roster": 17,
+                "formation": 17,
+                "alive": 17
+              }
+            ]
+          }
+        ]
+      },
+      "continuousDaysSha256": "77510e11e3b5a77e3e140e4b596a46837b34d8949de9d3f5fd16b2205911bcc1",
+      "resume": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 1059,
+        "dtSum": 35.30000000000056,
+        "shots": 6,
+        "temporaryRanged": 1644,
+        "gates": {
+          "form-ready": 1,
+          "advance-far": 511,
+          "advance-move": 511,
+          "advance-clear": 1,
+          "advance-released": 1
+        },
+        "exposure": {
+          "nativeWarPhase": "march",
+          "nativeOp": "march",
+          "bodies": 1,
+          "groups": [
+            [
+              3,
+              17,
+              0
+            ]
+          ],
+          "contexts": [
+            {
+              "units": 20,
+              "arrows": 0,
+              "state": "form",
+              "physical": true
+            }
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 1,
+            "mustered": 17,
+            "defGroups": [
+              {
+                "roster": 17,
+                "formation": 17,
+                "alive": 17
+              }
+            ]
+          }
+        ]
+      },
+      "resumeDaysSha256": "77510e11e3b5a77e3e140e4b596a46837b34d8949de9d3f5fd16b2205911bcc1"
+    },
+    {
+      "bound": "1",
+      "seed": 42,
+      "stage": "siege",
+      "immediate": true,
+      "days": 10,
+      "continuous": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 0,
+        "dtSum": 0,
+        "shots": 0,
+        "temporaryRanged": 0,
+        "gates": {},
+        "exposure": {
+          "nativeWarPhase": "march",
+          "nativeOp": "siege",
+          "bodies": 1,
+          "groups": [
+            [
+              3,
+              17,
+              0
+            ]
+          ],
+          "contexts": [
+            {
+              "units": 20,
+              "arrows": 0,
+              "state": "form",
+              "physical": true
+            }
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 1,
+            "mustered": 17,
+            "defGroups": [
+              {
+                "roster": 17,
+                "formation": 17,
+                "alive": 17
+              }
+            ]
+          }
+        ]
+      },
+      "continuousDaysSha256": "95864423629c4d3bbf42a99106b1217563ba9f35b28e7a69710162bd1b9f3537",
+      "resume": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 0,
+        "dtSum": 0,
+        "shots": 0,
+        "temporaryRanged": 0,
+        "gates": {},
+        "exposure": {
+          "nativeWarPhase": "march",
+          "nativeOp": "siege",
+          "bodies": 1,
+          "groups": [
+            [
+              3,
+              17,
+              0
+            ]
+          ],
+          "contexts": [
+            {
+              "units": 20,
+              "arrows": 0,
+              "state": "form",
+              "physical": true
+            }
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 1,
+            "mustered": 17,
+            "defGroups": [
+              {
+                "roster": 17,
+                "formation": 17,
+                "alive": 17
+              }
+            ]
+          }
+        ]
+      },
+      "resumeDaysSha256": "95864423629c4d3bbf42a99106b1217563ba9f35b28e7a69710162bd1b9f3537"
+    },
+    {
+      "bound": "1",
+      "seed": 42,
+      "stage": "fight",
+      "immediate": true,
+      "days": 10,
+      "continuous": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 1059,
+        "dtSum": 35.30000000000056,
+        "shots": 6,
+        "temporaryRanged": 1644,
+        "gates": {
+          "form-ready": 1,
+          "advance-far": 511,
+          "advance-move": 511,
+          "advance-clear": 1,
+          "advance-released": 1
+        },
+        "exposure": {
+          "nativeWarPhase": "battle",
+          "nativeOp": "camp",
+          "bodies": 1,
+          "groups": [
+            [
+              3,
+              17,
+              0
+            ]
+          ],
+          "contexts": [
+            {
+              "units": 20,
+              "arrows": 1,
+              "state": "engaged",
+              "physical": true
+            }
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 1,
+            "mustered": 17,
+            "defGroups": [
+              {
+                "roster": 17,
+                "formation": 17,
+                "alive": 17
+              }
+            ]
+          }
+        ]
+      },
+      "continuousDaysSha256": "ee8123444fdabd25995017a6b6a3b5cda7b48d0ab859a806f230d8a1fdaa5143",
+      "resume": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 466,
+        "dtSum": 15.533333333333289,
+        "shots": 5,
+        "temporaryRanged": 1398,
+        "gates": {},
+        "exposure": {
+          "nativeWarPhase": "battle",
+          "nativeOp": "camp",
+          "bodies": 1,
+          "groups": [
+            [
+              3,
+              17,
+              0
+            ]
+          ],
+          "contexts": [
+            {
+              "units": 20,
+              "arrows": 1,
+              "state": "engaged",
+              "physical": true
+            }
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 1,
+            "mustered": 17,
+            "defGroups": [
+              {
+                "roster": 17,
+                "formation": 17,
+                "alive": 17
+              }
+            ]
+          }
+        ]
+      },
+      "resumeDaysSha256": "ee8123444fdabd25995017a6b6a3b5cda7b48d0ab859a806f230d8a1fdaa5143"
+    },
+    {
+      "bound": "1",
+      "seed": 42,
+      "stage": "return",
+      "immediate": true,
+      "days": 10,
+      "continuous": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 0,
+        "dtSum": 0,
+        "shots": 0,
+        "temporaryRanged": 0,
+        "gates": {},
+        "exposure": {
+          "nativeWarPhase": "return",
+          "nativeOp": "withdraw",
+          "bodies": 1,
+          "groups": [
+            [
+              0,
+              0,
+              3
+            ]
+          ],
+          "contexts": [
+            null
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 18,
+            "mustered": 0,
+            "defGroups": [
+              {
+                "roster": 0,
+                "formation": 0,
+                "alive": 0
+              }
+            ]
+          }
+        ]
+      },
+      "continuousDaysSha256": "9e9301d6317d58dd91f7fa65bedd50b456aae17eb438a9bf87473f4edc75993a",
+      "resume": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 0,
+        "dtSum": 0,
+        "shots": 0,
+        "temporaryRanged": 0,
+        "gates": {},
+        "exposure": {
+          "nativeWarPhase": "return",
+          "nativeOp": "withdraw",
+          "bodies": 1,
+          "groups": [
+            [
+              0,
+              0,
+              3
+            ]
+          ],
+          "contexts": [
+            null
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 18,
+            "mustered": 0,
+            "defGroups": [
+              {
+                "roster": 0,
+                "formation": 0,
+                "alive": 0
+              }
+            ]
+          }
+        ]
+      },
+      "resumeDaysSha256": "9e9301d6317d58dd91f7fa65bedd50b456aae17eb438a9bf87473f4edc75993a"
+    },
+    {
+      "bound": "1",
+      "seed": 42,
+      "stage": "capture",
+      "immediate": true,
+      "days": 10,
+      "continuous": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 0,
+        "dtSum": 0,
+        "shots": 0,
+        "temporaryRanged": 0,
+        "gates": {},
+        "exposure": {
+          "nativeWarPhase": "return",
+          "nativeOp": "withdraw",
+          "bodies": 1,
+          "groups": [
+            [
+              0,
+              0,
+              3
+            ]
+          ],
+          "contexts": [
+            null
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 18,
+            "mustered": 0,
+            "defGroups": [
+              {
+                "roster": 0,
+                "formation": 0,
+                "alive": 0
+              }
+            ]
+          }
+        ]
+      },
+      "continuousDaysSha256": "35e6668146854ea9bedfb94c5ce7df8b1c743446335094583e0bda5980e7a2bf",
+      "resume": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 0,
+        "dtSum": 0,
+        "shots": 0,
+        "temporaryRanged": 0,
+        "gates": {},
+        "exposure": {
+          "nativeWarPhase": "return",
+          "nativeOp": "withdraw",
+          "bodies": 1,
+          "groups": [
+            [
+              0,
+              0,
+              3
+            ]
+          ],
+          "contexts": [
+            null
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 18,
+            "mustered": 0,
+            "defGroups": [
+              {
+                "roster": 0,
+                "formation": 0,
+                "alive": 0
+              }
+            ]
+          }
+        ]
+      },
+      "resumeDaysSha256": "35e6668146854ea9bedfb94c5ce7df8b1c743446335094583e0bda5980e7a2bf"
+    },
+    {
+      "bound": "0",
+      "seed": 7,
+      "stage": "muster",
+      "immediate": true,
+      "days": 10,
+      "continuous": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 1059,
+        "dtSum": 35.30000000000056,
+        "shots": 6,
+        "temporaryRanged": 1644,
+        "gates": {
+          "form-ready": 1,
+          "advance-far": 511,
+          "advance-move": 511,
+          "advance-clear": 1,
+          "advance-released": 1
+        },
+        "exposure": {
+          "nativeWarPhase": "march",
+          "nativeOp": "march",
+          "bodies": 0,
+          "groups": [],
+          "contexts": []
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 24,
+            "mustered": 0,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 18,
+            "mustered": 0,
+            "defGroups": []
+          }
+        ]
+      },
+      "continuousDaysSha256": "2316d260aeb441c3b2f6fb4b86fb8a91e9707bb75df0f36137f732f5dbf42372",
+      "resume": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 1059,
+        "dtSum": 35.30000000000056,
+        "shots": 6,
+        "temporaryRanged": 1644,
+        "gates": {
+          "form-ready": 1,
+          "advance-far": 511,
+          "advance-move": 511,
+          "advance-clear": 1,
+          "advance-released": 1
+        },
+        "exposure": {
+          "nativeWarPhase": "march",
+          "nativeOp": "march",
+          "bodies": 0,
+          "groups": [],
+          "contexts": []
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 24,
+            "mustered": 0,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 18,
+            "mustered": 0,
+            "defGroups": []
+          }
+        ]
+      },
+      "resumeDaysSha256": "2316d260aeb441c3b2f6fb4b86fb8a91e9707bb75df0f36137f732f5dbf42372"
+    },
+    {
+      "bound": "0",
+      "seed": 7,
+      "stage": "march",
+      "immediate": true,
+      "days": 10,
+      "continuous": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 1059,
+        "dtSum": 35.30000000000056,
+        "shots": 6,
+        "temporaryRanged": 1644,
+        "gates": {
+          "form-ready": 1,
+          "advance-far": 511,
+          "advance-move": 511,
+          "advance-clear": 1,
+          "advance-released": 1
+        },
+        "exposure": {
+          "nativeWarPhase": "march",
+          "nativeOp": "march",
+          "bodies": 1,
+          "groups": [
+            [
+              3,
+              17,
+              0
+            ]
+          ],
+          "contexts": [
+            {
+              "units": 20,
+              "arrows": 0,
+              "state": "form",
+              "physical": true
+            }
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 1,
+            "mustered": 17,
+            "defGroups": [
+              {
+                "roster": 17,
+                "formation": 17,
+                "alive": 17
+              }
+            ]
+          }
+        ]
+      },
+      "continuousDaysSha256": "c538e8fb925f5edef0d6e276624a1a2f98a2db2927ec4bcda1ea629cb1ef7e4b",
+      "resume": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 1059,
+        "dtSum": 35.30000000000056,
+        "shots": 6,
+        "temporaryRanged": 1644,
+        "gates": {
+          "form-ready": 1,
+          "advance-far": 511,
+          "advance-move": 511,
+          "advance-clear": 1,
+          "advance-released": 1
+        },
+        "exposure": {
+          "nativeWarPhase": "march",
+          "nativeOp": "march",
+          "bodies": 1,
+          "groups": [
+            [
+              3,
+              17,
+              0
+            ]
+          ],
+          "contexts": [
+            {
+              "units": 20,
+              "arrows": 0,
+              "state": "form",
+              "physical": true
+            }
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 1,
+            "mustered": 17,
+            "defGroups": [
+              {
+                "roster": 17,
+                "formation": 17,
+                "alive": 17
+              }
+            ]
+          }
+        ]
+      },
+      "resumeDaysSha256": "c538e8fb925f5edef0d6e276624a1a2f98a2db2927ec4bcda1ea629cb1ef7e4b"
+    },
+    {
+      "bound": "0",
+      "seed": 7,
+      "stage": "siege",
+      "immediate": true,
+      "days": 10,
+      "continuous": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 0,
+        "dtSum": 0,
+        "shots": 0,
+        "temporaryRanged": 0,
+        "gates": {},
+        "exposure": {
+          "nativeWarPhase": "march",
+          "nativeOp": "siege",
+          "bodies": 1,
+          "groups": [
+            [
+              3,
+              17,
+              0
+            ]
+          ],
+          "contexts": [
+            {
+              "units": 20,
+              "arrows": 0,
+              "state": "form",
+              "physical": true
+            }
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 1,
+            "mustered": 17,
+            "defGroups": [
+              {
+                "roster": 17,
+                "formation": 17,
+                "alive": 17
+              }
+            ]
+          }
+        ]
+      },
+      "continuousDaysSha256": "a7bb048f52285db22059f0827be27c3c7d2b81b6ab96e6798e939c9b4fe408bc",
+      "resume": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 0,
+        "dtSum": 0,
+        "shots": 0,
+        "temporaryRanged": 0,
+        "gates": {},
+        "exposure": {
+          "nativeWarPhase": "march",
+          "nativeOp": "siege",
+          "bodies": 1,
+          "groups": [
+            [
+              3,
+              17,
+              0
+            ]
+          ],
+          "contexts": [
+            {
+              "units": 20,
+              "arrows": 0,
+              "state": "form",
+              "physical": true
+            }
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 1,
+            "mustered": 17,
+            "defGroups": [
+              {
+                "roster": 17,
+                "formation": 17,
+                "alive": 17
+              }
+            ]
+          }
+        ]
+      },
+      "resumeDaysSha256": "a7bb048f52285db22059f0827be27c3c7d2b81b6ab96e6798e939c9b4fe408bc"
+    },
+    {
+      "bound": "0",
+      "seed": 7,
+      "stage": "fight",
+      "immediate": true,
+      "days": 10,
+      "continuous": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 1059,
+        "dtSum": 35.30000000000056,
+        "shots": 6,
+        "temporaryRanged": 1644,
+        "gates": {
+          "form-ready": 1,
+          "advance-far": 511,
+          "advance-move": 511,
+          "advance-clear": 1,
+          "advance-released": 1
+        },
+        "exposure": {
+          "nativeWarPhase": "battle",
+          "nativeOp": "camp",
+          "bodies": 1,
+          "groups": [
+            [
+              3,
+              17,
+              0
+            ]
+          ],
+          "contexts": [
+            {
+              "units": 20,
+              "arrows": 1,
+              "state": "engaged",
+              "physical": true
+            }
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 1,
+            "mustered": 17,
+            "defGroups": [
+              {
+                "roster": 17,
+                "formation": 17,
+                "alive": 17
+              }
+            ]
+          }
+        ]
+      },
+      "continuousDaysSha256": "7572ea3ea6acd11fae033589eb4ef5230bd44aa1242970e2e7a3e3824ab8a103",
+      "resume": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 466,
+        "dtSum": 15.533333333333289,
+        "shots": 5,
+        "temporaryRanged": 1398,
+        "gates": {},
+        "exposure": {
+          "nativeWarPhase": "battle",
+          "nativeOp": "camp",
+          "bodies": 1,
+          "groups": [
+            [
+              3,
+              17,
+              0
+            ]
+          ],
+          "contexts": [
+            {
+              "units": 20,
+              "arrows": 1,
+              "state": "engaged",
+              "physical": true
+            }
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 1,
+            "mustered": 17,
+            "defGroups": [
+              {
+                "roster": 17,
+                "formation": 17,
+                "alive": 17
+              }
+            ]
+          }
+        ]
+      },
+      "resumeDaysSha256": "7572ea3ea6acd11fae033589eb4ef5230bd44aa1242970e2e7a3e3824ab8a103"
+    },
+    {
+      "bound": "0",
+      "seed": 7,
+      "stage": "return",
+      "immediate": true,
+      "days": 10,
+      "continuous": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 0,
+        "dtSum": 0,
+        "shots": 0,
+        "temporaryRanged": 0,
+        "gates": {},
+        "exposure": {
+          "nativeWarPhase": "return",
+          "nativeOp": "withdraw",
+          "bodies": 1,
+          "groups": [
+            [
+              0,
+              0,
+              3
+            ]
+          ],
+          "contexts": [
+            null
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 18,
+            "mustered": 0,
+            "defGroups": [
+              {
+                "roster": 0,
+                "formation": 0,
+                "alive": 0
+              }
+            ]
+          }
+        ]
+      },
+      "continuousDaysSha256": "9e9301d6317d58dd91f7fa65bedd50b456aae17eb438a9bf87473f4edc75993a",
+      "resume": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 0,
+        "dtSum": 0,
+        "shots": 0,
+        "temporaryRanged": 0,
+        "gates": {},
+        "exposure": {
+          "nativeWarPhase": "return",
+          "nativeOp": "withdraw",
+          "bodies": 1,
+          "groups": [
+            [
+              0,
+              0,
+              3
+            ]
+          ],
+          "contexts": [
+            null
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 18,
+            "mustered": 0,
+            "defGroups": [
+              {
+                "roster": 0,
+                "formation": 0,
+                "alive": 0
+              }
+            ]
+          }
+        ]
+      },
+      "resumeDaysSha256": "9e9301d6317d58dd91f7fa65bedd50b456aae17eb438a9bf87473f4edc75993a"
+    },
+    {
+      "bound": "0",
+      "seed": 7,
+      "stage": "capture",
+      "immediate": true,
+      "days": 10,
+      "continuous": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 0,
+        "dtSum": 0,
+        "shots": 0,
+        "temporaryRanged": 0,
+        "gates": {},
+        "exposure": {
+          "nativeWarPhase": "return",
+          "nativeOp": "withdraw",
+          "bodies": 1,
+          "groups": [
+            [
+              0,
+              0,
+              3
+            ]
+          ],
+          "contexts": [
+            null
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 18,
+            "mustered": 0,
+            "defGroups": [
+              {
+                "roster": 0,
+                "formation": 0,
+                "alive": 0
+              }
+            ]
+          }
+        ]
+      },
+      "continuousDaysSha256": "35e6668146854ea9bedfb94c5ce7df8b1c743446335094583e0bda5980e7a2bf",
+      "resume": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 0,
+        "dtSum": 0,
+        "shots": 0,
+        "temporaryRanged": 0,
+        "gates": {},
+        "exposure": {
+          "nativeWarPhase": "return",
+          "nativeOp": "withdraw",
+          "bodies": 1,
+          "groups": [
+            [
+              0,
+              0,
+              3
+            ]
+          ],
+          "contexts": [
+            null
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 18,
+            "mustered": 0,
+            "defGroups": [
+              {
+                "roster": 0,
+                "formation": 0,
+                "alive": 0
+              }
+            ]
+          }
+        ]
+      },
+      "resumeDaysSha256": "35e6668146854ea9bedfb94c5ce7df8b1c743446335094583e0bda5980e7a2bf"
+    },
+    {
+      "bound": "0",
+      "seed": 42,
+      "stage": "muster",
+      "immediate": true,
+      "days": 10,
+      "continuous": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 1059,
+        "dtSum": 35.30000000000056,
+        "shots": 6,
+        "temporaryRanged": 1644,
+        "gates": {
+          "form-ready": 1,
+          "advance-far": 511,
+          "advance-move": 511,
+          "advance-clear": 1,
+          "advance-released": 1
+        },
+        "exposure": {
+          "nativeWarPhase": "march",
+          "nativeOp": "march",
+          "bodies": 0,
+          "groups": [],
+          "contexts": []
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 24,
+            "mustered": 0,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 18,
+            "mustered": 0,
+            "defGroups": []
+          }
+        ]
+      },
+      "continuousDaysSha256": "f69fc96a932148951bf6af7247df6491d721f841ec42f54e1c4a4e0092b68935",
+      "resume": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 1059,
+        "dtSum": 35.30000000000056,
+        "shots": 6,
+        "temporaryRanged": 1644,
+        "gates": {
+          "form-ready": 1,
+          "advance-far": 511,
+          "advance-move": 511,
+          "advance-clear": 1,
+          "advance-released": 1
+        },
+        "exposure": {
+          "nativeWarPhase": "march",
+          "nativeOp": "march",
+          "bodies": 0,
+          "groups": [],
+          "contexts": []
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 24,
+            "mustered": 0,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 18,
+            "mustered": 0,
+            "defGroups": []
+          }
+        ]
+      },
+      "resumeDaysSha256": "f69fc96a932148951bf6af7247df6491d721f841ec42f54e1c4a4e0092b68935"
+    },
+    {
+      "bound": "0",
+      "seed": 42,
+      "stage": "march",
+      "immediate": true,
+      "days": 10,
+      "continuous": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 1059,
+        "dtSum": 35.30000000000056,
+        "shots": 6,
+        "temporaryRanged": 1644,
+        "gates": {
+          "form-ready": 1,
+          "advance-far": 511,
+          "advance-move": 511,
+          "advance-clear": 1,
+          "advance-released": 1
+        },
+        "exposure": {
+          "nativeWarPhase": "march",
+          "nativeOp": "march",
+          "bodies": 1,
+          "groups": [
+            [
+              3,
+              17,
+              0
+            ]
+          ],
+          "contexts": [
+            {
+              "units": 20,
+              "arrows": 0,
+              "state": "form",
+              "physical": true
+            }
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 1,
+            "mustered": 17,
+            "defGroups": [
+              {
+                "roster": 17,
+                "formation": 17,
+                "alive": 17
+              }
+            ]
+          }
+        ]
+      },
+      "continuousDaysSha256": "c6ecb9278e276a7ee97b62476b4355baf86334b3c49135cd417473ee66881a3d",
+      "resume": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 1059,
+        "dtSum": 35.30000000000056,
+        "shots": 6,
+        "temporaryRanged": 1644,
+        "gates": {
+          "form-ready": 1,
+          "advance-far": 511,
+          "advance-move": 511,
+          "advance-clear": 1,
+          "advance-released": 1
+        },
+        "exposure": {
+          "nativeWarPhase": "march",
+          "nativeOp": "march",
+          "bodies": 1,
+          "groups": [
+            [
+              3,
+              17,
+              0
+            ]
+          ],
+          "contexts": [
+            {
+              "units": 20,
+              "arrows": 0,
+              "state": "form",
+              "physical": true
+            }
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 1,
+            "mustered": 17,
+            "defGroups": [
+              {
+                "roster": 17,
+                "formation": 17,
+                "alive": 17
+              }
+            ]
+          }
+        ]
+      },
+      "resumeDaysSha256": "c6ecb9278e276a7ee97b62476b4355baf86334b3c49135cd417473ee66881a3d"
+    },
+    {
+      "bound": "0",
+      "seed": 42,
+      "stage": "siege",
+      "immediate": true,
+      "days": 10,
+      "continuous": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 0,
+        "dtSum": 0,
+        "shots": 0,
+        "temporaryRanged": 0,
+        "gates": {},
+        "exposure": {
+          "nativeWarPhase": "march",
+          "nativeOp": "siege",
+          "bodies": 1,
+          "groups": [
+            [
+              3,
+              17,
+              0
+            ]
+          ],
+          "contexts": [
+            {
+              "units": 20,
+              "arrows": 0,
+              "state": "form",
+              "physical": true
+            }
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 1,
+            "mustered": 17,
+            "defGroups": [
+              {
+                "roster": 17,
+                "formation": 17,
+                "alive": 17
+              }
+            ]
+          }
+        ]
+      },
+      "continuousDaysSha256": "a7bb048f52285db22059f0827be27c3c7d2b81b6ab96e6798e939c9b4fe408bc",
+      "resume": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 0,
+        "dtSum": 0,
+        "shots": 0,
+        "temporaryRanged": 0,
+        "gates": {},
+        "exposure": {
+          "nativeWarPhase": "march",
+          "nativeOp": "siege",
+          "bodies": 1,
+          "groups": [
+            [
+              3,
+              17,
+              0
+            ]
+          ],
+          "contexts": [
+            {
+              "units": 20,
+              "arrows": 0,
+              "state": "form",
+              "physical": true
+            }
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 1,
+            "mustered": 17,
+            "defGroups": [
+              {
+                "roster": 17,
+                "formation": 17,
+                "alive": 17
+              }
+            ]
+          }
+        ]
+      },
+      "resumeDaysSha256": "a7bb048f52285db22059f0827be27c3c7d2b81b6ab96e6798e939c9b4fe408bc"
+    },
+    {
+      "bound": "0",
+      "seed": 42,
+      "stage": "fight",
+      "immediate": true,
+      "days": 10,
+      "continuous": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 1059,
+        "dtSum": 35.30000000000056,
+        "shots": 6,
+        "temporaryRanged": 1644,
+        "gates": {
+          "form-ready": 1,
+          "advance-far": 511,
+          "advance-move": 511,
+          "advance-clear": 1,
+          "advance-released": 1
+        },
+        "exposure": {
+          "nativeWarPhase": "battle",
+          "nativeOp": "camp",
+          "bodies": 1,
+          "groups": [
+            [
+              3,
+              17,
+              0
+            ]
+          ],
+          "contexts": [
+            {
+              "units": 20,
+              "arrows": 1,
+              "state": "engaged",
+              "physical": true
+            }
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 1,
+            "mustered": 17,
+            "defGroups": [
+              {
+                "roster": 17,
+                "formation": 17,
+                "alive": 17
+              }
+            ]
+          }
+        ]
+      },
+      "continuousDaysSha256": "ee8123444fdabd25995017a6b6a3b5cda7b48d0ab859a806f230d8a1fdaa5143",
+      "resume": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 466,
+        "dtSum": 15.533333333333289,
+        "shots": 5,
+        "temporaryRanged": 1398,
+        "gates": {},
+        "exposure": {
+          "nativeWarPhase": "battle",
+          "nativeOp": "camp",
+          "bodies": 1,
+          "groups": [
+            [
+              3,
+              17,
+              0
+            ]
+          ],
+          "contexts": [
+            {
+              "units": 20,
+              "arrows": 1,
+              "state": "engaged",
+              "physical": true
+            }
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 1,
+            "mustered": 17,
+            "defGroups": [
+              {
+                "roster": 17,
+                "formation": 17,
+                "alive": 17
+              }
+            ]
+          }
+        ]
+      },
+      "resumeDaysSha256": "ee8123444fdabd25995017a6b6a3b5cda7b48d0ab859a806f230d8a1fdaa5143"
+    },
+    {
+      "bound": "0",
+      "seed": 42,
+      "stage": "return",
+      "immediate": true,
+      "days": 10,
+      "continuous": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 0,
+        "dtSum": 0,
+        "shots": 0,
+        "temporaryRanged": 0,
+        "gates": {},
+        "exposure": {
+          "nativeWarPhase": "return",
+          "nativeOp": "withdraw",
+          "bodies": 1,
+          "groups": [
+            [
+              0,
+              0,
+              3
+            ]
+          ],
+          "contexts": [
+            null
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 18,
+            "mustered": 0,
+            "defGroups": [
+              {
+                "roster": 0,
+                "formation": 0,
+                "alive": 0
+              }
+            ]
+          }
+        ]
+      },
+      "continuousDaysSha256": "9e9301d6317d58dd91f7fa65bedd50b456aae17eb438a9bf87473f4edc75993a",
+      "resume": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 0,
+        "dtSum": 0,
+        "shots": 0,
+        "temporaryRanged": 0,
+        "gates": {},
+        "exposure": {
+          "nativeWarPhase": "return",
+          "nativeOp": "withdraw",
+          "bodies": 1,
+          "groups": [
+            [
+              0,
+              0,
+              3
+            ]
+          ],
+          "contexts": [
+            null
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 18,
+            "mustered": 0,
+            "defGroups": [
+              {
+                "roster": 0,
+                "formation": 0,
+                "alive": 0
+              }
+            ]
+          }
+        ]
+      },
+      "resumeDaysSha256": "9e9301d6317d58dd91f7fa65bedd50b456aae17eb438a9bf87473f4edc75993a"
+    },
+    {
+      "bound": "0",
+      "seed": 42,
+      "stage": "capture",
+      "immediate": true,
+      "days": 10,
+      "continuous": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 0,
+        "dtSum": 0,
+        "shots": 0,
+        "temporaryRanged": 0,
+        "gates": {},
+        "exposure": {
+          "nativeWarPhase": "return",
+          "nativeOp": "withdraw",
+          "bodies": 1,
+          "groups": [
+            [
+              0,
+              0,
+              3
+            ]
+          ],
+          "contexts": [
+            null
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 18,
+            "mustered": 0,
+            "defGroups": [
+              {
+                "roster": 0,
+                "formation": 0,
+                "alive": 0
+              }
+            ]
+          }
+        ]
+      },
+      "continuousDaysSha256": "35e6668146854ea9bedfb94c5ce7df8b1c743446335094583e0bda5980e7a2bf",
+      "resume": {
+        "hostTicksAfterCheckpoint": 9000,
+        "hostDtMs": 33.333333333333336,
+        "gameDays": 10,
+        "dayMs": 30000,
+        "dailyOrder": "_t681Flush -> world.day++ -> war.daily -> _warAfterDaily -> _t681Day",
+        "battleSteps": 0,
+        "dtSum": 0,
+        "shots": 0,
+        "temporaryRanged": 0,
+        "gates": {},
+        "exposure": {
+          "nativeWarPhase": "return",
+          "nativeOp": "withdraw",
+          "bodies": 1,
+          "groups": [
+            [
+              0,
+              0,
+              3
+            ]
+          ],
+          "contexts": [
+            null
+          ]
+        },
+        "defenderAudit": [
+          {
+            "village": 1,
+            "residents": 24,
+            "bodies": 24,
+            "candidates": 21,
+            "mustered": 3,
+            "defGroups": []
+          },
+          {
+            "village": 2,
+            "residents": 18,
+            "bodies": 18,
+            "candidates": 18,
+            "mustered": 0,
+            "defGroups": [
+              {
+                "roster": 0,
+                "formation": 0,
+                "alive": 0
+              }
+            ]
+          }
+        ]
+      },
+      "resumeDaysSha256": "35e6668146854ea9bedfb94c5ce7df8b1c743446335094583e0bda5980e7a2bf"
+    }
+  ]
+}

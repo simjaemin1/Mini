@@ -1,0 +1,1 @@
+✓ WAR_SNAP native phase matrix 24/24; immediate and 10 daily fingerprints equal. /workspace/scratch/t1517-matrix-final
