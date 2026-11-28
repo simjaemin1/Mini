@@ -33,3 +33,7 @@ sim/det-math.js
 #    부르는 자리 0 이라 이미지에 실리면 ⑪a(안 닿는 파일)가 52 → 53 으로 빨갛다. 레포엔 남는다(다음 걸음 글자) — 존이 다시 부르게 되면 이 줄을 지운다
 #    (안 지우면 `test-assets-audit` ⑪b "읽는데 안 실리는 파일" 이 그 자리에서 빨갛다 — 조용히 빠지지 않는다).
 server/hot-cols.js
+# ★[T1497] 브라우저 랩 한반도 판 — 번들(`sim/build-econ-bundle.js`)이 굽는 재료 · 하네스(`test-t1497-lab-map`)만 읽는다. 게임 · 서버 진입점은 안 부른다
+#    (이미지에 실리면 `test-assets-audit` ⑪a 가 52 → 53). 레포엔 남는다 — 번들 안에 이미 실려 랩은 이 파일 없이 돈다.
+sim/lab-hanbando.js
+sim/lab-hanbando-pack.json
