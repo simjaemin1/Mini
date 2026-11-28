@@ -3288,12 +3288,20 @@
    "file": "sim/economy-sim.js",
    "line": 2258,
    "scope": "houseDayBuild",
+   "sourceScope": "houseDayBuild",
    "expression": "T1452_READS.house ? t1452Slack(v, fe > N * 40 ? 1.0 : (fe > N * 25 ? 0.5 : 0.15))   // ★[T1452 재는 팔 'house'] 창 안 골을 바로(끔 = 아래 줄)\n    : T1437_READS.house ? (fe > N * t1437Read(v, 40, 'house') ? 1.0 : (fe > N * t1437Read(v, 25, 'house') ? 0.5 : 0.15))   // ★[T1437 재는 팔 'house'] 같은 자(끔 = 아래 종전 줄)\n    : fe > N * 40 ? 1.0 : (fe > N * 25 ? 0.5 : 0.15)",
    "sourceSha256": "fa45445763e09c3b17ac0c93a3b2926d9649f63d518c9fb1bfe7c85aaf459b3b",
    "classification": "ⓑ",
    "meaning": "집 증축 노동을 식량 40/25날 경계로 1/0.5/0.15배로 나눈다",
    "proposedLift": "식량 여유 배수만 1. 결손·재료·크루 제약은 유지",
    "note": "40/25의 두 경계를 한 여유 노동 함수로 분류. T1437·T1452 대체 경로는 기본 끔이며 별도 행으로 대조 중",
+   "contextFunction": {
+    "file": "sim/economy-sim.js",
+    "name": "houseDayBuild",
+    "line": 2255,
+    "endLine": 2262,
+    "sourceSha256": "ac690954064c8d8e0a7f91203f6d3df0984ec8f7165b660ad148c44d8ec214cb"
+   },
    "lineAttribution": {
     "commit": "89d4f978a2bee0c52fab769affbfaf46de97d757",
     "dateUTC": "2026-11-23"
@@ -3306,12 +3314,20 @@
    "file": "sim/economy-sim.js",
    "line": 2261,
    "scope": "houseDayBuild",
+   "sourceScope": "houseDayBuild",
    "expression": "Math.min(houseTarget - v.housing, N * HOUSE_BUILD_MAX * slack)",
    "sourceSha256": "9bb9790225621bdc8d0bf1473517cac430711672d7952c701672cf96a0b8d73c",
    "classification": "ⓑ",
    "meaning": "집 결손과 인구 비례 일일 증축 한도 중 작은 쪽만 짓는다",
    "proposedLift": "일일 한도만 ∞. 유한 집 결손은 유지",
    "note": "HOUSE_BUILD_MAX의 사용처. 선언 행과 문 수를 중복하지 않음",
+   "contextFunction": {
+    "file": "sim/economy-sim.js",
+    "name": "houseDayBuild",
+    "line": 2255,
+    "endLine": 2262,
+    "sourceSha256": "ac690954064c8d8e0a7f91203f6d3df0984ec8f7165b660ad148c44d8ec214cb"
+   },
    "lineAttribution": {
     "commit": "a3e771e0f78fda25704e785c0c9dd5e391942fbc",
     "dateUTC": "2026-09-28"
@@ -3324,12 +3340,20 @@
    "file": "sim/economy-sim.js",
    "line": 6670,
    "scope": "craftLaborTarget",
+   "sourceScope": "craftLaborTarget",
    "expression": "(opts.buffer != null) ? opts.buffer : 1.15",
    "sourceSha256": "a9fde32fe1f987c44321202aef15acfb65b1e23d2de98eb9c22b3c4a120c68ff",
    "classification": "ⓑ",
    "meaning": "별도 버퍼를 안 주면 사용자 수의 1.15배를 장인 비축 목표로 둔다",
    "proposedLift": "각 호출 품목에서 재고 목표와 보충 흐름을 분리한 후 정의",
    "note": "옷은 1.2처럼 호출자가 덮어쓴다. 기본값만 바꾸고 모두 걷었다고 할 수 없음",
+   "contextFunction": {
+    "file": "sim/economy-sim.js",
+    "name": "craftLaborTarget",
+    "line": 6668,
+    "endLine": 6679,
+    "sourceSha256": "ec4dbd81bb0d27cb614dd492c7ed69844188ffb54a031d822cb285a2abb58800"
+   },
    "lineAttribution": {
     "commit": "414b94b230e425612da3f01bab5ab78f7eaeb472",
     "dateUTC": "2026-06-30"
@@ -3342,12 +3366,20 @@
    "file": "sim/economy-sim.js",
    "line": 6671,
    "scope": "craftLaborTarget",
+   "sourceScope": "craftLaborTarget",
    "expression": "opts.catchup || 50",
    "sourceSha256": "9b3336775725dbc1cff5f9d710f5d2dc5ac1b23b252ef61111ada3bd153d3854",
    "classification": "ⓑ",
    "meaning": "부족 재고를 기본 50날에 채울 장인 수로 환산한다",
    "proposedLift": "재고 따라잡기 항을 0으로 걷고 마모 보충 흐름만 남기는 후보",
    "note": "목표를 무한대로 올리는 실험과 뜻이 다름. 실제 호출자의 60날 등도 별도 기록",
+   "contextFunction": {
+    "file": "sim/economy-sim.js",
+    "name": "craftLaborTarget",
+    "line": 6668,
+    "endLine": 6679,
+    "sourceSha256": "ec4dbd81bb0d27cb614dd492c7ed69844188ffb54a031d822cb285a2abb58800"
+   },
    "lineAttribution": {
     "commit": "414b94b230e425612da3f01bab5ab78f7eaeb472",
     "dateUTC": "2026-06-30"
@@ -3360,12 +3392,20 @@
    "file": "sim/economy-sim.js",
    "line": 6676,
    "scope": "craftLaborTarget",
+   "sourceScope": "craftLaborTarget",
    "expression": "Math.max(0.05, dailyOut)",
    "sourceSha256": "b7f796e63304cc5c521415ffb28f6b968eea99f091bd2a6e79e355757c0ced9d",
    "classification": "ⓑ",
    "meaning": "노동 필요량의 산출 분모를 최소 0.05로 간주한다",
    "proposedLift": "0 산출에서 나눗셈을 정의한 뒤 실험 의미 확정",
    "note": "계산 안정화 의도라도 실제 충원량을 바꾸므로 물리 수율로 숨기지 않음",
+   "contextFunction": {
+    "file": "sim/economy-sim.js",
+    "name": "craftLaborTarget",
+    "line": 6668,
+    "endLine": 6679,
+    "sourceSha256": "ec4dbd81bb0d27cb614dd492c7ed69844188ffb54a031d822cb285a2abb58800"
+   },
    "lineAttribution": {
     "commit": "414b94b230e425612da3f01bab5ab78f7eaeb472",
     "dateUTC": "2026-06-30"
@@ -3378,12 +3418,20 @@
    "file": "sim/economy-sim.js",
    "line": 6678,
    "scope": "craftLaborTarget",
+   "sourceScope": "craftLaborTarget",
    "expression": "(stock < desired) ? Math.max(1, Math.round(need)) : Math.round(need)",
    "sourceSha256": "870e3e160f4b1ee2407bff7a6b3b3ff5101761a1538fbb5779f079f17b6467d0",
    "classification": "ⓑ",
    "meaning": "목표 재고가 모자라면 계산 필요량이 작아도 장인을 최소 한 명 둔다",
    "proposedLift": "최소 한 명만 제거. Math.round(need)·마모 보충은 유지",
    "note": "",
+   "contextFunction": {
+    "file": "sim/economy-sim.js",
+    "name": "craftLaborTarget",
+    "line": 6668,
+    "endLine": 6679,
+    "sourceSha256": "ec4dbd81bb0d27cb614dd492c7ed69844188ffb54a031d822cb285a2abb58800"
+   },
    "lineAttribution": {
     "commit": "414b94b230e425612da3f01bab5ab78f7eaeb472",
     "dateUTC": "2026-06-30"
@@ -3396,12 +3444,20 @@
    "file": "sim/economy-sim.js",
    "line": 6718,
    "scope": "masonTarget",
+   "sourceScope": "masonTarget",
    "expression": "Math.max(td >= 4 ? 1 : 0, base)",
    "sourceSha256": "7939150d27591ab8040c00dc5bc09e953cdc4aa534496222607f58008aa4b726",
    "classification": "ⓑ",
    "meaning": "도구 사용자 네 명 이상인 마을에 석공 한 명을 보장한다",
    "proposedLift": "도구 사용자 수에 따른 한 명 바닥만 제거. 기존 base 계산 유지",
    "note": "",
+   "contextFunction": {
+    "file": "sim/economy-sim.js",
+    "name": "masonTarget",
+    "line": 6689,
+    "endLine": 6719,
+    "sourceSha256": "2b3b7ee073e6bee896b3ba348a75bb76a83265a3ebca43f7a4ac670231fa3beb"
+   },
    "lineAttribution": {
     "commit": "ee63e401444f033bafcad7c20b01a91744580aca",
     "dateUTC": "2026-06-30"
@@ -3414,12 +3470,20 @@
    "file": "sim/economy-sim.js",
    "line": 4263,
    "scope": "tryExpandTerritory",
+   "sourceScope": "tryExpandTerritory",
    "expression": "N / Math.max(1, slotK) < 0.85",
    "sourceSha256": "2e65593da3ca9d20768fae3c399da2209764d689415c578111c981315a37969a",
    "classification": "ⓑ",
    "meaning": "인구가 식량 자리의 85%에 차기 전에는 금고 영토 확장을 안 한다",
    "proposedLift": "85% 진입 문만 우회. 매 칸 비용·편익·재료 검사는 유지",
    "note": "",
+   "contextFunction": {
+    "file": "sim/economy-sim.js",
+    "name": "tryExpandTerritory",
+    "line": 4259,
+    "endLine": 4301,
+    "sourceSha256": "100c8a470a224e7e21f8a1e56073ad11a22dd8cd4822b08d35aad17caf59bffc"
+   },
    "lineAttribution": {
     "commit": "96e7c64544f50d8cf9a965f9e1f730b2dabd4854",
     "dateUTC": "2026-06-02"
@@ -3432,12 +3496,20 @@
    "file": "sim/economy-sim.js",
    "line": 4268,
    "scope": "tryExpandTerritory",
+   "sourceScope": "tryExpandTerritory",
    "expression": "ci < EXPAND_CELLS_PER_DAY",
    "sourceSha256": "12575bddd2a23292ca9168dd1aaab03edde3f883fa00979b5e91201147490e23",
    "classification": "ⓑ",
    "meaning": "금고 영토 구매를 하루 EXPAND_CELLS_PER_DAY번만 검사한다",
    "proposedLift": "반복 횟수만 해제. 유한 재료·불리한 수익에서 종료 검증",
    "note": "숫자 리터럴이 없는 반복 조건도 수집해야 포착됨",
+   "contextFunction": {
+    "file": "sim/economy-sim.js",
+    "name": "tryExpandTerritory",
+    "line": 4259,
+    "endLine": 4301,
+    "sourceSha256": "100c8a470a224e7e21f8a1e56073ad11a22dd8cd4822b08d35aad17caf59bffc"
+   },
    "lineAttribution": {
     "commit": "36f78602272519d95601e54f04a0805562bae414",
     "dateUTC": "2026-07-11"
@@ -3450,12 +3522,20 @@
    "file": "sim/economy-sim.js",
    "line": 4285,
    "scope": "tryExpandTerritory",
+   "sourceScope": "tryExpandTerritory",
    "expression": "mbDaily * EXPAND_PAYBACK_DAYS < mcFoodEq",
    "sourceSha256": "5294993ba5a2f1b40683818a33286d4def0b1261b5733f7ff286f0bf7e8bd0a7",
    "classification": "ⓐ+ⓑ",
    "meaning": "일일 한계 편익×365날이 확장 비용을 넘는지 견준다",
    "proposedLift": "ⓐ 값 견줌과 ⓑ 회수기한을 분리해 실험",
    "note": "고정 정적 환산값과 T1426의 동적 값 경로도 구분",
+   "contextFunction": {
+    "file": "sim/economy-sim.js",
+    "name": "tryExpandTerritory",
+    "line": 4259,
+    "endLine": 4301,
+    "sourceSha256": "100c8a470a224e7e21f8a1e56073ad11a22dd8cd4822b08d35aad17caf59bffc"
+   },
    "lineAttribution": {
     "commit": "36f78602272519d95601e54f04a0805562bae414",
     "dateUTC": "2026-07-11"
@@ -3468,12 +3548,20 @@
    "file": "sim/economy-sim.js",
    "line": 4289,
    "scope": "tryExpandTerritory",
+   "sourceScope": "tryExpandTerritory",
    "expression": "v.treasury.food < cellFood || v.treasury.wood < cellWood || v.treasury.stone < cellStone",
    "sourceSha256": "fa0eb947f2c0a80a4adde58353f8c4a985cf903569861d85fab56b343764bdc4",
    "classification": "ⓒ",
    "meaning": "그 칸의 식량·목재·석재가 금고에 있는지 확인한다",
    "proposedLift": "재료 존재 문은 유지. 걷기 대상 아님",
    "note": "부족하면 _treasuryTopUp의 별도 구매 문으로 간다",
+   "contextFunction": {
+    "file": "sim/economy-sim.js",
+    "name": "tryExpandTerritory",
+    "line": 4259,
+    "endLine": 4301,
+    "sourceSha256": "100c8a470a224e7e21f8a1e56073ad11a22dd8cd4822b08d35aad17caf59bffc"
+   },
    "lineAttribution": {
     "commit": "6945688cabee3fce8ef599c472ab16edf8c178e7",
     "dateUTC": "2026-08-02"
@@ -3486,12 +3574,20 @@
    "file": "sim/economy-sim.js",
    "line": 7470,
    "scope": "pickDeficitJob_rational",
+   "sourceScope": "pickDeficitJob_rational",
    "expression": "_cantFarm && (_A52 ? _A52.minW >= 0 : foodEquiv > N * (T1437_READS.mine ? t1437Read(v, 6, 'mine') : 6))",
    "sourceSha256": "f81b6734672d7a30438d2b03915937e5d00d0e13c81829664fed2f11d2a087e8",
    "classification": "ⓑ",
    "meaning": "농사가 안 되는 마을도 먹을 것이 6날 넘을 때만 기근 블록에서 광부를 고른다",
    "proposedLift": "기본 경로의 6날 문만 우회. 광맥·자리·농사 불가 조건 유지",
    "note": "T1437·T1452를 켠 대체 경로는 별도 기록. 식량 30날 T1419 전수와 구분",
+   "contextFunction": {
+    "file": "sim/economy-sim.js",
+    "name": "pickDeficitJob_rational",
+    "line": 7407,
+    "endLine": 7589,
+    "sourceSha256": "c5e7d22c2c44dd4b1de9ad085fee02362bbc03584f278c1c3aa8c87aa1af3bae"
+   },
    "lineAttribution": {
     "commit": "89d4f978a2bee0c52fab769affbfaf46de97d757",
     "dateUTC": "2026-11-23"
@@ -3504,12 +3600,20 @@
    "file": "sim/economy-sim.js",
    "line": 7477,
    "scope": "pickDeficitJob_rational",
+   "sourceScope": "pickDeficitJob_rational",
    "expression": "richVein && (_A52 ? _A52.minW >= _A52.buf : foodEquiv > N * (T1437_READS.mine ? t1437Read(v, 18, 'mine') : 18)) && mineLabor < N * 0.04 && hasSlot(v, 'miner', cap, counts)",
    "sourceSha256": "28e0ad7e429f8a214d388f705e5ee25fd7af58b0c736300abe6798097967965e",
    "classification": "ⓑ",
    "meaning": "풍부한 광맥도 먹을 것 18날 초과·광부 4% 미만일 때만 기근 중 광부를 고른다",
    "proposedLift": "18날 경계와 4% 노동 몫을 별도 해제 행으로 분할 예정",
    "note": "둘을 동시에 걷은 결과를 각 수의 단독 효과로 보고하지 않음",
+   "contextFunction": {
+    "file": "sim/economy-sim.js",
+    "name": "pickDeficitJob_rational",
+    "line": 7407,
+    "endLine": 7589,
+    "sourceSha256": "c5e7d22c2c44dd4b1de9ad085fee02362bbc03584f278c1c3aa8c87aa1af3bae"
+   },
    "lineAttribution": {
     "commit": "89d4f978a2bee0c52fab769affbfaf46de97d757",
     "dateUTC": "2026-11-23"
@@ -3522,12 +3626,20 @@
    "file": "server/villages.js",
    "line": 7733,
    "scope": "_terrCap",
+   "sourceScope": "_terrCap",
    "expression": "Math.ceil(pop / (VL.HOUSE_CAP_PER_FLOOR * VL.HOUSE_MAX_FLOORS)) * VL.TERR_PER_LOT + VL.TERR_CORE",
    "sourceSha256": "8aa8f735b5d9c24d0070b5eb3ca3fbf46350c1fb216175c390137ad511b4296d",
    "classification": "ⓑ",
    "meaning": "인구가 요구하는 집 수×600+1500칸을 NPC 영토 천장으로 둔다",
    "proposedLift": "천장 비교만 우회. 땅 소유·물리 자리·구매 비용·노동은 유지",
    "note": "6명 집 정원과 단층은 물리 정본. 토지 할당 600/1500과 분리. 랩 미호출을 죽은 문으로 판정하지 않음",
+   "contextFunction": {
+    "file": "server/villages.js",
+    "name": "_terrCap",
+    "line": 7731,
+    "endLine": 7735,
+    "sourceSha256": "8df09f171d41a8da782501bc480114b1f7a8ff2f6b13404dedf462d05838c9b8"
+   },
    "lineAttribution": {
     "commit": "9e2e5f94116f8e91b858766719643ae04f80522b",
     "dateUTC": "2026-10-03"
@@ -3540,12 +3652,20 @@
    "file": "server/villages.js",
    "line": 7740,
    "scope": "_terrCapBound",
+   "sourceScope": "_terrCapBound",
    "expression": "!T538_TERR_CAP || !vil || !vil.econ || vil.econ.founder || !vil._terrSet",
    "sourceSha256": "8aab8e08ee9d843179db481ffd52735bd743e5cc094847e9551cfe4d3a4318b0",
    "classification": "ⓒ",
    "meaning": "촌장이 세운 마을은 NPC 인구 기반 영토 천장 대상에서 뺀다",
    "proposedLift": "촌장 예외 유지. 걷기 대상 아님",
    "note": "유효 객체 검사도 같은 조기 반환문에 있으므로 정책 예외와 기술 검사를 최종 표에서 구분",
+   "contextFunction": {
+    "file": "server/villages.js",
+    "name": "_terrCapBound",
+    "line": 7739,
+    "endLine": 7744,
+    "sourceSha256": "764bbb0b34142e045ac334e8e882f3804b00b50c03c336a93d3905f4d40d30c3"
+   },
    "lineAttribution": {
     "commit": "c760b0d46e237b6b38ec596a45f00cf98f6e9d2e",
     "dateUTC": "2026-10-03"
@@ -3558,12 +3678,20 @@
    "file": "sim/economy-sim-v2.js",
    "line": 914,
    "scope": "_targetV2",
+   "sourceScope": "_targetV2",
    "expression": "ORNAMENTAL[r] ? N * LUX_TARGET_PC : 0",
    "sourceSha256": "61cfa39a679e4ae2fe3654d93edb0b34d4ac831d3673ec304f642b0b01c9b861",
    "classification": "ⓑ",
    "meaning": "결정 가격의 사치재 보유 목표만 인구×0.08로 더하고 일반재 기본 버퍼는 0으로 둔다",
    "proposedLift": "사치재 보유 항만 0. 실제 소비·파생수요·재료 사용은 유지",
    "note": "LUX_TARGET_PC의 사용처. 정산 경로의 일반재 버퍼와 같다고 가정하지 않음",
+   "contextFunction": {
+    "file": "sim/economy-sim-v2.js",
+    "name": "_targetV2",
+    "line": 879,
+    "endLine": 962,
+    "sourceSha256": "728cec28d042b8935fe1724876e4aaef930cf5d84f683b54257bb10e35201a0e"
+   },
    "lineAttribution": {
     "commit": "0ac65d7a14b04446547980e833d4bd0e856655c1",
     "dateUTC": "2026-10-13"
@@ -3576,15 +3704,231 @@
    "file": "sim/economy-sim-v2.js",
    "line": 1170,
    "scope": "_priceParamsV2",
+   "sourceScope": "_priceParamsV2",
    "expression": "ORNAMENTAL[r] ? N * LUX_TARGET_PC : N * (util * 1.2)",
    "sourceSha256": "8a7d0e6ea8d387bd5a56c3b85fc0650b38b93df22e7b17f59d498684b367f5a4",
    "classification": "ⓑ",
    "meaning": "T726 끔 정산은 사치재 외 일반재에도 인구×효용가중치×1.2 보유 목표를 둔다",
    "proposedLift": "정산의 일반재 보유 항만 0. 사치재·소비·파생수요는 유지",
    "note": "결정 경로에서 이미 0인 버퍼와 다름. T726 켬은 다른 함수로 우회. 출발 직후·부패 사본도 추가 대조",
+   "contextFunction": {
+    "file": "sim/economy-sim-v2.js",
+    "name": "_priceParamsV2",
+    "line": 1149,
+    "endLine": 1181,
+    "sourceSha256": "e38f25f9686fa29913ae403345c26ef75aacfa653df01fdc63e60e01538c0140"
+   },
    "lineAttribution": {
     "commit": "26d941b7695415300f38c3114f2be68cee4f3179",
     "dateUTC": "2026-07-12"
+   },
+   "liftImplemented": false,
+   "experiment": null
+  },
+  {
+   "id": "decay.holding-buffer",
+   "file": "sim/economy-sim-v2.js",
+   "line": 3094,
+   "scope": "tickDecay",
+   "sourceScope": "tickDecay",
+   "expression": "N * (util * 1.2)",
+   "sourceSha256": "18b8fb136f5b8002817f75bc8db4a1f49471aa0c62e12965898d67d46136abca",
+   "classification": "ⓑ",
+   "meaning": "T726 끔 부패 경로에도 인구×효용가중치×1.2 재고 목표가 남는다",
+   "proposedLift": "수기 보유 버퍼만 0. 기본 부패율·도기 효과·실소모/파생수요는 유지",
+   "note": "목표가 낮아지면 초과 재고 부패가 커진다. 이것을 물리 기본 부패율 변화와 섞지 않음",
+   "contextFunction": {
+    "file": "sim/economy-sim-v2.js",
+    "name": "tickDecay",
+    "line": 3062,
+    "endLine": 3114,
+    "sourceSha256": "9b0a0609d33322652ad3e3b2387eb9c5f2bacce6076a6266016605cdadd9986c"
+   },
+   "lineAttribution": {
+    "commit": "26d941b7695415300f38c3114f2be68cee4f3179",
+    "dateUTC": "2026-07-12"
+   },
+   "liftImplemented": false,
+   "experiment": null
+  },
+  {
+   "id": "switch.small-village",
+   "file": "sim/economy-sim.js",
+   "line": 7763,
+   "scope": "autoSwitchJob",
+   "sourceScope": "autoSwitchJob",
+   "expression": "v.npcs.length < (SWITCH2_ON ? 2 : 3)",
+   "sourceSha256": "83f274ec24090ec37a0144ac2d778f1b864e8789b47d2cd39f5526dde4ce8cd9",
+   "classification": "ⓑ",
+   "meaning": "인구 2명(SWITCH2 끔은 3명) 미만에서는 구조 식량직 외 일반 전환을 막는다",
+   "proposedLift": "한 명인 마을도 일반 피커를 쓰게 한다. 빈 마을은 그대로 조기 반환",
+   "note": "숫자를 지우면서 실제 사람이 없는 마을에 역할을 만들지 않는다",
+   "contextFunction": {
+    "file": "sim/economy-sim.js",
+    "name": "autoSwitchJob",
+    "line": 7758,
+    "endLine": 7837,
+    "sourceSha256": "97eac668b2b9bc251d92b450b8a928601f21de3385d50bb46e56286b25fb4f50"
+   },
+   "lineAttribution": {
+    "commit": "51aff82539424b416571666efc2b7c64c5e291c7",
+    "dateUTC": "2026-08-02"
+   },
+   "liftImplemented": false,
+   "experiment": null
+  },
+  {
+   "id": "switch.price-floor",
+   "file": "sim/economy-sim.js",
+   "line": 7804,
+   "scope": "autoSwitchJob",
+   "sourceScope": "autoSwitchJob/<callback>",
+   "expression": "Math.max(0.05, Math.min(200, (T1188_ORE_SPLIT&&OreGoods.isOre(r)?(priceTbl[r]??1):(priceTbl[r]||1)) / 1.0))",
+   "sourceSha256": "b1eac232bb4ca5989e33b0726541767e40cf1333bb09d2a87ed736b23dd13e93",
+   "classification": "ⓑ",
+   "meaning": "전직 기회비용에 넣는 자원 값은 최소 0.05로 올린다",
+   "proposedLift": "가격의 0.05 하한만 제거. 기존 없는 값 대체·원석별 0 처리 유지",
+   "note": "",
+   "contextFunction": {
+    "file": "sim/economy-sim.js",
+    "name": "autoSwitchJob",
+    "line": 7758,
+    "endLine": 7837,
+    "sourceSha256": "97eac668b2b9bc251d92b450b8a928601f21de3385d50bb46e56286b25fb4f50"
+   },
+   "lineAttribution": {
+    "commit": "d10179452b74cbc89f4197fb871738539920dd9c",
+    "dateUTC": "2026-11-05"
+   },
+   "liftImplemented": false,
+   "experiment": null
+  },
+  {
+   "id": "switch.price-ceiling",
+   "file": "sim/economy-sim.js",
+   "line": 7804,
+   "scope": "autoSwitchJob",
+   "sourceScope": "autoSwitchJob/<callback>",
+   "expression": "Math.min(200, (T1188_ORE_SPLIT&&OreGoods.isOre(r)?(priceTbl[r]??1):(priceTbl[r]||1)) / 1.0)",
+   "sourceSha256": "ad361649e87ed31cf5ba53659bab17afc2abe4fb83a184612c6fb9d6ae3928bb",
+   "classification": "ⓑ",
+   "meaning": "전직 기회비용에 넣는 자원 값을 최대 200으로 자른다",
+   "proposedLift": "200 상한만 ∞. 최소값·단위 환산·가격 대체는 유지",
+   "note": "",
+   "contextFunction": {
+    "file": "sim/economy-sim.js",
+    "name": "autoSwitchJob",
+    "line": 7758,
+    "endLine": 7837,
+    "sourceSha256": "97eac668b2b9bc251d92b450b8a928601f21de3385d50bb46e56286b25fb4f50"
+   },
+   "lineAttribution": {
+    "commit": "d10179452b74cbc89f4197fb871738539920dd9c",
+    "dateUTC": "2026-11-05"
+   },
+   "liftImplemented": false,
+   "experiment": null
+  },
+  {
+   "id": "switch.cost-exemption",
+   "file": "sim/economy-sim.js",
+   "line": 7830,
+   "scope": "autoSwitchJob",
+   "sourceScope": "autoSwitchJob",
+   "expression": "foodSec && bestCost > 0.15",
+   "sourceSha256": "9d3424daae18560f78b800d428f01bdfe9bc236fe102b9b8d7ae66548d15673a",
+   "classification": "ⓑ",
+   "meaning": "먹을 것이 넉넉해도 포기할 손 값이 0.15 이하면 추가 이익 비교를 안 한다",
+   "proposedLift": "0.15 예외 경계를 0으로. 식량 여유 문과 기존 이익 비교는 유지",
+   "note": "",
+   "contextFunction": {
+    "file": "sim/economy-sim.js",
+    "name": "autoSwitchJob",
+    "line": 7758,
+    "endLine": 7837,
+    "sourceSha256": "97eac668b2b9bc251d92b450b8a928601f21de3385d50bb46e56286b25fb4f50"
+   },
+   "lineAttribution": {
+    "commit": "db63f5b3668470c77971d0808e74389ee2c1ff8d",
+    "dateUTC": "2026-07-02"
+   },
+   "liftImplemented": false,
+   "experiment": null
+  },
+  {
+   "id": "switch.hysteresis",
+   "file": "sim/economy-sim.js",
+   "line": 7832,
+   "scope": "autoSwitchJob",
+   "sourceScope": "autoSwitchJob",
+   "expression": "needValue < bestCost * 1.3",
+   "sourceSha256": "e3e943725d70c3c95523bff3ee39b1dc74be53617600c0d12e825b3c360f9844",
+   "classification": "ⓑ",
+   "meaning": "식량 여유가 있을 때 새 일 값이 옛 일 값의 1.3배를 넘어야 옮긴다",
+   "proposedLift": "1.3배 추가 마진만 1로. 이득 없는 전환 거절·기존 쿨다운은 유지",
+   "note": "",
+   "contextFunction": {
+    "file": "sim/economy-sim.js",
+    "name": "autoSwitchJob",
+    "line": 7758,
+    "endLine": 7837,
+    "sourceSha256": "97eac668b2b9bc251d92b450b8a928601f21de3385d50bb46e56286b25fb4f50"
+   },
+   "lineAttribution": {
+    "commit": "db63f5b3668470c77971d0808e74389ee2c1ff8d",
+    "dateUTC": "2026-07-02"
+   },
+   "liftImplemented": false,
+   "experiment": null
+  },
+  {
+   "id": "switch.one-worker",
+   "file": "sim/economy-sim.js",
+   "line": 7834,
+   "scope": "autoSwitchJob",
+   "sourceScope": "autoSwitchJob",
+   "expression": "switchNPCJob(v.npcs[bestIdx], need, day, v)",
+   "sourceSha256": "c5354ade007a901a3008388720be8a3d35768bc97162a05271a719f640608a22",
+   "classification": "ⓑ",
+   "meaning": "정상 전직 함수 한 번에 가장 싼 일꾼 한 명만 옮긴다",
+   "proposedLift": "기존 피커·기회비용으로 반복하고 바뀐 사람은 그날 쿨다운으로 제외. 유한 실제 인원까지만",
+   "note": "한 번만 부르는 구조의 한도. 가격·역할 선택식을 새로 만들지 않음",
+   "contextFunction": {
+    "file": "sim/economy-sim.js",
+    "name": "autoSwitchJob",
+    "line": 7758,
+    "endLine": 7837,
+    "sourceSha256": "97eac668b2b9bc251d92b450b8a928601f21de3385d50bb46e56286b25fb4f50"
+   },
+   "lineAttribution": {
+    "commit": "96e7c64544f50d8cf9a965f9e1f730b2dabd4854",
+    "dateUTC": "2026-06-02"
+   },
+   "liftImplemented": false,
+   "experiment": null
+  },
+  {
+   "id": "switch.one-unarmed",
+   "file": "sim/economy-sim.js",
+   "line": 7791,
+   "scope": "autoSwitchJob",
+   "sourceScope": "autoSwitchJob",
+   "expression": "switchNPCJob(n, opts[0][0], day, v)",
+   "sourceSha256": "c591349cb03a80250220e632d9a9b53a9e56c7ec89ac26c8ef4234e7a89cf4c4",
+   "classification": "ⓑ",
+   "meaning": "무기 없는 전사가 많아도 첫 한 명만 식량직으로 바꾸고 반환한다",
+   "proposedLift": "동일 조건을 통과하는 무장 불가 전사의 한 명 반환 제한만 제거",
+   "note": "이 무기 연결 행은 S3 T1449 소관 걷기에서 제외. 실제 무기·개인 쿨다운은 유지",
+   "contextFunction": {
+    "file": "sim/economy-sim.js",
+    "name": "autoSwitchJob",
+    "line": 7758,
+    "endLine": 7837,
+    "sourceSha256": "97eac668b2b9bc251d92b450b8a928601f21de3385d50bb46e56286b25fb4f50"
+   },
+   "lineAttribution": {
+    "commit": "414b94b230e425612da3f01bab5ab78f7eaeb472",
+    "dateUTC": "2026-06-30"
    },
    "liftImplemented": false,
    "experiment": null

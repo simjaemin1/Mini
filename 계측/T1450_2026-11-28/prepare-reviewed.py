@@ -7,7 +7,8 @@ OUT = Path(__file__).resolve().parent
 ROOT = OUT.parent.parent
 BASE = '0e2ae3916acdb7380b7eb615a0f3c85d2b41f61d'
 assert subprocess.run(['git', 'diff', '--quiet', BASE, '--', 'sim/economy-sim.js', 'sim/economy-sim-v2.js', 'sim/war-core.js', 'server/villages.js'], cwd=ROOT).returncode == 0
-CANDIDATES = json.loads(gzip.decompress((OUT/'decision-candidates.json.gz').read_bytes()))['rows']
+SCAN = json.loads(gzip.decompress((OUT/'decision-candidates.json.gz').read_bytes()))
+CANDIDATES = SCAN['rows']
 PROV = json.loads(gzip.decompress((OUT/'line-provenance.json.gz').read_bytes()))
 assert PROV['base'] == BASE
 origins=json.loads((OUT/'name-origin-candidates.json').read_text()) if (OUT/'name-origin-candidates.json').exists() else None
@@ -152,13 +153,15 @@ for name, meaning in [
 ]: add(name,E,'ⓓ',meaning,'물리로 분류. 해제 실험 없음',note='물리량의 수치 타당성을 이 카드가 새로 채택하는 것은 아님')
 
 GATES = []
-def gate(id, file, scope, line, kind, category, meaning, removal, note=''):
-    hits=[x for x in CANDIDATES if (x['file'],x['scope'],x['line'],x['kind'])==(file,scope,line,kind)]
+def gate(id, file, scope, line, kind, category, meaning, removal, note='',prefix=None):
+    hits=[x for x in CANDIDATES if (x['file'],x['scope'].split('/')[0],x['line'],x['kind'])==(file,scope,line,kind) and (prefix is None or x['source'].startswith(prefix))]
     assert len(hits)==1, (id,len(hits))
     x=hits[0]; p=PROV['files'][file][line-1]
-    GATES.append(dict(id=id,file=file,line=line,scope=scope,expression=x['source'],
+    context=[f for f in SCAN['functions'] if f['file']==file and f['name']==scope]
+    assert len(context)==1, (id,context)
+    GATES.append(dict(id=id,file=file,line=line,scope=scope,sourceScope=x['scope'],expression=x['source'],
         sourceSha256=x['sourceSha256'],classification=category,meaning=meaning,proposedLift=removal,note=note,
-        lineAttribution=dict(commit=p[1],dateUTC=p[2]),liftImplemented=False,experiment=None))
+        contextFunction=context[0],lineAttribution=dict(commit=p[1],dateUTC=p[2]),liftImplemented=False,experiment=None))
 
 gate('house.food-slack',E,'houseDayBuild',2258,'numeric-variable','ⓑ',
     '집 증축 노동을 식량 40/25날 경계로 1/0.5/0.15배로 나눈다',
@@ -218,6 +221,36 @@ gate('settlement.holding-buffer',V,'_priceParamsV2',1170,'numeric-variable','ⓑ
     'T726 끔 정산은 사치재 외 일반재에도 인구×효용가중치×1.2 보유 목표를 둔다',
     '정산의 일반재 보유 항만 0. 사치재·소비·파생수요는 유지',
     '결정 경로에서 이미 0인 버퍼와 다름. T726 켬은 다른 함수로 우회. 출발 직후·부패 사본도 추가 대조')
+gate('decay.holding-buffer',V,'tickDecay',3094,'numeric-variable','ⓑ',
+    'T726 끔 부패 경로에도 인구×효용가중치×1.2 재고 목표가 남는다',
+    '수기 보유 버퍼만 0. 기본 부패율·도기 효과·실소모/파생수요는 유지',
+    '목표가 낮아지면 초과 재고 부패가 커진다. 이것을 물리 기본 부패율 변화와 섞지 않음')
+gate('switch.small-village',E,'autoSwitchJob',7763,'if','ⓑ',
+    '인구 2명(SWITCH2 끔은 3명) 미만에서는 구조 식량직 외 일반 전환을 막는다',
+    '한 명인 마을도 일반 피커를 쓰게 한다. 빈 마을은 그대로 조기 반환',
+    '숫자를 지우면서 실제 사람이 없는 마을에 역할을 만들지 않는다')
+gate('switch.price-floor',E,'autoSwitchJob',7804,'clamp','ⓑ',
+    '전직 기회비용에 넣는 자원 값은 최소 0.05로 올린다',
+    '가격의 0.05 하한만 제거. 기존 없는 값 대체·원석별 0 처리 유지',
+    prefix='Math.max(0.05,')
+gate('switch.price-ceiling',E,'autoSwitchJob',7804,'clamp','ⓑ',
+    '전직 기회비용에 넣는 자원 값을 최대 200으로 자른다',
+    '200 상한만 ∞. 최소값·단위 환산·가격 대체는 유지',
+    prefix='Math.min(200,')
+gate('switch.cost-exemption',E,'autoSwitchJob',7830,'if','ⓑ',
+    '먹을 것이 넉넉해도 포기할 손 값이 0.15 이하면 추가 이익 비교를 안 한다',
+    '0.15 예외 경계를 0으로. 식량 여유 문과 기존 이익 비교는 유지')
+gate('switch.hysteresis',E,'autoSwitchJob',7832,'if','ⓑ',
+    '식량 여유가 있을 때 새 일 값이 옛 일 값의 1.3배를 넘어야 옮긴다',
+    '1.3배 추가 마진만 1로. 이득 없는 전환 거절·기존 쿨다운은 유지')
+gate('switch.one-worker',E,'autoSwitchJob',7834,'action-call','ⓑ',
+    '정상 전직 함수 한 번에 가장 싼 일꾼 한 명만 옮긴다',
+    '기존 피커·기회비용으로 반복하고 바뀐 사람은 그날 쿨다운으로 제외. 유한 실제 인원까지만',
+    '한 번만 부르는 구조의 한도. 가격·역할 선택식을 새로 만들지 않음')
+gate('switch.one-unarmed',E,'autoSwitchJob',7791,'action-call','ⓑ',
+    '무기 없는 전사가 많아도 첫 한 명만 식량직으로 바꾸고 반환한다',
+    '동일 조건을 통과하는 무장 불가 전사의 한 명 반환 제한만 제거',
+    '이 무기 연결 행은 S3 T1449 소관 걷기에서 제외. 실제 무기·개인 쿨다운은 유지')
 
 # Render only evidence already read. No completion totals or grades are invented.
 result=dict(status='진행 중: 씨앗 선언 부분 검토. 전수·사용처 분할·초기 출처·실험 미완',
@@ -273,4 +306,4 @@ lines+=['', '## 이름 없는 문·공유 사용처: 확인한 범위', '',
     '경제층 직접 문과 ⓪~⑤의 부분 대조 메모는 `계측/T1450_2026-11-28/economic-reading-notes.md`다. 배합 score의 순위와 손해 생산 차단을 구분한다.', '',
     '재현 자료: `계측/T1450_2026-11-28/README.md`. 모든 초안은 조사 시점 소스에만 대응하며 착수 때 main 변화를 다시 대조한다.', '']
 (ROOT/'설계/조사_손으로적은목표_T1450.md').write_text('\n'.join(lines))
-print(json.dumps(dict(status='partial-review-only',declarations=len(ROWS),worldsLaunched=0,productFilesChanged=0)))
+print(json.dumps(dict(status='partial-review-only',declarations=len(ROWS),useSites=len(GATES),worldsLaunched=0,productFilesChanged=0)))

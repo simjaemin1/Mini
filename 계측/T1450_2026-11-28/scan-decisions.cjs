@@ -3,7 +3,7 @@
 const fs=require('fs'),path=require('path'),crypto=require('crypto'),acorn=require('acorn');
 const ROOT=path.resolve(__dirname,'../..');
 const FILES=['sim/economy-sim.js','sim/economy-sim-v2.js','sim/war-core.js','server/villages.js'];
-const rows=[],counts={};
+const rows=[],counts={},functions=[];
 function hash(s){return crypto.createHash('sha256').update(s).digest('hex');}
 for(const file of FILES){
  const src=fs.readFileSync(path.join(ROOT,file),'utf8');
@@ -22,6 +22,7 @@ for(const file of FILES){
   let sc=scope;
   if(n.type==='FunctionDeclaration')sc=n.id?n.id.name:scope+'/<fn>';
   else if(/FunctionExpression|ArrowFunctionExpression/.test(n.type))sc=parent&&parent.type==='VariableDeclarator'&&parent.id.type==='Identifier'?parent.id.name:scope+'/<callback>';
+  if(n.type==='FunctionDeclaration'&&n.id)functions.push({file,name:n.id.name,line:n.loc.start.line,endLine:n.loc.end.line,sourceSha256:hash(text(n))});
   if(n.type==='VariableDeclarator'&&n.id.type==='Identifier'&&n.init){
    const name=n.id.name;
    if(/^[A-Z_][A-Z_0-9]*$/.test(name)&&numeric(n.init))record('constant',n,n.init,scope,name);
@@ -35,6 +36,7 @@ for(const file of FILES){
   if(n.type==='ReturnStatement'&&n.argument&&numeric(n.argument)&&(/cap|target|terr|floor|room|keep|reserve|plan|desired|limit|crew|stock|price|buy|sell|expand|job|cost|value|worth|wage|labor|utility|income/i.test(scope)||/npcs\.length|\b(?:N|_pop|population|people)\b/.test(text(n.argument))))record('numeric-return',n,n.argument,scope);
   if(n.type==='ReturnStatement'&&n.argument&&!numeric(n.argument)&&/cap|target|floor|keep|reserve|desired|limit/i.test(scope)&&!['FunctionExpression','ArrowFunctionExpression','ObjectExpression','ArrayExpression','Literal'].includes(n.argument.type))record('derived-bound-return',n,n.argument,scope);
   if(n.type==='CallExpression'&&/^(?:Math\.(?:min|max)|clamp|clamp01)$/.test(text(n.callee)))record('clamp',n,n,scope);
+  if(n.type==='CallExpression'&&text(n.callee)==='switchNPCJob')record('action-call',n,n,scope,'switchNPCJob');
   if(['ForStatement','WhileStatement','DoWhileStatement'].includes(n.type)&&n.test)record(numeric(n.test)?'bounded-loop':'symbolic-loop',n,n.test,scope);
   for(const k of Object.keys(n))if(k!=='loc'){
    const v=n[k];if(Array.isArray(v)){for(const c of v)if(c&&typeof c.type==='string')visit(c,sc,n,k);}
@@ -43,7 +45,7 @@ for(const file of FILES){
  }
  visit(ast);counts[file]={lines:src.split('\n').length,candidates:rows.length-before,sourceSha256:hash(src)};
 }
-const result={kind:'unclassified-source-candidates',warning:'Candidate expressions are not final policy decisions or a completed census; classify context before reporting totals.',worldsLaunched:0,files:counts,rows};
+const result={kind:'unclassified-source-candidates',warning:'Candidate expressions are not final policy decisions or a completed census; classify context before reporting totals.',worldsLaunched:0,files:counts,functions,rows};
 fs.writeFileSync(path.join(__dirname,'decision-candidates.json.gz'),require('zlib').gzipSync(JSON.stringify(result,null,1),{level:9}));
 const c={};for(const r of rows)c[r.kind]=(c[r.kind]||0)+1;
 console.log(JSON.stringify({files:counts,kinds:c,candidates:rows.length,prioritize:rows.filter(r=>r.populationExpression||r.namedPolicy).length,worldsLaunched:0}));
