@@ -1,0 +1,325 @@
+{
+ "src": "/mnt/user-data/uploads/Mini/_db/20261103-152720-hanbando/world-hanbando.db",
+ "zone": "hanbando",
+ "on": "0",
+ "days": 60,
+ "vil": "",
+ "exit": {
+  "code": 0,
+  "sig": null
+ },
+ "sec": 716,
+ "R": {
+  "days": [
+   {
+    "d": 676,
+    "zonePop": 3642,
+    "empty": 2
+   },
+   {
+    "d": 677,
+    "zonePop": 3642,
+    "empty": 2
+   },
+   {
+    "d": 678,
+    "zonePop": 3631,
+    "empty": 2
+   },
+   {
+    "d": 679,
+    "zonePop": 3630,
+    "empty": 2
+   },
+   {
+    "d": 680,
+    "zonePop": 3597,
+    "empty": 2
+   },
+   {
+    "d": 681,
+    "zonePop": 3604,
+    "empty": 2
+   },
+   {
+    "d": 682,
+    "zonePop": 3611,
+    "empty": 2
+   },
+   {
+    "d": 683,
+    "zonePop": 3620,
+    "empty": 2
+   },
+   {
+    "d": 684,
+    "zonePop": 3628,
+    "empty": 2
+   },
+   {
+    "d": 685,
+    "zonePop": 3636,
+    "empty": 2
+   },
+   {
+    "d": 686,
+    "zonePop": 3642,
+    "empty": 2
+   },
+   {
+    "d": 687,
+    "zonePop": 3647,
+    "empty": 2
+   },
+   {
+    "d": 688,
+    "zonePop": 3655,
+    "empty": 2
+   },
+   {
+    "d": 689,
+    "zonePop": 3662,
+    "empty": 2
+   },
+   {
+    "d": 690,
+    "zonePop": 3666,
+    "empty": 2
+   },
+   {
+    "d": 691,
+    "zonePop": 3673,
+    "empty": 2
+   },
+   {
+    "d": 692,
+    "zonePop": 3683,
+    "empty": 2
+   },
+   {
+    "d": 693,
+    "zonePop": 3694,
+    "empty": 2
+   },
+   {
+    "d": 694,
+    "zonePop": 3708,
+    "empty": 2
+   },
+   {
+    "d": 695,
+    "zonePop": 3695,
+    "empty": 2
+   },
+   {
+    "d": 696,
+    "zonePop": 3705,
+    "empty": 2
+   },
+   {
+    "d": 697,
+    "zonePop": 3713,
+    "empty": 2
+   },
+   {
+    "d": 698,
+    "zonePop": 3713,
+    "empty": 2
+   },
+   {
+    "d": 699,
+    "zonePop": 3719,
+    "empty": 2
+   },
+   {
+    "d": 700,
+    "zonePop": 3727,
+    "empty": 2
+   },
+   {
+    "d": 701,
+    "zonePop": 3732,
+    "empty": 2
+   },
+   {
+    "d": 702,
+    "zonePop": 3744,
+    "empty": 2
+   },
+   {
+    "d": 703,
+    "zonePop": 3749,
+    "empty": 2
+   },
+   {
+    "d": 704,
+    "zonePop": 3754,
+    "empty": 2
+   },
+   {
+    "d": 705,
+    "zonePop": 3759,
+    "empty": 2
+   },
+   {
+    "d": 706,
+    "zonePop": 3735,
+    "empty": 2
+   },
+   {
+    "d": 707,
+    "zonePop": 3744,
+    "empty": 2
+   },
+   {
+    "d": 708,
+    "zonePop": 3753,
+    "empty": 2
+   },
+   {
+    "d": 709,
+    "zonePop": 3758,
+    "empty": 2
+   },
+   {
+    "d": 710,
+    "zonePop": 3764,
+    "empty": 2
+   },
+   {
+    "d": 711,
+    "zonePop": 3773,
+    "empty": 2
+   },
+   {
+    "d": 712,
+    "zonePop": 3778,
+    "empty": 2
+   },
+   {
+    "d": 713,
+    "zonePop": 3787,
+    "empty": 2
+   },
+   {
+    "d": 714,
+    "zonePop": 3792,
+    "empty": 2
+   },
+   {
+    "d": 715,
+    "zonePop": 3801,
+    "empty": 2
+   },
+   {
+    "d": 716,
+    "zonePop": 3809,
+    "empty": 2
+   },
+   {
+    "d": 717,
+    "zonePop": 3816,
+    "empty": 2
+   },
+   {
+    "d": 718,
+    "zonePop": 3821,
+    "empty": 2
+   },
+   {
+    "d": 719,
+    "zonePop": 3824,
+    "empty": 2
+   },
+   {
+    "d": 720,
+    "zonePop": 3832,
+    "empty": 2
+   },
+   {
+    "d": 721,
+    "zonePop": 3831,
+    "empty": 2
+   },
+   {
+    "d": 722,
+    "zonePop": 3834,
+    "empty": 2
+   },
+   {
+    "d": 723,
+    "zonePop": 3839,
+    "empty": 2
+   },
+   {
+    "d": 724,
+    "zonePop": 3847,
+    "empty": 2
+   },
+   {
+    "d": 725,
+    "zonePop": 3852,
+    "empty": 2
+   },
+   {
+    "d": 726,
+    "zonePop": 3855,
+    "empty": 2
+   },
+   {
+    "d": 727,
+    "zonePop": 3860,
+    "empty": 2
+   },
+   {
+    "d": 728,
+    "zonePop": 3865,
+    "empty": 2
+   },
+   {
+    "d": 729,
+    "zonePop": 3857,
+    "empty": 2
+   },
+   {
+    "d": 730,
+    "zonePop": 3863,
+    "empty": 2
+   },
+   {
+    "d": 731,
+    "zonePop": 3870,
+    "empty": 2
+   },
+   {
+    "d": 732,
+    "zonePop": 3883,
+    "empty": 2
+   },
+   {
+    "d": 733,
+    "zonePop": 3890,
+    "empty": 2
+   },
+   {
+    "d": 734,
+    "zonePop": 3903,
+    "empty": 2
+   },
+   {
+    "d": 735,
+    "zonePop": 3912,
+    "empty": 2
+   },
+   {
+    "d": 736,
+    "zonePop": 3927,
+    "empty": 2
+   }
+  ],
+  "start": 676,
+  "err": null,
+  "lines": []
+ },
+ "tail": []
+}
