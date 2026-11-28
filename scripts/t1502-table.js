@@ -92,7 +92,7 @@ for (const t of tags) {
   for (const j of ['farmer', 'forager']) {
     const R = r.rows[j]; if (!R || !R.bd) continue;
     const perWork = R.work ? R.harvU / R.work : 0;   // 거둔 양은 닿은 몸 · 닿지 않은 몸 다 센다 — 닿지 않은 거둠은 0 이어야 한다(불변식)
-    const fePerU = R.granU > 0 ? R.granFE / R.granU : null;
+    const fePerU = R.granU > 0.5 ? R.granFE / R.granU : null;   // 곳간에 든 단위가 한 단위도 안 되면 비를 안 낸다(0 에 가까운 나눗셈 — 탐침 ⑦ 뒤 농부 든 몫 −0.0)
     const days = Math.max(1, r.lastDay - 1);
     const pot = fePerU != null ? perWork * fePerU * R.bd / days : null;
     const base = op ? op[j] : null;
