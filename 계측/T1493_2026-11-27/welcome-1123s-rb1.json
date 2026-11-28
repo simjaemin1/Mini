@@ -1,19 +1,19 @@
 {
  "arm": "rb1",
- "at": "2026-11-27T19:39:28.276Z",
+ "at": "2026-11-28T03:58:47.796Z",
  "shift": {
-  "today": 1247089,
+  "today": 1247109,
   "maxD": 1246825,
-  "by": 264
+  "by": 284
  },
- "boot": "[T1448] 칸 행 1066837 → 구역 행 13501(한 거래 · 앞서 있던 구역 행 0 · 537ms)",
+ "boot": "[T1448] 칸 행 1066837 → 구역 행 13501(한 거래 · 앞서 있던 구역 행 0 · 532ms)",
  "welcome": [
   {
-   "ms": 414,
-   "bytes": 1316573,
+   "ms": 387,
+   "bytes": 1316570,
    "roadBytes": 99765,
    "roadCells": 8911,
-   "wire": 197838,
+   "wire": 197841,
    "roadWire": 20456,
    "keys": [
     [
@@ -59,11 +59,11 @@
    ]
   },
   {
-   "ms": 113,
-   "bytes": 1316573,
+   "ms": 83,
+   "bytes": 1316570,
    "roadBytes": 99765,
    "roadCells": 8911,
-   "wire": 197843,
+   "wire": 197848,
    "roadWire": 20456,
    "keys": [
     [
@@ -109,11 +109,11 @@
    ]
   },
   {
-   "ms": 108,
-   "bytes": 1316573,
+   "ms": 67,
+   "bytes": 1316570,
    "roadBytes": 99765,
    "roadCells": 8911,
-   "wire": 197838,
+   "wire": 197841,
    "roadWire": 20456,
    "keys": [
     [
@@ -159,58 +159,8 @@
    ]
   },
   {
-   "ms": 136,
-   "bytes": 1316573,
-   "roadBytes": 99765,
-   "roadCells": 8911,
-   "wire": 197844,
-   "roadWire": 20456,
-   "keys": [
-    [
-     "hardcodedTerrain",
-     836535
-    ],
-    [
-     "buildings",
-     149043
-    ],
-    [
-     "roads",
-     99765
-    ],
-    [
-     "simVillages",
-     96701
-    ],
-    [
-     "mobs",
-     59154
-    ],
-    [
-     "resources",
-     17668
-    ],
-    [
-     "crops",
-     11134
-    ],
-    [
-     "itemLabels",
-     9451
-    ],
-    [
-     "bridges",
-     7771
-    ],
-    [
-     "itemWeights",
-     6873
-    ]
-   ]
-  },
-  {
-   "ms": 132,
-   "bytes": 1316573,
+   "ms": 88,
+   "bytes": 1316570,
    "roadBytes": 99765,
    "roadCells": 8911,
    "wire": 197839,
@@ -257,16 +207,66 @@
      6873
     ]
    ]
+  },
+  {
+   "ms": 84,
+   "bytes": 1316570,
+   "roadBytes": 99765,
+   "roadCells": 8911,
+   "wire": 197844,
+   "roadWire": 20456,
+   "keys": [
+    [
+     "hardcodedTerrain",
+     836535
+    ],
+    [
+     "buildings",
+     149043
+    ],
+    [
+     "roads",
+     99765
+    ],
+    [
+     "simVillages",
+     96701
+    ],
+    [
+     "mobs",
+     59154
+    ],
+    [
+     "resources",
+     17668
+    ],
+    [
+     "crops",
+     11134
+    ],
+    [
+     "itemLabels",
+     9451
+    ],
+    [
+     "bridges",
+     7771
+    ],
+    [
+     "itemWeights",
+     6873
+    ]
+   ]
   }
  ],
  "wsum": {
-  "bytes": 1316573,
+  "bytes": 1316570,
   "roadBytes": 99765,
   "roadCells": 8911,
-  "wire": 197838,
+  "wire": 197841,
   "roadWire": 20456,
-  "msMed": 132,
-  "msMax": 414,
+  "msMed": 84,
+  "msMax": 387,
   "slowSec": 4.5,
   "slowRoadSec": 0.5,
   "keys": [
@@ -323,15 +323,21 @@
   "cells": 185
  },
  "walk_광산1": {
-  "msgs": 2,
-  "kb": 46.7,
-  "cells": 3980
+  "msgs": 3,
+  "kb": 48.2,
+  "cells": 4103
  },
  "perMsg": {
-  "n": 16,
-  "medKB": 6.26,
-  "p95KB": 85.47,
-  "maxKB": 85.47,
-  "crossings": 19
+  "n": 14,
+  "medKB": 5.64,
+  "p90KB": 48.64,
+  "maxKB": 52.32,
+  "crossings": 19,
+  "arrive": {
+   "n": 3,
+   "medKB": 11.09,
+   "p90KB": 85.47,
+   "maxKB": 85.47
+  }
  }
 }

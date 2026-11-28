@@ -4,7 +4,7 @@
 //   ⓐ welcome — 소켓 글자 바이트 · 그 안 길 몫(`roads` 글자) · 압축(permessage-deflate 꼴 · zlib raw deflate 기본 수준 — 선 위 바이트 어림) ·
 //      느린 망 어림(T1125 의 느린 길 자 42.5 KB/s — 선 위 바이트 ÷ 그 속도) · 받은 ms(같은 기계) · 칸별 바이트(큰 차례 10 — 길 밖 나머지가 무엇인가)
 //      ※ 존의 길 날 = 부팅 순간 벽시계 날(T1001) — 사본을 묵힌 날만큼 닳는다. 사본 그날 꼴로 재려면 심은 DB 의 `d` 를 오늘로 민다(`seed-*s.db` — 상대 나이 그대로)
-//   ⓑ 걷기 — 길 많은 마을(임업2 · 농촌22 · 광산1)을 가로지르는 줄을 32 px · 0.05초마다 순간 이동으로 간다 — 청크를 넘을 때마다 받은 `road_cells` 바이트(그 소켓 몫)
+//   ⓑ 걷기 — 길 많은 마을(임업2 · 농촌22 · 광산1)을 가로지르는 줄을 32 px · 0.05초마다 순간 이동으로 간다 — 청크를 넘을 때마다 받은 `road_cells` 바이트(그 소켓 몫 · 마을 들머리로 뛴 순간 이동의 둘레 통째 묶음은 따로 센다 · 5초마다 ping)
 //   쓰는 법: node 계측/T1493_2026-11-27/t1493-welcome.js --arm rb0|rb1 --seed <_seed.db> --out <json> [--shift(사본 그날 꼴)]
 'use strict';
 const path = require('path'), fs = require('fs'), zlib = require('zlib'), { spawn } = require('child_process');
@@ -57,8 +57,10 @@ const q = (a, p) => { const s = a.slice().sort((x, y) => x - y); return s.length
       slowSec: +(w[0].wire / 1024 / KBPS).toFixed(1), slowRoadSec: +(w[0].roadWire / 1024 / KBPS).toFixed(1), keys: w[0].keys } : null;
     // ⓑ 걷기 — 마을 셋을 잇는 줄(순간 이동 32 px · 0.05초) · 청크를 넘을 때마다 그 소켓 `road_cells` 바이트
     const ws = new WebSocket(`ws://127.0.0.1:${ZP}/?name=t1493walk&color=%23aa5533`, { perMessageDeflate: false });
-    let pid = null, pos = null; const rc = [];
-    ws.on('message', (d) => { const s = String(d); if (s.startsWith('{"type":"welcome"')) { pid = JSON.parse(s).pid; } else if (s.startsWith('{"type":"tick"')) { const m = JSON.parse(s); const me = (m.players || []).find((p) => p.pid === pid); if (me) pos = [me.x, me.y]; } else if (s.startsWith('{"type":"road_cells"')) rc.push([Date.now(), Buffer.byteLength(s), JSON.parse(s).cells.length / 3]); });
+    let pid = null, pos = null, phase = 'arrive'; const rc = [];   // rc = [때, 바이트, 칸, 갈래(arrive = 마을 들머리 순간 이동 · 둘레 25청크 통째 / cross = 걸어서 청크 하나 넘기 · 새로 든 한 줄)]
+    ws.on('message', (d) => { const s = String(d); if (s.startsWith('{"type":"welcome"')) { pid = JSON.parse(s).pid; } else if (s.startsWith('{"type":"tick"')) { const m = JSON.parse(s); const me = (m.players || []).find((p) => p.pid === pid); if (me) pos = [me.x, me.y]; } else if (s.startsWith('{"type":"road_cells"')) rc.push([Date.now(), Buffer.byteLength(s), JSON.parse(s).cells.length / 3, phase]); });
+    //   살아 있음 쪽지 — 존은 30초 동안 입력 · ping 이 없는 소켓을 끊는다(`STALE_WS_MS` · 순간 이동은 안 센다) — 5초마다 ping(없으면 셋째 마을 걷기가 잘린다)
+    const keep = setInterval(() => { try { ws.send(JSON.stringify({ type: 'ping', t: Date.now() })); } catch (e) {} }, 5000);
     for (let k = 0; k < 200 && !pos; k++) await sleep(50);
     const vils = ['임업2', '농촌22', '광산1'].map((n) => VB.vils.find((v) => v.name === n)).filter(Boolean);
     const free = (x, y) => !VB.blocked(x, y);
@@ -66,8 +68,8 @@ const q = (a, p) => { const s = a.slice().sort((x, y) => x - y); return s.length
     for (const v of vils) {
       const cx = v.cx * 32 + 16, cy = v.cy * 32 + 16, x0 = cx - 4 * 1024, x1 = cx + 4 * 1024;
       let x = x0; while (x < x1 && !free(x, cy)) x += 32;
-      ws.send(JSON.stringify({ type: 'teleport_debug', x, y: cy })); await sleep(1500);
-      const rc0 = rc.length;
+      phase = 'arrive'; ws.send(JSON.stringify({ type: 'teleport_debug', x, y: cy })); await sleep(1500);
+      const rc0 = rc.length; phase = 'cross';
       let lastCk = Math.floor(x / 1024);
       for (; x < x1; x += 32) {
         if (!free(x, cy)) continue;
@@ -77,9 +79,9 @@ const q = (a, p) => { const s = a.slice().sort((x, y) => x - y); return s.length
       await sleep(800);
       out['walk_' + v.name] = { msgs: rc.length - rc0, kb: +(rc.slice(rc0).reduce((a, r) => a + r[1], 0) / 1024).toFixed(1), cells: rc.slice(rc0).reduce((a, r) => a + r[2], 0) };
     }
-    ws.close();
-    const per = rc.map((r) => r[1]);
-    out.perMsg = { n: per.length, medKB: per.length ? +(q(per, 0.5) / 1024).toFixed(2) : 0, p95KB: per.length ? +(q(per, 0.95) / 1024).toFixed(2) : 0, maxKB: per.length ? +(Math.max(...per) / 1024).toFixed(2) : 0, crossings: crossings.length };
+    clearInterval(keep); ws.close();
+    const st = (a) => ({ n: a.length, medKB: a.length ? +(q(a, 0.5) / 1024).toFixed(2) : 0, p90KB: a.length ? +(q(a, 0.9) / 1024).toFixed(2) : 0, maxKB: a.length ? +(Math.max(...a) / 1024).toFixed(2) : 0 });
+    out.perMsg = { ...st(rc.filter((r) => r[3] === 'cross').map((r) => r[1])), crossings: crossings.length, arrive: st(rc.filter((r) => r[3] === 'arrive').map((r) => r[1])) };   // 걸어 넘기 묶음만(들머리 순간 이동 묶음은 arrive 로 따로)
   } catch (e) { out.err = String(e && e.stack || e).slice(0, 600); }
   for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} }
   if (OUT) fs.writeFileSync(OUT, JSON.stringify(out, null, 1));
