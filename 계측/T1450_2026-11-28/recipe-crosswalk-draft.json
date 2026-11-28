@@ -404,11 +404,21 @@
    "oldSource": "`server/zone.js:2344`",
    "referenceLine": 65,
    "referenceMarkdown": "| S01 | S | 도끼 | 플레이어(제작창 · 즉시) | axe 1 | wood 5 · stone 2 | — | — | 플레이어 손 |  | `server/zone.js:2344` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCraft",
+     "line": 11639,
+     "endLine": 11665,
+     "sourceSha256": "bedff179a66c16b785c1a1a0393a54b39eb88f0e9c5da87f14f8d0a8c7bb143b"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 레시피를 골라 요청. cost는 재료 개수 검사이며 C=재료값+노동값 비교가 아님. 조잡한 석기 정본은 StoneUses."
   },
   {
    "id": "S02",
@@ -418,11 +428,21 @@
    "oldSource": "`server/zone.js:2345`",
    "referenceLine": 66,
    "referenceMarkdown": "| S02 | S | 곡괭이 | 플레이어(즉시) | pickaxe 1 | wood 3 · stone 5 | — | — | 플레이어 손 |  | `server/zone.js:2345` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCraft",
+     "line": 11639,
+     "endLine": 11665,
+     "sourceSha256": "bedff179a66c16b785c1a1a0393a54b39eb88f0e9c5da87f14f8d0a8c7bb143b"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 레시피를 골라 요청. cost는 재료 개수 검사이며 C=재료값+노동값 비교가 아님. 조잡한 석기 정본은 StoneUses."
   },
   {
    "id": "S03",
@@ -432,11 +452,21 @@
    "oldSource": "`server/zone.js:2346`",
    "referenceLine": 67,
    "referenceMarkdown": "| S03 | S | 검(도구 칸) | 플레이어(즉시) | sword 1 | wood 2 · stone 8 | — | — | 플레이어 손 |  | `server/zone.js:2346` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCraft",
+     "line": 11639,
+     "endLine": 11665,
+     "sourceSha256": "bedff179a66c16b785c1a1a0393a54b39eb88f0e9c5da87f14f8d0a8c7bb143b"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 레시피를 골라 요청. cost는 재료 개수 검사이며 C=재료값+노동값 비교가 아님. 조잡한 석기 정본은 StoneUses."
   },
   {
    "id": "S04",
@@ -446,11 +476,21 @@
    "oldSource": "`server/zone.js:2347`",
    "referenceLine": 68,
    "referenceMarkdown": "| S04 | S | 톱 | 플레이어(즉시) | saw 1 | wood 2 · stone 4 | — | — | 플레이어 손 |  | `server/zone.js:2347` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCraft",
+     "line": 11639,
+     "endLine": 11665,
+     "sourceSha256": "bedff179a66c16b785c1a1a0393a54b39eb88f0e9c5da87f14f8d0a8c7bb143b"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 레시피를 골라 요청. cost는 재료 개수 검사이며 C=재료값+노동값 비교가 아님. 조잡한 석기 정본은 StoneUses."
   },
   {
    "id": "S05",
@@ -460,11 +500,21 @@
    "oldSource": "`server/zone.js:2348`",
    "referenceLine": 69,
    "referenceMarkdown": "| S05 | S | 망치 | 플레이어(즉시) | hammer 1 | wood 3 · stone 3 | — | — | 플레이어 손 |  | `server/zone.js:2348` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCraft",
+     "line": 11639,
+     "endLine": 11665,
+     "sourceSha256": "bedff179a66c16b785c1a1a0393a54b39eb88f0e9c5da87f14f8d0a8c7bb143b"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 레시피를 골라 요청. cost는 재료 개수 검사이며 C=재료값+노동값 비교가 아님. 조잡한 석기 정본은 StoneUses."
   },
   {
    "id": "S06",
@@ -474,11 +524,21 @@
    "oldSource": "`server/stone-uses.js:25`",
    "referenceLine": 70,
    "referenceMarkdown": "| S06 | S | 조잡한 돌도끼 | 플레이어(맨손) | crude_axe 1 | pebble 2 · twig 1 · fiber 2 | — | — | 플레이어 손 |  | `server/stone-uses.js:25` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCraft",
+     "line": 11639,
+     "endLine": 11665,
+     "sourceSha256": "bedff179a66c16b785c1a1a0393a54b39eb88f0e9c5da87f14f8d0a8c7bb143b"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 레시피를 골라 요청. cost는 재료 개수 검사이며 C=재료값+노동값 비교가 아님. 조잡한 석기 정본은 StoneUses."
   },
   {
    "id": "S07",
@@ -488,11 +548,21 @@
    "oldSource": "`server/stone-uses.js:25`",
    "referenceLine": 71,
    "referenceMarkdown": "| S07 | S | 조잡한 돌괭이 | 플레이어(맨손) | crude_pick 1 | pebble 3 · twig 1 · fiber 2 | — | — | 플레이어 손 |  | `server/stone-uses.js:25` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCraft",
+     "line": 11639,
+     "endLine": 11665,
+     "sourceSha256": "bedff179a66c16b785c1a1a0393a54b39eb88f0e9c5da87f14f8d0a8c7bb143b"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 레시피를 골라 요청. cost는 재료 개수 검사이며 C=재료값+노동값 비교가 아님. 조잡한 석기 정본은 StoneUses."
   },
   {
    "id": "S08",
@@ -502,11 +572,21 @@
    "oldSource": "`server/stone-uses.js:25`",
    "referenceLine": 72,
    "referenceMarkdown": "| S08 | S | 조잡한 돌칼 | 플레이어(맨손) | crude_blade 1 | pebble 2 · twig 1 · fiber 1 | — | — | 플레이어 손 |  | `server/stone-uses.js:25` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCraft",
+     "line": 11639,
+     "endLine": 11665,
+     "sourceSha256": "bedff179a66c16b785c1a1a0393a54b39eb88f0e9c5da87f14f8d0a8c7bb143b"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 레시피를 골라 요청. cost는 재료 개수 검사이며 C=재료값+노동값 비교가 아님. 조잡한 석기 정본은 StoneUses."
   },
   {
    "id": "S09",
@@ -516,11 +596,21 @@
    "oldSource": "`server/granary-stages.js:18`",
    "referenceLine": 73,
    "referenceMarkdown": "| S09 | S | 판자 | 플레이어(톱) | plank 2 | wood 1 | — | — | 플레이어 손 |  | `server/granary-stages.js:18` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCraftItem",
+     "line": 10695,
+     "endLine": 10718,
+     "sourceSha256": "6653a8ffabce1bc5ec1831b24f436465129593905163db22eec3b6871527234b"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "도구 보유·입력 개수 검사 뒤 변환. 도구 마모와 재료 물리 수율을 값 문으로 세지 않음."
   },
   {
    "id": "S10",
@@ -530,11 +620,21 @@
    "oldSource": "`server/hut-stages.js:26`",
    "referenceLine": 74,
    "referenceMarkdown": "| S10 | S | 굴립주 기둥 | 플레이어(도끼) | pillar 1 | wood 3 | — | — | 플레이어 손 |  | `server/hut-stages.js:26` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCraftItem",
+     "line": 10695,
+     "endLine": 10718,
+     "sourceSha256": "6653a8ffabce1bc5ec1831b24f436465129593905163db22eec3b6871527234b"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "도구 보유·입력 개수 검사 뒤 변환. 도구 마모와 재료 물리 수율을 값 문으로 세지 않음."
   },
   {
    "id": "S11",
@@ -544,11 +644,21 @@
    "oldSource": "`server/hut-stages.js:26`",
    "referenceLine": 75,
    "referenceMarkdown": "| S11 | S | 서까래 | 플레이어(도끼) | rafter 2 | wood 1 | — | — | 플레이어 손 |  | `server/hut-stages.js:26` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCraftItem",
+     "line": 10695,
+     "endLine": 10718,
+     "sourceSha256": "6653a8ffabce1bc5ec1831b24f436465129593905163db22eec3b6871527234b"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "도구 보유·입력 개수 검사 뒤 변환. 도구 마모와 재료 물리 수율을 값 문으로 세지 않음."
   },
   {
    "id": "S12",
@@ -558,11 +668,21 @@
    "oldSource": "`server/hut-stages.js:26`",
    "referenceLine": 76,
    "referenceMarkdown": "| S12 | S | 이엉 | 플레이어(맨손) | thatch 1 | fiber 4 | — | — | 플레이어 손 |  | `server/hut-stages.js:26` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCraftItem",
+     "line": 10695,
+     "endLine": 10718,
+     "sourceSha256": "6653a8ffabce1bc5ec1831b24f436465129593905163db22eec3b6871527234b"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "도구 보유·입력 개수 검사 뒤 변환. 도구 마모와 재료 물리 수율을 값 문으로 세지 않음."
   },
   {
    "id": "S13",
@@ -572,11 +692,21 @@
    "oldSource": "`server/smelt-uses.js:40`",
    "referenceLine": 77,
    "referenceMarkdown": "| S13 | S | 숯(노천 탄화) | 플레이어(제작창) | charcoal 2 | wood 3 | — | — | 플레이어 손 |  | `server/smelt-uses.js:40` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCraftItem",
+     "line": 10695,
+     "endLine": 10718,
+     "sourceSha256": "6653a8ffabce1bc5ec1831b24f436465129593905163db22eec3b6871527234b"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "도구 보유·입력 개수 검사 뒤 변환. 도구 마모와 재료 물리 수율을 값 문으로 세지 않음."
   },
   {
    "id": "S14",
@@ -586,11 +716,21 @@
    "oldSource": "`server/zone.js:2374`",
    "referenceLine": 78,
    "referenceMarkdown": "| S14 | S | 물병 | 플레이어(맨손) | water_bottle 1 | gourd 1 | — | — | 플레이어 손 |  | `server/zone.js:2374` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCraftItem",
+     "line": 10695,
+     "endLine": 10718,
+     "sourceSha256": "6653a8ffabce1bc5ec1831b24f436465129593905163db22eec3b6871527234b"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "도구 보유·입력 개수 검사 뒤 변환. 도구 마모와 재료 물리 수율을 값 문으로 세지 않음."
   },
   {
    "id": "S15",
@@ -600,11 +740,21 @@
    "oldSource": "`server/zone.js:2380`",
    "referenceLine": 79,
    "referenceMarkdown": "| S15 | S | 벽 | 플레이어(망치) | wall 1 | plank 2 | — | — | 플레이어 손 |  | `server/zone.js:2380` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCraftBuilding",
+     "line": 10721,
+     "endLine": 10748,
+     "sourceSha256": "b7cae2c379efa1ebbe4f318c90a7534b22e9cd7de9c6f089ae8ab0ab90ba0beb"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 건축물 아이템을 고름. 망치·자재 개수만 확인. 실제 배치 허가 경로는 별개."
   },
   {
    "id": "S16",
@@ -614,11 +764,21 @@
    "oldSource": "`server/zone.js:2381`",
    "referenceLine": 80,
    "referenceMarkdown": "| S16 | S | 바닥 | 플레이어(망치) | floor 1 | plank 1 | — | — | 플레이어 손 |  | `server/zone.js:2381` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCraftBuilding",
+     "line": 10721,
+     "endLine": 10748,
+     "sourceSha256": "b7cae2c379efa1ebbe4f318c90a7534b22e9cd7de9c6f089ae8ab0ab90ba0beb"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 건축물 아이템을 고름. 망치·자재 개수만 확인. 실제 배치 허가 경로는 별개."
   },
   {
    "id": "S17",
@@ -628,11 +788,21 @@
    "oldSource": "`server/zone.js:2382`",
    "referenceLine": 81,
    "referenceMarkdown": "| S17 | S | 문 | 플레이어(망치) | door 1 | plank 2 | — | — | 플레이어 손 |  | `server/zone.js:2382` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCraftBuilding",
+     "line": 10721,
+     "endLine": 10748,
+     "sourceSha256": "b7cae2c379efa1ebbe4f318c90a7534b22e9cd7de9c6f089ae8ab0ab90ba0beb"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 건축물 아이템을 고름. 망치·자재 개수만 확인. 실제 배치 허가 경로는 별개."
   },
   {
    "id": "S18",
@@ -642,11 +812,21 @@
    "oldSource": "`server/zone.js:2383`",
    "referenceLine": 82,
    "referenceMarkdown": "| S18 | S | 울타리 | 플레이어(망치) | fence 1 | plank 1 | — | — | 플레이어 손 |  | `server/zone.js:2383` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCraftBuilding",
+     "line": 10721,
+     "endLine": 10748,
+     "sourceSha256": "b7cae2c379efa1ebbe4f318c90a7534b22e9cd7de9c6f089ae8ab0ab90ba0beb"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 건축물 아이템을 고름. 망치·자재 개수만 확인. 실제 배치 허가 경로는 별개."
   },
   {
    "id": "S19",
@@ -656,11 +836,21 @@
    "oldSource": "`server/zone.js:2384`",
    "referenceLine": 83,
    "referenceMarkdown": "| S19 | S | 계단 | 플레이어(망치) | stair 1 | plank 4 | — | — | 플레이어 손 |  | `server/zone.js:2384` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCraftBuilding",
+     "line": 10721,
+     "endLine": 10748,
+     "sourceSha256": "b7cae2c379efa1ebbe4f318c90a7534b22e9cd7de9c6f089ae8ab0ab90ba0beb"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 건축물 아이템을 고름. 망치·자재 개수만 확인. 실제 배치 허가 경로는 별개."
   },
   {
    "id": "S20",
@@ -670,11 +860,21 @@
    "oldSource": "`server/zone.js:2385`",
    "referenceLine": 84,
    "referenceMarkdown": "| S20 | S | 상자 | 플레이어(망치) | chest 1 | plank 4 | — | — | 플레이어 손 |  | `server/zone.js:2385` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCraftBuilding",
+     "line": 10721,
+     "endLine": 10748,
+     "sourceSha256": "b7cae2c379efa1ebbe4f318c90a7534b22e9cd7de9c6f089ae8ab0ab90ba0beb"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 건축물 아이템을 고름. 망치·자재 개수만 확인. 실제 배치 허가 경로는 별개."
   },
   {
    "id": "S21",
@@ -684,11 +884,21 @@
    "oldSource": "`server/zone.js:2386`",
    "referenceLine": 85,
    "referenceMarkdown": "| S21 | S | 모닥불 | 플레이어 | campfire 1 | wood 3 | — | — | 플레이어 손 |  | `server/zone.js:2386` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCraftBuilding",
+     "line": 10721,
+     "endLine": 10748,
+     "sourceSha256": "b7cae2c379efa1ebbe4f318c90a7534b22e9cd7de9c6f089ae8ab0ab90ba0beb"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 건축물 아이템을 고름. 망치·자재 개수만 확인. 실제 배치 허가 경로는 별개."
   },
   {
    "id": "S22",
@@ -698,11 +908,21 @@
    "oldSource": "`server/zone.js:2387`",
    "referenceLine": 86,
    "referenceMarkdown": "| S22 | S | 농지 | 플레이어 | farmland 1 | seed_berry 1 | — | — | 플레이어 손 |  | `server/zone.js:2387` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCraftBuilding",
+     "line": 10721,
+     "endLine": 10748,
+     "sourceSha256": "b7cae2c379efa1ebbe4f318c90a7534b22e9cd7de9c6f089ae8ab0ab90ba0beb"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 건축물 아이템을 고름. 망치·자재 개수만 확인. 실제 배치 허가 경로는 별개."
   },
   {
    "id": "S23",
@@ -712,11 +932,21 @@
    "oldSource": "`server/zone.js:2389`",
    "referenceLine": 87,
    "referenceMarkdown": "| S23 | S | 작업대 | 플레이어 | workbench 1 | wood 4 · stone 2 | — | — | 플레이어 손 |  | `server/zone.js:2389` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCraftBuilding",
+     "line": 10721,
+     "endLine": 10748,
+     "sourceSha256": "b7cae2c379efa1ebbe4f318c90a7534b22e9cd7de9c6f089ae8ab0ab90ba0beb"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 건축물 아이템을 고름. 망치·자재 개수만 확인. 실제 배치 허가 경로는 별개."
   },
   {
    "id": "S24",
@@ -726,11 +956,21 @@
    "oldSource": "`server/zone.js:2392`",
    "referenceLine": 88,
    "referenceMarkdown": "| S24 | S | 건조대 | 플레이어 | drying_rack 1 | wood 2 · fiber 4 | — | — | 플레이어 손 |  | `server/zone.js:2392` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCraftBuilding",
+     "line": 10721,
+     "endLine": 10748,
+     "sourceSha256": "b7cae2c379efa1ebbe4f318c90a7534b22e9cd7de9c6f089ae8ab0ab90ba0beb"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 건축물 아이템을 고름. 망치·자재 개수만 확인. 실제 배치 허가 경로는 별개."
   },
   {
    "id": "S25",
@@ -740,11 +980,21 @@
    "oldSource": "`server/zone.js:2395`",
    "referenceLine": 89,
    "referenceMarkdown": "| S25 | S | 소금가마 | 플레이어 | salt_kiln 1 | stone 4 · wood 3 | — | — | 플레이어 손 |  | `server/zone.js:2395` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCraftBuilding",
+     "line": 10721,
+     "endLine": 10748,
+     "sourceSha256": "b7cae2c379efa1ebbe4f318c90a7534b22e9cd7de9c6f089ae8ab0ab90ba0beb"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 건축물 아이템을 고름. 망치·자재 개수만 확인. 실제 배치 허가 경로는 별개."
   },
   {
    "id": "S26",
@@ -754,11 +1004,21 @@
    "oldSource": "`server/zone.js:2475`",
    "referenceLine": 90,
    "referenceMarkdown": "| S26 | S | 구운 고기 | 플레이어(모닥불 · 20초) | meat_cooked 1 | meat_raw 1 | — | — | 플레이어 손 |  | `server/zone.js:2475` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCook",
+     "line": 10255,
+     "endLine": 10323,
+     "sourceSha256": "a82aaca4138d878c034244415ff9c1df4bf08021f64441e1e2eb37fc6ff05386"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어 선택 뒤 시설·소유·입력 개수·대기열 자리 확인. 영양·품질 산출을 생산의 손익 판단으로 세지 않음."
   },
   {
    "id": "S27",
@@ -768,11 +1028,21 @@
    "oldSource": "`server/zone.js:2476`",
    "referenceLine": 91,
    "referenceMarkdown": "| S27 | S | 베리잼 | 플레이어(모닥불) | berry_jam 1 | berry 3 | — | — | 플레이어 손 |  | `server/zone.js:2476` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCook",
+     "line": 10255,
+     "endLine": 10323,
+     "sourceSha256": "a82aaca4138d878c034244415ff9c1df4bf08021f64441e1e2eb37fc6ff05386"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어 선택 뒤 시설·소유·입력 개수·대기열 자리 확인. 영양·품질 산출을 생산의 손익 판단으로 세지 않음."
   },
   {
    "id": "S28",
@@ -782,11 +1052,21 @@
    "oldSource": "`server/zone.js:2478`",
    "referenceLine": 92,
    "referenceMarkdown": "| S28 | S | 익힌 곡식 | 플레이어(모닥불) | food_cooked 1 | food 1 | — | — | 플레이어 손 |  | `server/zone.js:2478` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCook",
+     "line": 10255,
+     "endLine": 10323,
+     "sourceSha256": "a82aaca4138d878c034244415ff9c1df4bf08021f64441e1e2eb37fc6ff05386"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어 선택 뒤 시설·소유·입력 개수·대기열 자리 확인. 영양·품질 산출을 생산의 손익 판단으로 세지 않음."
   },
   {
    "id": "S29",
@@ -796,11 +1076,21 @@
    "oldSource": "`server/zone.js:2479`",
    "referenceLine": 93,
    "referenceMarkdown": "| S29 | S | 구운 생선 | 플레이어(모닥불) | fish_cooked 1 | fish 1 | — | — | 플레이어 손 |  | `server/zone.js:2479` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCook",
+     "line": 10255,
+     "endLine": 10323,
+     "sourceSha256": "a82aaca4138d878c034244415ff9c1df4bf08021f64441e1e2eb37fc6ff05386"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어 선택 뒤 시설·소유·입력 개수·대기열 자리 확인. 영양·품질 산출을 생산의 손익 판단으로 세지 않음."
   },
   {
    "id": "S30",
@@ -810,11 +1100,21 @@
    "oldSource": "`server/game-meat.js:90`",
    "referenceLine": 94,
    "referenceMarkdown": "| S30 | S | 구운 사슴·들짐승고기 | 플레이어(모닥불) | meat_game_cooked 1 | meat_game 1 | — | — | 플레이어 손 | T694 켬(10-13 기본) | `server/game-meat.js:90` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCook",
+     "line": 10255,
+     "endLine": 10323,
+     "sourceSha256": "a82aaca4138d878c034244415ff9c1df4bf08021f64441e1e2eb37fc6ff05386"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어 선택 뒤 시설·소유·입력 개수·대기열 자리 확인. 영양·품질 산출을 생산의 손익 판단으로 세지 않음."
   },
   {
    "id": "S31",
@@ -824,11 +1124,21 @@
    "oldSource": "`server/game-meat.js:90`",
    "referenceLine": 95,
    "referenceMarkdown": "| S31 | S | 삶은 곰고기 | 플레이어(모닥불) | meat_bear_cooked 1 | meat_bear 1 | — | — | 플레이어 손 | T694 켬 | `server/game-meat.js:90` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCook",
+     "line": 10255,
+     "endLine": 10323,
+     "sourceSha256": "a82aaca4138d878c034244415ff9c1df4bf08021f64441e1e2eb37fc6ff05386"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어 선택 뒤 시설·소유·입력 개수·대기열 자리 확인. 영양·품질 산출을 생산의 손익 판단으로 세지 않음."
   },
   {
    "id": "S32",
@@ -838,11 +1148,21 @@
    "oldSource": "`server/spoil.js:265 · :230`",
    "referenceLine": 96,
    "referenceMarkdown": "| S32 | S | 생선 말리기 | 플레이어(건조대 · 3일) | dried_fish 1 | fish 1 | — | — | 플레이어 손 | 수율 0.4 + 0.6×신선도(표 줄 = 갓 잡은 것 1.0) | `server/spoil.js:265 · :230` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doPreserve",
+     "line": 10339,
+     "endLine": 10415,
+     "sourceSha256": "450bdb5fb902e54be8868246ceff350aba42e83d234604efe991c8c99ccc8c32"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 품목·개수를 요청. 시설·로트·곁재료·신선도·산출·대기열 문. NPC 갈무리(E15~18)와 구분."
   },
   {
    "id": "S33",
@@ -852,11 +1172,21 @@
    "oldSource": "`server/spoil.js:265`",
    "referenceLine": 97,
    "referenceMarkdown": "| S33 | S | 과실 말리기 | 플레이어(건조대 · 3일) | dried_fruit 1 | berry 1 | — | — | 플레이어 손 |  | `server/spoil.js:265` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doPreserve",
+     "line": 10339,
+     "endLine": 10415,
+     "sourceSha256": "450bdb5fb902e54be8868246ceff350aba42e83d234604efe991c8c99ccc8c32"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 품목·개수를 요청. 시설·로트·곁재료·신선도·산출·대기열 문. NPC 갈무리(E15~18)와 구분."
   },
   {
    "id": "S34",
@@ -866,11 +1196,21 @@
    "oldSource": "`server/spoil.js:265`",
    "referenceLine": 98,
    "referenceMarkdown": "| S34 | S | 고기 훈제 | 플레이어(모닥불 · 1일) | smoked_meat 1 | meat_raw 1 | — | wood 1 | 플레이어 손 |  | `server/spoil.js:265` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doPreserve",
+     "line": 10339,
+     "endLine": 10415,
+     "sourceSha256": "450bdb5fb902e54be8868246ceff350aba42e83d234604efe991c8c99ccc8c32"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 품목·개수를 요청. 시설·로트·곁재료·신선도·산출·대기열 문. NPC 갈무리(E15~18)와 구분."
   },
   {
    "id": "S35",
@@ -880,11 +1220,21 @@
    "oldSource": "`server/spoil.js:265`",
    "referenceLine": 99,
    "referenceMarkdown": "| S35 | S | 남새 절임 | 플레이어(작업대 · 2일) | pickled_veg 1 | vegetable 1 · salt 1 | — | — | 플레이어 손 |  | `server/spoil.js:265` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doPreserve",
+     "line": 10339,
+     "endLine": 10415,
+     "sourceSha256": "450bdb5fb902e54be8868246ceff350aba42e83d234604efe991c8c99ccc8c32"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 품목·개수를 요청. 시설·로트·곁재료·신선도·산출·대기열 문. NPC 갈무리(E15~18)와 구분."
   },
   {
    "id": "S36",
@@ -894,11 +1244,21 @@
    "oldSource": "`server/spoil.js:265`",
    "referenceLine": 100,
    "referenceMarkdown": "| S36 | S | 생선 절임 | 플레이어(작업대 · 2일) | pickled_veg 1 | fish 1 · salt 1 | — | — | 플레이어 손 |  | `server/spoil.js:265` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doPreserve",
+     "line": 10339,
+     "endLine": 10415,
+     "sourceSha256": "450bdb5fb902e54be8868246ceff350aba42e83d234604efe991c8c99ccc8c32"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 품목·개수를 요청. 시설·로트·곁재료·신선도·산출·대기열 문. NPC 갈무리(E15~18)와 구분."
   },
   {
    "id": "S37",
@@ -908,11 +1268,21 @@
    "oldSource": "`server/spoil.js:265`",
    "referenceLine": 101,
    "referenceMarkdown": "| S37 | S | 굴 말리기 | 플레이어(건조대) | dried_oyster 1 | oyster 1 | — | — | 플레이어 손 |  | `server/spoil.js:265` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doPreserve",
+     "line": 10339,
+     "endLine": 10415,
+     "sourceSha256": "450bdb5fb902e54be8868246ceff350aba42e83d234604efe991c8c99ccc8c32"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 품목·개수를 요청. 시설·로트·곁재료·신선도·산출·대기열 문. NPC 갈무리(E15~18)와 구분."
   },
   {
    "id": "S38",
@@ -922,11 +1292,21 @@
    "oldSource": "`server/spoil.js:265`",
    "referenceLine": 102,
    "referenceMarkdown": "| S38 | S | 해조 말리기 | 플레이어(건조대) | dried_seaweed 1 | seaweed 1 | — | — | 플레이어 손 |  | `server/spoil.js:265` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doPreserve",
+     "line": 10339,
+     "endLine": 10415,
+     "sourceSha256": "450bdb5fb902e54be8868246ceff350aba42e83d234604efe991c8c99ccc8c32"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 품목·개수를 요청. 시설·로트·곁재료·신선도·산출·대기열 문. NPC 갈무리(E15~18)와 구분."
   },
   {
    "id": "S39",
@@ -936,11 +1316,21 @@
    "oldSource": "`server/salt.js:89 · :65`",
    "referenceLine": 103,
    "referenceMarkdown": "| S39 | S | 자염(한 솥) | 플레이어(소금가마 · 0.5일) | salt 1 | brine 7 | — | wood 2 | 플레이어 손 |  | `server/salt.js:89 · :65` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doBoilSalt",
+     "line": 10428,
+     "endLine": 10476,
+     "sourceSha256": "f6cc0a1a9c86c06e12d7b6ece9ef8d5206acf3cc245f7dc4d8327224769aaee5"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어 선택. Salt.canBoil에 재료 가능 여부를 묻고 물리 수율·시간으로 대기열에 넣음."
   },
   {
    "id": "S40",
@@ -950,11 +1340,21 @@
    "oldSource": "`server/zone.js:11616`",
    "referenceLine": 104,
    "referenceMarkdown": "| S40 | S | 철 제련(도가니로) | 플레이어(노) | iron 0.034 | iron_ore 1 | — | charcoal 2 | 플레이어 손 | 수율 = era.smeltYield(도가니로 0.0339 · 괴련로 0 — 시대) | `server/zone.js:11616` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "tryFurnaceSmelt",
+     "line": 17607,
+     "endLine": 17679,
+     "sourceSha256": "bda7dfcaa9ad613175ef548e7a24f453460b15da603aa67398174f8656fd6ad8"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 노를 누름. 소유·철 정광·숯·시대 수율·시설 작동을 확인하며 NPC 제련(E09)과 구분."
   },
   {
    "id": "S41",
@@ -964,11 +1364,21 @@
    "oldSource": "`server/smelt-uses.js:34`",
    "referenceLine": 105,
    "referenceMarkdown": "| S41 | S | 숯가마 굽기 | 플레이어(숯가마 · 240초) | charcoal 4 | wood 3 | — | — | 플레이어 손 |  | `server/smelt-uses.js:34` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "tryKilnBurn",
+     "line": 17561,
+     "endLine": 17606,
+     "sourceSha256": "57b941bd7d0ec099bd800f9603be91f5c9dc6b0a957ce17bbd668f922f101b93"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 가마를 누름. 통나무·시설 작동·물리 적재량·시간을 확인하며 NPC 숯가마(E20)와 구분."
   },
   {
    "id": "S42",
@@ -978,11 +1388,21 @@
    "oldSource": "`server/zone.js:2493`",
    "referenceLine": 106,
    "referenceMarkdown": "| S42 | S | 옷(장비) | 플레이어(재봉 숙련) | clothes 1 | hide 3 | — | — | 플레이어 손 | 재료 3 · 받는 것 fur·ramie·leather·hide·fiber·hemp(표 줄 = 유피) | `server/zone.js:2493` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCraftEquipment",
+     "line": 10947,
+     "endLine": 11008,
+     "sourceSha256": "85b99dd9cb4ee280d39abb02d818aadb83f7dbfc89cdfe24bd3b10bf232e8b74"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 장비·재료·배합을 고름. 시설·원재료·배합 가능 여부를 검사. 합금 품질은 NPC의 이익 최대화와 다른 호출."
   },
   {
    "id": "S43",
@@ -992,11 +1412,21 @@
    "oldSource": "`server/zone.js:2496`",
    "referenceLine": 107,
    "referenceMarkdown": "| S43 | S | 갑옷(장비) | 플레이어(대장 숙련) | armor 1 | leather 4 | — | — | 플레이어 손 | 재료 4 · bronze·copper·iron·운철·leather·hide · 주조 가능 | `server/zone.js:2496` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCraftEquipment",
+     "line": 10947,
+     "endLine": 11008,
+     "sourceSha256": "85b99dd9cb4ee280d39abb02d818aadb83f7dbfc89cdfe24bd3b10bf232e8b74"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 장비·재료·배합을 고름. 시설·원재료·배합 가능 여부를 검사. 합금 품질은 NPC의 이익 최대화와 다른 호출."
   },
   {
    "id": "S44",
@@ -1006,11 +1436,21 @@
    "oldSource": "`server/zone.js:2497 · stone-uses.js:16`",
    "referenceLine": 108,
    "referenceMarkdown": "| S44 | S | 무기(장비) | 플레이어(대장 숙련) | weapon 1 | stone 3 | — | — | 플레이어 손 | 재료 3 · bronze·copper·iron·운철·stone·wood·bone·obsidian · 주조 가능 | `server/zone.js:2497 · stone-uses.js:16` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCraftEquipment",
+     "line": 10947,
+     "endLine": 11008,
+     "sourceSha256": "85b99dd9cb4ee280d39abb02d818aadb83f7dbfc89cdfe24bd3b10bf232e8b74"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 장비·재료·배합을 고름. 시설·원재료·배합 가능 여부를 검사. 합금 품질은 NPC의 이익 최대화와 다른 호출."
   },
   {
    "id": "S45",
@@ -1020,11 +1460,21 @@
    "oldSource": "`server/zone.js:2498`",
    "referenceLine": 109,
    "referenceMarkdown": "| S45 | S | 도구(장비) | 플레이어(도구 숙련) | tool 1 | stone 3 | — | — | 플레이어 손 | 재료 3 · bronze·copper·iron·운철·stone·wood·bone | `server/zone.js:2498` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCraftEquipment",
+     "line": 10947,
+     "endLine": 11008,
+     "sourceSha256": "85b99dd9cb4ee280d39abb02d818aadb83f7dbfc89cdfe24bd3b10bf232e8b74"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 장비·재료·배합을 고름. 시설·원재료·배합 가능 여부를 검사. 합금 품질은 NPC의 이익 최대화와 다른 호출."
   },
   {
    "id": "S46",
@@ -1034,11 +1484,21 @@
    "oldSource": "`server/zone.js:2508`",
    "referenceLine": 110,
    "referenceMarkdown": "| S46 | S | 지게 | 플레이어(도구 숙련) | carrier 1 | wood 2 · fiber 2 | — | — | 플레이어 손 |  | `server/zone.js:2508` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "doCraftEquipment",
+     "line": 10947,
+     "endLine": 11008,
+     "sourceSha256": "85b99dd9cb4ee280d39abb02d818aadb83f7dbfc89cdfe24bd3b10bf232e8b74"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 장비·재료·배합을 고름. 시설·원재료·배합 가능 여부를 검사. 합금 품질은 NPC의 이익 최대화와 다른 호출."
   },
   {
    "id": "S47",
@@ -1048,11 +1508,42 @@
    "oldSource": "`server/smelt-uses.js:14`",
    "referenceLine": 111,
    "referenceMarkdown": "| S47 | S | 노(도가니로 · 3단계) | 플레이어(곡괭이) | furnace 1 | stone 14 · wood 6 · hide 4 | — | — | 플레이어 손 |  | `server/smelt-uses.js:14` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "tryFurnaceStart",
+     "line": 16776,
+     "endLine": 16781,
+     "sourceSha256": "a8bfa3a72cf3ad0aab3dcbfa495df8dc596118c77387789d3fb55f86854a2cdc"
+    },
+    {
+     "file": "server/zone.js",
+     "name": "tryFurnaceAdvance",
+     "line": 16782,
+     "endLine": 16786,
+     "sourceSha256": "52ed6e5f5e854f3a29179839539d539506dc695dbe04423868436083d96ef50f"
+    },
+    {
+     "file": "server/zone.js",
+     "name": "_siteStart",
+     "line": 16688,
+     "endLine": 16725,
+     "sourceSha256": "510e32103286b141fbd6ebce430f6881a28630d6bcb125fef8599673e0c6652d"
+    },
+    {
+     "file": "server/zone.js",
+     "name": "_siteAdvance",
+     "line": 16726,
+     "endLine": 16765,
+     "sourceSha256": "3e5afe11a21d4ffe4043316a5f151405999e9791b7a5d1ebd8015557a3d17714"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 시설·위치를 고름. 시대·부지·도구·단계 자재를 확인."
   },
   {
    "id": "S48",
@@ -1062,11 +1553,42 @@
    "oldSource": "`server/smelt-uses.js:20`",
    "referenceLine": 112,
    "referenceMarkdown": "| S48 | S | 노(괴련로 · 3단계) | 플레이어(곡괭이) | furnace_bloomery 1 | stone 24 · wood 10 · hide 6 | — | — | 플레이어 손 |  | `server/smelt-uses.js:20` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "tryFurnaceStart",
+     "line": 16776,
+     "endLine": 16781,
+     "sourceSha256": "a8bfa3a72cf3ad0aab3dcbfa495df8dc596118c77387789d3fb55f86854a2cdc"
+    },
+    {
+     "file": "server/zone.js",
+     "name": "tryFurnaceAdvance",
+     "line": 16782,
+     "endLine": 16786,
+     "sourceSha256": "52ed6e5f5e854f3a29179839539d539506dc695dbe04423868436083d96ef50f"
+    },
+    {
+     "file": "server/zone.js",
+     "name": "_siteStart",
+     "line": 16688,
+     "endLine": 16725,
+     "sourceSha256": "510e32103286b141fbd6ebce430f6881a28630d6bcb125fef8599673e0c6652d"
+    },
+    {
+     "file": "server/zone.js",
+     "name": "_siteAdvance",
+     "line": 16726,
+     "endLine": 16765,
+     "sourceSha256": "3e5afe11a21d4ffe4043316a5f151405999e9791b7a5d1ebd8015557a3d17714"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 시설·위치를 고름. 시대·부지·도구·단계 자재를 확인."
   },
   {
    "id": "S49",
@@ -1076,11 +1598,42 @@
    "oldSource": "`server/smelt-uses.js:30`",
    "referenceLine": 113,
    "referenceMarkdown": "| S49 | S | 숯가마(2단계) | 플레이어(곡괭이) | charcoal_kiln 1 | stone 10 · wood 2 | — | — | 플레이어 손 |  | `server/smelt-uses.js:30` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "tryKilnStart",
+     "line": 16787,
+     "endLine": 16787,
+     "sourceSha256": "72201b41500ddff32f1bc32603d21ed13ba37b4dd853cfa03265f0a2d5c414d8"
+    },
+    {
+     "file": "server/zone.js",
+     "name": "tryKilnAdvance",
+     "line": 16788,
+     "endLine": 16792,
+     "sourceSha256": "f557c771412176d33d6cd9081f77f69118d75fab8e7f723b4f8521cc31a31cb3"
+    },
+    {
+     "file": "server/zone.js",
+     "name": "_siteStart",
+     "line": 16688,
+     "endLine": 16725,
+     "sourceSha256": "510e32103286b141fbd6ebce430f6881a28630d6bcb125fef8599673e0c6652d"
+    },
+    {
+     "file": "server/zone.js",
+     "name": "_siteAdvance",
+     "line": 16726,
+     "endLine": 16765,
+     "sourceSha256": "3e5afe11a21d4ffe4043316a5f151405999e9791b7a5d1ebd8015557a3d17714"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 가마 위치를 고름. 시대·부지·도구·단계 자재를 확인."
   },
   {
    "id": "S50",
@@ -1118,11 +1671,42 @@
    "oldSource": "`server/well-stages.js:29`",
    "referenceLine": 116,
    "referenceMarkdown": "| S52 | S | 우물(3단계) | 플레이어(곡괭이) | well 1 | pebble 40 | — | — | 플레이어 손 |  | `server/well-stages.js:29` |",
-   "currentStatus": "unreviewed",
-   "directCostGate": null,
-   "directUseGate": null,
-   "jobValueComparison": null,
-   "currentSource": []
+   "currentStatus": "manual-entry-reviewed",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "currentSource": [
+    {
+     "file": "server/zone.js",
+     "name": "tryWellStart",
+     "line": 16833,
+     "endLine": 16833,
+     "sourceSha256": "16de0244268b77eb007ef379339cc84be0d7aac78f5957168181d998c836ed31"
+    },
+    {
+     "file": "server/zone.js",
+     "name": "tryWellAdvance",
+     "line": 16834,
+     "endLine": 16839,
+     "sourceSha256": "ab11f3bb058c9feeb51bafd1c4f4599296f048c2ad6416c972b31a7bb97531f7"
+    },
+    {
+     "file": "server/zone.js",
+     "name": "_siteStart",
+     "line": 16688,
+     "endLine": 16725,
+     "sourceSha256": "510e32103286b141fbd6ebce430f6881a28630d6bcb125fef8599673e0c6652d"
+    },
+    {
+     "file": "server/zone.js",
+     "name": "_siteAdvance",
+     "line": 16726,
+     "endLine": 16765,
+     "sourceSha256": "3e5afe11a21d4ffe4043316a5f151405999e9791b7a5d1ebd8015557a3d17714"
+    }
+   ],
+   "actorKind": "player",
+   "reviewNote": "플레이어가 우물 위치를 고름. T509 손잡이·부지·도구·단계 자재를 확인."
   },
   {
    "id": "S53",
@@ -1166,5 +1750,6 @@
    "jobValueComparison": null,
    "currentSource": []
   }
- ]
+ ],
+ "manualReviewScope": "직접 플레이어 진입 함수의 읽기 판정만. 전이 호출 전수·NPC 자동 생산·켜진 라이브 설정의 증명이 아님. S50/S51 혼합 행, S53 마을 창설, S54 NPC 다리, 경제층 28줄·랩 1줄은 별도 검토 중."
 }

@@ -1,0 +1,742 @@
+{
+ "base": "0e2ae3916acdb7380b7eb615a0f3c85d2b41f61d",
+ "scope": "직접 플레이어 진입 함수의 읽기 판정만. 전이 호출 전수·NPC 자동 생산·켜진 라이브 설정의 증명이 아님. S50/S51 혼합 행, S53 마을 창설, S54 NPC 다리, 경제층 28줄·랩 1줄은 별도 검토 중.",
+ "sourceFiles": {
+  "server/zone.js": "0eaefaecdc90a67ba1b692c9a0812f166548925d9ecf003bc7cea1c376128dc5"
+ },
+ "functions": {
+  "doCook": {
+   "file": "server/zone.js",
+   "name": "doCook",
+   "line": 10255,
+   "endLine": 10323,
+   "sourceSha256": "a82aaca4138d878c034244415ff9c1df4bf08021f64441e1e2eb37fc6ff05386"
+  },
+  "doPreserve": {
+   "file": "server/zone.js",
+   "name": "doPreserve",
+   "line": 10339,
+   "endLine": 10415,
+   "sourceSha256": "450bdb5fb902e54be8868246ceff350aba42e83d234604efe991c8c99ccc8c32"
+  },
+  "doBoilSalt": {
+   "file": "server/zone.js",
+   "name": "doBoilSalt",
+   "line": 10428,
+   "endLine": 10476,
+   "sourceSha256": "f6cc0a1a9c86c06e12d7b6ece9ef8d5206acf3cc245f7dc4d8327224769aaee5"
+  },
+  "doCraftItem": {
+   "file": "server/zone.js",
+   "name": "doCraftItem",
+   "line": 10695,
+   "endLine": 10718,
+   "sourceSha256": "6653a8ffabce1bc5ec1831b24f436465129593905163db22eec3b6871527234b"
+  },
+  "doCraftBuilding": {
+   "file": "server/zone.js",
+   "name": "doCraftBuilding",
+   "line": 10721,
+   "endLine": 10748,
+   "sourceSha256": "b7cae2c379efa1ebbe4f318c90a7534b22e9cd7de9c6f089ae8ab0ab90ba0beb"
+  },
+  "doCraftEquipment": {
+   "file": "server/zone.js",
+   "name": "doCraftEquipment",
+   "line": 10947,
+   "endLine": 11008,
+   "sourceSha256": "85b99dd9cb4ee280d39abb02d818aadb83f7dbfc89cdfe24bd3b10bf232e8b74"
+  },
+  "doCraft": {
+   "file": "server/zone.js",
+   "name": "doCraft",
+   "line": 11639,
+   "endLine": 11665,
+   "sourceSha256": "bedff179a66c16b785c1a1a0393a54b39eb88f0e9c5da87f14f8d0a8c7bb143b"
+  },
+  "_siteStart": {
+   "file": "server/zone.js",
+   "name": "_siteStart",
+   "line": 16688,
+   "endLine": 16725,
+   "sourceSha256": "510e32103286b141fbd6ebce430f6881a28630d6bcb125fef8599673e0c6652d"
+  },
+  "_siteAdvance": {
+   "file": "server/zone.js",
+   "name": "_siteAdvance",
+   "line": 16726,
+   "endLine": 16765,
+   "sourceSha256": "3e5afe11a21d4ffe4043316a5f151405999e9791b7a5d1ebd8015557a3d17714"
+  },
+  "tryFurnaceStart": {
+   "file": "server/zone.js",
+   "name": "tryFurnaceStart",
+   "line": 16776,
+   "endLine": 16781,
+   "sourceSha256": "a8bfa3a72cf3ad0aab3dcbfa495df8dc596118c77387789d3fb55f86854a2cdc"
+  },
+  "tryFurnaceAdvance": {
+   "file": "server/zone.js",
+   "name": "tryFurnaceAdvance",
+   "line": 16782,
+   "endLine": 16786,
+   "sourceSha256": "52ed6e5f5e854f3a29179839539d539506dc695dbe04423868436083d96ef50f"
+  },
+  "tryKilnStart": {
+   "file": "server/zone.js",
+   "name": "tryKilnStart",
+   "line": 16787,
+   "endLine": 16787,
+   "sourceSha256": "72201b41500ddff32f1bc32603d21ed13ba37b4dd853cfa03265f0a2d5c414d8"
+  },
+  "tryKilnAdvance": {
+   "file": "server/zone.js",
+   "name": "tryKilnAdvance",
+   "line": 16788,
+   "endLine": 16792,
+   "sourceSha256": "f557c771412176d33d6cd9081f77f69118d75fab8e7f723b4f8521cc31a31cb3"
+  },
+  "tryWellStart": {
+   "file": "server/zone.js",
+   "name": "tryWellStart",
+   "line": 16833,
+   "endLine": 16833,
+   "sourceSha256": "16de0244268b77eb007ef379339cc84be0d7aac78f5957168181d998c836ed31"
+  },
+  "tryWellAdvance": {
+   "file": "server/zone.js",
+   "name": "tryWellAdvance",
+   "line": 16834,
+   "endLine": 16839,
+   "sourceSha256": "ab11f3bb058c9feeb51bafd1c4f4599296f048c2ad6416c972b31a7bb97531f7"
+  },
+  "tryKilnBurn": {
+   "file": "server/zone.js",
+   "name": "tryKilnBurn",
+   "line": 17561,
+   "endLine": 17606,
+   "sourceSha256": "57b941bd7d0ec099bd800f9603be91f5c9dc6b0a957ce17bbd668f922f101b93"
+  },
+  "tryFurnaceSmelt": {
+   "file": "server/zone.js",
+   "name": "tryFurnaceSmelt",
+   "line": 17607,
+   "endLine": 17679,
+   "sourceSha256": "bda7dfcaa9ad613175ef548e7a24f453460b15da603aa67398174f8656fd6ad8"
+  }
+ },
+ "rows": [
+  {
+   "id": "S01",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCraft"
+   ],
+   "note": "플레이어가 레시피를 골라 요청. cost는 재료 개수 검사이며 C=재료값+노동값 비교가 아님. 조잡한 석기 정본은 StoneUses."
+  },
+  {
+   "id": "S02",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCraft"
+   ],
+   "note": "플레이어가 레시피를 골라 요청. cost는 재료 개수 검사이며 C=재료값+노동값 비교가 아님. 조잡한 석기 정본은 StoneUses."
+  },
+  {
+   "id": "S03",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCraft"
+   ],
+   "note": "플레이어가 레시피를 골라 요청. cost는 재료 개수 검사이며 C=재료값+노동값 비교가 아님. 조잡한 석기 정본은 StoneUses."
+  },
+  {
+   "id": "S04",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCraft"
+   ],
+   "note": "플레이어가 레시피를 골라 요청. cost는 재료 개수 검사이며 C=재료값+노동값 비교가 아님. 조잡한 석기 정본은 StoneUses."
+  },
+  {
+   "id": "S05",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCraft"
+   ],
+   "note": "플레이어가 레시피를 골라 요청. cost는 재료 개수 검사이며 C=재료값+노동값 비교가 아님. 조잡한 석기 정본은 StoneUses."
+  },
+  {
+   "id": "S06",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCraft"
+   ],
+   "note": "플레이어가 레시피를 골라 요청. cost는 재료 개수 검사이며 C=재료값+노동값 비교가 아님. 조잡한 석기 정본은 StoneUses."
+  },
+  {
+   "id": "S07",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCraft"
+   ],
+   "note": "플레이어가 레시피를 골라 요청. cost는 재료 개수 검사이며 C=재료값+노동값 비교가 아님. 조잡한 석기 정본은 StoneUses."
+  },
+  {
+   "id": "S08",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCraft"
+   ],
+   "note": "플레이어가 레시피를 골라 요청. cost는 재료 개수 검사이며 C=재료값+노동값 비교가 아님. 조잡한 석기 정본은 StoneUses."
+  },
+  {
+   "id": "S09",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCraftItem"
+   ],
+   "note": "도구 보유·입력 개수 검사 뒤 변환. 도구 마모와 재료 물리 수율을 값 문으로 세지 않음."
+  },
+  {
+   "id": "S10",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCraftItem"
+   ],
+   "note": "도구 보유·입력 개수 검사 뒤 변환. 도구 마모와 재료 물리 수율을 값 문으로 세지 않음."
+  },
+  {
+   "id": "S11",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCraftItem"
+   ],
+   "note": "도구 보유·입력 개수 검사 뒤 변환. 도구 마모와 재료 물리 수율을 값 문으로 세지 않음."
+  },
+  {
+   "id": "S12",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCraftItem"
+   ],
+   "note": "도구 보유·입력 개수 검사 뒤 변환. 도구 마모와 재료 물리 수율을 값 문으로 세지 않음."
+  },
+  {
+   "id": "S13",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCraftItem"
+   ],
+   "note": "도구 보유·입력 개수 검사 뒤 변환. 도구 마모와 재료 물리 수율을 값 문으로 세지 않음."
+  },
+  {
+   "id": "S14",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCraftItem"
+   ],
+   "note": "도구 보유·입력 개수 검사 뒤 변환. 도구 마모와 재료 물리 수율을 값 문으로 세지 않음."
+  },
+  {
+   "id": "S15",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCraftBuilding"
+   ],
+   "note": "플레이어가 건축물 아이템을 고름. 망치·자재 개수만 확인. 실제 배치 허가 경로는 별개."
+  },
+  {
+   "id": "S16",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCraftBuilding"
+   ],
+   "note": "플레이어가 건축물 아이템을 고름. 망치·자재 개수만 확인. 실제 배치 허가 경로는 별개."
+  },
+  {
+   "id": "S17",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCraftBuilding"
+   ],
+   "note": "플레이어가 건축물 아이템을 고름. 망치·자재 개수만 확인. 실제 배치 허가 경로는 별개."
+  },
+  {
+   "id": "S18",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCraftBuilding"
+   ],
+   "note": "플레이어가 건축물 아이템을 고름. 망치·자재 개수만 확인. 실제 배치 허가 경로는 별개."
+  },
+  {
+   "id": "S19",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCraftBuilding"
+   ],
+   "note": "플레이어가 건축물 아이템을 고름. 망치·자재 개수만 확인. 실제 배치 허가 경로는 별개."
+  },
+  {
+   "id": "S20",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCraftBuilding"
+   ],
+   "note": "플레이어가 건축물 아이템을 고름. 망치·자재 개수만 확인. 실제 배치 허가 경로는 별개."
+  },
+  {
+   "id": "S21",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCraftBuilding"
+   ],
+   "note": "플레이어가 건축물 아이템을 고름. 망치·자재 개수만 확인. 실제 배치 허가 경로는 별개."
+  },
+  {
+   "id": "S22",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCraftBuilding"
+   ],
+   "note": "플레이어가 건축물 아이템을 고름. 망치·자재 개수만 확인. 실제 배치 허가 경로는 별개."
+  },
+  {
+   "id": "S23",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCraftBuilding"
+   ],
+   "note": "플레이어가 건축물 아이템을 고름. 망치·자재 개수만 확인. 실제 배치 허가 경로는 별개."
+  },
+  {
+   "id": "S24",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCraftBuilding"
+   ],
+   "note": "플레이어가 건축물 아이템을 고름. 망치·자재 개수만 확인. 실제 배치 허가 경로는 별개."
+  },
+  {
+   "id": "S25",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCraftBuilding"
+   ],
+   "note": "플레이어가 건축물 아이템을 고름. 망치·자재 개수만 확인. 실제 배치 허가 경로는 별개."
+  },
+  {
+   "id": "S26",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCook"
+   ],
+   "note": "플레이어 선택 뒤 시설·소유·입력 개수·대기열 자리 확인. 영양·품질 산출을 생산의 손익 판단으로 세지 않음."
+  },
+  {
+   "id": "S27",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCook"
+   ],
+   "note": "플레이어 선택 뒤 시설·소유·입력 개수·대기열 자리 확인. 영양·품질 산출을 생산의 손익 판단으로 세지 않음."
+  },
+  {
+   "id": "S28",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCook"
+   ],
+   "note": "플레이어 선택 뒤 시설·소유·입력 개수·대기열 자리 확인. 영양·품질 산출을 생산의 손익 판단으로 세지 않음."
+  },
+  {
+   "id": "S29",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCook"
+   ],
+   "note": "플레이어 선택 뒤 시설·소유·입력 개수·대기열 자리 확인. 영양·품질 산출을 생산의 손익 판단으로 세지 않음."
+  },
+  {
+   "id": "S30",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCook"
+   ],
+   "note": "플레이어 선택 뒤 시설·소유·입력 개수·대기열 자리 확인. 영양·품질 산출을 생산의 손익 판단으로 세지 않음."
+  },
+  {
+   "id": "S31",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCook"
+   ],
+   "note": "플레이어 선택 뒤 시설·소유·입력 개수·대기열 자리 확인. 영양·품질 산출을 생산의 손익 판단으로 세지 않음."
+  },
+  {
+   "id": "S32",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doPreserve"
+   ],
+   "note": "플레이어가 품목·개수를 요청. 시설·로트·곁재료·신선도·산출·대기열 문. NPC 갈무리(E15~18)와 구분."
+  },
+  {
+   "id": "S33",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doPreserve"
+   ],
+   "note": "플레이어가 품목·개수를 요청. 시설·로트·곁재료·신선도·산출·대기열 문. NPC 갈무리(E15~18)와 구분."
+  },
+  {
+   "id": "S34",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doPreserve"
+   ],
+   "note": "플레이어가 품목·개수를 요청. 시설·로트·곁재료·신선도·산출·대기열 문. NPC 갈무리(E15~18)와 구분."
+  },
+  {
+   "id": "S35",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doPreserve"
+   ],
+   "note": "플레이어가 품목·개수를 요청. 시설·로트·곁재료·신선도·산출·대기열 문. NPC 갈무리(E15~18)와 구분."
+  },
+  {
+   "id": "S36",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doPreserve"
+   ],
+   "note": "플레이어가 품목·개수를 요청. 시설·로트·곁재료·신선도·산출·대기열 문. NPC 갈무리(E15~18)와 구분."
+  },
+  {
+   "id": "S37",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doPreserve"
+   ],
+   "note": "플레이어가 품목·개수를 요청. 시설·로트·곁재료·신선도·산출·대기열 문. NPC 갈무리(E15~18)와 구분."
+  },
+  {
+   "id": "S38",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doPreserve"
+   ],
+   "note": "플레이어가 품목·개수를 요청. 시설·로트·곁재료·신선도·산출·대기열 문. NPC 갈무리(E15~18)와 구분."
+  },
+  {
+   "id": "S39",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doBoilSalt"
+   ],
+   "note": "플레이어 선택. Salt.canBoil에 재료 가능 여부를 묻고 물리 수율·시간으로 대기열에 넣음."
+  },
+  {
+   "id": "S40",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "tryFurnaceSmelt"
+   ],
+   "note": "플레이어가 노를 누름. 소유·철 정광·숯·시대 수율·시설 작동을 확인하며 NPC 제련(E09)과 구분."
+  },
+  {
+   "id": "S41",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "tryKilnBurn"
+   ],
+   "note": "플레이어가 가마를 누름. 통나무·시설 작동·물리 적재량·시간을 확인하며 NPC 숯가마(E20)와 구분."
+  },
+  {
+   "id": "S42",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCraftEquipment"
+   ],
+   "note": "플레이어가 장비·재료·배합을 고름. 시설·원재료·배합 가능 여부를 검사. 합금 품질은 NPC의 이익 최대화와 다른 호출."
+  },
+  {
+   "id": "S43",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCraftEquipment"
+   ],
+   "note": "플레이어가 장비·재료·배합을 고름. 시설·원재료·배합 가능 여부를 검사. 합금 품질은 NPC의 이익 최대화와 다른 호출."
+  },
+  {
+   "id": "S44",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCraftEquipment"
+   ],
+   "note": "플레이어가 장비·재료·배합을 고름. 시설·원재료·배합 가능 여부를 검사. 합금 품질은 NPC의 이익 최대화와 다른 호출."
+  },
+  {
+   "id": "S45",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCraftEquipment"
+   ],
+   "note": "플레이어가 장비·재료·배합을 고름. 시설·원재료·배합 가능 여부를 검사. 합금 품질은 NPC의 이익 최대화와 다른 호출."
+  },
+  {
+   "id": "S46",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "doCraftEquipment"
+   ],
+   "note": "플레이어가 장비·재료·배합을 고름. 시설·원재료·배합 가능 여부를 검사. 합금 품질은 NPC의 이익 최대화와 다른 호출."
+  },
+  {
+   "id": "S47",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "tryFurnaceStart",
+    "tryFurnaceAdvance",
+    "_siteStart",
+    "_siteAdvance"
+   ],
+   "note": "플레이어가 시설·위치를 고름. 시대·부지·도구·단계 자재를 확인."
+  },
+  {
+   "id": "S48",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "tryFurnaceStart",
+    "tryFurnaceAdvance",
+    "_siteStart",
+    "_siteAdvance"
+   ],
+   "note": "플레이어가 시설·위치를 고름. 시대·부지·도구·단계 자재를 확인."
+  },
+  {
+   "id": "S49",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "tryKilnStart",
+    "tryKilnAdvance",
+    "_siteStart",
+    "_siteAdvance"
+   ],
+   "note": "플레이어가 가마 위치를 고름. 시대·부지·도구·단계 자재를 확인."
+  },
+  {
+   "id": "S52",
+   "currentStatus": "manual-entry-reviewed",
+   "actorKind": "player",
+   "directCostGate": false,
+   "directUseGate": false,
+   "jobValueComparison": "not-applicable-player-choice",
+   "functions": [
+    "tryWellStart",
+    "tryWellAdvance",
+    "_siteStart",
+    "_siteAdvance"
+   ],
+   "note": "플레이어가 우물 위치를 고름. T509 손잡이·부지·도구·단계 자재를 확인."
+  }
+ ]
+}

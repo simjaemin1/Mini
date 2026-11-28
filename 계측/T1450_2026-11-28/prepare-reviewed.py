@@ -112,10 +112,70 @@ for name, meaning in [
     ('HOUSE_DECAY','집이 하루 0.0015 비율로 낡는다'),
 ]: add(name,E,'ⓓ',meaning,'물리로 분류. 해제 실험 없음',note='물리량의 수치 타당성을 이 카드가 새로 채택하는 것은 아님')
 
+GATES = []
+def gate(id, file, scope, line, kind, category, meaning, removal, note=''):
+    hits=[x for x in CANDIDATES if (x['file'],x['scope'],x['line'],x['kind'])==(file,scope,line,kind)]
+    assert len(hits)==1, (id,len(hits))
+    x=hits[0]; p=PROV['files'][file][line-1]
+    GATES.append(dict(id=id,file=file,line=line,scope=scope,expression=x['source'],
+        sourceSha256=x['sourceSha256'],classification=category,meaning=meaning,proposedLift=removal,note=note,
+        lineAttribution=dict(commit=p[1],dateUTC=p[2]),liftImplemented=False,experiment=None))
+
+gate('house.food-slack',E,'houseDayBuild',2258,'numeric-variable','ⓑ',
+    '집 증축 노동을 식량 40/25날 경계로 1/0.5/0.15배로 나눈다',
+    '식량 여유 배수만 1. 결손·재료·크루 제약은 유지',
+    '40/25의 두 경계를 한 여유 노동 함수로 분류. T1437·T1452 대체 경로는 기본 끔이며 별도 행으로 대조 중')
+gate('house.daily-bound',E,'houseDayBuild',2261,'clamp','ⓑ',
+    '집 결손과 인구 비례 일일 증축 한도 중 작은 쪽만 짓는다',
+    '일일 한도만 ∞. 유한 집 결손은 유지','HOUSE_BUILD_MAX의 사용처. 선언 행과 문 수를 중복하지 않음')
+gate('craft.buffer',E,'craftLaborTarget',6670,'numeric-variable','ⓑ',
+    '별도 버퍼를 안 주면 사용자 수의 1.15배를 장인 비축 목표로 둔다',
+    '각 호출 품목에서 재고 목표와 보충 흐름을 분리한 후 정의','옷은 1.2처럼 호출자가 덮어쓴다. 기본값만 바꾸고 모두 걷었다고 할 수 없음')
+gate('craft.catchup',E,'craftLaborTarget',6671,'numeric-variable','ⓑ',
+    '부족 재고를 기본 50날에 채울 장인 수로 환산한다',
+    '재고 따라잡기 항을 0으로 걷고 마모 보충 흐름만 남기는 후보',
+    '목표를 무한대로 올리는 실험과 뜻이 다름. 실제 호출자의 60날 등도 별도 기록')
+gate('craft.output-floor',E,'craftLaborTarget',6676,'clamp','ⓑ',
+    '노동 필요량의 산출 분모를 최소 0.05로 간주한다',
+    '0 산출에서 나눗셈을 정의한 뒤 실험 의미 확정','계산 안정화 의도라도 실제 충원량을 바꾸므로 물리 수율로 숨기지 않음')
+gate('craft.one-worker',E,'craftLaborTarget',6678,'numeric-return','ⓑ',
+    '목표 재고가 모자라면 계산 필요량이 작아도 장인을 최소 한 명 둔다',
+    '최소 한 명만 제거. Math.round(need)·마모 보충은 유지')
+gate('mason.village-floor',E,'masonTarget',6718,'numeric-return','ⓑ',
+    '도구 사용자 네 명 이상인 마을에 석공 한 명을 보장한다',
+    '도구 사용자 수에 따른 한 명 바닥만 제거. 기존 base 계산 유지')
+gate('expand.entry',E,'tryExpandTerritory',4263,'if','ⓑ',
+    '인구가 식량 자리의 85%에 차기 전에는 금고 영토 확장을 안 한다',
+    '85% 진입 문만 우회. 매 칸 비용·편익·재료 검사는 유지')
+gate('expand.frequency',E,'tryExpandTerritory',4268,'symbolic-loop','ⓑ',
+    '금고 영토 구매를 하루 EXPAND_CELLS_PER_DAY번만 검사한다',
+    '반복 횟수만 해제. 유한 재료·불리한 수익에서 종료 검증','숫자 리터럴이 없는 반복 조건도 수집해야 포착됨')
+gate('expand.payback',E,'tryExpandTerritory',4285,'if','ⓐ+ⓑ',
+    '일일 한계 편익×365날이 확장 비용을 넘는지 견준다',
+    'ⓐ 값 견줌과 ⓑ 회수기한을 분리해 실험','고정 정적 환산값과 T1426의 동적 값 경로도 구분')
+gate('expand.materials',E,'tryExpandTerritory',4289,'if','ⓒ',
+    '그 칸의 식량·목재·석재가 금고에 있는지 확인한다',
+    '재료 존재 문은 유지. 걷기 대상 아님','부족하면 _treasuryTopUp의 별도 구매 문으로 간다')
+gate('mine.famine-six',E,'pickDeficitJob_rational',7470,'if','ⓑ',
+    '농사가 안 되는 마을도 먹을 것이 6날 넘을 때만 기근 블록에서 광부를 고른다',
+    '기본 경로의 6날 문만 우회. 광맥·자리·농사 불가 조건 유지',
+    'T1437·T1452를 켠 대체 경로는 별도 기록. 식량 30날 T1419 전수와 구분')
+gate('mine.famine-eighteen',E,'pickDeficitJob_rational',7477,'if','ⓑ',
+    '풍부한 광맥도 먹을 것 18날 초과·광부 4% 미만일 때만 기근 중 광부를 고른다',
+    '18날 경계와 4% 노동 몫을 별도 해제 행으로 분할 예정',
+    '둘을 동시에 걷은 결과를 각 수의 단독 효과로 보고하지 않음')
+gate('territory.population-cap',S,'_terrCap',7733,'derived-bound-return','ⓑ',
+    '인구가 요구하는 집 수×600+1500칸을 NPC 영토 천장으로 둔다',
+    '천장 비교만 우회. 땅 소유·물리 자리·구매 비용·노동은 유지',
+    '6명 집 정원과 단층은 물리 정본. 토지 할당 600/1500과 분리. 랩 미호출을 죽은 문으로 판정하지 않음')
+gate('territory.player-exception',S,'_terrCapBound',7740,'if','ⓒ',
+    '촌장이 세운 마을은 NPC 인구 기반 영토 천장 대상에서 뺀다',
+    '촌장 예외 유지. 걷기 대상 아님','유효 객체 검사도 같은 조기 반환문에 있으므로 정책 예외와 기술 검사를 최종 표에서 구분')
+
 # Render only evidence already read. No completion totals or grades are invented.
 result=dict(status='진행 중: 씨앗 선언 부분 검토. 전수·사용처 분할·초기 출처·실험 미완',
     base=BASE, worldsLaunched=0, productFilesChanged=0,
-    provenanceCaution='커밋·날은 현행 줄 귀속. 숫자 최초 도입·현재 세계에서의 측정 근거는 별도 추적 중.', rows=ROWS)
+    provenanceCaution='커밋·날은 현행 줄 귀속. 숫자 최초 도입·현재 세계에서의 측정 근거는 별도 추적 중.', rows=ROWS, gates=GATES)
 (OUT/'reviewed-policy-rows.json').write_text(json.dumps(result,ensure_ascii=False,indent=1)+'\n')
 lines=['# 손으로 적은 목표·상한 조사 — T1450 (진행 중)', '',
     '> 전수 완료 보고가 아니다. T1411 장기 판이 먼저이며, 현재는 읽기만 하는 준비 조사다. 제품 변경·걷기 손잡이·실험 세계는 0.', '',
@@ -128,6 +188,22 @@ for r in ROWS:
     p=r['lineAttribution']; expr=r['expression'].replace('\n',' ')
     if len(expr)>130: expr=expr[:127]+'…'
     cells=[r['id'],f"`{r['file']}:{r['line']}`",r['classification'],r['meaning'],f'`{expr}`',f"`{p['commit'][:9]}` {p['dateUTC']}",r['state'],f"{r['proposedLift']} / {r['owner']}. {r['note']}"]
+    lines.append('| '+' | '.join(c.replace('|','\\|') for c in cells)+' |')
+lines+=['','## 이름 없는 사용처의 부분 검토','','선언과 중복되는 사용처가 있다. 아래 역시 최종 문 총계가 아니다.','',
+    '| 행 | 사용처 | 분류 | 무엇을 정하나 | 걷는 뜻·범위 |','|---|---|---|---|---|']
+for r in GATES:
+    p=r['lineAttribution']
+    cells=[r['id'],f"`{r['file']}:{r['line']}` `{r['scope']}` / `{p['commit'][:9]}` {p['dateUTC']}",r['classification'],r['meaning'],r['proposedLift']+' / '+r['note']]
+    lines.append('| '+' | '.join(c.replace('|','\\|') for c in cells)+' |')
+cross=json.loads((OUT/'recipe-crosswalk-draft.json').read_text())
+assert len(cross['rows'])==83
+lines+=['','## T718 원래 83줄의 현재 대조 — 부분 검토','',
+    '플레이어 직접 제작 진입 50줄은 읽었고, 비용 C·쓰임 V의 직접 생산 손익 문이 없다. 사람이 고른 레시피의 재료 개수·도구·시설·수율·대기열 검사다. 이를 NPC 값 문 누락 50건으로 해석하지 않는다. 전이 호출 전수와 NPC 자동 경로를 대신 검증한 것도 아니다. 경제층 28줄·혼합/미검토 서버 4줄·랩 1줄은 아직 판정 중이다.','',
+    '| T718 ID | 레시피 | 현재 읽은 경로 | 비용 C / 쓰임 V 직접 문 | 판정 범위 |','|---|---|---|---|---|']
+for r in cross['rows']:
+    checked=r['currentStatus']=='manual-entry-reviewed'
+    source=' · '.join(f"`{s['name']}:{s['line']}`" for s in r['currentSource']) or '미검토'
+    cells=[r['id'],r['recipe'],source,'없음 / 없음(플레이어 수동 선택)' if checked else '미검토',r.get('reviewNote','현재 경로·손잡이·비용과 쓰임을 대조 중')]
     lines.append('| '+' | '.join(c.replace('|','\\|') for c in cells)+' |')
 lines+=['', '## 이름 없는 문·공유 사용처: 확인한 범위', '',
     '- `houseDayBuild`(econ:2254–2261): 집 결손과 인구×증축률의 최소값. 식량 40/25날로 여유 노동을 1/0.5/0.15배 한다. T1437·T1452는 대체 읽기 손잡이이며 원래 40/25 경로를 별도로 기록한다.',
@@ -142,10 +218,11 @@ lines+=['', '## 이름 없는 문·공유 사용처: 확인한 범위', '',
     '- AST 후보는 전부 `unreviewed`이며 기술적 경계·캐시·초기값도 섞였다. `decision-candidates.json.gz`의 수를 정책 전수 수로 내지 않는다.',
     '- 이름 없는 분기·루프·함수 반환, 새 인당 상수, 수동 촌장 입력 경로, 네 파일 바깥 정본·랩 인라인 세 사본·하네스 핀을 대조한다.',
     '- T1419의 식량 30날 46줄은 그 보고의 표를 인용한다. 이 조사에서 다시 세지 않는다.',
-    '- T718 원본 레시피 83줄의 초안 대조표만 추출했다. 비용 C·쓰임 V의 현재 직접 문을 판정하기 전에는 완료 수를 쓰지 않는다. 수동 제작과 직업 간접 가치 비교를 분리한다.',
+    '- T718 원본 레시피 83줄 가운데 플레이어 직접 진입 50줄을 읽었다. 남은 33줄의 비용 C·쓰임 V를 판정하기 전에는 전체 완료 수를 쓰지 않는다. 수동 제작과 직업 간접 가치 비교를 분리한다.',
     '- 사용처 해제 정의·초기 출처·현재 손잡이 경로를 확정한 후에 `T1450_LIFT`를 구현한다. 이미 끔·물리·S3 무기는 해제에서 제외한다.',
     '- 서버 전용 문을 랩이 부르지 않았다는 이유로 가) 죽은 수로 판정하지 않는다. 실제 문을 지난 증거 없이는 미검증이다.',
     '- 실제 라이브 환경변수는 이 조사에서 읽지 않았다. 기본값이나 배포 문서를 라이브 실측으로 쓰지 않는다.', '',
+    '경제층 직접 문과 ⓪~⑤의 부분 대조 메모는 `계측/T1450_2026-11-28/economic-reading-notes.md`다. 배합 score의 순위와 손해 생산 차단을 구분한다.', '',
     '재현 자료: `계측/T1450_2026-11-28/README.md`. 모든 초안은 조사 시점 소스에만 대응하며 착수 때 main 변화를 다시 대조한다.', '']
 (ROOT/'설계/조사_손으로적은목표_T1450.md').write_text('\n'.join(lines))
 print(json.dumps(dict(status='partial-review-only',declarations=len(ROWS),worldsLaunched=0,productFilesChanged=0)))

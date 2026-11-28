@@ -24,5 +24,19 @@ assert Counter(r['layer'] for r in rows)==dict(E=28,S=54,L=1)
 result=dict(reference=ref,referenceDate='2026-10-13',
     referenceSha256=hashlib.sha256(source.encode()).hexdigest(),
     scope='Original 83 recipe rows only, excluding repeated cost tables; current classification pending.',rows=rows)
+evidence=out/'manual-recipes-evidence.json'
+if evidence.exists():
+    manual=json.loads(evidence.read_text())
+    for file,digest in manual['sourceFiles'].items():
+        assert hashlib.sha256((root/file).read_bytes()).hexdigest()==digest, file
+    by_id={r['id']:r for r in rows}
+    assert len(manual['rows'])==len({r['id'] for r in manual['rows']})==50
+    for review in manual['rows']:
+        r=by_id[review['id']]
+        r.update({k:review[k] for k in ('currentStatus','directCostGate','directUseGate','jobValueComparison')})
+        r['actorKind']=review['actorKind']; r['reviewNote']=review['note']
+        r['currentSource']=[manual['functions'][n] for n in review['functions']]
+    result['manualReviewScope']=manual['scope']
 (out/'recipe-crosswalk-draft.json').write_text(json.dumps(result,ensure_ascii=False,indent=1)+'\n')
-print(json.dumps(dict(originalRecipes=83,currentClassifications=0)))
+print(json.dumps(dict(originalRecipes=83,manualEntryReviews=sum(r['currentStatus']=='manual-entry-reviewed' for r in rows),
+    stillUnreviewed=sum(r['currentStatus']=='unreviewed' for r in rows))))

@@ -1930,5 +1930,277 @@
    "liftImplemented": false,
    "experiment": null
   }
+ ],
+ "gates": [
+  {
+   "id": "house.food-slack",
+   "file": "sim/economy-sim.js",
+   "line": 2258,
+   "scope": "houseDayBuild",
+   "expression": "T1452_READS.house ? t1452Slack(v, fe > N * 40 ? 1.0 : (fe > N * 25 ? 0.5 : 0.15))   // ★[T1452 재는 팔 'house'] 창 안 골을 바로(끔 = 아래 줄)\n    : T1437_READS.house ? (fe > N * t1437Read(v, 40, 'house') ? 1.0 : (fe > N * t1437Read(v, 25, 'house') ? 0.5 : 0.15))   // ★[T1437 재는 팔 'house'] 같은 자(끔 = 아래 종전 줄)\n    : fe > N * 40 ? 1.0 : (fe > N * 25 ? 0.5 : 0.15)",
+   "sourceSha256": "fa45445763e09c3b17ac0c93a3b2926d9649f63d518c9fb1bfe7c85aaf459b3b",
+   "classification": "ⓑ",
+   "meaning": "집 증축 노동을 식량 40/25날 경계로 1/0.5/0.15배로 나눈다",
+   "proposedLift": "식량 여유 배수만 1. 결손·재료·크루 제약은 유지",
+   "note": "40/25의 두 경계를 한 여유 노동 함수로 분류. T1437·T1452 대체 경로는 기본 끔이며 별도 행으로 대조 중",
+   "lineAttribution": {
+    "commit": "89d4f978a2bee0c52fab769affbfaf46de97d757",
+    "dateUTC": "2026-11-23"
+   },
+   "liftImplemented": false,
+   "experiment": null
+  },
+  {
+   "id": "house.daily-bound",
+   "file": "sim/economy-sim.js",
+   "line": 2261,
+   "scope": "houseDayBuild",
+   "expression": "Math.min(houseTarget - v.housing, N * HOUSE_BUILD_MAX * slack)",
+   "sourceSha256": "9bb9790225621bdc8d0bf1473517cac430711672d7952c701672cf96a0b8d73c",
+   "classification": "ⓑ",
+   "meaning": "집 결손과 인구 비례 일일 증축 한도 중 작은 쪽만 짓는다",
+   "proposedLift": "일일 한도만 ∞. 유한 집 결손은 유지",
+   "note": "HOUSE_BUILD_MAX의 사용처. 선언 행과 문 수를 중복하지 않음",
+   "lineAttribution": {
+    "commit": "a3e771e0f78fda25704e785c0c9dd5e391942fbc",
+    "dateUTC": "2026-09-28"
+   },
+   "liftImplemented": false,
+   "experiment": null
+  },
+  {
+   "id": "craft.buffer",
+   "file": "sim/economy-sim.js",
+   "line": 6670,
+   "scope": "craftLaborTarget",
+   "expression": "(opts.buffer != null) ? opts.buffer : 1.15",
+   "sourceSha256": "a9fde32fe1f987c44321202aef15acfb65b1e23d2de98eb9c22b3c4a120c68ff",
+   "classification": "ⓑ",
+   "meaning": "별도 버퍼를 안 주면 사용자 수의 1.15배를 장인 비축 목표로 둔다",
+   "proposedLift": "각 호출 품목에서 재고 목표와 보충 흐름을 분리한 후 정의",
+   "note": "옷은 1.2처럼 호출자가 덮어쓴다. 기본값만 바꾸고 모두 걷었다고 할 수 없음",
+   "lineAttribution": {
+    "commit": "414b94b230e425612da3f01bab5ab78f7eaeb472",
+    "dateUTC": "2026-06-30"
+   },
+   "liftImplemented": false,
+   "experiment": null
+  },
+  {
+   "id": "craft.catchup",
+   "file": "sim/economy-sim.js",
+   "line": 6671,
+   "scope": "craftLaborTarget",
+   "expression": "opts.catchup || 50",
+   "sourceSha256": "9b3336775725dbc1cff5f9d710f5d2dc5ac1b23b252ef61111ada3bd153d3854",
+   "classification": "ⓑ",
+   "meaning": "부족 재고를 기본 50날에 채울 장인 수로 환산한다",
+   "proposedLift": "재고 따라잡기 항을 0으로 걷고 마모 보충 흐름만 남기는 후보",
+   "note": "목표를 무한대로 올리는 실험과 뜻이 다름. 실제 호출자의 60날 등도 별도 기록",
+   "lineAttribution": {
+    "commit": "414b94b230e425612da3f01bab5ab78f7eaeb472",
+    "dateUTC": "2026-06-30"
+   },
+   "liftImplemented": false,
+   "experiment": null
+  },
+  {
+   "id": "craft.output-floor",
+   "file": "sim/economy-sim.js",
+   "line": 6676,
+   "scope": "craftLaborTarget",
+   "expression": "Math.max(0.05, dailyOut)",
+   "sourceSha256": "b7f796e63304cc5c521415ffb28f6b968eea99f091bd2a6e79e355757c0ced9d",
+   "classification": "ⓑ",
+   "meaning": "노동 필요량의 산출 분모를 최소 0.05로 간주한다",
+   "proposedLift": "0 산출에서 나눗셈을 정의한 뒤 실험 의미 확정",
+   "note": "계산 안정화 의도라도 실제 충원량을 바꾸므로 물리 수율로 숨기지 않음",
+   "lineAttribution": {
+    "commit": "414b94b230e425612da3f01bab5ab78f7eaeb472",
+    "dateUTC": "2026-06-30"
+   },
+   "liftImplemented": false,
+   "experiment": null
+  },
+  {
+   "id": "craft.one-worker",
+   "file": "sim/economy-sim.js",
+   "line": 6678,
+   "scope": "craftLaborTarget",
+   "expression": "(stock < desired) ? Math.max(1, Math.round(need)) : Math.round(need)",
+   "sourceSha256": "870e3e160f4b1ee2407bff7a6b3b3ff5101761a1538fbb5779f079f17b6467d0",
+   "classification": "ⓑ",
+   "meaning": "목표 재고가 모자라면 계산 필요량이 작아도 장인을 최소 한 명 둔다",
+   "proposedLift": "최소 한 명만 제거. Math.round(need)·마모 보충은 유지",
+   "note": "",
+   "lineAttribution": {
+    "commit": "414b94b230e425612da3f01bab5ab78f7eaeb472",
+    "dateUTC": "2026-06-30"
+   },
+   "liftImplemented": false,
+   "experiment": null
+  },
+  {
+   "id": "mason.village-floor",
+   "file": "sim/economy-sim.js",
+   "line": 6718,
+   "scope": "masonTarget",
+   "expression": "Math.max(td >= 4 ? 1 : 0, base)",
+   "sourceSha256": "7939150d27591ab8040c00dc5bc09e953cdc4aa534496222607f58008aa4b726",
+   "classification": "ⓑ",
+   "meaning": "도구 사용자 네 명 이상인 마을에 석공 한 명을 보장한다",
+   "proposedLift": "도구 사용자 수에 따른 한 명 바닥만 제거. 기존 base 계산 유지",
+   "note": "",
+   "lineAttribution": {
+    "commit": "ee63e401444f033bafcad7c20b01a91744580aca",
+    "dateUTC": "2026-06-30"
+   },
+   "liftImplemented": false,
+   "experiment": null
+  },
+  {
+   "id": "expand.entry",
+   "file": "sim/economy-sim.js",
+   "line": 4263,
+   "scope": "tryExpandTerritory",
+   "expression": "N / Math.max(1, slotK) < 0.85",
+   "sourceSha256": "2e65593da3ca9d20768fae3c399da2209764d689415c578111c981315a37969a",
+   "classification": "ⓑ",
+   "meaning": "인구가 식량 자리의 85%에 차기 전에는 금고 영토 확장을 안 한다",
+   "proposedLift": "85% 진입 문만 우회. 매 칸 비용·편익·재료 검사는 유지",
+   "note": "",
+   "lineAttribution": {
+    "commit": "96e7c64544f50d8cf9a965f9e1f730b2dabd4854",
+    "dateUTC": "2026-06-02"
+   },
+   "liftImplemented": false,
+   "experiment": null
+  },
+  {
+   "id": "expand.frequency",
+   "file": "sim/economy-sim.js",
+   "line": 4268,
+   "scope": "tryExpandTerritory",
+   "expression": "ci < EXPAND_CELLS_PER_DAY",
+   "sourceSha256": "12575bddd2a23292ca9168dd1aaab03edde3f883fa00979b5e91201147490e23",
+   "classification": "ⓑ",
+   "meaning": "금고 영토 구매를 하루 EXPAND_CELLS_PER_DAY번만 검사한다",
+   "proposedLift": "반복 횟수만 해제. 유한 재료·불리한 수익에서 종료 검증",
+   "note": "숫자 리터럴이 없는 반복 조건도 수집해야 포착됨",
+   "lineAttribution": {
+    "commit": "36f78602272519d95601e54f04a0805562bae414",
+    "dateUTC": "2026-07-11"
+   },
+   "liftImplemented": false,
+   "experiment": null
+  },
+  {
+   "id": "expand.payback",
+   "file": "sim/economy-sim.js",
+   "line": 4285,
+   "scope": "tryExpandTerritory",
+   "expression": "mbDaily * EXPAND_PAYBACK_DAYS < mcFoodEq",
+   "sourceSha256": "5294993ba5a2f1b40683818a33286d4def0b1261b5733f7ff286f0bf7e8bd0a7",
+   "classification": "ⓐ+ⓑ",
+   "meaning": "일일 한계 편익×365날이 확장 비용을 넘는지 견준다",
+   "proposedLift": "ⓐ 값 견줌과 ⓑ 회수기한을 분리해 실험",
+   "note": "고정 정적 환산값과 T1426의 동적 값 경로도 구분",
+   "lineAttribution": {
+    "commit": "36f78602272519d95601e54f04a0805562bae414",
+    "dateUTC": "2026-07-11"
+   },
+   "liftImplemented": false,
+   "experiment": null
+  },
+  {
+   "id": "expand.materials",
+   "file": "sim/economy-sim.js",
+   "line": 4289,
+   "scope": "tryExpandTerritory",
+   "expression": "v.treasury.food < cellFood || v.treasury.wood < cellWood || v.treasury.stone < cellStone",
+   "sourceSha256": "fa0eb947f2c0a80a4adde58353f8c4a985cf903569861d85fab56b343764bdc4",
+   "classification": "ⓒ",
+   "meaning": "그 칸의 식량·목재·석재가 금고에 있는지 확인한다",
+   "proposedLift": "재료 존재 문은 유지. 걷기 대상 아님",
+   "note": "부족하면 _treasuryTopUp의 별도 구매 문으로 간다",
+   "lineAttribution": {
+    "commit": "6945688cabee3fce8ef599c472ab16edf8c178e7",
+    "dateUTC": "2026-08-02"
+   },
+   "liftImplemented": false,
+   "experiment": null
+  },
+  {
+   "id": "mine.famine-six",
+   "file": "sim/economy-sim.js",
+   "line": 7470,
+   "scope": "pickDeficitJob_rational",
+   "expression": "_cantFarm && (_A52 ? _A52.minW >= 0 : foodEquiv > N * (T1437_READS.mine ? t1437Read(v, 6, 'mine') : 6))",
+   "sourceSha256": "f81b6734672d7a30438d2b03915937e5d00d0e13c81829664fed2f11d2a087e8",
+   "classification": "ⓑ",
+   "meaning": "농사가 안 되는 마을도 먹을 것이 6날 넘을 때만 기근 블록에서 광부를 고른다",
+   "proposedLift": "기본 경로의 6날 문만 우회. 광맥·자리·농사 불가 조건 유지",
+   "note": "T1437·T1452를 켠 대체 경로는 별도 기록. 식량 30날 T1419 전수와 구분",
+   "lineAttribution": {
+    "commit": "89d4f978a2bee0c52fab769affbfaf46de97d757",
+    "dateUTC": "2026-11-23"
+   },
+   "liftImplemented": false,
+   "experiment": null
+  },
+  {
+   "id": "mine.famine-eighteen",
+   "file": "sim/economy-sim.js",
+   "line": 7477,
+   "scope": "pickDeficitJob_rational",
+   "expression": "richVein && (_A52 ? _A52.minW >= _A52.buf : foodEquiv > N * (T1437_READS.mine ? t1437Read(v, 18, 'mine') : 18)) && mineLabor < N * 0.04 && hasSlot(v, 'miner', cap, counts)",
+   "sourceSha256": "28e0ad7e429f8a214d388f705e5ee25fd7af58b0c736300abe6798097967965e",
+   "classification": "ⓑ",
+   "meaning": "풍부한 광맥도 먹을 것 18날 초과·광부 4% 미만일 때만 기근 중 광부를 고른다",
+   "proposedLift": "18날 경계와 4% 노동 몫을 별도 해제 행으로 분할 예정",
+   "note": "둘을 동시에 걷은 결과를 각 수의 단독 효과로 보고하지 않음",
+   "lineAttribution": {
+    "commit": "89d4f978a2bee0c52fab769affbfaf46de97d757",
+    "dateUTC": "2026-11-23"
+   },
+   "liftImplemented": false,
+   "experiment": null
+  },
+  {
+   "id": "territory.population-cap",
+   "file": "server/villages.js",
+   "line": 7733,
+   "scope": "_terrCap",
+   "expression": "Math.ceil(pop / (VL.HOUSE_CAP_PER_FLOOR * VL.HOUSE_MAX_FLOORS)) * VL.TERR_PER_LOT + VL.TERR_CORE",
+   "sourceSha256": "8aa8f735b5d9c24d0070b5eb3ca3fbf46350c1fb216175c390137ad511b4296d",
+   "classification": "ⓑ",
+   "meaning": "인구가 요구하는 집 수×600+1500칸을 NPC 영토 천장으로 둔다",
+   "proposedLift": "천장 비교만 우회. 땅 소유·물리 자리·구매 비용·노동은 유지",
+   "note": "6명 집 정원과 단층은 물리 정본. 토지 할당 600/1500과 분리. 랩 미호출을 죽은 문으로 판정하지 않음",
+   "lineAttribution": {
+    "commit": "9e2e5f94116f8e91b858766719643ae04f80522b",
+    "dateUTC": "2026-10-03"
+   },
+   "liftImplemented": false,
+   "experiment": null
+  },
+  {
+   "id": "territory.player-exception",
+   "file": "server/villages.js",
+   "line": 7740,
+   "scope": "_terrCapBound",
+   "expression": "!T538_TERR_CAP || !vil || !vil.econ || vil.econ.founder || !vil._terrSet",
+   "sourceSha256": "8aab8e08ee9d843179db481ffd52735bd743e5cc094847e9551cfe4d3a4318b0",
+   "classification": "ⓒ",
+   "meaning": "촌장이 세운 마을은 NPC 인구 기반 영토 천장 대상에서 뺀다",
+   "proposedLift": "촌장 예외 유지. 걷기 대상 아님",
+   "note": "유효 객체 검사도 같은 조기 반환문에 있으므로 정책 예외와 기술 검사를 최종 표에서 구분",
+   "lineAttribution": {
+    "commit": "c760b0d46e237b6b38ec596a45f00cf98f6e9d2e",
+    "dateUTC": "2026-10-03"
+   },
+   "liftImplemented": false,
+   "experiment": null
+  }
  ]
 }

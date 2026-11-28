@@ -35,7 +35,7 @@ for(const file of FILES){
   if(n.type==='ReturnStatement'&&n.argument&&numeric(n.argument)&&(/cap|target|terr|floor|room|keep|reserve|plan|desired|limit|crew|stock|price|buy|sell|expand|job/i.test(scope)||/npcs\.length|\b(?:N|_pop|population|people)\b/.test(text(n.argument))))record('numeric-return',n,n.argument,scope);
   if(n.type==='ReturnStatement'&&n.argument&&!numeric(n.argument)&&/cap|target|floor|keep|reserve|desired|limit/i.test(scope)&&!['FunctionExpression','ArrowFunctionExpression','ObjectExpression','ArrayExpression','Literal'].includes(n.argument.type))record('derived-bound-return',n,n.argument,scope);
   if(n.type==='CallExpression'&&/^(?:Math\.(?:min|max)|clamp|clamp01)$/.test(text(n.callee)))record('clamp',n,n,scope);
-  if(['ForStatement','WhileStatement','DoWhileStatement'].includes(n.type)&&n.test&&numeric(n.test))record('bounded-loop',n,n.test,scope);
+  if(['ForStatement','WhileStatement','DoWhileStatement'].includes(n.type)&&n.test)record(numeric(n.test)?'bounded-loop':'symbolic-loop',n,n.test,scope);
   for(const k of Object.keys(n))if(k!=='loc'){
    const v=n[k];if(Array.isArray(v)){for(const c of v)if(c&&typeof c.type==='string')visit(c,sc,n,k);}
    else if(v&&typeof v.type==='string')visit(v,sc,n,k);
