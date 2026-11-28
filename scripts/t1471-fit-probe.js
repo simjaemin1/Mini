@@ -1,5 +1,5 @@
 // (@regress 없음 — 러너 밖 · `test-t1471-land-fit.js` 가 존에 싣는 프리로드 · 제품 무변)
-// === scripts/t1471-fit-probe.js — 마을 적재 직후(경도 시차 줄) 마을 상태 지문 · 지형 정본으로 고른 칸 · [T1471] 로그 줄을 파일로 ==========
+// === scripts/t1471-fit-probe.js — 부팅이 끝난 뒤(경도 시차 줄 + 1.5초) 마을 상태 지문 · 지형 정본으로 고른 칸 · [T1471] 로그 줄을 파일로 ==========
 //   env: T1471_FIT_OUT(필수 · json) · T1471_FIT_SCOUT(1 = 마을마다 산 · 물 · 발자국 걸림 칸 후보를 싣는다)
 //        T1471_FIT_MUT='["server/파일.js","바꿀 글자","새 글자"]'(또는 그런 셋의 배열) — 그 파일을 실을 때 그 자리(정확히 1곳씩 — 아니면 던진다)만 바꾼 사본으로(미끼 · 몸 심기 · 파일 무변)
 'use strict';
@@ -14,7 +14,7 @@ const MUT0 = process.env.T1471_FIT_MUT ? JSON.parse(process.env.T1471_FIT_MUT) :
 const MUTS = !MUT0 ? [] : Array.isArray(MUT0[0]) ? MUT0 : [MUT0];   // 바꿀 자리 하나 · 또는 여럿([[파일, 글자, 새 글자], …])
 Module.prototype._compile = function (content, filename) {
   for (const M of MUTS) if (filename.endsWith(path.join(...M[0].split('/')))) { const n = content.split(M[1]).length - 1; if (n !== 1) throw new Error(`T1471_FIT_MUT 자리 ${n}곳 — ${M[0]}`); content = content.replace(M[1], M[2]); rec.mut = { file: M[0], n: ((rec.mut && rec.mut.n) || 0) + n }; }
-  if (filename.endsWith(VJS)) content += '\n;globalThis.__t1471f = { state, stat: (typeof t1471Stat === "function" ? t1471Stat : null), foot: _vbFootprint };\n';
+  if (filename.endsWith(VJS)) content += '\n;globalThis.__t1471f = { state, stat: (typeof t1471Stat === "function" ? t1471Stat : null), foot: _vbFootprint, fb: (typeof _t1471FootBad === "function" ? _t1471FootBad : null) };\n';
   return _c.call(this, content, filename);
 };
 const hs = (arr) => crypto.createHash('sha256').update(arr.join('|')).digest('hex').slice(0, 16);
@@ -69,12 +69,17 @@ const tap = (orig) => function (...a) {
   try {
     const line = a.map((x) => (typeof x === 'string' ? x : '')).join(' ');
     if (/\[T1471\]/.test(line)) { rec.lines.push(line.slice(0, 400)); flush(); }
-    if (/🕐 경도 시차/.test(line) && globalThis.__t1471f && !rec.dump) {
-      const G = globalThis.__t1471f;
-      rec.dump = dump(G.state); rec.stat = G.stat ? G.stat() : null;
-      if (process.env.T1471_FIT_SCOUT) rec.scout = scout(G.state, G.foot);
-      flush();
-      if (process.env.T1471_FIT_BODY) setTimeout(() => { try { rec.body = bodies(G.state, process.env.T1471_FIT_BODY); flush(); } catch (e) { rec.err = String(e && e.stack).slice(0, 600); flush(); } }, 4000).unref();
+    //   마을 적재 줄(경도 시차)이 찍히면 부팅이 끝난 뒤(타이머 — 부팅은 동기라 그 뒤에 돈다 · 옮기기 · 실물화 · 몸 배치 · 몸 되돌림까지 끝난 뒤) 한 번에 적는다
+    if (/🕐 경도 시차/.test(line) && globalThis.__t1471f && !rec._armed) {
+      rec._armed = true; const G = globalThis.__t1471f;
+      setTimeout(() => { try {
+        rec.dump = dump(G.state); rec.stat = G.stat ? G.stat() : null;
+        if (process.env.T1471_FIT_SCOUT) rec.scout = scout(G.state, G.foot);
+        if (process.env.T1471_FIT_BODY) rec.body = bodies(G.state, process.env.T1471_FIT_BODY);
+        //   T1471_FIT_ROWS=<마을 id> — 그 마을 행 가운데 지금 산 · 물에 걸린 것(발자국 행은 발자국 · 영토 · 존닝 빼고 · 걷기 정본 술어 그대로)
+        if (process.env.T1471_FIT_ROWS && G.fb) { const ta = G.state.ta; rec.badRows = G.state.db.db.prepare("SELECT id, type, cx, cy FROM village_buildings WHERE village_id = ? AND type NOT IN ('terr', 'terrseq')").all(+process.env.T1471_FIT_ROWS).filter((r) => G.fb(ta, r.type === 'housesite' || r.type === 'psitework' || r.type === 'phouse' ? 'house' : r.type, r.cx, r.cy)).map((r) => [r.type, r.cx, r.cy]); }
+        flush();
+      } catch (e) { rec.err = String(e && e.stack).slice(0, 600); flush(); } }, 1500).unref();
     }
   } catch (e) { rec.err = String(e && e.stack).slice(0, 600); flush(); }
   return orig.apply(this, a);

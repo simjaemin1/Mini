@@ -7804,77 +7804,219 @@ function _t569Resolve(owners) {
 //   읽기는 손잡이와 무관하게 늘 두 꼴 다(zone-local-db `eachVillageCell` · 이관한 DB 를 끔으로 띄워도 같은 영토) · 끈 코드(이 손잡이 이전 판)로 되돌릴 땐
 //     `scripts/t1433-terr-migrate.js --back`(묶음 행 → 칸 행 · 같은 차례 · 한 거래)을 먼저.
 const T1433_TERR_SEQ = process.env.T1433_TERR_SEQ === '1';
-// ★★[T1471 2026-11-25 · S5] 손잡이 `T1471_LAND_FIT`('1' 만 켬 · 끔 = 아래 부팅 줄 0 · main 바이트) — **지도가 바뀌어 지금 산 · 물이 된 칸의 마을 땅을 부팅 때 걷는다.**
-//   까닭(보고/T1471): T1296(11-13)이 닛폰 원 고개 둘을 골짜기로 바꾸자 이미 선 세계의 사키농촌 영토 1,131칸 · 집 2 · 마당 · 텃밭이 도로 산맥 칸 위에 남았다
+// ★★[T1471 2026-11-25 · S5 · 덧붙임 셋 11-27 — 재민 판정 84 "옮긴다"] 손잡이 `T1471_LAND_FIT`('1' 만 켬 · 끔 = 아래 부팅 줄 0 · main 바이트)
+//   — **지도가 바뀌어 지금 산 · 물이 된 칸의 마을 땅을 부팅 때 바로잡는다: 건물 · 일터는 가장 가까운 갈 수 있는 빈 제 마을 칸으로 옮긴다.**
+//   까닭(보고/T1471): T1296(11-13)이 닛폰 원 고개 둘을 골짜기로 바꾸자 이미 선 세계의 사키농촌 영토 1,131칸 · 집 한 채 부지(집 · 집터 · 마당 84 · 텃밭 16)가 도로 산맥 칸 위에 남았다
 //     (영토를 넓히는 문은 막힌 칸을 안 고른다 — 새 세계 87곳 영토 산 칸 0 · 이미 가진 칸을 다시 보는 문이 없었다).
 //   판정 = 마을 지형 정본 `state.ta`(존 걸음 술어) — 바위 칸 · 다리 아닌 물 칸. 도랑(환호)은 마을이 판 막힘이라 안 본다(영토 도랑 칸은 그대로).
-//   걷는 것: 그 칸의 영토 · 논 존닝 · 논밭 · 마당 · 광장 · 텃밭 행 · 발자국이 한 칸이라도 산 · 물에 걸린 집 · 집터 · 곳간 · 쉼터 행 · 도랑 행.
-//   안 건드리는 것: 회관(마을 가운데 — 로그만) · 플레이어 의뢰 집 · 집터(주인이 플레이어 — 로그만).
-//   집이 빠지면 그 집 사람은 부팅 몸 배치가 남은 집에 나눠 든다(종전 `spawnOneNpc` 차례) · 침상이 모자라면 있는 신축 문(`houseSiteWant` → `_lifeAddHouseSite` — 막힌 칸을 안 고른다)이 집터를 다시 잡는다(새 수 0).
-//   DB 는 마을마다 한 거래(SAVEPOINT) — 실패 = 그 마을 행 그대로(메모리는 이미 걸렀다 · 다음 부팅이 다시 걷는다).
+//   두 걸음:
+//     ① 마을 루프(`_t1471Fit` — 집합을 지은 바로 뒤): 영토의 산 · 물 칸을 뺀다(영토는 땅이지 건물이 아니다 — 옮기지 않는다) · 논 존닝(개간 예정 표시) · 도랑 칸(판 흙)은 걷는다(재료 0)
+//        · 옮길 행(집 · 집터 · 곳간 · 쉼터 = 발자국이 한 칸이라도 · 논 · 밭 · 마당 · 광장 · 텃밭 = 그 칸)을 적어 둔다.
+//     ② 마을이 다 선 뒤 · 실물화 앞(`_t1471Relocate`): 옮긴다 —
+//        집 = 집 부지 하나째(집 행 · 같은 칸 집터 행 · 그 부지 원판의 마당 · 텃밭 행) — 새 자리는 **있는 집터 판정**(`_lifeSiteFilters.reject` — 영토 · 막힘 · 집 간격 · 곳간 · 도랑 · 개울 · 남의 마을 ·
+//          `_t1440SiteCloses`)을 지나고 회관에서 걸어 닿는(`npcCanReach`) 칸 가운데 옛 자리에서 가장 가까운 칸. 침상 명부 · 집 픽셀의 **같은 자리**를 고쳐 쓴다 → 부팅 몸 배치가 같은 사람에게 그 집을 준다(집주인이 따라간다).
+//          마당 · 텃밭은 새 자리 원판에 완공과 같은 규칙(`_lifeCompleteHouse` 의 원판 · 영토 칸만)으로 다시 깐다.
+//        곳간 · 쉼터 = 발자국이 다 영토 · 빈 칸 · 산 · 물 아님 · 닿는 칸 가운데 가장 가까운 자리 · 행 번호 그대로(T1438 낡음 줄이 따라간다).
+//        논 · 밭 · 외톨이 마당 · 광장 · 텃밭 칸 = 가장 가까운 빈 영토 칸(행 번호 그대로).
+//        자리가 없을 때만 걷는다 — 집이면 한 채 재료(`hutEconMaterials` — 집 짓는 표에서 유도)를 그 마을 곳간에 넣는다(사라지는 것 0). 곳간 · 쉼터 · 칸 행은 재료 표가 없다(셈 · 로그).
+//   안 건드리는 것(회부 — 주인이 있다): 회관(마을 가운데 — 셈만) · 플레이어 의뢰 집 · 의뢰 집터 · 플레이어 건물 · 사유지(산 · 물 칸에 걸린 수만 센다 · 로그).
+//   DB 는 마을마다 한 거래(SAVEPOINT) — 실패 = 그 마을 행 그대로(다음 부팅이 다시).
 const T1471_LAND_FIT = process.env.T1471_LAND_FIT === '1';
-const _t1471Stat = { vils: 0, terr: 0, rows: 0, houses: 0, hallBad: 0, pBad: 0, fail: 0, bodies: 0 };
-const _T1471_CELL = new Set(['farmland', 'dryfield', 'nongzone', 'yard', 'plaza', 'garden', 'ditch']);   // 칸 하나짜리 행
-const _T1471_FOOT = new Set(['house', 'housesite', 'granary', 'shelter']);   // 발자국 행(`_vbFootprint` — 집터 = 집 발자국)
+const _t1471Stat = { vils: 0, terr: 0, rows: 0, houses: 0, moved: 0, movedRows: 0, dropped: 0, droppedRows: 0, mat: null, hallBad: 0, pBad: 0, pBld: 0, pClaim: 0, fail: 0, bodies: 0, byType: {} };
+const _t1471Pend = new Map();   // 마을 id → { name, moves: [행] }(① 이 적고 ② 가 옮긴다)
+const _T1471_CELL = new Set(['farmland', 'dryfield', 'yard', 'plaza', 'garden']);   // 칸 하나짜리 — 옮긴다
+const _T1471_DROP = new Set(['nongzone', 'ditch']);   // 칸 하나짜리 — 걷는다(개간 예정 표시 · 판 흙 — 재료 0)
+const _T1471_FOOT = new Set(['house', 'housesite', 'granary', 'shelter']);   // 발자국 행(`_vbFootprint` — 집터 = 집 발자국) — 옮긴다
 function _t1471Bad(ta, x, y) { return ta.isRock(x, y) || (ta.isWater(x, y) && ta.isBlocked(x, y)); }
+function _t1471Foot(type, cx, cy) { return _vbFootprint(type === 'housesite' || type === 'psitework' ? 'house' : type, cx, cy); }
 function _t1471FootBad(ta, type, cx, cy) {
-  const R = _vbFootprint(type === 'housesite' ? 'house' : type, cx, cy); if (!R) return _t1471Bad(ta, cx, cy);
+  const R = _t1471Foot(type, cx, cy); if (!R) return _t1471Bad(ta, cx, cy);
   for (let y = R[1]; y <= R[3]; y++) for (let x = R[0]; x <= R[2]; x++) if (_t1471Bad(ta, x, y)) return true;
   return false;
 }
-//   마을 하나 — 부팅 루프가 막 지은 집합 · 배열을 **제자리에서** 거른다(S = 그 루프의 지역 값 · 수 · 쉼터 칸은 고친 값을 돌려준다)
+//   ① 마을 하나 — 부팅 루프가 막 지은 집합 · 배열을 **제자리에서** 거른다(S = 그 루프의 지역 값 · 수 · 쉼터 칸은 고친 값을 돌려준다)
 function _t1471Fit(db, row, S) {
   const ta = state.ta; if (!ta || !db || !db.db) return S;
-  const vid = row.id, gone = [], cnt = {};
-  let terrN = 0, houseN = 0;
+  const vid = row.id, drop = [], moves = [], cnt = {};
   const tDel = [];
   for (const k of S.terrSet) { const i = k.indexOf(','), x = +k.slice(0, i), y = +k.slice(i + 1); if (_t1471Bad(ta, x, y)) tDel.push(k); }
   for (const k of tDel) S.terrSet.delete(k);
-  terrN = tDel.length;
+  const terrN = tDel.length;
   let pBad = 0;
-  for (const r of db.db.prepare("SELECT id, type, cx, cy FROM village_buildings WHERE village_id = ? AND type NOT IN ('terr', 'terrseq')").iterate(vid)) {
+  for (const r of db.db.prepare("SELECT id, type, cx, cy FROM village_buildings WHERE village_id = ? AND type NOT IN ('terr', 'terrseq') ORDER BY id").iterate(vid)) {
     if (r.type === 'hall') { if (_t1471FootBad(ta, 'hall', r.cx, r.cy)) _t1471Stat.hallBad++; continue; }
-    if (r.type === 'phouse' || r.type === 'psitework') { if (_t1471FootBad(ta, 'house', r.cx, r.cy)) pBad++; continue; }
+    if (r.type === 'phouse' || r.type === 'psitework') { if (_t1471FootBad(ta, r.type, r.cx, r.cy)) pBad++; continue; }
+    if (_T1471_DROP.has(r.type)) { if (_t1471Bad(ta, r.cx, r.cy)) { drop.push(r); cnt[r.type] = (cnt[r.type] || 0) + 1; } continue; }
     const bad = _T1471_FOOT.has(r.type) ? _t1471FootBad(ta, r.type, r.cx, r.cy) : _T1471_CELL.has(r.type) ? _t1471Bad(ta, r.cx, r.cy) : false;
-    if (!bad) continue;
-    gone.push(r); cnt[r.type] = (cnt[r.type] || 0) + 1;
+    if (bad) { moves.push({ id: r.id, type: r.type, cx: r.cx, cy: r.cy }); cnt[r.type] = (cnt[r.type] || 0) + 1; }
   }
-  //   집터 행은 집과 같은 발자국으로 잰다 — 완공된 집의 집터 행(같은 칸)은 집과 같이 빠진다(남으면 `_pendSite` 가 되어 같은 자리에 다시 짓는다)
-  const hGone = new Set(gone.filter((r) => r.type === 'house').map((r) => r.cx + ',' + r.cy));
-  if (!terrN && !gone.length) { if (pBad) { _t1471Stat.pBad += pBad; console.log(`[${state.zoneId}] 🏔️ [T1471] ${row.name} 산 · 물 칸에 걸린 의뢰 집 ${pBad}(플레이어 것 — 안 건드림)`); } return S; }
-  //   메모리 — 루프의 지역 값
-  const keyGone = (type) => new Set(gone.filter((r) => r.type === type).map((r) => r.cx + ',' + r.cy));
-  const fG = keyGone('farmland'), dG = keyGone('dryfield'), nG = keyGone('nongzone');
-  for (const k of fG) S.farmSet.delete(k);
-  for (const k of dG) { S.farmSet.delete(k); S.drySet.delete(k); }
+  _t1471Stat.pBad += pBad;
+  if (!terrN && !drop.length && !moves.length) { if (pBad) console.log(`[${state.zoneId}] 🏔️ [T1471] ${row.name} 산 · 물 칸에 걸린 의뢰 집 ${pBad}(플레이어 것 — 안 건드림 · 회부)`); return S; }
+  //   메모리 — 걷는 것만(옮길 것은 ② 가 마을 객체에서 고친다)
+  const nG = new Set(drop.filter((r) => r.type === 'nongzone').map((r) => r.cx + ',' + r.cy)), dtG = new Set(drop.filter((r) => r.type === 'ditch').map((r) => r.cx + ',' + r.cy));
   for (const k of nG) S.potSet.delete(k);
-  S.farmN = Math.max(0, S.farmN - (cnt.farmland || 0)); S.dryN = Math.max(0, S.dryN - (cnt.dryfield || 0));
-  const ids = new Set(gone.map((r) => r.id));
-  const keepOut = (L, set) => { if (!set.size) return; for (let i = L.length - 1; i >= 0; i--) if (set.has(L[i].cx + ',' + L[i].cy)) L.splice(i, 1); };   // 제자리(부팅 루프의 그 배열 그대로)
-  const gG = keyGone('granary'), sG = keyGone('housesite'), dtG = keyGone('ditch'), shG = keyGone('shelter');
-  for (let i = S.houseCells.length - 1; i >= 0; i--) if (hGone.has(S.houseCells[i].cx + ',' + S.houseCells[i].cy)) { S.houseCells.splice(i, 1); houseN++; }
-  for (let i = S.housesPx.length - 1; i >= 0; i--) { const h = S.housesPx[i], k = Math.floor(h.x / SZ) + ',' + Math.floor(h.y / SZ); if (hGone.has(k)) S.housesPx.splice(i, 1); }
-  keepOut(S.granList, gG); keepOut(S.siteRows, sG); keepOut(S.ditchCells, dtG);
-  if (S.shelterCell && shG.has(S.shelterCell.cx + ',' + S.shelterCell.cy)) S.shelterCell = null;
-  for (let i = S.bRows.length - 1; i >= 0; i--) if (S.bRows[i].id != null ? ids.has(S.bRows[i].id) : false) S.bRows.splice(i, 1);
-  //   DB — 마을 한 거래
+  if (dtG.size) for (let i = S.ditchCells.length - 1; i >= 0; i--) if (dtG.has(S.ditchCells[i].cx + ',' + S.ditchCells[i].cy)) S.ditchCells.splice(i, 1);
+  const ids = new Set(drop.map((r) => r.id));
+  for (let i = S.bRows.length - 1; i >= 0; i--) if (S.bRows[i].id != null && ids.has(S.bRows[i].id)) S.bRows.splice(i, 1);
   try {
     db.db.exec('SAVEPOINT t1471_fit');
     try {
       const del = db.db.prepare('DELETE FROM village_buildings WHERE id = ?');
-      for (const r of gone) del.run(r.id);
+      for (const r of drop) del.run(r.id);
       if (terrN) {
         if (typeof db.terrHasSeq === 'function' && db.terrHasSeq(vid) && typeof db.terrCompact === 'function') db.terrCompact(vid, row.cx, row.cy, S.terrSet);   // 묶음 행 마을 = 남은 칸 차례 그대로 한 행
         else { const dc = db.db.prepare("DELETE FROM village_buildings WHERE village_id = ? AND type = 'terr' AND cx = ? AND cy = ?"); for (const k of tDel) { const i = k.indexOf(','); dc.run(vid, +k.slice(0, i), +k.slice(i + 1)); } }
       }
       db.db.exec('RELEASE t1471_fit');
     } catch (e) { try { db.db.exec('ROLLBACK TO t1471_fit'); db.db.exec('RELEASE t1471_fit'); } catch (x) {} throw e; }
-  } catch (e) { _t1471Stat.fail++; console.error(`[${state.zoneId}] 🏔️ [T1471] ${row.name} 행 걷기 실패(메모리만 걸렀다 · 다음 부팅이 다시):`, e.message); }
-  _t1471Stat.vils++; _t1471Stat.terr += terrN; _t1471Stat.rows += gone.length; _t1471Stat.houses += houseN; _t1471Stat.pBad += pBad;
-  const ko = { house: '집', housesite: '집터', granary: '곳간', shelter: '쉼터', farmland: '논', dryfield: '밭', nongzone: '논 존닝', yard: '마당', plaza: '광장', garden: '텃밭', ditch: '도랑' };
+  } catch (e) { _t1471Stat.fail++; console.error(`[${state.zoneId}] 🏔️ [T1471] ${row.name} 영토 · 존닝 걷기 실패(메모리만 걸렀다 · 다음 부팅이 다시):`, e.message); }
+  _t1471Stat.vils++; _t1471Stat.terr += terrN; _t1471Stat.rows += drop.length + moves.length;
+  for (const t in cnt) _t1471Stat.byType[t] = (_t1471Stat.byType[t] || 0) + cnt[t];
+  if (moves.length) _t1471Pend.set(vid, { name: row.name, moves });
+  const ko = _T1471_KO;
   const parts = Object.keys(cnt).map((t) => `${ko[t] || t} ${cnt[t]}`).join(' · ');
-  console.log(`[${state.zoneId}] 🏔️ [T1471] ${row.name} 지금 산 · 물인 칸 — 영토 ${terrN}칸${parts ? ' · ' + parts : ''} 뺐다${pBad ? ` (의뢰 집 ${pBad} — 플레이어 것 · 안 건드림)` : ''}`);
+  console.log(`[${state.zoneId}] 🏔️ [T1471] ${row.name} 지금 산 · 물인 칸 — 영토 ${terrN}칸 뺐다${parts ? ' · 걸린 행 ' + parts : ''}${moves.length ? ` (옮길 것 ${moves.length} — 마을이 다 선 뒤 옮긴다)` : ''}${pBad ? ` · 의뢰 집 ${pBad}(플레이어 것 · 회부)` : ''}`);
   return S;
+}
+const _T1471_KO = { house: '집', housesite: '집터', granary: '곳간', shelter: '쉼터', farmland: '논', dryfield: '밭', nongzone: '논 존닝', yard: '마당', plaza: '광장', garden: '텃밭', ditch: '도랑' };
+//   ② 옮기기 — 마을이 다 선 뒤 · 실물화 앞(집 픽셀이 부팅 몸 배치 앞에 고쳐져야 집주인이 따라간다)
+function _t1471Relocate() {
+  const ta = state.ta, db = state.db; if (!ta || !db || !db.db) return;
+  if (_t1471Pend.size) for (const vil of state.villages) { const P = _t1471Pend.get(vil.dbId); if (P) { try { _t1471RelocVil(vil, P.moves); } catch (e) { _t1471Stat.fail++; console.error(`[${state.zoneId}] 🏔️ [T1471] ${vil.name} 옮기기 실패(그 자리 그대로 · 다음 부팅이 다시):`, e.message); } } }
+  _t1471Pend.clear();
+  //   회부 — 플레이어 것(주인이 있다 · 셈만)
+  try {
+    let nb = 0, nc = 0;
+    for (const b of db.db.prepare("SELECT x, y FROM buildings WHERE owner_id NOT LIKE 'npc_%'").iterate()) if (_t1471Bad(ta, Math.floor(b.x / SZ), Math.floor(b.y / SZ))) nb++;
+    for (const c of db.db.prepare('SELECT x, y, w, h FROM claims').iterate()) {
+      let hit = false; const x0 = Math.floor(c.x / SZ), y0 = Math.floor(c.y / SZ), x1 = Math.floor((c.x + (c.w || 0) - 1) / SZ), y1 = Math.floor((c.y + (c.h || 0) - 1) / SZ);
+      for (let y = y0; y <= y1 && !hit; y++) for (let x = x0; x <= x1; x++) if (_t1471Bad(ta, x, y)) { hit = true; break; }
+      if (hit) nc++;
+    }
+    _t1471Stat.pBld = nb; _t1471Stat.pClaim = nc;
+    if (nb || nc || _t1471Stat.pBad) console.log(`[${state.zoneId}] 🏔️ [T1471] 회부 — 산 · 물 칸에 걸린 플레이어 것: 건물 ${nb} · 사유지 ${nc} · 의뢰 집 · 집터 ${_t1471Stat.pBad}(주인이 있다 — 안 옮긴다)`);
+  } catch (e) {}
+}
+function _t1471RelocVil(vil, moves) {
+  const ta = state.ta, D = state.db.db, LOT = _lifeVL().LOT_CELLS;
+  const key = (x, y) => x + ',' + y;
+  //   차지한 칸 — 이 마을 행 전부(발자국 행은 발자국 · 칸 행은 그 칸) · 옮길 행의 옛 칸은 뺀다(산 · 물이라 어차피 못 쓴다)
+  const movingId = new Set(moves.map((m) => m.id));
+  const occ = new Set(), addFoot = (type, cx, cy) => { const R = _t1471Foot(type, cx, cy); if (!R) { occ.add(key(cx, cy)); return; } for (let y = R[1]; y <= R[3]; y++) for (let x = R[0]; x <= R[2]; x++) occ.add(key(x, y)); };
+  const rows = D.prepare("SELECT id, type, cx, cy FROM village_buildings WHERE village_id = ? AND type NOT IN ('terr', 'terrseq', 'nongzone')").all(vil.dbId);
+  for (const r of rows) { if (movingId.has(r.id)) continue; addFoot(r.type, r.cx, r.cy); }
+  //   집 부지 — 옮길 집마다 그 부지의 마당 · 텃밭 · 같은 칸 집터 행(옮길 행 목록에 있든 없든 부지째)
+  const hMoves = moves.filter((m) => m.type === 'house');
+  const lotOf = new Map();   // 집 행 id → 부지 행들
+  for (const h of hMoves) {
+    const inLot = new Set(LOT.map(([dx, dy]) => key(h.cx + dx, h.cy + dy)));
+    const L = rows.filter((r) => ((r.type === 'yard' || r.type === 'garden') && inLot.has(key(r.cx, r.cy))) || (r.type === 'housesite' && r.cx === h.cx && r.cy === h.cy));
+    lotOf.set(h.id, L);
+    for (const r of L) { movingId.add(r.id); occ.delete(key(r.cx, r.cy)); }
+  }
+  const cellMoves = moves.filter((m) => _T1471_CELL.has(m.type) && !hMoves.some((h) => (lotOf.get(h.id) || []).some((r) => r.id === m.id)));
+  const siteMoves = moves.filter((m) => m.type === 'housesite' && !hMoves.some((h) => (lotOf.get(h.id) || []).some((r) => r.id === m.id)));
+  const footMoves = moves.filter((m) => m.type === 'granary' || m.type === 'shelter');
+  //   닿음 — 회관 남문 앞 · 옮기지 않는 집 문 앞 가운데 그 칸에 가까운 셋에서 걸어 닿나(`npcCanReach` — 일터 닿음(T427)과 같은 술어 · 그 술어의 탐색 반경 안에서)
+  const _orig = [[vil.ccx, vil.ccy + 6]].concat(vil._houseCells.filter((e) => !hMovesAt(e.cx, e.cy)).map((e) => [e.cx - 2, e.cy]));
+  function hMovesAt(cx, cy) { return moves.some((m) => m.type === 'house' && m.cx === cx && m.cy === cy); }
+  const reach = (x, y) => {
+    const f = state.deps && state.deps.npcCanReach; if (typeof f !== 'function') return true;
+    const o = _orig.map((c) => [c[0], c[1], Math.abs(c[0] - x) + Math.abs(c[1] - y)]).sort((p, q) => p[2] - q[2]).slice(0, 3);
+    for (const c of o) { try { if (f(c[0] * SZ + SZ / 2, c[1] * SZ + SZ / 2, x * SZ + SZ / 2, y * SZ + SZ / 2)) return true; } catch (e) { return true; } }
+    return false;
+  };
+  const terrArr = () => { const a = []; for (const k of vil._terrSet) { const i = k.indexOf(','); a.push([+k.slice(0, i), +k.slice(i + 1)]); } return a; };
+  const near = (ox, oy, ok) => { const a = terrArr().map((c) => [c[0], c[1], (c[0] - ox) * (c[0] - ox) + (c[1] - oy) * (c[1] - oy)]); a.sort((p, q) => p[2] - q[2] || p[1] - q[1] || p[0] - q[0]); for (const c of a) if (ok(c[0], c[1])) return c; return null; };
+  const upd = D.prepare('UPDATE village_buildings SET cx = ?, cy = ? WHERE id = ?'), del = D.prepare('DELETE FROM village_buildings WHERE id = ?');
+  const out = { moved: {}, dropped: {}, mat: {} };
+  const bump = (o, t, n) => { o[t] = (o[t] || 0) + (n == null ? 1 : n); };
+  D.exec('SAVEPOINT t1471_mv');
+  try {
+    //   집 — 있는 집터 판정 · 회관에서 닿는 칸 · 옛 자리에서 가장 가까운 칸
+    for (const h of hMoves) {
+      const idx = vil._houseCells.findIndex((e) => e.cx === h.cx && e.cy === h.cy);
+      const e = idx >= 0 ? vil._houseCells[idx] : null;
+      if (e) vil._houseCells.splice(idx, 1);   // 제 자리는 간격 판정에서 뺀다(되돌려 넣는다 — 같은 자리)
+      const F = _lifeSiteFilters(vil, null);
+      const lotFree = (x, y) => { for (const [dx, dy] of LOT) if (occ.has(key(x + dx, y + dy))) return false; return true; };
+      const pick = near(h.cx, h.cy, (x, y) => !((x & 1) || (y & 1)) && Math.hypot(x - vil.ccx, y - vil.ccy) >= _lifeVL().HALL_CLEAR && !F.reject(x, y, false) && lotFree(x, y)
+        && !(T1440_ROAD_RULE && _t1440SiteCloses(x - 5, y - 5, x, y - 2)) && reach(x - 2, y));
+      const pxI = vil.housesPx.findIndex((p) => Math.abs(p.x - (h.cx * SZ + SZ / 2)) < 1 && Math.abs(p.y - (h.cy * SZ + SZ / 2)) < 1);
+      const L = lotOf.get(h.id) || [];
+      if (pick) {
+        const [x, y] = pick;
+        if (e) { e.cx = x; e.cy = y; vil._houseCells.splice(idx, 0, e); }
+        if (pxI >= 0) vil.housesPx[pxI] = { x: x * SZ + SZ / 2, y: y * SZ + SZ / 2 };
+        upd.run(x, y, h.id);
+        for (const r of L) { if (r.type === 'housesite') upd.run(x, y, r.id); else del.run(r.id); }
+        let tiles = 0;
+        for (const [dx, dy] of LOT) {   // 마당 · 텃밭 — 완공(`_lifeCompleteHouse`)과 같은 원판 규칙
+          const xx = x + dx, yy = y + dy; vil._potSet.delete(key(xx, yy)); occ.add(key(xx, yy));
+          if (!vil._terrSet.has(key(xx, yy))) continue;
+          if (dx >= -5 && dx <= 0 && dy >= -5 && dy <= -2) continue;
+          const isG = dx >= 1 && dx <= 4 && dy >= 1 && dy <= 4;
+          state.db.insertVillageBuilding({ village_id: vil.dbId, type: isG ? 'garden' : 'yard', cx: xx, cy: yy, floors: 0, data: null }); tiles++;
+        }
+        bump(out.moved, 'house'); bump(out.moved, 'lot', L.length); _t1471Stat.movedRows += 1 + L.length; _t1471Stat.moved++;
+        vil._t1471Moved = (vil._t1471Moved || []).concat([[h.cx, h.cy, x, y, tiles]]);
+      } else {
+        if (e) { /* 그대로 뺀 채 */ }
+        if (pxI >= 0) vil.housesPx.splice(pxI, 1);
+        del.run(h.id); for (const r of L) del.run(r.id);
+        const M = _lifeEcon().hutEconMaterials ? _lifeEcon().hutEconMaterials() : null;
+        if (M && vil.econ && vil.econ.storage) for (const k in M) if (M[k] > 0) { vil.econ.storage[k] = (vil.econ.storage[k] || 0) + M[k]; bump(out.mat, k, M[k]); }
+        bump(out.dropped, 'house'); _t1471Stat.dropped++; _t1471Stat.droppedRows += 1 + L.length;
+      }
+    }
+    //   진행 중 집터 — 집과 같은 판정
+    for (const m of siteMoves) {
+      const F = _lifeSiteFilters(vil, null);
+      const pick = near(m.cx, m.cy, (x, y) => !((x & 1) || (y & 1)) && Math.hypot(x - vil.ccx, y - vil.ccy) >= _lifeVL().HALL_CLEAR && !F.reject(x, y, false) && reach(x - 2, y));
+      if (pick) { upd.run(pick[0], pick[1], m.id); if (vil._pendSite && vil._pendSite.cx === m.cx && vil._pendSite.cy === m.cy) vil._pendSite = { cx: pick[0], cy: pick[1] }; bump(out.moved, 'housesite'); _t1471Stat.movedRows++; addFoot('house', pick[0], pick[1]); }
+      else { del.run(m.id); if (vil._pendSite && vil._pendSite.cx === m.cx && vil._pendSite.cy === m.cy) vil._pendSite = null; bump(out.dropped, 'housesite'); _t1471Stat.droppedRows++; }
+    }
+    //   곳간 · 쉼터 — 발자국이 다 영토 · 빈 칸 · 산 · 물 아님 · 논밭 아님 · 닿는 칸
+    for (const m of footMoves) {
+      const R0 = _t1471Foot(m.type, 0, 0);
+      const ok = (x, y) => { for (let yy = y + R0[1]; yy <= y + R0[3]; yy++) for (let xx = x + R0[0]; xx <= x + R0[2]; xx++) { const k = key(xx, yy); if (!vil._terrSet.has(k) || occ.has(k) || vil._farmSet.has(k) || _t1471Bad(ta, xx, yy)) return false; } return reach(x, y + R0[3] + 1); };
+      const pick = near(m.cx, m.cy, ok);
+      const list = m.type === 'granary' ? vil._granList : null;
+      const ent = list ? list.find((g) => g.cx === m.cx && g.cy === m.cy) : null;
+      if (pick) {
+        upd.run(pick[0], pick[1], m.id); addFoot(m.type, pick[0], pick[1]);
+        if (ent) { ent.cx = pick[0]; ent.cy = pick[1]; }
+        if (m.type === 'shelter' && vil._shelter && vil._shelter.cx === m.cx && vil._shelter.cy === m.cy) vil._shelter = { cx: pick[0], cy: pick[1] };
+        bump(out.moved, m.type); _t1471Stat.movedRows++;
+      } else {
+        del.run(m.id); if (ent) list.splice(list.indexOf(ent), 1);
+        if (m.type === 'shelter' && vil._shelter && vil._shelter.cx === m.cx && vil._shelter.cy === m.cy) vil._shelter = null;
+        bump(out.dropped, m.type); _t1471Stat.droppedRows++;
+      }
+    }
+    //   논 · 밭 · 외톨이 마당 · 광장 · 텃밭 — 가장 가까운 빈 영토 칸
+    for (const m of cellMoves) {
+      const pick = near(m.cx, m.cy, (x, y) => !occ.has(key(x, y)) && !vil._farmSet.has(key(x, y)) && !_t1471Bad(ta, x, y));
+      const k0 = key(m.cx, m.cy);
+      if (pick) {
+        const k1 = key(pick[0], pick[1]); upd.run(pick[0], pick[1], m.id); occ.add(k1);
+        if (m.type === 'farmland' || m.type === 'dryfield') { vil._farmSet.delete(k0); vil._farmSet.add(k1); vil._potSet.delete(k1); if (m.type === 'dryfield') { vil._drySet.delete(k0); vil._drySet.add(k1); } }
+        bump(out.moved, m.type); _t1471Stat.movedRows++;
+      } else {
+        del.run(m.id);
+        if (m.type === 'farmland') { vil._farmSet.delete(k0); vil._farmN = Math.max(0, vil._farmN - 1); }
+        if (m.type === 'dryfield') { vil._farmSet.delete(k0); vil._drySet.delete(k0); vil._dryN = Math.max(0, vil._dryN - 1); }
+        bump(out.dropped, m.type); _t1471Stat.droppedRows++;
+      }
+    }
+    D.exec('RELEASE t1471_mv');
+  } catch (e) { try { D.exec('ROLLBACK TO t1471_mv'); D.exec('RELEASE t1471_mv'); } catch (x) {} throw e; }
+  if (vil._bRows) { const fresh = state.db.getVillageStructAll ? state.db.getVillageStructAll(vil.dbId) : null; if (fresh) vil._bRows = fresh; }   // 실물화가 새 자리 행을 읽게
+  for (const k in out.mat) _t1471Stat.mat = Object.assign(_t1471Stat.mat || {}, { [k]: ((_t1471Stat.mat || {})[k] || 0) + out.mat[k] });
+  lifeSiteReset(vil); _fieldBridge(vil); t1399Bump(vil);
+  const ko = Object.assign({ lot: '그 부지 행' }, _T1471_KO), fmt = (o) => Object.keys(o).map((t) => `${ko[t] || t} ${o[t]}`).join(' · ');
+  const mv = (vil._t1471Moved || []).map((a) => `집 (${a[0]},${a[1]}) → (${a[2]},${a[3]}) · 마당 · 텃밭 ${a[4]}칸 다시 깜`).join(' · ');
+  console.log(`[${state.zoneId}] 🏔️ [T1471] ${vil.name} 옮김 — ${fmt(out.moved) || '0'}${mv ? ' (' + mv + ')' : ''}${Object.keys(out.dropped).length ? ` · 자리 없어 걷음 ${fmt(out.dropped)}` : ''}${Object.keys(out.mat).length ? ` · 재료 곳간에 ${fmt(out.mat)}` : ''}`);
 }
 //   몸 — 다시 뜬 판이 저장 자리로 되돌린 마을 몸(T747 · T1340)이 지금 산 · 물 칸 위면(지도가 그 밑에서 바뀌었다 — 사키농촌 베가 · 카이 · 루나 · 아라 다섯이 옛 고개 자리 산 속에 선다)
 //     그 몸의 집 자리(부팅 몸 배치가 이번에 준 `npcHomeX/Y` — 산 밖 집)로 옮기고 걷던 목표를 그 자리로(다음 결정이 새로 고른다 · 새 수 0).
@@ -10487,6 +10629,7 @@ function init(deps) {
       if (n) console.log(`[${ZONE_ID}] 🏠 플레이어 의뢰 집터 복원 ${n}건(단계는 1로 재시작 — 진행도 비영속 관용)`);
     } catch (e) { console.error(`[${ZONE_ID}] 🏠 의뢰 집터 복원 실패:`, e.message); }
 
+    if (T1471_LAND_FIT) { try { _t1471Relocate(); } catch (e) { console.error(`[${ZONE_ID}] 🏔️ [T1471] 옮기기 실패(그 자리 그대로 계속):`, e.message); } }   // ★[T1471 덧붙임 셋] 켬 = 산 · 물에 걸린 건물 · 일터를 옮긴다(위 손잡이 주석 · 끔 = 이 줄 0)
     // --- Stage 4A: 회관·집 실물화 (buildings 테이블 — 부팅 wipe가 지운 자리에 재기록, 1트랜잭션) ---
     {
       const t0 = Date.now();
