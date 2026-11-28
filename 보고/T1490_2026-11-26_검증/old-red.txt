@@ -1,0 +1,3 @@
+# 옛 코드 빨강 — 하네스 = ee7ea5ab · 제품(server sim public lab) = 6896843a · 시한 600초
+빨강 ○ | test-t1490-near-now.js | RC=1 · ✓ 0 · ✗ 1 | ✗ AssertionError [ERR_ASSERTION]: EMPTY_CACHE
+# 합: 빨강 1 · 크래시 0 · 초록 0 · 모름 0 · 제품 무관 0

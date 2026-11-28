@@ -1,0 +1,19 @@
+PASS default OFF undefined
+PASS default OFF 0
+PASS default OFF 
+PASS default OFF false
+PASS ON flow
+PASS ON held
+PASS ON heldFull
+PASS ON noBodies
+PASS ON boundary
+PASS ON fractional
+PASS ON noDemand
+PASS ON noTrees
+PASS ON noWorkers
+PASS ON offAct
+PASS ON offLife
+PASS ON with legacy hand delivery
+PASS 미끼 early — 바꾼 자리 1곳: 일괄을 앞당기면 몸 차례 단언 빨강
+PASS 미끼 held — 바꾼 자리 1곳: 운반 중인 몫을 빼면 보존 단언 빨강
+PASS 18 FAIL 0

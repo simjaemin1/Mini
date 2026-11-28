@@ -1,0 +1,16 @@
+off-1020	long	800	1020	all	-	-	-
+terrseq-1020	long	800	1020	all	-	-	T1433_TERR_SEQ=1
+all4-1020	long	800	1020	all	-	-	T1423_NO_BUILD=1,T1423_BLOCK_REACT=1,T1432_NPC_DEATH=1,T1433_TERR_SEQ=1
+nd-u0-1020	long	100	1020	none	-	-	T1432_NPC_DEATH=1
+nd-u1-1020	long	100	1020	none	-	-	T1432_NPC_DEATH=1,T1461_BEAST_UNSEEN=1
+nd-u0-7	long	100	7	none	-	-	T1432_NPC_DEATH=1
+nd-u1-7	long	100	7	none	-	-	T1432_NPC_DEATH=1,T1461_BEAST_UNSEEN=1
+nd-u0-42	long	100	42	none	-	-	T1432_NPC_DEATH=1
+nd-u1-42	long	100	42	none	-	-	T1432_NPC_DEATH=1,T1461_BEAST_UNSEEN=1
+off-7	long	300	7	all	-	-	-
+terrseq-7	long	300	7	all	-	-	T1433_TERR_SEQ=1
+off-42	long	300	42	all	-	-	-
+terrseq-42	long	300	42	all	-	-	T1433_TERR_SEQ=1
+npcdeath-1020	long	300	1020	all	-	-	T1432_NPC_DEATH=1
+react-1020	long	300	1020	all	-	-	T1423_BLOCK_REACT=1
+nobuild-1020	long	300	1020	all	-	-	T1423_NO_BUILD=1

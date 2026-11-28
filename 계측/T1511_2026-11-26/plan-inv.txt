@@ -1,0 +1,7 @@
+# 무변 판(시드 7 · 건너뜀 0 · 탐침 모두 켬) — T1487 기본 판(/home/user/t1487/run/inv/*-plain.json)과 지문(byseed) 견줌
+i-wood30|7|30|wood|0|T325_WOOD_ACT=1
+i-off30|7|30|off|0|
+i-f70|7|70|fish|0|T312_FISH_ACT=1
+i-w150|7|150|wood|0|T325_WOOD_ACT=1
+# 건너뜀 켬 짧은 판 — 지문이 달라져야 한다(관찰기가 실제로 문을 푼다)
+i-u150|7|150|wood|all|T325_WOOD_ACT=1

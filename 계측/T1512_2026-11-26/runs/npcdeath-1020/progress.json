@@ -1,0 +1,67 @@
+{
+ "v": 1,
+ "tag": "sbc",
+ "seed": 1020,
+ "days": 300,
+ "every": 50,
+ "dir": "/home/user/t1492-out/runs/npcdeath-1020",
+ "ck": 300,
+ "segs": [
+  {
+   "from": 0,
+   "to": 50,
+   "sec": 1522.4,
+   "code": 0,
+   "at": "2026-11-27T08:19:30.282Z"
+  },
+  {
+   "from": 50,
+   "to": 100,
+   "sec": 1638.8,
+   "code": 0,
+   "at": "2026-11-27T08:46:49.784Z"
+  },
+  {
+   "from": 100,
+   "to": 150,
+   "sec": 1557.2,
+   "code": 0,
+   "at": "2026-11-27T09:12:48.002Z"
+  },
+  {
+   "from": 150,
+   "to": 200,
+   "sec": 1594.1,
+   "code": 0,
+   "at": "2026-11-27T09:39:24.065Z"
+  },
+  {
+   "from": 200,
+   "to": 250,
+   "sec": 1653,
+   "code": 0,
+   "at": "2026-11-27T10:06:57.970Z"
+  },
+  {
+   "from": 250,
+   "to": 300,
+   "sec": 1701.6,
+   "code": 0,
+   "at": "2026-11-27T10:35:20.012Z"
+  }
+ ],
+ "done": true,
+ "env": {
+  "NODE_OPTIONS": "--max-old-space-size=4608 --require /home/user/t1492/scripts/t1492-bots.js",
+  "T745_VCLOCK": "1",
+  "VILLAGE_DAY_MS": "1440000",
+  "T699_ROUTE_CACHE": "/home/user/t1492-out/route-cache",
+  "T1486_BOTS": "8",
+  "T1432_NPC_DEATH": "1",
+  "T577_TAG": "sbc",
+  "T1492_SEG": "1"
+ },
+ "started": "2026-11-27T07:54:07.466Z",
+ "tries": 0,
+ "ended": "2026-11-27T10:35:20.120Z"
+}

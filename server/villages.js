@@ -14444,9 +14444,17 @@ function _t717PackPut(vil, u) {
   return u;
 }
 //   짐을 곳간에 — 입구가 받은 만큼만 뺀다(나머지는 짐에 그대로). 받은 몫을 돌려준다.
+// T1516 (OFF by default): carried body wood keeps its existing demand share.
+const T1516_BODY_FIRST = process.env.T1516_BODY_FIRST === '1';
+function _t1516WoodLeft(vil) {
+  return _lifeEcon().woodDemandLeft(vil.econ, _t374Held(vil, _T374_WOOD));
+}
+function _t1516WoodOffer(vil, units) {
+  return T1516_BODY_FIRST && _lifeEcon().T325_WOOD_ACT ? Math.min(units, _t1516WoodLeft(vil)) : units;
+}
 function _t717PackIn(vil) {
   const u = (vil && vil.econ && vil.econ._t717Pack) || 0; if (!(u > 0)) return 0;
-  const g = _lifeEcon().woodToGranary(vil.econ, u) || 0;
+  const g = _lifeEcon().woodToGranary(vil.econ, _t1516WoodOffer(vil, u)) || 0;
   if (!(g > 0)) return 0;
   const r = +(u - g).toFixed(6);
   if (r > 1e-9) vil.econ._t717Pack = r; else _t862Drop(vil.econ, '_t717Pack');   // ★[T1203] T862 ② 문(켬 = `undefined` · 읽기는 `|| 0`)
@@ -17057,6 +17065,12 @@ function _lifeHandsIn(vil) {
   _t1195HuntIn(vil);   // ★[T1195] 어제 사냥꾼 몸이 잡은 짐승 → 곳간(econ 틱 바로 앞 · T720 켬이어도 · 끔 = 첫 줄에서 돌아간다)
   _t1196Seats(vil);   // ★[T1196] econ 틱 앞 — 장인 빈 몸 명부(끔 · 랩 = 첫 줄에서 돌아간다)
   _t1422In(vil);   // ★[T1422] 어제 남는 시간 식량 · 땔감 몸 시간 → econ(끔 = 첫 줄에서 돌아간다 · econ 틱 앞)
+  if (T1516_BODY_FIRST && LIFE_ON && _lifeEcon().T325_WOOD_ACT && vil && vil.econ && vil._terrSet && vil._terrSet.size) {
+    _lifeVL();
+    const seen = T449_BODY_DAY && _t449Seen(vil);
+    const stats = T449_BODY_DAY ? (vil._t449 || (vil._t449 = { d: 0, seen: 0, hlFarm: 0, hlSite: 0, woodBody: 0, forageBody: 0 })) : null;
+    _lifeWoodDay(vil, seen, stats, T731_ON && vil._t731Day != null ? vil._t731Day + 1 : undefined);
+  }
   //   ★★[T757] T720 켬(경계 일괄 없음 — 손은 해 질 녘 `_t720Step` 에서 든다)이어도 **그날 광부 몸이 쳤나**는 여기서 심는다 —
   //     표식(`_t724Walk`)은 손이 아니라 **타수**의 뜻이고, 읽는 둘(econ 원석 게이트 `mineActOn` · `_oreMineDaily` 셀 깎기 문)이 바로 뒤 econ · 채굴 조각이다.
   //     종전(T720 · T724 를 10-14 같이 켬): 이 함수 첫 줄에서 돌아가 표식이 한 번도 안 섰다 ⇒ 몸이 친 마을에서도 econ 수식 원석 + 일괄 셀 깎기가 돌았다(몸 XOR 일괄 위반 · 보고/T757).
@@ -21421,50 +21435,9 @@ function _t561Walked(vil, npc, now) {
   const d = state.dayMs ? _bodyDay(npc, now) : 0;                                                  // 몸의 날(`npcLifeTick` 이 쓰는 그 날 · ★[T720] 켬 = 현지 날)
   if (npc._t561Wd !== d) { npc._t561Wd = d; vil._t325PreWalked = (vil._t325PreWalked | 0) + 1; }
 }
-// ★[T523] `_lifeDaily` 는 정본 몸통(`_lifeDailySteps` 발생기)을 쉬지 않고 끝까지 돈다 — 종전 호출·순서·값 그대로.
-//   쉼표는 사냥꾼 한 명마다 하나뿐이다(`_huntHuntersSteps`). 손잡이 `T523_LIFE_SLICE` 를 켜면 하루 마감(`_openDayJobs`)이 그 쉼표에서 프레임을 넘긴다.
-function _lifeDaily(vil) { const g = _lifeDailySteps(vil); while (!g.next().done); }
-function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대사(디스폰 누수 자가치유) + 신축 판단 + 작물 하루 성장
-  if (!LIFE_ON || !vil._terrSet || !vil._terrSet.size || !vil.econ) return;
-  _lifeVL();
-  // ★[T449] 결산 문 — 켬이면 이 마을이 오늘 관측 마을인가(끔이면 묻지 않는다 · 거짓 · 비트 동일)
-  const _t449S = T449_BODY_DAY && _t449Seen(vil);
-  const _t449T = T449_BODY_DAY ? (vil._t449 || (vil._t449 = { d: 0, seen: 0, hlFarm: 0, hlSite: 0, woodBody: 0, forageBody: 0 })) : null;   // 계측 전용 누계(켬만 · 회계 아님)
-  if (_t449T) { _t449T.d++; if (_t449S) _t449T.seen++; }
-  let _lt = Date.now(); let _lt0 = _lt;   // ★[T1 §0] 하위 스톱워치(계측 전용) · ★[T523] 쉼표에서 쉰 시간은 빼 준다(아래 `_t523Pause`)
-  const _sub = (nm) => { const t = Date.now(), d = t - _lt; _lt = t; _lifeSub[nm] += d; if (d > (_lifeSubMax[nm] || 0)) _lifeSubMax[nm] = d; };
-  // ★[LIFE_* 튜닝 계측] 하루 누계를 '어제치'로 확정하고 리셋 — /lifedbg가 dCl/dSt/dTk로 노출한다.
-  vil._dCl = vil._mCl || 0; vil._dSt = vil._mSt || 0; vil._dTk = vil._mTk || 0;
-  vil._mCl = 0; vil._mSt = 0; vil._mTk = 0;
-  vil._clearCrew = 0; vil._buildCrew = 0; t1399Bump(vil); vil._claim = new Set(); vil._frontDay = -1;
-  // ★★[T312] **낮이 끝나면 들고 있던 것을 곳간에 넣는다**(캐논 ⓐ — 귀환 시 입고).
-  //   ⚠여기가 하루의 경계다. 짐이 차서 이미 돌아간 사람은 손이 비어 있어 이 줄이 무해하다.
-  //   ⚠그리고 **관측자 없는 마을**(몸이 안 걷는 마을)의 어부도 여기서 **같은 함수**로 하루를 푼다 —
-  //     `_t312Take`(같은 셀 예산) → `fishToGranary`(같은 곳간 입구) → 장부 한 줄. 걸음만 없다.
-  //     ⚠**걸음이 없는 것은 이 카드가 남긴 빚이다**(캐논 ⓑ는 "관측자 없어도 실걸음") — 보고 §회부.
-  // ★★[T312→T316] **낮이 끝나면 들고 있던 것을 곳간에 넣는다**(캐논 ⓐ — 귀환 시 입고).
-  //   ★★[T316] T312 는 여기에 "안 걷는 마을의 하루를 대신 푸는" 갈래를 갖고 있었다 — **지웠다.**
-  //     이제 마을 NPC 는 관측자와 무관하게 걷는다(`zone.js` `_t316WalkAlways`) ⇒ 몸이 낚고 몸이 나른다.
-  //     그 갈래를 남겨 두면 걷는 마을에서 **두 번** 잡힌다(공존 = 이중 생산 · T135 규약).
-  //   ⚠짐이 차서 이미 돌아간 사람은 손이 비어 있어 이 줄이 무해하다.
-  if (vil.econ && _lifeEcon().fishActOn(vil.econ)) {
-    const _pl = state.deps.players;
-    if (!T720_LON_DAY) for (const pid of (vil.npcPids || [])) { const p = _pl && _pl.get(pid); if (p && (p._t312U || 0) > 0) _t312Deliver(vil, p); }   // ★[T720 ③] 켬 = 손 비우기 없음(닿는 순간)
-    vil._t312 = null;   // ★이월 없음 — 날이 바뀌면 예산 장부를 버린다(설계_민물고기 §2)
-    vil._t312W = null;  // 물 갈래는 계절이 바뀌면 다시 읽는다(논이 생기기도 한다)
-  }
-  //   ★★[T1202] 몸이 못 한 어부의 하루 — 오늘 몫 장부에서 · 몸과 같은 술어(위 `_t1202FishBatch` 머리말 · 끔 = 무동작).
-  //     ⚠`fishActOn` 문 **밖**에서 부른다 — 물가 셀 수는 현장 목록이 세는데, 그 마을 몸이 어부가 아니면 목록이 한 번도 안 열려 문이 늘 닫혀 있었다.
-  //   ★★[T1217] 켬 = 같은 명부의 하루를 한 시간씩(한 시간 값 ↔ 쉰 값 · 수요 문 없음) + 그날 쉰 몫을 econ 여가에(위 `_t1217FishDay` 머리말) · 끔 = 아래 T1202 줄 그대로.
-  if (vil.econ && _t1217On()) _t1217Day(vil, state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0); else
-  if (T1202_BATCH && vil.econ && _lifeEcon().T312_FISH_ACT) _t1202FishBatch(vil, state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0);
-  if (vil.econ && _lifeEcon().T1266_ORE_BODY) _t1271Day(vil, state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0);   // ★[T1271] 그날 광부의 쉰 몫 → econ 여가(어부 `_t1217Day` 그 자리 · 끔 = 무동작)
-  // ★★[T368] **낮이 끝나면 들고 있던 작물을 곳간에 넣는다**(캐논 ⓐ — 귀환 시 입고 · 어부 절과 같은 꼴).
-  //   볏단이 차서(`G_CARRY`) 곳간에 다녀온 농부는 그때 이미 넣었다(`_lifeGranStep`) — 손이 비어 이 줄이 무해하다.
-  if (vil.econ && _t368ItemsOn()) {
-    const _pl = state.deps.players;
-    if (!T720_LON_DAY) for (const pid of (vil.npcPids || [])) { const p = _pl && _pl.get(pid); if (p && p._t368H) _t368Deliver(vil, p, 'day'); }   // ★[T720 ③] 켬 = 손 비우기 없음
-  }
+// T1516: one wood-day implementation, called at the existing daily position
+// when OFF and after the body's day / before econ when ON. No new production formula.
+function _lifeWoodDay(vil, _t449S, _t449T, closingDay) {
   // ★★[T325] **낮이 끝나면 들고 있던 통나무를 곳간에 넣는다**(캐논 ⓐ — 귀환 시 입고). 어부 절과 같은 꼴.
   //   ⚠그리고 **관측자 없는 마을**의 나무꾼도 여기서 **같은 함수**로 하루를 푼다 —
   //     걸음이 정한 한도 → `t325CutTreeAt`(같은 벌목 문) → `woodToGranary`(같은 곳간 입구) → 재생.
@@ -21473,7 +21446,7 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
   //   ★[T341] **예산이 없다** — 멈추는 것은 **걸음**(하루 왕복 수 · 짐 상한)과 **숲**(있는 그루)뿐이다.
   //     가까운 순서가 아니라 색인 순서인 것은 헤드리스라서다. 그리고 하루가 끝나면 **재생**이 돈다.
   if (vil.econ && _lifeEcon().T325_WOOD_ACT) {
-    const _d = state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0;
+    const _d = closingDay != null ? closingDay : (state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0);
     // ★먼저 센다 — 이 줄이 `woodActOn` 의 입력을 만든다(닭과 달걀을 여기서 끊는다 · 위 `_t325Scan` 주석).
     const _tr = _t325Scan(vil, _d);
     //   ⚠**`return` 을 쓰지 않는다** — 이 절은 `_lifeDaily` 의 중간이고, 여기서 돌아가면 뒤의 하루 경계
@@ -21525,7 +21498,7 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
       //   ★★[T1148] 나무꾼(삭정이 줍기 포함) — 켬 ∧ 땔감 평형 판이면 산 나무를 베기 전에 숲 바닥(어제 남은 삭정이)부터 줍는다.
       //     같은 걸음 한도(`_cap` — 끔 판 한도는 그루라 단으로 바꾼다) · 같은 수요 문 · 같은 곳간 입구 · 숲 바닥 칸은 T1135 삭정이 절의 그 칸(`vil._t1135Dead`).
       if (_lifeEcon().T1148_FUEL_JOB && _t1135On() && (vil._t1135Dead || 0) > 0) {
-        const _left = _lifeEcon().woodDemandLeft(vil.econ);
+        const _left = T1516_BODY_FIRST ? _t1516WoodLeft(vil) : _lifeEcon().woodDemandLeft(vil.econ);
         const _take = Math.min(vil._t1135Dead, _left === Infinity ? vil._t1135Dead : _left, _t491C ? _cap : _cap * _w);
         if (_take > 0) {
           const _g = _lifeEcon().woodToGranary(vil.econ, _take) || 0;
@@ -21538,6 +21511,7 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
       for (let k = 0; k < _tr.length * 8 && ci < _tr.length && made < _cap; k++) {
         //   ★★[T374] 나무꾼도 **같은 규칙**이다(사본 0 — econ 정본 `woodDemandLeft`).
         //     ⚠카드는 "값이 안 변할 것" 이라 했지만 실측은 **절반**이다(보고 §4 — 두 시계 어긋남의 반대 방향).
+        if (T1516_BODY_FIRST && !(_t1516WoodLeft(vil) > 0)) { vil._t325Dbg.stop = 1; break; }
         if (!(_lifeEcon().woodDemandLeft(vil.econ) > 0)) { vil._t325Dbg.stop = 1; break; }
         const t = _tr[ci];
         let peek = null; try { peek = state.deps.t325TreesAtCell ? state.deps.t325TreesAtCell(t.cx, t.cy) : null; } catch (e) { peek = null; }
@@ -21551,7 +21525,7 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
         if (sk) (vil._t341Cut || (vil._t341Cut = [])).push(sk);   // ★재생이 되돌릴 목록(벤 순서)
         made += _t491C ? u : 1; vil._t325Dbg.cut++;                // ★[T491] 켬 = 단으로 센다(한도가 단이다) · 끔 = 그루(옛 줄 `made++` 와 같은 수)
         if (_t491C) vil._t325Dbg.t491.made = +(vil._t325Dbg.t491.made + u).toFixed(6);
-        const _g = _lifeEcon().woodToGranary(vil.econ, u);
+        const _g = _lifeEcon().woodToGranary(vil.econ, _t1516WoodOffer(vil, u));
         if (T717_WOOD_HAND) _t717PackPut(vil, u - (_g || 0));        // ★[T717 ②] 곳간이 안 받은 몫은 마을 짐에(끔 = 옛 줄 · 버림)
         if (T733_FELL_LOOT) _t733LootIn(vil, loot);                   // ★[T733 ①] 같은 그루의 잔가지 · 도토리 — 곳간 그 칸에(안 받은 몫은 짐에 · 끔 = 옛 줄 · 안 읽고 버림)
         vil._t325Deliv = +((vil._t325Deliv || 0) + u).toFixed(6);
@@ -21593,7 +21567,7 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
       const _cx0 = vil.ccx * SZ + SZ / 2, _cy0 = vil.ccy * SZ + SZ / 2;
       for (const t of _tr) { const dd = (t.x - _cx0) * (t.x - _cx0) + (t.y - _cy0) * (t.y - _cy0); if (dd < _bd) _bd = dd; }
       const _cap = _t491BodyDay(vil, Math.sqrt(_bd)) * _fg;
-      const _left = _lifeEcon().woodDemandLeft(vil.econ);
+      const _left = T1516_BODY_FIRST ? _t1516WoodLeft(vil) : _lifeEcon().woodDemandLeft(vil.econ);
       const _take = Math.min(vil._t1135Dead, _left === Infinity ? vil._t1135Dead : _left, _cap);
       D.cap = _cap;
       if (_take > 0) {
@@ -21605,6 +21579,56 @@ function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대
     }
     D.pool = +(vil._t1135Dead || 0).toFixed(4);
   }
+}
+// ★[T523] `_lifeDaily` 는 정본 몸통(`_lifeDailySteps` 발생기)을 쉬지 않고 끝까지 돈다 — 종전 호출·순서·값 그대로.
+//   쉼표는 사냥꾼 한 명마다 하나뿐이다(`_huntHuntersSteps`). 손잡이 `T523_LIFE_SLICE` 를 켜면 하루 마감(`_openDayJobs`)이 그 쉼표에서 프레임을 넘긴다.
+function _lifeDaily(vil) { const g = _lifeDailySteps(vil); while (!g.next().done); }
+function* _lifeDailySteps(vil) {   // 게임일 경계: 크루·클레임 재대사(디스폰 누수 자가치유) + 신축 판단 + 작물 하루 성장
+  if (!LIFE_ON || !vil._terrSet || !vil._terrSet.size || !vil.econ) return;
+  _lifeVL();
+  // ★[T449] 결산 문 — 켬이면 이 마을이 오늘 관측 마을인가(끔이면 묻지 않는다 · 거짓 · 비트 동일)
+  const _t449S = T449_BODY_DAY && _t449Seen(vil);
+  const _t449T = T449_BODY_DAY ? (vil._t449 || (vil._t449 = { d: 0, seen: 0, hlFarm: 0, hlSite: 0, woodBody: 0, forageBody: 0 })) : null;   // 계측 전용 누계(켬만 · 회계 아님)
+  if (_t449T) { _t449T.d++; if (_t449S) _t449T.seen++; }
+  let _lt = Date.now(); let _lt0 = _lt;   // ★[T1 §0] 하위 스톱워치(계측 전용) · ★[T523] 쉼표에서 쉰 시간은 빼 준다(아래 `_t523Pause`)
+  const _sub = (nm) => { const t = Date.now(), d = t - _lt; _lt = t; _lifeSub[nm] += d; if (d > (_lifeSubMax[nm] || 0)) _lifeSubMax[nm] = d; };
+  // ★[LIFE_* 튜닝 계측] 하루 누계를 '어제치'로 확정하고 리셋 — /lifedbg가 dCl/dSt/dTk로 노출한다.
+  vil._dCl = vil._mCl || 0; vil._dSt = vil._mSt || 0; vil._dTk = vil._mTk || 0;
+  vil._mCl = 0; vil._mSt = 0; vil._mTk = 0;
+  vil._clearCrew = 0; vil._buildCrew = 0; t1399Bump(vil); vil._claim = new Set(); vil._frontDay = -1;
+  // ★★[T312] **낮이 끝나면 들고 있던 것을 곳간에 넣는다**(캐논 ⓐ — 귀환 시 입고).
+  //   ⚠여기가 하루의 경계다. 짐이 차서 이미 돌아간 사람은 손이 비어 있어 이 줄이 무해하다.
+  //   ⚠그리고 **관측자 없는 마을**(몸이 안 걷는 마을)의 어부도 여기서 **같은 함수**로 하루를 푼다 —
+  //     `_t312Take`(같은 셀 예산) → `fishToGranary`(같은 곳간 입구) → 장부 한 줄. 걸음만 없다.
+  //     ⚠**걸음이 없는 것은 이 카드가 남긴 빚이다**(캐논 ⓑ는 "관측자 없어도 실걸음") — 보고 §회부.
+  // ★★[T312→T316] **낮이 끝나면 들고 있던 것을 곳간에 넣는다**(캐논 ⓐ — 귀환 시 입고).
+  //   ★★[T316] T312 는 여기에 "안 걷는 마을의 하루를 대신 푸는" 갈래를 갖고 있었다 — **지웠다.**
+  //     이제 마을 NPC 는 관측자와 무관하게 걷는다(`zone.js` `_t316WalkAlways`) ⇒ 몸이 낚고 몸이 나른다.
+  //     그 갈래를 남겨 두면 걷는 마을에서 **두 번** 잡힌다(공존 = 이중 생산 · T135 규약).
+  //   ⚠짐이 차서 이미 돌아간 사람은 손이 비어 있어 이 줄이 무해하다.
+  if (vil.econ && _lifeEcon().fishActOn(vil.econ)) {
+    const _pl = state.deps.players;
+    if (!T720_LON_DAY) for (const pid of (vil.npcPids || [])) { const p = _pl && _pl.get(pid); if (p && (p._t312U || 0) > 0) _t312Deliver(vil, p); }   // ★[T720 ③] 켬 = 손 비우기 없음(닿는 순간)
+    vil._t312 = null;   // ★이월 없음 — 날이 바뀌면 예산 장부를 버린다(설계_민물고기 §2)
+    vil._t312W = null;  // 물 갈래는 계절이 바뀌면 다시 읽는다(논이 생기기도 한다)
+  }
+  //   ★★[T1202] 몸이 못 한 어부의 하루 — 오늘 몫 장부에서 · 몸과 같은 술어(위 `_t1202FishBatch` 머리말 · 끔 = 무동작).
+  //     ⚠`fishActOn` 문 **밖**에서 부른다 — 물가 셀 수는 현장 목록이 세는데, 그 마을 몸이 어부가 아니면 목록이 한 번도 안 열려 문이 늘 닫혀 있었다.
+  //   ★★[T1217] 켬 = 같은 명부의 하루를 한 시간씩(한 시간 값 ↔ 쉰 값 · 수요 문 없음) + 그날 쉰 몫을 econ 여가에(위 `_t1217FishDay` 머리말) · 끔 = 아래 T1202 줄 그대로.
+  if (vil.econ && _t1217On()) _t1217Day(vil, state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0); else
+  if (T1202_BATCH && vil.econ && _lifeEcon().T312_FISH_ACT) _t1202FishBatch(vil, state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0);
+  if (vil.econ && _lifeEcon().T1266_ORE_BODY) _t1271Day(vil, state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0);   // ★[T1271] 그날 광부의 쉰 몫 → econ 여가(어부 `_t1217Day` 그 자리 · 끔 = 무동작)
+  // ★★[T368] **낮이 끝나면 들고 있던 작물을 곳간에 넣는다**(캐논 ⓐ — 귀환 시 입고 · 어부 절과 같은 꼴).
+  //   볏단이 차서(`G_CARRY`) 곳간에 다녀온 농부는 그때 이미 넣었다(`_lifeGranStep`) — 손이 비어 이 줄이 무해하다.
+  if (vil.econ && _t368ItemsOn()) {
+    const _pl = state.deps.players;
+    if (!T720_LON_DAY) for (const pid of (vil.npcPids || [])) { const p = _pl && _pl.get(pid); if (p && p._t368H) _t368Deliver(vil, p, 'day'); }   // ★[T720 ③] 켬 = 손 비우기 없음
+  }
+  // T1516: close the previous day's wood work before econ consumes its ledger.
+  // The new day only primes the same tree index; bodies get the first turn.
+  if (T1516_BODY_FIRST && _lifeEcon().T325_WOOD_ACT) {
+    _t325Scan(vil, state.dayMs ? (T731_ON ? _ledgerDay(vil, _dayNow()) : gameDayOf(_dayNow())) : 0);
+  } else _lifeWoodDay(vil, _t449S, _t449T);
   // ★★[T347 2026-09-22] **채집도 같은 하루다** — 나무꾼 절(위)과 **같은 순서**다:
   //     세고 → 손을 비우고(곳간) → 걸음이 허락한 만큼 따고 → 재생이 돈다.
   //   ⚠관측자 있는 갈래는 **이미 딴다**(zone 채집 실행부가 `lootOfResource` 를 손에 넣는다) —

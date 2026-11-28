@@ -1,0 +1,25 @@
+15:Thread 1 "node" received signal SIGBUS, Bus error.
+18:#0  __memset_avx512_unaligned_erms () at ../sysdeps/x86_64/multiarch/memset-vec-unaligned-erms.S:228
+19:#1  0x00000000026c894f in walIndexAppend ()
+20:#2  0x00000000027281f8 in pagerWalFrames ()
+21:#3  0x0000000002739f67 in pagerStress ()
+22:#4  0x000000000272bfac in getPageNormal ()
+23:#5  0x00000000026cdaa7 in moveToChild ()
+24:#6  0x0000000002732528 in sqlite3BtreeTableMoveto ()
+25:#7  0x0000000002797200 in sqlite3VdbeExec ()
+26:#8  0x00000000027a0140 in sqlite3_step ()
+27:#9  0x000000000116682b in node::sqlite::StatementSync::Run(v8::FunctionCallbackInfo<v8::Value> const&) ()
+28:#10 0x00007f2c7edcf745 in ?? ()
+29:#11 0x00007fff95a1ae60 in ?? ()
+30:#12 0x00007fff95a1ae98 in ?? ()
+31:#13 0x0000000000000004 in ?? ()
+32:#14 0x0000000000000058 in ?? ()
+33:#15 0x00007fff95a1ae20 in ?? ()
+34:#16 0x0000000000000006 in ?? ()
+35:#17 0x00007fff95a1af48 in ?? ()
+36:#18 0x00007f2c5f775edb in ?? ()
+37:#19 0x0000345d9a0e5361 in ?? ()
+39:$1 = (void *) 0x7f2c85c47000
+5084:      0x7f2c85c47000     0x7f2c85c4f000     0x8000     0x8000  rw-s   /home/user/t1512-out/runs/off-1020/w.db-shm
+5085:      0x7f2c85c4f000     0x7f2c85c57000     0x8000        0x0  rw-s   /home/user/t1512-out/runs/off-1020/w.db-shm
+5088:      0x7f2c85c79000     0x7f2c85c81000     0x8000        0x0  rw-s   /home/user/t1512-out/runs/off-1020/w.db-shm
