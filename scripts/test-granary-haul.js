@@ -35,7 +35,9 @@ const _weights = () => require(path.join(__dirname, '..', 'server', 'weights'));
 
 // ★[T1295] `_lifeGranStep` 의 머묾은 판 시계 배율(`t1295S`)로 나눈다 — 이 하네스는 운영 시계 판이라 배율 1(판 시계 축은 `test-t1243-farm-on` ⑩ · ⑪ 이 잰다).
 const t1295S = () => 1;
-const ctx = vm.createContext({ SZ, _lifeAct, state, GRAIN_ITEM, _carryCfg, _weights, t1295S,
+// ★[T1502] `_lifeGranStep` 곳간 도착 줄이 손잡이 `T1502_ACT_FIX` 를 읽는다 — 이 하네스는 끔 판(켬 축은 `test-t1502-funnel` 이 잰다).
+const T1502_ACT_FIX = false;
+const ctx = vm.createContext({ SZ, _lifeAct, state, GRAIN_ITEM, _carryCfg, _weights, t1295S, T1502_ACT_FIX,
   Math, Map, Set, Array, Object, JSON, console });
 vm.runInContext([consts, cut('_handOf'), cut('_handSet'), cut('_handAdd'), cut('_handFull'),
   cut('_granStockOf'), cut('_granStockAdd'), cut('_granLadder'),

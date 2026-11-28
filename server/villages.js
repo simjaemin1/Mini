@@ -14269,6 +14269,7 @@ function _t340Try(vil, npc, now, day, h, ws) {
     const n = (npc._t340N = (npc._t340N || 0) + 1);
     const pl = F.plan(sp, stock01, now, _t340Rng(h ^ Math.imul(n, 0x9e3779b9) ^ Math.imul(day, 0x85ebca6b)));
     if (F.T1218_FISH_CANON && _t1217On()) pl.biteAt = now + _t1218BodyWait(F, sp, stock01, _sp.kg, h, n, day);   // ★[T1218 ③] 켬 = 마을 어부 입질은 고증 한 시간 kg(플레이어 손맛과 따로 · 같은 무기억 산포)
+    if (T1499_VCLOCK_WALK) { const _s9 = t1295S(npc); if (_s9 > 1) pl.biteAt = now + (pl.biteAt - now) / _s9; }   // ★[T1499] 켬 = 입질 대기도 게임 분 축(끔 · 운영 시계 = 이 줄 무동작)
     npc._t340 = { key, day, x:target.x,y:target.y,cx,cy,biteAt: pl.biteAt, windowMs: F.windowMsFor(_sp.kg), sp: _sp.id, kg: _sp.kg, castAt: now };
     vil._t340Cast = (vil._t340Cast || 0) + 1;
     vil._t340WaitSum = (vil._t340WaitSum || 0) + (pl.biteAt - now);
@@ -14278,6 +14279,12 @@ function _t340Try(vil, npc, now, day, h, ws) {
   }
   if (now < c.biteAt) return 'wait';                    // ── 기다림(찌를 본다)
   const lat = (F.CFG && F.CFG.WIN_LAT_MS) || 0;
+  if (T1499_VCLOCK_WALK && t1295S(npc) > 1) {   // ★[T1499] 켬 = 판 자 몸 — 입질 뒤 첫 결정에서 정본(실제 시계)의 채기 몫 그대로(아래 머리말)
+    npc._t340 = null;
+    if (!(_rngU01(npc, c) < _t1499Hit(c.windowMs + lat))) { vil._t340Miss = (vil._t340Miss || 0) + 1; return 'miss'; }
+    vil._t340Hook = (vil._t340Hook || 0) + 1;
+    return { id: c.sp, kg: c.kg, cx:c.cx,cy:c.cy };
+  }
   if (now > c.biteAt + c.windowMs + lat) {              // ── 놓침(창이 닫혔다 — 그 자리에 없었거나 틱이 굶었다)
     npc._t340 = null; vil._t340Miss = (vil._t340Miss || 0) + 1;
     return 'miss';
@@ -14285,6 +14292,17 @@ function _t340Try(vil, npc, now, day, h, ws) {
   npc._t340 = null; vil._t340Hook = (vil._t340Hook || 0) + 1;
   return { id: c.sp, kg: c.kg, cx:c.cx,cy:c.cy };                        // ── 걸림 — 던질 때 정해진 그 종 그대로
 }
+// ★★[T1499] 판 자 몸의 채기 — 정본(실제 시계)에서 몸은 결정마다(간격 G = 500 + U·1000 ms · `zone.js decideNpcBehavior`) 찌를 본다 ⇒
+//   입질 뒤 첫 결정이 창(W = 그 종 창 + 레이턴시 여유) 안에 들 몫 = E[min(1, W ÷ G)] (G 균등 500 ~ 1,500).
+//   판 자는 한 틱(33 ms) = 정본 3분이라 창(90 ~ 1,050 ms ÷ 배율)이 틱보다 짧다 — 결정 시각으로는 못 가른다 ⇒ 그 몫을 몸 · 던짐 씨 굴림 하나로 낸다(기댓값 = 정본).
+//   새 수 0(G 의 두 끝 500 · 1,500 은 결정 문 그 줄) · 끔 = 이 함수 안 불림.
+function _t1499Hit(W) {
+  if (!(W > 0)) return 0;
+  if (W <= 500) return W * Math.log(3) / 1000;
+  if (W >= 1500) return 1;
+  return (W - 500) / 1000 + W / 1000 * Math.log(1500 / W);
+}
+function _rngU01(npc, c) { return _t340Rng(_pidHash(npc.pid) ^ Math.imul((c.castAt | 0) ^ (c.cx * 73856093) ^ (c.cy * 19349663), 0x9e3779b9))(); }
 // ★★[T316] **관측 창구** — `/perf` 가 그대로 내준다(회계 아님 · 손잡이가 꺼져 있으면 null).
 //   이 자가 없으면 §3(세계 위 자)이 "걷는 어부가 몇이냐 · 첫날 합이 수식과 같으냐"를 **소스에만** 물을 수 있다.
 //   T284 문법 그대로 — 하네스는 세계에 묻는다.
@@ -15781,11 +15799,25 @@ function _t1351MineOn(vil) { return T1351_MINE_CLOCK && !!vil && t1295S({ simVil
 //   켜면 배율 몸(`t1295S` > 1)의 틱을 K 토막으로 나눠 결정 · 걸음을 토막마다 한다 — K = ⌈틱의 게임 분 ÷ 가장 짧은 밭 일(김매기 한 번 · `_t1221Cost(1)` — T1221 정본)⌉.
 //   토막 시각 = 그 틱 안의 고른 자리(지난 틱 끝 → 이 틱) · 걸음 몫 = dt ÷ K 씩(합 = dt — 더 걷지 않는다). 새 수 0. 끔 · 배율 1 = K 1(종전).
 const T1316_SUBSTEP = process.env.T1316_SUBSTEP === '1';
+// ★★[T1499 2026-11-27 · T1511 회부 2] 손잡이 `T1499_VCLOCK_WALK`(끔 기본 · `=1` 켬) — **판 자(가상 시계 · 하루 250 ms)의 몸 걸음을 실제 하루만큼.**
+//   까닭(T1511 · 보고/T1499 §0): 판 자에서 마을 몸은 실초 축으로 걸어 하루 28.5 px 를 간다(일터 650 ~ 2,000 px) — 몸에 얹은 규칙이 판에서 못 잰다.
+//   T1295(농부) · T1316(농부 밖 몸 — 밭 세계에서만)이 이미 만든 배율 축(`t1295S` = 운영 하루 ÷ 판 하루 · 걸음 × s · 실 ms 박자 ÷ s · 토막 K)을
+//   켬에서는 **밭 세계 · 직업 게이트 없이 모든 마을 몸**(사냥꾼 · 광부 · 크루 포함)에 세운다. 캐러밴 · 출정 병사는 뺀다(제 페이싱 · 따로 표).
+//   걸음은 존 `_t1295Walk` 가 칸마다 차례로(반 칸 걸음 · 막히면 선다 · 칸마다 길 도장) 간다 — 순간이동 0.
+//   운영 시계(판 하루 = 운영 하루 → s = 1)는 이 줄이 무동작이다. 끔 = 앞 줄들 그대로(바이트 같음).
+const T1499_VCLOCK_WALK = process.env.T1499_VCLOCK_WALK === '1';
+const T1499_STEP_MIN = +process.env.T1499_STEP_MIN || 8;   // ★[T1499] 켬의 판 자 몸 토막 한 칸(게임 분) · 기본 8 = 맞대기(보고/T1499 §3)에서 실제 시계 정본에 가장 가까운 값(몸-날 px +27 % · 낚은 수 +20 %) · env 로 재기만 바꾼다
+function _t1499S(npc) {
+  if (npc.simCaravan || npc.simWar) return 1;
+  if (!_t1243Live()) return 1;
+  const W = _zc720().WORLD, L = W && W.dayLengthMs, D = state.dayMs;
+  return (L > 0 && D > 0 && D < L) ? L / D : 1;
+}
 function t1316K(npc, dtS) {
-  if (!T1316_SUBSTEP) return 1;
+  if (!T1316_SUBSTEP && !T1499_VCLOCK_WALK) return 1;   // ★[T1499] 켬 = 토막도 따라온다
   const s = t1295S(npc); if (!(s > 1)) return 1;
   const gameMin = s * dtS * 1440 * 1000 / _zc720().WORLD.dayLengthMs;   // 틱의 게임 분 = 배율 × dt(초) × 하루 1,440분 ÷ 운영 하루 초
-  const minTask = _t1221Cost(1);   // 게임 분(T1221 정본 — 김매기 한 번)
+  const minTask = T1499_VCLOCK_WALK ? T1499_STEP_MIN : _t1221Cost(1);   // 게임 분(T1221 정본 — 김매기 한 번) · ★[T1499] 켬 = `T1499_STEP_MIN`(게임 분 · 기본 8) 이 토막 한 칸 길이(끔 = 종전 그대로)
   return (minTask > 0 && gameMin > minTask) ? Math.ceil(gameMin / minTask) : 1;
 }
 // ★[T1295 ④ · T1284 회부 4] 손잡이 `T1295_GOURD`(끔 기본 · `=1` 켬) — 박을 마을 밭 작물 후보(`_t1243Memo`)에서 뺀다. 박 칸은 거둔 칸의 7% · 밭 식량의 0.7% 였다(T1284 §1).
@@ -16221,6 +16253,7 @@ function _t1365Art(vil, npc, now0, job) {
 function t1295Ph(now) { const t = (now - state.epoch) / state.dayMs; return t - Math.floor(t); }   // ★[T1322] 판 하루 축 해 몫(몸 안 짚기 — `t1295Wp` 의 몸 칸 문 뒤 그 식 · 존 첫 거름이 판 시계 몸 표에 쓴다)
 function t1295S(npc) {
   if (!npc || !npc.simVillageId) return 1;
+  if (T1499_VCLOCK_WALK) return _t1499S(npc);   // ★[T1499] 판 자 몸 걸음 켬 = 직업 · 밭 세계 무관(아래 줄 안 탐 · 끔 = 종전 그대로)
   if (npc.simJob === 'farmer' ? !T1295_FARM_CLOCK : !(T1316_BODY_CLOCK && (npc.simJob !== 'hunter' || T1326_HUNT_CLOCK))) return 1;   // ★[T1326] 사냥꾼은 `T1326_HUNT_CLOCK` 켬일 때만   // ★[T1316] 켬 = 직업 무관(사냥꾼 뺌 — 짐승 두뇌가 실초 축 · 회부) · 끔 = 농부만(T1295 그대로)
   if (!_t1243On() || !_t1243Live()) return 1;
   const W = _zc720().WORLD, L = W && W.dayLengthMs, D = state.dayMs;
@@ -19086,6 +19119,87 @@ function _t720Step(vil, npc, now, fv, dayR, day, fullFish = false) {
   return false;
 }
 // 곳간행 실행 — 이번 틱 소유권을 가지면 true. (랩 toGran/gran 2상태를 서버 _lifeTask 대신 _granTask로 표현)
+// ★★[T1502 2026-11-27 · 덧붙임 ③] 손잡이 `T1502_ACT_FIX`(끔 기본 · `=1` 켬) — **채집꾼 몸이 설 자리를 채집 색인에서.**
+//   왜: `T347_FORAGE_ACT` 켬 판에서 채집꾼 몸의 현장은 `_lifeJobSites().forager`(= `qtResources` 밀집 버킷)였다 — 헤드리스 판 자에선 그 목록이 비어
+//     몸은 레거시 폴스루(아무 자원이나)로 흘렀다(T1502 깔때기: 채집꾼 몸-날 닿음 0.5 %). 일괄(`_lifeDaily` T347 절)은 이미 색인(`_t347Scan` 셀)에서 딴다.
+//   고침(자리 · 일의 차례만 · 새 수 0): 몸이 그 색인 셀 가운데 가장 가까운 셀로 **걸어가**(나무꾼 T325 몸 절과 같은 44 px · 같은 시작점 흘림) ·
+//     닿으면 **일괄과 같은 따기 문**(`t495PickAt` · 끄면 `t347PickAt` · 같은 수요 문 `forageDemandLeft`)으로 **손에** 딴다 ·
+//     한 짐(`_t347PerLoad(w̄)` — 일괄 한도식의 그 수)이 차면 곳간으로 가서 **닿는 순간 넣는다**(`_t347Deliver` · 걸은 몸 도장은 `_t720Settle` 의 그 줄).
+//     페이싱은 종전 채집 갈래의 그 수(`6000 + (h % 5) · 1000` ÷ `t1295S`) · 다 딴 셀은 그날 건너뛴다.
+//   일의 차례 · 때(디버그 판 1020 · 140날로 확정): 채집꾼 몸은 돌 캐기(`_physicalStoneWork` — 채집꾼이 겸하는 채석)가 **먼저** 잡아 이 걸음에 한 번도 안 닿았다(현장 0 ·
+//     '채석' 라벨) — 호출을 돌 캐기 **앞**으로 옮긴다(그날 채집 수요가 남은 동안만 · 차면 종전 차례). 또 현장에 닿은 몸이 공용 `_jobT`(돌 캐기가 쓴 것)에 걸려
+//     서 있기만 했다 — 따기 페이스는 제 칸(`F.t`)에 둔다(같은 수 · 새 수 0).
+//   몸 XOR 일괄: 걸은 몸 도장(`_t347PreWalked`)이 일괄 명부(`_t1202Roster`)에서 그 몸을 뺀다 — 종전 계약 그대로(두 번 0).
+//   끄면 `T1502_ACT_FIX` 가 거짓이라 두 호출부(채집꾼 갈래 · 곳간 도착)가 한 줄도 안 돈다(바이트 같음 — `scripts/test-t1502-funnel.js`).
+const T1502_ACT_FIX = process.env.T1502_ACT_FIX === '1';
+function _t1502ForageStep(vil, npc, now, day) {
+  const G = vil._t347Groves, cells = (G && G.list) || [];
+  if (!cells.length) return false;                                   // 오늘 색인이 빈 마을 — 종전 갈래
+  const h = _pidHash(npc.pid);
+  if (!(_lifeEcon().forageDemandLeft(vil.econ) > 0)) return !!(npc._t1502F && npc._t1502F.n > 0 && _granGo(vil, npc, false));   // 그날 채집 수요가 찼다 — 손에 든 게 있으면 곳간으로, 없으면 종전 차례(돌 캐기 · 퇴근)
+  const F = npc._t1502F || (npc._t1502F = { site: null, skip: null, sd: -1, n: 0, t: 0 });
+  if (F.sd !== day) { F.sd = day; F.skip = null; F.site = null; }
+  if (!F.site) {
+    let best = null, bd = Infinity;
+    for (let i = 0; i < cells.length; i++) {
+      const c = cells[(i + h) % cells.length];
+      if (F.skip && F.skip.has(c.cx + ',' + c.cy)) continue;
+      const d2 = (c.x - npc.x) * (c.x - npc.x) + (c.y - npc.y) * (c.y - npc.y);
+      if (d2 < bd) { bd = d2; best = c; }
+    }
+    if (!best) { _lifeGoHome(npc, '휴식'); return true; }           // 그날 색인을 다 돌았다 — 퇴근(T374 의 그 한 줄)
+    F.site = { cx: best.cx, cy: best.cy, x: best.x, y: best.y, ext: best.ext ? 1 : 0 };
+  }
+  const s = F.site;
+  const skip = () => { (F.skip || (F.skip = new Set())).add(s.cx + ',' + s.cy); F.site = null; return true; };
+  if (Math.hypot(npc.x - s.x, npc.y - s.y) > 44) { npc.behavior = 'wander'; npc.targetX = s.x; npc.targetY = s.y; npc.gatherTarget = null; _lifeAct(npc, '출근'); return true; }
+  if (F.t && now < F.t) return true;                                // 제 손 페이스(공용 `_jobT` 는 돌 캐기 · 다른 갈래가 쓴다 — 거기 걸려 현장에 서서만 있던 몸)
+  F.t = now + (6000 + (h % 5) * 1000) / t1295S(npc);
+  let peek = null; try { peek = state.deps.t347GrovesAtCell ? state.deps.t347GrovesAtCell(s.cx, s.cy) : null; } catch (e) { peek = null; }
+  if (!peek || !peek.length) return skip();
+  const keep = _t347KeepOf(vil) || [];
+  if (!keep.length) return false;
+  const inv = npc.inventory || (npc.inventory = {});
+  const put = (o) => { if (o) for (const k in o) if (o[k] > 0) inv[k] = (inv[k] || 0) + o[k]; };
+  if (_t495On() && state.deps.t495PickAt) {
+    const order = []; for (const it of keep) for (const k of _t347HandsOf(it)) order.push(k);
+    const worth = []; for (const it of (_t347ActItems() || [])) for (const k of _t347HandsOf(it)) worth.push(k);
+    let rest = null; try { rest = state.deps.t495RestOf ? state.deps.t495RestOf(peek[0]) : null; } catch (e) { rest = null; }
+    let have = 0; if (rest) for (const k of order) { const a = rest[k]; if (a > 0) have += a; }
+    if (!(have > 0)) return skip();
+    const left = _lifeEcon().forageDemandLeft(vil.econ);
+    const want = (left === Infinity) ? have : Math.min(have, Math.ceil(left - 1e-9));
+    if (!(want > 0)) { _lifeGoHome(npc, '휴식'); return true; }
+    let res = null; try { res = state.deps.t495PickAt(s.cx, s.cy, order, want, worth); } catch (e) { res = null; }
+    if (!res || !(res.n > 0 || res.whole)) return skip();
+    if (T1238_TERR_V2) _t1238Use(vil, s.cx, s.cy);
+    if (res.emptied && res.seedKey && !s.ext) (vil._t347Cut || (vil._t347Cut = [])).push(res.seedKey);
+    put(res.took); put(res.extra);
+  } else {
+    if (!(_lifeLootForage(peek[0]) > 0)) return skip();
+    const sk = peek[0].seedKey || null;
+    let loot = null; try { loot = state.deps.t347PickAt ? state.deps.t347PickAt(s.cx, s.cy) : null; } catch (e) { loot = null; }
+    if (!loot) return skip();
+    if (T1238_TERR_V2) _t1238Use(vil, s.cx, s.cy);
+    if (sk && !s.ext) (vil._t347Cut || (vil._t347Cut = [])).push(sk);
+    put(loot);
+  }
+  F.n++;
+  _lifeAct(npc, '채집');
+  if (F.n >= _t347PerLoad((G.wBar > 0) ? G.wBar : 1) && _granGo(vil, npc, false)) F.t = 0;   // 한 짐 — 곳간으로(닿는 순간 `_t1502ForageIn`)
+  return true;
+}
+//   곳간 사다리에 닿은 채집꾼 몸의 손 → 곳간(그 입구 그대로 · 걸은 몸 도장은 `_t720Settle` 의 T347 줄과 같은 글자 · 같은 칸 `npc._t720.fw`)
+function _t1502ForageIn(vil, npc, now) {
+  const E = _lifeEcon();
+  if (!(E.T347_FORAGE_ACT && E.forageActOn(vil.econ) && npc.inventory)) return;
+  let u = 0; for (const k of (_t347KeepOf(vil) || [])) for (const h of _t347HandsOf(k)) u += npc.inventory[h] || 0;
+  if (npc._t1502F) npc._t1502F.n = 0;
+  if (!(u > 0)) return;
+  const S = npc._t720 || (npc._t720 = { k: 0, tx: 0, ty: 0, at: 0, aw: 0, last: now, d0: -1, dd: -1, fw: -1 });
+  const nf = _t733NewForage(npc, u); _t347Deliver(vil, npc); const d = _bodyDay(npc, now);
+  if (S.fw !== d) { if (T733_FELL_LOOT) vil._t733PreO = (vil._t733PreO | 0) + 1; if (nf) { S.fw = d; vil._t347PreWalked = (vil._t347PreWalked | 0) + 1; } }
+}
 function _lifeGranStep(vil, npc, now) {
   const t = npc._granTask; if (!t) return false;
   const g = (vil._granList || []).find((x) => x.cx === t.cx && x.cy === t.cy);
@@ -19106,7 +19220,7 @@ function _lifeGranStep(vil, npc, now) {
   //   서버는 상태가 없고 스케줄 게이트를 매 틱 재평가하므로, 도장이 없으면
   //   퇴근 훅이 저장(짐>0)↔인출(빈손)을 무한 왕복시킨다 — 집에 못 간다.
   if (t.draw) { const q = Math.min(G_DRAW, _granStockOf(vil, g)); _granStockAdd(vil, g, -q); _handAdd(npc, q); npc._granD = state.dayMs ? _bodyDay(npc, now) : 0; }
-  else { _granStockAdd(vil, g, _handOf(npc)); _handSet(npc, 0); if (npc._t368H) _t368Deliver(vil, npc, 'gran'); if (npc.inventory && (npc.inventory.wood || 0) > 0) _t561Ladder(vil, npc, now); if (npc.inventory && npc.inventory.ore_chunk > 0) _t724Deliver(vil, npc, 'gran', now); if (npc.inventory && (npc.inventory.stone > 0 || npc.inventory.pebble > 0) && _stoneHandInOn(vil)) _t1146HandIn(vil, npc); }   // ★[T1146 ③] 손의 돌 · 자갈도(손에 있을 때만 묻는다 — 옆 갈래들과 같은 꼴 · 끔 = 손에) · ★[T724 ②] 켠 팔은 원석도(끄면 몸 손에 원석이 없다 · `_t724Deliver` 첫 줄도 손잡이) · ③ 정산(물리 장부만 — econ 무접촉 · ★[T316] 손은 `inventory`) · ★[T368] 켠 팔은 **이 귀환이 곳간 입고**다(손의 작물 → `_farmGranary`) · ★[T561 ②ⓑ] 켠 팔은 통나무도(끄면 `_t561Ladder` 첫 줄에서 돌아간다)
+  else { _granStockAdd(vil, g, _handOf(npc)); _handSet(npc, 0); if (npc._t368H) _t368Deliver(vil, npc, 'gran'); if (T1502_ACT_FIX && npc._t1502F) _t1502ForageIn(vil, npc, now); if (npc.inventory && (npc.inventory.wood || 0) > 0) _t561Ladder(vil, npc, now); if (npc.inventory && npc.inventory.ore_chunk > 0) _t724Deliver(vil, npc, 'gran', now); if (npc.inventory && (npc.inventory.stone > 0 || npc.inventory.pebble > 0) && _stoneHandInOn(vil)) _t1146HandIn(vil, npc); }   // ★[T1146 ③] 손의 돌 · 자갈도(손에 있을 때만 묻는다 — 옆 갈래들과 같은 꼴 · 끔 = 손에) · ★[T724 ②] 켠 팔은 원석도(끄면 몸 손에 원석이 없다 · `_t724Deliver` 첫 줄도 손잡이) · ③ 정산(물리 장부만 — econ 무접촉 · ★[T316] 손은 `inventory`) · ★[T368] 켠 팔은 **이 귀환이 곳간 입고**다(손의 작물 → `_farmGranary`) · ★[T561 ②ⓑ] 켠 팔은 통나무도(끄면 `_t561Ladder` 첫 줄에서 돌아간다)
   npc._granTask = null;
   return false;                                                      // 소유권 반납 → 이번 틱부터 평소 일과
 }
@@ -22030,6 +22144,7 @@ function npcLifeTick(npc, now) {   // zone.js decideNpcBehavior 훅(늑대 도�
   //     멈추는 것이 아니라 **아무 자원이나** 따는 것이다(손에 든 것은 `_lifeDaily` 가 그대로 곳간에 넣는다).
   //   ⚠행위 층이 켜진 마을·그 직업만(`_t374Done` 안) — 안 켜진 마을은 수식이 내고 걸음은 그림이다(무접촉).
   //   끄면 `_t374Done` 이 첫 줄에서 false 다(비트 동일 · 손 합도 안 센다).
+  if (T1502_ACT_FIX && job === 'forager' && vil.econ && _lifeEcon().T347_FORAGE_ACT && _lifeEcon().forageActOn(vil.econ) && _t1502ForageStep(vil, npc, now, day)) return true;   // ★[T1502] 켬 = 채집꾼 몸의 자리는 채집 색인 · 일의 차례: 채집 수요가 남은 동안 돌 캐기(`_physicalStoneWork`)보다 먼저(위 `_t1502ForageStep` 머리말 · 끔 = 이 줄 무동작)
   if (_physicalStoneWork(vil,npc,now,fv,dayR,day,bday)) return true;
   if (_T1422_K && _t374Done(vil, job) && _t1422Side(vil, npc, now, 'quota')) return true;   // ★[T1422] 쉬러 가기 전 문(끔 = 첫 항 거짓 · 아래 퇴근 줄 글자 그대로)
   if (_t374Done(vil, job)) { _lifeGoHome(npc, '휴식'); return true; }
@@ -23780,6 +23895,7 @@ function __rumorProbe() {
 }
 
 module.exports = { T1471_LAND_FIT, t1471Stat,   // ★[T1471]
+  T1502_ACT_FIX,   // ★[T1502] 채집꾼 몸 손잡이(zone.js `_t671Shape` 가 받는다 — env 읽는 자리는 위 한 줄뿐)
   T1451_SITES, T1451_CREW_FREE, T1451_FARM_CALL, t1451Stat: () => JSON.parse(JSON.stringify(_t1451St)),   // ★[T1451]
   t1406PathCell: (cx, cy, vil) => _t1406PathCell(cx, cy, vil || null), T1406_KEEP_PATHS, artisanPerf,   // ★[T1196] 장인 작업장 관측
   t1461Die, t1461Out, t1461Stat, T1461_BEAST_UNSEEN, __t1461: { st: () => state },   // ★[T1461] 명부 밖 몸 죽음 · 마을 밖 몸(존 손잡이 `T1461_BEAST_UNSEEN` 켬에서만 부른다)
@@ -23830,7 +23946,7 @@ module.exports = { T1471_LAND_FIT, t1471Stat,   // ★[T1471]
   t1372PidAt: (v, i) => { const vil = state.byDbId && state.byDbId.get(v); return vil && vil.npcPids ? (vil.npcPids[i] ?? null) : null; },   // ★[T1372 ⓒ] 존이 벽 세대를 저장 값으로 되돌렸다 — 닿음 기억 도장은 저장 그대로(T1340 ③′ 다시 찍기 안 함)
   t742Bind, t742On: () => T742_ZONE, t742Stat: () => _t742Stat,   // ★[T742] 존 · 모듈 메모리 영속(손잡이 · 거는 문 · 계측)   // ★[T740] 메모리 전용 마을 칸 영속(손잡이 · 계측)
   T1241_SCH: { SCH_HALF_R, SCH_FARMW_R },   // ★[T1241] 사건 시뮬이 걸음 토막 끝을 일과 문턱에 맞춘다(읽기만 · 사본 0)
-  init, onGameTick, deferLate, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT, T871_ONE_CLOCK, t1295S, t1295Wp, t1295Ph, t1295DayMs: () => state.dayMs, t1337Sleep, t1337Still, t1348Farm, t1365Work, t1365Why, t1365Want, t1399Bump, t1399Gen: (vil) => (vil && _t1399G.get(vil.dbId)) || 0, t1399Rec, t1399Take, t1399Still, t1399Why, SCH_REST_IN, _t1295Stat, T1295_FARM_CLOCK, T1295_GOURD, T1316_BODY_CLOCK, T1316_SUBSTEP, t1316K, T1326_HUNT_CLOCK, T1351_MINE_CLOCK, t1351MineOn: (vil) => _t1351MineOn(vil),   // ★[T871] 시계 하나 손잡이(하네스 `test-one-clock` 이 읽는다)
+  init, onGameTick, deferLate, invalidateTradeDistances, npcLifeTick, lifeDebug, econDay, econDayT, T871_ONE_CLOCK, t1295S, t1295Wp, t1295Ph, t1295DayMs: () => state.dayMs, t1337Sleep, t1337Still, t1348Farm, t1365Work, t1365Why, t1365Want, t1399Bump, t1399Gen: (vil) => (vil && _t1399G.get(vil.dbId)) || 0, t1399Rec, t1399Take, t1399Still, t1399Why, SCH_REST_IN, _t1295Stat, T1295_FARM_CLOCK, T1295_GOURD, T1316_BODY_CLOCK, T1316_SUBSTEP, t1316K, T1499_VCLOCK_WALK, T1326_HUNT_CLOCK, T1351_MINE_CLOCK, t1351MineOn: (vil) => _t1351MineOn(vil),   // ★[T871] 시계 하나 손잡이(하네스 `test-one-clock` 이 읽는다)
  
   chiefOf, chiefGreetAsk, chiefGreetHas, chiefWalking, kinWrite,   // ★[T785] 마을 칸 쓰기(회관 행)
   bedSlotOf,   // ★[T540] 관측 — 침대 슬롯·집(`/walkdbg`)   // ★[T529] 촌장이 온다(손잡이 `T529_CHIEF_WALKS` · 읽는 곳 하나)

@@ -4152,6 +4152,7 @@ const T806_HOT_INOBJ = process.env.T806_HOT_INOBJ !== '0';   // ★[T806 ③] �
 const T671_SHAPE = process.env.T671_SHAPE !== '0';   // ★PM 10-07 켬 기본(바이트 같음 · 되돌림 =0)
 const T1422_SIDE = !!(process.env.T1422_SIDE_WORK && process.env.T1422_SIDE_WORK !== '0');   // ★[T1422] villages `_T1422_K` 와 같은 env(몸 칸 규약 — 아래 한 줄)
 const T1451_SITES_Z = process.env.T1451_SITES === '1';   // ★[T1451] villages `T1451_SITES` 와 같은 env(몸 칸 규약 — `_t671Shape` 한 줄)
+const T1502_ACT_FIX_Z = !!SimVillages.T1502_ACT_FIX;   // ★[T1502] villages.js 가 정한 손잡이를 받는다(env 읽는 자리 하나 — test-t1502-funnel ① · 몸 칸 규약 — `_t671Shape` 한 줄)
 function _t671Shape(p) {
   p.simJob = undefined; p._dOff = undefined; p._half = undefined; p._hd = undefined; p._huntOn = undefined; p._huntSpd = undefined; p._lifeAct = undefined;
   p._lifeActAt = undefined; p._pathAt = undefined; p._pathFor = undefined; p._rdK = undefined; p._rdMul = undefined; p._sh = undefined; p._simCloth = undefined;
@@ -4175,6 +4176,7 @@ function _t671Shape(p) {
   if (T1393_HUNT_CHASE && process.env.T1416_CARRY_HOME === '1' && process.env.T1439_CALL_CARRY === '1') p._t1439H = undefined;   // ★[T1439] 불려 온 몸의 고기 손(villages `_t1439Step` — 켬일 때만 서는 칸 · test-body-fields 규약)
   p.oreLedger = undefined; p._t1180FullFish = undefined; p._t1181Haul = undefined; p._t1197M1 = undefined; p._t1197M0 = undefined; p._t1195At = undefined; p._t1212N = undefined; p._t1217H = undefined; p._t1217Stop = undefined;   /* ★[PM land1052 · T1220-K3] T1212 · T1217 몸 칸 셋 */   /* ★[PM land1050 · T1208-K4 회부 2] land1049 가 연 몸 칸 셋(T1197 끼니 · T1195 사냥) */   // ★[PM land1048 · T1188 · T1180 · T1181] 가지들이 보탠 몸 칸 셋 — 스폰 꼴에 미리(test-body-fields · 숨은 클래스 한 벌)
   if (T1451_SITES_Z) p._t1451Cut = undefined;   // ★[T1451] 벤 그루 사이 시간 표(villages T325 갈래 — 켬일 때만 서는 칸 · test-body-fields 규약)
+  if (T1502_ACT_FIX_Z) p._t1502F = undefined;   // ★[T1502] 채집꾼 몸의 채집 칸 · 손 몫(villages `_t1502ForageStep` — 손잡이 `T1502_ACT_FIX` 켬일 때만 서는 칸 · 끔 = 이 줄 무동작 · test-body-fields 규약)
   if (T1422_SIDE) { p._t1422J = undefined; p._t1422D = undefined; p._t1422T = undefined; p._t1422At = undefined; }   // ★[T1422] 남는 시간 일 몸 칸 넷(villages `_t1422Side` — 손잡이 `T1422_SIDE_WORK` 켬일 때만 서는 칸 · 끔 = 이 줄 무동작 · test-body-fields 규약)
   if (T1144_LIFE_EVENT) p._t1144Sp = undefined;   // ★[T1144 ② · T1154] 어부 던짐 종의 지난 답(villages.js `_t1144SpGet` — 손잡이 켬일 때만 서는 칸 · 끔 = 이 줄 무동작)
   if (T1241_DES) p._des = undefined;   // ★[T1252] T1241 몸 토막(`_desBegin` · `_desEnd` — 손잡이 `T1241_DES` 켬일 때만 서는 칸 · 끔 = 이 줄 무동작 · test-body-fields 규약)
@@ -5436,6 +5438,49 @@ let _t316Econ = null;
 // ★★[T1295] 밭 세계 판 시계 농부 몸 — 걸음 · 길 다시 묻기를 게임 분 축으로(배율 s = `SimVillages.t1295S` · 1 이면 종전 그대로 · 까닭은 villages.js T1295 머리 줄).
 //   걸음: 그 틱의 걸음 거리 = 그 자리 빠르기(`_desSpeed` — 배회 배율 × 길 등급 × 개울 · T1241 사건 걸음과 같은 식) × dt × s 를 그 몸의 길(`npc.path` — 존 A* · 직선 문 답)
 //     점을 차례로 따라 쓴다(점을 지나면 다음 점 · 끝에 닿으면 선다 — 넘어 가지 않는다 · 길 밖으로 안 나간다 · 순간이동 0). 속도 칸은 0(이동 문이 다시 안 옮긴다).
+// ★★[T1499 2026-11-27] 손잡이 `T1499_VCLOCK_WALK`(끔 기본 · villages 와 같은 env) — 판 자 몸 걸음을 **칸마다 차례로**(순간이동 0 · 정해진 것 2).
+//   종전 `_t1295Walk` 는 배율 걸음을 길 마디까지 한 번에 옮기고(마디 사이 칸 판정 0) 길 도장도 끝에 한 번 찍었다.
+//   켬: 반 칸(16 px) 이하 걸음으로 나눠 — 걸음마다 그 자리 빠르기(`_desSpeed` — 답압 길 · 개울 칸 배율이 칸마다 선다) ·
+//     막힘 판정(지형 `isTerrainBlockedLocal` · 벽/문 `isBlockedByWall`(T1441 문 주인 마을 칸 그대로) · 1층 나무 콜라이더) — 막히면 그 자리에 선다(길은 남긴다 —
+//     정체 판정 `_t1295Stale` 이 다시 묻는다) · 칸이 바뀔 때마다 길 도장(`Roads.stampEntityPx` — 이동 문 뒷일과 같은 부름).
+//   몸에 새 칸 0(저장 · 되살림 무접촉) — 이번 부름에 간 px 는 곁 표 `_t1499Mv`(WeakMap · 계측 · 관찰기가 읽고 지운다) · 셈 `SimVillages._t1295Stat` 그대로 + `_t1499Stat`(막힘 · 도장 · 걸음 수).
+const T1499_VW = process.env.T1499_VCLOCK_WALK === '1';
+const _t1499Mv = new WeakMap();   // 몸 → 이번 부름까지 간 px(계측 전용 · 몸 칸 아님)
+const _t1499Stat = { calls: 0, steps: 0, px: 0, blocked: 0, bT: 0, bW: 0, bR: 0, stamps: 0 };
+function _t1499Blocked(x, y, ox, oy, p) {
+  if (isTerrainBlockedLocal(x, y)) return 1;
+  if (T1441_DOOR_OWNER && p.simVillageId != null) _t1441Wv = p.simVillageId | 0;
+  const w = isBlockedByWall(x, y, ox, oy, p.floor || 0, null);
+  _t1441Wv = null;
+  if (w) return 2;
+  if (!(p.floor > 0) && !isBlockedByTree(ox, oy) && isBlockedByTree(x, y)) return 3;
+  return 0;
+}
+function _t1499Walk(p, dt, s, P, M, n) {
+  const ST = _t1499Stat; ST.calls++;
+  let x = _xyX(p), y = _xyY(p), left = dt, moved = 0, cx = Math.floor(x / 32), cy = Math.floor(y / 32), blk = 0;
+  const hs = p._huntSpd > 0 ? p._huntSpd : 1;
+  while (left > 0 && p.pathIndex < n) {
+    let wx, wy; if (M && p.pathIndex === 0) { wx = p._t791Px; wy = p._t791Py; } else { const w = P[p.pathIndex]; wx = w.x; wy = w.y; }
+    const dx = wx - x, dy = wy - y, d = Math.hypot(dx, dy);
+    if (!(d > 1e-6)) { p.pathIndex++; continue; }
+    const v = _desSpeed(x, y) * s * hs;
+    if (!(v > 0)) break;
+    const seg = Math.min(d, 16, v * left), last = seg >= d - 1e-9;
+    const nx = last ? wx : x + dx * seg / d, ny = last ? wy : y + dy * seg / d;
+    const b = _t1499Blocked(nx, ny, x, y, p);
+    if (b) { blk = b; ST.blocked++; if (b === 1) ST.bT++; else if (b === 2) ST.bW++; else ST.bR++; break; }
+    x = nx; y = ny; left -= seg / v; moved += seg; ST.steps++;
+    if (last) p.pathIndex++;
+    const ncx = Math.floor(x / 32), ncy = Math.floor(y / 32);
+    if (ncx !== cx || ncy !== cy) { cx = ncx; cy = ncy; _desPut(p, x, y); Roads.stampEntityPx(p, x, y); ST.stamps++; }
+  }
+  if (moved > 0) { _desPut(p, x, y); p.dirty = true; }
+  _t1499Mv.set(p, (_t1499Mv.get(p) || 0) + moved);
+  ST.px += moved;
+  const S = SimVillages._t1295Stat; if (S) { S.walks++; S.walkPx += moved; }
+  return true;
+}
 function _t1295Walk(p, dt, sub) {
   if (p._t1393Own) { p.vx = 0; p.vy = 0; return true; }   // ★[T1393] 사냥판이 쥔 사냥꾼 몸 — 걸음은 판이 걷는다(끔 = 칸이 안 선다 · 무동작)
   const s = SimVillages.t1295S ? SimVillages.t1295S(p) : 1;
@@ -5444,6 +5489,7 @@ function _t1295Walk(p, dt, sub) {
   p.vx = 0; p.vy = 0;
   const P = p.path, M = P === p._t791P, n = P ? (M ? p._t791Pn : P.length) : 0;
   if (!P || !(p.pathIndex < n)) return true;   // 갈 길 없음 — 선다
+  if (T1499_VW) return _t1499Walk(p, dt, s, P, M, n);   // ★[T1499] 켬 = 칸마다 차례로(아래 종전 줄 안 탐)
   let x = _xyX(p), y = _xyY(p), left = dt, moved = 0;   // T1145 열이면 열에서(끔 = 몸 칸)
   while (left > 0 && p.pathIndex < n) {
     let wx, wy; if (M && p.pathIndex === 0) { wx = p._t791Px; wy = p._t791Py; } else { const w = P[p.pathIndex]; wx = w.x; wy = w.y; }
@@ -5680,7 +5726,7 @@ function _t1294Arrived(npc, targetKey) {
 //     어긋남을 센다(어긋나면 그 몸은 종전 걸음 문 — 견줌 판은 늘 종전 답). 기본 켬은 PM 판정(회부).
 //   켜지는 조건: 다른 손잡이가 걸음 문 글자를 바꾸지 않을 때만(T738 · T791 견줌 · T1140 · T1145 · T370 · T1294 ⓐ · T1241 사건 갈래 · T670 끔 · T791 거울 끔이면 무동작).
 const SS = require('./stand-skip');
-const T1322_PF = SS.ON && !T738_SOA_XY && T670_SKIP_IDLE && !T791_VERIFY && !T1140_STUCK_INLINE && !T1145_XY_COLS && !T370_PATH_REUSE && !T1294_ARRIVED_PATH && T791_PATH_MIR && !T1241_DES && process.env.T1316_SUBSTEP !== '1';   // ★[T1323] T1316 토막 걸음(한 틱 여러 걸음 · 끔 기본) 켬 판엔 무동작
+const T1322_PF = SS.ON && !T738_SOA_XY && T670_SKIP_IDLE && !T791_VERIFY && !T1140_STUCK_INLINE && !T1145_XY_COLS && !T370_PATH_REUSE && !T1294_ARRIVED_PATH && T791_PATH_MIR && !T1241_DES && process.env.T1316_SUBSTEP !== '1' && process.env.T1499_VCLOCK_WALK !== '1';   // ★[T1323] T1316 토막 걸음(한 틱 여러 걸음 · 끔 기본) 켬 판엔 무동작
 const T1322_VERIFY = T1322_PF && SS.VERIFY;
 // ★★[T1337 2026-11-16 · µs 여섯째 · 손잡이 `T1337_WAKE`(켬 기본 · `'0'` 끔 · `'verify'` 켬 + 건너려는 결정을 실제로 돌려 견줌)] **잠 깨움 표 — 결정 문까지 건넌다**(T1323 회부 1).
 //   T1323 진단: 밤 결정의 95 % 가 몸 칸 무동작(취침 79 %) · 결정 시간의 82 %. 첫 거름(T1322) 표 1(침대 목표 그대로) 몸이 결정 시각이 되어도
@@ -19700,7 +19746,7 @@ let _wwCut = false;   // ★[T689] `_wwPreOne` 이 읽는 그 틱의 `cut`(forEa
 //   계단·낙하·게이지·HP 바퀴는 마을 몸의 다섯 걸음이 다 무동작인 몸(계단 없는 존 · 0층 · 안 떨어짐 · 허기 · 갈증 꽉 · 몸 허기 손잡이 끔)을 건넌다(슬롯 번호는 센다).
 //   결정 문 몫(서 있는 몸 첫 거름)은 T1415 깨움 줄(`T1415_WAKEQ`)이 한다 — 이 손잡이는 결정 문 밖 세 덩이.
 //   안 서는 판: 커널 끔 · 견줌 · 서 있는 몸 거름 끔 · 열 칸(T1145) · 사건 갈래(T1241) · 몸 시계(T1316) — 그 판엔 무동작. 판 시계 밭 몸(`t1295S` > 1 — 이동 문이 길을 걷는 몸)은 늘 종전 길.
-const T1467_STILL = process.env.T1467_STILL === '1' && _wwOn && T672_WALK_CUT && T774_ACTIVE_COL && !T1145_XY_COLS && !T1241_DES && process.env.T1316_BODY_CLOCK !== '1';
+const T1467_STILL = process.env.T1467_STILL === '1' && _wwOn && T672_WALK_CUT && T774_ACTIVE_COL && !T1145_XY_COLS && !T1241_DES && process.env.T1316_BODY_CLOCK !== '1' && process.env.T1499_VCLOCK_WALK !== '1';
 const _t67Q = [], _t67R = [];
 let _t67Qi = 0, _t67X = T1467_STILL ? new Float64Array(1024) : null, _t67Y = T1467_STILL ? new Float64Array(1024) : null, _t67G = T1467_STILL ? new Float64Array(1024) : null;
 function _t67Put(i, p) {   // 슬롯 i 의 몸이 갈래 3 으로 본 자리 · 지형 세대
