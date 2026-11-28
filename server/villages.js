@@ -15806,7 +15806,7 @@ const T1316_SUBSTEP = process.env.T1316_SUBSTEP === '1';
 //   걸음은 존 `_t1295Walk` 가 칸마다 차례로(반 칸 걸음 · 막히면 선다 · 칸마다 길 도장) 간다 — 순간이동 0.
 //   운영 시계(판 하루 = 운영 하루 → s = 1)는 이 줄이 무동작이다. 끔 = 앞 줄들 그대로(바이트 같음).
 const T1499_VCLOCK_WALK = process.env.T1499_VCLOCK_WALK === '1';
-const T1499_STEP_MIN = +process.env.T1499_STEP_MIN || 0;   // ★[T1499] 재기 전용 — 판 자 몸 토막 한 칸(게임 분) · 0 = 김매기 한 번(T1316 그대로)
+const T1499_STEP_MIN = +process.env.T1499_STEP_MIN || 8;   // ★[T1499] 켬의 판 자 몸 토막 한 칸(게임 분) · 기본 8 = 맞대기(보고/T1499 §3)에서 실제 시계 정본에 가장 가까운 값(몸-날 px +27 % · 낚은 수 +20 %) · env 로 재기만 바꾼다
 function _t1499S(npc) {
   if (npc.simCaravan || npc.simWar) return 1;
   if (!_t1243Live()) return 1;
@@ -15817,7 +15817,7 @@ function t1316K(npc, dtS) {
   if (!T1316_SUBSTEP && !T1499_VCLOCK_WALK) return 1;   // ★[T1499] 켬 = 토막도 따라온다
   const s = t1295S(npc); if (!(s > 1)) return 1;
   const gameMin = s * dtS * 1440 * 1000 / _zc720().WORLD.dayLengthMs;   // 틱의 게임 분 = 배율 × dt(초) × 하루 1,440분 ÷ 운영 하루 초
-  const minTask = (T1499_VCLOCK_WALK && T1499_STEP_MIN > 0) ? T1499_STEP_MIN : _t1221Cost(1);   // 게임 분(T1221 정본 — 김매기 한 번) · ★[T1499] 켬 + `T1499_STEP_MIN`(게임 분) = 토막 한 칸 길이(재기 전용 · 미설정 = 종전)
+  const minTask = T1499_VCLOCK_WALK ? T1499_STEP_MIN : _t1221Cost(1);   // 게임 분(T1221 정본 — 김매기 한 번) · ★[T1499] 켬 = `T1499_STEP_MIN`(게임 분 · 기본 8) 이 토막 한 칸 길이(끔 = 종전 그대로)
   return (minTask > 0 && gameMin > minTask) ? Math.ceil(gameMin / minTask) : 1;
 }
 // ★[T1295 ④ · T1284 회부 4] 손잡이 `T1295_GOURD`(끔 기본 · `=1` 켬) — 박을 마을 밭 작물 후보(`_t1243Memo`)에서 뺀다. 박 칸은 거둔 칸의 7% · 밭 식량의 0.7% 였다(T1284 §1).

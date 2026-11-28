@@ -204,8 +204,8 @@ ok(/now - t\.at < \(t\.draw \? G_DRAWW : G_STOREW\) \/ t1295S\(npc\)/.test(VS) &
 // 걸음 — zone.js 의 `_t1295Walk` 본문 그대로(사본 0)를 떼어 내 몫을 견준다
 { const i0 = ZS10.indexOf('function _t1295Walk(p, dt, sub) {'), i1 = ZS10.indexOf('\nfunction _t1295Stale', i0);
   const src = ZS10.slice(i0, i1);
-  const mk = (s) => new Function('SimVillages', '_desSpeed', '_xyX', '_xyY', '_desPut', 'Roads', src + '\nreturn _t1295Walk;')(
-    { t1295S: () => s, _t1295Stat: { walks: 0, walkPx: 0 } }, () => 38.4, (p) => p.x, (p) => p.y, (p, x, y) => { p.x = x; p.y = y; }, { stampEntityPx() {} });
+  const mk = (s) => new Function('SimVillages', '_desSpeed', '_xyX', '_xyY', '_desPut', 'Roads', 'T1499_VW', src + '\nreturn _t1295Walk;')(
+    { t1295S: () => s, _t1295Stat: { walks: 0, walkPx: 0 } }, () => 38.4, (p) => p.x, (p) => p.y, (p, x, y) => { p.x = x; p.y = y; }, { stampEntityPx() {} }, false);   // T1499_VW = 판 자 걸음 손잡이 끔(종전 줄)
   const P = [{ x: 100, y: 0 }, { x: 100, y: 100 }, { x: 300, y: 100 }];
   const a = { x: 0, y: 0, vx: 5, vy: 5, path: P, pathIndex: 0 }, wk = mk(5760);
   const r1 = wk(a, 0.001);   // 38.4 × 0.001 × 5,760 = 221.184 px — 두 점을 지나 셋째 다리 위
