@@ -1546,6 +1546,280 @@
     "iso": 0,
     "finPairs": 1275
    }
+  },
+  "off2": {
+   "rc": 0,
+   "sec": 646,
+   "gate": [
+    "○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 3345) · 마을 칸 지문 400일 같음 · 칸별 날 수: 경제 400/400 · 생활층(마을 칸) 400/400",
+    "=== 같음 1/1 · 경제 400/400 · 생활층 400/400 · 판 645초 ==="
+   ],
+   "t1503": [],
+   "dist": [
+    "전쌍"
+   ],
+   "jobs": {
+    "atomMax": [
+     "bandit",
+     2439.3,
+     272.8
+    ],
+    "atomTop": [
+     [
+      "bandit",
+      2439.3,
+      272.8
+     ],
+     [
+      "events",
+      2031.7,
+      966.4
+     ],
+     [
+      "roads",
+      252.6,
+      209.4
+     ],
+     [
+      "econ:caravan",
+      206,
+      125.5
+     ],
+     [
+      "wx",
+      195.7,
+      167.8
+     ],
+     [
+      "terr",
+      188.5,
+      174
+     ],
+     [
+      "life:쉼표",
+      154.3,
+      28.7
+     ],
+     [
+      "econ:trade",
+      132.3,
+      102
+     ]
+    ],
+    "tailSumMed": 947.1,
+    "top": [
+     [
+      "econ",
+      11524.1,
+      1731.5,
+      6.1,
+      398
+     ],
+     [
+      "bandit",
+      2439.3,
+      272.8,
+      1.6,
+      398
+     ],
+     [
+      "caravan_sync",
+      2314.6,
+      1495,
+      16.3,
+      27009
+     ],
+     [
+      "events",
+      2031.7,
+      966.4,
+      30,
+      796
+     ],
+     [
+      "caravan_body",
+      730.6,
+      730.6,
+      0.3,
+      21
+     ],
+     [
+      "roads",
+      252.6,
+      209.4,
+      11.3,
+      398
+     ],
+     [
+      "econ:caravan",
+      206,
+      125.5,
+      4,
+      399
+     ],
+     [
+      "wx",
+      195.7,
+      167.8,
+      8.4,
+      397
+     ],
+     [
+      "terr",
+      188.5,
+      174,
+      30.9,
+      19584
+     ],
+     [
+      "life:쉼표",
+      154.3,
+      28.7,
+      11.7,
+      169208
+     ]
+    ]
+   },
+   "bridge": null
+  },
+  "on2": {
+   "rc": 0,
+   "sec": 577,
+   "gate": [
+    "○ 시드 1020: 날 지문 400일 같음 · 판 JSON · 여덟 수 같음(인구 3345) · 마을 칸 지문 400일 같음 · 칸별 날 수: 경제 400/400 · 생활층(마을 칸) 400/400",
+    "=== 같음 1/1 · 경제 400/400 · 생활층 400/400 · 판 575초 ==="
+   ],
+   "t1503": [
+    "🏘️ [T1503] 환호 적재 — 도랑 698칸(옛 0) · 둘레 코스 칸 364 · 다시 판정 2660 · 바뀐 이웃 480 · 다시 셈(changed) · 0ms",
+    "🏘️ [T1503] 다음 날 창까지 0.2초 < 문턱 30.0초 — 부팅 중에 다 셈(주입은 첫 마감 ⑪ · 종전 자리) · 0ms(CPU 6272ms)",
+    "🏘️ [T1503] 그림자 표 다 셈 — 51마을 · 1조각 · 누계 0ms(울타리 · 벽 날 이 표가 바탕)"
+   ],
+   "dist": [
+    "전쌍"
+   ],
+   "jobs": {
+    "atomMax": [
+     "events",
+     2092.3,
+     725.7
+    ],
+    "atomTop": [
+     [
+      "events",
+      2092.3,
+      725.7
+     ],
+     [
+      "bandit",
+      1442.4,
+      233.1
+     ],
+     [
+      "terr",
+      683.1,
+      175.6
+     ],
+     [
+      "roads",
+      204.5,
+      166.9
+     ],
+     [
+      "econ:vil",
+      196.1,
+      18.9
+     ],
+     [
+      "econ:caravan",
+      194.1,
+      141.6
+     ],
+     [
+      "life:쉼표",
+      112.4,
+      25.8
+     ],
+     [
+      "wx:bnd",
+      107.5,
+      26.1
+     ]
+    ],
+    "tailSumMed": 836.1,
+    "top": [
+     [
+      "econ",
+      11077.7,
+      1465.5,
+      5.6,
+      398
+     ],
+     [
+      "events",
+      2092.3,
+      725.7,
+      26.4,
+      21544
+     ],
+     [
+      "caravan_sync",
+      2017.6,
+      1227,
+      13.6,
+      27009
+     ],
+     [
+      "bandit",
+      1442.4,
+      233.1,
+      1.3,
+      398
+     ],
+     [
+      "terr",
+      683.1,
+      175.6,
+      27.5,
+      19584
+     ],
+     [
+      "caravan_body",
+      411,
+      411,
+      0.2,
+      21
+     ],
+     [
+      "roads",
+      204.5,
+      166.9,
+      9.8,
+      398
+     ],
+     [
+      "econ:vil",
+      196.1,
+      18.9,
+      11.2,
+      20344
+     ],
+     [
+      "econ:caravan",
+      194.1,
+      141.6,
+      3.5,
+      399
+     ],
+     [
+      "life:쉼표",
+      112.4,
+      25.8,
+      10.2,
+      169208
+     ]
+    ]
+   },
+   "bridge": null
   }
  },
  "X": {
@@ -1574,38 +1848,591 @@
    "overlap": 36
   }
  },
+ "FN": {
+  "han": {
+   "offTag": "fh-off-1",
+   "onTag": "fh-on-2",
+   "days": 22,
+   "ev": [
+    {
+     "d": 5,
+     "kind": "놓음(+길막기)",
+     "inv": 49,
+     "offClose": "1,143(거리 6)",
+     "onClose": "1,140(거리 3)",
+     "offWall": 39.5,
+     "onWall": 30.9,
+     "offGen": 7605,
+     "onGen": 3,
+     "offInj": "eaacc86e",
+     "onInj": "eaacc86e",
+     "fence": {
+      "n": 49,
+      "same": 49,
+      "pair": 0,
+      "full": 0,
+      "x": 0,
+      "src": 0,
+      "stale": 181,
+      "ms": 0,
+      "why": "same",
+      "spec": 1
+     },
+     "offPlus": 25.3,
+     "onPlus": 15.1
+    },
+    {
+     "d": 8,
+     "kind": "헒",
+     "inv": 2,
+     "offClose": "1,460(거리 1)",
+     "onClose": "1,146(거리 1)",
+     "offWall": 41.5,
+     "onWall": 32.5,
+     "offGen": 7267,
+     "onGen": 1,
+     "offInj": "eaacc86e",
+     "onInj": "eaacc86e",
+     "fence": {
+      "n": 51,
+      "same": 51,
+      "pair": 0,
+      "full": 0,
+      "x": 0,
+      "src": 0,
+      "stale": 183,
+      "ms": 0,
+      "why": "same",
+      "spec": 1
+     },
+     "offPlus": 27.3,
+     "onPlus": 16.7
+    },
+    {
+     "d": 15,
+     "kind": "놓음",
+     "inv": 2,
+     "offClose": "2,934(거리 1)",
+     "onClose": "3,374(거리 1)",
+     "offWall": 41.1,
+     "onWall": 36.6,
+     "offGen": 7388,
+     "onGen": 2,
+     "offInj": "eaacc86e",
+     "onInj": "eaacc86e",
+     "fence": {
+      "n": 53,
+      "same": 53,
+      "pair": 0,
+      "full": 0,
+      "x": 0,
+      "src": 0,
+      "stale": 185,
+      "ms": 0,
+      "why": "same",
+      "spec": 1
+     },
+     "offPlus": 26.9,
+     "onPlus": 20.8
+    },
+    {
+     "d": 18,
+     "kind": "헒",
+     "inv": 2,
+     "offClose": "1,546(거리 1)",
+     "onClose": "1,494(거리 1)",
+     "offWall": 39.8,
+     "onWall": 33.3,
+     "offGen": 7452,
+     "onGen": 2,
+     "offInj": "eaacc86e",
+     "onInj": "eaacc86e",
+     "fence": {
+      "n": 55,
+      "same": 55,
+      "pair": 0,
+      "full": 0,
+      "x": 0,
+      "src": 0,
+      "stale": 187,
+      "ms": 0,
+      "why": "same",
+      "spec": 1
+     },
+     "offPlus": 25.6,
+     "onPlus": 17.5
+    }
+   ],
+   "genOff": 29714,
+   "genOn": 8594,
+   "wallOff": 390.5,
+   "wallOn": 391.9,
+   "plainOff": 14.2,
+   "plainOn": 15.8,
+   "hashDays": 22,
+   "injOff": 5,
+   "injOn": 5,
+   "injSame": true,
+   "cells": 13005,
+   "diff": 0,
+   "pairs": 5,
+   "sbcSame": true,
+   "botsSame": true,
+   "onLast": {
+    "n": 55,
+    "same": 55,
+    "pair": 0,
+    "full": 0,
+    "x": 0,
+    "src": 0,
+    "stale": 187,
+    "ms": 0,
+    "why": "same",
+    "spec": 1
+   },
+   "distOff": [
+    [
+     "전쌍",
+     0
+    ],
+    [
+     "전쌍",
+     486844
+    ],
+    [
+     "전쌍",
+     486844
+    ],
+    [
+     "전쌍",
+     486844
+    ],
+    [
+     "전쌍",
+     486844
+    ]
+   ],
+   "distOn": [
+    [
+     "전쌍",
+     0
+    ],
+    [
+     "사본",
+     0
+    ],
+    [
+     "사본",
+     0
+    ],
+    [
+     "사본",
+     0
+    ],
+    [
+     "사본",
+     0
+    ]
+   ],
+   "t1503": [
+    "🏘️ [T1503] 환호 적재 — 도랑 698칸(옛 0) · 둘레 코스 칸 364 · 다시 판정 2660 · 바뀐 이웃 480 · 다시 셈(changed) · 0ms",
+    "🏘️ [T1503] 다시 세기는 마감 밖 조각으로 — 다음 날 창까지 1032.0초 ≥ 문턱 30.0초",
+    "🏘️ [T1503] 그림자 표 다 셈 — 51마을 · 1조각 · 누계 0ms(울타리 · 벽 날 이 표가 바탕)"
+   ],
+   "rc": [
+    0,
+    0
+   ],
+   "sec": [
+    524,
+    523
+   ],
+   "acts": {
+    "block": {
+     "want": 47,
+     "placed": 47,
+     "refused": 0
+    },
+    "bridge": {
+     "tries": 4,
+     "ok": 4,
+     "refused": 0,
+     "none": 0,
+     "removed": 4
+    }
+   }
+  },
+  "nip": {
+   "offTag": "fn-off-1",
+   "onTag": "fn-on-2",
+   "days": 22,
+   "ev": [
+    {
+     "d": 5,
+     "kind": "놓음(+길막기)",
+     "inv": 46,
+     "offClose": "912(거리 1)",
+     "onClose": "950(거리 5)",
+     "offWall": 54.2,
+     "onWall": 46.7,
+     "offGen": 5959,
+     "onGen": 5,
+     "offInj": "9aff9b3a",
+     "onInj": "9aff9b3a",
+     "fence": {
+      "n": 46,
+      "same": 46,
+      "pair": 0,
+      "full": 0,
+      "x": 0,
+      "src": 0,
+      "stale": 214,
+      "ms": 0,
+      "why": "same",
+      "spec": 1
+     },
+     "offPlus": 30.3,
+     "onPlus": 21.3
+    },
+    {
+     "d": 8,
+     "kind": "헒",
+     "inv": 2,
+     "offClose": "1,346(거리 1)",
+     "onClose": "1,299(거리 1)",
+     "offWall": 57.2,
+     "onWall": 51.1,
+     "offGen": 6331,
+     "onGen": 1,
+     "offInj": "9aff9b3a",
+     "onInj": "9aff9b3a",
+     "fence": {
+      "n": 48,
+      "same": 48,
+      "pair": 0,
+      "full": 0,
+      "x": 0,
+      "src": 0,
+      "stale": 216,
+      "ms": 0,
+      "why": "same",
+      "spec": 1
+     },
+     "offPlus": 33.3,
+     "onPlus": 25.7
+    },
+    {
+     "d": 15,
+     "kind": "놓음",
+     "inv": 2,
+     "offClose": "2,520(거리 1)",
+     "onClose": "2,213(거리 1)",
+     "offWall": 59.8,
+     "onWall": 53.1,
+     "offGen": 6614,
+     "onGen": 1,
+     "offInj": "9aff9b3a",
+     "onInj": "9aff9b3a",
+     "fence": {
+      "n": 50,
+      "same": 50,
+      "pair": 0,
+      "full": 0,
+      "x": 0,
+      "src": 0,
+      "stale": 218,
+      "ms": 0,
+      "why": "same",
+      "spec": 1
+     },
+     "offPlus": 35.9,
+     "onPlus": 27.7
+    },
+    {
+     "d": 18,
+     "kind": "헒",
+     "inv": 2,
+     "offClose": "1,670(거리 1)",
+     "onClose": "1,756(거리 1)",
+     "offWall": 55.4,
+     "onWall": 49.7,
+     "offGen": 6518,
+     "onGen": 1,
+     "offInj": "9aff9b3a",
+     "onInj": "9aff9b3a",
+     "fence": {
+      "n": 52,
+      "same": 52,
+      "pair": 0,
+      "full": 0,
+      "x": 0,
+      "src": 0,
+      "stale": 220,
+      "ms": 0,
+      "why": "same",
+      "spec": 1
+     },
+     "offPlus": 31.5,
+     "onPlus": 24.3
+    }
+   ],
+   "genOff": 25423,
+   "genOn": 6607,
+   "wallOff": 610.6,
+   "wallOn": 593.5,
+   "plainOff": 23.9,
+   "plainOn": 25.4,
+   "hashDays": 22,
+   "injOff": 5,
+   "injOn": 5,
+   "injSame": true,
+   "cells": 6480,
+   "diff": 0,
+   "pairs": 5,
+   "sbcSame": true,
+   "botsSame": true,
+   "onLast": {
+    "n": 52,
+    "same": 52,
+    "pair": 0,
+    "full": 0,
+    "x": 0,
+    "src": 0,
+    "stale": 220,
+    "ms": 0,
+    "why": "same",
+    "spec": 1
+   },
+   "distOff": [
+    [
+     "전쌍",
+     0
+    ],
+    [
+     "전쌍",
+     491358
+    ],
+    [
+     "전쌍",
+     491358
+    ],
+    [
+     "전쌍",
+     491358
+    ],
+    [
+     "전쌍",
+     491358
+    ]
+   ],
+   "distOn": [
+    [
+     "전쌍",
+     0
+    ],
+    [
+     "사본",
+     0
+    ],
+    [
+     "사본",
+     0
+    ],
+    [
+     "사본",
+     0
+    ],
+    [
+     "사본",
+     0
+    ]
+   ],
+   "t1503": [
+    "🏘️ [T1503] 환호 적재 — 도랑 874칸(옛 0) · 둘레 코스 칸 471 · 다시 판정 3540 · 바뀐 이웃 608 · 다시 셈(changed) · 0ms",
+    "🏘️ [T1503] 다시 세기는 마감 밖 조각으로 — 다음 날 창까지 868.3초 ≥ 문턱 30.0초",
+    "🏘️ [T1503] 그림자 표 다 셈 — 36마을 · 1조각 · 누계 0ms(울타리 · 벽 날 이 표가 바탕)"
+   ],
+   "rc": [
+    1,
+    1
+   ],
+   "sec": [
+    724,
+    708
+   ],
+   "acts": {
+    "block": {
+     "want": 44,
+     "placed": 44,
+     "refused": 0
+    },
+    "bridge": {
+     "tries": 4,
+     "ok": 4,
+     "refused": 0,
+     "none": 0,
+     "removed": 4
+    }
+   }
+  }
+ },
  "tests": {
-  "rp-branch": {
+  "r1-rp-branch": {
    "rc": 1,
    "last": "=== 55 통과 / 4 실패 ==="
   },
-  "rp-main": {
+  "r1-rp-main": {
    "rc": 1,
    "last": "=== 55 통과 / 4 실패 ==="
   },
-  "test-bridge-act": {
+  "r1-test-bridge-act": {
    "rc": 0,
    "s": 7,
-   "last": ""
+   "last": "=== 48/48 ✓ ==="
   },
-  "test-client-globals": {
+  "r1-test-client-globals": {
    "rc": 0,
    "s": 1,
    "last": "=== PASS 26 / FAIL 0 ==="
   },
-  "test-distmatrix": {
+  "r1-test-distmatrix": {
    "rc": 0,
    "s": 217,
    "last": "=== 거리행렬 하네스: 47 통과 / 0 실패 ✅ ==="
   },
-  "test-forage-act": {
+  "r1-test-forage-act": {
    "rc": 0,
    "s": 15,
    "last": "=== 결과: 251 PASS / 0 FAIL ==="
   },
-  "test-local-midnight-window": {
+  "r1-test-local-midnight-window": {
    "rc": 0,
    "s": 123,
+   "last": "=== 12건 중 PASS 12 · FAIL 0 ==="
+  },
+  "r1-test-local-midnight": {
+   "rc": 0,
+   "s": 6,
+   "last": "=== 14건 중 PASS 14 · FAIL 0 ==="
+  },
+  "r1-test-newcomers": {
+   "rc": 0,
+   "s": 1,
+   "last": "=== PASS 56 / FAIL 0 ==="
+  },
+  "r1-test-regrow-block": {
+   "rc": 0,
+   "s": 2,
+   "last": "=== 결과: 24 PASS / 0 FAIL ==="
+  },
+  "r1-test-road-day": {
+   "rc": 0,
+   "s": 20,
+   "last": "=== 결과: 30 PASS / 0 FAIL ==="
+  },
+  "r1-test-road-tail": {
+   "rc": 0,
+   "s": 5,
+   "last": "=== 결과: 7 PASS / 0 FAIL ==="
+  },
+  "r1-test-route-persist": {
+   "rc": 1,
+   "s": 471,
+   "last": "=== 55 통과 / 4 실패 ==="
+  },
+  "r1-test-seam-walk": {
+   "rc": 0,
+   "s": 27,
+   "last": "=== PASS 31 / FAIL 0 ==="
+  },
+  "r1-test-t1001-econ-day": {
+   "rc": 0,
+   "s": 2,
+   "last": "=== PASS 4 / FAIL 0 ==="
+  },
+  "r1-test-t1268-econ-clock": {
+   "rc": 0,
+   "s": 4,
+   "last": "=== PASS 32 / FAIL 0 ==="
+  },
+  "r1-test-t1273-clock-rest": {
+   "rc": 0,
+   "s": 46,
+   "last": "=== PASS 104 / FAIL 0 ==="
+  },
+  "r1-test-t1376-tick-fail": {
+   "rc": 0,
+   "s": 0,
+   "last": "=== 8/8 통과 ==="
+  },
+  "r1-test-t1440-road-rule": {
+   "rc": 0,
+   "s": 18,
+   "last": "결과: 34 통과 · 0 실패"
+  },
+  "r1-test-t1448-road-grid": {
+   "rc": 0,
+   "s": 17,
+   "last": "=== 40 통과 / 0 실패 ==="
+  },
+  "r1-test-t1455-bridge-decay": {
+   "rc": 0,
+   "s": 6,
+   "last": "35 통과 · 0 실패"
+  },
+  "r1-test-t1466-road-fast": {
+   "rc": 0,
+   "s": 6,
+   "last": "결과: 18 통과 · 0 실패"
+  },
+  "r1-test-t1503-day-close": {
+   "rc": 0,
+   "s": 3,
+   "last": "결과: PASS 23/23"
+  },
+  "r1-test-t762-sync": {
+   "rc": 0,
+   "s": 2,
+   "last": "=== 결과: 14 PASS / 0 FAIL ==="
+  },
+  "r1-test-tick-slicer": {
+   "rc": 0,
+   "s": 406,
+   "last": "=== 37 통과 / 0 실패 ==="
+  },
+  "r1-test-village-found": {
+   "rc": 0,
+   "s": 3,
+   "last": "=== 마을 건립 하네스: 51 통과 / 0 실패 ✅ ==="
+  },
+  "r1-test-war-world": {
+   "rc": 0,
+   "s": 203,
+   "last": "결과: 191 통과 / 0 실패"
+  },
+  "test-bridge-act": {
+   "rc": 0,
+   "s": 9,
+   "last": "=== 48/48 ✓ ==="
+  },
+  "test-ci-list": {
+   "rc": 0,
+   "s": 0,
+   "last": "=== test-ci-list 결과: 16 통과 / 0 실패 ==="
+  },
+  "test-distmatrix": {
+   "rc": 0,
+   "s": 232,
+   "last": "=== 거리행렬 하네스: 47 통과 / 0 실패 ✅ ==="
+  },
+  "test-harness-lint": {
+   "rc": 0,
+   "s": 82,
+   "last": "=== 102건 중 PASS 102 · FAIL 0 ==="
+  },
+  "test-local-midnight-window": {
+   "rc": 0,
+   "s": 87,
    "last": "=== 12건 중 PASS 12 · FAIL 0 ==="
   },
   "test-local-midnight": {
@@ -1613,100 +2440,55 @@
    "s": 6,
    "last": "=== 14건 중 PASS 14 · FAIL 0 ==="
   },
-  "test-newcomers": {
-   "rc": 0,
-   "s": 1,
-   "last": "=== PASS 56 / FAIL 0 ==="
-  },
-  "test-regrow-block": {
-   "rc": 0,
-   "s": 2,
-   "last": "=== 결과: 24 PASS / 0 FAIL ==="
-  },
-  "test-road-day": {
-   "rc": 0,
-   "s": 20,
-   "last": "=== 결과: 30 PASS / 0 FAIL ==="
-  },
-  "test-road-tail": {
-   "rc": 0,
-   "s": 5,
-   "last": "=== 결과: 7 PASS / 0 FAIL ==="
-  },
   "test-route-persist": {
    "rc": 1,
-   "s": 471,
+   "s": 478,
    "last": "=== 55 통과 / 4 실패 ==="
   },
-  "test-seam-walk": {
+  "test-t1423-block-react": {
    "rc": 0,
-   "s": 27,
-   "last": "=== PASS 31 / FAIL 0 ==="
+   "s": 6,
+   "last": "결과: 20 통과 · 0 실패"
   },
-  "test-t1001-econ-day": {
+  "test-t1432-npc-death": {
    "rc": 0,
-   "s": 2,
-   "last": "=== PASS 4 / FAIL 0 ==="
+   "s": 129,
+   "last": "=== 18건 중 PASS 18 · FAIL 0 ==="
   },
-  "test-t1268-econ-clock": {
+  "test-t1433-terr-rows": {
    "rc": 0,
-   "s": 4,
-   "last": "=== PASS 32 / FAIL 0 ==="
-  },
-  "test-t1273-clock-rest": {
-   "rc": 0,
-   "s": 46,
-   "last": "=== PASS 104 / FAIL 0 ==="
-  },
-  "test-t1376-tick-fail": {
-   "rc": 0,
-   "s": 0,
-   "last": "=== 8/8 통과 ==="
+   "s": 173,
+   "last": "=== 25 통과 / 0 실패 ==="
   },
   "test-t1440-road-rule": {
    "rc": 0,
-   "s": 18,
+   "s": 23,
    "last": "결과: 34 통과 · 0 실패"
-  },
-  "test-t1448-road-grid": {
-   "rc": 0,
-   "s": 17,
-   "last": "=== 40 통과 / 0 실패 ==="
   },
   "test-t1455-bridge-decay": {
    "rc": 0,
-   "s": 6,
+   "s": 7,
    "last": "35 통과 · 0 실패"
   },
   "test-t1466-road-fast": {
    "rc": 0,
-   "s": 6,
+   "s": 7,
    "last": "결과: 18 통과 · 0 실패"
   },
   "test-t1503-day-close": {
    "rc": 0,
-   "s": 3,
-   "last": "결과: PASS 23/23"
-  },
-  "test-t762-sync": {
-   "rc": 0,
-   "s": 2,
-   "last": "=== 결과: 14 PASS / 0 FAIL ==="
+   "s": 10,
+   "last": "결과: PASS 46/46"
   },
   "test-tick-slicer": {
    "rc": 0,
-   "s": 406,
+   "s": 420,
    "last": "=== 37 통과 / 0 실패 ==="
   },
   "test-village-found": {
    "rc": 0,
    "s": 3,
    "last": "=== 마을 건립 하네스: 51 통과 / 0 실패 ✅ ==="
-  },
-  "test-war-world": {
-   "rc": 0,
-   "s": 203,
-   "last": "결과: 191 통과 / 0 실패"
   }
  },
  "runs": [
@@ -1811,6 +2593,26 @@
    99
   ],
   [
+   "fh-off-1",
+   0,
+   524
+  ],
+  [
+   "fh-on-2",
+   0,
+   523
+  ],
+  [
+   "fn-off-1",
+   1,
+   724
+  ],
+  [
+   "fn-on-2",
+   1,
+   708
+  ],
+  [
    "g-keep",
    0,
    572
@@ -1829,6 +2631,16 @@
    "g-on",
    0,
    544
+  ],
+  [
+   "g2-off",
+   0,
+   646
+  ],
+  [
+   "g2-on",
+   0,
+   577
   ],
   [
    "lr-save",

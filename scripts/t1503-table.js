@@ -221,7 +221,7 @@ function table(DIR, mdOut, jsonOut) {
     L.push(`- 거리 다시 세기 줄(까닭 · 코스 칸 지형 판정 수 — 가상 시계라 로그 ms 는 안 씀): 끔 ${f.distOff.map((x) => `${x[0]} ${x[1]}`).join(' · ') || '—'} / 켬 ${f.distOn.map((x) => `${x[0]} ${x[1]}`).join(' · ') || '—'}`);
     L.push(`- 켬 [T1503] 존 로그: ${(f.t1503 || []).join(' ‖ ') || '—'}`, '');
   }
-  L.push('## §6 하네스(이 상자 · RAW/tests)', '');
+  L.push("## §6 하네스(이 상자 · RAW/tests — `r1-` = 앞 판(11-27) 코드에서 돈 것 · 나머지 = 덧붙임 코드)", '');
   for (const [k, t] of Object.entries(tests)) L.push(`- ${k}: rc ${t.rc}${t.s == null ? '' : ` · ${t.s}초`} · ${t.last}`);
   L.push('');
   L.push('## §7 판 줄(판 · 끝 코드 · 초)', '');
