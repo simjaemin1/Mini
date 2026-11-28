@@ -14,6 +14,10 @@
 //
 // 실행: node scripts/test-save-race.js   (약 4분 · 포트 3010 · 3011 · 3012 · 3020 · 3021)
 'use strict';
+//   ★[T1501] 고정 포트를 **이 하네스가 한 번** 쥔다 — 탐침 넷(T927 켬 · 끔 · T940 켬 · 끔)이 저마다 쥐면 판 사이마다 줄 끝으로 다시 서서,
+//     -j 4(고정 포트 하네스 수십 개가 같은 줄)에서 끔 탐침이 기다림 상한(`LIB_PORT_HOLD_MS` 15분)을 넘겨 JSON 없이 죽었다(T1478 J3 1,233초 ·
+//     "끔 race 0 · B undefined"). 자식은 `LIB_PORT_HELD` 를 물려받아 다시 안 기다린다(lib-port 규약). 판정 · 탐침 글자 그대로.
+if (require.main === module) require('./lib-port').hold(3010, 3011, 3012, 3020, 3021);
 const path = require('path');
 const { spawnSync } = require('child_process');
 
@@ -28,7 +32,9 @@ function probe(file, args) {
   const i = out.lastIndexOf('== JSON ==');
   let j = null; if (i >= 0) { try { j = JSON.parse(out.slice(i + 10).trim().split('\n')[0]); } catch (e) { j = null; } }
   if (!j) console.log(`  · ${file} ${args.join(' ')} 출력 끝:\n${(out + String(r.stderr || '')).split('\n').slice(-8).map((l) => '      ' + l).join('\n')}`);
-  return { rc: r.status, j };
+  //   ★[T1501] 탐침이 JSON 없이 끝나면 ✗ 줄에 까닭이 실리게 한다(러너는 ✗ 줄만 남긴다 — 위 "출력 끝"은 러너 기록에서 빠졌다)
+  const why = j ? '' : `${file}${args.includes('--off') ? ' 끔' : ''} rc=${r.status}${r.error ? ' ' + (r.error.code || r.error.message) : ''} · ${String(r.stderr || '').trim().split('\n').filter(Boolean).slice(-1)[0] || '(stderr 없음)'}`.slice(0, 220);
+  return { rc: r.status, j, why };
 }
 
 console.log('\n=== 몸 저장 길의 차례(경합) — T927 늦게 닿은 옛 저장 · T940 옛 행 읽기 (2존 실서버 + 지연 주입) ===');
@@ -39,7 +45,7 @@ console.log('\n① T927 — 넘기는 중 출발 존의 늦게 닿은 옛 저장
   const S = (on.j || {}).sum || {}, F = (off.j || {}).sum || {};
   const n = (x) => (x && x.n) || 0;
   ok(on.rc === 0 && off.rc === 0 && n(S.token) === 1 && n(S.promote) === 1 && n(S.calm) === 1 && n(F.token) === 1 && n(F.promote) === 1,
-    '[상황] 켬 · 끔 판 다 넘겼고 늦춘 저장이 도착 존 저장 **뒤에** 닿았다(token · promote — 아니면 차례를 못 잰 판) · calm 대조 한 판', `켬 ${J(S && Object.fromEntries(Object.entries(S).map(([k, v]) => [k, v.n])))} · 끔 ${J(F && Object.fromEntries(Object.entries(F).map(([k, v]) => [k, v.n])))}`);
+    '[상황] 켬 · 끔 판 다 넘겼고 늦춘 저장이 도착 존 저장 **뒤에** 닿았다(token · promote — 아니면 차례를 못 잰 판) · calm 대조 한 판', `켬 ${J(S && Object.fromEntries(Object.entries(S).map(([k, v]) => [k, v.n])))} · 끔 ${J(F && Object.fromEntries(Object.entries(F).map(([k, v]) => [k, v.n])))}` + [on.why, off.why].filter(Boolean).map((w) => ' · ' + w).join(''));
   ok(n(S.token) >= 1 && S.token.same === S.token.n && n(S.promote) >= 1 && S.promote.same === S.promote.n,
     '★★① [T927 켬] 늦게 닿은 옛 저장을 central 이 안 쓴다 — 행 = 도착 존 몸(kg 원장 · 도구 · 로트 · `last_zone`) · 토큰 · 승격 둘 다', `토큰 ${S.token && S.token.same}/${n(S.token)} · 승격 ${S.promote && S.promote.same}/${n(S.promote)}`);
   ok(S.calm && S.calm.same === S.calm.n && F.calm && F.calm.same === F.calm.n, '① [대조] 늦춤 0 판은 켬 · 끔 다 같다(이 자가 "같다"를 말할 줄 안다)', `켬 ${S.calm && S.calm.same} · 끔 ${F.calm && F.calm.same}`);
@@ -53,7 +59,7 @@ console.log('\n② T940 — 존 A 에서 끊고 곧바로 존 B 로 붙는다(�
   const S = (on.j || {}).sum || {}, F = (off.j || {}).sum || {};
   const n = (x) => (x && x.n) || 0;
   ok(on.rc === 0 && off.rc === 0 && n(S.race) === 1 && n(S.calm) === 1 && n(S.live) === 1 && n(F.race) === 1,
-    '[상황] 판마다 A 산 몸만 숙련 · 어획 기록을 가졌고 행은 아직 몰랐다(닫힐 때 저장이 유일한 길) · 같은 사람으로 B 에 붙었다', `켬 race ${n(S.race)} · calm ${n(S.calm)} · live ${n(S.live)} · 끔 race ${n(F.race)}`);
+    '[상황] 판마다 A 산 몸만 숙련 · 어획 기록을 가졌고 행은 아직 몰랐다(닫힐 때 저장이 유일한 길) · 같은 사람으로 B 에 붙었다', `켬 race ${n(S.race)} · calm ${n(S.calm)} · live ${n(S.live)} · 끔 race ${n(F.race)}` + [on.why, off.why].filter(Boolean).map((w) => ' · ' + w).join(''));
   ok(S.race && S.race.bGotA === 1 && S.race.kept === 1 && S.calm && S.calm.bGotA === 1 && S.calm.kept === 1,
     '★★② [T940 켬] B 는 A 의 마지막 저장이 닿은 뒤 행을 읽는다 — B 산 몸이 A 의 마지막 칸을 가졌고 B 를 닫은 뒤 행도(영구 소실 0) · A 저장 3초 늦춤 · 늦춤 0 둘 다',
     `race B ${S.race && S.race.bGotA} · 행 ${S.race && S.race.kept} · calm B ${S.calm && S.calm.bGotA} · 행 ${S.calm && S.calm.kept} · race 접속 ${J(S.race && S.race.joinMs)}ms`);

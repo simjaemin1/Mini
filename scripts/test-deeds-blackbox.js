@@ -166,13 +166,27 @@ async function runOn() {
   const vil = (H.W.simVillages || [])[0];
   // Q2 — 땅 없는 손 H: 미가입자로 영토 안 · 가입(/소속) 뒤 영토 안
   await give(H, { wood: 50, stone: 50 });
-  await warp(H, vil.cx * 32 + 16 + 64, vil.cy * 32 + 16 + 64);
-  const h1 = await claimHere(H);
+  //   ★[T1501] 첫 집터 3×3(T1392 · T1428 `8cad948b9` 부터 돌봄과 같이 켬 기본)은 아홉 칸 막힘을 영토 문보다 먼저 본다 — 마을 시설 곁(종전 +2칸)에선
+  //     "아홉 칸(3×3)" 거절이 먼저 나와 영토 문까지 안 간다. 영토 안에서 아홉 칸이 빈 자리를 찾아 그 자리에서 묻는다(거절 · 가방 차 0 단언은 그대로).
+  const LOT = /아홉 칸\(3×3\)을 한 번에/;
+  let h1 = null, spot = null, tried = [];
+  //     중심 곁 6칸 안은 마을 시설이 촘촘해(첫 판 18/18 막힘) 영토(반경 ~30칸) 안쪽 고리 8 · 11 · 14 · 18칸 여덟 방향까지 넓힌다.
+  const RING = [[2, 2], [3, 3], [4, 0], [0, 4], [-4, 0], [0, -4]];
+  for (const r of [8, 11, 14, 18]) for (const [ux, uy] of [[1, 0], [0, 1], [-1, 0], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) RING.push([ux * r, uy * r]);
+  for (const [dx, dy] of RING) {
+    const x = vil.cx * 32 + 16 + dx * 32, y = vil.cy * 32 + 16 + dy * 32;
+    await warp(H, x, y); const r = await claimHere(H); tried.push(r);
+    if (r.ok || !LOT.test(r.said)) { h1 = r; spot = { x, y }; break; }
+  }
+  if (!h1) h1 = tried[tried.length - 1];
+  const triedCost = tried.filter((r) => Object.keys(r.cost).length).length;
+  await warp(H, vil.cx * 32 + 16 + 64, vil.cy * 32 + 16 + 64);   // ★[T1501] 가입은 종전 자리(마을 곁 +2칸)에서 — 먼 자리에선 "마을에서 너무 멉니다"
   const k1 = H.notices.length; send(H, { type: 'chat', text: '/소속' }); await sleep(1200);
   const joined = H.notices.slice(k1).join(' | ');   // 가입 말("…부탁을 n건 더 채우면 구성원으로 인정됩니다")
+  if (spot) await warp(H, spot.x, spot.y);
   const h2 = await claimHere(H);
-  ok(!h1.ok && !h2.ok && /구성원으로 인정/.test(joined) && !Object.keys(h1.cost).length && !Object.keys(h2.cost).length && /인정|구성원|영토/.test(h1.said + h2.said), Q.Q2,
-    `미가입 "${h1.said.slice(0, 40)}" · 가입 "${joined.slice(0, 40)}" · 가입 뒤 "${h2.said.slice(0, 40)}" · 가방 차 ${JSON.stringify([h1.cost, h2.cost])}`);
+  ok(!!spot && !h1.ok && !h2.ok && /구성원으로 인정/.test(joined) && !triedCost && !Object.keys(h2.cost).length && /인정|구성원|영토/.test(h1.said) && /인정|구성원|영토/.test(h2.said), Q.Q2,
+    `자리 ${spot ? tried.length + '번째' : '못 찾음(' + tried.map((r) => ((r.said.match(/잡습니다\. (.*?)입니다/) || [])[1] || r.said.slice(0, 20))).slice(-3).join(' / ') + ')'} · 미가입 "${h1.said.slice(0, 40)}" · 가입 "${joined.slice(-40)}" · 가입 뒤 "${h2.said.slice(0, 40)}" · 가방 차 ${JSON.stringify([h1.cost, h2.cost])}`);
   // Q16 — 손 K: 24칸을 잡고 **나간다**(서버는 켠 채). 이웃 H 가 K 땅을 지나가고(몇 칸 밟고 선다) 다른 손들이 땅을 넓히는 동안 H 가 K 땅의 색(claim_state)을 본다
   let K = await connect('bbK'); await give(K, { wood: 100, stone: 100 });
   await claimN(K, Math.floor(home.x / 32) * 32 - 40 * 32, Math.floor(home.y / 32) * 32 + 6 * 32, 24, 6);
@@ -202,9 +216,12 @@ async function runOn() {
   console.log(`    거절 글(건너뛴 칸 — 물 · 길 · 남의 땅 등): ${plan.map(([u]) => `${u.slice(2)} ${got[u].refused.length}`).join(' · ')} — D ${tally(got.bbD.refused)}`);
   //   계량기는 다시 접속해 새로 받은 것으로 읽는다(선포 사이에 온 것은 한 칸 늦을 수 있다)
   for (const u of Object.keys(P)) { P[u] = await relog(P[u]); await freshMeter(P[u]); }
-  ok(n('bbA') >= 1 && /사유지를 두었습니다/.test(got.bbA.firstSaid), Q.Q1, `첫 칸 "${got.bbA.firstSaid.slice(0, 60)}"`);
-  const cs = got.bbD.costs.map((c) => JSON.stringify(c)), same = cs.length > 1 && cs.every((c) => c === cs[0]);
-  ok(same && /wood|stone/.test(cs[0] || ''), Q.Q3, `${cs.length}칸 · 첫 칸 ${cs[0]} · 마지막 칸 ${cs[cs.length - 1]}`);
+  //   ★[T1501] 첫 선포는 첫 집터 아홉 칸(3×3 · T1392 — T1428 `8cad948b9` 부터 돌봄과 같이 켬 기본) — 알림 글이 "사유지 아홉 칸(3×3)을 두었습니다" 다.
+  ok(n('bbA') >= 1 && /사유지(?: 아홉 칸\(3×3\))?을 두었습니다/.test(got.bbA.firstSaid), Q.Q1, `첫 칸 "${got.bbA.firstSaid.slice(0, 60)}"`);
+  //   ★[T1501] 첫 선포(아홉 칸 한 묶음 값 — T1392 설계)는 칸 값이 아니다 — "1칸째와 100칸째 값이 같다"는 둘째 선포부터 견준다(한 칸씩 넓히는 값).
+  const cs0 = got.bbD.costs.map((c) => JSON.stringify(c)), first = cs0[0], cs = /아홉 칸\(3×3\)/.test(got.bbD.firstSaid || '') ? cs0.slice(1) : cs0;
+  const same = cs.length > 1 && cs.every((c) => c === cs[0]);
+  ok(same && /wood|stone/.test(cs[0] || ''), Q.Q3, `넓힌 ${cs.length}칸 · 첫 집터(3×3) ${first} · 넓힌 첫 칸 ${cs[0]} · 마지막 칸 ${cs[cs.length - 1]}`);
   const capWords = got.bbD.refused.filter((t) => /상한|슬롯|\/\s*9|더 둘 수 없|최대/.test(t));
   ok(n('bbD') === 100 && !capWords.length, Q.Q4, `D ${n('bbD')}칸 · 거절 ${got.bbD.refused.length}(상한 말 ${capWords.length})`);
   const M = {}; for (const u of Object.keys(P)) M[u] = meterNow(P[u].meter);

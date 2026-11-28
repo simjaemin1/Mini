@@ -112,10 +112,12 @@ process.on('exit', shutdown);
     await tp(cx, cy);
     await page.keyboard.down('d'); await page.keyboard.down('s');
     await sleep(400);
-    const seq = () => page.evaluate(() => (typeof inputSeq !== 'undefined' ? inputSeq : null));
-    const a = await pred(), q0 = await seq(), t0 = Date.now();
+    //   ★[T1501] 좌표와 걸음 번호를 **한 번에** 읽는다 — 따로 읽으면(evaluate 둘) 그 사이 프레임이 한 걸음을 더 내디뎌 30걸음 중 1걸음(±3.3%)이
+    //     어긋났다(T1478 S4 ×0.468 · S5 ×0.533 — 뭍 2.207 · 2.065px/걸음 = 2.133 ± 한 걸음). 자(걸음당 거리)와 허용(±6%)은 그대로.
+    const at = () => page.evaluate(() => { const m = window.__getMyAbs(); return { x: m.x, y: m.y, q: (typeof inputSeq !== 'undefined' ? inputSeq : null) }; });
+    const a = await at(), q0 = a.q, t0 = Date.now();
     await sleep(1000);
-    const b = await pred(), q1 = await seq(), t1 = Date.now();
+    const b = await at(), q1 = b.q, t1 = Date.now();
     await page.keyboard.up('d'); await page.keyboard.up('s');
     await sleep(900);
     const c = await srv(), p = await pred();

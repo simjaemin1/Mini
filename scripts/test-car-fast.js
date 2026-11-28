@@ -71,7 +71,7 @@ const base = require('./lib-port').ports(403, 39000);
   try { z.kill('SIGTERM'); } catch (e) {}
   await Promise.race([zx, sleep(30000)]); try { z.kill('SIGKILL'); } catch (e) {} await zx;
   let meta = null, vdays = [];
-  try { const db = new DatabaseSync(S, { readOnly: true }); const m = db.prepare('select data from world_meta').all(); meta = m[0] ? JSON.parse(m[0].data) : null;
+  try { const db = new DatabaseSync(S, { readOnly: true }); const m = db.prepare("select data from world_meta where zone = 'hanbando'").all(); meta = m[0] ? JSON.parse(m[0].data) : null;
     vdays = [...new Set(db.prepare('select day from villages').all().map((r) => r.day))]; db.close(); } catch (e) {}
   const mc = meta && meta.caravans ? meta.caravans.length : 0;
   ok(mc >= 10 && meta.anchor && vdays.length === 1 && vdays[0] === (meta.anchor.day | 0), '[상황] 저장된 세계 — 길 위 캐러밴이 메타에 실렸고 메타 날 = 마을 날(복원 문이 캐러밴을 되돌리는 판)', `캐러밴 ${mc} · 메타 날 ${meta && meta.anchor && meta.anchor.day} · 마을 날 ${vdays.join(',')}`);

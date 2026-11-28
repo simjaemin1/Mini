@@ -26,7 +26,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   if (REF) { wt = path.join(OUTD, 'tree'); try { execFileSync('git', ['worktree', 'remove', '--force', wt], { cwd: ROOT, stdio: 'ignore' }); } catch (e) {} execFileSync('git', ['worktree', 'add', '--detach', wt, REF], { cwd: ROOT, stdio: 'ignore' }); try { fs.symlinkSync(path.join(ROOT, 'node_modules'), path.join(wt, 'node_modules')); } catch (e) {} tree = wt; }
   const dd = path.join(OUTD, 'db'); fs.mkdirSync(dd, { recursive: true });
   for (const [s, n] of [[DB, 'world-hanbando.db'], [CDB, 'central.db']]) if (!has('--reuse') || !fs.existsSync(path.join(dd, n))) for (const x of ['', '-wal', '-shm']) { try { fs.copyFileSync(s + x, path.join(dd, n + x)); fs.chmodSync(path.join(dd, n + x), 0o644); } catch (e) {} }
-  let saved = null; try { const { DatabaseSync } = require('node:sqlite'); const d = new DatabaseSync(path.join(dd, 'world-hanbando.db')); const r = d.prepare('select updated_at from world_meta').get(); saved = r && r.updated_at; d.close(); } catch (e) {}
+  let saved = null; try { const { DatabaseSync } = require('node:sqlite'); const d = new DatabaseSync(path.join(dd, 'world-hanbando.db')); const r = d.prepare("select updated_at from world_meta where zone = 'hanbando'").get(); saved = r && r.updated_at; d.close(); } catch (e) {}
   const extra = Object.fromEntries((opt('--env', '') || '').split(',').filter(Boolean).map((e) => [e.slice(0, e.indexOf('=')), e.slice(e.indexOf('=') + 1)]));
   const SECRET = 't1445probe', ZP = +opt('--port', '47500'), CP = ZP + 10, log = fs.openSync(path.join(OUTD, 'zone.log'), 'w');
   const env0 = { ...process.env, NODE_ENV: 'production', CENTRAL_SECRET: SECRET };

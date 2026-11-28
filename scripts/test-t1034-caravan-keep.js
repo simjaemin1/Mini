@@ -67,7 +67,7 @@ const health = (port) => new Promise((res) => { const q = http.get({ host: '127.
 //   ★[T899 · 하네스 린트 ⑬a] 띄운 뒤 첫 기다림 = 준비 증인(`/health`) — 부팅 길이를 가정하지 않는다(상한 300초 · 정본 존 기동 상한)
 const up = async (db, port, extra) => { const c = spawn(process.execPath, [path.join(ROOT, 'server', 'zone.js')], { cwd: ROOT, env: zoneEnv(db, port, extra), stdio: 'ignore' }); const x = exitOf(c, 1500000);
   await Promise.race([until(() => health(port), 300000, 500), x]); return { c, x }; };
-const metaOf = (db) => { try { const d = new DatabaseSync(db, { readOnly: true }); const m = d.prepare('select data, day from world_meta').get(); d.close(); return m ? Object.assign(JSON.parse(m.data), { _day: m.day }) : null; } catch (e) { return null; } };
+const metaOf = (db) => { try { const d = new DatabaseSync(db, { readOnly: true }); const m = d.prepare("select data, day from world_meta where zone = 'hanbando'").get(); d.close(); return m ? Object.assign(JSON.parse(m.data), { _day: m.day }) : null; } catch (e) { return null; } };
 
 (async () => {
   const S = path.join(TMP, 'save.db');

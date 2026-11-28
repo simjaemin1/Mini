@@ -121,6 +121,16 @@ run_one() {
   echo "$out" | grep -E "^\s*✗|실패|FAIL" | grep -vE "실패 0|FAIL 0" | head -6
   echo "$out" | grep -E "^\s*⚠ 유보" | head -4   # ★[T1339] 유보 줄도 제 이름을 말하게(유보가 없으면 아무것도 안 찍는다)
   echo "$out" | grep -E "통과|PASS|EADDRINUSE|Error:|MODULE_NOT_FOUND" | tail -4
+  # ★[T1501] RC≠0 인데 ✗ 줄이 하나도 없으면(lab-diverge-ctl RC=1 · 실패 줄 0) 까닭을 **이 자리에서** 남긴다 —
+  #   상한(124) · 죽임(137) · 그 밖은 출력 끝 6줄(빈 줄 빼고). 판정 문법(`✓ RC=0` / `✗ RC=n …`)은 그대로(이 줄은 `[까닭]` 으로 시작 — 보고기 판정 밖).
+  if [ "$rc" -ne 0 ] && [ "$rc" -ne 75 ] && ! echo "$out" | grep -qE "^\s*(✗|✘)"; then
+    case "$rc" in
+      124) echo "  [까닭] 상한 ${t}초 닿음(timeout) — 판이 안 끝났다";;
+      137) echo "  [까닭] 죽임(SIGKILL · rc 137) — 상한 뒤 강제 종료거나 메모리";;
+      *)   echo "  [까닭] RC=$rc · ✗ 줄 0 — 출력 끝:";;
+    esac
+    echo "$out" | grep -vE '^\s*$' | tail -6 | sed 's/^/  [까닭] │ /' | cut -c1-300
+  fi
   # ★"결과 줄이 없으면 크래시다" — 종료코드만 믿지 않는다(하네스가 0 으로 죽을 수도 있다).
   local summary
   # ★★[T49 2026-09-02] **탐지기를 넓혔다.** 종전 문법(`통과` / `PASS <숫자>`)은 이 러너가

@@ -5354,6 +5354,7 @@ function getRouteResumable(aVil, bVil, budgetMs) {
   const r = _routeResume(key, s.ccx * SZ + SZ / 2, s.ccy * SZ + SZ / 2, t.ccx * SZ + SZ / 2, t.ccy * SZ + SZ / 2, budgetMs);
   if (!r.done) return { done: false };
   if (T1440_ROAD_RULE && !_t1440Step1Ok(key, r.pts)) { r.pts = _t1440Mode('2', () => _computeRoutePts1(s.ccx * SZ + SZ / 2, s.ccy * SZ + SZ / 2, t.ccx * SZ + SZ / 2, t.ccy * SZ + SZ / 2)) || r.pts; _t1440S.step2 = (_t1440S.step2 | 0) + 1; }   // ★[T1440] 켬 · 첫째 걸음(다 피해서)이 없거나 3배를 넘으면 둘째 걸음(주인 없는 구조물은 없는 것 — 동기 · 드물다)
+  _routeStore(key, r.pts, s, t, r.workMs);   // ★[T1501] T1440(9c3d95367)이 이 줄을 손잡이 밖에서 지웠다 — 재개형으로 판 길이 캐시 · DB 에 안 남아 동기 문이 같은 쌍을 다시 팠다(끔 = 종전 T85 줄 그대로)
   return { done: true, pts: r.pts ? (fwd ? r.pts.slice() : r.pts.slice().reverse()) : null };
 }
 

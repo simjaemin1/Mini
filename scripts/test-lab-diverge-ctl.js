@@ -26,12 +26,15 @@ let pass = 0, fail = 0;
 const ok = (c, m, x) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + m + (x !== undefined && x !== '' ? `  ${x}` : '')); };
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 't944-ldctl-'));
 const DAYS = '30', SEED = '1020';
+const RUNS = [];   // ★[T1501] 판마다 걸린 초 — 나란히 돌 때 어느 판이 상한(600초)에 닿는지 남긴다
 function run(tag, skip) {
   const env = Object.assign({}, process.env);
   for (const k of ['LDCTL_SKIP', 'LDCTL_OUT', 'T17_JSON', 'T176_JSON', 'LAB_SEEDCACHE', 'NODE_OPTIONS', 'T875_OUT']) delete env[k];
   Object.assign(env, { T17_JSON: path.join(TMP, `${tag}.json`), LAB_SEEDCACHE: path.join(TMP, `${tag}.seedcache.json`), NODE_OPTIONS: `--require ${path.join(__dirname, 'lab-diverge-ctl.js')}` });
   if (skip != null) env.LDCTL_SKIP = skip;
+  const t0 = Date.now();
   execFileSync(process.execPath, [path.join(__dirname, 't17-metrics.js'), DAYS, SEED], { cwd: ROOT, env, stdio: 'ignore', timeout: 600000 });
+  RUNS.push(`${tag} ${Math.round((Date.now() - t0) / 1000)}초`);
   const J = fs.readFileSync(path.join(TMP, `${tag}.json`));
   const lf = path.join(TMP, `${tag}.ldctl.json`);
   return { J, L: fs.existsSync(lf) ? JSON.parse(fs.readFileSync(lf, 'utf8')) : null };
@@ -63,7 +66,11 @@ try {
   const V2 = require(path.join(ROOT, 'sim', 'economy-sim-v2'));
   const w = V2.createWorldV2({ seed: 1, villageCount: 2, picker: 'rational', infoRange: 5000, raidPer100: 0.005 });
   ok(before === 'function' && !w.huntIncomeFn, '이 하네스(랩 자 아님)에선 프리로드가 문을 안 심는다', typeof w.huntIncomeFn);
+} catch (e) {
+  //   ★[T1501] 판(t17-metrics)이 상한에 닿거나 죽으면 종전엔 잡히지 않은 예외로 RC=1 · ✗ 줄 0 이었다(러너가 까닭을 못 남김) — ✗ 줄로 남긴다(단언은 그대로 · 실패는 실패)
+  ok(false, '랩 자 판 실행 실패(t17-metrics) — 판정 못 함', `${e && (e.code || e.message)}${e && e.signal ? ' · ' + e.signal : ''} · 걸린 판 ${RUNS.join(' · ') || '없음'}`);
 } finally {
+  if (RUNS.length) console.log(`    (판마다 초: ${RUNS.join(' · ')})`);
   try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {}
 }
 console.log(`\n=== ${pass + fail}건 중 PASS ${pass} · FAIL ${fail} ===`);
