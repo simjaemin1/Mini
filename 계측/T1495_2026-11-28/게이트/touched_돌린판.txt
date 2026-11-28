@@ -1,0 +1,55 @@
+test-bridge-act rc=0 17s 
+test-claim-v2 rc=0 19s === PASS 100 / FAIL 0 ===
+test-forage-act rc=0 29s === 결과: 251 PASS / 0 FAIL ===
+test-hp-src rc=0 3s === 54 통과 / 0 실패 ===
+test-hunt-port rc=0 2s === 78건 중 PASS 78 · FAIL 0 ===
+test-hunt-vis rc=0 81s === 32건 중 PASS 32 · FAIL 0 ===
+test-lab-hunt rc=0 1s === 62건 중 PASS 62 · FAIL 0 ===
+test-local-clocks rc=0 36s === 21건 중 PASS 21 · FAIL 0 ===
+test-mining rc=0 5s 결과: PASS
+test-mob-hp-door rc=0 5s === 19건 중 PASS 19 · FAIL 0 ===
+test-mob-respawn rc=0 6s === 16건 중 PASS 16 · FAIL 0 ===
+test-move-soa rc=0 85s === 결과: 287 PASS / 0 FAIL ===
+test-npc-wild-sync rc=0 4s === 10건 중 PASS 10 · FAIL 0 ===
+test-recut rc=0 174s === 결과: 24 PASS / 0 FAIL ===
+test-regrow rc=0 22s === 101건 중 PASS 101 · FAIL 0 ===
+test-road-day rc=0 34s === 결과: 30 PASS / 0 FAIL ===
+test-road-tail rc=0 7s === 결과: 7 PASS / 0 FAIL ===
+test-seed-hp rc=0 67s === 통과 16 · 실패 0 ===
+test-t1001-econ-day rc=0 4s === PASS 4 / FAIL 0 ===
+test-t1195-hunt-real rc=0 2s PASS 17 / FAIL 0
+test-t1237-water-deer rc=0 19s === 38건 중 PASS 38 · FAIL 0 ===
+test-t1238-terr-v2 rc=0 10s === T1238: 117건 중 PASS 117 · FAIL 0 ===
+test-t1243-farm-on rc=124 1801s 84 통과 · 1 실패
+test-t1292-xz-hide rc=0 1s === PASS 16 / FAIL 0 ===
+test-t1315-war-corpse rc=0 1s === T1315: 통과 25 · 실패 0 ===
+test-t1331-beast-body rc=0 42s PASS 미끼 keepledger 빨강 — 바꾼 자리 1 · FAIL 2건 · 첫 ② 장부
+test-t1353-onb-on-prep rc=0 26s === 15건 중 PASS 15 · FAIL 0 ===
+test-t1359-hunt-body rc=0 1s 6 통과 · 0 실패
+test-t1372-resume rc=0 713s === T1372 결과: 7 통과 · 0 실패 ===
+test-t1382-resume-body rc=0 1531s === T1382 결과: 6 통과 · 0 실패 ===
+test-t1393-hunt-chase rc=0 4s 10 통과 · 0 실패
+test-t1414-ocr-tmpdir rc=0 15s === 13건 중 PASS 13 · FAIL 0 ===
+test-t1416-hunt-body2 rc=0 98s 13 통과 · 0 실패
+test-t1429-hunt-body3 rc=0 40s 8 통과 · 0 실패
+test-t1432-npc-death rc=0 144s === 18건 중 PASS 18 · FAIL 0 ===
+test-t1433-terr-rows rc=1 192s === 24 통과 / 1 실패 ===
+test-t1439-call-carry rc=0 2s 9 통과 · 0 실패
+test-t1440-road-rule rc=0 25s 결과: 34 통과 · 0 실패
+test-t1448-road-grid rc=0 23s === 40 통과 / 0 실패 ===
+test-t1455-bridge-decay rc=0 7s 35 통과 · 0 실패
+test-t1461-beast-unseen rc=0 197s === 23건 중 PASS 23 · FAIL 0 ===
+test-t1466-road-fast rc=0 7s 결과: 18 통과 · 0 실패
+test-t1470-road-pin rc=0 3s 결과: 11 통과 · 0 실패
+test-vein-batch rc=0 0s === 17 통과 / 0 실패 ===
+test-wild-door rc=0 9s === 26건 중 PASS 26 · FAIL 0 ===
+test-winter rc=0 23s === 46건 중 PASS 46 · FAIL 0 ===
+test-wood-act rc=0 7s === 결과: 159 PASS / 0 FAIL ===
+test-zone-fauna rc=0 51s === 39건 중 PASS 39 · FAIL 0 ===
+END
+# 혼자 다시(동시 부하로 빨강이던 둘)
+test-t1243-farm-on 혼자: 85 통과 · 0 실패
+test-t1433-terr-rows 혼자 1차(판 끝 직후): === 23 통과 / 2 실패 ===
+test-t1433-terr-rows 혼자 2차: === 25 통과 / 0 실패 ===
+test-t1433-terr-rows 혼자 3차: === 25 통과 / 0 실패 ===
+test-t1433-terr-rows 옛 코드(8f5ec08): 초록 ✗ | test-t1433-terr-rows.js | RC=0 · ✓ 25 · ✗ 0 | 

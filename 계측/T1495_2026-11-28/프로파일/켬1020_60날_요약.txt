@@ -1,0 +1,173 @@
+total s 626.1
+--self
+ 16.4% updateMobs wildlife.js:86
+ 10.1% _t1393Tick wildlife.js:1163
+  6.6% _searchStep path-core.js:351
+  5.5% _hunterBrain wildlife.js:617
+  4.5% (garbage collector) :0
+  3.6% pop path-core.js:72
+  2.7% homeAt beast-body.js:307
+  2.3% _preservedKcal kcal.js:156
+  1.8% isTerrainBlockedLocal zone.js:2570
+  1.7% _isPointInRiver terrain.js:305
+  1.7% isWaterCellLocal terrain.js:353
+  1.7% _distMatrixGen villages.js:4396
+  1.6% _t598EdgeOk villages.js:4172
+  1.3% storageFoodEquivalent economy-sim.js:951
+  1.2% losRk wildlife.js:80
+  1.2% upsertRoadCell zone-local-db.js:596
+  1.2% tick wildlife.js:1323
+  1.1% _mkHeap path-core.js:56
+  1.1% getForestMultiplier terrain.js:433
+  1.0% isDitchTileLocal zone.js:2344
+  1.0% PathCore.routePathBegin.plain.stepBlocked villages.js:4714
+  0.9% villageOfCell villages.js:18326
+  0.7% computeShadowPrices economy-sim-v2.js:995
+  0.7% _targetV2 economy-sim-v2.js:879
+  0.6% insertVillageBuilding zone-local-db.js:838
+  0.6% pathStep path-core.js:474
+  0.6% stampCell roads.js:116
+  0.6% isRockCellLocal terrain.js:376
+  0.5% warTreeCellBlocked zone.js:6567
+  0.5% _flushStepLazy roads.js:506
+  0.5% move wildlife.js:150
+  0.5% isBlockedByWall zone.js:19831
+  0.5% generateChunkResources chunk.js:659
+  0.5% territoryBoundary villages.js:3610
+  0.5% _terrPick villages.js:9323
+  0.4% nearIn wildlife.js:130
+  0.4% L region-profiles.js:149
+  0.4% (anon) path-core.js:183
+  0.4% npcLifeTick villages.js:21859
+  0.4% _isPointInLake terrain.js:275
+--total
+100.0% (root) :0
+ 74.1% processImmediate timers:436
+ 74.1% pump t745-vclock.js:100
+ 73.7% (anon) zone.js:20112
+ 41.6% tick wildlife.js:1323
+ 40.4% _t1393Tick wildlife.js:1163
+ 23.1% m.exports.onGameTick t1495-why-probe.js:60
+ 22.8% m.exports.onGameTick t1461-beast-probe.js:26
+ 22.8% onGameTick villages.js:12944
+ 21.4% wrapModuleLoad loader:237
+ 21.4% (anon) loader:1193
+ 21.4% (anon) loader:1878
+ 21.4% (anon) loader:1490
+ 21.4% (anon) run_main_module:1
+ 21.4% Module._extensions..js t1461-beast-probe.js:17
+ 21.4% (anon) loader:1731
+ 21.4% Module._extensions..js t1495-why-probe.js:29
+ 21.4% Module._extensions..js t1495-cpu-split.js:32
+ 21.4% executeUserEntryPoint run_main:157
+ 21.4% (anon) zone.js:1
+ 20.5% updateMobs wildlife.js:86
+ 19.4% _t731Tick villages.js:13122
+ 19.4% _drainTickJobs villages.js:13721
+ 19.1% g villages.js:13153
+ 15.7% _searchStep path-core.js:351
+ 15.2% pathStep path-core.js:474
+ 15.0% bindHost bandits.js:2132
+ 15.0% init bandits.js:2238
+ 15.0% denScan bandits.js:713
+ 15.0% _denStep bandits.js:728
+ 15.0% routeDistCells bandits.js:672
+ 15.0% ensureRouteField bandits.js:607
+ 15.0% routePts bandits.js:589
+ 14.9% getRoute villages.js:5328
+ 14.8% computeRoutePts villages.js:4835
+ 14.8% _computeRoutePts1 villages.js:4839
+  6.6% _decOne zone.js:20232
+  6.0% init villages.js:10204
+  6.0% isTerrainBlockedLocal zone.js:2570
+  5.8% mute villages.js:13155
+  5.7% _hunterBrain wildlife.js:617
+  5.7% npcStep zone.js:6108
+  5.3% _caravanSyncOne villages.js:6659
+  5.2% computeShadowPrices economy-sim-v2.js:995
+  5.0% _walkFor villages.js:5537
+  5.0% _walkResume villages.js:5455
+  4.9% _distMatrixGen villages.js:4396
+  4.6% _t598EdgeOk villages.js:4172
+  4.5% (garbage collector) :0
+  4.5% generateChunkResources chunk.js:659
+  4.3% _targetV2 economy-sim-v2.js:879
+  4.2% _terrBlocked0 zone.js:2563
+  4.1% isBlocked villages.js:888
+  4.1% totalFoodEquivalent economy-sim.js:920
+  4.1% (anon) villages.js:819
+  4.1% spawnCaravanBody villages.js:6016
+  4.0% storageFoodEquivalent economy-sim.js:951
+  3.8% computeAndInjectDistMatrix villages.js:4382
+  3.6% stampEntityPx roads.js:153
+  3.6% stampCell roads.js:116
+_t1393Tick ticks 53307
+1270: 45787 (85.9%)
+1263: 2965 (5.6%)
+1275: 1039 (1.9%)
+982: 494 (0.9%)
+1277: 271 (0.5%)
+1018: 193 (0.4%)
+1289: 156 (0.3%)
+984: 129 (0.2%)
+1227: 124 (0.2%)
+1259: 116 (0.2%)
+1185: 107 (0.2%)
+1300: 105 (0.2%)
+1268: 101 (0.2%)
+1258: 85 (0.2%)
+1264: 85 (0.2%)
+1222: 66 (0.1%)
+1017: 61 (0.1%)
+1204: 57 (0.1%)
+1191: 57 (0.1%)
+1291: 52 (0.1%)
+1244: 52 (0.1%)
+1189: 50 (0.1%)
+1223: 41 (0.1%)
+1021: 39 (0.1%)
+1299: 38 (0.1%)
+1022: 37 (0.1%)
+1256: 37 (0.1%)
+1228: 36 (0.1%)
+1201: 36 (0.1%)
+1266: 33 (0.1%)
+callers(self ticks): [["tick:1323",53306],[":20112",1]]
+homeAt ticks 14817
+311: 11167 (75.4%)
+38: 2987 (20.2%)
+308: 662 (4.5%)
+307: 1 (0.0%)
+callers(self ticks): [["_t1393Tick:1163",14816],["tick:1323",1]]
+updateMobs ticks 87682
+171: 24727 (28.2%)
+130: 7207 (8.2%)
+144: 6751 (7.7%)
+133: 4304 (4.9%)
+132: 3340 (3.8%)
+301: 2925 (3.3%)
+149: 2292 (2.6%)
+222: 2135 (2.4%)
+90: 1702 (1.9%)
+148: 1672 (1.9%)
+141: 1591 (1.8%)
+169: 1572 (1.8%)
+135: 1239 (1.4%)
+162: 1076 (1.2%)
+211: 1071 (1.2%)
+172: 1057 (1.2%)
+146: 1050 (1.2%)
+234: 1016 (1.2%)
+296: 954 (1.1%)
+206: 932 (1.1%)
+137: 810 (0.9%)
+111: 802 (0.9%)
+233: 768 (0.9%)
+129: 694 (0.8%)
+375: 669 (0.8%)
+228: 662 (0.8%)
+309: 638 (0.7%)
+98: 634 (0.7%)
+219: 566 (0.6%)
+166: 544 (0.6%)
+callers(self ticks): [["_t1393Tick:1163",87605],["updateMobs:86",40],["tick:1323",37]]

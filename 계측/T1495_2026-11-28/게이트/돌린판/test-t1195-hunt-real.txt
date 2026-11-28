@@ -1,0 +1,19 @@
+PASS default undefined
+PASS default 0
+PASS default 1
+PASS default 
+[econ-sim-v2] specialty.js 통합: 233종 → 총 253 TRADABLE
+PASS physical host closes hunter formula meat and every byproduct; non-host keeps the formula
+PASS daily demand: whole animal may overshoot, prepaid carries, unmet demand expires
+PASS in view: every seen kill enters by its species and kg; ledger deduction equals the kills
+PASS out of view: unreached day brings nothing and returns the whole take to the cell
+PASS out of view: reached day brings whole animals only, in prey order, while demand lasts
+PASS out of view: demand met stops at the first whole animal and returns the rest
+PASS ledger stays within 0..K and an over-budget seen kill is deducted
+PASS knob off: hands-in hook does nothing and fields stay
+PASS reach flag is planted only at a hunting ground that is not home
+PASS seen kill records its species at the kill (wildlife)
+PASS mutant formula is caught
+PASS mutant refund is caught
+PASS mutant reach is caught
+PASS 17 / FAIL 0

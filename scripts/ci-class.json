@@ -16719,6 +16719,96 @@
     "spawnSync node"
    ]
   },
+  "test-t1495-beast-why.js": {
+   "cls0": "다",
+   "why0": "존 · central · listen · fixture-boot",
+   "cls": "나",
+   "maxSec": 18.9,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 15.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 16.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 15.2,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 18.9,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 16.2,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "execFileSync node"
+   ]
+  },
+  "test-t1516-body-first.js": {
+   "cls0": "나",
+   "why0": "child_process",
+   "cls": "나",
+   "maxSec": 2.8,
+   "same5": true,
+   "core": true,
+   "why": "core",
+   "runs": [
+    {
+     "rc": 0,
+     "secs": 2.6,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.7,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.8,
+     "green": true,
+     "fails": []
+    },
+    {
+     "rc": 0,
+     "secs": 2.7,
+     "green": true,
+     "fails": []
+    }
+   ],
+   "dyn": "나",
+   "child": [
+    "spawnSync node"
+   ]
+  },
   "test-t721-apply.js": {
    "cls0": "나",
    "why0": "child_process",
@@ -19034,52 +19124,7 @@
     "spawnSync node"
    ],
    "srv": true
-  },
-  "test-t1516-body-first.js": {
-   "cls0": "나",
-   "why0": "child_process",
-   "cls": "나",
-   "maxSec": 2.8,
-   "same5": true,
-   "core": true,
-   "why": "core",
-   "runs": [
-    {
-     "rc": 0,
-     "secs": 2.6,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 2.7,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 2.7,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 2.8,
-     "green": true,
-     "fails": []
-    },
-    {
-     "rc": 0,
-     "secs": 2.7,
-     "green": true,
-     "fails": []
-    }
-   ],
-   "dyn": "나",
-   "child": [
-    "spawnSync node"
-   ]
   }
  },
- "at": "2026-11-25"
+ "at": "2026-11-28"
 }

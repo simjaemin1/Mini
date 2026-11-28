@@ -96,6 +96,9 @@ function create(opt) {
   }
   // ── 무리터 이웃(장부 이웃 = ±2 · 같은 칸) — 무리터 A 의 칸 곁(체비셰프 2)에 B 의 칸이 있으면 이웃 · 맞닿은 칸 한 쌍을 적는다(서식이 바뀌면 다시)
   let adjDirty = true, owner = null;
+  //   ★[T1495 · 판정 32] 집 무리터 칸 메모(`homeAt` 의 "그 칸을 가진 무리터가 없을 때 가장 가까운 무리터 칸" 훑기 답) — 켬 = wildlife 가 `t1495HomeMemo()` 로 연다(손잡이 `T1495_BEAST_LEAN` · T1461 켬 위) ·
+  //     답은 무리터(칸 집합)만 읽는다 — 무리터가 바뀌는 문(이행 · 벌채 · 되읽기)은 다 `adjDirty` 를 세우고 `homeAt` 은 늘 먼저 `_adjBuild` 를 부른다 → 다시 지을 때 비운다(같은 답) · 끔 = null(종전 그대로 훑는다)
+  let _t1495Hm = null; const _t1495HmSt = { hit: 0, miss: 0, clr: 0 };
   //   비용: 칸 전부 × 25 를 훑으면 한반도(15만 칸) 한 번 2초다 — 무리터 둘레 사각(± 2)이 겹치는 무리터끼리만, 그 겹친 사각 안 칸만 훑는다(같은 답 · 겹침 없는 쌍은 이웃일 수 없다).
   //   벌채가 서식을 바꾸면 다시 지어야 하지만 읽는 자리는 14일 재정착 · 떠나는 몸뿐이라 그때만 짓는다(`adjDirty`).
   function _adjBuild() {
@@ -122,6 +125,7 @@ function create(opt) {
       if (h.set.size || !h.adj) h.adj = [...seen.values()];   // 서식이 다 없어진 무리터는 마지막 이웃을 쥔다(몸이 떠날 곳)
     }
     adjDirty = false; W.st.adjBuild = (W.st.adjBuild | 0) + 1;
+    if (_t1495Hm) { _t1495Hm.clear(); _t1495HmSt.clr++; }   // ★[T1495] 무리터가 바뀌었다 — 메모를 비운다
   }
   // ── 걸음 하나 — 지금 칸에서 체비셰프 2 안의 서식 칸 중 목표에 가장 가까운 칸(동률 = 훑는 차례). 서식 칸이 곁에 없으면 막히지 않은 칸.
   function _step(b, tx, ty, okSet) {
@@ -306,11 +310,14 @@ function create(opt) {
   // 집 무리터 고르기(넘어온 몸 · 보이던 몸이 무리터 밖에서 죽지 않게) — 그 칸을 가진 무리터 → 없으면 가장 가까운 무리터의 칸
   function homeAt(cx, cy) {
     if (adjDirty) _adjBuild();
-    const o = owner.get(KEY(cx, cy)); if (o && o.length) return o[0];
+    const c = KEY(cx, cy), o = owner.get(c); if (o && o.length) return o[0];
+    if (_t1495Hm && _t1495Hm.has(c)) { _t1495HmSt.hit++; return _t1495Hm.get(c); }   // ★[T1495] 같은 칸 · 같은 무리터 = 같은 답(아래 훑기를 다시 안 한다)
     let best = null, bd = Infinity;
     for (const [v, h] of W.hab) for (const k of h.set) { const d = (KX(k) - cx) ** 2 + (KY(k) - cy) ** 2; if (d < bd) { bd = d; best = v; } }
+    if (_t1495Hm) { _t1495Hm.set(c, best); _t1495HmSt.miss++; }
     return best;
   }
+  function t1495HomeMemo() { if (!_t1495Hm) _t1495Hm = new Map(); return _t1495HmSt; }   // ★[T1495] 메모를 연다(한 번 · 되돌림 없음) — 셈(맞음 · 훑음 · 비움)을 돌려준다
   // ── 보존 — 날마다(그날 첫 무리터가 부를 때 어제 몫을 센다)
   function audit(day) {
     if (W.dayAudit === day) return null;
@@ -351,7 +358,7 @@ function create(opt) {
     return { scale: SCALE, alive: alive(), expect: expect(), by, mat, tr, walk, cells, habs: W.hab.size, st: JSON.parse(JSON.stringify(W.st)), home, last: W.log[W.log.length - 1] || null };
   }
   const api = { W, SCALE, migrate, walkDay, breedWeek, resettle, hunt, deforest, gameRatio, showAt, hideAt, follow, diedAt, tameAt,
-    doorHide, doorShow, doorOut, doorIn, pack, homeAt, nearestCell, audit, rows, habRows, meta, load, stat, Kof, nOf, alive, expect, KEY, KX, KY,
+    doorHide, doorShow, doorOut, doorIn, pack, homeAt, t1495HomeMemo, nearestCell, audit, rows, habRows, meta, load, stat, Kof, nOf, alive, expect, KEY, KX, KY,
     has: (v) => W.hab.has(v) };
   module.exports.current = api;   // 이 존의 몸 표(보임 다리 `wildlife` · 존 죽음 길 · 넘김 문이 같은 표를 본다 — 마지막에 지은 것)
   return api;

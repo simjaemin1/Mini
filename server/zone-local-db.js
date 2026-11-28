@@ -658,7 +658,7 @@ const stmtCountRoutes = db.prepare('SELECT COUNT(*) AS n FROM trade_routes WHERE
 function getTradeRoutes(zone, sig) { return stmtGetRoutes.all(zone, String(sig)); }
 function upsertTradeRoute(zone, pair, sig, ptsJson) { stmtUpsertRoute.run(zone, String(pair), String(sig), ptsJson === null ? null : String(ptsJson)); }
 function clearTradeRoutes(zone) { return stmtClearRoutes.run(zone).changes | 0; }
-// [land1093 · PM] deleteTradeRoute 는 T1440 쪽(아래)이 같은 SQL 로 이미 정의 — T1455 쪽 같은 이름 함수는 뺐다(stmtDelRoute 는 남김)
+// [land1093 · PM] deleteTradeRoute 는 T1440 쪽(아래)이 같은 SQL 로 이미 정의 — T1455 쪽 같은 이름 함수는 뺐다(stmtDelRoute 는 남김) · ★[T1495] 그 함수가 이 문(stmtDelRoute)을 부른다(T1440 표 열기 0 · 같은 SQL 두 벌 0)
 function countTradeRoutes(zone) { return (stmtCountRoutes.get(zone) || {}).n | 0; }
 // ★★[T1440] 처음 길(쌍마다 길이 · 줄 — 3배의 기준) · 쌍 하나 지우기 · 사유지 칸 "길이 지나는 칸" — 손잡이 `T1440_ROAD_RULE` 켬에서만 부른다
 //   (표 · 열은 처음 부를 때 — CREATE TABLE IF NOT EXISTS · 열은 T45 규약대로 PRAGMA 로 보고 붙인다 · 구DB 안전 · 끔 = 표 0 · 열 0 · 행 0)
@@ -670,13 +670,12 @@ function _t1440Db() {
   _t1440Q = {
     fAll: db.prepare('SELECT pair, len, pts FROM t1440_first WHERE zone = ?'),
     fPut: db.prepare('INSERT INTO t1440_first (zone, pair, len, pts) VALUES (?, ?, ?, ?) ON CONFLICT(zone, pair) DO NOTHING'),
-    rDel: db.prepare('DELETE FROM trade_routes WHERE zone = ? AND pair = ?'),
   };
   return _t1440Q;
 }
 function t1440FirstAll(zone) { return _t1440Db().fAll.all(zone).map((r) => { let pts = null; try { pts = r.pts ? JSON.parse(r.pts) : null; } catch (e) {} return [r.pair, r.len, pts]; }); }
 function t1440FirstPut(zone, pair, len, ptsJson) { _t1440Db().fPut.run(zone, String(pair), +len, ptsJson == null ? null : String(ptsJson)); }
-function deleteTradeRoute(zone, pair) { return _t1440Db().rDel.run(zone, String(pair)).changes | 0; }
+function deleteTradeRoute(zone, pair) { return stmtDelRoute.run(zone, String(pair)).changes | 0; }   // ★[T1495 · 족보 937] 쌍 하나 지우기 = 늘 있는 표(`trade_routes`)의 문 — T1440 표 열기(`_t1440Db` — `t1440_first` CREATE)를 안 거친다(T1455 만 켠 세계에 빈 T1440 표가 서던 것 · 같은 SQL · T1440 켬 = 부팅 `t1440FirstAll` 이 표를 연다)
 //   사유지 칸 "길이 지나는 칸" — claims 열 하나(`t1440_pass` · 1 | NULL) · 부팅 로드는 `SELECT *` 가 읽는다(zone.js 사유지 로드)
 let _t1440CP = null;
 function t1440ClaimPass(dbId, v) {

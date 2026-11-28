@@ -1,0 +1,32 @@
+PASS ① 손잡이 undefined → 끔(몸 모듈 실림 false)
+PASS ① 손잡이 "0" → 끔(몸 모듈 실림 false)
+PASS ① 손잡이 "" → 끔(몸 모듈 실림 false)
+PASS ① 손잡이 "true" → 끔(몸 모듈 실림 false)
+PASS ① 손잡이 "1" → 켬(몸 모듈 실림 false)
+PASS ① 몸 환율 기본 = L_GAMEMAX / 랩 MOB_DENS(0.02) = 5000
+PASS ① 끔 판 = 장부가 선다 · 몸 모듈 안 실림 — {"ledger":3,"loaded":false,"bodies":null}
+PASS 판이 끝까지 돌았다 — 56날 · 몸 4751
+PASS ② 이행 몸 수 = 장부 합 ÷ 환율(내림 · 마을마다) — [{"v":"A","n":3095,"sum":309500,"ledgerGone":true,"none":1,"rebuilt":0},{"v":"D","n":3095,"sum":309500,"ledgerGone":true,"none":1,"rebuilt":0},{"v":"C","n":3095,"sum":309500,"ledgerGone":true,"none":1,"rebuilt":0}]
+PASS ② 장부를 버렸다(_gameRich null · _gameNone 1) · 뒤로 다시 안 섰다 — [[true,1,0],[true,1,0],[true,1,0]]
+PASS ② 이행 뒤 날들에 장부가 다시 지어진 적 0
+PASS ③ 날마다 몸 수 = 처음 + 태어남 − 죽음 − 넘어감 + 넘어옴 − 길듦 · 어긋남 0 — 감사 56 · 어긋남 0 · 날 차이 어긋남 0
+PASS ③ [전제] 태어남 · 사냥 · 굶음 · 보이는 몸 죽음이 실제로 있었다(자명 통과 아님) — {"born":89,"died":{"hunt":6,"starve":8,"seen":4609,"old":0,"pred":0}}
+PASS ③ 없던 몸 0(새 id = 그날 난 몸 · 어미가 전날 살아 있음) · 죽은 id 다시 섬 0 — 새 id 89 · 없던 0 · 되살아남 0
+PASS ④ 새 몸은 다 어미 곁(체비셰프 2) · 어미 = 같은 종 암컷 — 새끼 89 · 먼 새끼 0 · 어미 틀림 0
+PASS ⑤ 날마다 옮긴 거리 ≤ 30걸음 × 2칸 · 걸음 감시 0 — 옮긴 몸-날 258611 · 최대 60칸 · 뜀 0 · 감시 0
+PASS ⑤ 재정착 = 이웃 무리터 몸이 걸어 와 닿았다(생성 0) — 떠난 몸 1658 · 닿음 1658 · 그만둠 0 · D 몸 31 → 1729
+PASS ⑥ 사냥꾼 예산 합 = 몸 표 사냥 죽음 = 표에서 빠진 몸 — 예산 6 · 죽음 6 · 빠짐 6
+PASS ⑦ 벌채 — 서식 칸 줄음 · 그 칸에 섰던 몸은 다음 날 다 떠났다(또는 죽었다) — {"onCut0":215,"cells":169,"habBefore":3095,"habAfter":2926,"onCut1":0,"leftN0":1597,"allGone":true,"leftStill":0,"leftRehome":1597,"leftWalk":0,"leftDead":0}
+PASS ⑦ 서식이 다 없어진 마을 — 몸이 이웃 무리터로 걸어 떠났다(닿음 · 걷는 중 · 굶음 — 그냥 선 몸 0 · 사라짐 0) — {"onCut0":215,"cells":169,"habBefore":3095,"habAfter":2926,"onCut1":0,"leftN0":1597,"allGone":true,"leftStill":0,"leftRehome":1597,"leftWalk":0,"leftDead":0}
+PASS ⑧ 14일 land.game = 기준 × clamp(몸 / 처음 몸, 0.05, 1) — [{"v":"A","day":14,"got":1.2,"want":1.2},{"v":"D","day":14,"got":0.06,"want":0.06}]
+PASS ⑨ 되읽기 — 몸 수 · id · 자리 같음 · 장부 다시 안 섬 · 다음 날 보존 어긋남 0 — 몸 4751 → 4751 · 서명 true · 장부 0 · 
+PASS ⑩ 켜진 청크 몸 → 존 몹 · 꺼지면 몸 표로(수 같음) · 길듦 1 · 존 죽음 문 1 — {"shown":304,"n0":4751,"tame":1,"seenDied":1,"kept":1,"hidAll":true,"countSame":true,"stat":{"mat":0,"show":304,"hide":302,"tame":1,"lost":0,"peak":304}}
+PASS ⑪ T1321 문 — 보낸 존 넘어감 1 · 받은 존 넘어옴 1 · 두 존 합 같음 · 몸 칸 실림 — {"moved":true,"go":true,"midTr":true,"out":1,"in":1,"sum0":4,"sum1":4,"spOk":true,"auditA":true,"auditB":true}
+
+=== 24건 중 PASS 24 · FAIL 0 ===
+PASS 미끼 resettle 빨강 — 바꾼 자리 1 · FAIL 3건 · 첫 ③ 날마다 몸 수 = 처음 + 태어남 − 죽음 − 넘어감 + 넘어옴 − 길듦 · 어긋남 0 — 감사 56 · 어긋남 42 · 날 차이 어긋남 1
+PASS 미끼 ledger 빨강 — 바꾼 자리 1 · FAIL 2건 · 첫 ③ 날마다 몸 수 = 처음 + 태어남 − 죽음 − 넘어감 + 넘어옴 − 길듦 · 어긋남 0 — 감사 56 · 어긋남 30 · 날 차이 어긋남 3
+PASS 미끼 teleport 빨강 — 바꾼 자리 1 · FAIL 1건 · 첫 ⑤ 날마다 옮긴 거리 ≤ 30걸음 × 2칸 · 걸음 감시 0 — 옮긴 몸-날 258838 · 최대 242칸 · 뜀 129718 · 감시 267471
+PASS 미끼 farkid 빨강 — 바꾼 자리 1 · FAIL 1건 · 첫 ④ 새 몸은 다 어미 곁(체비셰프 2) · 어미 = 같은 종 암컷 — 새끼 87 · 먼 새끼 87 · 어미 틀림 0
+PASS 미끼 keepledger 빨강 — 바꾼 자리 1 · FAIL 2건 · 첫 ② 장부를 버렸다(_gameRich null · _gameNone 1) · 뒤로 다시 안 섰다 — [[false,null,55],[false,null,5
+=== 미끼 5/5 빨강 ===

@@ -1,0 +1,170 @@
+=== 보이는 사냥은 장부의 연출이다 (T158) ===
+
+① 예산 정본 — 장부가 그날 **실제로 뺀 수**가 예산이다(새 수 0)
+  ✓ ★★① 예산 함수 본문에 **새 수가 0개**  0개
+  ✓ ★★① 예산 = **그날 잡은 수 − 이미 쓴 수**
+  ✓ ★★① 예산은 `huntTakeAt` 이 **실제로 뺀 그 수**다(사본 0)
+  ✓ ★★① 예산 함수는 **장부를 안 건드린다**(읽기 전용)
+  ✓ ★① 남은 예산 셈이 맞다  3−1=2
+  ✓ ★① 사냥꾼이 아니면 예산 0(빈 사람은 못 잡는다)
+
+② 하루 경계 — `huntHunters` 가 예산을 열고 어제 쓴 것을 지운다
+  ✓ ★★② 하루 틱이 예산을 **그날 뺀 수로** 연다  예산 4.000 = 뺀 수 4.000
+  ✓ ★② 그러면 남은 예산도 그 수다
+  ✓ ★★② 다음 날이 오면 **어제 쓴 것이 지워진다**(누계가 아니다)
+  ✓ ★★② 사냥꾼 아닌 사람은 **예산이 없다**(그래서 못 잡는다)
+  ✓ ★② 그 사람의 남은 예산은 0
+
+③ 게이트 자리 — **두뇌**가 막는다(실행층 287행 블록은 원문 무수정)
+  ✓ ★★③ 예산을 **두뇌가** 읽는다
+  ✓ ★★③ 예산이 없으면 **귀환**한다(행동 상태 하나)
+  ✓ ★★③ 그리고 **표적을 놓는다**(추적을 그만둔다)
+  · [상황] ③ [상황] 실행층 블록을 찾았다  40518
+  ✓ ★★③ 실행층(조준·사격·도살)에 예산 이름이 **하나도 없다**(원문 무수정)
+  ✓ ★★③ 잡은 수는 **새 사체가 앉을 때** 한 번 센다(중복 안 센다)
+  ✓ ★★③ 이미 물어 둔 사체는 **마저 바른다**(그 마리는 이미 예산에서 나갔다)
+  ✓ ★★③ 주입은 `zone.js` 한 줄 · 정본은 `villages.js`(사본 0)
+  ✓ ★★③ `wildlife.js` 는 **수확 식을 여전히 모른다**(전달만)
+
+④ 이중 차감 0 — 보이는 kill 은 `gameRich` 를 **다시 안 깎는다**
+  ✓ ★★④ 뷰의 장부 보기는 **쓰기가 막혀 있다**(set 무해 · delete false)
+  ✓ ★★④ `wildlife.js` 코드에 장부에 **쓰는 줄이 0개**  0개
+[hanbando] 🐾 wildlife ON — 동물 AI 블록(마을실험실 §4-4) 이식: 5종(🦌🐇🐗🐺🐯) + 고라니(T1237 · 둘째 상태), 그리드 64×64셀, dt=1/30유닛(1유닛=1초=1게임분)
+  · [상황] ④ [상황] **정본 보기가 깔렸다**(init 이 T146 의 얇은 보기를 심었다)  1,1 → 42
+  ✓ ★★④ 보기에 써 봐도 **정본이 안 변한다**(이중 차감이 물리적으로 불가)  보기 42 · 정본 42
+
+⑤ 되돌림 — `T158_LEDGER_VIS=0` 이면 지금 연출 그대로
+  ✓ ⑤ 전제 — 이 판은 켜져 있다
+  ✓ ★★⑤ 손잡이가 **부를 때** 읽힌다
+  ✓ ★★⑤ 끈 판은 예산이 **무한**이다(= 종전 연출 · 두뇌가 안 막는다)  Infinity
+  ✓ ★⑤ 켠 판은 다 쓰면 음수(막힌다)
+
+⑥ 실기 — 뷰 사냥꾼을 진짜로 돌린다(예산 0 / n / 되돌림)
+[hanbando] 🐾 wildlife ON — 동물 AI 블록(마을실험실 §4-4) 이식: 5종(🦌🐇🐗🐺🐯) + 고라니(T1237 · 둘째 상태), 그리드 64×64셀, dt=1/30유닛(1유닛=1초=1게임분)
+[hanbando] 🐾 spawn 🦌×5 gid=1 @(31,41)셀
+[hanbando] 🐾 spawn 🐇×4 gid=2 @(34,6)셀
+[hanbando] 🐾 spawn 🦌×5 gid=3 @(42,13)셀
+[hanbando] 🐾 spawn 🐇×2 gid=4 @(35,4)셀
+[hanbando] 🐾 spawn 🐇×4 gid=5 @(10,49)셀
+[hanbando] 🐾 spawn 🦌×4 gid=6 @(57,20)셀
+[hanbando] 🐾 spawn 🦌×7 gid=7 @(9,59)셀
+[hanbando] 🐾 spawn 🦌×6 gid=8 @(13,41)셀
+[hanbando] 🐾 spawn 🐇×2 gid=9 @(35,33)셀
+[hanbando] 🐾 spawn 🦌×3 gid=10 @(37,52)셀
+[hanbando] 🐾 spawn 🐇×3 gid=11 @(24,51)셀
+[hanbando] 🐾 spawn 🦌×4 gid=12 @(3,31)셀
+[hanbando] 🐾 spawn 🐇×4 gid=13 @(40,25)셀
+[hanbando] 🐾 mobs=53(🦌34 🐇19) flee=34 chg=0 kill=0 hit사람=0 tick avg=38.00ms peak=38ms maxSpd[m/s]= · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=53(🦌34 🐇19) flee=40 chg=0 kill=0 hit사람=0 tick avg=1.11ms peak=25ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=53(🦌34 🐇19) flee=40 chg=0 kill=0 hit사람=0 tick avg=1.22ms peak=18ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=53(🦌34 🐇19) flee=80 chg=0 kill=0 hit사람=0 tick avg=1.52ms peak=148ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=53(🦌34 🐇19) flee=84 chg=0 kill=0 hit사람=0 tick avg=1.24ms peak=40ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=53(🦌34 🐇19) flee=124 chg=0 kill=0 hit사람=0 tick avg=1.15ms peak=21ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=53(🦌34 🐇19) flee=125 chg=0 kill=0 hit사람=0 tick avg=0.94ms peak=24ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=53(🦌34 🐇19) flee=125 chg=0 kill=0 hit사람=0 tick avg=0.97ms peak=37ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=53(🦌34 🐇19) flee=125 chg=0 kill=0 hit사람=0 tick avg=2.08ms peak=219ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=53(🦌34 🐇19) flee=125 chg=0 kill=0 hit사람=0 tick avg=0.93ms peak=47ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=52(🦌34 🐇18) flee=160 chg=0 kill=1 hit사람=0 tick avg=0.84ms peak=22ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=52(🦌34 🐇18) flee=160 chg=0 kill=1 hit사람=0 tick avg=1.07ms peak=14ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=52(🦌34 🐇18) flee=163 chg=0 kill=1 hit사람=0 tick avg=1.90ms peak=34ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=52(🦌34 🐇18) flee=165 chg=0 kill=1 hit사람=0 tick avg=1.09ms peak=20ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=52(🦌34 🐇18) flee=167 chg=0 kill=1 hit사람=0 tick avg=1.08ms peak=25ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=52(🦌34 🐇18) flee=168 chg=0 kill=1 hit사람=0 tick avg=0.90ms peak=20ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=52(🦌34 🐇18) flee=202 chg=0 kill=1 hit사람=0 tick avg=0.73ms peak=13ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=52(🦌34 🐇18) flee=205 chg=0 kill=1 hit사람=0 tick avg=1.71ms peak=129ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=52(🦌34 🐇18) flee=205 chg=0 kill=1 hit사람=0 tick avg=0.98ms peak=16ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=52(🦌34 🐇18) flee=206 chg=0 kill=1 hit사람=0 tick avg=0.53ms peak=8ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=52(🦌34 🐇18) flee=207 chg=0 kill=1 hit사람=0 tick avg=0.47ms peak=9ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=52(🦌34 🐇18) flee=242 chg=0 kill=1 hit사람=0 tick avg=0.72ms peak=16ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=52(🦌34 🐇18) flee=244 chg=0 kill=1 hit사람=0 tick avg=0.91ms peak=24ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=52(🦌34 🐇18) flee=245 chg=0 kill=1 hit사람=0 tick avg=1.71ms peak=18ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=52(🦌34 🐇18) flee=248 chg=0 kill=1 hit사람=0 tick avg=0.96ms peak=85ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=52(🦌34 🐇18) flee=249 chg=0 kill=1 hit사람=0 tick avg=1.15ms peak=195ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=52(🦌34 🐇18) flee=249 chg=0 kill=1 hit사람=0 tick avg=0.91ms peak=56ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=52(🦌34 🐇18) flee=251 chg=0 kill=1 hit사람=0 tick avg=0.81ms peak=35ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=52(🦌34 🐇18) flee=290 chg=0 kill=1 hit사람=0 tick avg=1.24ms peak=36ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=52(🦌34 🐇18) flee=290 chg=0 kill=1 hit사람=0 tick avg=1.27ms peak=42ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=52(🦌34 🐇18) flee=291 chg=0 kill=1 hit사람=0 tick avg=3.98ms peak=457ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=52(🦌34 🐇18) flee=293 chg=0 kill=1 hit사람=0 tick avg=0.31ms peak=19ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=52(🦌34 🐇18) flee=294 chg=0 kill=1 hit사람=0 tick avg=0.47ms peak=8ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=52(🦌34 🐇18) flee=295 chg=0 kill=1 hit사람=0 tick avg=1.96ms peak=69ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=52(🦌34 🐇18) flee=296 chg=0 kill=1 hit사람=0 tick avg=1.69ms peak=150ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=52(🦌34 🐇18) flee=296 chg=0 kill=1 hit사람=0 tick avg=0.41ms peak=20ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=52(🦌34 🐇18) flee=296 chg=0 kill=1 hit사람=0 tick avg=0.32ms peak=32ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=52(🦌34 🐇18) flee=299 chg=0 kill=1 hit사람=0 tick avg=0.40ms peak=8ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=52(🦌34 🐇18) flee=301 chg=0 kill=1 hit사람=0 tick avg=0.30ms peak=5ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=338 chg=0 kill=2 hit사람=0 tick avg=0.54ms peak=17ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=339 chg=0 kill=2 hit사람=0 tick avg=1.56ms peak=28ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=340 chg=0 kill=2 hit사람=0 tick avg=1.43ms peak=47ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=341 chg=0 kill=2 hit사람=0 tick avg=0.55ms peak=8ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=341 chg=0 kill=2 hit사람=0 tick avg=0.24ms peak=12ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=342 chg=0 kill=2 hit사람=0 tick avg=0.81ms peak=16ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=344 chg=0 kill=2 hit사람=0 tick avg=1.81ms peak=124ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=346 chg=0 kill=2 hit사람=0 tick avg=1.76ms peak=221ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=353 chg=0 kill=2 hit사람=0 tick avg=0.66ms peak=24ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=385 chg=0 kill=2 hit사람=0 tick avg=0.62ms peak=12ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=387 chg=0 kill=2 hit사람=0 tick avg=0.64ms peak=13ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=388 chg=0 kill=2 hit사람=0 tick avg=0.89ms peak=84ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=419 chg=0 kill=2 hit사람=0 tick avg=0.71ms peak=20ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=419 chg=0 kill=2 hit사람=0 tick avg=1.06ms peak=84ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=419 chg=0 kill=2 hit사람=0 tick avg=1.21ms peak=32ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=419 chg=0 kill=2 hit사람=0 tick avg=0.21ms peak=5ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=421 chg=0 kill=2 hit사람=0 tick avg=0.72ms peak=20ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=422 chg=0 kill=2 hit사람=0 tick avg=1.02ms peak=81ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=456 chg=0 kill=2 hit사람=0 tick avg=0.87ms peak=64ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=458 chg=0 kill=2 hit사람=0 tick avg=0.67ms peak=26ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=459 chg=0 kill=2 hit사람=0 tick avg=0.90ms peak=20ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=459 chg=0 kill=2 hit사람=0 tick avg=0.62ms peak=84ms maxSpd[m/s]=🦌25.2 🐇26.6 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=500 chg=0 kill=2 hit사람=0 tick avg=0.52ms peak=16ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=502 chg=0 kill=2 hit사람=0 tick avg=0.59ms peak=12ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=504 chg=0 kill=2 hit사람=0 tick avg=0.89ms peak=16ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=504 chg=0 kill=2 hit사람=0 tick avg=0.55ms peak=12ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=539 chg=0 kill=2 hit사람=0 tick avg=0.98ms peak=20ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=539 chg=0 kill=2 hit사람=0 tick avg=0.30ms peak=2ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=577 chg=0 kill=2 hit사람=0 tick avg=0.33ms peak=23ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=577 chg=0 kill=2 hit사람=0 tick avg=0.27ms peak=10ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=578 chg=0 kill=2 hit사람=0 tick avg=0.22ms peak=4ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=581 chg=0 kill=2 hit사람=0 tick avg=0.26ms peak=5ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=581 chg=0 kill=2 hit사람=0 tick avg=0.30ms peak=12ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=583 chg=0 kill=2 hit사람=0 tick avg=1.29ms peak=28ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=583 chg=0 kill=2 hit사람=0 tick avg=1.44ms peak=17ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=584 chg=0 kill=2 hit사람=0 tick avg=1.27ms peak=16ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=584 chg=0 kill=2 hit사람=0 tick avg=0.61ms peak=13ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=584 chg=0 kill=2 hit사람=0 tick avg=0.21ms peak=4ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=584 chg=0 kill=2 hit사람=0 tick avg=0.33ms peak=13ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=584 chg=0 kill=2 hit사람=0 tick avg=0.33ms peak=8ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=585 chg=0 kill=2 hit사람=0 tick avg=0.54ms peak=21ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=587 chg=0 kill=2 hit사람=0 tick avg=0.33ms peak=52ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=588 chg=0 kill=2 hit사람=0 tick avg=0.15ms peak=1ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=589 chg=0 kill=2 hit사람=0 tick avg=0.14ms peak=1ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=590 chg=0 kill=2 hit사람=0 tick avg=0.16ms peak=7ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=590 chg=0 kill=2 hit사람=0 tick avg=0.16ms peak=4ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=590 chg=0 kill=2 hit사람=0 tick avg=0.29ms peak=12ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=590 chg=0 kill=2 hit사람=0 tick avg=0.28ms peak=8ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=590 chg=0 kill=2 hit사람=0 tick avg=0.22ms peak=1ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=593 chg=0 kill=2 hit사람=0 tick avg=0.23ms peak=8ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=593 chg=0 kill=2 hit사람=0 tick avg=0.54ms peak=16ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=627 chg=0 kill=2 hit사람=0 tick avg=0.63ms peak=9ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=630 chg=0 kill=2 hit사람=0 tick avg=2.04ms peak=204ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=631 chg=0 kill=2 hit사람=0 tick avg=0.94ms peak=36ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=631 chg=0 kill=2 hit사람=0 tick avg=0.94ms peak=28ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=632 chg=0 kill=2 hit사람=0 tick avg=0.86ms peak=16ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+[hanbando] 🐾 mobs=51(🦌34 🐇17) flee=668 chg=0 kill=2 hit사람=0 tick avg=0.41ms peak=9ms maxSpd[m/s]=🦌25.2 🐇26.8 · 고라니=0(서식 0칸)
+  · [상황] ⑥ [상황] 뷰에 몹이 실제로 섰다  51마리
+  · [상황] ⑥ [상황] **되돌림 판에서 실제로 잡는다**(이게 0 이면 아래가 자명 통과다)  2마리
+[hanbando] 🐾 wildlife ON — 동물 AI 블록(마을실험실 §4-4) 이식: 5종(🦌🐇🐗🐺🐯) + 고라니(T1237 · 둘째 상태), 그리드 64×64셀, dt=1/30유닛(1유닛=1초=1게임분)
+[hanbando] 🐾 spawn 🐺×4 gid=14 @(59,23)셀
+  ✓ ★★⑥ 예산 0 이면 **한 마리도 안 잡는다**  0마리
+  ✓ ★⑥ 그런데 몹은 그대로 있다(스폰 무변 — 안 잡을 뿐이다)  55마리
+[hanbando] 🐾 wildlife ON — 동물 AI 블록(마을실험실 §4-4) 이식: 5종(🦌🐇🐗🐺🐯) + 고라니(T1237 · 둘째 상태), 그리드 64×64셀, dt=1/30유닛(1유닛=1초=1게임분)
+[hanbando] 🐾 spawn 🦌×5 gid=15 @(35,55)셀
+  · [상황] ⑥ [상황] 예산이 **자연 속도보다 작다**(게이트가 물 자리가 있다)  자연 2 > 예산 1
+  ✓ ★★⑥ 예산 1 이면 kill ≤ 1  1마리
+  ✓ ★★⑥ 그리고 예산이 있으면 **실제로 잡는다**(막기만 하는 게 아니다)  1마리
+  ✓ ★★⑥ 되돌림 판이 예산 판보다 **더 잡는다**(게이트가 실제로 막았다)  되돌림 2 > 예산 1
+  ✓ ★★⑥ 그동안 **장부는 한 칸도 안 줄었다**(깎는 것은 하루 틱뿐)  변한 셀 0개
+  ── 실측(§0ⓐ): 게임 하루(43200틱) 뷰 사냥꾼 한 명 — 되돌림 2마리 · 예산 1 판 1마리
+     장부 쪽 하루 예산은 최대 L_HUNT=4마리다 ⇒ **뷰가 느린 쪽**이라 예산은 좀처럼 안 문다.
+
+=== 32건 중 PASS 32 · FAIL 0 ===
+

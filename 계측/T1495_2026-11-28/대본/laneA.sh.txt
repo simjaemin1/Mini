@@ -1,0 +1,7 @@
+cd /tmp/t1495run
+./run.sh off-1020 1020 400 0
+./run.sh offE-1020 1020 400 0 1
+./run.sh off-7 7 400 0
+./run.sh off-42 42 400 0
+./run.sh offE-42 42 400 0 1
+echo laneA-end >> done.txt

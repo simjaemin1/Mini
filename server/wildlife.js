@@ -885,6 +885,11 @@ const T1461 = T1393 && process.env.T1432_NPC_DEATH === '1' && process.env.T1461_
 function _t1461Waker(p, hunter, h) { const Hh = h || H; return T1461 && p.isNpc && !hunter && !p._bxExit && !!(Hh && Hh.t1461Out && Hh.t1461Out(p)); }   // 마을 밖 NPC 몸 = 깨우는 이(사냥꾼은 제 갈래 · 걸어 나가는 몸 · 주검은 아님)
 let _t1461G = null;
 function _t1461Near(cx, cy) { if (!_t1461G) return true; const bx = (cx / 64) | 0, by = (cy / 64) | 0, R = Math.ceil(T1393_SEE / 64); for (let ix = bx - R; ix <= bx + R; ix++) for (let iy = by - R; iy <= by + R; iy++) if (_t1461G.has(ix * 65536 + iy)) return true; return false; }
+// ★★[T1495 2026-11-28 · T1461 회부 2 · 판정 32] 켬 값 덜기 — 손잡이 `T1495_BEAST_LEAN`('1' 만 · ★끔 기본 · T1461 켬 위에서만 뜻 · 끔 = 아래 한 줄 무동작 = 종전 그대로):
+//   켬이 더 쓰던 몫의 주인 = 깨우는 이 고리의 집 무리터 고르기(`B.homeAt` — 대리가 판에 들 때마다 그 칸을 가진 무리터가 없으면 무리터 칸 전부를 훑는다 ·
+//   마을 밖 몸은 둘레 문에 들락날락해 대리를 자주 새로 짓는다). 켜면 몸 표가 그 답을 칸마다 메모한다(무리터가 바뀌면 비운다 — `beast-body.js` `t1495HomeMemo`) — 같은 답 · 새 수 0 · 규칙 무변.
+const T1495_LEAN = T1461 && process.env.T1495_BEAST_LEAN === '1';
+let _t1495Hm = null;   // 몸 표 메모 셈(켬 · 몸 표가 바뀌면 다시 연다)
 const _t1461St = { farSkip: 0, ticks: 0, wakers: 0, wakerPeak: 0, byKind: { hunter: 0, out: 0, car: 0, lone: 0 }, hits: 0, dmg: 0, outHits: 0 };
 const T1393_SEE = 216;   // `_hunterBrain` 방심 포착 반경(그 줄 `calm3 ? 216` 글자 — 하네스가 같은 글자인지 본다)
 const _t1393F = new Map();      // 판 키(무리터) → { key, s(블록 상태), gm, ag: Set(대리), scan }
@@ -1161,6 +1166,7 @@ function _t1429Check(players, now) {
 function t1429Ground(x, y, kg, it, why, rp) { if (kg > 0) { _t1429Gnd.push({ x, y, d: null, s: rp ? _t1326S(rp) : 1, kg, it, why }); _t1429St.drop++; _t1429St.dropKg = +(_t1429St.dropKg + kg).toFixed(3); _t1429St.why[why] = (_t1429St.why[why] || 0) + 1; } }
 function _t1393Tick(now) {
   const B = require('./beast-body').current; if (!B) return;
+  if (T1495_LEAN && B._t1495L !== 1 && B.t1495HomeMemo) { _t1495Hm = B.t1495HomeMemo(); B._t1495L = 1; }   // ★[T1495] 집 무리터 칸 메모를 연다(몸 표 하나에 한 번)
   const u0 = process.cpuUsage(), cm = H.chunkManager, cs = cm.chunkSize, act = H.getActiveChunkKeys();
   //   ★[T1429 ③] 켜진 청크를 틱에 한 번 숫자 집합으로(`cx_cy` 꼴 — 존 `chunkManager.keyOf`) — 몸마다 글자 열쇠를 안 만든다 · 꼴이 다르면 종전 글자 길(같은 답)
   let actN = null; if (act.size && cm.keyOf(3, 7) === '3_7') { actN = new Set(); for (const k of act) { const i = k.indexOf('_'); const cx = +k.slice(0, i), cy = +k.slice(i + 1); if (!Number.isInteger(cx) || !Number.isInteger(cy)) { actN = null; break; } actN.add(cx * 1048576 + cy); } }
@@ -1492,6 +1498,7 @@ if (T1331) { module.exports.t1331Stat = () => Object.assign({ mat: _t1331Mat.siz
 if (T1393) module.exports.t1393Stat = () => Object.assign({ on: true, fieldsNow: _t1393F.size }, _t1393St);
 if (T1461) module.exports.t1461Stat = () => Object.assign({}, _t1461St, { byKind: Object.assign({}, _t1461St.byKind) });   // ★[T1461]
 module.exports.T1461 = T1461; module.exports._t1461Waker = _t1461Waker;   // ★[T1461] 하네스가 같은 술어를 부른다
+module.exports.T1495_LEAN = T1495_LEAN; module.exports.t1495Stat = () => (_t1495Hm ? Object.assign({ on: true }, _t1495Hm) : { on: T1495_LEAN, hit: 0, miss: 0, clr: 0 });   // ★[T1495] 손잡이 · 메모 셈(맞음 · 훑음 · 비움)
 //   ★[T1416] 켬 손잡이 · 셈(깨움 CPU 표본 · 미리 훑기 · 1유닛 걸음 · 벽 칸 질의 · 손 · 둔 몫) — 사냥판 켬만
 if (T1393) module.exports.t1416Stat = () => { const w = _t1416St.wakeUs.slice().sort((x, y) => x - y), q = (p) => (w.length ? w[Math.min(w.length - 1, Math.floor(p * w.length))] : null);
   return Object.assign({ pre: T1416_WAKE_PRE, unit: T1416_FIELD_UNIT, wall: T1416_BEAST_WALL, carry: T1416_CARRY_HOME, preLeft: _t1416Q ? _t1416Q.length : null }, _t1416St, { wakeUs: undefined, wakeP50: q(0.5), wakeP99: q(0.99), wakeMax: w.length ? w[w.length - 1] : null }); };   // ★[T1393] 켬만 — 사냥판 셈(끔 = 칸 없음)

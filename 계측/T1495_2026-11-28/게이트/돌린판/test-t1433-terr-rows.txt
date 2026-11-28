@@ -1,0 +1,46 @@
+
+=== T1433 — 영토 행 묶어 적기(끔 = 종전 · 켬 = 마을 하나 하루 몫 = 행 하나 · 부팅 이관 한 거래) ===
+
+① 글 꼴(terr-rows)
+  ✓ 차례 그대로 되읽는다(가로 줄 셋 = 한 토막 · 뺌 · 증거 · 음수 좌표)  1|10,5|0,0,3;10,2;!1,0;@30,35;1,0;-13,-9;0,0
+  ✓ 되읽기 = Set 뜻 — 같은 칸 두 번은 그대로(처음 자리) · 뺐다 다시 든 칸은 끝으로 · 증거는 칸이 아니다  ["10,5","12,5","20,7","11,5","-3,-4"]
+  ✓ 모르는 꼴(판 2)은 던진다 — 조용히 0 칸으로 읽지 않는다
+
+② 끔 = 종전
+  ✓ `_terrAdd` 칸 셋 = 칸 행 셋 · 묶음 행 0 · 되읽은 차례 = 메모리  {"got":3,"terr":3,"seq":0,"stored":3,"reload":true,"size":84}
+  ✓ `_t1238Remove` = 그 칸 행 지움 · 뺌 토막 0 · 다시 읽어도 없다  {"had":true,"rm":true,"mem":false,"reload":false,"terr":192,"seq":0}
+  ✓ 다시 든 칸은 끝으로(메모리 · 되읽기) · 묶음 행 셈 0 · 이관 0  {"back":{"memLast":true,"reloadLast":true,"same":true},"stat":{"seqVils":0,"anySeq":false,"contest":10,"contestMs":1,"compact":null}}
+
+③ 켬 — 쓰기
+  ✓ `_terrAdd` 한 번 = 묶음 행 하나(칸 행 0 · 같은 칸 행에 한 번) · 되읽은 차례 = 메모리  {"got":3,"terr":0,"seq":1,"stored":3,"reload":true,"size":84}
+  ✓ 풀린 칸(`_t1238Remove`)은 다시 읽어도 없다(뺌 토막)  {"had":true,"rm":true,"mem":false,"reload":false,"terr":0,"seq":5}
+  ✓ 뺐다 다시 든 칸은 끝으로 — 메모리 · 되읽기 같은 차례  {"memLast":true,"reloadLast":true,"same":true}
+  ✓ 부팅 반지름(`getVillageFarthest`) = 칸 행 판의 그 값(이관 앞뒤 · 끔 · 켬 쓰기 뒤)  {"off":{"A":1421.30222,"B":5.656854,"C":10},"mig":{"A":1421.30222,"B":5.656854,"C":10},"rad1":[1421.30222,1421.30222]}
+
+④ 겹친 칸 가르기
+  ✓ 메모리 + 되읽기 가르기 = SQL `getTerrContestOwners`(겹친 칸 10 · 먼저 가진 마을 — B 가 먼저 쥔 칸 · A 가 먼저 쥔 먼 칸 포함)  {"sql":["1004,1000:1","1004,1001:1","1004,1002:2","1004,1003:1","1004,1004:1","1004,996:1","1004,997:1","1004,998:1","1004,999:1","2010,2000:1"],"js":["1004,1000:1","1004,1001:1","1004,1002:2","1004,1003:1","1004,1004:1","1004,996:1","1004,997:1","1004,998:1","1004,999:1","2010,2000:1"],"same":true}
+
+⑤ 이관 한 거래
+  ✓ 둘째 마을에서 죽으면 통째로 앞 그대로(칸 행 그대로 · 묶음 행 0 · 표지도 되돌림)  {"r":{"err":"이관 도중 죽음(하네스)"},"terr":190,"seq":0,"raw":true,"flagA":false}
+  ✓ 성공 = 마을마다 묶음 행 하나(칸 행 0 · 겹친 진 쪽 · 같은 칸 두 행 빠짐) · 되읽은 차례 = 메모리 · 다른 행 그대로 · 죽은 행이 더 먼 C 에 증거 하나(반지름 10 그대로)  {"r":{"vils":3,"skip":0,"before":190,"cells":179,"wit":1,"ms":1},"terr":0,"seq":3,"perVil":[1,1,1],"A":true,"B":true,"C":true,"rad":{"A":1421.30222,"B":5.656854,"C":10},"house":1}
+  ✓ 다시 부르면 쓰기 0(이미 행 하나 · 같은 차례)  {"r":{"vils":0,"skip":3,"before":0,"cells":0,"wit":0,"ms":1},"seq":3,"maxId":194}
+  ✓ 지형 처리 도구(t721-apply)가 묶음 행 마을의 막힌 칸을 뺀다(사본 · 뺌 토막 · 다른 칸 그대로)  {"rc":0,"has":false,"size":83,"mem":84,"memHas":true,"tail":"js LAND_SCAN_R) 안에 바뀐 칸이 있는 마을 | 2 |\n| R18 | 연표 | 캐논 | 처리마다 까닭 한 줄(곁 파일) — 연표 표에 넣는 사건 이름은 제품 문 | 1 |\n\n적용(사본 out.db): R1 0 · R4 0 · R5 1 · R6 0 · R12 0 · R13 0 · R14 0 · 연표 1줄 → out.db.chronicle.json\n"}
+
+⑥ 존 부팅(씨앗 세계 사본)
+  ✓ [상황] 살찐 씨앗 사본이 뜬다(끔 · 켬)  마을 51 · 칸 행 252456 · up 36.2s / 34.2s
+  ✓ 켬 부팅(이관) 지문 = 끔 부팅 지문(영토 · 차례 · 반지름 · 다른 칸 전부)
+  ✓ 이관 뒤 칸 행 0 · 묶음 행 = 영토 있는 마을 수(마을마다 하나)  {"before":252456,"after":{"terr":0,"seq":51,"seqVils":51,"maxId":293228,"seqHash":"eeb81cbce1c7"},"withTerr":51}
+  ✓ 이관한 DB 를 끔으로 띄워도 같은 지문(되돌림 = 손잡이만 끈다)
+  ✗ 이관한 DB 켬 다시 부팅 = 같은 지문 · 쓰기 0(묶음 행 · 마지막 id 그대로)  {"rB":{"terr":0,"seq":51,"seqVils":51,"maxId":293228,"seqHash":"eeb81cbce1c7"},"rD":{"terr":0,"seq":51,"seqVils":51,"maxId":293329,"seqHash":"eeb81cbce1c7"}}
+  ✓ 이관 도구 `--forward` 의 묶음 행 = 부팅 이관 묶음 행(같은 글 · 같은 증거)  {"rF":{"terr":0,"seq":51,"seqVils":51,"maxId":293228,"seqHash":"eeb81cbce1c7"},"rB":{"terr":0,"seq":51,"seqVils":51,"maxId":293228,"seqHash":"eeb81cbce1c7"}}
+  ✓ `--back` 한 DB 를 옛 코드 글자(칸 행 SQL · id 차례 · T569)로 읽은 영토 = 끔 부팅 영토(모인 것 · 차례)  {"rK":{"terr":252450,"seq":0,"seqVils":0,"maxId":545678,"seqHash":"da39a3ee5e6b"},"diff":[]}
+  ✓ ★미끼 skipmig — 부팅 이관을 건너뛰는 사본 → ⑥ "이관 뒤 칸 행 0 · 마을마다 묶음 행 하나" 빨강(바꾼 자리 1)  {"terr":252456,"seq":0,"seqVils":0,"maxId":293581,"seqHash":"da39a3ee5e6b"}
+(node:8675) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+⑦ 미끼 — 한 자리만 바꾼 사본(마을 몫)
+  ✓ ★미끼 rmkeep — 풀린 칸의 뺌 토막을 안 쓰는 사본 → ③ "다시 읽어도 없다" 빨강(바꾼 자리 1)  {"had":true,"rm":true,"mem":false,"reload":true,"terr":0,"seq":4}
+  ✓ ★미끼 twice — 켬에서도 칸 행을 같이 적는 사본 → ③ "칸 행 0 · 한 번" 빨강(바꾼 자리 1)  {"got":3,"terr":3,"seq":1,"stored":6,"reload":true,"size":84}
+
+=== 24 통과 / 1 실패 ===
+

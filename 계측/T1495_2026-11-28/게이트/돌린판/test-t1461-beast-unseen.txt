@@ -1,0 +1,33 @@
+
+A 원문 — 손잡이 · 문 · 미끼 자리
+  ✓ 손잡이 `T1461_BEAST_UNSEEN` — `1` 만 켬 · `T1432_NPC_DEATH` 안(존 · 마을 · 야생 같은 글자)
+  ✓ 새 확률 식 0 — 깨우는 이 술어뿐(맞음 · 피해 · 요양은 블록 규칙 그대로)
+  ✓ 미끼 a 자리 — 원문에 정확히 한 곳  wildlife.js
+  ✓ 미끼 b 자리 — 원문에 정확히 한 곳  villages.js
+  ✓ 미끼 c 자리 — 원문에 정확히 한 곳  villages.js
+  ✓ 미끼 d 자리 — 원문에 정확히 한 곳  zone.js
+  ✓ 미끼 e 자리 — 원문에 정확히 한 곳  zone.js
+
+B 켬(`T1432_NPC_DEATH=1 T1461_BEAST_UNSEEN=1`) — 존 자식(마을 둘 · 사냥판 세계)
+  ✓ ★① 깨우는 이 — 마을 밖 NPC 몸 = 참 · 영토 칸 안 = 거짓 · 걸어 나가는 몸 = 거짓 · 사냥꾼은 제 갈래(이 술어 밖)  {"inside":false,"outside":true,"hunterOut":false,"out":true,"in":false,"walking":false}
+  ✓ ① 캐러밴 몸(길 위) = 깨우는 이
+  ✓ ★③ 캐러밴 상인 · 호위가 짐승에 쓰러짐 — 30초 되살림 0 · 그 자리 주검(나감 `died`)  {"econ":6,"warrior":0,"killed":1,"tot":14,"done":true,"escort":0,"mExit":"died","eExit":"died","mAlive":true,"mDown":true,"traderIn":false,"t":0}
+  ✓ ③ 상인 = 행상 피살과 같은 문(`killTrader` — 그 사람 econ 명부에서 · 캐러밴 끝 · 피살 누계 +1)  0→1
+  ✓ ★③ 같은 죽음은 한 번 — 상인 −1 · 호위 = 출발 마을 전사 −1(econ 둘 · 전사 수 하나) · 호위 수 −1  econ 8→6 · 전사 1→0
+  ✓ ★② 마을 없는 몸 — 주검만 · 어느 마을 econ 도 안 준다(몸 없는 사람은 안 죽는다)  {"tot0":14,"tot1":14,"exit":"died","t":0}
+  ✓ ★④ 낙하 HP 0 — 같은 문으로 쓰러져 죽는다(주검 · 명부 −1 · HP 0 으로 남지 않는다)  {"hp":0,"exit":"died","down":true,"floor":0,"t":0,"inList":false}
+  ✓ 셈 — 상인 1 · 호위 1 · 마을 없는 몸 1  {"died":3,"car":1,"esc":1,"lone":1,"skip":0}
+
+C 끔(`T1432_NPC_DEATH=1` 만) — 종전(명부 밖 몸 30초 되살림 · 낙하 setHp)
+  ✓ ⑤ 끔 — 깨우는 이 술어 거짓 · 마을이 안 답한다  {"inside":false,"outside":false,"hunterOut":false,"out":false,"in":false,"walking":false}
+  ✓ ⑤ 끔 — 캐러밴 몸 30초 되살림(타이머) · econ 그대로  {"econ":8,"warrior":1,"killed":0,"tot":16,"done":false,"escort":1,"mExit":null,"eExit":null,"mAlive":true,"mDown":false,"traderIn":true,"t":2}
+  ✓ ⑤ 끔 — 낙하 HP 0 으로 남는다(종전 결함 그대로)  {"hp":0,"exit":null,"down":false,"floor":0,"t":3,"inList":true}
+
+D 미끼 다섯 — 켬 판에 원문 한 곳을 비틀어 싣는다
+  ✓ ★미끼 ㉠ 바꾼 자리 1곳(보는 사람이 있을 때만 맞는 사본 — 깨우는 이 술어가 늘 거짓) — ① 줄이 빨강  1곳 · {"inside":false,"outside":false,"hunterOut":false,"out":true,"in":false,"walking":false}
+  ✓ ★미끼 ㉡ 바꾼 자리 1곳(몸 없는 사람이 죽는 사본 — 마을 없는 몸 죽음에 마을 사람 하나를 뺌) — ② 줄이 빨강  1곳 · {"tot0":14,"tot1":13,"exit":"died","t":0}
+  ✓ ★미끼 ㉢ 바꾼 자리 1곳(같은 죽음을 두 번 세는 사본 — 호위 하나에 econ 사람 둘) — ③ 한 번 줄이 빨강  1곳 · {"econ":5,"warrior":0,"killed":1,"tot":13,"done":true,"escort":0,"mExit":"died","eExit":"died","mAlive":true,"mDown":true,"traderIn":false,"t":0}
+  ✓ ★미끼 ㉣ 바꾼 자리 1곳(30초 뒤 되살아나는 사본 — 존 T1461 한 줄을 뺌) — ③ 되살림 줄이 빨강  1곳 · {"econ":8,"warrior":1,"killed":0,"tot":16,"done":false,"escort":1,"mExit":null,"eExit":null,"mAlive":true,"mDown":false,"traderIn":true,"t":2}
+  ✓ ★미끼 ㉤ 바꾼 자리 1곳(낙하 HP 0 으로 남는 사본 — 낙하 줄을 종전으로) — ④ 줄이 빨강  1곳 · {"hp":0,"exit":null,"down":false,"floor":0,"t":0,"inList":true}
+
+=== 23건 중 PASS 23 · FAIL 0 ===

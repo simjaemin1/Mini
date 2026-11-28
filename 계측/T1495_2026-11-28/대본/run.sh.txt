@@ -1,0 +1,11 @@
+#!/bin/bash
+# usage: run.sh TAG SEED DAYS KNOB(0/1/L) [EPS_DAY]
+TAG=$1; SEED=$2; DAYS=$3; K=$4; EPS=$5
+R=/root/t1495; O=/tmp/t1495run
+FW="T1243_FARM_ON=1,T1316_BODY_CLOCK=1,T1316_SUBSTEP=1,T1326_HUNT_CLOCK=1,T1351_MINE_CLOCK=1,VILLAGE_NPC_CAP=Infinity,T1195_HUNT_REAL=1,T1331_BEAST_BODY=1,T1331_BEAST_SCALE=5000,T1393_HUNT_CHASE=1,T1432_NPC_DEATH=1"
+[ "$K" = 1 ] && FW="$FW,T1461_BEAST_UNSEEN=1"
+[ "$K" = L ] && FW="$FW,T1461_BEAST_UNSEEN=1,T1495_BEAST_LEAN=1"
+EX=""; [ -n "$EPS" ] && EX="T1495_EPS=$EPS"
+cd $R && unshare -n bash -c "python3 /tmp/t1341/loup.py && cd $R && $EX T1495_CPU_OUT=$O/$TAG.cpu.json T1495_PROBE_OUT=$O/$TAG.why.jsonl T1461_PROBE_OUT=$O/$TAG.probe.json T1432_HITS_OUT=$O/$TAG.hits.json NODE_OPTIONS='--max-old-space-size=4096 --require /tmp/t1432run/hits.js --require $R/scripts/t1461-beast-probe.js --require $R/scripts/t1495-why-probe.js --require $R/scripts/t1495-cpu-split.js' node scripts/t1331-run.js $O $TAG hanbando $SEED $DAYS --env '$FW'" > $O/$TAG.out 2>&1
+rm -f $O/$TAG.db $O/$TAG.db-wal $O/$TAG.db-shm
+echo "$TAG $(date +%H:%M)" >> $O/done.txt

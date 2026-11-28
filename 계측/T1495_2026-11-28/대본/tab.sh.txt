@@ -1,0 +1,7 @@
+for P in "$@"; do node an.js $P 1-60,61-200,201-300,301-400 2>&1 | python3 -c "
+import sys,json
+for l in sys.stdin:
+  if l.startswith('{'): print(l.strip()); continue
+  k,j=l.split(' ',1); d=json.loads(j)
+  print(k, ' '.join(f'{a}={v[0]}/{v[1]}' for a,v in d.items() if a in ('pop1','popMean','empty1','born','fd','dead','emig','got','meatU','hOn','restH','hitH','hitO')))
+"; done
