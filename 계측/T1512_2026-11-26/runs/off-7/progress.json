@@ -1,0 +1,66 @@
+{
+ "v": 1,
+ "tag": "sbc",
+ "seed": 7,
+ "days": 300,
+ "every": 50,
+ "dir": "/home/user/t1492-out/runs/off-7",
+ "ck": 300,
+ "segs": [
+  {
+   "from": 0,
+   "to": 50,
+   "sec": 1289.4,
+   "code": 0,
+   "at": "2026-11-27T04:18:18.403Z"
+  },
+  {
+   "from": 50,
+   "to": 100,
+   "sec": 1469.2,
+   "code": 0,
+   "at": "2026-11-27T04:42:48.291Z"
+  },
+  {
+   "from": 100,
+   "to": 150,
+   "sec": 1519.8,
+   "code": 0,
+   "at": "2026-11-27T05:08:08.776Z"
+  },
+  {
+   "from": 150,
+   "to": 200,
+   "sec": 1522.1,
+   "code": 0,
+   "at": "2026-11-27T05:33:31.562Z"
+  },
+  {
+   "from": 200,
+   "to": 250,
+   "sec": 1868.7,
+   "code": 0,
+   "at": "2026-11-27T06:04:41.221Z"
+  },
+  {
+   "from": 250,
+   "to": 300,
+   "sec": 2208.4,
+   "code": 0,
+   "at": "2026-11-27T06:41:29.989Z"
+  }
+ ],
+ "done": true,
+ "env": {
+  "NODE_OPTIONS": "--max-old-space-size=4608 --require /home/user/t1492/scripts/t1492-bots.js",
+  "T745_VCLOCK": "1",
+  "VILLAGE_DAY_MS": "1440000",
+  "T699_ROUTE_CACHE": "/home/user/t1492-out/route-cache",
+  "T1486_BOTS": "8",
+  "T577_TAG": "sbc",
+  "T1492_SEG": "1"
+ },
+ "started": "2026-11-27T03:56:48.586Z",
+ "tries": 0,
+ "ended": "2026-11-27T06:41:30.089Z"
+}

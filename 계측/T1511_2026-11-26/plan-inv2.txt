@@ -1,0 +1,3 @@
+# 몸 셈(census) 넣은 관찰기 무변 — 건너뜀 0 · T1487 기본 판(inv/*-plain)과 지문 같음을 본다
+i-off30c|7|30|off|0|
+i-wood30c|7|30|wood|0|T325_WOOD_ACT=1

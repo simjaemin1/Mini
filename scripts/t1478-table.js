@@ -14,16 +14,36 @@ const passArgs = [];
 for (const k of ['--par', '--solo', '--leftover', '--dead', '--prev-par', '--prev-solo', '--known']) { const v = arg(k); if (v) passArgs.push(k, v); }
 const T = path.join(__dirname, 't1418-table.js');
 const jsn = JSON.parse(cp.execFileSync('node', [T, ...passArgs, '--json'], { maxBuffer: 1 << 28 }).toString());
-const txt = cp.execFileSync('node', [T, ...passArgs], { maxBuffer: 1 << 28 }).toString();
+// t1418-table.js 는 앞 전수를 T1364 로 적는다 — 여기서 앞 전수(--prev-*)는 T1418 이므로 이름만 바꿔 단다(셈은 그대로)
+const txt = cp.execFileSync('node', [T, ...passArgs], { maxBuffer: 1 << 28 }).toString()
+  .replace(/^# T1418 흔들림 전수 둘째/m, '# T1478 흔들림 전수 셋째').replace(/T1364/g, 'T1418');
 const git = (a) => { try { return cp.execFileSync('git', ['-C', ROOT, ...a], { encoding: 'utf8' }).trim(); } catch (e) { return ''; } };
 const card = (p) => { const s = git(['log', '--no-merges', '-1', '--format=%s', '--', p]); const m = /T\d{3,4}/.exec(s); return p && s ? `${m ? m[0] : '카드 표지 없음'} (${s.slice(0, 40).replace(/\|/g, '¦')})` : '—'; };
-// 하네스가 무는 제품 파일: 글자에 나온 server|sim|public 경로 가운데 가장 자주 나온 것
-const product = (f) => {
-  const t = read(path.join(ROOT, 'scripts', f)), c = new Map();
-  for (const m of t.matchAll(/\b(server|sim|public)\/[\w.\-\/]+\.(?:js|json|html)\b/g)) c.set(m[0], (c.get(m[0]) || 0) + 1);
-  return [...c.entries()].filter(([p]) => fs.existsSync(path.join(ROOT, p))).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+// 하네스가 무는 제품 파일: 글자에 나온 server|sim|public 경로(`server/x.js` 꼴 + `path.join(ROOT, 'server', 'x.js')` 꼴) 가운데
+//   가장 늦게 만져진 것 — 하네스 글자에 없으면 그 하네스가 부르는 scripts/ 도우미(require('./x') · 'scripts', 'x.js') 한 겹까지 본다
+const prodIn = (t) => {
+  const s = new Set();
+  for (const m of t.matchAll(/\b(server|sim|public)\/[\w.\-\/]+\.(?:js|json|html)\b/g)) s.add(m[0]);
+  for (const m of t.matchAll(/['"](server|sim|public)['"]\s*,\s*['"]([\w.\-]+)['"]/g)) s.add(`${m[1]}/${/\.\w+$/.test(m[2]) ? m[2] : m[2] + '.js'}`);
+  // path.join(ROOT, 'server', file) 처럼 이름이 변수로 들어오면 글자에 따로 나온 'zone.js' · 'central.js' 같은 이름을 server/ 아래에서 찾는다
+  if (/['"]server['"]\s*,\s*[A-Za-z_]\w*\s*\)/.test(t)) for (const m of t.matchAll(/['"]([\w\-]+\.js)['"]/g)) s.add('server/' + m[1]);
+  return [...s].filter((p) => fs.existsSync(path.join(ROOT, p)));
 };
-const KIND = { A: '늘 빨강', B: '혼자도 흔들림', C: '나란히만' };
+const product = (f) => {
+  const t = read(path.join(ROOT, 'scripts', f));
+  let ps = prodIn(t);
+  if (!ps.length) {
+    const helpers = new Set();
+    for (const m of t.matchAll(/require\(\s*['"]\.\/([\w.\-]+)['"]\s*\)/g)) helpers.add(/\.js$/.test(m[1]) ? m[1] : m[1] + '.js');
+    for (const m of t.matchAll(/['"]scripts['"]\s*,\s*['"]([\w.\-]+\.js)['"]/g)) helpers.add(m[1]);
+    for (const m of t.matchAll(/probe\(\s*['"]([\w.\-]+\.js)['"]/g)) helpers.add(m[1]);
+    for (const h of helpers) if (!/^lib-|^fixture-boot/.test(h)) ps.push(...prodIn(read(path.join(ROOT, 'scripts', h))));
+    ps = [...new Set(ps)];
+  }
+  const ct = (p) => Number(git(['log', '--no-merges', '-1', '--format=%ct', '--', p])) || 0;
+  return ps.sort((a, b) => ct(b) - ct(a))[0] || null;
+};
+const KIND = { A: '늘 빨강', B: '혼자도 흔들림', C: '나란히만', X: '가름 못 함' };
 const fresh = jsn.cmp ? jsn.cmp.fresh : [];
 const freshRows = jsn.rows.filter((r) => fresh.some((x) => x.f === r.f));
 const out = [txt, '', '## 6. T1418 에 없던 새 빨강(T1418 에서 초록이거나 판에 없던 것)', ''];

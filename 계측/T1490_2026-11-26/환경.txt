@@ -1,0 +1,5 @@
+Existing fixed-port e2e runners serialized with lib-port lease.
+Node24.22.1; LAB_SEED=1020; TIDE_FREEZE_MS=372603; route fix default ON both arms; day600ms.
+All 160 qualifying trials use unmodified S14 t1485-observer.js and original bot clock-based direction rotation. Three earlier E-fixed pilot trials are separately retained/excluded and replaced with original-protocol trials. The running controller had loaded its original Python source before a file edit, so the claimed E-fixed setting did not apply to its running loop; final evidence corrects that claim.
+No source DB opened. Each runner creates own fresh /tmp/e2e-mb-{central,zone}-PID.db; no engine/bundle edit.
+Development: initial far bait failed to bypass downstream guard, so it was rejected as inadequate. Final resident bait mutates the sole real gate distance predicate and must fail FAR_BODY; no product expectation was weakened.

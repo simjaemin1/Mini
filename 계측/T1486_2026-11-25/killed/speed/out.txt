@@ -1,0 +1,3 @@
+
+=== 서버 판 자(T577) — 31일 · 시드 1020 · 판 sbc · 동시 1 · /home/user/t1486/계측/T1486_2026-11-25/tmp/speed ===
+  조건: VILLAGE_DAY_MS=1440000 · T315_MAPBEDS=1 · T627_TRIP_DAY=1 · 집 행위 켬 · 가상 시계 켬 · T696_WAL=0 · T941_BATTLE_DAY=1 · T990_ECON_DAY=1 · T1013_BAND_DAY=1 · VILLAGE_NPC_CAP=2 · 도적 켬

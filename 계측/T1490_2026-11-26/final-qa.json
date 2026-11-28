@@ -1,0 +1,10 @@
+{
+  "response_categories": {
+    "npc_denied": 351,
+    "too_far": 9
+  },
+  "reconnect_handler_pairs": 60,
+  "reconnect_body_changed": 60,
+  "valid_exposure": 160,
+  "qualifying_failures_retained": 9
+}

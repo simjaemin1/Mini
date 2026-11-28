@@ -1,0 +1,6 @@
+{
+ "candidateSourceSha256": "693e98ab4a9f5f8fbdb64e81d403721169a3f4d459f7a520faf08c5d078dcaa1",
+ "baseSourceSha256": "9b7adda7d10ddbcfe208d97eb36375ddc2f6e68e9a63b7fdebddf18821f45862",
+ "base": "6896843ae (server source unchanged at 2ce164b94)",
+ "purpose": "Wood-act ON with body-first OFF must match old production; body-first ON full-body smoke and observer invariance."
+}

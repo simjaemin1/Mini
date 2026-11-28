@@ -1,0 +1,6 @@
+# 만진 함수 → 하네스 (touched-harness · base 6896843a · 갈림점 6896843ae)
+· 바뀐 코드 파일 1 · 이름 2(물린 것 2 · 흔한 이름 뺌 0) · 바뀐 하네스 1 · 규약 다섯 · **돌릴 하네스 12**
+  server/membership.js: T1490_NEAR_NOW handleChat
+· 이름 → 하네스 수: T1490_NEAR_NOW 1 · handleChat 7
+· 바뀐 하네스: test-t1490-near-now.js
+· 돌릴 하네스: e2e-ui.js test-body-fields.js test-coll-grid.js test-donate.js test-downed.js test-harness-lint.js test-hp-src.js test-lon-day.js test-membership.js test-newcomers.js test-t1086-first-join.js test-t1490-near-now.js
