@@ -103,4 +103,4 @@ function run() {
   fs.writeFileSync(path.join(dir,'matrix.json'),JSON.stringify(results,null,2));
   console.log(`✓ WAR_SNAP native phase matrix ${results.length}/24; immediate and 10 daily fingerprints equal. ${dir}`);
 }
-if(require.main===module)run();module.exports={semantic,fingerprint,defenderAudit};
+if(require.main===module){try{run();}catch(e){if(e.code==='ERR_ASSERTION')console.error('✗ native phase snapshot contract');throw e;}}module.exports={semantic,fingerprint,defenderAudit};

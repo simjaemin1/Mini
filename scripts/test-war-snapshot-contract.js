@@ -3,8 +3,9 @@
 // @bait 11
 'use strict';
 process.env.T1517_WAR_SNAP='1';
-const assert=require('assert'),fs=require('fs'),path=require('path'),cp=require('child_process'),u=require('util'),{DatabaseSync}=require('node:sqlite'),F=require('./lib-war-snap-fixture'),G=require('../server/war-snapshot'),{semantic,defenderAudit}=require('./test-war-snapshot');
+const assert=require('assert'),fs=require('fs'),path=require('path'),cp=require('child_process'),u=require('util'),{DatabaseSync}=require('node:sqlite'),F=require('./lib-war-snap-fixture');
 try{assert.strictEqual(typeof require('../server/villages').__p3Bind({})._warSnapPack,'function','complete snapshot product API');}catch(e){console.error('✗ complete snapshot product API absent');throw e;}
+const G=require('../server/war-snapshot'),{semantic,defenderAudit}=require('./test-war-snapshot');
 let pass=0;function check(name,fn){try{fn();}catch(e){console.error('✗ '+name);throw e;}pass++;console.log('✓ '+name);}
 const dir=process.env.T1517_CONTRACT_OUT||require('./lib-tmp').dir('war_snapshot_contract');fs.mkdirSync(dir,{recursive:true});
 function mutant(file,arg,expect){const r=cp.spawnSync(process.execPath,[path.join(__dirname,file),String(arg)],{env:process.env,encoding:'utf8',timeout:60000,maxBuffer:2e6});fs.writeFileSync(path.join(dir,file+'-'+arg+'.txt'),r.stdout+r.stderr);assert.strictEqual(r.status,1,'assertion-red exit');assert(r.stderr.includes('AssertionError [ERR_ASSERTION]')&&r.stderr.includes(expect),r.stderr);assert(!/(TypeError:|ReferenceError:|RangeError:|FATAL ERROR)/.test(r.stderr),'no nonassert crash');}
