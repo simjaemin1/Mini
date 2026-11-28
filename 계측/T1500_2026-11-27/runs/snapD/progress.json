@@ -1,0 +1,31 @@
+{
+ "v": 1,
+ "tag": "snapD",
+ "seed": 1020,
+ "days": 700,
+ "every": 700,
+ "dir": "/home/user/t1500-out/snapD",
+ "ck": 700,
+ "segs": [
+  {
+   "from": 0,
+   "to": 700,
+   "sec": 2329.5,
+   "code": 0,
+   "at": "2026-11-27T17:58:11.555Z"
+  }
+ ],
+ "done": true,
+ "env": {
+  "NODE_OPTIONS": "-r /home/user/t1500/계측/T1500_2026-11-27/t1500-observe.js",
+  "T400_BUILD_ACT": "0",
+  "VILLAGE_CARAVAN_MAX": "0",
+  "T745_VCLOCK": "1",
+  "T1500_OBS": "/home/user/t1500-out/snapD/obs",
+  "T1500_SNAP_DAYS": "690",
+  "T1500_CENSUS": "50"
+ },
+ "started": "2026-11-27T17:19:22.065Z",
+ "tries": 0,
+ "ended": "2026-11-27T17:58:11.822Z"
+}

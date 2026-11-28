@@ -1,112 +1,112 @@
 # T1500 스냅숏 표 — 끔 세계 · 시드 1020 · 가상 시계 · 6 GB 힙(판 자 기본) · t1500-snap.js 지배 나무(약한 변 뺌) · t1500-diff.js
-# 판 A = 이어 돈 700날(스냅 100 · 300 · 500 · 690) · 판 B = 500날에 저장하고 내렸다가 저장본에서 다시 띄움(다시 뜬 첫 날 501 스냅)
+# 판 A = 이어 돈 판(스냅 100 · 300 · 500 — 661날에 판 자를 잘못 죽여 690 없음) · 판 D = 같은 판 다시(스냅 690) · 판 B = 500날에 저장하고 내렸다가 다시 띄움(501 스냅)
 
-## ① 이어 돈 판 100 → 300 → 500날(산 힙 · 길 = 지배 사슬 · 맥락 변수 이름으로 접음)
-스냅숏: d100 395.7 MB · 노드 6893710 | d300 497.9 MB · 노드 8750790 | d500 616.0 MB · 노드 10510813
+## ① 이어 돈 판 100 → 300 → 500 → 690날(산 힙 · 길 = 지배 사슬 · 맥락 변수 이름으로 접음 · ~:Array = stand-skip own · ~:Object = 마을 객체 · stand-skip A 등)
+스냅숏: d100 395.7 MB · 노드 6893710 | d300 497.9 MB · 노드 8750790 | d500 616.0 MB · 노드 10510813 | d690 849.0 MB · 노드 13823553
 
 ## 길 — 끝 − 첫 큰 순
-    43.7 MB (+0.109/날) | 41.9 → 55.7 → 85.5 | ~:Object
-    28.4 MB (+0.071/날) | 9.5 → 20.9 → 37.9 | ~:Array
-    23.0 MB (+0.057/날) | 14.8 → 30.6 → 37.8 | $_ringCacheRaw:Map
-    18.7 MB (+0.047/날) | 14.1 → 25.8 → 32.8 | $chunkManager:ChunkManager
-    18.7 MB (+0.047/날) | 14.1 → 25.8 → 32.8 | $chunkManager:ChunkManager / .chunks:Map
-    18.5 MB (+0.046/날) | 78.0 → 85.9 → 96.5 | $state:Object
-    17.5 MB (+0.044/날) | 26.3 → 41.8 → 43.8 | $I:Object
-    17.3 MB (+0.043/날) | 5.2 → 16.3 → 22.6 | ~:Object / ._terrSet:Set
-    15.2 MB (+0.038/날) | 17.5 → 25.8 → 32.7 | $state:Object / .walkCache:Map
-    14.7 MB (+0.037/날) | 44.5 → 49.6 → 59.3 | $S:Object
-    12.4 MB (+0.031/날) | 3.0 → 9.1 → 15.5 | $days:Array
-     9.1 MB (+0.023/날) | 0.0 → 0.0 → 9.1 | ~:Object / ._t427R:Map
-     8.0 MB (+0.020/날) | 23.7 → 28.1 → 31.7 | $_ringCache:Map
-     7.8 MB (+0.019/날) | 9.6 → 17.0 → 17.4 | $I:Object / .sched:Map
-     7.0 MB (+0.018/날) | 7.1 → 5.9 → 14.1 | ~:system∕Context / ~:PerformanceObserver
-     7.0 MB (+0.018/날) | 7.1 → 5.9 → 14.1 | ~:system∕Context / ~:PerformanceObserver / .#buffer:Array
-     7.0 MB (+0.018/날) | 7.0 → 7.0 → 14.0 | $S:Object / .sent:Map
-     7.0 MB (+0.018/날) | 7.0 → 14.0 → 14.0 | $I:Object / .lvl:Map
-     5.0 MB (+0.013/날) | 33.9 → 36.3 → 38.9 | $S:Object / .cells:Map
-     3.3 MB (+0.008/날) | 0.0 → 0.0 → 3.3 | ~:Object / ._t719N:Map
-     3.0 MB (+0.007/날) | 0.0 → 0.0 → 3.0 | ~:(array)
-     2.7 MB (+0.007/날) | 8.1 → 9.2 → 10.9 | $I:Object / .due:Map
-     2.5 MB (+0.006/날) | 2.5 → 5.0 → 5.0 | $S:Object / .paved:Set
-     1.8 MB (+0.004/날) | 0.0 → 0.9 → 1.8 | $buildings:_BuildingMap
-     1.8 MB (+0.004/날) | 1.8 → 1.8 → 3.5 | ~:Map
-     1.1 MB (+0.003/날) | 0.0 → 0.0 → 1.1 | $_t1349Stand:Object
-     1.1 MB (+0.003/날) | 0.0 → 0.0 → 1.1 | $_t1349Stand:Object / .m:Map
-     0.9 MB (+0.002/날) | 0.0 → 0.0 → 0.9 | ~:Set
-     0.9 MB (+0.002/날) | 0.0 → 0.5 → 0.9 | $rows:Array
-     0.9 MB (+0.002/날) | 0.8 → 1.6 → 1.7 | $harvestedSeeds:Map
-     0.9 MB (+0.002/날) | 0.0 → 0.0 → 0.9 | $state:Object / ._warTreeMemo:Map
-     0.9 MB (+0.002/날) | 0.0 → 0.0 → 0.9 | $state:Object / ._warTerrMemo:Map
-     0.9 MB (+0.002/날) | 0.0 → 0.0 → 0.9 | $slotOf:Map
-     0.8 MB (+0.002/날) | 0.0 → 0.8 → 0.8 | $_t:closure:tickVillage
-     0.8 MB (+0.002/날) | 2.3 → 2.6 → 3.1 | ~:Object / ~:system∕Context
-     0.7 MB (+0.002/날) | 0.8 → 0.0 → 1.5 | $state:Object / .caravanBodies:Map
-     0.7 MB (+0.002/날) | 0.0 → 0.7 → 0.7 | $_tickPerf:Object
-     0.7 MB (+0.002/날) | 0.0 → 0.7 → 0.7 | $_tickPerf:Object / .ring:Array
+   105.6 MB (+0.179/날) | 41.9 → 55.7 → 85.5 → 147.5 | ~:Object
+    63.6 MB (+0.108/날) | 9.5 → 20.9 → 37.9 → 73.1 | ~:Array
+    59.5 MB (+0.101/날) | 78.0 → 85.9 → 96.5 → 137.4 | $state:Object
+    45.7 MB (+0.077/날) | 193.2 → 244.3 → 188.5 → 238.9 | ~:system∕Context
+    35.3 MB (+0.060/날) | 14.1 → 25.8 → 32.8 → 49.4 | $chunkManager:ChunkManager
+    35.3 MB (+0.060/날) | 14.1 → 25.8 → 32.8 → 49.4 | $chunkManager:ChunkManager / .chunks:Map
+    33.0 MB (+0.056/날) | 0.0 → 0.0 → 9.1 → 33.0 | ~:Object / ._t427R:Map
+    28.5 MB (+0.048/날) | 5.2 → 16.3 → 22.6 → 33.7 | ~:Object / ._terrSet:Set
+    27.9 MB (+0.047/날) | 17.5 → 25.8 → 32.7 → 45.4 | $state:Object / .walkCache:Map
+    27.7 MB (+0.047/날) | 14.8 → 30.6 → 37.8 → 42.6 | $_ringCacheRaw:Map
+    23.3 MB (+0.040/날) | 44.5 → 49.6 → 59.3 → 67.9 | $S:Object
+    21.5 MB (+0.036/날) | 3.0 → 9.1 → 15.5 → 24.5 | $days:Array
+    19.3 MB (+0.033/날) | 26.3 → 41.8 → 43.8 → 45.6 | $I:Object
+    14.7 MB (+0.025/날) | 0.0 → 0.0 → 3.3 → 14.7 | ~:Object / ._t719N:Map
+    14.0 MB (+0.024/날) | 0.0 → 0.0 → 0.9 → 14.0 | $state:Object / ._warTreeMemo:Map
+    14.0 MB (+0.024/날) | 0.0 → 0.0 → 0.9 → 14.0 | $state:Object / ._warTerrMemo:Map
+     9.3 MB (+0.016/날) | 23.7 → 28.1 → 31.7 → 33.0 | $_ringCache:Map
+     8.7 MB (+0.015/날) | 33.9 → 36.3 → 38.9 → 42.5 | $S:Object / .cells:Map
+     8.2 MB (+0.014/날) | 9.6 → 17.0 → 17.4 → 17.8 | $I:Object / .sched:Map
+     8.1 MB (+0.014/날) | 0.0 → 0.0 → 0.0 → 8.1 | ~:Socket
+     8.1 MB (+0.014/날) | 0.0 → 0.0 → 0.0 → 8.1 | ~:Socket / ._writableState:WritableState
+     7.8 MB (+0.013/날) | 0.0 → 0.0 → 0.0 → 7.8 | ~:Socket / ._writableState:WritableState / .<symbol kBufferedValue>:Array
+     7.5 MB (+0.013/날) | 2.5 → 5.0 → 5.0 → 10.0 | $S:Object / .paved:Set
+     7.4 MB (+0.012/날) | 0.0 → 0.0 → 1.1 → 7.4 | $_t1349Stand:Object
+     7.4 MB (+0.012/날) | 0.0 → 0.0 → 1.1 → 7.4 | $_t1349Stand:Object / .m:Map
+     7.0 MB (+0.012/날) | 7.0 → 7.0 → 14.0 → 14.0 | $S:Object / .sent:Map
+     7.0 MB (+0.012/날) | 7.0 → 14.0 → 14.0 → 14.0 | $I:Object / .lvl:Map
+     4.1 MB (+0.007/날) | 8.1 → 9.2 → 10.9 → 12.2 | $I:Object / .due:Map
+     2.0 MB (+0.003/날) | 0.8 → 1.6 → 1.7 → 2.8 | $harvestedSeeds:Map
+     1.8 MB (+0.003/날) | 0.0 → 0.9 → 1.8 → 1.8 | $buildings:_BuildingMap
+     1.8 MB (+0.003/날) | 0.0 → 0.0 → 0.9 → 1.8 | $slotOf:Map
+     1.8 MB (+0.003/날) | 1.8 → 1.8 → 3.5 → 3.5 | ~:Map
+     1.5 MB (+0.003/날) | 0.0 → 0.0 → 3.0 → 1.5 | ~:(array)
+     1.3 MB (+0.002/날) | 0.0 → 0.5 → 0.9 → 1.3 | $rows:Array
+     1.3 MB (+0.002/날) | 2.3 → 2.6 → 3.1 → 3.6 | ~:Object / ~:system∕Context
+     1.3 MB (+0.002/날) | 0.0 → 0.0 → 0.0 → 1.3 | $state:Object / ._t1330Path:Object
+     1.3 MB (+0.002/날) | 0.0 → 0.0 → 0.9 → 1.3 | ~:Set
+     1.3 MB (+0.002/날) | 0.0 → 0.0 → 0.0 → 1.3 | $state:Object / ._t1330Path:Object / .gen:Set
 
 ## 생성자 — self 증가 큰 순
-    50.8 MB | 72.8MB/8837 → 100.4MB/10915 → 123.5MB/14366 | (array)
-    45.6 MB | 72.3MB/1524808 → 95.5MB/1861779 → 117.9MB/2187108 | Object
-    27.6 MB | 36.9MB/858070 → 52.8MB/1268678 → 64.5MB/1545169 | (string)
-    23.6 MB | 76.0MB/7864 → 79.7MB/7891 → 99.7MB/9440 | native:system / JSArrayBufferData
-    23.2 MB | 52.7MB/3451683 → 64.1MB/4201369 → 75.9MB/4972264 | (number)heap number
-    15.6 MB | 9.2MB/166111 → 16.7MB/268405 → 24.8MB/335948 | (hidden)system / PropertyArray
-     8.0 MB | 6.5MB/211463 → 10.9MB/355687 → 14.4MB/473323 | (concatenated string)
-     6.5 MB | 19.8MB/190686 → 23.1MB/242978 → 26.3MB/274092 | (array)(object elements)
-     4.4 MB | 15.1MB/11165 → 15.7MB/10485 → 19.4MB/20448 | (array)(object properties)
-     3.1 MB | 6.0MB/195729 → 7.8MB/255068 → 9.1MB/296708 | Array
-     2.0 MB | 2.3MB/722 → 3.4MB/947 → 4.3MB/1151 | (code)
-     1.4 MB | 1.8MB/37542 → 1.7MB/34079 → 3.2MB/68159 | system / Context
-     1.0 MB | 2.1MB/31065 → 2.1MB/30041 → 3.1MB/45157 | (object shape)system / Map
-     0.8 MB | 0.8MB/14623 → 0.8MB/13683 → 1.6MB/28113 | closure:
-     0.7 MB | 0.7MB/1079 → 1.2MB/1440 → 1.5MB/1754 | (code)(code deopt data)
-     0.6 MB | 0.9MB/2983 → 1.1MB/3380 → 1.4MB/3945 | (code)(code relocation info)
-     0.5 MB | 1.2MB/9316 → 1.2MB/8346 → 1.8MB/15581 | (object shape)system / DescriptorArray
-     0.5 MB | 0.6MB/707 → 0.9MB/932 → 1.1MB/1136 | (code)system / TrustedFixedArray
-     0.5 MB | 0.5MB/2402 → 0.6MB/2832 → 0.9MB/3296 | (hidden)system / WeakArrayList
-     0.4 MB | 0.4MB/6251 → 0.3MB/5215 → 0.8MB/12351 | closure:deprecated
-     0.3 MB | 0.4MB/6565 → 0.3MB/5533 → 0.7MB/12670 | (object shape)system / PrototypeInfo
-     0.3 MB | 0.3MB/6248 → 0.3MB/5212 → 0.7MB/12348 | closure:shouldEmitWarning
-     0.2 MB | 0.8MB/5890 → 0.9MB/6510 → 1.0MB/7587 | (code)system / TrustedByteArray
-     0.2 MB | 1.0MB/2266 → 1.1MB/2442 → 1.2MB/2800 | (code)system / FeedbackVector
-     0.2 MB | 0.9MB/2368 → 1.0MB/2555 → 1.1MB/2964 | (code)system / BytecodeArray
-     0.2 MB | 0.2MB/7459 → 0.3MB/9536 → 0.4MB/12980 | Map
-     0.1 MB | 0.7MB/7882 → 0.7MB/7911 → 0.8MB/9547 | ArrayBuffer
-     0.1 MB | 0.3MB/2898 → 0.3MB/3302 → 0.4MB/4600 | (code)system / WeakFixedArray
-     0.1 MB | 0.2MB/2614 → 0.2MB/2633 → 0.3MB/3517 | Uint8Array
-     0.1 MB | 0.2MB/10092 → 0.2MB/9620 → 0.3MB/13190 | (hidden)system / AccessorPair
-     0.1 MB | 0.3MB/2247 → 0.3MB/2425 → 0.4MB/2813 | (code)(constant pool)
-     0.1 MB | 0.0MB/278 → 0.0MB/269 → 0.1MB/922 | Float64Array
-     0.1 MB | 0.0MB/69 → 0.1MB/172 → 0.1MB/187 | ClientRequest
-     0.0 MB | 0.5MB/5128 → 0.6MB/5304 → 0.6MB/5773 | (code)system / ScopeInfo
-     0.0 MB | 0.0MB/69 → 0.1MB/172 → 0.1MB/187 | (synthetic)Node / TCPSocketWrap
-     0.0 MB | 0.0MB/1004 → 0.1MB/1813 → 0.1MB/1911 | closure:native_bind
-     0.0 MB | 0.2MB/659 → 0.2MB/703 → 0.2MB/733 | (object shape)(enum cache)
-     0.0 MB | 0.0MB/567 → 0.1MB/666 → 0.1MB/803 | (code)system / WeakArrayList
-     0.0 MB | 0.1MB/720 → 0.1MB/945 → 0.1MB/1149 | (code)(code)
-     0.0 MB | 0.0MB/0 → 0.0MB/0 → 0.0MB/1 | (code)(instruction stream for stepBattle)
-     0.0 MB | 0.0MB/1550 → 0.0MB/1291 → 0.1MB/3075 | PerformanceNodeEntry
-     0.0 MB | 0.0MB/73 → 0.1MB/176 → 0.1MB/191 | Socket
-     0.0 MB | 0.1MB/3988 → 0.1MB/4306 → 0.2MB/5088 | (code)system / LoadHandler
-     0.0 MB | 0.1MB/2321 → 0.1MB/2505 → 0.2MB/2912 | (code)system / FeedbackMetadata
-     0.0 MB | 0.1MB/947 → 0.1MB/1033 → 0.1MB/1264 | (code)system / ObjectBoilerplateDescription
-     0.0 MB | 0.2MB/293 → 0.3MB/313 → 0.3MB/367 | (code)(BASELINE instruction stream)
-     0.0 MB | 0.0MB/0 → 0.0MB/0 → 0.0MB/1 | (code)(instruction stream for _warConscriptIndividual)
-     0.0 MB | 0.0MB/0 → 0.0MB/1 → 0.0MB/1 | (code)(instruction stream for route)
-     0.0 MB | 0.1MB/5287 → 0.1MB/5684 → 0.1MB/6249 | (hidden)system / CodeWrapper
-     0.0 MB | 0.0MB/950 → 0.0MB/1054 → 0.1MB/1268 | (code)system / AllocationSite
-     0.0 MB | 0.0MB/69 → 0.0MB/172 → 0.0MB/187 | Timeout
-     0.0 MB | 0.1MB/2368 → 0.1MB/2555 → 0.1MB/2964 | (hidden)system / BytecodeWrapper
-     0.0 MB | 0.0MB/0 → 0.0MB/0 → 0.0MB/1 | (code)(instruction stream for _t804Local)
-     0.0 MB | 0.0MB/0 → 0.0MB/0 → 0.0MB/1 | (code)(instruction stream for _muAssignSlots)
-     0.0 MB | 0.0MB/0 → 0.0MB/0 → 0.0MB/1 | (code)(instruction stream for _warEndFight)
-     0.0 MB | 0.0MB/82 → 0.0MB/273 → 0.0MB/290 | closure:onClose
-     0.0 MB | 0.0MB/0 → 0.0MB/0 → 0.0MB/1 | (code)(instruction stream for _warLootPickup)
-     0.0 MB | 0.0MB/71 → 0.0MB/174 → 0.0MB/189 | WritableState
-     0.0 MB | 0.0MB/0 → 0.0MB/1 → 0.0MB/1 | (code)(instruction stream for _deathDrop)
-     0.0 MB | 0.0MB/0 → 0.0MB/1 → 0.0MB/1 | (code)(instruction stream for _physicalStoneWork)
+   102.1 MB | 72.8MB/8837 → 100.4MB/10915 → 123.5MB/14366 → 174.9MB/22077 | (array)
+    85.1 MB | 72.3MB/1524808 → 95.5MB/1861779 → 117.9MB/2187108 → 157.4MB/2747040 | Object
+    65.3 MB | 76.0MB/7864 → 79.7MB/7891 → 99.7MB/9440 → 141.3MB/11916 | native:system / JSArrayBufferData
+    51.0 MB | 36.9MB/858070 → 52.8MB/1268678 → 64.5MB/1545169 → 87.8MB/2257727 | (string)
+    39.9 MB | 52.7MB/3451683 → 64.1MB/4201369 → 75.9MB/4972264 → 92.5MB/6063339 | (number)heap number
+    31.0 MB | 9.2MB/166111 → 16.7MB/268405 → 24.8MB/335948 → 40.2MB/443050 | (hidden)system / PropertyArray
+    21.2 MB | 6.5MB/211463 → 10.9MB/355687 → 14.4MB/473323 → 27.6MB/905287 | (concatenated string)
+    14.1 MB | 15.1MB/11165 → 15.7MB/10485 → 19.4MB/20448 → 29.1MB/49309 | (array)(object properties)
+    10.0 MB | 19.8MB/190686 → 23.1MB/242978 → 26.3MB/274092 → 29.8MB/296615 | (array)(object elements)
+     5.9 MB | 1.8MB/37542 → 1.7MB/34079 → 3.2MB/68159 → 7.7MB/169401 | system / Context
+     4.4 MB | 6.0MB/195729 → 7.8MB/255068 → 9.1MB/296708 → 10.4MB/340328 | Array
+     4.0 MB | 2.1MB/31065 → 2.1MB/30041 → 3.1MB/45157 → 6.1MB/88938 | (object shape)system / Map
+     3.2 MB | 0.8MB/14623 → 0.8MB/13683 → 1.6MB/28113 → 4.0MB/70667 | closure:
+     2.4 MB | 2.3MB/722 → 3.4MB/947 → 4.3MB/1151 → 4.7MB/1272 | (code)
+     2.0 MB | 1.2MB/9316 → 1.2MB/8346 → 1.8MB/15581 → 3.2MB/37003 | (object shape)system / DescriptorArray
+     1.7 MB | 0.4MB/6251 → 0.3MB/5215 → 0.8MB/12351 → 2.1MB/33699 | closure:deprecated
+     1.5 MB | 0.4MB/6565 → 0.3MB/5533 → 0.7MB/12670 → 1.8MB/34018 | (object shape)system / PrototypeInfo
+     1.5 MB | 0.3MB/6248 → 0.3MB/5212 → 0.7MB/12348 → 1.8MB/33696 | closure:shouldEmitWarning
+     0.9 MB | 0.7MB/1079 → 1.2MB/1440 → 1.5MB/1754 → 1.6MB/1948 | (code)(code deopt data)
+     0.7 MB | 0.9MB/2983 → 1.1MB/3380 → 1.4MB/3945 → 1.5MB/4158 | (code)(code relocation info)
+     0.6 MB | 0.6MB/707 → 0.9MB/932 → 1.1MB/1136 → 1.2MB/1257 | (code)system / TrustedFixedArray
+     0.6 MB | 0.5MB/2402 → 0.6MB/2832 → 0.9MB/3296 → 1.1MB/3527 | (hidden)system / WeakArrayList
+     0.4 MB | 0.2MB/7459 → 0.3MB/9536 → 0.4MB/12980 → 0.6MB/20682 | Map
+     0.4 MB | 0.7MB/7882 → 0.7MB/7911 → 0.8MB/9547 → 1.0MB/12399 | ArrayBuffer
+     0.3 MB | 0.2MB/10092 → 0.2MB/9620 → 0.3MB/13190 → 0.5MB/23862 | (hidden)system / AccessorPair
+     0.3 MB | 0.8MB/5890 → 0.9MB/6510 → 1.0MB/7587 → 1.1MB/7817 | (code)system / TrustedByteArray
+     0.3 MB | 1.0MB/2266 → 1.1MB/2442 → 1.2MB/2800 → 1.3MB/2892 | (code)system / FeedbackVector
+     0.3 MB | 0.2MB/2614 → 0.2MB/2633 → 0.3MB/3517 → 0.5MB/5521 | Uint8Array
+     0.2 MB | 0.9MB/2368 → 1.0MB/2555 → 1.1MB/2964 → 1.1MB/2974 | (code)system / BytecodeArray
+     0.2 MB | 0.0MB/1550 → 0.0MB/1291 → 0.1MB/3075 → 0.2MB/8412 | PerformanceNodeEntry
+     0.2 MB | 0.3MB/2898 → 0.3MB/3302 → 0.4MB/4600 → 0.4MB/4948 | (code)system / WeakFixedArray
+     0.1 MB | 0.0MB/278 → 0.0MB/269 → 0.1MB/922 → 0.2MB/1760 | Float64Array
+     0.1 MB | 0.3MB/2247 → 0.3MB/2425 → 0.4MB/2813 → 0.4MB/2822 | (code)(constant pool)
+     0.1 MB | 0.5MB/5128 → 0.6MB/5304 → 0.6MB/5773 → 0.6MB/5811 | (code)system / ScopeInfo
+     0.0 MB | 0.0MB/69 → 0.1MB/172 → 0.1MB/187 → 0.1MB/174 | ClientRequest
+     0.0 MB | 0.1MB/720 → 0.1MB/945 → 0.1MB/1149 → 0.1MB/1270 | (code)(code)
+     0.0 MB | 0.2MB/659 → 0.2MB/703 → 0.2MB/733 → 0.2MB/771 | (object shape)(enum cache)
+     0.0 MB | 0.0MB/69 → 0.1MB/172 → 0.1MB/187 → 0.1MB/174 | (synthetic)Node / TCPSocketWrap
+     0.0 MB | 0.1MB/3988 → 0.1MB/4306 → 0.2MB/5088 → 0.2MB/5275 | (code)system / LoadHandler
+     0.0 MB | 0.0MB/1004 → 0.1MB/1813 → 0.1MB/1911 → 0.1MB/1817 | closure:native_bind
+     0.0 MB | 0.0MB/567 → 0.1MB/666 → 0.1MB/803 → 0.1MB/874 | (code)system / WeakArrayList
+     0.0 MB | 0.0MB/0 → 0.0MB/0 → 0.0MB/1 → 0.0MB/1 | (code)(instruction stream for stepBattle)
+     0.0 MB | 0.1MB/2321 → 0.1MB/2505 → 0.2MB/2912 → 0.2MB/2922 | (code)system / FeedbackMetadata
+     0.0 MB | 0.0MB/73 → 0.1MB/176 → 0.1MB/191 → 0.1MB/178 | Socket
+     0.0 MB | 0.2MB/293 → 0.3MB/313 → 0.3MB/367 → 0.3MB/374 | (code)(BASELINE instruction stream)
+     0.0 MB | 0.1MB/947 → 0.1MB/1033 → 0.1MB/1264 → 0.1MB/1273 | (code)system / ObjectBoilerplateDescription
+     0.0 MB | 0.0MB/698 → 0.1MB/822 → 0.1MB/891 → 0.1MB/1060 | Chunk
+     0.0 MB | 0.0MB/950 → 0.0MB/1054 → 0.1MB/1268 → 0.1MB/1355 | (code)system / AllocationSite
+     0.0 MB | 0.1MB/5287 → 0.1MB/5684 → 0.1MB/6249 → 0.1MB/6462 | (hidden)system / CodeWrapper
+     0.0 MB | 0.0MB/0 → 0.0MB/0 → 0.0MB/1 → 0.0MB/1 | (code)(instruction stream for _warConscriptIndividual)
+     0.0 MB | 0.0MB/0 → 0.0MB/0 → 0.0MB/0 → 0.0MB/1 | (code)(instruction stream for warResolveBattle)
+     0.0 MB | 0.0MB/0 → 0.0MB/1 → 0.0MB/1 → 0.0MB/1 | (code)(instruction stream for route)
+     0.0 MB | 0.1MB/2368 → 0.1MB/2555 → 0.1MB/2964 → 0.1MB/2974 | (hidden)system / BytecodeWrapper
+     0.0 MB | 0.0MB/0 → 0.0MB/0 → 0.0MB/1 → 0.0MB/1 | (code)(instruction stream for _t804Local)
+     0.0 MB | 0.0MB/0 → 0.0MB/0 → 0.0MB/0 → 0.0MB/1 | (code)(instruction stream for _t724BodyStep)
+     0.0 MB | 0.0MB/0 → 0.0MB/0 → 0.0MB/1 → 0.0MB/1 | (code)(instruction stream for _muAssignSlots)
+     0.0 MB | 0.0MB/0 → 0.0MB/0 → 0.0MB/1 → 0.0MB/1 | (code)(instruction stream for _warEndFight)
+     0.0 MB | 0.0MB/69 → 0.0MB/172 → 0.0MB/187 → 0.0MB/174 | Timeout
+     0.0 MB | 0.0MB/0 → 0.0MB/0 → 0.0MB/1 → 0.0MB/1 | (code)(instruction stream for _warLootPickup)
+     0.0 MB | 0.0MB/0 → 0.0MB/1 → 0.0MB/1 → 0.0MB/1 | (code)(instruction stream for _deathDrop)
 
-## ② 다시 띄운 판 501날(B) ↔ 이어 돈 판 500날(A) — 다시 띄우면 사라지는 것
+## ② 다시 띄운 판 501날(B) ↔ 이어 돈 판 500날(A) — 다시 띄우면 사라지는 것(길 이름이 판마다 다르게 접힌 줄은 셈 표로 본다)
 스냅숏: 0 404.9 MB · 노드 7554632 | 1 616.0 MB · 노드 10510813
 
 ## 길 — 끝 − 첫 큰 순

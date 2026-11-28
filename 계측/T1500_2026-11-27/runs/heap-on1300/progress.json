@@ -1,0 +1,22 @@
+{
+ "v": 1,
+ "tag": "on",
+ "seed": 1020,
+ "days": 1300,
+ "every": 1300,
+ "dir": "/home/user/t1500-out/heap-on1300",
+ "ck": 0,
+ "segs": [],
+ "done": false,
+ "env": {
+  "NODE_OPTIONS": "-r /home/user/t1500/계측/T1500_2026-11-27/t1500-observe.js",
+  "T1500_HEAP_TRIM": "1",
+  "T400_BUILD_ACT": "0",
+  "VILLAGE_CARAVAN_MAX": "0",
+  "T745_VCLOCK": "1",
+  "T1500_OBS": "/home/user/t1500-out/heap-on1300/obs",
+  "T1500_CENSUS": "50"
+ },
+ "started": "2026-11-27T16:19:21.080Z",
+ "tries": 1
+}

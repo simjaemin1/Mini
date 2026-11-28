@@ -1,0 +1,4 @@
+=== T1308 이어 도는 판 — snapB · 시드 1020 · 520날 · 마디 끊는 날 500 · 가상 시계 켬 · /home/user/t1500-out/snapB · 체크포인트 날 0 ===
+  ✓ 마디 0 → 500 · 1287초
+  ✓ 마디 500 → 520 · 175초
+  끝 — 판 JSON /home/user/t1500-out/snapB/snapB-1020.json · 묶은 관찰 json.t740.json

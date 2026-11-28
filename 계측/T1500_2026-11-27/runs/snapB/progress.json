@@ -1,0 +1,40 @@
+{
+ "v": 1,
+ "tag": "snapB",
+ "seed": 1020,
+ "days": 520,
+ "every": 10,
+ "dir": "/home/user/t1500-out/snapB",
+ "ck": 520,
+ "segs": [
+  {
+   "from": 0,
+   "to": 500,
+   "sec": 1286.7,
+   "code": 0,
+   "at": "2026-11-27T16:00:42.961Z"
+  },
+  {
+   "from": 500,
+   "to": 520,
+   "sec": 174.9,
+   "code": 0,
+   "at": "2026-11-27T16:03:38.736Z"
+  }
+ ],
+ "done": true,
+ "env": {
+  "NODE_OPTIONS": "-r /home/user/t1500/계측/T1500_2026-11-27/t1500-observe.js",
+  "T400_BUILD_ACT": "0",
+  "VILLAGE_CARAVAN_MAX": "0",
+  "T745_VCLOCK": "1",
+  "T1500_OBS": "/home/user/t1500-out/snapB/obs",
+  "T1500_SNAP_FIRST": "1"
+ },
+ "started": "2026-11-27T15:39:15.941Z",
+ "tries": 0,
+ "cuts": [
+  500
+ ],
+ "ended": "2026-11-27T16:03:39.026Z"
+}
